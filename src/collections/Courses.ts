@@ -19,7 +19,7 @@ export const Courses: CollectionConfig = {
     update: authenticated,
   },
   hooks: {
-    beforeValidate: [
+    beforeChange: [
       ({ data }) => {
         if (data?.title && !data?.slug) {
           data.slug = formatSlug(data.title)
