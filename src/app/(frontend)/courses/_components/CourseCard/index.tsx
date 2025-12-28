@@ -21,9 +21,9 @@ export function CourseCard({ course }: CourseCardProps) {
 
   return (
     <div className="group relative">
-      <div className="absolute -inset-0.5 bg-gradient-to-r from-primary/30 via-accent/30 to-primary/30 rounded-xl opacity-0 group-hover:opacity-100 blur-sm transition duration-500" />
+      <div className="absolute -inset-0.5 bg-gradient-to-r from-primary/50 via-accent/50 to-primary/50 rounded-xl opacity-0 group-hover:opacity-100 blur transition duration-500" />
       <Card className="relative overflow-hidden border-border bg-card backdrop-blur-sm hover:bg-card transition-all duration-300 h-full flex flex-col shadow-xl">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/8 via-transparent to-accent/8 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/15 via-transparent to-accent/15 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
         <CardHeader className="relative pb-4">
           {course.courseLabel && (
