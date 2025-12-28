@@ -622,6 +622,14 @@ export interface Lesson {
    * Whether this lesson is currently active
    */
   isActive: boolean;
+  /**
+   * Defines how this lesson is delivered. Keep `pdf` for now.
+   */
+  contentType: 'pdf' | 'none';
+  /**
+   * External PDF URL for this lesson (temporary hosting).
+   */
+  pdfUrl?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1089,6 +1097,8 @@ export interface LessonsSelect<T extends boolean = true> {
   order?: T;
   status?: T;
   isActive?: T;
+  contentType?: T;
+  pdfUrl?: T;
   updatedAt?: T;
   createdAt?: T;
 }
