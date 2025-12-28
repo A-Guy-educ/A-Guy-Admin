@@ -85,7 +85,6 @@ export const Lessons: CollectionConfig = {
         description: 'Whether this lesson is currently active',
       },
     },
-    slugField(),
     {
       name: 'contentType',
       type: 'select',
@@ -131,5 +130,6 @@ export const Lessons: CollectionConfig = {
         return true
       },
     },
+    slugField(),
   ],
 }
