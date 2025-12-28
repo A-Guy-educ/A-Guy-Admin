@@ -2,6 +2,7 @@ import type { CollectionConfig } from 'payload'
 
 import { anyone } from '../access/anyone'
 import { authenticated } from '../access/authenticated'
+import { slugField } from 'payload'
 
 export const Courses: CollectionConfig = {
   slug: 'courses',
@@ -13,7 +14,7 @@ export const Courses: CollectionConfig = {
   },
   admin: {
     useAsTitle: 'title',
-    defaultColumns: ['courseLabel', 'title', 'order', 'status', 'isActive', 'updatedAt'],
+    defaultColumns: ['courseLabel', 'title', 'slug', 'order', 'status', 'isActive', 'updatedAt'],
   },
   fields: [
     {
@@ -82,6 +83,30 @@ export const Courses: CollectionConfig = {
       admin: {
         description: 'Whether this course is currently active',
       },
+    },
+    {
+      name: 'categories',
+      type: 'relationship',
+      relationTo: 'categories',
+      hasMany: true,
+      admin: {
+        position: 'sidebar',
+      },
+    },
+    slugField(),
+    {
+      name: 'meta',
+      type: 'group',
+      fields: [
+        {
+          name: 'title',
+          type: 'text',
+        },
+        {
+          name: 'description',
+          type: 'textarea',
+        },
+      ],
     },
   ],
 }

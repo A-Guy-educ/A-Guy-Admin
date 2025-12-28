@@ -377,6 +377,16 @@ export interface Course {
    * Whether this course is currently active
    */
   isActive: boolean;
+  categories?: (string | Category)[] | null;
+  /**
+   * When enabled, the slug will auto-generate from the title field on save and autosave.
+   */
+  generateSlug?: boolean | null;
+  slug: string;
+  meta?: {
+    title?: string | null;
+    description?: string | null;
+  };
   updatedAt: string;
   createdAt: string;
 }
@@ -1017,6 +1027,15 @@ export interface CoursesSelect<T extends boolean = true> {
   order?: T;
   status?: T;
   isActive?: T;
+  categories?: T;
+  generateSlug?: T;
+  slug?: T;
+  meta?:
+    | T
+    | {
+        title?: T;
+        description?: T;
+      };
   updatedAt?: T;
   createdAt?: T;
 }
