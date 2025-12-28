@@ -130,6 +130,8 @@ export const Lessons: CollectionConfig = {
         return true
       },
     },
-    slugField(),
+    slugField({
+      required: false,
+    }),
   ],
 }

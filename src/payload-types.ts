@@ -384,7 +384,7 @@ export interface Course {
    * When enabled, the slug will auto-generate from the title field on save and autosave.
    */
   generateSlug?: boolean | null;
-  slug: string;
+  slug?: string | null;
   meta?: {
     title?: string | null;
     description?: string | null;
@@ -634,7 +634,7 @@ export interface Lesson {
    * When enabled, the slug will auto-generate from the title field on save and autosave.
    */
   generateSlug?: boolean | null;
-  slug: string;
+  slug?: string | null;
   updatedAt: string;
   createdAt: string;
 }

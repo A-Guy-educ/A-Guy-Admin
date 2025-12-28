@@ -93,7 +93,9 @@ export const Courses: CollectionConfig = {
         position: 'sidebar',
       },
     },
-    slugField(),
+    slugField({
+      required: false,
+    }),
     {
       name: 'meta',
       type: 'group',
