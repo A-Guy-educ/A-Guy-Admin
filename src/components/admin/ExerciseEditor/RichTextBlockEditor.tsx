@@ -12,16 +12,7 @@ import type { RichTextBlock } from '@/contracts'
 import type { BlockEditorProps } from '../shared/types'
 import { ErrorDisplay } from '../shared/ErrorDisplay'
 
-export function RichTextBlockEditor({
-  block,
-  onChange,
-  onDelete,
-  onMoveUp,
-  onMoveDown,
-  canMoveUp,
-  canMoveDown,
-  errors,
-}: BlockEditorProps<RichTextBlock>) {
+export function RichTextBlockEditor({ block, onChange, errors }: BlockEditorProps<RichTextBlock>) {
   const [value, setValue] = useState(block.value)
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null)
 
@@ -47,52 +38,7 @@ export function RichTextBlockEditor({
   }
 
   return (
-    <div
-      style={{
-        marginTop: '1rem',
-        padding: '1rem',
-        border: '1px solid var(--theme-elevation-150)',
-        borderRadius: '4px',
-      }}
-    >
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '0.75rem',
-        }}
-      >
-        <h4>Rich Text (Math-aware Markdown)</h4>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <button
-            type="button"
-            onClick={onMoveUp}
-            disabled={!canMoveUp}
-            className="btn btn--style-secondary btn--size-small"
-            title="Move up"
-          >
-            ↑
-          </button>
-          <button
-            type="button"
-            onClick={onMoveDown}
-            disabled={!canMoveDown}
-            className="btn btn--style-secondary btn--size-small"
-            title="Move down"
-          >
-            ↓
-          </button>
-          <button
-            type="button"
-            onClick={onDelete}
-            className="btn btn--style-secondary btn--size-small"
-          >
-            Delete
-          </button>
-        </div>
-      </div>
-
+    <div>
       <ErrorDisplay errors={errors} />
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>

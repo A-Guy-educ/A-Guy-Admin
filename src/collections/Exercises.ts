@@ -63,98 +63,159 @@ export const Exercises: CollectionConfig = {
     defaultColumns: ['title', 'lesson', 'questionType', 'updatedAt'],
   },
   fields: [
+    // Helper UI field for expand/collapse all controls
     {
-      name: 'title',
-      type: 'text',
-      required: true,
+      name: 'sectionControls',
+      type: 'ui',
       admin: {
-        description: 'Exercise title (for admin reference)',
+        components: {
+          Field: '@/components/admin/ExerciseEditor#ExerciseSectionedLayout',
+        },
       },
     },
+    // Section 1: Exercise Meta (Basics)
     {
-      name: 'lesson',
-      type: 'relationship',
-      relationTo: 'lessons',
-      required: true,
-      index: true,
+      type: 'collapsible',
+      label: 'Exercise Meta (Basics)',
       admin: {
-        description: 'The lesson this exercise belongs to',
+        initCollapsed: false,
       },
-    },
-    {
-      name: 'questionType',
-      type: 'select',
-      required: true,
-      options: [
+      fields: [
         {
-          label: 'Multiple Choice (MCQ)',
-          value: 'mcq',
+          name: 'title',
+          type: 'text',
+          required: true,
+          admin: {
+            description: 'Exercise title (for admin reference)',
+          },
         },
         {
-          label: 'True/False',
-          value: 'true_false',
+          name: 'lesson',
+          type: 'relationship',
+          relationTo: 'lessons',
+          required: true,
+          index: true,
+          admin: {
+            description: 'The lesson this exercise belongs to',
+          },
         },
         {
-          label: 'Free Response',
-          value: 'free_response',
+          name: 'questionType',
+          type: 'select',
+          required: true,
+          options: [
+            {
+              label: 'Multiple Choice (MCQ)',
+              value: 'mcq',
+            },
+            {
+              label: 'True/False',
+              value: 'true_false',
+            },
+            {
+              label: 'Free Response',
+              value: 'free_response',
+            },
+          ],
+          admin: {
+            description: 'Question type - must match answerSpecJson.questionType',
+          },
         },
       ],
-      admin: {
-        description: 'Question type - must match answerSpecJson.questionType',
-      },
     },
+    // Section 2: Content
     {
-      name: 'contentJson',
-      type: 'json',
-      required: true,
-      defaultValue: DEFAULT_CONTENT_JSON,
-      validate: (value) => {
-        const result = ExerciseContentSchema.safeParse(value)
-        if (!result.success) {
-          throwPayloadValidationError(result.error, 'contentJson')
-        }
-        return true
-      },
+      type: 'collapsible',
+      label: 'Content',
       admin: {
-        description: 'Exercise content blocks (stem + optional sections)',
-        components: {
-          Field: '@/components/admin/ExerciseEditor#ContentJsonField',
-        },
+        initCollapsed: false,
       },
+      fields: [
+        {
+          name: 'contentJson',
+          type: 'json',
+          required: true,
+          defaultValue: DEFAULT_CONTENT_JSON,
+          validate: (value) => {
+            const result = ExerciseContentSchema.safeParse(value)
+            if (!result.success) {
+              throwPayloadValidationError(result.error, 'contentJson')
+            }
+            return true
+          },
+          admin: {
+            description: 'Exercise content blocks (stem + optional sections)',
+            components: {
+              Field: '@/components/admin/ExerciseEditor#ContentJsonField',
+            },
+          },
+        },
+      ],
     },
+    // Section 3: Answer
     {
-      name: 'answerSpecJson',
-      type: 'json',
-      required: true,
-      defaultValue: DEFAULT_ANSWER_MCQ,
-      validate: (value, { data }) => {
-        // Validate structure with Zod
-        const result = AnswerSpecSchema.safeParse(value)
-        if (!result.success) {
-          throwPayloadValidationError(result.error, 'answerSpecJson')
-        }
-
-        // Check questionType consistency
-        const questionType = (data as any)?.questionType
-        if (questionType && result.data.questionType !== questionType) {
-          throw new ValidationError({
-            errors: [
-              {
-                path: 'answerSpecJson.questionType',
-                message: `Question type mismatch: this field has questionType="${result.data.questionType}" but the Question Type field is set to "${questionType}". These must match.`,
-              },
-            ],
-          })
-        }
-
-        return true
-      },
+      type: 'collapsible',
+      label: 'Answer',
       admin: {
-        description: 'Answer specification - must match the selected Question Type above',
-        components: {
-          Field: '@/components/admin/ExerciseEditor#AnswerSpecJsonField',
-        },
+        initCollapsed: false,
       },
+      fields: [
+        {
+          name: 'answerSpecJson',
+          type: 'json',
+          required: true,
+          defaultValue: DEFAULT_ANSWER_MCQ,
+          validate: (value, { data }) => {
+            // Validate structure with Zod
+            const result = AnswerSpecSchema.safeParse(value)
+            if (!result.success) {
+              throwPayloadValidationError(result.error, 'answerSpecJson')
+            }
+
+            // Check questionType consistency
+            const questionType = (data as any)?.questionType
+            if (questionType && result.data.questionType !== questionType) {
+              throw new ValidationError({
+                errors: [
+                  {
+                    path: 'answerSpecJson.questionType',
+                    message: `Question type mismatch: this field has questionType="${result.data.questionType}" but the Question Type field is set to "${questionType}". These must match.`,
+                  },
+                ],
+              })
+            }
+
+            return true
+          },
+          admin: {
+            description: 'Answer specification - must match the selected Question Type above',
+            components: {
+              Field: '@/components/admin/ExerciseEditor#AnswerSpecJsonField',
+            },
+          },
+        },
+      ],
+    },
+    // Section 4: Advanced (JSON + Debug)
+    {
+      type: 'collapsible',
+      label: 'Advanced (JSON + Debug)',
+      admin: {
+        initCollapsed: true,
+        description:
+          'Advanced JSON editors are available within the Content and Answer sections. Future: schema versions, debug info.',
+      },
+      fields: [
+        {
+          name: 'advancedPlaceholder',
+          type: 'ui',
+          admin: {
+            components: {
+              Field: '@/components/admin/ExerciseEditor#AdvancedPlaceholder',
+            },
+          },
+        },
+      ],
     },
   ],
 }

@@ -11,6 +11,7 @@ import { generateBlockId, zodErrorsToEditorErrors, getErrorsForPath } from '../s
 import type { EditorError } from '../shared/types'
 import { ErrorDisplay } from '../shared/ErrorDisplay'
 import { AdvancedJsonPanel } from '../shared/AdvancedJsonPanel'
+import { CollapsibleBlockCard } from './CollapsibleBlockCard'
 import { RichTextBlockEditor } from './RichTextBlockEditor'
 import { TableBlockEditor } from './TableBlockEditor'
 import { SvgBlockEditor } from './SvgBlockEditor'
@@ -173,56 +174,80 @@ export function ContentJsonEditor({ value, onChange }: ContentJsonEditorProps) {
       errors: blockErrors,
     }
 
+    // Render the appropriate editor based on block type (without card wrapper)
+    let editor: React.ReactNode = null
+
     switch (block.type) {
       case 'rich_text':
-        return (
+        editor = (
           <RichTextBlockEditor
-            key={block.id}
             block={block}
             onChange={(updated) => updateBlock(index, updated)}
             {...commonProps}
           />
         )
+        break
       case 'table':
-        return (
+        editor = (
           <TableBlockEditor
-            key={block.id}
             block={block}
             onChange={(updated) => updateBlock(index, updated)}
             {...commonProps}
           />
         )
+        break
       case 'svg':
-        return (
+        editor = (
           <SvgBlockEditor
-            key={block.id}
             block={block}
             onChange={(updated) => updateBlock(index, updated)}
             {...commonProps}
           />
         )
+        break
       case 'axis_system':
-        return (
+        editor = (
           <AxisSystemBlockEditor
-            key={block.id}
             block={block}
             onChange={(updated) => updateBlock(index, updated)}
             {...commonProps}
           />
         )
+        break
       case 'geometry':
-        return (
+        editor = (
           <GeometryBlockEditor
-            key={block.id}
             block={block}
             onChange={(updated) => updateBlock(index, updated)}
             {...commonProps}
           />
         )
+        break
       default:
-        return null
+        editor = null
     }
+
+    // Wrap in CollapsibleBlockCard
+    return (
+      <CollapsibleBlockCard key={block.id} block={block} index={index} {...commonProps}>
+        {editor}
+      </CollapsibleBlockCard>
+    )
   }
+
+  // Calculate validation summary
+  const getValidationSummary = () => {
+    const blockErrorCounts = value.stem.map((_, index) => ({
+      index,
+      count: getErrorsForPath(validationErrors, `stem.${index}`).length,
+    }))
+    const totalErrors = blockErrorCounts.reduce((sum, b) => sum + b.count, 0)
+    const blocksWithErrors = blockErrorCounts.filter((b) => b.count > 0)
+
+    return { totalErrors, blocksWithErrors }
+  }
+
+  const { totalErrors, blocksWithErrors } = getValidationSummary()
 
   return (
     <div>
@@ -273,6 +298,31 @@ export function ContentJsonEditor({ value, onChange }: ContentJsonEditorProps) {
           </button>
         </div>
       </div>
+
+      {/* Compact Validation Summary */}
+      {totalErrors > 0 && (
+        <div
+          style={{
+            padding: '0.75rem',
+            backgroundColor: 'var(--theme-error-50)',
+            border: '1px solid var(--theme-error-200)',
+            borderRadius: '4px',
+            marginBottom: '0.75rem',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span style={{ fontWeight: '600', color: 'var(--theme-error-600)' }}>
+              Content Validation: {totalErrors} error{totalErrors > 1 ? 's' : ''}
+            </span>
+            {blocksWithErrors.length > 0 && (
+              <span style={{ fontSize: '0.875rem', opacity: 0.8 }}>
+                in block{blocksWithErrors.length > 1 ? 's' : ''}{' '}
+                {blocksWithErrors.map((b) => `#${b.index + 1}`).join(', ')}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
 
       <ErrorDisplay errors={getErrorsForPath(validationErrors, 'stem')} />
 
