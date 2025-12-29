@@ -11,6 +11,7 @@ import type { BlockEditorProps } from '../shared/types'
 import { ErrorDisplay } from '../shared/ErrorDisplay'
 import { AdvancedJsonPanel } from '../shared/AdvancedJsonPanel'
 import { AxisPreview } from './previews/AxisPreview'
+import { PreviewErrorBoundary } from './previews/ErrorBoundary'
 
 export function AxisSystemBlockEditor({
   block,
@@ -409,7 +410,9 @@ export function AxisSystemBlockEditor({
               alignItems: 'center',
             }}
           >
-            <AxisPreview spec={spec} width={600} height={400} />
+            <PreviewErrorBoundary fallbackTitle="Axis Preview Error">
+              <AxisPreview spec={spec} width={600} height={400} />
+            </PreviewErrorBoundary>
           </div>
         </div>
 

@@ -11,6 +11,7 @@ import type { BlockEditorProps } from '../shared/types'
 import { ErrorDisplay } from '../shared/ErrorDisplay'
 import { AdvancedJsonPanel } from '../shared/AdvancedJsonPanel'
 import { GeometryPreview } from './previews/GeometryPreview'
+import { PreviewErrorBoundary } from './previews/ErrorBoundary'
 
 export function GeometryBlockEditor({
   block,
@@ -397,7 +398,9 @@ export function GeometryBlockEditor({
               alignItems: 'center',
             }}
           >
-            <GeometryPreview spec={spec} />
+            <PreviewErrorBoundary fallbackTitle="Geometry Preview Error">
+              <GeometryPreview spec={spec} />
+            </PreviewErrorBoundary>
           </div>
         </div>
 

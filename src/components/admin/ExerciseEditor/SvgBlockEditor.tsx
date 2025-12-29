@@ -9,6 +9,7 @@ import type { SvgBlock } from '@/contracts'
 import type { BlockEditorProps } from '../shared/types'
 import { ErrorDisplay } from '../shared/ErrorDisplay'
 import { sanitizeSvg } from '../shared/utils'
+import { PreviewErrorBoundary } from './previews/ErrorBoundary'
 
 export function SvgBlockEditor({
   block,
@@ -127,42 +128,44 @@ export function SvgBlockEditor({
           <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>
             Preview
           </label>
-          <div
-            style={{
-              height: '16rem',
-              padding: '0.75rem',
-              border: '1px solid var(--theme-elevation-150)',
-              borderRadius: '4px',
-              overflow: 'auto',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            {!isSvgValid ? (
-              <p style={{ fontSize: '0.875rem', opacity: 0.7, fontStyle: 'italic' }}>
-                {svg ? 'Invalid SVG (must start with <svg>)' : 'No SVG code'}
-              </p>
-            ) : !isSvgSafe ? (
-              <div style={{ textAlign: 'center', padding: '1rem' }}>
-                <p
-                  style={{
-                    fontSize: '0.875rem',
-                    color: 'var(--theme-error-500)',
-                    fontWeight: '500',
-                    marginBottom: '0.5rem',
-                  }}
-                >
-                  SVG preview disabled (unsafe)
+          <PreviewErrorBoundary fallbackTitle="SVG Preview Error">
+            <div
+              style={{
+                height: '16rem',
+                padding: '0.75rem',
+                border: '1px solid var(--theme-elevation-150)',
+                borderRadius: '4px',
+                overflow: 'auto',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              {!isSvgValid ? (
+                <p style={{ fontSize: '0.875rem', opacity: 0.7, fontStyle: 'italic' }}>
+                  {svg ? 'Invalid SVG (must start with <svg>)' : 'No SVG code'}
                 </p>
-                <p style={{ fontSize: '0.75rem', opacity: 0.7 }}>
-                  Contains script, event handlers, or external references
-                </p>
-              </div>
-            ) : (
-              <div dangerouslySetInnerHTML={{ __html: sanitizedSvg }} />
-            )}
-          </div>
+              ) : !isSvgSafe ? (
+                <div style={{ textAlign: 'center', padding: '1rem' }}>
+                  <p
+                    style={{
+                      fontSize: '0.875rem',
+                      color: 'var(--theme-error-500)',
+                      fontWeight: '500',
+                      marginBottom: '0.5rem',
+                    }}
+                  >
+                    SVG preview disabled (unsafe)
+                  </p>
+                  <p style={{ fontSize: '0.75rem', opacity: 0.7 }}>
+                    Contains script, event handlers, or external references
+                  </p>
+                </div>
+              ) : (
+                <div dangerouslySetInnerHTML={{ __html: sanitizedSvg }} />
+              )}
+            </div>
+          </PreviewErrorBoundary>
           {isSvgValid && !isSvgSafe && (
             <p
               style={{

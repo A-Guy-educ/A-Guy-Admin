@@ -11,6 +11,7 @@ import rehypeKatex from 'rehype-katex'
 import type { RichTextBlock } from '@/contracts'
 import type { BlockEditorProps } from '../shared/types'
 import { ErrorDisplay } from '../shared/ErrorDisplay'
+import { PreviewErrorBoundary } from './previews/ErrorBoundary'
 
 export function RichTextBlockEditor({ block, onChange, errors }: BlockEditorProps<RichTextBlock>) {
   const [value, setValue] = useState(block.value)
@@ -70,19 +71,21 @@ export function RichTextBlockEditor({ block, onChange, errors }: BlockEditorProp
           <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>
             Preview
           </label>
-          <div
-            style={{
-              height: '16rem',
-              padding: '0.75rem',
-              border: '1px solid var(--theme-elevation-150)',
-              borderRadius: '4px',
-              overflow: 'auto',
-            }}
-          >
-            <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-              {value || '*Empty*'}
-            </ReactMarkdown>
-          </div>
+          <PreviewErrorBoundary fallbackTitle="Markdown Preview Error">
+            <div
+              style={{
+                height: '16rem',
+                padding: '0.75rem',
+                border: '1px solid var(--theme-elevation-150)',
+                borderRadius: '4px',
+                overflow: 'auto',
+              }}
+            >
+              <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                {value || '*Empty*'}
+              </ReactMarkdown>
+            </div>
+          </PreviewErrorBoundary>
         </div>
       </div>
     </div>
