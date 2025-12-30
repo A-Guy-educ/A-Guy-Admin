@@ -1,21 +1,26 @@
 'use client'
 
-import React from 'react'
+import React, { useState } from 'react'
 
 import type { Header as HeaderType } from '@/payload-types'
 
 import { CMSLink } from '@/components/Link'
 import Link from 'next/link'
-import { SearchIcon } from 'lucide-react'
+import { SearchIcon, LogOut } from 'lucide-react'
 import { LanguageSwitcher } from '@/components/LanguageSwitcher'
 import { useTranslations } from '@/providers/I18n'
+import { Button } from '@/components/ui/button'
+import { logoutAndRedirect } from '@/app/(frontend)/actions/auth'
+import { toast } from 'sonner'
 
 interface HeaderNavProps {
   data: HeaderType
   userName?: string
+  isAuthenticated: boolean
 }
 
-export const HeaderNav: React.FC<HeaderNavProps> = ({ data, userName }) => {
+export const HeaderNav: React.FC<HeaderNavProps> = ({ data, userName, isAuthenticated }) => {
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
   const t = useTranslations('courses')
   const navItems = data?.navItems || []
 
@@ -78,6 +83,31 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({ data, userName }) => {
 
       {/* Language Switcher */}
       <LanguageSwitcher />
+
+      {/* Logout Button - Only show when authenticated */}
+      {isAuthenticated && (
+        <>
+          <div className="h-6 w-px bg-border" />
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={async () => {
+              setIsLoggingOut(true)
+              try {
+                await logoutAndRedirect()
+              } catch (_error) {
+                toast.error('Logout failed. Please try again.')
+                setIsLoggingOut(false)
+              }
+            }}
+            disabled={isLoggingOut}
+            className="flex items-center gap-2"
+          >
+            <LogOut className="w-4 h-4" />
+            {isLoggingOut ? 'Logging out...' : 'Logout'}
+          </Button>
+        </>
+      )}
     </nav>
   )
 }

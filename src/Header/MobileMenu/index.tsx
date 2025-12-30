@@ -1,22 +1,33 @@
 'use client'
 
-import React, { useEffect } from 'react'
-import { X, Menu } from 'lucide-react'
+import React, { useEffect, useState } from 'react'
+import { X, Menu, LogOut } from 'lucide-react'
 import { CMSLink } from '@/components/Link'
 import Link from 'next/link'
 import { SearchIcon } from 'lucide-react'
 import type { Header as HeaderType } from '@/payload-types'
 import { LanguageSwitcher } from '@/components/LanguageSwitcher'
 import { useTranslations } from '@/providers/I18n'
+import { Button } from '@/components/ui/button'
+import { logoutAndRedirect } from '@/app/(frontend)/actions/auth'
+import { toast } from 'sonner'
 
 interface MobileMenuProps {
   isOpen: boolean
   onClose: () => void
   data: HeaderType
   userName?: string
+  isAuthenticated: boolean
 }
 
-export const MobileMenu: React.FC<MobileMenuProps> = ({ isOpen, onClose, data, userName }) => {
+export const MobileMenu: React.FC<MobileMenuProps> = ({
+  isOpen,
+  onClose,
+  data,
+  userName,
+  isAuthenticated,
+}) => {
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
   const t = useTranslations('courses')
   const navItems = data?.navItems || []
 
@@ -144,6 +155,29 @@ export const MobileMenu: React.FC<MobileMenuProps> = ({ isOpen, onClose, data, u
             </h3>
             <LanguageSwitcher />
           </div>
+
+          {/* Logout - Only show when authenticated */}
+          {isAuthenticated && (
+            <div className="px-6 py-4 border-t border-border mt-auto">
+              <Button
+                variant="ghost"
+                className="w-full justify-start gap-2"
+                onClick={async () => {
+                  setIsLoggingOut(true)
+                  try {
+                    await logoutAndRedirect()
+                  } catch (_error) {
+                    toast.error('Logout failed. Please try again.')
+                    setIsLoggingOut(false)
+                  }
+                }}
+                disabled={isLoggingOut}
+              >
+                <LogOut className="w-4 h-4" />
+                {isLoggingOut ? 'Logging out...' : 'Logout'}
+              </Button>
+            </div>
+          )}
         </nav>
       </div>
     </>
