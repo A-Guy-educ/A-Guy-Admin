@@ -196,7 +196,17 @@ export const Exercises: CollectionConfig = {
         },
       ],
     },
-    // Section 4: Advanced (JSON + Debug)
+    // Section 4: Exercise Preview
+    {
+      name: 'exercisePreview',
+      type: 'ui',
+      admin: {
+        components: {
+          Field: '@/components/admin/ExerciseEditor#ExercisePreview',
+        },
+      },
+    },
+    // Section 5: Advanced (JSON + Debug)
     {
       type: 'collapsible',
       label: 'Advanced (JSON + Debug)',
