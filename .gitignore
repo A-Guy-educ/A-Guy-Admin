@@ -22,3 +22,8 @@ node_modules/
 
 
 tsconfig.tsbuildinfo
+
+# Local AI development documentation
+CLAUDE.md
+STRICTNESS.md
+tasks/
