@@ -14,7 +14,8 @@ import { AdvancedJsonPanel } from '../shared/AdvancedJsonPanel'
 import { CollapsibleBlockCard } from './CollapsibleBlockCard'
 import { RichTextBlockEditor } from './RichTextBlockEditor'
 import { TableBlockEditor } from './TableBlockEditor'
-import { SvgBlockEditor } from './SvgBlockEditor'
+import { FigureBlockEditor } from './FigureBlockEditor'
+
 import { AxisSystemBlockEditor } from './AxisSystemBlockEditor'
 import { GeometryBlockEditor } from './GeometryBlockEditor'
 
@@ -106,13 +107,22 @@ export function ContentJsonEditor({ value, onChange }: ContentJsonEditorProps) {
           columnAlignment: ['left', 'left'],
         }
         break
-      case 'svg':
+      case 'figure':
         newBlock = {
           id,
-          type: 'svg',
-          svg: '<svg width="200" height="200" xmlns="http://www.w3.org/2000/svg"><circle cx="100" cy="100" r="50" fill="blue"/></svg>',
+          type: 'figure',
+          assetId: '',
         }
         break
+      case 'section':
+        newBlock = {
+          id,
+          type: 'section',
+          title: 'New Section',
+          blocks: [],
+        }
+        break
+
       case 'axis_system':
         newBlock = {
           id,
@@ -196,15 +206,40 @@ export function ContentJsonEditor({ value, onChange }: ContentJsonEditorProps) {
           />
         )
         break
-      case 'svg':
+      case 'figure':
         editor = (
-          <SvgBlockEditor
+          <FigureBlockEditor
             block={block}
             onChange={(updated) => updateBlock(index, updated)}
             {...commonProps}
           />
         )
         break
+      case 'section':
+        // Minimal Section Editor Placeholder - deeper editing would need recursive editor
+        editor = (
+          <div style={{ padding: '1rem', border: '1px solid #ccc' }}>
+            <h4>Section: {block.title}</h4>
+            <p>
+              Recursion not fully implemented in Admin UI yet. Edit JSON in Advanced panel to add
+              blocks here.
+            </p>
+            <input
+              value={block.title || ''}
+              onChange={(e) => updateBlock(index, { ...block, title: e.target.value })}
+              placeholder="Section Title"
+              style={{ width: '100%', marginBottom: '0.5rem', padding: '0.5rem' }}
+            />
+            <input
+              value={block.label || ''}
+              onChange={(e) => updateBlock(index, { ...block, label: e.target.value })}
+              placeholder="Label (e.g. A)"
+              style={{ width: '100%', marginBottom: '0.5rem', padding: '0.5rem' }}
+            />
+          </div>
+        )
+        break
+
       case 'axis_system':
         editor = (
           <AxisSystemBlockEditor
@@ -277,11 +312,19 @@ export function ContentJsonEditor({ value, onChange }: ContentJsonEditorProps) {
           </button>
           <button
             type="button"
-            onClick={() => addBlock('svg')}
+            onClick={() => addBlock('figure')}
             className="btn btn--style-secondary btn--size-small"
           >
-            + SVG
+            + Figure
           </button>
+          <button
+            type="button"
+            onClick={() => addBlock('section')}
+            className="btn btn--style-secondary btn--size-small"
+          >
+            + Section
+          </button>
+
           <button
             type="button"
             onClick={() => addBlock('axis_system')}

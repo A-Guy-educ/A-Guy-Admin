@@ -1,6 +1,5 @@
 /**
  * Exercise Contracts - Zod schemas and TypeScript types
- * Version 1
  *
  * Shared contract layer for Exercise content, Answer specifications,
  * and Graphics specifications (Axis & Geometry).
@@ -37,23 +36,20 @@ export { AxisSpecV1Schema, type AxisSpecV1 } from './graphics/axis.v1'
 export { GeometrySpecV1Schema, type GeometrySpecV1 } from './graphics/geometry.v1'
 
 // Exercise - Blocks
+// Exercise - Blocks
 export {
   ExerciseBlockSchema,
   type ExerciseBlock,
   type RichTextBlock,
   type TableBlock,
-  type SvgBlock,
+  type FigureBlock,
   type AxisSystemBlock,
   type GeometryBlock,
+  type SectionBlock,
 } from './exercise/blocks'
 
 // Exercise - Content
-export {
-  ExerciseContentSchema,
-  SectionSchema,
-  type ExerciseContent,
-  type Section,
-} from './exercise/content'
+export { ExerciseContentSchema, type ExerciseContent } from './exercise/content'
 
 // Exercise - Answers
 export {

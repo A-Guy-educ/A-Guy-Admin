@@ -17,6 +17,7 @@ export const ContentJsonField: TextFieldClientComponent = (props) => {
 
   // Default to a minimal valid content with one rich_text block
   const defaultValue: ExerciseContent = {
+    contentSchemaVersion: 1,
     stem: [
       {
         id: generateBlockId(),

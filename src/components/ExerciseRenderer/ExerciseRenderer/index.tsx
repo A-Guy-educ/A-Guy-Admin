@@ -25,7 +25,8 @@ export function ExerciseRenderer({
   onAnswerChange,
   initialAnswer,
   className = '',
-}: ExerciseRendererProps) {
+  availableAssets,
+}: ExerciseRendererProps & { availableAssets?: Record<string, string> }) {
   // Initialize user answer based on question type
   const getInitialAnswer = (): UserAnswer => {
     if (initialAnswer) return initialAnswer
@@ -78,16 +79,16 @@ export function ExerciseRenderer({
         <ErrorBoundary fallbackTitle="Error rendering exercise content">
           {/* Render stem blocks */}
           {content.stem && content.stem.length > 0 ? (
-            content.stem.map((block) => <BlockRenderer key={block.id} block={block} mode={mode} />)
+            content.stem.map((block) => (
+              <BlockRenderer
+                key={block.id}
+                block={block}
+                mode={mode}
+                availableAssets={availableAssets}
+              />
+            ))
           ) : (
             <div className={`${baseClass}__empty`}>No content blocks</div>
-          )}
-
-          {/* Render sections if present (not fully implemented in v0) */}
-          {content.sections && content.sections.length > 0 && (
-            <div className={`${baseClass}__sections-note`}>
-              Note: Multi-section exercises are not fully supported in this preview
-            </div>
           )}
         </ErrorBoundary>
       </div>

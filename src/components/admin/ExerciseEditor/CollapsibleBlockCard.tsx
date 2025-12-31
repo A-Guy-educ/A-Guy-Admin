@@ -40,8 +40,10 @@ export function CollapsibleBlockCard({
         return 'Rich Text'
       case 'table':
         return 'Table'
-      case 'svg':
-        return 'SVG'
+      case 'figure':
+        return 'Figure'
+      case 'section':
+        return 'Section'
       case 'axis_system':
         return 'Axis System'
       case 'geometry':
@@ -58,8 +60,10 @@ export function CollapsibleBlockCard({
         return block.value.substring(0, 40) + (block.value.length > 40 ? '...' : '')
       case 'table':
         return `${block.rows.length} rows × ${block.headers.length} cols`
-      case 'svg':
-        return block.svg ? 'SVG present' : 'empty'
+      case 'figure':
+        return block.caption || block.alt || `Asset: ${block.assetId}`
+      case 'section':
+        return `${block.label || ''} ${block.title || ''}`.trim() || `${block.blocks.length} blocks`
       case 'axis_system':
         const pointCount = block.spec?.elements?.points?.length || 0
         const graphCount = block.spec?.elements?.graphs?.length || 0
