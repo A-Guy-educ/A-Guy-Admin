@@ -2,14 +2,14 @@
  * Shared types for Exercise admin editors
  */
 
-import type { ExerciseBlock, AnswerSpec } from '@/contracts'
+import type { RichTextBlock, AnswerSpec } from '@/contracts'
 
 export interface EditorError {
   path: string
   message: string
 }
 
-export interface BlockEditorProps<T extends ExerciseBlock = ExerciseBlock> {
+export interface BlockEditorProps<T extends RichTextBlock = RichTextBlock> {
   block: T
   onChange: (block: T) => void
   onDelete: () => void

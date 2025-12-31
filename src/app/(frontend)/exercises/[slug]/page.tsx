@@ -3,7 +3,7 @@ import { getPayload } from 'payload'
 import configPromise from '@payload-config'
 import { notFound } from 'next/navigation'
 import { ExerciseRenderer } from '@/components/ExerciseRenderer/ExerciseRenderer'
-import type { ExerciseContent, ExerciseBlock, FigureBlock, SectionBlock } from '@/contracts'
+import type { ExerciseContent } from '@/contracts'
 
 // Recursive function to extract asset IDs from blocks
 const extractAssetIds = (blocks: any[]): string[] => {
