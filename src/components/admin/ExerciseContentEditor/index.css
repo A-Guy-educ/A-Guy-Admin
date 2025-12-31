@@ -1,0 +1,12 @@
+.exercise-content-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.field-label {
+  font-weight: bold;
+  margin-bottom: 4px;
+  display: block;
+}

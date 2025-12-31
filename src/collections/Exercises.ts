@@ -145,6 +145,9 @@ export const Exercises: CollectionConfig = {
           },
           admin: {
             description: 'Exercise content blocks (stem)',
+            components: {
+              Field: '@/components/admin/ExerciseContentEditor#ExerciseContentEditor',
+            },
           },
         },
       ],

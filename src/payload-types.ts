@@ -73,6 +73,7 @@ export interface Config {
     chapters: Chapter;
     lessons: Lesson;
     exercises: Exercise;
+    'exercise-assets': ExerciseAsset;
     users: User;
     media: Media;
     posts: Post;
@@ -100,6 +101,7 @@ export interface Config {
     chapters: ChaptersSelect<false> | ChaptersSelect<true>;
     lessons: LessonsSelect<false> | LessonsSelect<true>;
     exercises: ExercisesSelect<false> | ExercisesSelect<true>;
+    'exercise-assets': ExerciseAssetsSelect<false> | ExerciseAssetsSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
     posts: PostsSelect<false> | PostsSelect<true>;
@@ -744,6 +746,46 @@ export interface Exercise {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "exercise-assets".
+ */
+export interface ExerciseAsset {
+  id: string;
+  /**
+   * Alt text for accessibility
+   */
+  alt: string;
+  /**
+   * Optional caption for the figure
+   */
+  caption?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  updatedAt: string;
+  createdAt: string;
+  url?: string | null;
+  thumbnailURL?: string | null;
+  filename?: string | null;
+  mimeType?: string | null;
+  filesize?: number | null;
+  width?: number | null;
+  height?: number | null;
+  focalX?: number | null;
+  focalY?: number | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "users".
  */
 export interface User {
@@ -1192,6 +1234,10 @@ export interface PayloadLockedDocument {
         value: string | Exercise;
       } | null)
     | ({
+        relationTo: 'exercise-assets';
+        value: string | ExerciseAsset;
+      } | null)
+    | ({
         relationTo: 'users';
         value: string | User;
       } | null)
@@ -1480,6 +1526,25 @@ export interface ExercisesSelect<T extends boolean = true> {
   answerSpecJson?: T;
   updatedAt?: T;
   createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "exercise-assets_select".
+ */
+export interface ExerciseAssetsSelect<T extends boolean = true> {
+  alt?: T;
+  caption?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  url?: T;
+  thumbnailURL?: T;
+  filename?: T;
+  mimeType?: T;
+  filesize?: T;
+  width?: T;
+  height?: T;
+  focalX?: T;
+  focalY?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
