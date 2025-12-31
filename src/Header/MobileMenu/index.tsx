@@ -165,16 +165,8 @@ export const MobileMenu: React.FC<MobileMenuProps> = ({
                 className="w-full justify-start gap-2"
                 onClick={async () => {
                   setIsLoggingOut(true)
-                  try {
-                    await logoutAndRedirect()
-                  } catch (error) {
-                    // Re-throw Next.js redirect errors (they're not actually errors)
-                    if (error && typeof error === 'object' && 'digest' in error) {
-                      throw error
-                    }
-                    toast.error('Logout failed. Please try again.')
-                    setIsLoggingOut(false)
-                  }
+                  await logoutAndRedirect()
+                  // No need to reset state - redirect will unmount component
                 }}
                 disabled={isLoggingOut}
               >

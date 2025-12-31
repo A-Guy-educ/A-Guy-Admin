@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 export default async function SignupPage() {
   // Quick check: if user has a token, redirect to home
-  // We don't validate the token here for performance - let the client handle it
+  // We don't validate the token here for performance
   const cookieStore = await cookies()
   const token = cookieStore.get('payload-token')
 
