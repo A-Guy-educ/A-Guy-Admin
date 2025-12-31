@@ -1,4 +1,6 @@
-// Generic error handlers for signup flow
+// Signup-specific error handlers (extends generic Payload error handling)
+
+import { handlePayloadError } from '@/lib/errors'
 
 interface ErrorResult {
   success: false
@@ -6,37 +8,8 @@ interface ErrorResult {
   errors?: Record<string, string>
 }
 
-/**
- * Generic Payload CMS error handler
- * Parses Payload validation errors and returns formatted error result
- */
-export function handlePayloadError(error: unknown, fallbackMessage: string): ErrorResult | null {
-  if (!error || typeof error !== 'object' || !('data' in error)) {
-    return null
-  }
-
-  const payloadError = error.data as any
-  const errors: Record<string, string> = {}
-
-  // Parse Payload field errors
-  if (payloadError.errors && Array.isArray(payloadError.errors)) {
-    payloadError.errors.forEach((err: any) => {
-      if (err.path && err.message) {
-        errors[err.path] = err.message
-      }
-    })
-  }
-
-  if (Object.keys(errors).length > 0) {
-    return {
-      success: false,
-      message: fallbackMessage,
-      errors,
-    }
-  }
-
-  return null
-}
+// Re-export generic handler for convenience
+export { handlePayloadError }
 
 /**
  * Checks if error is a duplicate email error (MongoDB E11000)

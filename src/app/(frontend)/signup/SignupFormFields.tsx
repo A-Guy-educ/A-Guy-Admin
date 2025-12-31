@@ -3,6 +3,14 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Turnstile } from '@marsidev/react-turnstile'
 
+// ANTI-SPAM: Honeypot field styles (hidden from users, visible to bots)
+const HONEYPOT_STYLES: React.CSSProperties = {
+  position: 'absolute',
+  left: '-9999px',
+  width: '1px',
+  height: '1px',
+}
+
 interface SignupFormFieldsProps {
   t: (key: string) => string
   isLoading: boolean
@@ -28,12 +36,7 @@ export function SignupFormFields({
         name="website"
         tabIndex={-1}
         autoComplete="off"
-        style={{
-          position: 'absolute',
-          left: '-9999px',
-          width: '1px',
-          height: '1px',
-        }}
+        style={HONEYPOT_STYLES}
         aria-hidden="true"
       />
 

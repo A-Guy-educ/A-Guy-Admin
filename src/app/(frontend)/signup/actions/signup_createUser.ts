@@ -9,8 +9,8 @@ import {
   handleDuplicateEmailError,
   handlePayloadError,
   isDuplicateEmailError,
-} from './signup_handlers'
-import { SignupSchema, type SignupResult } from './signup_schemas'
+} from '../signup_handlers'
+import { SignupSchema, type SignupResult } from '../signup_schemas'
 
 export async function signupAction(formData: FormData): Promise<SignupResult> {
   try {

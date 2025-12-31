@@ -5,11 +5,11 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
-import { signupAction } from './signup_createUser'
+import { signupAction } from './actions/signup_createUser'
 import { toast } from 'sonner'
 import { useTranslations } from '@/providers/I18n'
 import { SignupFormFields } from './SignupFormFields'
-import { validateSignupForm } from './signup_validation'
+import { validateSignupForm } from './actions/signup_validation'
 
 export function SignupForm() {
   const t = useTranslations('auth.signup')
