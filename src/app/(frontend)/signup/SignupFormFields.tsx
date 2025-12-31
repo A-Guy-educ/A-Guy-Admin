@@ -1,14 +1,7 @@
 import React from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-
-// ANTI-SPAM: Honeypot field styles (hidden from users, visible to bots)
-const HONEYPOT_STYLES: React.CSSProperties = {
-  position: 'absolute',
-  left: '-9999px',
-  width: '1px',
-  height: '1px',
-}
+import './honeypot.css'
 
 interface SignupFormFieldsProps {
   t: (key: string) => string
@@ -25,7 +18,7 @@ export function SignupFormFields({ t, isLoading, errors }: SignupFormFieldsProps
         name="website"
         tabIndex={-1}
         autoComplete="off"
-        style={HONEYPOT_STYLES}
+        className="honeypot-field"
         aria-hidden="true"
       />
 

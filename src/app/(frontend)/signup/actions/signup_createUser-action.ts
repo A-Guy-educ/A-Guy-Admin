@@ -3,7 +3,7 @@
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import { cookies } from 'next/headers'
-import { checkRateLimit } from './signup_rateLimit'
+import { checkRateLimit } from './signup_rateLimit-action'
 import {
   handleDuplicateEmailError,
   handlePayloadError,

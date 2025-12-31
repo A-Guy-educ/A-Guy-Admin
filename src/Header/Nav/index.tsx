@@ -10,7 +10,7 @@ import { SearchIcon, LogOut } from 'lucide-react'
 import { LanguageSwitcher } from '@/components/LanguageSwitcher'
 import { useTranslations } from '@/providers/I18n'
 import { Button } from '@/components/ui/button'
-import { logoutAndRedirect } from '@/app/(frontend)/actions/auth'
+import { logoutAndRedirect } from '@/app/(frontend)/actions/auth-action'
 import { toast } from 'sonner'
 
 interface HeaderNavProps {
