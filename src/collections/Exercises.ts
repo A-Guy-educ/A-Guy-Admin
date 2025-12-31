@@ -11,15 +11,15 @@ import { throwPayloadValidationError } from '../utilities/zodToPayloadError'
  * Field-level validation + default templates for better Admin UX
  */
 
-// Default templates
+// Default template - simplified single-level structure
 const DEFAULT_CONTENT_JSON = {
   contentSchemaVersion: 1,
   stem: [
     {
-      id: 'b1',
+      id: 'default-block-1',
       type: 'rich_text',
       format: 'md-math-v1',
-      value: 'Write your question here. Example: $2x+3=11$',
+      value: '# Write your question here\n\nExample: Solve for $x$: $2x+3=11$',
     },
   ],
 }
@@ -146,7 +146,7 @@ export const Exercises: CollectionConfig = {
           admin: {
             description: 'Exercise content blocks (stem)',
             components: {
-              Field: '@/components/admin/ExerciseContentEditor#ExerciseContentEditor',
+              Field: '@/components/admin/ExerciseContentEditor#ExerciseContentEditor', // Custom V1 Editor
             },
           },
         },
