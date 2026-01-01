@@ -1,0 +1,139 @@
+@import '~@payloadcms/ui/scss';
+
+.notebook-workspace {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  overflow: hidden;
+  min-height: 0;
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.9rem 2rem;
+    background: hsl(var(--card));
+    border-bottom: 1px solid hsl(var(--border));
+    gap: 1rem;
+  }
+
+  &__title-group {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: hsl(var(--foreground));
+  }
+
+  &__pdf {
+    background: hsl(var(--muted));
+    color: hsl(var(--foreground));
+    padding: 0.25rem 0.7rem;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+  }
+
+  &__tabs {
+    display: flex;
+    gap: 1.5rem;
+  }
+
+  &__tab {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0;
+    background: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: hsl(var(--muted-foreground));
+    cursor: pointer;
+    transition: all 0.2s;
+
+    &:hover {
+      color: hsl(var(--foreground));
+    }
+
+    &--active {
+      color: hsl(var(--primary));
+      border-bottom-color: hsl(var(--primary));
+    }
+
+    &--static {
+      cursor: default;
+      color: hsl(var(--foreground));
+      border-bottom-color: transparent;
+    }
+  }
+
+  &__body {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  &__sidebar {
+    width: 360px;
+    background: hsl(var(--card));
+    border-inline-end: 1px solid hsl(var(--border));
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+
+    @include small-break {
+      display: none;
+    }
+  }
+
+  &__chat {
+    flex-shrink: 0;
+    border-bottom: 1px solid hsl(var(--border));
+  }
+
+  &__tools {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    background: hsl(var(--card));
+  }
+
+  &__content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 2rem;
+    display: flex;
+    justify-content: center;
+    background: hsl(var(--background));
+  }
+
+  &__paper {
+    width: 100%;
+    max-width: 920px;
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    border-radius: 10px;
+    padding: 3rem;
+    color: hsl(var(--foreground));
+    box-shadow: 0 10px 30px hsl(var(--border));
+
+    @include small-break {
+      padding: 1.5rem;
+      border-radius: 0;
+      box-shadow: none;
+    }
+  }
+}
+
