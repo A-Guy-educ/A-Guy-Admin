@@ -6,7 +6,7 @@ import { cn } from '@/utilities/ui'
 import { useTranslations } from '@/providers/I18n'
 import './index.scss'
 
-type SidebarTab = 'formulas' | 'notes'
+type SidebarTab = 'chat' | 'formulas' | 'notes'
 
 interface NotebookWorkspaceProps {
   content: React.ReactNode
@@ -17,7 +17,7 @@ interface NotebookWorkspaceProps {
 
 export function NotebookWorkspace({ content, chat, formulas, notes }: NotebookWorkspaceProps) {
   const t = useTranslations('courses')
-  const [activeTab, setActiveTab] = useState<SidebarTab>('formulas')
+  const [activeTab, setActiveTab] = useState<SidebarTab>('chat')
 
   return (
     <div className="notebook-workspace">
@@ -28,7 +28,14 @@ export function NotebookWorkspace({ content, chat, formulas, notes }: NotebookWo
         </div>
 
         <nav className="notebook-workspace__tabs">
-          <button className="notebook-workspace__tab notebook-workspace__tab--static" type="button">
+          <button
+            className={cn(
+              'notebook-workspace__tab',
+              activeTab === 'chat' && 'notebook-workspace__tab--active',
+            )}
+            type="button"
+            onClick={() => setActiveTab('chat')}
+          >
             <MessageSquare className="w-4 h-4" />
             <span>{t('chatTab')}</span>
           </button>
@@ -59,7 +66,7 @@ export function NotebookWorkspace({ content, chat, formulas, notes }: NotebookWo
 
       <div className="notebook-workspace__body">
         <aside className="notebook-workspace__sidebar">
-          <div className="notebook-workspace__chat">{chat}</div>
+          <div className="notebook-workspace__chat">{activeTab === 'chat' && chat}</div>
           <div className="notebook-workspace__tools">
             {activeTab === 'formulas' && formulas}
             {activeTab === 'notes' && notes}

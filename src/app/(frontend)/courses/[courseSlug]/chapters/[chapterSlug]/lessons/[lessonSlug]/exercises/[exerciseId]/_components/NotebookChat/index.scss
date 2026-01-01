@@ -10,6 +10,11 @@
 
   &__messages {
     padding: 1.75rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    flex: 1;
+    min-height: 0;
   }
 
   &__bubble {
@@ -55,6 +60,7 @@
     gap: 0.75rem;
     padding: 1.25rem 1.5rem;
     border-top: 1px solid hsl(var(--border));
+    margin-top: auto;
   }
 
   &__input {

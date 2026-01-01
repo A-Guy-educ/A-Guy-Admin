@@ -70,11 +70,6 @@
       border-bottom-color: hsl(var(--primary));
     }
 
-    &--static {
-      cursor: default;
-      color: hsl(var(--foreground));
-      border-bottom-color: transparent;
-    }
   }
 
   &__body {
@@ -99,15 +94,17 @@
   }
 
   &__chat {
-    flex-shrink: 0;
+    flex: 0 0 auto;
     border-bottom: 1px solid hsl(var(--border));
+    display: block;
   }
 
   &__tools {
-    flex: 1;
+    flex: 1 1 auto;
     min-height: 0;
     overflow-y: auto;
     background: hsl(var(--card));
+    padding-top: 0;
   }
 
   &__content {
