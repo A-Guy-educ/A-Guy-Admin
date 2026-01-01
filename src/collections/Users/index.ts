@@ -4,9 +4,10 @@ import { authenticated } from '../../access/authenticated'
 import { adminOnly } from '../../access/adminOnly'
 import { adminOrSelf } from '../../access/adminOrSelf'
 import { anyone } from '../../access/anyone'
-import { ensureRoleOnSignup } from './hooks/ensureRoleOnSignup'
-import { preventLastAdminDemotion } from './hooks/preventLastAdminDemotion'
-import { auditRoleChange } from './hooks/auditRoleChange'
+import { ensureRoleOnSignup } from './hooks/ensureRoleOnSignup-hook'
+import { preventLastAdminDemotion } from './hooks/preventLastAdminDemotion-hook'
+import { auditRoleChange } from './hooks/auditRoleChange-hook'
+import { Role, ROLE_LABEL } from './roles'
 
 export const Users: CollectionConfig = {
   slug: 'users',
@@ -35,16 +36,16 @@ export const Users: CollectionConfig = {
     {
       name: 'role',
       type: 'select',
-      options: [
-        { label: 'Student', value: 'student' },
-        { label: 'Admin', value: 'admin' },
-      ],
-      defaultValue: 'student',
+      options: Object.entries(ROLE_LABEL).map(([value, label]) => ({
+        label,
+        value,
+      })),
+      defaultValue: Role.Student,
       required: true,
       saveToJWT: true, // Include in JWT for fast access checks
       access: {
         // Only admins can update the role field
-        update: ({ req: { user } }) => user?.role === 'admin',
+        update: ({ req: { user } }) => user?.role === Role.Admin,
       },
       hooks: {
         // Enforce role='student' on signup (ignore client input)

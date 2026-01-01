@@ -2,8 +2,15 @@ import type { CollectionAfterChangeHook } from 'payload'
 import { logger } from '@/utilities/logger'
 
 /**
- * afterChange hook that logs role changes for audit trail
- * Logs when a user's role is promoted to admin or demoted to student
+ * HOOK: Payload CMS lifecycle hook that runs automatically after a user record changes
+ *
+ * Naming clarification:
+ * - HOOK: Payload CMS lifecycle function (beforeChange, afterChange, etc.) - runs automatically
+ * - ACTION: Server action called by client (e.g., signup_createUser-action.ts) - explicitly invoked
+ * - HANDLER: Error/event handler function (e.g., signup_handlers.ts) - called by actions/hooks
+ *
+ * This is a HOOK because it runs automatically via Payload's lifecycle system.
+ * It logs role changes for audit trail (security/compliance).
  */
 export const auditRoleChange: CollectionAfterChangeHook = async ({
   doc,
