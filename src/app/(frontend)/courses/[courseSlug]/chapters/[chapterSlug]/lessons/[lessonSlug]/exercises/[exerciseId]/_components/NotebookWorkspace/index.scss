@@ -8,8 +8,13 @@
   color: hsl(var(--foreground));
   overflow: hidden;
   min-height: 0;
-  position: relative;
-  z-index: 50; // Ensure notebook is above footer and other elements
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  z-index: 50; // Ensure notebook is above header (z-40) and footer (z-0)
 
   &__header {
     display: flex;
