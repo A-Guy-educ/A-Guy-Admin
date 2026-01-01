@@ -1,6 +1,6 @@
 import type { Access } from 'payload'
 
-import { Role, type User } from '@/collections/Users/roles'
+import { Role } from '@/collections/Users/roles'
 
 /**
  * Access control that allows admins to access all records,
@@ -9,14 +9,11 @@ import { Role, type User } from '@/collections/Users/roles'
 export const adminOrSelf: Access = ({ req: { user } }) => {
   if (!user) return false
 
-  // Type assertion since Payload types user as generated User
-  const typedUser = user as User
-
   // Admins can access all records
-  if (typedUser.role === Role.Admin) return true
+  if (user.role === Role.Admin) return true
 
   // Users can only access their own record
   return {
-    id: { equals: typedUser.id },
+    id: { equals: user.id },
   }
 }

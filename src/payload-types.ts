@@ -1,3 +1,4 @@
+import { Role } from '@/collections/Users/roles'
 /* tslint:disable */
 /* eslint-disable */
 /**
@@ -749,7 +750,7 @@ export interface Exercise {
 export interface User {
   id: string;
   name?: string | null;
-  role: 'student' | 'admin';
+  role: Role;
   updatedAt: string;
   createdAt: string;
   email: string;

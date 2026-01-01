@@ -1,6 +1,7 @@
 import type { AccessArgs } from 'payload'
+import type { User } from '@/payload-types'
 
-import { Role, type User } from '@/collections/Users/roles'
+import { Role } from '@/collections/Users/roles'
 
 type AdminOnlyAccess = (args: AccessArgs<User>) => boolean
 

@@ -1,15 +1,8 @@
 // Role enum for type-safe role management
 
-import type { User as GeneratedUser } from '@/payload-types'
-
 export enum Role {
   Admin = 'admin',
   Student = 'student',
-}
-
-// Type-safe User with proper Role enum
-export type User = Omit<GeneratedUser, 'role'> & {
-  role: Role
 }
 
 // Runtime validation: check if a value is a valid Role
