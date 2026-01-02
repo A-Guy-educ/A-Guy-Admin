@@ -14,8 +14,17 @@ export interface CheckResult {
   message?: string
 }
 
+/**
+ * Content structure - supports both new and legacy formats
+ * New: { content: { blocks: [] } }
+ * Legacy: { stem: [], contentSchemaVersion: 1 | 2 }
+ */
+export type ExerciseContentData =
+  | import('@/contracts').ExerciseContent // Legacy format
+  | { content: { blocks: any[] } } // New format
+
 export interface ExerciseRendererProps {
-  content: import('@/contracts').ExerciseContent
+  content: ExerciseContentData
   answerSpec: import('@/contracts').AnswerSpec
   questionType: 'mcq' | 'true_false' | 'free_response'
   mode?: PreviewMode
