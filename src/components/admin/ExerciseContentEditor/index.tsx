@@ -28,6 +28,8 @@ export const ExerciseContentEditor: React.FC<{ path: string }> = ({ path }) => {
   }, [value, setValue])
 
   const handleUpdate = (newStem: any[]) => {
+    // Validation is now lenient and allows intermediate states during editing
+    // (add, remove, reorder, edit operations won't trigger validation errors)
     setValue({
       ...value,
       stem: newStem,

@@ -136,11 +136,47 @@ export const Exercises: CollectionConfig = {
           type: 'json',
           required: true,
           defaultValue: DEFAULT_CONTENT_JSON,
-          validate: (value) => {
-            const result = ExerciseContentSchema.safeParse(value)
-            if (!result.success) {
-              throwPayloadValidationError(result.error, 'contentJson')
+          validate: (value: unknown) => {
+            // Allow intermediate states during editing (empty blocks, incomplete structure)
+            // Only validate structure, not content completeness
+            if (!value || typeof value !== 'object' || value === null) {
+              return 'Invalid content structure'
             }
+
+            const content = value as Record<string, unknown>
+
+            // Check basic structure
+            if (content.contentSchemaVersion !== 1) {
+              return 'Invalid content schema version'
+            }
+
+            if (!Array.isArray(content.stem)) {
+              return 'Stem must be an array'
+            }
+
+            // Allow empty blocks during editing - only validate structure
+            for (let i = 0; i < content.stem.length; i++) {
+              const block = content.stem[i]
+              if (!block || typeof block !== 'object' || block === null) {
+                return `Block ${i} must be an object`
+              }
+
+              const blockObj = block as Record<string, unknown>
+              if (blockObj.type !== 'rich_text') {
+                return `Block ${i} must be of type 'rich_text'`
+              }
+              if (blockObj.format !== 'md-math-v1') {
+                return `Block ${i} must have format 'md-math-v1'`
+              }
+              // Allow empty value during editing - validation will catch it on submit
+              if (typeof blockObj.value !== 'string') {
+                return `Block ${i} value must be a string`
+              }
+              if (!blockObj.id || typeof blockObj.id !== 'string') {
+                return `Block ${i} must have a valid id`
+              }
+            }
+
             return true
           },
           admin: {
