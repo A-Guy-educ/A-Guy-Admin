@@ -1,8 +1,9 @@
 'use client'
 
 import React from 'react'
-import { Folder, ChevronDown, ChevronRight, Plus, Trash2, ArrowUp, ArrowDown } from 'lucide-react'
+import { Folder, ChevronDown, ChevronRight } from 'lucide-react'
 import type { ContainerBlock as ContainerBlockType } from '@/contracts/exercise/content'
+import { ContextualToolbar } from './ContextualToolbar'
 
 interface ContainerBlockProps {
   block: ContainerBlockType
@@ -12,8 +13,11 @@ interface ContainerBlockProps {
   isCollapsed: boolean
   onSelect: (blockId: string) => void
   onToggleCollapse: (blockId: string) => void
-  onAddChild: (parentId: string, blockType: 'container' | 'rich_text') => void
-  onAddSibling: (siblingId: string, blockType: 'container' | 'rich_text') => void
+  onAddBlock: (
+    parentId: string | null,
+    blockType: 'container' | 'rich_text',
+    position: 'inside' | 'below',
+  ) => void
   onDelete: (blockId: string) => void
   onUpdate: (blockId: string, updates: Partial<ContainerBlockType>) => void
   onMove: (blockId: string, direction: 'up' | 'down') => void
@@ -30,15 +34,14 @@ export const ContainerBlock: React.FC<ContainerBlockProps> = ({
   isCollapsed,
   onSelect,
   onToggleCollapse,
-  onAddChild,
-  onAddSibling,
+  onAddBlock,
   onDelete,
   onUpdate,
   onMove,
   canMoveUp,
   canMoveDown,
   children,
-}) => {
+}: ContainerBlockProps) => {
   const [isEditingTitle, setIsEditingTitle] = React.useState(false)
   const [titleValue, setTitleValue] = React.useState(block.title || '')
 
@@ -62,8 +65,7 @@ export const ContainerBlock: React.FC<ContainerBlockProps> = ({
 
   return (
     <div
-      className={`container-block ${isSelected ? 'block--selected' : ''}`}
-      style={{ paddingLeft: `${level * 24}px` }}
+      className={`container-block container-block--level-${level} ${isSelected ? 'block--selected' : ''}`}
       onClick={(e) => {
         // Don't select if clicking on interactive elements
         if ((e.target as HTMLElement).closest('button, input')) return
@@ -108,99 +110,27 @@ export const ContainerBlock: React.FC<ContainerBlockProps> = ({
           )}
         </div>
 
-        <div className="container-block__actions">
-          <div className="container-block__action-group">
-            <button
-              className="icon-button"
-              onClick={(e) => {
-                e.stopPropagation()
-                onAddChild(block.id, 'rich_text')
-              }}
-              title="Add Rich Text Inside"
-            >
-              <Plus size={14} />
-            </button>
-            {!maxDepthReached && (
-              <button
-                className="icon-button"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onAddChild(block.id, 'container')
-                }}
-                title="Add Container Inside"
-              >
-                <Plus size={14} />
-                <Folder size={10} style={{ marginLeft: '2px' }} />
-              </button>
-            )}
-          </div>
-          <div className="container-block__action-group">
-            <button
-              className="icon-button"
-              onClick={(e) => {
-                e.stopPropagation()
-                onAddSibling(block.id, 'rich_text')
-              }}
-              title="Add Rich Text Below"
-            >
-              <Plus size={14} />
-            </button>
-            {!maxDepthReached && (
-              <button
-                className="icon-button"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onAddSibling(block.id, 'container')
-                }}
-                title="Add Container Below"
-              >
-                <Plus size={14} />
-                <Folder size={10} style={{ marginLeft: '2px' }} />
-              </button>
-            )}
-          </div>
-          <div className="container-block__action-group">
-            <button
-              className="icon-button"
-              onClick={(e) => {
-                e.stopPropagation()
-                onMove(block.id, 'up')
-              }}
-              disabled={!canMoveUp}
-              title="Move Up"
-            >
-              <ArrowUp size={14} />
-            </button>
-            <button
-              className="icon-button"
-              onClick={(e) => {
-                e.stopPropagation()
-                onMove(block.id, 'down')
-              }}
-              disabled={!canMoveDown}
-              title="Move Down"
-            >
-              <ArrowDown size={14} />
-            </button>
-          </div>
-          <button
-            className="icon-button delete"
-            onClick={(e) => {
-              e.stopPropagation()
-              if (confirm('Delete this container and all its children?')) {
-                onDelete(block.id)
+        {isSelected && (
+          <ContextualToolbar
+            block={block}
+            canMoveUp={canMoveUp}
+            canMoveDown={canMoveDown}
+            maxDepthReached={maxDepthReached}
+            onMove={(direction) => onMove(block.id, direction)}
+            onDelete={() => onDelete(block.id)}
+            onAdd={(blockType, position) => {
+              if (position === 'inside') {
+                onAddBlock(block.id, blockType, 'inside')
+              } else {
+                onAddBlock(block.id, blockType, 'below')
               }
             }}
-            title="Delete Container"
-          >
-            <Trash2 size={14} />
-          </button>
-        </div>
+          />
+        )}
       </div>
 
       {!isCollapsed && (
         <div className="container-block__body">
-          <div className="container-block__rail" />
           <div className="container-block__children">{children}</div>
         </div>
       )}

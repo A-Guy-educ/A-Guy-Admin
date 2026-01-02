@@ -1,6 +1,7 @@
 'use client'
 
 import React from 'react'
+import { Plus, ChevronDown } from 'lucide-react'
 import type {
   Block,
   ContainerBlock as ContainerBlockType,
@@ -8,7 +9,7 @@ import type {
 } from '@/contracts/exercise/content'
 import { ContainerBlock } from './ContainerBlock'
 import { BlockCard } from './BlockCard'
-import { findBlockPath, getBlockParent } from './utils'
+import { ContextualToolbar } from './ContextualToolbar'
 
 interface BlockTreeProps {
   blocks: Block[]
@@ -69,14 +70,6 @@ const BlockTreeNode: React.FC<BlockTreeNodeProps> = ({
     const canMoveUp = index > 0
     const canMoveDown = index < siblings.length - 1
 
-    const handleAddChild = (parentId: string, blockType: 'container' | 'rich_text') => {
-      onAddBlock(parentId, blockType, 'inside')
-    }
-
-    const handleAddSibling = (siblingId: string, blockType: 'container' | 'rich_text') => {
-      onAddBlock(siblingId, blockType, 'below')
-    }
-
     const handleDelete = (blockId: string) => {
       onDeleteBlock(blockId)
     }
@@ -98,8 +91,7 @@ const BlockTreeNode: React.FC<BlockTreeNodeProps> = ({
         isCollapsed={isCollapsed}
         onSelect={onSelect}
         onToggleCollapse={onToggleCollapse}
-        onAddChild={handleAddChild}
-        onAddSibling={handleAddSibling}
+        onAddBlock={onAddBlock}
         onDelete={handleDelete}
         onUpdate={handleUpdate}
         onMove={handleMove}
@@ -135,18 +127,32 @@ const BlockTreeNode: React.FC<BlockTreeNodeProps> = ({
 
     return (
       <div
-        className={`block-card-wrapper ${isSelected ? 'block--selected' : ''}`}
-        style={{ paddingLeft: `${level * 24}px` }}
+        className={`block-card-wrapper block-card-wrapper--level-${level} ${isSelected ? 'block--selected' : ''}`}
         onClick={() => onSelect(block.id)}
       >
+        {isSelected && (
+          <ContextualToolbar
+            block={block}
+            canMoveUp={canMoveUp}
+            canMoveDown={canMoveDown}
+            maxDepthReached={false}
+            onMove={(direction) => onMoveBlock(block.id, direction)}
+            onDelete={() => onDeleteBlock(block.id)}
+            onAdd={(blockType, position) => {
+              // For rich text blocks, we need to find parent to add
+              // For now, add as sibling
+              onAddBlock(block.id, blockType, position)
+            }}
+          />
+        )}
         <BlockCard
           block={richTextBlock}
           index={index}
           total={siblings.length}
           onChange={(updates) => onUpdateBlock(block.id, updates)}
-          onDelete={() => onDeleteBlock(block.id)}
-          onMoveUp={() => canMoveUp && onMoveBlock(block.id, 'up')}
-          onMoveDown={() => canMoveDown && onMoveBlock(block.id, 'down')}
+          onDelete={() => {}}
+          onMoveUp={() => {}}
+          onMoveDown={() => {}}
         />
       </div>
     )
@@ -164,26 +170,81 @@ export const BlockTree: React.FC<BlockTreeProps> = ({
   onUpdateBlock,
   onMoveBlock,
 }) => {
+  const [showRootAddMenu, setShowRootAddMenu] = React.useState(false)
+  const rootMenuRef = React.useRef<HTMLDivElement>(null)
+
+  React.useEffect(() => {
+    if (!showRootAddMenu) return
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (rootMenuRef.current && !rootMenuRef.current.contains(event.target as Node)) {
+        setShowRootAddMenu(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showRootAddMenu])
+
   return (
     <div className="block-tree">
-      {blocks.map((block, index) => (
-        <BlockTreeNode
-          key={block.id}
-          block={block}
-          level={0}
-          path={[block.id]}
-          selectedBlockId={selectedBlockId}
-          collapsedBlockIds={collapsedBlockIds}
-          onSelect={onSelect}
-          onToggleCollapse={onToggleCollapse}
-          onAddBlock={onAddBlock}
-          onDeleteBlock={onDeleteBlock}
-          onUpdateBlock={onUpdateBlock}
-          onMoveBlock={onMoveBlock}
-          siblings={blocks}
-          index={index}
-        />
-      ))}
+      {blocks.length === 0 ? (
+        <div className="block-tree__empty">
+          <p>No blocks yet. Add your first block below.</p>
+        </div>
+      ) : (
+        blocks.map((block, index) => (
+          <BlockTreeNode
+            key={block.id}
+            block={block}
+            level={0}
+            path={[block.id]}
+            selectedBlockId={selectedBlockId}
+            collapsedBlockIds={collapsedBlockIds}
+            onSelect={onSelect}
+            onToggleCollapse={onToggleCollapse}
+            onAddBlock={onAddBlock}
+            onDeleteBlock={onDeleteBlock}
+            onUpdateBlock={onUpdateBlock}
+            onMoveBlock={onMoveBlock}
+            siblings={blocks}
+            index={index}
+          />
+        ))
+      )}
+      <div className="block-tree__add-root" ref={rootMenuRef}>
+        <button
+          className="block-tree__add-button"
+          onClick={() => setShowRootAddMenu(!showRootAddMenu)}
+          title="Add Block"
+        >
+          <Plus size={16} />
+          <span>Add</span>
+          <ChevronDown size={12} className={showRootAddMenu ? 'rotated' : ''} />
+        </button>
+        {showRootAddMenu && (
+          <div className="contextual-toolbar__add-menu" onClick={(e) => e.stopPropagation()}>
+            <button
+              className="contextual-toolbar__menu-item"
+              onClick={() => {
+                onAddBlock(null, 'rich_text', 'below')
+                setShowRootAddMenu(false)
+              }}
+            >
+              <span>Add Text</span>
+            </button>
+            <button
+              className="contextual-toolbar__menu-item"
+              onClick={() => {
+                onAddBlock(null, 'container', 'below')
+                setShowRootAddMenu(false)
+              }}
+            >
+              <span>Add Container</span>
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

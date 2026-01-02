@@ -16,6 +16,25 @@ import './index.scss'
 
 const baseClass = 'exercise-renderer'
 
+/**
+ * Extract blocks from content - handles both new and legacy structures
+ * New structure: { content: { blocks: [] } }
+ * Legacy structure: { stem: [], contentSchemaVersion: 2 }
+ */
+function getContentBlocks(content: any): any[] {
+  // New structure: { content: { blocks: [] } }
+  if (content?.content?.blocks && Array.isArray(content.content.blocks)) {
+    return content.content.blocks
+  }
+
+  // Legacy structure: { stem: [] }
+  if (content?.stem && Array.isArray(content.stem)) {
+    return content.stem
+  }
+
+  return []
+}
+
 export function ExerciseRenderer({
   content,
   answerSpec,
@@ -60,6 +79,9 @@ export function ExerciseRenderer({
     setHasChecked(true)
   }
 
+  // Extract blocks from content (handles both new and legacy structures)
+  const blocks = getContentBlocks(content)
+
   return (
     <div className={cn(baseClass, className)}>
       {/* Debug Mode Info */}
@@ -71,15 +93,19 @@ export function ExerciseRenderer({
           {answerSpec.questionType === 'free_response' && (
             <div>Response Kind: {answerSpec.responseKind}</div>
           )}
+          <div>
+            Content Structure:{' '}
+            {(content as any)?.content ? 'New (content.blocks)' : 'Legacy (stem)'}
+          </div>
+          <div>Blocks Found: {blocks.length}</div>
         </div>
       )}
 
       {/* Content Section */}
       <div className={`${baseClass}__content`}>
         <ErrorBoundary fallbackTitle="Error rendering exercise content">
-          {/* Render stem blocks */}
-          {content.stem && content.stem.length > 0 ? (
-            content.stem.map((block) => (
+          {blocks.length > 0 ? (
+            blocks.map((block) => (
               <BlockRenderer
                 key={block.id}
                 block={block as any}
