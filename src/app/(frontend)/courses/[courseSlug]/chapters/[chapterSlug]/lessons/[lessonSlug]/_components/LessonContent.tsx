@@ -6,12 +6,12 @@ import { PDFViewer } from '@/components/utilities/PDFViewer'
 import { ExerciseCard } from '@/app/(frontend)/courses/_components/ExerciseCard'
 import { EmptyState } from '@/app/(frontend)/courses/_components/EmptyState'
 import { useTranslations } from '@/providers/I18n'
-import type { Exercise } from '@/payload-types'
+import type { Exercise, Media } from '@/payload-types'
 
 type ViewMode = 'non-interactive' | 'interactive'
 
 interface LessonContentProps {
-  pdfUrl?: string | null
+  contentFile?: Media | null
   lessonTitle: string
   exercises: Exercise[]
   courseSlug: string
@@ -20,7 +20,7 @@ interface LessonContentProps {
 }
 
 export function LessonContent({
-  pdfUrl,
+  contentFile,
   lessonTitle,
   exercises,
   courseSlug,
@@ -28,17 +28,17 @@ export function LessonContent({
   lessonSlug,
 }: LessonContentProps) {
   const t = useTranslations('courses')
-  const hasPdf = Boolean(pdfUrl)
+  const hasContent = Boolean(contentFile?.url)
   const hasExercises = exercises.length > 0
 
-  // Default to interactive mode if no PDF but has exercises
-  const initialViewMode: ViewMode = !hasPdf && hasExercises ? 'interactive' : 'non-interactive'
+  // Default to interactive mode if no content but has exercises
+  const initialViewMode: ViewMode = !hasContent && hasExercises ? 'interactive' : 'non-interactive'
   const [viewMode, setViewMode] = useState<ViewMode>(initialViewMode)
 
   return (
     <>
       <ViewToggle
-        hasPdf={hasPdf}
+        hasPdf={hasContent}
         hasExercises={hasExercises}
         initialMode={initialViewMode}
         onViewChange={setViewMode}
@@ -47,8 +47,8 @@ export function LessonContent({
       <section className="mb-8">
         {viewMode === 'non-interactive' ? (
           <>
-            {hasPdf ? (
-              <PDFViewer pdfUrl={pdfUrl!} lessonTitle={lessonTitle} />
+            {hasContent && contentFile?.url ? (
+              <PDFViewer pdfUrl={contentFile.url} lessonTitle={lessonTitle} />
             ) : (
               <EmptyState type="noPDF" />
             )}
