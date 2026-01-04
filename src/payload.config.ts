@@ -7,6 +7,8 @@ import { fileURLToPath } from 'url'
 import { Categories } from './collections/Categories'
 import { Chapters } from './collections/Chapters'
 import { Courses } from './collections/Courses'
+import { Exercises } from './collections/Exercises'
+import { ExerciseAssets } from './collections/ExerciseAssets'
 import { Lessons } from './collections/Lessons'
 import { Media } from './collections/Media'
 import { Pages } from './collections/Pages'
@@ -64,7 +66,19 @@ export default buildConfig({
   db: mongooseAdapter({
     url: process.env.DATABASE_URL || '',
   }),
-  collections: [Pages, Categories, Courses, Chapters, Lessons, Users, Media, Posts, PricingPlans],
+  collections: [
+    Pages,
+    Categories,
+    Courses,
+    Chapters,
+    Lessons,
+    Exercises,
+    ExerciseAssets,
+    Users,
+    Media,
+    Posts,
+    PricingPlans,
+  ],
   cors: [getServerSideURL()].filter(Boolean),
   globals: [Header, Footer],
   plugins,

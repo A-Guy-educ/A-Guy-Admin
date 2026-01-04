@@ -9,7 +9,41 @@
       "title": "404",
       "message": "דף זה לא נמצא.",
       "goHome": "חזרה לדף הבית"
+    },
+    "header": {
+      "welcome": "שלום,",
+      "logout": "התנתק",
+      "loggingOut": "מתנתק..."
     }
+  },
+  "auth": {
+    "signup": {
+      "title": "צור חשבון",
+      "subtitle": "הירשם כדי להתחיל ללמוד",
+      "name": "שם",
+      "namePlaceholder": "ישראל ישראלי",
+      "email": "אימייל",
+      "emailPlaceholder": "you@example.com",
+      "password": "סיסמה",
+      "passwordPlaceholder": "••••••••",
+      "confirmPassword": "אשר סיסמה",
+      "createAccount": "צור חשבון",
+      "creatingAccount": "יוצר חשבון...",
+      "alreadyHaveAccount": "כבר יש לך חשבון?",
+      "login": "התחבר",
+      "errors": {
+        "nameRequired": "שם הוא שדה חובה",
+        "invalidEmail": "נדרש אימייל תקין",
+        "passwordTooShort": "הסיסמה חייבת להיות לפחות 8 תווים",
+        "passwordMismatch": "הסיסמאות אינן תואמות",
+        "emailExists": "כבר קיים חשבון עם כתובת אימייל זו",
+        "duplicateEmailMessage": "כבר קיים חשבון עם כתובת אימייל זו. האם תרצה להתחבר במקום?"
+      }
+    }
+  },
+  "roles": {
+    "admin": "מנהל",
+    "student": "תלמיד"
   },
   "courses": {
     "title": "קורסים",
@@ -27,11 +61,34 @@
     "lessonsSection": "שיעורים",
     "chapter": "פרק",
     "lesson": "שיעור",
+    "exercise": "תרגיל",
     "noCourses": "אין קורסים זמינים כרגע.",
     "noChapters": "אין פרקים זמינים לקורס זה.",
     "noLessons": "אין שיעורים זמינים לפרק זה.",
+    "noExercises": "אין תרגילים זמינים לשיעור זה.",
     "noPDF": "תוכן PDF אינו זמין לשיעור זה.",
     "pdfBadge": "PDF",
-    "notFound": "לא נמצא"
+    "pdfView": "תצוגת PDF",
+    "interactiveExercises": "תרגילים אינטראקטיביים",
+    "exercisesTitle": "תרגילים אינטראקטיביים",
+    "exercisesDescription": "השלם את התרגילים הבאים כדי לתרגל את מה שלמדת.",
+    "startExercise": "התחל תרגיל",
+    "mcqBadge": "בחירה מרובה",
+    "trueFalseBadge": "נכון/לא נכון",
+    "freeResponseBadge": "תשובה חופשית",
+    "notFound": "לא נמצא",
+    "notebookTitle": "מחברת תרגול",
+    "chatTab": "צ'אט",
+    "formulasTab": "נוסחאות",
+    "notesTab": "הערות",
+    "chatWelcome": "היי! אני כאן לעזור עם שאלה 5. איזה סעיף תרצה שנבדוק?",
+    "chatHint": "רמז",
+    "chatSolution": "פתרון",
+    "chatFullSolution": "מלא",
+    "chatInputPlaceholder": "שלח הודעה...",
+    "chatSend": "send",
+    "formulaSubtitle": "נוסחאות עזר",
+    "notesSubtitle": "הערות אישיות",
+    "notesPlaceholder": "הוסף הערות כאן..."
   }
 }

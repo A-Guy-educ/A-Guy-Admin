@@ -72,6 +72,8 @@ export interface Config {
     courses: Course;
     chapters: Chapter;
     lessons: Lesson;
+    exercises: Exercise;
+    'exercise-assets': ExerciseAsset;
     users: User;
     media: Media;
     posts: Post;
@@ -98,6 +100,8 @@ export interface Config {
     courses: CoursesSelect<false> | CoursesSelect<true>;
     chapters: ChaptersSelect<false> | ChaptersSelect<true>;
     lessons: LessonsSelect<false> | LessonsSelect<true>;
+    exercises: ExercisesSelect<false> | ExercisesSelect<true>;
+    'exercise-assets': ExerciseAssetsSelect<false> | ExerciseAssetsSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
     posts: PostsSelect<false> | PostsSelect<true>;
@@ -213,6 +217,10 @@ export interface Page {
    */
   generateSlug?: boolean | null;
   slug: string;
+  /**
+   * User who created this document
+   */
+  createdBy?: (string | null) | User;
   updatedAt: string;
   createdAt: string;
   _status?: ('draft' | 'published') | null;
@@ -351,6 +359,10 @@ export interface Category {
    */
   generateSlug?: boolean | null;
   slug: string;
+  /**
+   * User who created this document
+   */
+  createdBy?: (string | null) | User;
   parent?: (string | null) | Category;
   breadcrumbs?:
     | {
@@ -362,6 +374,32 @@ export interface Category {
     | null;
   updatedAt: string;
   createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "users".
+ */
+export interface User {
+  id: string;
+  name?: string | null;
+  role: 'admin' | 'student';
+  updatedAt: string;
+  createdAt: string;
+  email: string;
+  resetPasswordToken?: string | null;
+  resetPasswordExpiration?: string | null;
+  salt?: string | null;
+  hash?: string | null;
+  loginAttempts?: number | null;
+  lockUntil?: string | null;
+  sessions?:
+    | {
+        id: string;
+        createdAt?: string | null;
+        expiresAt: string;
+      }[]
+    | null;
+  password?: string | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -402,6 +440,10 @@ export interface Course {
     title?: string | null;
     description?: string | null;
   };
+  /**
+   * User who created this document
+   */
+  createdBy?: (string | null) | User;
   updatedAt: string;
   createdAt: string;
 }
@@ -643,6 +685,10 @@ export interface Chapter {
    * URL-friendly identifier (auto-generated from title if empty)
    */
   slug?: string | null;
+  /**
+   * User who created this document
+   */
+  createdBy?: (string | null) | User;
   updatedAt: string;
   createdAt: string;
 }
@@ -688,33 +734,109 @@ export interface Lesson {
    * URL-friendly identifier (auto-generated from title if empty)
    */
   slug?: string | null;
+  /**
+   * User who created this document
+   */
+  createdBy?: (string | null) | User;
   updatedAt: string;
   createdAt: string;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "users".
+ * via the `definition` "exercises".
  */
-export interface User {
+export interface Exercise {
   id: string;
-  name?: string | null;
+  /**
+   * Exercise title (for admin reference)
+   */
+  title: string;
+  /**
+   * Order of exercise within the lesson (lower numbers appear first)
+   */
+  order: number;
+  /**
+   * The lesson this exercise belongs to
+   */
+  lesson: string | Lesson;
+  /**
+   * Question type - must match answerSpecJson.questionType
+   */
+  questionType: 'mcq' | 'true_false' | 'free_response';
+  /**
+   * Exercise content. Format: { blocks: [...] } (each block supports mediaIds: string[])
+   */
+  content:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Answer specification - must match the selected Question Type above
+   */
+  answerSpecJson:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * User who created this document
+   */
+  createdBy?: (string | null) | User;
   updatedAt: string;
   createdAt: string;
-  email: string;
-  resetPasswordToken?: string | null;
-  resetPasswordExpiration?: string | null;
-  salt?: string | null;
-  hash?: string | null;
-  loginAttempts?: number | null;
-  lockUntil?: string | null;
-  sessions?:
-    | {
-        id: string;
-        createdAt?: string | null;
-        expiresAt: string;
-      }[]
-    | null;
-  password?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "exercise-assets".
+ */
+export interface ExerciseAsset {
+  id: string;
+  /**
+   * Alt text for accessibility
+   */
+  alt: string;
+  /**
+   * Optional caption for the figure
+   */
+  caption?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  /**
+   * User who created this document
+   */
+  createdBy?: (string | null) | User;
+  updatedAt: string;
+  createdAt: string;
+  url?: string | null;
+  thumbnailURL?: string | null;
+  filename?: string | null;
+  mimeType?: string | null;
+  filesize?: number | null;
+  width?: number | null;
+  height?: number | null;
+  focalX?: number | null;
+  focalY?: number | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -738,6 +860,10 @@ export interface Media {
     };
     [k: string]: unknown;
   } | null;
+  /**
+   * User who created this document
+   */
+  createdBy?: (string | null) | User;
   folder?: (string | null) | FolderInterface;
   updatedAt: string;
   createdAt: string;
@@ -881,6 +1007,10 @@ export interface Post {
    */
   generateSlug?: boolean | null;
   slug: string;
+  /**
+   * User who created this document
+   */
+  createdBy?: (string | null) | User;
   updatedAt: string;
   createdAt: string;
   _status?: ('draft' | 'published') | null;
@@ -923,6 +1053,10 @@ export interface PricingPlan {
    * Whether this pricing plan is currently active
    */
   isActive?: boolean | null;
+  /**
+   * User who created this document
+   */
+  createdBy?: (string | null) | User;
   updatedAt: string;
   createdAt: string;
 }
@@ -1136,6 +1270,14 @@ export interface PayloadLockedDocument {
         value: string | Lesson;
       } | null)
     | ({
+        relationTo: 'exercises';
+        value: string | Exercise;
+      } | null)
+    | ({
+        relationTo: 'exercise-assets';
+        value: string | ExerciseAsset;
+      } | null)
+    | ({
         relationTo: 'users';
         value: string | User;
       } | null)
@@ -1257,6 +1399,7 @@ export interface PagesSelect<T extends boolean = true> {
   publishedAt?: T;
   generateSlug?: T;
   slug?: T;
+  createdBy?: T;
   updatedAt?: T;
   createdAt?: T;
   _status?: T;
@@ -1344,6 +1487,7 @@ export interface CategoriesSelect<T extends boolean = true> {
   title?: T;
   generateSlug?: T;
   slug?: T;
+  createdBy?: T;
   parent?: T;
   breadcrumbs?:
     | T
@@ -1375,6 +1519,7 @@ export interface CoursesSelect<T extends boolean = true> {
         title?: T;
         description?: T;
       };
+  createdBy?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -1391,6 +1536,7 @@ export interface ChaptersSelect<T extends boolean = true> {
   status?: T;
   isActive?: T;
   slug?: T;
+  createdBy?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -1408,8 +1554,44 @@ export interface LessonsSelect<T extends boolean = true> {
   contentType?: T;
   pdfUrl?: T;
   slug?: T;
+  createdBy?: T;
   updatedAt?: T;
   createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "exercises_select".
+ */
+export interface ExercisesSelect<T extends boolean = true> {
+  title?: T;
+  order?: T;
+  lesson?: T;
+  questionType?: T;
+  content?: T;
+  answerSpecJson?: T;
+  createdBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "exercise-assets_select".
+ */
+export interface ExerciseAssetsSelect<T extends boolean = true> {
+  alt?: T;
+  caption?: T;
+  createdBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  url?: T;
+  thumbnailURL?: T;
+  filename?: T;
+  mimeType?: T;
+  filesize?: T;
+  width?: T;
+  height?: T;
+  focalX?: T;
+  focalY?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -1417,6 +1599,7 @@ export interface LessonsSelect<T extends boolean = true> {
  */
 export interface UsersSelect<T extends boolean = true> {
   name?: T;
+  role?: T;
   updatedAt?: T;
   createdAt?: T;
   email?: T;
@@ -1441,6 +1624,7 @@ export interface UsersSelect<T extends boolean = true> {
 export interface MediaSelect<T extends boolean = true> {
   alt?: T;
   caption?: T;
+  createdBy?: T;
   folder?: T;
   updatedAt?: T;
   createdAt?: T;
@@ -1555,6 +1739,7 @@ export interface PostsSelect<T extends boolean = true> {
       };
   generateSlug?: T;
   slug?: T;
+  createdBy?: T;
   updatedAt?: T;
   createdAt?: T;
   _status?: T;
@@ -1572,6 +1757,7 @@ export interface PricingPlansSelect<T extends boolean = true> {
   price?: T;
   currency?: T;
   isActive?: T;
+  createdBy?: T;
   updatedAt?: T;
   createdAt?: T;
 }
