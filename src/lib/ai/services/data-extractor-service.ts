@@ -1,13 +1,13 @@
 /**
- * Exercise generation service using Gemini AI
- * Handles image-to-exercise conversion with simplified output
+ * Data extraction service using Gemini AI
+ * Extracts structured data from images (questions, options, answers)
  *
  * Future: Can be extended for exercise chat, editing assistance, etc.
  */
 import { getGeminiClient } from '../gemini-ai-provider.server'
 import { AI_MODELS } from '../models'
 import { optimizeImageForAI } from './image-optimizer-service'
-import { IMAGE_TO_EXERCISE_PROMPT } from '../prompts/simple-text-question'
+import { SIMPLE_TEXT_QUESTION_PROMPT } from '../prompts/simple-text-question'
 
 export interface ImageToExerciseInput {
   imageBuffer: Buffer
@@ -33,10 +33,10 @@ export interface ImageToExerciseResponse {
 }
 
 /**
- * Generate an exercise from an uploaded image
- * Simplified version: Returns basic question/options/answer structure
+ * Extract structured exercise data from an uploaded image
+ * Returns basic question/options/answer structure
  */
-export async function generateExerciseFromImage(
+export async function extractFromImage(
   input: ImageToExerciseInput,
 ): Promise<ImageToExerciseResponse> {
   const startTime = Date.now()
@@ -50,7 +50,7 @@ export async function generateExerciseFromImage(
     const modelConfig = AI_MODELS.IMAGE_TO_EXERCISE
     const model = client.getGenerativeModel({
       model: modelConfig.name,
-      systemInstruction: IMAGE_TO_EXERCISE_PROMPT,
+      systemInstruction: SIMPLE_TEXT_QUESTION_PROMPT,
     })
 
     // Prepare parts for the API (image only, no additional text)
