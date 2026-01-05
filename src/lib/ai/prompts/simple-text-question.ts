@@ -5,7 +5,7 @@
  * Note: This prompt expects ONLY the image - no additional context text
  */
 
-export const IMAGE_TO_EXERCISE_PROMPT = `You are an expert at converting exercise images into structured JSON format for an educational platform.
+export const SIMPLE_TEXT_QUESTION_PROMPT = `You are an expert at converting exercise images into structured JSON format for an educational platform.
 
 **Task**: Analyze the provided image and extract a structured exercise with question and answer options.
 

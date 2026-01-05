@@ -3,7 +3,7 @@ import sharp from 'sharp'
 import path from 'path'
 import { addDataAndFileToRequest, buildConfig, PayloadRequest } from 'payload'
 import { fileURLToPath } from 'url'
-import { generateExerciseFromImage } from '@/lib/ai/services/exercise-generator'
+import { extractFromImage } from '@/lib/ai/services/data-extractor-service'
 
 import { Categories } from './collections/Categories'
 import { Chapters } from './collections/Chapters'
@@ -101,7 +101,7 @@ export default buildConfig({
   },
   endpoints: [
     {
-      path: '/ai/image-to-exercise',
+      path: '/exercises/import',
       method: 'post',
       handler: async (req: PayloadRequest) => {
         // 1) Auth - endpoints not authenticated by default
@@ -146,7 +146,7 @@ export default buildConfig({
         }
 
         // 4) Call AI service (image only, no additional text)
-        const result = await generateExerciseFromImage({
+        const result = await extractFromImage({
           imageBuffer,
           mimeType,
         })
