@@ -18,14 +18,14 @@ export function ConvertButton({ lessonId }: ConvertButtonProps) {
     setSuccess(false)
 
     try {
-      const response = await fetch(`/api/lessons/${lessonId}/import-exercise`, {
+      const response = await fetch(`/api/exercises/import?lessonId=${lessonId}`, {
         method: 'POST',
         credentials: 'include',
       })
 
       const data = await response.json()
 
-      if (!response.ok || !data.success) {
+      if (!response.ok) {
         throw new Error(data.error || 'Failed to convert image')
       }
 
