@@ -5,22 +5,24 @@ import { authenticated } from '../../access/authenticated'
 import { createdByField } from '../../fields/createdBy'
 import { ContentSchema } from './schemas'
 import { DEFAULT_CONTENT } from './defaults'
+import type { User } from '@/payload-types'
+import { Role } from '../Users/roles'
 
 /**
  * Access control - Exercise-specific
  * Admin or owner can update/delete
  */
 const isAdminOrOwner: Access = ({ req }) => {
-  const user = req.user
+  const user = req.user as User | null
   if (!user) return false
 
   // Admin
-  if ((user as any).role === 'admin') return true
+  if (user.role === Role.Admin) return true
 
   // Owner
   return {
     owner: {
-      equals: (user as any).id,
+      equals: user.id,
     },
   }
 }

@@ -27,6 +27,7 @@ export default async function ExercisePage({ params: paramsPromise }: Args) {
       collection: 'exercises',
       id,
       depth: 1,
+      overrideAccess: false,
     })
 
     if (!exercise) {

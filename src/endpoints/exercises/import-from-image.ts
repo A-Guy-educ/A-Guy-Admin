@@ -26,7 +26,8 @@ export async function importExerciseFromImage(req: PayloadRequest) {
   // 2) Parse multipart (Payload doesn't auto-attach data/file)
   await addDataAndFileToRequest(req)
 
-  const file = (req as any).file as UploadedFileLike | undefined
+  // Access file from req - addDataAndFileToRequest attaches it
+  const file = req.file as UploadedFileLike | undefined
 
   if (!file) {
     return Response.json({ error: 'Image file is required' }, { status: 400 })
