@@ -49,12 +49,28 @@ export async function importExerciseFromLesson(req: PayloadRequest) {
   let mimeType: string
 
   try {
+    // Handle both relative and absolute URLs
+    const imageUrl = contentFile.url.startsWith('http')
+      ? contentFile.url
+      : `${req.payload.config.serverURL || 'http://localhost:3000'}${contentFile.url}`
+
+    console.log('[Import] Fetching image from URL:', imageUrl)
+    console.log('[Import] Original URL:', contentFile.url)
+    console.log('[Import] MIME type:', contentFile.mimeType)
+
     // Fetch from the URL (works with Vercel Blob, S3, filesystem, etc.)
-    const imageResponse = await fetch(contentFile.url)
+    const imageResponse = await fetch(imageUrl)
+
+    console.log('[Import] Fetch response status:', imageResponse.status, imageResponse.statusText)
 
     if (!imageResponse.ok) {
+      console.error('[Import] Failed to fetch image. Status:', imageResponse.status)
       return Response.json(
-        { error: 'Failed to fetch lesson content file from storage' },
+        {
+          error: 'Failed to fetch lesson content file from storage',
+          details: `HTTP ${imageResponse.status}: ${imageResponse.statusText}`,
+          url: contentFile.url,
+        },
         { status: 500 },
       )
     }
@@ -62,9 +78,15 @@ export async function importExerciseFromLesson(req: PayloadRequest) {
     const arrayBuffer = await imageResponse.arrayBuffer()
     imageBuffer = Buffer.from(arrayBuffer)
     mimeType = contentFile.mimeType || 'image/jpeg'
+    console.log('[Import] Successfully fetched image, size:', imageBuffer.length, 'bytes')
   } catch (fetchError) {
+    console.error('[Import] Error fetching image:', fetchError)
     return Response.json(
-      { error: 'Failed to fetch lesson content file from storage' },
+      {
+        error: 'Failed to fetch lesson content file from storage',
+        details: fetchError instanceof Error ? fetchError.message : 'Unknown error',
+        url: contentFile.url,
+      },
       { status: 500 },
     )
   }
@@ -165,11 +187,25 @@ export async function importExerciseFromLesson(req: PayloadRequest) {
         exerciseId: exerciseDoc.id,
       })
     } catch (createError) {
-      // Exercise creation failed, but AI extraction succeeded
+      // Enhanced error logging for debugging
+      console.error('Exercise creation failed:', createError)
+
+      // If Zod validation error, log detailed schema issues
+      if (createError && typeof createError === 'object' && 'issues' in createError) {
+        console.error(
+          'Zod validation issues:',
+          JSON.stringify((createError as any).issues, null, 2),
+        )
+      }
+
       return Response.json(
         {
           error: 'AI conversion succeeded but exercise creation failed',
           details: createError instanceof Error ? createError.message : 'Unknown error',
+          // Include Zod issues in response for debugging
+          ...(createError && typeof createError === 'object' && 'issues' in createError
+            ? { zodIssues: (createError as any).issues }
+            : {}),
         },
         { status: 500 },
       )

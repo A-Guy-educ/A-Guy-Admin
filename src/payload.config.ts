@@ -94,11 +94,15 @@ export default buildConfig({
       path: '/exercises/import',
       method: 'post',
       handler: (req: PayloadRequest) => {
+        console.log('[PAYLOAD ENDPOINT] /exercises/import handler called!')
+        console.log('[PAYLOAD ENDPOINT] URL:', req.url)
         // Route based on whether lessonId query param exists
         const url = new URL(req.url || 'http://localhost')
         if (url.searchParams.has('lessonId')) {
+          console.log('[PAYLOAD ENDPOINT] Routing to importExerciseFromLesson')
           return importExerciseFromLesson(req)
         }
+        console.log('[PAYLOAD ENDPOINT] Routing to importExerciseFromImage')
         return importExerciseFromImage(req)
       },
     },
