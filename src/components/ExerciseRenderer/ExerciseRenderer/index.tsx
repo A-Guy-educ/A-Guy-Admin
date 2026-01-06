@@ -8,6 +8,7 @@
 
 import React, { useState } from 'react'
 import { cn } from '@/utilities/ui'
+import { useTranslations } from '@/providers/I18n'
 import type {
   ExerciseRendererProps,
   QuestionBlock,
@@ -210,12 +211,14 @@ function McqQuestionUI({
   onChange,
   disabled,
   checkResult,
+  t,
 }: {
   question: QuestionMcqBlock
   answer: UserAnswer
   onChange: (answer: UserAnswer) => void
   disabled: boolean
   checkResult: CheckResult | null
+  t: (key: string) => string
 }) {
   const selectedIds = answer.type === 'mcq' ? answer.selectedIds : []
 
@@ -247,7 +250,7 @@ function McqQuestionUI({
         <RichTextRenderer block={promptBlock} />
       </div>
       <div className={`${baseClass}__mcq-instruction`}>
-        {question.answer.multiSelect ? 'Select all that apply' : 'Select one answer'}
+        {question.answer.multiSelect ? t('selectMultiple') : t('selectOne')}
       </div>
       <div className={`${baseClass}__mcq-options`}>
         {question.answer.options.map((option) => {
@@ -291,17 +294,19 @@ function FreeResponseQuestionUI({
   onChange,
   disabled,
   checkResult,
+  t,
 }: {
   question: QuestionFreeResponseBlock
   answer: UserAnswer
   onChange: (answer: UserAnswer) => void
   disabled: boolean
   checkResult: CheckResult | null
+  t: (key: string) => string
 }) {
   const value = answer.type === 'free_response' ? answer.value : ''
 
   const placeholder =
-    question.answer.responseKind === 'numeric' ? 'Enter a number...' : 'Enter your answer...'
+    question.answer.responseKind === 'numeric' ? t('enterNumber') : t('enterAnswer')
 
   // Convert InlineRichText to RichTextBlock for renderer
   const promptBlock: RichTextBlock = {
@@ -334,6 +339,8 @@ export function ExerciseRenderer({
   showCheckAnswer = true,
   className = '',
 }: ExerciseRendererProps) {
+  const t = useTranslations('courses')
+
   // Track answers and check results for each question block
   const questionBlocks = content.blocks.filter(
     (block) =>
@@ -451,6 +458,7 @@ export function ExerciseRenderer({
                   onChange={(ans) => handleAnswerChange(question.id, ans)}
                   disabled={!!disabled}
                   checkResult={checkResult}
+                  t={t}
                 />
               )}
               {question.type === 'question_free_response' && (
@@ -460,6 +468,7 @@ export function ExerciseRenderer({
                   onChange={(ans) => handleAnswerChange(question.id, ans)}
                   disabled={!!disabled}
                   checkResult={checkResult}
+                  t={t}
                 />
               )}
 
@@ -474,7 +483,7 @@ export function ExerciseRenderer({
                       disabled && `${baseClass}__check-button--correct`,
                     )}
                   >
-                    {disabled ? '✓ Correct!' : 'Check Answer'}
+                    {disabled ? `✓ ${t('correct')}` : t('checkAnswer')}
                   </button>
                 </div>
               )}
@@ -494,7 +503,7 @@ export function ExerciseRenderer({
                       {checkResult.isCorrect ? '✓' : '✗'}
                     </span>
                     <span className={`${baseClass}__result-text`}>
-                      {checkResult.isCorrect ? 'Correct!' : 'Incorrect'}
+                      {checkResult.isCorrect ? t('correct') : t('incorrect')}
                     </span>
                   </div>
                   {checkResult.message && (
