@@ -67,30 +67,16 @@ function checkQuestionAnswer(question: QuestionBlock, answer: UserAnswer): Check
         return { isCorrect: false, message: 'Please enter an answer' }
       }
 
-      const { responseKind, acceptedAnswers, tolerance } = question.answer
+      const { acceptedAnswers } = question.answer
 
-      if (responseKind === 'numeric') {
-        const userNum = parseFloat(userValue)
-        if (isNaN(userNum)) {
-          return { isCorrect: false, message: 'Please enter a valid number' }
+      // Case-insensitive matching for all answers
+      const normalized = userValue.toLowerCase().trim()
+      for (const accepted of acceptedAnswers) {
+        if (normalized === accepted.toLowerCase().trim()) {
+          return { isCorrect: true }
         }
-        for (const accepted of acceptedAnswers) {
-          const correctNum = parseFloat(accepted)
-          if (!isNaN(correctNum) && Math.abs(userNum - correctNum) <= tolerance) {
-            return { isCorrect: true }
-          }
-        }
-        return { isCorrect: false }
-      } else {
-        // text responses - case-insensitive matching
-        const normalized = userValue.toLowerCase().trim()
-        for (const accepted of acceptedAnswers) {
-          if (normalized === accepted.toLowerCase().trim()) {
-            return { isCorrect: true }
-          }
-        }
-        return { isCorrect: false }
       }
+      return { isCorrect: false }
     }
   }
 }
@@ -305,9 +291,6 @@ function FreeResponseQuestionUI({
 }) {
   const value = answer.type === 'free_response' ? answer.value : ''
 
-  const placeholder =
-    question.answer.responseKind === 'numeric' ? t('enterNumber') : t('enterAnswer')
-
   // Convert InlineRichText to RichTextBlock for renderer
   const promptBlock: RichTextBlock = {
     ...question.prompt,
@@ -325,7 +308,7 @@ function FreeResponseQuestionUI({
         value={value}
         onChange={(e) => onChange({ type: 'free_response', value: e.target.value })}
         disabled={disabled}
-        placeholder={placeholder}
+        placeholder={t('enterAnswer')}
         className={`${baseClass}__free-response-input`}
       />
     </div>

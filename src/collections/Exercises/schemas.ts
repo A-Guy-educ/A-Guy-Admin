@@ -80,20 +80,9 @@ export const McqAnswerSchema = z
 
 export const FreeResponseAnswerSchema = z
   .object({
-    responseKind: z.enum(['numeric', 'text']),
     acceptedAnswers: z.array(z.string().min(1)).min(1),
-    tolerance: z.number().min(0).default(0),
   })
   .strict()
-  .superRefine((ans, ctx) => {
-    if (ans.responseKind !== 'numeric' && ans.tolerance !== 0) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'tolerance is only allowed for numeric responses (set it to 0 for text).',
-        path: ['tolerance'],
-      })
-    }
-  })
 
 // ---------------------------------
 // Zod: Question blocks

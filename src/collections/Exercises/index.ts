@@ -34,7 +34,7 @@ const isAdminOrOwner: Access = ({ req }) => {
  *
  * Therefore:
  * - NO exercise-level questionType
- * - NO exercise-level answerSpecJson
+ * - NO exercise-level answer
  * - Each question block owns:
  *   - prompt (required)
  *   - answer (required)        <-- ONLY grading data

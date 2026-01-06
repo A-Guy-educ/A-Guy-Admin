@@ -55,9 +55,7 @@ const DEFAULT_MCQ_ANSWER = {
 }
 
 const DEFAULT_FREE_RESPONSE_ANSWER = {
-  responseKind: 'numeric' as const,
   acceptedAnswers: ['4'],
-  tolerance: 0,
 }
 
 // ---------------------------------
@@ -106,7 +104,24 @@ export const ExerciseBlockDefaults: Record<ContentBlock['type'], () => ContentBl
       },
     ] as const,
     answer: { ...DEFAULT_TF_ANSWER },
-    // hint/solution/fullSolution are optional; UI can add them when needed
+    hint: {
+      type: 'rich_text' as const,
+      format: 'md-math-v1' as const,
+      value: '',
+      mediaIds: [] as string[],
+    },
+    solution: {
+      type: 'rich_text' as const,
+      format: 'md-math-v1' as const,
+      value: '',
+      mediaIds: [] as string[],
+    },
+    fullSolution: {
+      type: 'rich_text' as const,
+      format: 'md-math-v1' as const,
+      value: '',
+      mediaIds: [] as string[],
+    },
   }),
 
   question_mcq: () => ({
@@ -126,6 +141,24 @@ export const ExerciseBlockDefaults: Record<ContentBlock['type'], () => ContentBl
       })),
       correctOptionIds: [...DEFAULT_MCQ_ANSWER.correctOptionIds],
     },
+    hint: {
+      type: 'rich_text' as const,
+      format: 'md-math-v1' as const,
+      value: '',
+      mediaIds: [] as string[],
+    },
+    solution: {
+      type: 'rich_text' as const,
+      format: 'md-math-v1' as const,
+      value: '',
+      mediaIds: [] as string[],
+    },
+    fullSolution: {
+      type: 'rich_text' as const,
+      format: 'md-math-v1' as const,
+      value: '',
+      mediaIds: [] as string[],
+    },
   }),
 
   question_free_response: () => ({
@@ -138,5 +171,23 @@ export const ExerciseBlockDefaults: Record<ContentBlock['type'], () => ContentBl
       mediaIds: [] as string[],
     },
     answer: { ...DEFAULT_FREE_RESPONSE_ANSWER },
+    hint: {
+      type: 'rich_text' as const,
+      format: 'md-math-v1' as const,
+      value: '',
+      mediaIds: [] as string[],
+    },
+    solution: {
+      type: 'rich_text' as const,
+      format: 'md-math-v1' as const,
+      value: '',
+      mediaIds: [] as string[],
+    },
+    fullSolution: {
+      type: 'rich_text' as const,
+      format: 'md-math-v1' as const,
+      value: '',
+      mediaIds: [] as string[],
+    },
   }),
 }

@@ -62,9 +62,7 @@ export interface McqAnswer {
 }
 
 export interface FreeResponseAnswer {
-  responseKind: 'numeric' | 'text'
   acceptedAnswers: string[]
-  tolerance: number
 }
 
 /**
