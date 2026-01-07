@@ -60,6 +60,179 @@ export const Chapter: CollectionConfig = {
 
 ---
 
+## 🤖 AI Services Patterns
+
+### Gemini AI Integration
+```typescript
+import { getGeminiClient } from '@/lib/ai/gemini-ai-provider.server'
+import { AI_MODELS } from '@/lib/ai/models'
+
+// ✅ Use singleton pattern
+const client = getGeminiClient()
+const config = AI_MODELS.IMAGE_TO_EXERCISE
+const model = client.getGenerativeModel({
+  model: config.name,
+  generationConfig: { temperature: config.temperature }
+})
+
+// ❌ Don't create multiple clients
+const client1 = new GoogleGenerativeAI(apiKey) // Wrong!
+```
+
+### Image Optimization
+```typescript
+import { optimizeImageForAI } from '@/lib/ai/services/image-optimizer-service'
+
+// ✅ Always optimize before AI processing
+const optimized = await optimizeImageForAI(buffer, 2048)
+const result = await extractFromImage({
+  imageBuffer: optimized.buffer,
+  mimeType
+})
+```
+
+### Structured Output Extraction
+```typescript
+import { extractFromImage } from '@/lib/ai/services/data-extractor-service'
+
+const result = await extractFromImage({ imageBuffer, mimeType })
+
+if (result.success) {
+  // Use result.data (validated structure)
+  const { question, options, correctAnswer } = result.data
+} else {
+  // Handle result.error
+}
+```
+
+---
+
+## 🌳 Course Hierarchy Patterns
+
+### Query Children (One Level)
+```typescript
+// Get chapters for course
+const chapters = await payload.find({
+  collection: 'chapters',
+  where: {
+    and: [
+      { course: { equals: courseId } },
+      { status: { equals: 'published' } },
+      { isActive: { equals: true } },
+    ],
+  },
+  sort: 'order',
+})
+```
+
+### Batch Query (Avoid N+1)
+```typescript
+// ✅ CORRECT: Single query with IN operator
+const chapterIds = chapters.map(c => c.id)
+const lessons = await payload.find({
+  collection: 'lessons',
+  where: { chapter: { in: chapterIds } }, // Single query
+})
+
+// ❌ WRONG: Query in loop
+for (const chapter of chapters) {
+  await payload.find({ where: { chapter: { equals: chapter.id } } }) // N+1!
+}
+```
+
+### Deep Population (Breadcrumbs)
+```typescript
+// Get exercise with full hierarchy
+const exercise = await payload.findByID({
+  collection: 'exercises',
+  id: exerciseId,
+  depth: 3, // Populates lesson → chapter → course
+})
+
+// Access: exercise.lesson.chapter.course.title
+```
+
+### Status Cascade (Visibility)
+```typescript
+// Student view: only show published content
+const lessons = await payload.find({
+  collection: 'lessons',
+  where: {
+    and: [
+      { chapter: { in: chapterIds } },
+      { status: { equals: 'published' } },
+      { isActive: { equals: true } },
+      { 'chapter.status': { equals: 'published' } }, // Parent filter
+    ],
+  },
+})
+```
+
+---
+
+## 🧱 Block Rendering Patterns
+
+### Add New Block Type (5 Steps)
+```typescript
+// 1. Define Zod schema
+const CodeBlockSchema = z.object({
+  id: z.string().min(1),
+  type: z.literal('code'),
+  language: z.enum(['javascript', 'python']),
+  value: z.string().min(1),
+}).strict()
+
+// 2. Add to discriminated union
+export const ContentBlockSchema = z.discriminatedUnion('type', [
+  RichTextBlockSchema,
+  CodeBlockSchema, // Add here
+])
+
+// 3. Create renderer component
+export function CodeRenderer({ block }: { block: CodeBlock }) {
+  return <SyntaxHighlighter language={block.language}>{block.value}</SyntaxHighlighter>
+}
+
+// 4. Add to ExerciseRenderer switch
+{content.blocks.map((block) => {
+  if (block.type === 'code') return <CodeRenderer key={block.id} block={block} />
+  // ... other types
+})}
+
+// 5. Generate types: pnpm run generate:types
+```
+
+### Math Rendering (KaTeX)
+```typescript
+import ReactMarkdown from 'react-markdown'
+import rehypeKatex from 'rehype-katex'
+import remarkMath from 'remark-math'
+import 'katex/dist/katex.min.css' // Required!
+
+<ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+  {block.value}
+</ReactMarkdown>
+
+// Inline: $E = mc^2$
+// Display: $$x = \frac{-b \pm \sqrt{b^2-4ac}}{2a}$$
+```
+
+### Zod Validation in Collections
+```typescript
+import { ContentSchema } from '@/collections/Exercises/schemas'
+
+{
+  name: 'content',
+  type: 'json',
+  validate: (value: unknown) => {
+    const result = ContentSchema.safeParse(value)
+    return result.success || result.error.message
+  },
+}
+```
+
+---
+
 ## 🔒 Security Checklist
 
 **Before Creating ANY Collection**:
@@ -413,8 +586,20 @@ pnpm test:e2e                  # E2E tests
 
 ---
 
-**Token Count**: ~1,950 tokens (under 2KB target ✅)
-**Coverage**: 90% of common AI agent tasks
+**Token Count**: ~2,400 tokens (~3KB, +500 from Phase 1 patterns)
+**Coverage**: 95% of common AI agent tasks (includes AI Services, Hierarchy, Block Rendering)
 **Load Time**: < 0.5 seconds
 
-For detailed information, escalate to [AGENTS.md](../../../AGENTS.md) or [AI-OPTIMIZATION-PLAN.md](../../../AI-OPTIMIZATION-PLAN.md)
+**New Sections (Phase 1)**:
+- 🤖 AI Services Patterns (Gemini, Image Optimization, Structured Output)
+- 🌳 Course Hierarchy Patterns (Query patterns, N+1 prevention, Status cascade)
+- 🧱 Block Rendering Patterns (5-step guide, Math rendering, Zod validation)
+
+For detailed information, see:
+- **[AI Services](../../ai-services/README.md)** - Gemini integration details
+- **[Exercise Import](../../exercise-import/README.md)** - Image → exercise flow
+- **[Course Hierarchy](../../course-hierarchy/README.md)** - Query patterns
+- **[Block Rendering](../../block-rendering/README.md)** - Extension guide
+- **[Contracts](../../contracts/README.md)** - Zod schemas
+- **[AGENTS.md](../../../AGENTS.md)** - Complete Payload patterns
+- **[AI-OPTIMIZATION-PLAN.md](../../../AI-OPTIMIZATION-PLAN.md)** - Full optimization strategy
