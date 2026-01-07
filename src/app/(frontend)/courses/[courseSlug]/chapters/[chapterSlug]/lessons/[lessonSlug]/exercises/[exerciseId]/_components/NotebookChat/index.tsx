@@ -42,7 +42,8 @@ export function NotebookChat() {
     if (!message.trim() || isLoading) return
 
     const userMessage: ChatMessage = { role: 'user', content: message }
-    setMessages((prev) => [...prev, userMessage])
+    const updatedHistory = [...messages, userMessage]
+    setMessages(updatedHistory)
     setInputValue('')
     setIsLoading(true)
 
@@ -52,7 +53,7 @@ export function NotebookChat() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message,
-          conversationHistory: messages,
+          conversationHistory: updatedHistory,
         }),
       })
 
