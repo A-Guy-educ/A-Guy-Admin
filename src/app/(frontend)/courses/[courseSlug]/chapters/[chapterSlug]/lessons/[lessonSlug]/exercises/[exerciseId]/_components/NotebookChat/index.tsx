@@ -22,6 +22,11 @@ export function NotebookChat() {
   } = useNotebookChat({
     initialMessage: t('chatWelcome'),
     authRequiredMessage: t('chatAuthRequired'),
+    errorMessage: t('chatError'),
+    hintPrompt: t('chatHintPrompt'),
+    solutionPrompt: t('chatSolutionPrompt'),
+    fullSolutionPrompt: t('chatFullSolutionPrompt'),
+    acknowledgment: t('chatAIAcknowledgment'),
   })
 
   return (

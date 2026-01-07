@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useLayoutEffect } from 'react'
 import { toast } from 'sonner'
+import { chatApiService } from '@/services/api/chat-api-service'
 
 export interface ChatMessage {
   role: 'user' | 'assistant'
@@ -9,9 +10,22 @@ export interface ChatMessage {
 interface UseNotebookChatProps {
   initialMessage: string
   authRequiredMessage: string
+  errorMessage: string
+  hintPrompt: string
+  solutionPrompt: string
+  fullSolutionPrompt: string
+  acknowledgment: string
 }
 
-export function useNotebookChat({ initialMessage, authRequiredMessage }: UseNotebookChatProps) {
+export function useNotebookChat({
+  initialMessage,
+  authRequiredMessage,
+  errorMessage,
+  hintPrompt,
+  solutionPrompt,
+  fullSolutionPrompt,
+  acknowledgment,
+}: UseNotebookChatProps) {
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -47,35 +61,23 @@ export function useNotebookChat({ initialMessage, authRequiredMessage }: UseNote
     setIsLoading(true)
 
     try {
-      const response = await fetch('/api/exercises/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message,
-          conversationHistory: updatedHistory,
-        }),
-      })
+      const result = await chatApiService.sendMessage(message, acknowledgment)
 
-      const data = await response.json()
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          throw new Error('AUTH_REQUIRED')
+      if (!result.success) {
+        if (result.authRequired) {
+          toast.error(authRequiredMessage)
+        } else {
+          toast.error(result.error || errorMessage)
         }
-        throw new Error(data.error || 'Failed to get response')
+        return
       }
 
-      if (data.success && data.message) {
-        const assistantMessage: ChatMessage = { role: 'assistant', content: data.message }
+      if (result.message) {
+        const assistantMessage: ChatMessage = { role: 'assistant', content: result.message }
         setMessages((prev) => [...prev, assistantMessage])
       }
     } catch (error) {
-      if (error instanceof Error && error.message === 'AUTH_REQUIRED') {
-        toast.error(authRequiredMessage)
-      } else {
-        toast.error('Failed to send message. Please try again.')
-      }
-      console.error('Chat error:', error)
+      toast.error(errorMessage)
     } finally {
       setIsLoading(false)
       inputRef.current?.focus()
@@ -96,9 +98,9 @@ export function useNotebookChat({ initialMessage, authRequiredMessage }: UseNote
 
   const handleQuickAction = (actionType: 'hint' | 'solution' | 'full') => {
     const prompts = {
-      hint: 'Can you give me a hint for this problem?',
-      solution: 'Can you show me the solution approach?',
-      full: 'Can you provide the full solution with explanation?',
+      hint: hintPrompt,
+      solution: solutionPrompt,
+      full: fullSolutionPrompt,
     }
     sendMessage(prompts[actionType])
   }

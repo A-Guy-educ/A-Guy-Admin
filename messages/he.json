@@ -100,6 +100,11 @@
     "chatFullSolution": "מלא",
     "chatInputPlaceholder": "שלח הודעה...",
     "chatAuthRequired": "יש להתחבר כדי להשתמש בעוזר הבינה המלאכותית",
+    "chatHintPrompt": "האם תוכל לתת לי רמז שיעזור לי לפתור את התרגיל?",
+    "chatSolutionPrompt": "האם תוכל להסביר את גישת הפתרון?",
+    "chatFullSolutionPrompt": "האם תוכל לספק את הפתרון המלא עם כל השלבים?",
+    "chatAIAcknowledgment": "הבנתי. אני אעזור להדריך תלמידים דרך התרגילים שלהם.",
+    "chatError": "שליחת ההודעה נכשלה. אנא נסה שוב.",
     "formulaSubtitle": "נוסחאות עזר",
     "notesSubtitle": "הערות אישיות",
     "notesPlaceholder": "הוסף הערות כאן..."

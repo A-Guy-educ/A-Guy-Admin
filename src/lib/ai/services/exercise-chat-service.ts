@@ -4,6 +4,9 @@
  */
 import { getGeminiClient } from '../gemini-ai-provider.server'
 import { AI_MODELS } from '../models'
+import { logger } from '@/utilities/logger/logger'
+import { readFile } from 'fs/promises'
+import { join } from 'path'
 
 export interface ChatMessage {
   role: 'user' | 'assistant'
@@ -13,6 +16,7 @@ export interface ChatMessage {
 export interface ExerciseChatInput {
   message: string
   conversationHistory?: ChatMessage[]
+  acknowledgment: string
 }
 
 export interface ExerciseChatResult {
@@ -21,20 +25,33 @@ export interface ExerciseChatResult {
   error?: string
 }
 
-const SYSTEM_PROMPT = `You are a helpful math and science tutor for students working on exercises.
-Your role is to:
-- Guide students through problem-solving without giving direct answers
-- Ask clarifying questions to help them think critically
-- Provide hints and explanations when they're stuck
-- Encourage step-by-step thinking
-- Be supportive and patient
+let cachedSystemPrompt: string | null = null
 
-Keep responses concise and conversational. Focus on helping the student learn, not just get the answer.`
+async function getSystemPrompt(): Promise<string> {
+  if (cachedSystemPrompt) {
+    return cachedSystemPrompt
+  }
+
+  try {
+    const promptPath = join(process.cwd(), 'src', 'lib', 'ai', 'prompts', 'exercise-chat.md')
+    const content = await readFile(promptPath, 'utf-8')
+    // Extract content, remove markdown headers
+    cachedSystemPrompt = content
+      .replace(/^#.*$/gm, '')
+      .replace(/^##.*$/gm, '')
+      .trim()
+    return cachedSystemPrompt
+  } catch (error) {
+    logger.error({ err: error }, 'Failed to load system prompt from file')
+    throw new Error('Failed to load system prompt')
+  }
+}
 
 export async function chatWithExerciseHelper(
   input: ExerciseChatInput,
 ): Promise<ExerciseChatResult> {
   try {
+    const systemPrompt = await getSystemPrompt()
     const client = getGeminiClient()
     const modelConfig = AI_MODELS.EXERCISE_CHAT
     const model = client.getGenerativeModel({
@@ -56,11 +73,11 @@ export async function chatWithExerciseHelper(
       history: [
         {
           role: 'user',
-          parts: [{ text: SYSTEM_PROMPT }],
+          parts: [{ text: systemPrompt }],
         },
         {
           role: 'model',
-          parts: [{ text: 'I understand. I will help guide students through their exercises.' }],
+          parts: [{ text: input.acknowledgment }],
         },
         ...history,
       ],
@@ -74,7 +91,7 @@ export async function chatWithExerciseHelper(
       message: responseText,
     }
   } catch (error) {
-    console.error('Exercise chat error:', error)
+    logger.error({ err: error }, 'Exercise chat error')
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to process chat message',
