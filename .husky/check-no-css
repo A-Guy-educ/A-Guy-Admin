@@ -1,0 +1,17 @@
+#!/bin/sh
+# Block CSS/SCSS files from being committed
+# This project uses Tailwind CSS only - no CSS/SCSS files allowed
+
+staged_css=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(css|scss|sass)$' || true)
+
+if [ -n "$staged_css" ]; then
+  echo "❌ ERROR: CSS/SCSS files are not allowed in this project"
+  echo "This project uses Tailwind CSS exclusively."
+  echo ""
+  echo "Blocked files:"
+  echo "$staged_css" | sed 's/^/  - /'
+  echo ""
+  echo "Please remove these files and use Tailwind utility classes instead."
+  echo "See AGENTS.md for styling guidelines."
+  exit 1
+fi

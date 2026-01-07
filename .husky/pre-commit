@@ -2,4 +2,7 @@
 # Check for secrets before running lint-staged
 .husky/check-secrets
 
+# Block CSS/SCSS files
+.husky/check-no-css
+
 pnpm exec lint-staged
