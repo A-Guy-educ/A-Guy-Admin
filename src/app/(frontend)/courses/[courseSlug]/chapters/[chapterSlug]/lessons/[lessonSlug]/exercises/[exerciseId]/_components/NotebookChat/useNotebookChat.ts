@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect, useLayoutEffect } from 'react'
 import { toast } from 'sonner'
-import { chatApiService } from '@/services/api/chat-api-service'
+import { apiService } from '@/services/api/api-service'
+import { ChatMessageRole } from '@/lib/ai/chat-message-role'
 
 export interface ChatMessage {
-  role: 'user' | 'assistant'
+  role: ChatMessageRole
   content: string
 }
 
@@ -31,7 +32,7 @@ export function useNotebookChat({
   const inputRef = useRef<HTMLInputElement>(null)
 
   const [messages, setMessages] = useState<ChatMessage[]>([
-    { role: 'assistant', content: initialMessage },
+    { role: ChatMessageRole.Assistant, content: initialMessage },
   ])
   const [inputValue, setInputValue] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -54,14 +55,13 @@ export function useNotebookChat({
   const sendMessage = async (message: string) => {
     if (!message.trim() || isLoading) return
 
-    const userMessage: ChatMessage = { role: 'user', content: message }
-    const updatedHistory = [...messages, userMessage]
-    setMessages(updatedHistory)
+    const userMessage: ChatMessage = { role: ChatMessageRole.User, content: message }
+    setMessages((prev) => [...prev, userMessage])
     setInputValue('')
     setIsLoading(true)
 
     try {
-      const result = await chatApiService.sendMessage(message, acknowledgment)
+      const result = await apiService.chat(message, acknowledgment)
 
       if (!result.success) {
         if (result.authRequired) {
@@ -73,7 +73,10 @@ export function useNotebookChat({
       }
 
       if (result.message) {
-        const assistantMessage: ChatMessage = { role: 'assistant', content: result.message }
+        const assistantMessage: ChatMessage = {
+          role: ChatMessageRole.Assistant,
+          content: result.message,
+        }
         setMessages((prev) => [...prev, assistantMessage])
       }
     } catch (error) {

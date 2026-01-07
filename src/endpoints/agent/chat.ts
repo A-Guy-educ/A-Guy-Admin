@@ -6,17 +6,11 @@
  */
 import { PayloadRequest } from 'payload'
 import { z } from 'zod'
-import { chatWithExerciseHelper, type ChatMessage } from '@/lib/ai'
+import { chatWithExerciseHelper } from '@/lib/ai'
 import { logger } from '@/utilities/logger/logger'
-
-const chatMessageSchema = z.object({
-  role: z.enum(['user', 'assistant']),
-  content: z.string().min(1),
-})
 
 const requestSchema = z.object({
   message: z.string().min(1).max(1000),
-  conversationHistory: z.array(chatMessageSchema).optional(),
   acknowledgment: z.string().min(1),
 })
 
@@ -43,7 +37,6 @@ export async function agentChat(req: PayloadRequest & { json?: () => Promise<unk
     // 3) Call AI service
     const result = await chatWithExerciseHelper({
       message: validated.message,
-      conversationHistory: validated.conversationHistory as ChatMessage[] | undefined,
       acknowledgment: validated.acknowledgment,
     })
 

@@ -1,8 +1,8 @@
 /**
- * Chat API Service
+ * API Service
  *
- * Encapsulates all chat-related API calls with error handling.
- * Provides simple interface for components to interact with chat endpoint.
+ * Encapsulates all API calls with error handling.
+ * Provides simple interface for components to interact with backend endpoints.
  */
 
 export interface ChatApiResponse {
@@ -12,7 +12,7 @@ export interface ChatApiResponse {
   authRequired?: boolean
 }
 
-export const chatApiService = {
+export const apiService = {
   /**
    * Send a message to the AI chat assistant
    *
@@ -20,7 +20,7 @@ export const chatApiService = {
    * @param acknowledgment - The AI's acknowledgment message (from locale)
    * @returns Response with success status and either message or error
    */
-  async sendMessage(message: string, acknowledgment: string): Promise<ChatApiResponse> {
+  async chat(message: string, acknowledgment: string): Promise<ChatApiResponse> {
     try {
       const response = await fetch('/api/agent/chat', {
         method: 'POST',
