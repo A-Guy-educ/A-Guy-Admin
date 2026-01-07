@@ -29,17 +29,24 @@ This file serves as the entry point for Claude Code (AI assistant) when working 
 
 These commands are frequently used during development. Suggest them proactively when relevant.
 
+### Setup & Diagnostics
+
+- **Setup environment**: `pnpm setup` - Automated first-time setup (creates .env, starts DB, generates types)
+- **Health check**: `pnpm doctor` - Diagnose environment issues and verify configuration
+- **Validate env**: `pnpm validate:env` - Check required environment variables
+
 ### Development Server
 
 - **Start dev**: `pnpm dev` - Access at http://localhost:3000 (frontend) and /admin (admin panel)
-- **Clean restart**: `rm -rf .next && pnpm dev` - Clear Next.js cache and restart
+- **Clean restart**: `pnpm dev:clean` - Clear Next.js cache and restart (shortcut for `rm -rf .next && pnpm dev`)
 
 ### Database
 
-- **Start DB**: `docker-compose up -d` - Start MongoDB via Docker
-- **Stop DB**: `docker-compose down` - Stop MongoDB
-- **Check status**: `docker-compose ps`
-- **View logs**: `docker-compose logs -f`
+- **Start DB**: `pnpm db:start` - Start MongoDB via Docker (shortcut for `docker-compose up -d`)
+- **Stop DB**: `pnpm db:stop` - Stop MongoDB (shortcut for `docker-compose down`)
+- **Restart DB**: `pnpm db:restart` - Restart MongoDB container
+- **Reset DB**: `pnpm db:reset` - Delete all data and restart MongoDB
+- **View logs**: `pnpm db:logs` - Stream MongoDB logs (shortcut for `docker-compose logs -f mongo`)
 
 ### Code Generation
 
@@ -48,19 +55,26 @@ These commands are frequently used during development. Suggest them proactively 
 
 ### Quality Gates
 
-- **Typecheck**: `pnpm -s tsc --noEmit`
-- **Lint**: `pnpm -s lint`
+- **Typecheck**: `pnpm typecheck`
+- **Lint**: `pnpm lint`
 - **Lint fix**: `pnpm lint:fix`
-- **Format check**: `pnpm -s format` or `pnpm -s prettier:check`
-- **Format fix**: `pnpm format:fix` or `pnpm prettier:write`
+- **Format check**: `pnpm format:check`
+- **Format fix**: `pnpm format`
+- **Run all checks locally**: `pnpm ci:local` - Run typecheck, lint, and all tests
 
 ### Testing
 
+- **All tests**: `pnpm test` - Run both integration and E2E tests
 - **Integration tests**: `pnpm test:int`
 - **E2E tests**: `pnpm test:e2e`
 - **E2E headed**: `pnpm exec playwright test --headed`
 - **E2E UI mode**: `pnpm exec playwright test --ui`
 - **Specific test**: `pnpm exec vitest run tests/int/<file>.int.spec.ts --config ./vitest.config.mts`
+
+### Maintenance
+
+- **Clean cache**: `pnpm clean` - Remove .next cache and build artifacts
+- **Clean all**: `pnpm clean:all` - Remove node_modules, cache, and lock file (requires reinstall)
 
 ### Translations
 

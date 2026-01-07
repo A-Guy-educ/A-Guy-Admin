@@ -1,0 +1,199 @@
+name: Preview Validation
+
+on:
+  deployment_status:
+
+jobs:
+  validate-preview:
+    name: Validate Preview Deployment
+    # Only run when deployment succeeds and it's a preview environment
+    if: github.event.deployment_status.state == 'success' && github.event.deployment_status.environment == 'Preview'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pull-requests: write
+      deployments: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Wait for deployment to be fully ready
+        run: sleep 15
+
+      - name: Smoke test - Homepage
+        id: test-homepage
+        run: |
+          DEPLOY_URL="${{ github.event.deployment_status.target_url }}"
+          echo "Testing homepage: $DEPLOY_URL"
+
+          HTTP_CODE=$(curl -o /dev/null -s -w "%{http_code}" -L "$DEPLOY_URL")
+          echo "HTTP Status: $HTTP_CODE"
+
+          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 400 ]; then
+            echo "✅ Homepage is accessible (HTTP $HTTP_CODE)"
+            echo "homepage_status=success" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Homepage failed (HTTP $HTTP_CODE)"
+            echo "homepage_status=failure" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+      - name: Smoke test - Admin Panel
+        id: test-admin
+        run: |
+          DEPLOY_URL="${{ github.event.deployment_status.target_url }}"
+          ADMIN_URL="$DEPLOY_URL/admin"
+          echo "Testing admin panel: $ADMIN_URL"
+
+          HTTP_CODE=$(curl -o /dev/null -s -w "%{http_code}" -L "$ADMIN_URL")
+          echo "HTTP Status: $HTTP_CODE"
+
+          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 400 ]; then
+            echo "✅ Admin panel is accessible (HTTP $HTTP_CODE)"
+            echo "admin_status=success" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Admin panel failed (HTTP $HTTP_CODE)"
+            echo "admin_status=failure" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+      - name: Smoke test - API Health Check
+        id: test-api
+        continue-on-error: true
+        run: |
+          DEPLOY_URL="${{ github.event.deployment_status.target_url }}"
+          API_URL="$DEPLOY_URL/api"
+          echo "Testing API: $API_URL"
+
+          HTTP_CODE=$(curl -o /dev/null -s -w "%{http_code}" -L "$API_URL")
+          echo "HTTP Status: $HTTP_CODE"
+
+          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 400 ]; then
+            echo "✅ API is accessible (HTTP $HTTP_CODE)"
+            echo "api_status=success" >> $GITHUB_OUTPUT
+          else
+            echo "⚠️  API returned HTTP $HTTP_CODE (may be expected)"
+            echo "api_status=warning" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check for console errors
+        id: check-console
+        continue-on-error: true
+        run: |
+          echo "Console error checking would require a browser - skipping for smoke tests"
+          echo "console_status=skipped" >> $GITHUB_OUTPUT
+
+      - name: Performance check
+        id: perf-check
+        continue-on-error: true
+        run: |
+          DEPLOY_URL="${{ github.event.deployment_status.target_url }}"
+          echo "Checking performance..."
+
+          # Measure response time
+          RESPONSE_TIME=$(curl -o /dev/null -s -w "%{time_total}" "$DEPLOY_URL")
+          echo "Response time: ${RESPONSE_TIME}s"
+
+          # Convert to milliseconds for comparison
+          RESPONSE_MS=$(echo "$RESPONSE_TIME * 1000" | bc)
+          RESPONSE_MS_INT=${RESPONSE_MS%.*}
+
+          if [ "$RESPONSE_MS_INT" -lt 3000 ]; then
+            echo "✅ Response time is good (${RESPONSE_MS_INT}ms)"
+            echo "perf_status=success" >> $GITHUB_OUTPUT
+          else
+            echo "⚠️  Response time is slow (${RESPONSE_MS_INT}ms)"
+            echo "perf_status=warning" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Get PR number
+        id: get-pr
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const deployment = await github.rest.repos.getDeployment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: context.payload.deployment.id
+            });
+
+            const ref = deployment.data.ref;
+            const prMatch = ref.match(/refs\/pull\/(\d+)\//);
+
+            if (prMatch) {
+              return prMatch[1];
+            }
+
+            const prs = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              head: `${context.repo.owner}:${ref}`
+            });
+
+            if (prs.data.length > 0) {
+              return prs.data[0].number;
+            }
+
+            return null;
+
+      - name: Comment validation results
+        if: steps.get-pr.outputs.result != 'null'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = ${{ steps.get-pr.outputs.result }};
+            const url = '${{ github.event.deployment_status.target_url }}';
+
+            const homepageStatus = '${{ steps.test-homepage.outputs.homepage_status }}';
+            const adminStatus = '${{ steps.test-admin.outputs.admin_status }}';
+            const apiStatus = '${{ steps.test-api.outputs.api_status }}';
+            const perfStatus = '${{ steps.perf-check.outputs.perf_status }}';
+
+            const statusIcon = (status) => {
+              if (status === 'success') return '✅';
+              if (status === 'warning') return '⚠️';
+              if (status === 'failure') return '❌';
+              return '➖';
+            };
+
+            const allPassed = homepageStatus === 'success' && adminStatus === 'success';
+
+            const commentBody = `## ${allPassed ? '✅' : '⚠️'} Preview Validation Results
+
+            Automated smoke tests have been run on your preview deployment.
+
+            ### Test Results
+
+            | Test | Status | Notes |
+            |------|--------|-------|
+            | Homepage | ${statusIcon(homepageStatus)} ${homepageStatus} | Main page loads |
+            | Admin Panel | ${statusIcon(adminStatus)} ${adminStatus} | Admin interface loads |
+            | API | ${statusIcon(apiStatus)} ${apiStatus} | API endpoint check |
+            | Performance | ${statusIcon(perfStatus)} ${perfStatus} | Response time check |
+
+            ${allPassed
+              ? '### ✅ All critical tests passed!\n\nYour preview deployment is working correctly.'
+              : '### ⚠️ Some tests failed\n\nPlease review the failed tests above and check the deployment logs.'
+            }
+
+            **Preview URL**: ${url}
+
+            ---
+
+            *Automated validation by GitHub Actions*
+            `;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body: commentBody
+            });
+
+      - name: Fail job if critical tests failed
+        if: steps.test-homepage.outputs.homepage_status != 'success' || steps.test-admin.outputs.admin_status != 'success'
+        run: |
+          echo "❌ Critical smoke tests failed"
+          exit 1
