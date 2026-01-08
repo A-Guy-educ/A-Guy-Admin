@@ -1,10 +1,10 @@
 'use client'
 
-import React from 'react'
-import Link from 'next/link'
+import { TelescopeLogo } from '@/components/TelescopeLogo'
+import { useLocale, useTranslations } from '@/providers/I18n'
+import { cn } from '@/utilities/ui'
 import { ArrowLeft, ArrowRight } from 'lucide-react'
-import { useTranslations, useLocale } from '@/providers/I18n'
-import { Logo } from '@/components/Logo/Logo'
+import Link from 'next/link'
 
 interface ExerciseHeaderProps {
   exerciseTitle: string
@@ -17,25 +17,36 @@ export function ExerciseHeader({ exerciseTitle, backUrl }: ExerciseHeaderProps) 
   const isRTL = locale === 'he'
 
   return (
-    <header className="h-[60px] bg-card border-b border-border flex items-center justify-between px-5 flex-shrink-0 z-[100] relative">
+    <header className="h-[60px] bg-card border-b border-border flex items-center flex-shrink-0 z-[100] relative">
       {/* Left side in LTR (back arrow) / Right side in RTL (back arrow) */}
       <Link
         href={backUrl}
-        className="flex items-center justify-center p-2 text-foreground hover:text-primary transition-colors flex-shrink-0"
+        className={cn(
+          'flex items-center justify-center p-2 text-foreground hover:text-primary transition-colors flex-shrink-0 absolute',
+          isRTL ? 'right-5' : 'left-5',
+        )}
         aria-label={t('backToLesson')}
       >
         {isRTL ? <ArrowRight className="w-6 h-6" /> : <ArrowLeft className="w-6 h-6" />}
       </Link>
 
-      {/* Center: Exercise Title - draggable on mobile */}
+      {/* Center: Exercise Title */}
       <h1 className="absolute left-1/2 -translate-x-1/2 text-primary text-lg font-extrabold tracking-tight cursor-move max-w-[40%] text-center truncate">
         {exerciseTitle}
       </h1>
 
-      {/* Right side in LTR (logo) / Left side in RTL (logo) */}
-      <div className="flex items-center gap-2 flex-shrink-0 mr-2">
+      {/* Right side in LTR (logo) / Left side in RTL (logo) - Fixed positioning to viewport edge */}
+      <div
+        className={cn(
+          'flex items-center gap-2 flex-shrink-0 fixed top-[10px] z-[101]',
+          isRTL ? 'flex-row' : 'flex-row-reverse',
+        )}
+        style={{
+          [isRTL ? 'left' : 'right']: '20px',
+        }}
+      >
         <span className="text-primary text-xl font-extrabold tracking-tight">Aguy</span>
-        <Logo className="h-8 w-auto" />
+        <TelescopeLogo className="h-8 w-auto" />
       </div>
     </header>
   )

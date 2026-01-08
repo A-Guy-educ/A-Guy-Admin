@@ -56,7 +56,7 @@ export default async function ExercisePage({ params }: ExercisePageProps) {
       backUrl={lessonUrl}
       pdfContent={
         <div
-          className="w-full max-w-[920px] h-full bg-card border border-border rounded-[10px] p-12 text-foreground shadow-[0_10px_30px_hsl(var(--border))] overflow-auto flex flex-col"
+          className="w-full max-w-[920px] max-h-full bg-card border border-border rounded-[10px] p-12 text-foreground shadow-[0_10px_30px_hsl(var(--border))] overflow-auto"
           style={{ WebkitOverflowScrolling: 'touch' }}
         >
           <ExerciseRenderer

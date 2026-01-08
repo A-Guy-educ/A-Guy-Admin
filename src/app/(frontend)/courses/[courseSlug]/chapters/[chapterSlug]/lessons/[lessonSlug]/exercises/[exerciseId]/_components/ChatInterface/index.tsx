@@ -60,12 +60,12 @@ export function ChatInterface({ exerciseId }: ChatInterfaceProps) {
     const newValue = before + template + after
     setInputValue(newValue)
 
-    // Move cursor
-    setTimeout(() => {
+    // Move cursor after state update
+    requestAnimationFrame(() => {
       const newCursorPos = start + cursorOffset
       inputRef.current?.setSelectionRange(newCursorPos, newCursorPos)
       inputRef.current?.focus()
-    }, 0)
+    })
   }
 
   const handleFormSubmit = (e: React.FormEvent) => {

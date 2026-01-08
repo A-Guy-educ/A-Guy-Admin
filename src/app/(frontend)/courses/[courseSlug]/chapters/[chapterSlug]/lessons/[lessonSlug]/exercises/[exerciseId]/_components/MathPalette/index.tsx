@@ -2,24 +2,12 @@
 
 import React from 'react'
 import { cn } from '@/utilities/ui'
+import mathKeys from './math-keys.json'
 
 interface MathPaletteProps {
   isOpen: boolean
   onInject: (template: string, cursorOffset: number) => void
 }
-
-const mathKeys = [
-  { label: '\\frac{□}{□}', template: '\\frac{}{}', offset: 6 },
-  { label: '\\sqrt{□}', template: '\\sqrt{}', offset: 6 },
-  { label: 'x^{□}', template: '^{}', offset: 2 },
-  { label: 'π', template: '\\pi ', offset: 4 },
-  { label: 'α', template: '\\alpha ', offset: 7 },
-  { label: 'sin', template: '\\sin()', offset: 5 },
-  { label: 'cos', template: '\\cos()', offset: 5 },
-  { label: 'tan', template: '\\tan()', offset: 5 },
-  { label: '∞', template: '\\infty ', offset: 7 },
-  { label: '±', template: '\\pm ', offset: 4 },
-]
 
 export function MathPalette({ isOpen, onInject }: MathPaletteProps) {
   if (!isOpen) return null
