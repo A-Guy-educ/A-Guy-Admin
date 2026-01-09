@@ -21,6 +21,7 @@ import {
   type Message,
 } from '@/lib/ai/context-policy'
 import { runSummaryMaintenance } from '@/lib/ai/maintenance'
+import { ChatRole } from '@/lib/ai/chat-message-role'
 import { extractMemoryCandidates, persistMemoryItems } from '@/lib/ai/memory-extraction'
 import { createContextLog, logContextUsage, logPromptSnapshot } from '@/lib/ai/observability'
 import { chatWithExerciseHelper, getSystemPrompt } from '@/lib/ai/services/exercise-chat-service'
@@ -68,6 +69,8 @@ export async function agentChat(req: PayloadRequest & { json?: () => Promise<unk
         and: [{ user: { equals: req.user.id } }, { exercise: { equals: validated.exerciseId } }],
       },
       limit: 1,
+      user: req.user, // Explicitly pass user for access control
+      overrideAccess: false, // Enforce user's access control
     })
 
     let conversationId: string
@@ -90,6 +93,8 @@ export async function agentChat(req: PayloadRequest & { json?: () => Promise<unk
           contextPolicyVersion: 'v1',
         },
         draft: false,
+        user: req.user, // Explicitly pass user for access control
+        overrideAccess: false, // Enforce user's access control
       })
       conversationId = newConv.id
       conversation = newConv
@@ -104,23 +109,18 @@ export async function agentChat(req: PayloadRequest & { json?: () => Promise<unk
     }
 
     const conversationHistory = conversation.messages || []
+    const allMessages = [...conversationHistory, userMessage]
 
     await req.payload.update({
       collection: 'conversations',
       id: conversationId,
       data: {
-        messages: [...conversationHistory, userMessage],
+        messages: allMessages,
         lastMessageAt: new Date().toISOString(),
       },
+      user: req.user, // Explicitly pass user for access control
+      overrideAccess: false, // Enforce user's access control
     })
-
-    // 5) Reload conversation to get updated messages
-    conversation = await req.payload.findByID({
-      collection: 'conversations',
-      id: conversationId,
-    })
-
-    const allMessages = conversation.messages || []
 
     // DEBUG: Log message count
     reqLogger.info(
@@ -156,22 +156,32 @@ export async function agentChat(req: PayloadRequest & { json?: () => Promise<unk
         if (indexAvailable) {
           const queryText = buildRetrievalQuery(recentMessages)
 
-          const retrieval = await retrieveMemoryItems(db, req.user.id, queryText, conversationId)
+          // Skip retrieval if query is empty or too short
+          if (queryText && queryText.trim().length >= 3) {
+            reqLogger.debug({ queryText }, 'Retrieving memory items')
+            const retrieval = await retrieveMemoryItems(db, req.user.id, queryText, conversationId)
 
-          memoryItems = retrieval.items
-          retrievalLatencyMs = retrieval.latencyMs
-          localCount = retrieval.localCount
-          globalCount = retrieval.globalCount
+            memoryItems = retrieval.items
+            retrievalLatencyMs = retrieval.latencyMs
+            localCount = retrieval.localCount
+            globalCount = retrieval.globalCount
 
-          reqLogger.debug(
-            {
-              memoryCount: memoryItems.length,
-              localCount,
-              globalCount,
-              latencyMs: retrievalLatencyMs,
-            },
-            'Retrieved memory items',
-          )
+            reqLogger.info(
+              {
+                memoryCount: memoryItems.length,
+                localCount,
+                globalCount,
+                latencyMs: retrievalLatencyMs,
+                queryText,
+              },
+              'Retrieved memory items',
+            )
+          } else {
+            reqLogger.debug(
+              { queryText, queryLength: queryText?.trim().length },
+              'Skipping memory retrieval: query text too short or empty',
+            )
+          }
         } else {
           reqLogger.warn('Vector search index not available, skipping memory retrieval')
         }
@@ -194,14 +204,16 @@ export async function agentChat(req: PayloadRequest & { json?: () => Promise<unk
     logPromptSnapshot(conversationId, composedPrompt)
 
     // 9) Call AI service with composed prompt
+    const modelCallStart = Date.now()
     const result = await chatWithExerciseHelper({
       message: validated.message,
       acknowledgment: validated.acknowledgment,
       composedPrompt: composedPrompt,
     })
+    const modelLatencyMs = Date.now() - modelCallStart
 
     if (!result.success) {
-      reqLogger.error({ error: result.error }, 'Chat request failed')
+      reqLogger.error({ error: result.error, modelLatencyMs }, 'Chat request failed')
       return Response.json(
         { error: result.error || 'Failed to process chat message' },
         { status: 500 },
@@ -224,6 +236,8 @@ export async function agentChat(req: PayloadRequest & { json?: () => Promise<unk
         messages: updatedMessages,
         lastMessageAt: new Date().toISOString(),
       },
+      user: req.user, // Explicitly pass user for access control
+      overrideAccess: false, // Enforce user's access control
     })
 
     // 11) Log context usage for observability
@@ -239,6 +253,7 @@ export async function agentChat(req: PayloadRequest & { json?: () => Promise<unk
         memoryRetrievalLatencyMs: retrievalLatencyMs,
         messageWindowSize: composedPrompt.metadata.messageCount,
         messageTotalCount: updatedMessages.length,
+        modelLatencyMs,
       }),
     )
 
@@ -252,36 +267,77 @@ export async function agentChat(req: PayloadRequest & { json?: () => Promise<unk
     // 13) Background: Extract and persist memories (non-blocking)
     if (featureFlags.MEMORY_EXTRACTION_ENABLED && req.user) {
       const currentUserId = req.user.id
+      reqLogger.debug({ conversationId }, 'Starting memory extraction')
+
       // Refresh conversation to get potential summary updates
       req.payload
         .findByID({
           collection: 'conversations',
           id: conversationId,
+          user: req.user, // Explicitly pass user for access control
+          overrideAccess: false, // Enforce user's access control
         })
         .then((updatedConv) => {
           const messages = updatedConv.messages || []
+          reqLogger.debug({ messageCount: messages.length }, 'Loaded conversation for extraction')
+
           const messageList = messages.map((m) => ({
             role: m.role!,
             content: m.content!,
             timestamp: m.timestamp!,
           }))
-          return extractMemoryCandidates(messageList, updatedConv.summary || undefined)
+
+          // Determine source role and timestamp
+          // Since extraction happens after assistant response, use the assistant's message timestamp
+          // But note: memories about user preferences/facts actually came from user messages
+          // We use assistant role here because extraction is triggered after assistant response
+          const lastMessage = messages[messages.length - 1]
+          const sourceRole = ChatRole.Assistant // Extraction triggered after assistant response
+          const sourceTimestamp = lastMessage?.timestamp
+            ? new Date(lastMessage.timestamp)
+            : new Date()
+
+          return extractMemoryCandidates(messageList, updatedConv.summary || undefined).then(
+            (candidates) => {
+              reqLogger.debug({ candidateCount: candidates.length }, 'Extracted memory candidates')
+              return {
+                candidates,
+                sourceRole,
+                sourceTimestamp,
+              }
+            },
+          )
         })
-        .then((candidates) => {
+        .then(({ candidates, sourceRole, sourceTimestamp }) => {
           if (candidates.length > 0) {
+            reqLogger.debug({ candidateCount: candidates.length }, 'Persisting memory items')
             return persistMemoryItems(
               req.payload,
               currentUserId,
               conversationId,
               candidates,
-              new Date(),
-              'model',
-            )
+              sourceTimestamp,
+              sourceRole,
+            ).then((persisted) => {
+              reqLogger.info({ persisted, conversationId }, 'Memory extraction completed')
+              return persisted
+            })
+          } else {
+            reqLogger.debug('No memory candidates to persist')
+            return 0
           }
         })
         .catch((err) => {
           reqLogger.error({ err, conversationId }, 'Memory extraction failed')
         })
+    } else {
+      reqLogger.debug(
+        {
+          extractionEnabled: featureFlags.MEMORY_EXTRACTION_ENABLED,
+          hasUser: !!req.user,
+        },
+        'Memory extraction skipped',
+      )
     }
 
     reqLogger.info('Chat request successful')

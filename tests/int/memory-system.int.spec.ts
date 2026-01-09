@@ -8,6 +8,7 @@
  * - Context composition
  * - End-to-end chat with context
  */
+import { ChatRole } from '@/lib/ai/chat-message-role'
 import { buildRetrievalQuery, composePrompt, getRecentWindow } from '@/lib/ai/context-policy'
 import { generateEmbedding } from '@/lib/ai/embeddings'
 import { runSummaryMaintenance } from '@/lib/ai/maintenance'
@@ -490,7 +491,7 @@ describe.skipIf(!hasOpenAIKey)('Memory System Integration Tests', () => {
         testConversationId,
         candidates,
         new Date(),
-        'model',
+        ChatRole.Assistant,
       )
 
       expect(persisted).toBeGreaterThan(0)
@@ -630,7 +631,7 @@ describe.skipIf(!hasOpenAIKey)('Memory System Integration Tests', () => {
         testConversationId,
         candidates1,
         new Date(),
-        'user',
+        ChatRole.User,
       )
 
       expect(persisted1).toBe(1)
@@ -653,7 +654,7 @@ describe.skipIf(!hasOpenAIKey)('Memory System Integration Tests', () => {
           testConversationId,
           candidates2,
           new Date(),
-          'user',
+          ChatRole.User,
         )
 
         // Should not create duplicate (deduplication should catch it)

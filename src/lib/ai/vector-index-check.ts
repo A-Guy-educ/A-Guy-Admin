@@ -138,12 +138,39 @@ export async function enforceVectorIndexRequirement(
   )
 }
 
+interface IndexCacheEntry {
+  ready: boolean
+  timestamp: number
+  error?: string
+}
+
+let indexCache: IndexCacheEntry | null = null
+const CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
+
 /**
  * Graceful check for runtime - returns boolean instead of throwing
  * Use this in request handlers to handle missing index gracefully
+ * Caches result for 5 minutes to avoid expensive Atlas API calls
  */
 export async function isVectorIndexAvailable(db: Db): Promise<boolean> {
+  const now = Date.now()
+
+  // Return cached result if still valid
+  if (indexCache && now - indexCache.timestamp < CACHE_TTL_MS) {
+    if (!indexCache.ready) {
+      logger.debug({ cached: true, error: indexCache.error }, 'Vector index not available (cached)')
+    }
+    return indexCache.ready
+  }
+
+  // Check index and cache result
   const result = await checkVectorIndexReady(db)
+
+  indexCache = {
+    ready: result.ready,
+    timestamp: now,
+    error: result.error,
+  }
 
   if (!result.ready) {
     logger.warn(
@@ -156,4 +183,11 @@ export async function isVectorIndexAvailable(db: Db): Promise<boolean> {
   }
 
   return result.ready
+}
+
+/**
+ * Invalidate the index cache (useful for testing or manual refresh)
+ */
+export function invalidateIndexCache(): void {
+  indexCache = null
 }

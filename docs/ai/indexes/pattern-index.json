@@ -114,7 +114,8 @@
         "src/app/(frontend)/next/preview/route.ts",
         "src/app/(frontend)/next/seed/route.ts",
         "src/app/api/agent/chat/route.ts",
-        "src/app/api/exercises/import/route.ts"
+        "src/app/api/exercises/import/route.ts",
+        "src/endpoints/agent/chat.ts"
       ]
     },
     "i18n-component": {
@@ -237,11 +238,35 @@
         "src/collections/Lessons.ts"
       ]
     },
+    "user-owned": {
+      "pattern": "user-owned",
+      "description": "Collection with owner field and isOwner access control",
+      "files": [
+        "src/collections/Conversations.ts",
+        "src/collections/MemoryItems.ts",
+        "src/collections/Users/index.ts"
+      ]
+    },
+    "published-content": {
+      "pattern": "published-content",
+      "description": "Collection with publishedAt field and isPublished access control",
+      "files": [
+        "src/collections/Courses.ts"
+      ]
+    },
     "rbac": {
       "pattern": "rbac",
       "description": "Role-based access control with admin/user roles",
       "files": [
         "src/collections/Exercises/index.ts",
+        "src/collections/MemoryItems.ts",
+        "src/collections/Users/index.ts"
+      ]
+    },
+    "vector-search": {
+      "pattern": "vector-search",
+      "description": "No description available",
+      "files": [
         "src/collections/MemoryItems.ts"
       ]
     },
@@ -274,6 +299,13 @@
       "description": "No description available",
       "files": [
         "src/lib/ai/smart-doc-loader.ts"
+      ]
+    },
+    "type-exports": {
+      "pattern": "type-exports",
+      "description": "No description available",
+      "files": [
+        "src/types/index.ts"
       ]
     }
   },
@@ -1007,27 +1039,29 @@
     },
     "src/collections/Conversations.ts": {
       "path": "src/collections/Conversations.ts",
-      "type": "unknown",
-      "domain": "general",
+      "type": "collection-config",
+      "domain": "chat",
       "patterns": [
+        "user-owned",
         "access-control",
         "payload-hooks"
       ],
-      "aiSummary": "",
+      "aiSummary": "Conversations collection with user ownership, message history, and context management",
       "dependencies": [
         "payload"
       ]
     },
     "src/collections/Courses.ts": {
       "path": "src/collections/Courses.ts",
-      "type": "unknown",
-      "domain": "general",
+      "type": "collection-config",
+      "domain": "courses",
       "patterns": [
+        "published-content",
         "hierarchical-data",
         "access-control",
         "payload-hooks"
       ],
-      "aiSummary": "",
+      "aiSummary": "Courses collection with chapters relationship and published state",
       "dependencies": [
         "payload"
       ]
@@ -1088,13 +1122,15 @@
     },
     "src/collections/MemoryItems.ts": {
       "path": "src/collections/MemoryItems.ts",
-      "type": "unknown",
-      "domain": "general",
+      "type": "collection-config",
+      "domain": "chat",
       "patterns": [
+        "user-owned",
+        "vector-search",
         "rbac",
         "access-control"
       ],
-      "aiSummary": "",
+      "aiSummary": "Memory items collection with vector embeddings for semantic retrieval and user isolation",
       "dependencies": [
         "payload"
       ]
@@ -1175,13 +1211,15 @@
     },
     "src/collections/Users/index.ts": {
       "path": "src/collections/Users/index.ts",
-      "type": "unknown",
-      "domain": "general",
+      "type": "collection-config",
+      "domain": "auth",
       "patterns": [
+        "rbac",
+        "user-owned",
         "access-control",
         "payload-hooks"
       ],
-      "aiSummary": "",
+      "aiSummary": "Users collection with authentication, RBAC roles, and audit hooks",
       "dependencies": [
         "payload"
       ]
@@ -1901,12 +1939,13 @@
     },
     "src/endpoints/agent/chat.ts": {
       "path": "src/endpoints/agent/chat.ts",
-      "type": "unknown",
-      "domain": "general",
+      "type": "endpoint",
+      "domain": "chat",
       "patterns": [
+        "authenticated-endpoint",
         "validated-endpoint"
       ],
-      "aiSummary": "",
+      "aiSummary": "Chat endpoint with context awareness, memory retrieval, and automatic maintenance",
       "dependencies": [
         "payload",
         "zod"
@@ -2040,6 +2079,16 @@
         "next/navigation"
       ]
     },
+    "src/types/index.ts": {
+      "path": "src/types/index.ts",
+      "type": "utility",
+      "domain": "general",
+      "patterns": [
+        "type-exports"
+      ],
+      "aiSummary": "Centralized type exports for easy discovery by AI agents",
+      "dependencies": []
+    },
     "src/utilities/useClickableCard.ts": {
       "path": "src/utilities/useClickableCard.ts",
       "type": "unknown",
@@ -2055,8 +2104,8 @@
     }
   },
   "metadata": {
-    "generatedAt": "2026-01-09T11:52:06.446Z",
-    "totalFiles": 134,
-    "totalPatterns": 12
+    "generatedAt": "2026-01-09T12:25:33.897Z",
+    "totalFiles": 135,
+    "totalPatterns": 16
   }
 }

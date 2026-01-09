@@ -75,11 +75,49 @@ export function composePrompt(
   // 3. Append memory items to system message (if any)
   if (components.memoryItems.length > 0) {
     systemContent += '\n\n## Relevant Context from Past Conversations\n'
-    systemContent += components.memoryItems
-      .map((item, idx) => {
-        return `${idx + 1}. [${item.type}] ${item.text} (importance: ${item.importance}/5)`
-      })
-      .join('\n')
+
+    // Sort by importance (descending) and limit text length
+    const sortedMemories = [...components.memoryItems]
+      .sort((a, b) => b.importance - a.importance)
+      .map((item) => ({
+        ...item,
+        // Truncate long memories (keep first 400 chars + ellipsis)
+        text: item.text.length > 400 ? item.text.substring(0, 400) + '...' : item.text,
+      }))
+
+    // Group by importance for better structure
+    const highImportance = sortedMemories.filter((m) => m.importance >= 4)
+    const mediumImportance = sortedMemories.filter((m) => m.importance === 3)
+    const lowImportance = sortedMemories.filter((m) => m.importance <= 2)
+
+    if (highImportance.length > 0) {
+      systemContent += '\n### High Importance (Remember These)\n'
+      systemContent += highImportance
+        .map((item, idx) => {
+          return `${idx + 1}. [${item.type}] ${item.text}`
+        })
+        .join('\n')
+    }
+
+    if (mediumImportance.length > 0) {
+      systemContent += '\n### Medium Importance\n'
+      systemContent += mediumImportance
+        .map((item, idx) => {
+          return `${idx + 1}. [${item.type}] ${item.text}`
+        })
+        .join('\n')
+    }
+
+    if (lowImportance.length > 0 && highImportance.length + mediumImportance.length < 5) {
+      // Only include low importance if we don't have enough high/medium
+      systemContent += '\n### Additional Context\n'
+      systemContent += lowImportance
+        .slice(0, 3) // Limit low-importance memories
+        .map((item, idx) => {
+          return `${idx + 1}. [${item.type}] ${item.text}`
+        })
+        .join('\n')
+    }
   }
 
   messages.push({

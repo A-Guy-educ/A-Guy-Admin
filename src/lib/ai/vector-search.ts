@@ -11,6 +11,7 @@
 
 import { logger } from '@/utilities/logger'
 import type { Db } from 'mongodb'
+import { ChatRole } from './chat-message-role'
 import { generateEmbedding } from './embeddings'
 
 const VECTOR_INDEX_NAME = 'memory_items_embedding_v1'
@@ -29,7 +30,7 @@ export interface MemoryItem {
   source: {
     sourceConversationId?: string
     sourceMessageTimestamp: Date
-    sourceMessageRole: 'user' | 'model'
+    sourceMessageRole: ChatRole
   }
   createdAt: Date
   updatedAt: Date
@@ -57,7 +58,7 @@ export async function retrieveMemoryItems(
   const startTime = Date.now()
 
   try {
-    // Generate query embedding
+    // Generate query embedding (must happen first)
     const { embedding: queryVector } = await generateEmbedding(queryText)
 
     const collection = db.collection<MemoryItem>('memory_items')
@@ -65,39 +66,35 @@ export async function retrieveMemoryItems(
     let localCount = 0
     let globalCount = 0
 
-    // Query A: Conversation-scoped memory (if conversationId provided)
-    if (conversationId) {
-      const localResults = await collection
-        .aggregate([
-          {
-            $vectorSearch: {
-              index: VECTOR_INDEX_NAME,
-              path: 'embedding',
-              queryVector,
-              numCandidates: NUM_CANDIDATES,
-              limit: TOP_K_LOCAL,
-              filter: {
-                userId: { $eq: userId },
-                conversationId: { $eq: conversationId },
-                status: { $eq: 'active' },
+    // Prepare both queries
+    const localQuery = conversationId
+      ? collection
+          .aggregate([
+            {
+              $vectorSearch: {
+                index: VECTOR_INDEX_NAME,
+                path: 'embedding',
+                queryVector,
+                numCandidates: NUM_CANDIDATES,
+                limit: TOP_K_LOCAL,
+                filter: {
+                  userId: { $eq: userId },
+                  conversationId: { $eq: conversationId },
+                  status: { $eq: 'active' },
+                },
               },
             },
-          },
-          {
-            $project: {
-              embedding: 0, // Don't return embeddings (large)
-              score: { $meta: 'vectorSearchScore' },
+            {
+              $project: {
+                embedding: 0, // Don't return embeddings (large)
+                score: { $meta: 'vectorSearchScore' },
+              },
             },
-          },
-        ])
-        .toArray()
+          ])
+          .toArray()
+      : Promise.resolve([])
 
-      results.push(...(localResults as MemoryItem[]))
-      localCount = localResults.length
-    }
-
-    // Query B: User-global memory
-    const globalResults = await collection
+    const globalQuery = collection
       .aggregate([
         {
           $vectorSearch: {
@@ -120,6 +117,13 @@ export async function retrieveMemoryItems(
         },
       ])
       .toArray()
+
+    // Execute both queries in parallel
+    const [localResults, globalResults] = await Promise.all([localQuery, globalQuery])
+
+    // Process results
+    results.push(...(localResults as MemoryItem[]))
+    localCount = localResults.length
 
     // Deduplicate: prefer local results over global
     const seenIds = new Set(results.map((r) => r._id.toString()))

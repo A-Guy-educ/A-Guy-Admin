@@ -16,10 +16,11 @@ import { dirname, join } from 'path'
 import type { Payload } from 'payload'
 import { fileURLToPath } from 'url'
 import { featureFlags } from '../feature-flags'
+import { ChatRole } from './chat-message-role'
 import type { Message } from './context-policy'
-import { generateEmbedding } from './embeddings'
+import { generateEmbeddings } from './embeddings'
 import { logMaintenance } from './observability'
-import { findSimilarMemoryItem } from './vector-search'
+import { findSimilarMemoryItem, type MemoryItem } from './vector-search'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -141,7 +142,7 @@ export async function persistMemoryItems(
   conversationId: string,
   candidates: MemoryCandidate[],
   sourceTimestamp: Date,
-  sourceRole: 'user' | 'model',
+  sourceRole: ChatRole,
 ): Promise<number> {
   if (!featureFlags.MEMORY_EXTRACTION_ENABLED) {
     return 0
@@ -151,17 +152,39 @@ export async function persistMemoryItems(
     return 0
   }
 
-  let persisted = 0
   const db = (payload.db as any).connection.db // Access MongoDB directly for vector search
 
   try {
-    for (const candidate of candidates) {
-      // Generate embedding
-      const { embedding } = await generateEmbedding(candidate.text)
+    // Batch generate all embeddings at once
+    const texts = candidates.map((c) => c.text)
+    const embeddingResults = await generateEmbeddings(texts) // Single API call
 
-      // Check for duplicates
-      const similar = await findSimilarMemoryItem(db, userId, embedding, 0.9)
+    // Prepare similarity checks in parallel (with concurrency limit)
+    const similarityChecks = embeddingResults.map((result, idx) =>
+      findSimilarMemoryItem(db, userId, result.embedding, 0.9).then((similar) => ({
+        candidate: candidates[idx],
+        embedding: result.embedding,
+        similar,
+      })),
+    )
 
+    // Execute similarity checks with concurrency limit (avoid overwhelming DB)
+    const CONCURRENCY_LIMIT = 5
+    const results: Array<{
+      candidate: MemoryCandidate
+      embedding: number[]
+      similar: MemoryItem | null
+    }> = []
+
+    for (let i = 0; i < similarityChecks.length; i += CONCURRENCY_LIMIT) {
+      const batch = similarityChecks.slice(i, i + CONCURRENCY_LIMIT)
+      const batchResults = await Promise.all(batch)
+      results.push(...batchResults)
+    }
+
+    // Process results (create/update)
+    let persisted = 0
+    for (const { candidate, embedding, similar } of results) {
       if (similar) {
         // Update existing (server-side override)
         await payload.update({
@@ -194,7 +217,7 @@ export async function persistMemoryItems(
             source: {
               sourceConversationId: conversationId,
               sourceMessageTimestamp: sourceTimestamp.toISOString(),
-              sourceMessageRole: sourceRole,
+              sourceMessageRole: sourceRole, // ChatRole enum values match Payload schema ('user' | 'assistant')
             },
           } as any,
           overrideAccess: true, // Server-side write, bypass user access control
@@ -204,7 +227,6 @@ export async function persistMemoryItems(
           '[MemoryExtraction] Created new memory item',
         )
       }
-
       persisted++
     }
 
