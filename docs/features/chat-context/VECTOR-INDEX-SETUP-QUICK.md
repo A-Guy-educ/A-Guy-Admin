@@ -88,3 +88,4 @@ You should see:
 - Index definition file: `infra/atlas/vector-index.memory_items.v1.json`
 - Memory system spec: [spec.md](./spec.md)
 
+
