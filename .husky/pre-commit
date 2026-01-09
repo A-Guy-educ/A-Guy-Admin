@@ -81,6 +81,22 @@ fi
 # Run lint-staged
 pnpm exec lint-staged
 
+# Run build check - verify project builds successfully
+echo ""
+echo "🔨 Running build check..."
+pnpm build
+
+if [ $? -ne 0 ]; then
+  echo ""
+  echo "❌ Build failed. Commit cancelled."
+  echo ""
+  echo "To skip: git commit --no-verify"
+  echo "Or use: SKIP_HOOKS=1 git commit"
+  exit 1
+fi
+
+echo "✅ Build check passed"
+
 # Run unit tests - all must pass for commit
 echo ""
 echo "🧪 Running unit tests..."
