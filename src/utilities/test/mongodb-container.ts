@@ -12,7 +12,8 @@ let mongoContainer: StartedMongoDBContainer | null = null
  */
 export async function startMongoContainer(): Promise<string> {
   if (!mongoContainer) {
-    mongoContainer = await new MongoDBContainer('mongo:7').start()
+    // Configure container to wait for MongoDB to be ready
+    mongoContainer = await new MongoDBContainer('mongo:7').withReuse().start()
   }
 
   // Get the mapped port and use localhost for proper resolution
@@ -20,6 +21,7 @@ export async function startMongoContainer(): Promise<string> {
 
   // Use localhost with directConnection=true to bypass replica set discovery
   // This avoids issues with container hostnames in replica set configuration
+  // directConnection=true forces direct connection to this host, ignoring replica set
   return `mongodb://localhost:${port}/test?directConnection=true`
 }
 
