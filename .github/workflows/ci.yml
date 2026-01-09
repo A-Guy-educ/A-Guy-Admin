@@ -158,6 +158,17 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
+    services:
+      mongodb:
+        image: mongo:7
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --eval 'db.runCommand({ ping: 1 })'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -196,7 +207,7 @@ jobs:
       - name: Build application
         run: pnpm build
         env:
-          # Add required build-time env vars here
-          DATABASE_URL: mongodb://localhost/test
-          PAYLOAD_SECRET: test-secret-for-ci
-          NEXT_PUBLIC_SERVER_URL: http://localhost:3000
+          # Use secrets if available, otherwise use service container
+          DATABASE_URL: ${{ secrets.DATABASE_URL || 'mongodb://localhost:27017/test' }}
+          PAYLOAD_SECRET: ${{ secrets.PAYLOAD_SECRET || 'test-secret-for-ci' }}
+          NEXT_PUBLIC_SERVER_URL: ${{ secrets.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3000' }}
