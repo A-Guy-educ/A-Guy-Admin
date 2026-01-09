@@ -13,12 +13,12 @@
 import type { User } from '@/payload-types'
 import type { Access, CollectionConfig } from 'payload'
 import { authenticated } from '../access/authenticated'
-import { Role } from './Users/roles'
+import { AccountRole } from './Users/roles'
 
 const isOwner: Access = ({ req }) => {
   const user = req.user as User | null
   if (!user) return false
-  if (user.role === Role.Admin) return true
+  if (user.role === AccountRole.Admin) return true
 
   return {
     user: {
@@ -76,7 +76,7 @@ export const Conversations: CollectionConfig = {
           required: true,
           options: [
             { label: 'User', value: 'user' },
-            { label: 'Assistant', value: 'model' },
+            { label: 'Assistant', value: 'assistant' },
           ],
         },
         {

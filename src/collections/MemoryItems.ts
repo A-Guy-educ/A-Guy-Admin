@@ -16,17 +16,17 @@
  */
 import type { User } from '@/payload-types'
 import type { Access, CollectionConfig } from 'payload'
-import { Role } from './Users/roles'
+import { AccountRole } from './Users/roles'
 
 const isAdmin: Access = ({ req }) => {
   const user = req.user as User | null
-  return user?.role === Role.Admin
+  return user?.role === AccountRole.Admin
 }
 
 const readOwnMemories: Access = ({ req }) => {
   const user = req.user as User | null
   if (!user) return false
-  if (user.role === Role.Admin) return true
+  if (user.role === AccountRole.Admin) return true
 
   // Users can only read their own memory items
   return {
@@ -181,7 +181,7 @@ export const MemoryItems: CollectionConfig = {
           required: true,
           options: [
             { label: 'User', value: 'user' },
-            { label: 'Model', value: 'model' },
+            { label: 'Assistant', value: 'assistant' },
           ],
           admin: {
             description: 'Who said the message this memory came from',

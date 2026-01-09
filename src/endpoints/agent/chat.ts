@@ -205,7 +205,7 @@ export async function agentChat(req: PayloadRequest & { json?: () => Promise<unk
 
     // 10) Persist assistant response
     const assistantMessage = {
-      role: 'model' as const,
+      role: 'assistant' as const,
       content: result.message || '',
       timestamp: new Date().toISOString(),
     }

@@ -3,14 +3,14 @@
  * Provides conversational assistance using Gemini API
  */
 import { logger } from '@/utilities/logger'
-import { ChatMessageRole } from '../chat-message-role'
+import { ChatRole } from '../chat-message-role'
 import type { ComposedPrompt } from '../context-policy'
 import { getGeminiClient } from '../gemini-ai-provider.server'
 import { AI_MODELS } from '../models'
 import promptContent from '../prompts/exercise-chat-agent-prompt.md'
 
 export interface ChatMessage {
-  role: ChatMessageRole
+  role: ChatRole
   content: string
 }
 
@@ -60,22 +60,22 @@ export async function chatWithExerciseHelper(
         if (msg.role === 'system') {
           // System message becomes user + model acknowledgment
           history.push({
-            role: ChatMessageRole.User,
+            role: ChatRole.User,
             parts: [{ text: msg.content }],
           })
           history.push({
-            role: ChatMessageRole.Model,
+            role: ChatRole.Assistant,
             parts: [{ text: input.acknowledgment }],
           })
         } else if (msg.role === 'user') {
           lastUserMessageContent = msg.content
           history.push({
-            role: ChatMessageRole.User,
+            role: ChatRole.User,
             parts: [{ text: msg.content }],
           })
         } else if (msg.role === 'assistant') {
           history.push({
-            role: ChatMessageRole.Model,
+            role: ChatRole.Assistant,
             parts: [{ text: msg.content }],
           })
         }
@@ -88,7 +88,7 @@ export async function chatWithExerciseHelper(
 
       if (lastUserMessageContent === input.message && history.length > 0) {
         const lastEntry = history[history.length - 1]
-        if (lastEntry.role === ChatMessageRole.User) {
+        if (lastEntry.role === ChatRole.User) {
           // Remove the current user message from history (it will be sent via sendMessage)
           history.pop()
           currentMessage = lastUserMessageContent
@@ -121,11 +121,11 @@ export async function chatWithExerciseHelper(
     const systemPrompt = getSystemPrompt()
     const history: any[] = [
       {
-        role: ChatMessageRole.User,
+        role: ChatRole.User,
         parts: [{ text: systemPrompt }],
       },
       {
-        role: ChatMessageRole.Model,
+        role: ChatRole.Assistant,
         parts: [{ text: input.acknowledgment }],
       },
     ]

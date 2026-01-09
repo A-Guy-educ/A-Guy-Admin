@@ -11,7 +11,7 @@ The `NotebookChat` component was using client-side `useState` with only an initi
 ```typescript
 // Before - Only initial message, no history loading
 const [messages, setMessages] = useState<ChatMessage[]>([
-  { role: ChatMessageRole.Model, content: initialMessage },
+  { role: ChatRole.Assistant, content: initialMessage },
 ])
 ```
 
@@ -109,7 +109,7 @@ Uses existing `conversations` collection:
 - `user` - User ID (relationship)
 - `exercise` - Exercise ID (relationship)
 - `messages` - Array of message objects
-  - `role` - 'user' or 'model'
+  - `role` - 'user' or 'assistant'
   - `content` - Message text
   - `timestamp` - When message was sent
 

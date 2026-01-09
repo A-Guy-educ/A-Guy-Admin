@@ -24,7 +24,7 @@ export const CONTEXT_POLICY_V1 = {
 } as const
 
 export interface Message {
-  role: 'user' | 'model'
+  role: 'user' | 'assistant'
   content: string
   timestamp: string | Date
 }
@@ -90,7 +90,7 @@ export function composePrompt(
   // 4. Recent messages window
   for (const msg of components.recentMessages) {
     messages.push({
-      role: msg.role === 'model' ? 'assistant' : 'user',
+      role: msg.role === 'assistant' ? 'assistant' : 'user',
       content: msg.content,
     })
   }

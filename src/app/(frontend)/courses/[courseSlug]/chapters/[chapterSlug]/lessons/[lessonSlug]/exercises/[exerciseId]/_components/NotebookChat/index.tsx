@@ -4,7 +4,7 @@ import React from 'react'
 import { Lightbulb, CheckCircle, BookOpen, Loader2, Send } from 'lucide-react'
 import { useTranslations } from '@/providers/I18n'
 import { useNotebookChat } from './useNotebookChat'
-import { ChatMessageRole } from '@/lib/ai/chat-message-role'
+import { ChatRole } from '@/lib/ai/chat-message-role'
 import { cn } from '@/utilities/ui'
 
 interface NotebookChatProps {
@@ -51,7 +51,7 @@ export function NotebookChat({ exerciseId }: NotebookChatProps) {
               key={idx}
               className={cn(
                 'p-3 rounded-lg max-w-[85%]',
-                msg.role === ChatMessageRole.User
+                msg.role === ChatRole.User
                   ? 'ml-auto bg-primary text-primary-foreground'
                   : 'mr-auto bg-muted text-foreground',
               )}

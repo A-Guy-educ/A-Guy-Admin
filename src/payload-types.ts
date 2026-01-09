@@ -799,7 +799,7 @@ export interface Conversation {
    */
   messages?:
     | {
-        role: 'user' | 'model';
+        role: 'user' | 'assistant';
         /**
          * Message content
          */
@@ -1021,7 +1021,7 @@ export interface MemoryItem {
     /**
      * Who said the message this memory came from
      */
-    sourceMessageRole: 'user' | 'model';
+    sourceMessageRole: 'user' | 'assistant';
   };
   /**
    * Convenience field for admin UI - DO NOT use for filtering

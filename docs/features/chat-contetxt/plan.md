@@ -925,7 +925,7 @@ export function composePrompt(
   // 4. Recent messages window
   for (const msg of components.recentMessages) {
     messages.push({
-      role: msg.role === 'model' ? 'assistant' : 'user',
+      role: msg.role === 'assistant' ? 'assistant' : 'user',
       content: msg.text,
     })
   }
@@ -1479,7 +1479,7 @@ export async function POST(req: Request) {
 
   // 7. Persist model response
   const modelMessage = {
-    role: 'model',
+    role: 'assistant',
     text: modelResponse.content,
     timestamp: new Date().toISOString(),
   }

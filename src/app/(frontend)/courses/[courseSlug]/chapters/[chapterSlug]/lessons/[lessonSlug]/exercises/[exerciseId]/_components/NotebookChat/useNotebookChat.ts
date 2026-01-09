@@ -1,10 +1,10 @@
 import { useState, useRef, useEffect, useLayoutEffect } from 'react'
 import { toast } from 'sonner'
 import { apiService } from '@/services/api/api-service'
-import { ChatMessageRole } from '@/lib/ai/chat-message-role'
+import { ChatRole } from '@/lib/ai/chat-message-role'
 
 export interface ChatMessage {
-  role: ChatMessageRole
+  role: ChatRole
   content: string
 }
 
@@ -34,7 +34,7 @@ export function useNotebookChat({
   const inputRef = useRef<HTMLInputElement>(null)
 
   const [messages, setMessages] = useState<ChatMessage[]>([
-    { role: ChatMessageRole.Model, content: initialMessage },
+    { role: ChatRole.Assistant, content: initialMessage },
   ])
   const [inputValue, setInputValue] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -64,7 +64,7 @@ export function useNotebookChat({
         if (result.success && result.exists && result.messages.length > 0) {
           // Map API messages to chat messages
           const loadedMessages: ChatMessage[] = result.messages.map((msg) => ({
-            role: msg.role === 'user' ? ChatMessageRole.User : ChatMessageRole.Model,
+            role: msg.role === 'user' ? ChatRole.User : ChatRole.Assistant,
             content: msg.content,
           }))
           setMessages(loadedMessages)
@@ -84,7 +84,7 @@ export function useNotebookChat({
   const sendMessage = async (message: string) => {
     if (!message.trim() || isLoading) return
 
-    const userMessage: ChatMessage = { role: ChatMessageRole.User, content: message }
+    const userMessage: ChatMessage = { role: ChatRole.User, content: message }
     setMessages((prev) => [...prev, userMessage])
     setInputValue('')
     setIsLoading(true)
@@ -102,11 +102,11 @@ export function useNotebookChat({
       }
 
       if (result.message) {
-        const modelMessage: ChatMessage = {
-          role: ChatMessageRole.Model,
+        const assistantMessage: ChatMessage = {
+          role: ChatRole.Assistant,
           content: result.message,
         }
-        setMessages((prev) => [...prev, modelMessage])
+        setMessages((prev) => [...prev, assistantMessage])
       }
     } catch (_error) {
       toast.error(errorMessage)

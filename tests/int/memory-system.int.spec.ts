@@ -14,10 +14,10 @@ import { runSummaryMaintenance } from '@/lib/ai/maintenance'
 import { extractMemoryCandidates, persistMemoryItems } from '@/lib/ai/memory-extraction'
 import { generateSummary } from '@/lib/ai/summary'
 import { retrieveMemoryItems } from '@/lib/ai/vector-search'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import config from '@payload-config'
 import type { Payload } from 'payload'
 import { getPayload } from 'payload'
+import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 let payload: Payload
 let testUserId: string
@@ -148,7 +148,7 @@ describe.skipIf(!hasOpenAIKey)('Memory System Integration Tests', () => {
   describe('Context Policy', () => {
     it('should extract recent window correctly', () => {
       const messages = Array.from({ length: 50 }, (_, i) => ({
-        role: i % 2 === 0 ? ('user' as const) : ('model' as const),
+        role: i % 2 === 0 ? ('user' as const) : ('assistant' as const),
         content: `Message ${i}`,
         timestamp: new Date(Date.now() - (50 - i) * 60000).toISOString(),
       }))
@@ -163,7 +163,7 @@ describe.skipIf(!hasOpenAIKey)('Memory System Integration Tests', () => {
     it('should return all messages if less than window size', () => {
       const messages = [
         { role: 'user' as const, content: 'Hello', timestamp: new Date().toISOString() },
-        { role: 'model' as const, content: 'Hi there!', timestamp: new Date().toISOString() },
+        { role: 'assistant' as const, content: 'Hi there!', timestamp: new Date().toISOString() },
       ]
 
       const recent = getRecentWindow(messages)
@@ -179,7 +179,7 @@ describe.skipIf(!hasOpenAIKey)('Memory System Integration Tests', () => {
           timestamp: new Date().toISOString(),
         },
         {
-          role: 'model' as const,
+          role: 'assistant' as const,
           content: 'TypeScript is a typed superset of JavaScript.',
           timestamp: new Date().toISOString(),
         },
@@ -231,7 +231,7 @@ describe.skipIf(!hasOpenAIKey)('Memory System Integration Tests', () => {
           timestamp: new Date().toISOString(),
         },
         {
-          role: 'model' as const,
+          role: 'assistant' as const,
           content: 'Payload is a headless CMS built with TypeScript.',
           timestamp: new Date().toISOString(),
         },
@@ -241,7 +241,7 @@ describe.skipIf(!hasOpenAIKey)('Memory System Integration Tests', () => {
           timestamp: new Date().toISOString(),
         },
         {
-          role: 'model' as const,
+          role: 'assistant' as const,
           content: 'You define collections in your config file.',
           timestamp: new Date().toISOString(),
         },
@@ -270,7 +270,7 @@ describe.skipIf(!hasOpenAIKey)('Memory System Integration Tests', () => {
           timestamp: new Date().toISOString(),
         },
         {
-          role: 'model' as const,
+          role: 'assistant' as const,
           content: 'Hooks let you add logic to collection operations.',
           timestamp: new Date().toISOString(),
         },
@@ -290,7 +290,7 @@ describe.skipIf(!hasOpenAIKey)('Memory System Integration Tests', () => {
     it('should trigger maintenance when threshold reached (40+ messages)', async () => {
       // Create conversation with 45 messages (above normal threshold)
       const messages = Array.from({ length: 45 }, (_, i) => ({
-        role: (i % 2 === 0 ? 'user' : 'model') as 'user' | 'model',
+        role: (i % 2 === 0 ? 'user' : 'assistant') as 'user' | 'assistant',
         content: `Message ${i}`,
         timestamp: new Date(Date.now() - (45 - i) * 60000).toISOString(),
       }))
@@ -322,7 +322,7 @@ describe.skipIf(!hasOpenAIKey)('Memory System Integration Tests', () => {
     it('should trigger at safety threshold (80+ messages)', async () => {
       // Create conversation with 85 messages (above safety threshold)
       const messages = Array.from({ length: 85 }, (_, i) => ({
-        role: (i % 2 === 0 ? 'user' : 'model') as 'user' | 'model',
+        role: (i % 2 === 0 ? 'user' : 'assistant') as 'user' | 'assistant',
         content: `Safety threshold message ${i}`,
         timestamp: new Date(Date.now() - (85 - i) * 60000).toISOString(),
       }))
@@ -363,7 +363,7 @@ describe.skipIf(!hasOpenAIKey)('Memory System Integration Tests', () => {
           ).messages || []
 
         const newMessages = Array.from({ length: 45 }, (_, i) => ({
-          role: (i % 2 === 0 ? 'user' : 'model') as 'user' | 'model',
+          role: (i % 2 === 0 ? 'user' : 'assistant') as 'user' | 'assistant',
           content: `Cycle ${cycle} Message ${i}`,
           timestamp: new Date(Date.now() - (45 - i) * 60000 + cycle * 100000).toISOString(),
         }))
@@ -397,12 +397,12 @@ describe.skipIf(!hasOpenAIKey)('Memory System Integration Tests', () => {
           timestamp: new Date().toISOString(),
         },
         {
-          role: 'model' as const,
+          role: 'assistant' as const,
           content: 'Nice to meet you Alice!',
           timestamp: new Date().toISOString(),
         },
         ...Array.from({ length: 40 }, (_, i) => ({
-          role: (i % 2 === 0 ? 'user' : 'model') as 'user' | 'model',
+          role: (i % 2 === 0 ? 'user' : 'assistant') as 'user' | 'assistant',
           content: `Filler message ${i}`,
           timestamp: new Date(Date.now() + i * 60000).toISOString(),
         })),
@@ -436,7 +436,7 @@ describe.skipIf(!hasOpenAIKey)('Memory System Integration Tests', () => {
           timestamp: new Date().toISOString(),
         },
         {
-          role: 'model' as const,
+          role: 'assistant' as const,
           content: "That's a great choice for reducing eye strain.",
           timestamp: new Date().toISOString(),
         },
@@ -446,7 +446,7 @@ describe.skipIf(!hasOpenAIKey)('Memory System Integration Tests', () => {
           timestamp: new Date().toISOString(),
         },
         {
-          role: 'model' as const,
+          role: 'assistant' as const,
           content: 'TypeScript is excellent for type safety.',
           timestamp: new Date().toISOString(),
         },
@@ -801,7 +801,7 @@ describe.skipIf(!hasOpenAIKey)('Memory System Integration Tests', () => {
           timestamp: new Date().toISOString(),
         },
         {
-          role: 'model' as const,
+          role: 'assistant' as const,
           content: 'Great! Payload is a powerful CMS.',
           timestamp: new Date().toISOString(),
         },

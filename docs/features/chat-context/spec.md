@@ -119,7 +119,7 @@ Three independent flags control the system (all default to OFF):
   user: string
   exercise: string
   messages: Array<{
-    role: 'user' | 'model'
+    role: 'user' | 'assistant'
     content: string
     timestamp: string
   }>

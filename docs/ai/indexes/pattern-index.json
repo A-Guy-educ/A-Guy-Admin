@@ -92,6 +92,7 @@
         "src/Footer/config.ts",
         "src/Header/config.ts",
         "src/collections/Chapters.ts",
+        "src/collections/Conversations.ts",
         "src/collections/Courses.ts",
         "src/collections/Lessons.ts",
         "src/collections/Pages/index.ts",
@@ -213,11 +214,13 @@
       "files": [
         "src/collections/Categories.ts",
         "src/collections/Chapters.ts",
+        "src/collections/Conversations.ts",
         "src/collections/Courses.ts",
         "src/collections/ExerciseAssets.ts",
         "src/collections/Exercises/index.ts",
         "src/collections/Lessons.ts",
         "src/collections/Media.ts",
+        "src/collections/MemoryItems.ts",
         "src/collections/Pages/index.ts",
         "src/collections/Posts/index.ts",
         "src/collections/PricingPlans.ts",
@@ -238,7 +241,8 @@
       "pattern": "rbac",
       "description": "Role-based access control with admin/user roles",
       "files": [
-        "src/collections/Exercises/index.ts"
+        "src/collections/Exercises/index.ts",
+        "src/collections/MemoryItems.ts"
       ]
     },
     "variant-component": {
@@ -1001,6 +1005,19 @@
         "payload"
       ]
     },
+    "src/collections/Conversations.ts": {
+      "path": "src/collections/Conversations.ts",
+      "type": "unknown",
+      "domain": "general",
+      "patterns": [
+        "access-control",
+        "payload-hooks"
+      ],
+      "aiSummary": "",
+      "dependencies": [
+        "payload"
+      ]
+    },
     "src/collections/Courses.ts": {
       "path": "src/collections/Courses.ts",
       "type": "unknown",
@@ -1067,6 +1084,19 @@
         "payload",
         "path",
         "url"
+      ]
+    },
+    "src/collections/MemoryItems.ts": {
+      "path": "src/collections/MemoryItems.ts",
+      "type": "unknown",
+      "domain": "general",
+      "patterns": [
+        "rbac",
+        "access-control"
+      ],
+      "aiSummary": "",
+      "dependencies": [
+        "payload"
       ]
     },
     "src/collections/Pages/index.ts": {
@@ -2025,8 +2055,8 @@
     }
   },
   "metadata": {
-    "generatedAt": "2026-01-07T19:47:02.038Z",
-    "totalFiles": 132,
+    "generatedAt": "2026-01-09T11:52:06.446Z",
+    "totalFiles": 134,
     "totalPatterns": 12
   }
 }
