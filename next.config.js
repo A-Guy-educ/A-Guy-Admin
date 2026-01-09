@@ -30,10 +30,8 @@ const nextConfig = {
       },
     ],
   },
-  experimental: {
-    outputFileTracingExcludes: {
-      '*': ['**/node_modules/@swc/core*/**/*'],
-    },
+  outputFileTracingExcludes: {
+    '*': ['**/node_modules/@swc/core*/**/*'],
   },
   webpack: (webpackConfig) => {
     webpackConfig.resolve.extensionAlias = {
