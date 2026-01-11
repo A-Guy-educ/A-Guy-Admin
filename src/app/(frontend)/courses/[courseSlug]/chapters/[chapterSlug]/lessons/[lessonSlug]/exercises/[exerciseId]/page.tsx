@@ -6,7 +6,6 @@ import { ExerciseWorkspace } from './_components/ExerciseWorkspace'
 import { ChatInterface } from './_components/ChatInterface'
 import { ExerciseRenderer } from '@/components/ExerciseRenderer'
 import type { ExerciseContentData } from '@/components/ExerciseRenderer/types'
-import type { Exercise } from '@/payload-types'
 
 interface ExercisePageProps {
   params: Promise<{
