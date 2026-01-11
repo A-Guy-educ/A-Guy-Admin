@@ -106,10 +106,10 @@ export function ResizablePane({
 
   const isVertical = orientation === 'horizontal' // vertical resizer for horizontal split
   const resizerClasses = cn(
-    'bg-[#eef2f6] flex items-center justify-center shrink-0 z-20 transition-colors',
+    'bg-muted flex items-center justify-center shrink-0 z-20 transition-colors',
     isVertical
-      ? 'w-3 cursor-col-resize border-x border-[#dee2e6] lg:w-3'
-      : 'h-4 cursor-ns-resize border-y border-[#dee2e6] lg:h-3',
+      ? 'w-3 cursor-col-resize border-x border-border lg:w-3'
+      : 'h-4 cursor-ns-resize border-y border-border lg:h-3',
     isDragging && 'bg-primary/10',
   )
 
@@ -161,7 +161,7 @@ export function ResizablePane({
       >
         <div
           className={cn(
-            'bg-[#cbd5e0] rounded-full transition-all',
+            'bg-muted-foreground/30 rounded-full transition-all',
             isVertical ? 'w-1 h-10' : 'w-10 h-1',
             isDragging && 'bg-primary',
             !isDragging && 'hover:bg-primary hover:scale-110',
