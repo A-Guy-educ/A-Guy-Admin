@@ -61,9 +61,8 @@ export function StudyContent() {
       setIsLoading(true)
       try {
         // Load chapters for the selected course using Payload's standard API
-        const courseId = String(course.id)
         const response = await fetch(
-          `/api/chapters?where[course][equals]=${courseId}&sort=order&depth=1`,
+          `/api/chapters?where[course][equals]=${course.id}&sort=order&depth=1`,
         )
         if (response.ok) {
           const data = await response.json()
