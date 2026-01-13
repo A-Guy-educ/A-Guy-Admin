@@ -8,7 +8,7 @@ vi.mock('fs', () => ({
   readFileSync: (...args: any[]) => readFileSyncMock(...args),
 }))
 
-// Mock OpenAI client so that generateSummary does not perform real network calls.
+// Mock OpenAI client so that extractMemoryCandidates does not perform real network calls.
 const createMock = vi.fn()
 
 class FakeOpenAI {
@@ -26,7 +26,7 @@ vi.mock('openai', () => ({
   OpenAI: FakeOpenAI,
 }))
 
-describe('summary service', () => {
+describe('memory extraction service', () => {
   beforeEach(() => {
     readFileSyncMock.mockReset()
     createMock.mockReset()
@@ -39,31 +39,47 @@ describe('summary service', () => {
     let callCount = 0
     readFileSyncMock.mockImplementation((path: string) => {
       callCount++
-      if (callCount === 1 && path.includes('summary-system-prompt.md') && !path.includes('.default')) {
+      if (callCount === 1 && path.includes('memory-extraction-system-prompt.md') && !path.includes('.default')) {
         const error: NodeJS.ErrnoException = new Error('ENOENT: file not found')
         error.code = 'ENOENT'
         throw error
       }
       // Return default fallback content
-      return 'You are a conversation summarizer for an educational chat system.'
+      return 'You are a memory extraction assistant for an educational platform.'
     })
 
     // Import after mocks so that module initialization uses the mocked fs
-    const { generateSummary } = await import('@/lib/ai/summary')
+    const { extractMemoryCandidates } = await import('@/lib/ai/memory-extraction')
 
     // Mock OpenAI response
     createMock.mockResolvedValue({
-      choices: [{ message: { content: 'mock summary' } }],
-      usage: { total_tokens: 42 },
+      choices: [
+        {
+          message: {
+            content: JSON.stringify({
+              memories: [
+                {
+                  type: 'preference',
+                  text: 'User prefers TypeScript',
+                  importance: 4,
+                  scope: 'user',
+                  reason: 'Explicitly stated preference',
+                },
+              ],
+            }),
+          },
+        },
+      ],
     })
 
     const now = new Date().toISOString()
-    const result = await generateSummary('', [
-      { role: 'user', content: 'Hello', timestamp: now },
-    ])
+    const result = await extractMemoryCandidates(
+      [{ role: 'user', content: 'I prefer TypeScript', timestamp: now }],
+      undefined,
+    )
 
-    expect(result.summary).toBe('mock summary')
-    expect(result.tokensUsed).toBe(42)
+    expect(result).toBeDefined()
+    expect(Array.isArray(result)).toBe(true)
     // Verify it tried to load the default fallback file
     expect(readFileSyncMock).toHaveBeenCalledTimes(2)
   })
@@ -77,21 +93,36 @@ describe('summary service', () => {
     })
 
     // Import after mocks so that module initialization uses the mocked fs
-    const { generateSummary } = await import('@/lib/ai/summary')
+    const { extractMemoryCandidates } = await import('@/lib/ai/memory-extraction')
 
     // Mock OpenAI response
     createMock.mockResolvedValue({
-      choices: [{ message: { content: 'mock summary' } }],
-      usage: { total_tokens: 42 },
+      choices: [
+        {
+          message: {
+            content: JSON.stringify({
+              memories: [
+                {
+                  type: 'preference',
+                  text: 'User prefers TypeScript',
+                  importance: 4,
+                  scope: 'user',
+                  reason: 'Explicitly stated preference',
+                },
+              ],
+            }),
+          },
+        },
+      ],
     })
 
     const now = new Date().toISOString()
-    const result = await generateSummary('', [
-      { role: 'user', content: 'Hello', timestamp: now },
-    ])
+    const result = await extractMemoryCandidates(
+      [{ role: 'user', content: 'I prefer TypeScript', timestamp: now }],
+      undefined,
+    )
 
-    expect(result.summary).toBe('mock summary')
-    expect(result.tokensUsed).toBe(42)
+    expect(result).toBeDefined()
+    expect(Array.isArray(result)).toBe(true)
   })
 })
-
