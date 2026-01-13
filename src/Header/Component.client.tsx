@@ -89,7 +89,6 @@ export const HeaderClient: React.FC<HeaderClientProps> = ({ data }) => {
               className="flex items-center gap-3 flex-shrink-0 hover:opacity-80 transition-opacity"
             >
               <TelescopeLogo className="h-8 w-auto" />
-              <span className="text-xl font-semibold">AGuy</span>
             </Link>
 
             {/* Desktop Navigation */}
