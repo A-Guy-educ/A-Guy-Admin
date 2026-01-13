@@ -135,7 +135,16 @@
       "gradeQuestion": "באיזו כיתה אתה לומד?",
       "selectGrade": "בחר כיתה",
       "gradeLabel": "כיתה {{grade}}",
-      "letsStart": "בואו נתחיל!"
+      "letsStart": "בואו נתחיל!",
+      "loading": "טוען...",
+      "noCoursesAvailable": "אין קורסים זמינים"
     }
+  },
+  "study": {
+    "loading": "טוען...",
+    "chooseCourse": "בחר קורס",
+    "noCoursesAvailable": "אין קורסים זמינים",
+    "studyTopics": "נושאי לימוד",
+    "noTopicsAvailable": "אין נושאים זמינים בקורס זה"
   }
 }

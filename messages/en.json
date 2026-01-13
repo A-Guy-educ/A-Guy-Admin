@@ -135,7 +135,16 @@
       "gradeQuestion": "What grade are you in?",
       "selectGrade": "Select grade",
       "gradeLabel": "Grade {{grade}}",
-      "letsStart": "Let's start!"
+      "letsStart": "Let's start!",
+      "loading": "Loading...",
+      "noCoursesAvailable": "No courses available"
     }
+  },
+  "study": {
+    "loading": "Loading...",
+    "chooseCourse": "Choose Course",
+    "noCoursesAvailable": "No courses available",
+    "studyTopics": "Study Topics",
+    "noTopicsAvailable": "No topics available in this course"
   }
 }
