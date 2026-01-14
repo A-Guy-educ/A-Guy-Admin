@@ -43,9 +43,10 @@ async function getLocale(): Promise<Locale> {
 
 async function getMessages(locale: string) {
   try {
-    return (await import(`../../../messages/${locale}.json`)).default
+    return (await import(`../../../messages/${locale}.json`, { with: { type: 'json' } })).default
   } catch {
-    return (await import(`../../../messages/${defaultLocale}.json`)).default
+    return (await import(`../../../messages/${defaultLocale}.json`, { with: { type: 'json' } }))
+      .default
   }
 }
 
