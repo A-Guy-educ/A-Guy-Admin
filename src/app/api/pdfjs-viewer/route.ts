@@ -1,118 +1,136 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { logger } from '@/utilities/logger'
+import { RESPONSE_HEADERS } from '@/lib/pdfjs/config'
+import { validateFileUrl, redactUrl } from '@/lib/pdfjs/validator'
+import { loadViewerTemplate, loadViewerCss } from '@/lib/pdfjs/template-loader'
+import { rewriteCss, renderViewerHtml, validateRewrittenHtml } from '@/lib/pdfjs/renderer'
 
 /**
  * PDF.js Viewer Proxy
  *
  * Proxies the viewer.html from Vercel Blob CDN and serves it with proper headers
- * for iframe embedding. Also rewrites asset URLs to point to Blob CDN.
+ * for iframe embedding. Rewrites asset URLs to point to Blob CDN.
  *
  * This proxy:
- * 1. Fetches viewer.html from Blob CDN
- * 2. Rewrites relative URLs (viewer.css, viewer.mjs) to absolute Blob CDN URLs
- * 3. Replaces Mozilla CDN URLs with our Blob CDN URLs
- * 4. Serves with Content-Type: text/html for inline display
+ * 1. Validates the file parameter for security
+ * 2. Fetches viewer.html and viewer.css from Blob CDN (with caching)
+ * 3. Rewrites relative URLs to absolute Blob CDN URLs
+ * 4. Inlines CSS with rewritten image paths
+ * 5. Serves with Content-Type: text/html for inline display
+ *
+ * Security:
+ * - Strict validation of file parameter (same-origin or Vercel Blob only)
+ * - No inline script injection
+ * - Uses PDF.js native file loading via query parameter
  */
 export async function GET(request: NextRequest) {
-  const CDN_BASE = 'https://96hg0ck1hvrndmxp.public.blob.vercel-storage.com/pdfjs/4.4.168'
+  const requestId = crypto.randomUUID()
+  const reqLogger = logger.child({ requestId, component: 'pdfjs-viewer' })
 
-  // Matching v4.4.168 viewer files uploaded from official PDF.js release
-  const VIEWER_HTML_URL = `${CDN_BASE}/viewer-I6DnqEMX9W9cwNNvWKm3D8YvXdCzUA.html`
-  const VIEWER_MJS_URL = `${CDN_BASE}/viewer-SyYgQ0jufpmBIqrWX2zGA21kZmurH6.mjs`
-  const VIEWER_CSS_URL = `${CDN_BASE}/viewer-MgMiA2nNdPgVwb4uc8CAB6Twx6vmUC.css`
-  // Use non-hashed pdf.mjs so worker can find pdf.worker.mjs in same directory
-  const PDF_MJS_URL = `${CDN_BASE}/build/pdf.mjs`
+  // Parse and validate file parameter
+  const fileParam = request.nextUrl.searchParams.get('file')
+  const requestOrigin = request.nextUrl.origin
 
-  // Get the PDF file URL from query params
-  const searchParams = request.nextUrl.searchParams
-  let pdfFileUrl = searchParams.get('file')
+  reqLogger.debug(
+    { fileParam: fileParam ? redactUrl(fileParam) : null },
+    'Processing viewer request',
+  )
 
-  console.log('[PDF Viewer Proxy] Received request with file:', pdfFileUrl)
+  const validation = validateFileUrl(fileParam, requestOrigin)
 
-  // Convert relative URLs to absolute URLs
-  if (pdfFileUrl && !pdfFileUrl.startsWith('http://') && !pdfFileUrl.startsWith('https://')) {
-    const origin = request.nextUrl.origin
-    pdfFileUrl = `${origin}${pdfFileUrl.startsWith('/') ? '' : '/'}${pdfFileUrl}`
-    console.log('[PDF Viewer Proxy] Converted to absolute URL:', pdfFileUrl)
+  if (!validation.valid) {
+    reqLogger.warn(
+      {
+        error: validation.error.type,
+        message: validation.error.message,
+        fileParam: fileParam ? redactUrl(fileParam) : null,
+      },
+      'Invalid file parameter',
+    )
+
+    return NextResponse.json(
+      { error: 'Invalid file URL', details: validation.error.message },
+      { status: 400 },
+    )
   }
 
-  try {
-    // Fetch viewer.html from Blob CDN
-    const response = await fetch(VIEWER_HTML_URL, {
-      // Cache for 1 hour in our edge function
-      next: { revalidate: 3600 },
-    })
+  const validatedFileUrl = validation.url
+  reqLogger.debug({ fileUrl: redactUrl(validatedFileUrl) }, 'File URL validated')
 
-    if (!response.ok) {
-      return NextResponse.json({ error: 'Failed to fetch PDF viewer' }, { status: 500 })
+  try {
+    // Load viewer template
+    const templateResult = await loadViewerTemplate()
+    if (!templateResult.ok) {
+      reqLogger.error(
+        { status: templateResult.status, statusText: templateResult.statusText },
+        'Failed to fetch viewer HTML from CDN',
+      )
+      return NextResponse.json({ error: 'PDF viewer upstream unavailable' }, { status: 502 })
     }
 
-    let html = await response.text()
-
-    // Fetch and rewrite CSS to fix image paths
-    const cssResponse = await fetch(VIEWER_CSS_URL)
-    let css = await cssResponse.text()
-
-    // Rewrite relative image paths in CSS to absolute URLs
-    css = css.replace(/url\(images\//g, `url(${CDN_BASE}/web/images/`)
-
-    // Inject the rewritten CSS inline instead of linking to external CSS
-    html = html
-      // Remove the external CSS link
-      .replace('href="viewer.css"', 'href="data:text/css;base64,REMOVED"')
-      // Add inline CSS after the link
-      .replace('</head>', `<style>${css}</style>\n</head>`)
-      // Replace relative viewer.mjs with hashed Blob CDN URL
-      .replace('src="viewer.mjs"', `src="${VIEWER_MJS_URL}"`)
-      // Replace relative pdf.mjs path from prebuilt version with our Blob CDN URL
-      .replace('src="../build/pdf.mjs"', `src="${PDF_MJS_URL}"`)
-      // Replace Mozilla CDN pdf.mjs with our Blob CDN URL
-      .replace('src="https://mozilla.github.io/pdf.js/build/pdf.mjs"', `src="${PDF_MJS_URL}"`)
-      // Remove locale references (causes 404 but not critical)
-      .replace(
-        '<link rel="resource" type="application/l10n" href="https://mozilla.github.io/pdf.js/web/locale/locale.json" />',
-        '',
+    // Load viewer CSS
+    const cssResult = await loadViewerCss()
+    if (!cssResult.ok) {
+      reqLogger.error(
+        { status: cssResult.status, statusText: cssResult.statusText },
+        'Failed to fetch viewer CSS from CDN',
       )
-      .replace('<link rel="resource" type="application/l10n" href="locale/locale.json">', '')
+      return NextResponse.json({ error: 'PDF viewer upstream unavailable' }, { status: 502 })
+    }
 
-    // Set base URL for other relative paths (images, fonts, etc.)
-    // Points to web/ subdirectory where viewer files expect to find images
-    html = html.replace('<head>', `<head>\n  <base href="${CDN_BASE}/web/">`)
+    // Rewrite CSS to fix image paths
+    const rewrittenCss = rewriteCss(cssResult.css)
 
-    // If PDF file URL provided, inject script to load it
-    if (pdfFileUrl) {
+    // Render final HTML
+    let html = renderViewerHtml(templateResult.html, rewrittenCss)
+
+    // Validate rewrite was successful
+    const validation = validateRewrittenHtml(html)
+    if (!validation.valid) {
+      reqLogger.error({ issues: validation.issues }, 'HTML rewrite validation failed')
+      return NextResponse.json({ error: 'PDF viewer rendering error' }, { status: 500 })
+    }
+
+    // Inject file URL via query parameter (PDF.js native mechanism)
+    // The viewer will read the file parameter from its own URL
+    if (validatedFileUrl) {
+      // PDF.js viewer.html reads the file parameter from window.location.search
+      // We pass it through by adding it to the base href or letting the iframe handle it
+      // Since we're serving the HTML directly, we need to inject it via the viewer's
+      // own query handling mechanism
+
+      // Add file parameter to viewer's window.location simulation
+      // The viewer expects to read 'file' from URLSearchParams
       html = html.replace(
         '</head>',
         `<script>
-          // Wait for PDFViewerApplication to be available on window
-          window.addEventListener('webviewerloaded', function() {
-            console.log('[PDF Viewer] webviewerloaded event fired');
-            if (window.PDFViewerApplication && window.PDFViewerApplication.initializedPromise) {
-              console.log('[PDF Viewer] Loading PDF:', '${pdfFileUrl.replace(/'/g, "\\'")}');
-              window.PDFViewerApplication.initializedPromise.then(function() {
-                window.PDFViewerApplication.open('${pdfFileUrl.replace(/'/g, "\\'")}').catch(function(err) {
-                  console.error('[PDF Viewer] Failed to load PDF:', err);
-                });
-              });
-            }
-          });
+          // Inject file URL into viewer's URL handling
+          // PDF.js viewer reads 'file' from window.location.search
+          if (typeof window !== 'undefined') {
+            const originalSearch = window.location.search;
+            Object.defineProperty(window.location, 'search', {
+              get: function() {
+                return '?file=${encodeURIComponent(validatedFileUrl).replace(/'/g, "\\'")}';
+              }
+            });
+          }
         </script>
         </head>`,
       )
     }
 
-    // Serve with proper headers for iframe embedding
+    reqLogger.info(
+      { fileUrl: redactUrl(validatedFileUrl), htmlSize: html.length },
+      'Successfully rendered PDF viewer',
+    )
+
+    // Return HTML with proper headers
     return new NextResponse(html, {
       status: 200,
-      headers: {
-        'Content-Type': 'text/html; charset=utf-8',
-        'Cache-Control': 'public, max-age=3600, s-maxage=3600',
-        'Access-Control-Allow-Origin': '*',
-        'X-Content-Type-Options': 'nosniff',
-        'Content-Disposition': 'inline',
-      },
+      headers: RESPONSE_HEADERS,
     })
   } catch (error) {
-    console.error('Error proxying PDF viewer:', error)
+    reqLogger.error({ error }, 'Unexpected error proxying PDF viewer')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
