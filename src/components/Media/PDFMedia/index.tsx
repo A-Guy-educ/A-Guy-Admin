@@ -24,7 +24,9 @@ export const PDFMedia: React.FC<MediaProps> = (props) => {
     return null
   }
 
-  const viewerUrl = `/pdfjs/viewer.html?file=${encodeURIComponent(pdfUrl)}`
+  // Load PDF.js viewer via proxy (Blob CDN sets Content-Disposition: attachment)
+  // Add version parameter to bust cache when viewer files are updated
+  const viewerUrl = `/api/pdfjs-viewer?file=${encodeURIComponent(pdfUrl)}&v=4.4.168`
 
   return (
     <div className={cn('w-full', className)}>

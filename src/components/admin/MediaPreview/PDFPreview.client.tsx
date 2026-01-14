@@ -15,7 +15,9 @@ export const PDFPreviewClient: React.FC = () => {
     )
   }
 
-  const viewerUrl = `/pdfjs/viewer.html?file=${encodeURIComponent(url)}`
+  // Load PDF.js viewer via proxy (Blob CDN sets Content-Disposition: attachment)
+  // Add version parameter to bust cache when viewer files are updated
+  const viewerUrl = `/api/pdfjs-viewer?file=${encodeURIComponent(url)}&v=4.4.168`
 
   return (
     <div className="p-4">
