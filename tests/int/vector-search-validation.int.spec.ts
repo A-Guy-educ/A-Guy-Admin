@@ -276,9 +276,38 @@ describe.skipIf(!hasOpenAIKey)('Vector Search Validation Integration Tests', () 
       })
       memoryId3 = memory3.id
 
-      // Wait for indexing
-      await new Promise((resolve) => setTimeout(resolve, 5000))
-    }, 60000)
+      // Wait for vector search index to update (can take 10-30 seconds on Atlas)
+      // Poll until documents are searchable or timeout after 60 seconds
+      if (db && testUserId && testConversationId) {
+        const maxWaitTime = 60000 // 60 seconds
+        const pollInterval = 2000 // 2 seconds
+        const startTime = Date.now()
+
+        while (Date.now() - startTime < maxWaitTime) {
+          // Try a simple search to see if documents are indexed
+          const testResult = await retrieveMemoryItems(
+            db,
+            testUserId,
+            'TypeScript',
+            testConversationId,
+          )
+
+          if (testResult.items.length > 0) {
+            // Documents are indexed, we can proceed
+            break
+          }
+
+          // Wait before next poll
+          await new Promise((resolve) => setTimeout(resolve, pollInterval))
+        }
+
+        // Additional short wait to ensure all documents are fully indexed
+        await new Promise((resolve) => setTimeout(resolve, 2000))
+      } else {
+        // Fallback: wait a fixed amount if polling isn't possible
+        await new Promise((resolve) => setTimeout(resolve, 10000))
+      }
+    }, 120000)
 
     afterAll(async () => {
       if (!payload || !hasVectorSearch) return
