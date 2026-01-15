@@ -168,10 +168,10 @@ afterAll(async () => {
 })
 
 /**
- * Simulate fetching conversation via REST API (as frontend does)
- * Uses Payload's Local API with proper access control
+ * Simulate fetching conversation via dedicated endpoint (as frontend does)
+ * Uses Payload's Local API with explicit user filtering to ensure proper access control
  */
-async function fetchConversationViaREST(
+async function fetchConversationViaEndpoint(
   payload: Payload,
   userId: string,
   contextKey: string,
@@ -182,16 +182,18 @@ async function fetchConversationViaREST(
   conversationId?: string
 }> {
   // Simulate what the frontend API service does
-  // Use Payload's Local API with proper access control
+  // Use Payload's Local API with explicit user filtering
   const user = await payload.findByID({
     collection: 'users',
     id: userId,
   })
 
+  // CRITICAL: Explicitly filter by user ID to ensure proper access control
   const result = await payload.find({
     collection: 'conversations',
     where: {
       and: [
+        { user: { equals: userId } }, // Explicitly filter by authenticated user
         { contextKey: { equals: contextKey } },
         { archivedAt: { exists: false } },
       ],
@@ -301,7 +303,7 @@ describe.skipIf(!hasDatabaseUrl)('Conversation History Loading', () => {
     expect(res2.status).toBe(200)
 
     // Simulate frontend fetching conversation history (after "refresh")
-    const fetched = await fetchConversationViaREST(payload, testUserId, contextKey)
+    const fetched = await fetchConversationViaEndpoint(payload, testUserId, contextKey)
 
     expect(fetched.success).toBe(true)
     expect(fetched.exists).toBe(true)
@@ -343,7 +345,7 @@ describe.skipIf(!hasDatabaseUrl)('Conversation History Loading', () => {
     }
 
     // Simulate "refresh" - fetch conversation history again
-    const fetched1 = await fetchConversationViaREST(payload, testUserId, contextKey)
+    const fetched1 = await fetchConversationViaEndpoint(payload, testUserId, contextKey)
 
     expect(fetched1.success).toBe(true)
     expect(fetched1.exists).toBe(true)
@@ -360,7 +362,7 @@ describe.skipIf(!hasDatabaseUrl)('Conversation History Loading', () => {
     expect(userMessages.map((m) => m.content)).toContain('Message 3')
 
     // Simulate another "refresh" - should still work
-    const fetched2 = await fetchConversationViaREST(payload, testUserId, contextKey)
+    const fetched2 = await fetchConversationViaEndpoint(payload, testUserId, contextKey)
 
     expect(fetched2.success).toBe(true)
     expect(fetched2.exists).toBe(true)
@@ -404,7 +406,7 @@ describe.skipIf(!hasDatabaseUrl)('Conversation History Loading', () => {
     const conversationId2 = body2.conversationId
 
     // User 1 should only see their own conversation
-    const fetched1 = await fetchConversationViaREST(payload, testUserId, contextKey)
+    const fetched1 = await fetchConversationViaEndpoint(payload, testUserId, contextKey)
     expect(fetched1.success).toBe(true)
     expect(fetched1.exists).toBe(true)
     expect(fetched1.conversationId).toBe(conversationId1)
@@ -412,7 +414,7 @@ describe.skipIf(!hasDatabaseUrl)('Conversation History Loading', () => {
     expect(fetched1.messages.some((m) => m.content.includes('user 2'))).toBe(false)
 
     // User 2 should only see their own conversation
-    const fetched2 = await fetchConversationViaREST(payload, testUserId2, contextKey)
+    const fetched2 = await fetchConversationViaEndpoint(payload, testUserId2, contextKey)
     expect(fetched2.success).toBe(true)
     expect(fetched2.exists).toBe(true)
     expect(fetched2.conversationId).toBe(conversationId2)
@@ -424,7 +426,7 @@ describe.skipIf(!hasDatabaseUrl)('Conversation History Loading', () => {
     // Use a unique context key that doesn't have a conversation
     const uniqueContextKey = `exercises:${testExerciseId}-nonexistent-${Date.now()}`
 
-    const fetched = await fetchConversationViaREST(payload, testUserId, uniqueContextKey)
+    const fetched = await fetchConversationViaEndpoint(payload, testUserId, uniqueContextKey)
 
     expect(fetched.success).toBe(true)
     expect(fetched.exists).toBe(false)
