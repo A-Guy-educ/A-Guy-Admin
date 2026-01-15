@@ -569,4 +569,242 @@ describe.skipIf(!hasDatabaseUrl)('Conversations Collection', () => {
       })
     })
   })
+
+  describe('Access Control - User Isolation', () => {
+    it('should only return conversations for the authenticated user via find', async () => {
+      // Create second test user for this test
+      const user2 = await payload.create({
+        collection: 'users',
+        data: {
+          email: `conversations-access-${Date.now()}@example.com`,
+          password: 'test123456',
+          role: 'student',
+        },
+      })
+      const testUserId2 = user2.id
+
+      try {
+      const service = new ConversationService(payload)
+
+      // Create conversation for user 1
+      const conv1 = await service.getOrCreateActiveConversation(testUserId, {
+        relationTo: 'exercises',
+        value: testExerciseId,
+      })
+
+      // Create conversation for user 2
+      const conv2 = await service.getOrCreateActiveConversation(testUserId2, {
+        relationTo: 'exercises',
+        value: testExerciseId,
+      })
+
+      // User 1 should only see their own conversation
+      const user1 = await payload.findByID({
+        collection: 'users',
+        id: testUserId,
+      })
+
+      const user1Conversations = await payload.find({
+        collection: 'conversations',
+        where: {
+          archivedAt: { exists: false },
+        },
+        user: user1 as any,
+        overrideAccess: false, // CRITICAL: Enforce access control
+      })
+
+      // Should only see user 1's conversation
+      expect(user1Conversations.docs.length).toBeGreaterThanOrEqual(1)
+      const foundConv1 = user1Conversations.docs.find((c) => c.id === conv1.id)
+      expect(foundConv1).toBeDefined()
+
+      // Should NOT see user 2's conversation
+      const foundConv2 = user1Conversations.docs.find((c) => c.id === conv2.id)
+      expect(foundConv2).toBeUndefined()
+
+      // User 2 should only see their own conversation
+      const user2 = await payload.findByID({
+        collection: 'users',
+        id: testUserId2,
+      })
+
+      const user2Conversations = await payload.find({
+        collection: 'conversations',
+        where: {
+          archivedAt: { exists: false },
+        },
+        user: user2 as any,
+        overrideAccess: false, // CRITICAL: Enforce access control
+      })
+
+      // Should only see user 2's conversation
+      expect(user2Conversations.docs.length).toBeGreaterThanOrEqual(1)
+      const foundConv2InUser2 = user2Conversations.docs.find((c) => c.id === conv2.id)
+      expect(foundConv2InUser2).toBeDefined()
+
+      // Should NOT see user 1's conversation
+      const foundConv1InUser2 = user2Conversations.docs.find((c) => c.id === conv1.id)
+      expect(foundConv1InUser2).toBeUndefined()
+      } finally {
+        // Clean up second user's conversations
+        const conversations = await payload.find({
+          collection: 'conversations',
+          where: {
+            user: { equals: testUserId2 },
+          },
+          limit: 1000,
+        })
+
+        for (const conv of conversations.docs) {
+          await payload.delete({
+            collection: 'conversations',
+            id: conv.id,
+          })
+        }
+
+        // Clean up second user
+        await payload.delete({
+          collection: 'users',
+          id: testUserId2,
+        })
+      }
+    })
+
+    it('should prevent user from accessing another user\'s conversation by ID', async () => {
+      // Create second test user for this test
+      const user2 = await payload.create({
+        collection: 'users',
+        data: {
+          email: `conversations-access-2-${Date.now()}@example.com`,
+          password: 'test123456',
+          role: 'student',
+        },
+      })
+      const testUserId2 = user2.id
+
+      try {
+      const service = new ConversationService(payload)
+
+      // Create conversation for user 2
+      const conv2 = await service.getOrCreateActiveConversation(testUserId2, {
+        relationTo: 'exercises',
+        value: testExerciseId,
+      })
+
+      // User 1 should NOT be able to access user 2's conversation
+      const user1 = await payload.findByID({
+        collection: 'users',
+        id: testUserId,
+      })
+
+      let accessError: Error | null = null
+      try {
+        await payload.findByID({
+          collection: 'conversations',
+          id: conv2.id,
+          user: user1 as any,
+          overrideAccess: false, // CRITICAL: Enforce access control
+        })
+      } catch (error: any) {
+        accessError = error
+      }
+
+      // Should have access denied error
+      expect(accessError).not.toBeNull()
+      expect(
+        accessError?.message || '',
+      ).toMatch(/access|forbidden|permission|unauthorized|not found/i)
+      } finally {
+        // Clean up second user's conversations
+        const conversations = await payload.find({
+          collection: 'conversations',
+          where: {
+            user: { equals: testUserId2 },
+          },
+          limit: 1000,
+        })
+
+        for (const conv of conversations.docs) {
+          await payload.delete({
+            collection: 'conversations',
+            id: conv.id,
+          })
+        }
+
+        // Clean up second user
+        await payload.delete({
+          collection: 'users',
+          id: testUserId2,
+        })
+      }
+    })
+
+    it('should allow admin to access all conversations', async () => {
+      const service = new ConversationService(payload)
+
+      // Create conversations for both users
+      const conv1 = await service.getOrCreateActiveConversation(testUserId, {
+        relationTo: 'exercises',
+        value: testExerciseId,
+      })
+
+      const conv2 = await service.getOrCreateActiveConversation(testUserId2, {
+        relationTo: 'exercises',
+        value: testExerciseId,
+      })
+
+      // Create admin user
+      const admin = await payload.create({
+        collection: 'users',
+        data: {
+          email: `conversations-admin-${Date.now()}@example.com`,
+          password: 'test123456',
+          role: 'admin',
+        },
+      })
+
+      try {
+        // Admin should be able to see all conversations
+        const adminConversations = await payload.find({
+          collection: 'conversations',
+          where: {
+            archivedAt: { exists: false },
+          },
+          user: admin as any,
+          overrideAccess: false, // Access control should allow admin
+        })
+
+        // Admin should see both conversations
+        const foundConv1 = adminConversations.docs.find((c) => c.id === conv1.id)
+        const foundConv2 = adminConversations.docs.find((c) => c.id === conv2.id)
+
+        expect(foundConv1).toBeDefined()
+        expect(foundConv2).toBeDefined()
+
+        // Admin should be able to access any conversation by ID
+        const accessedConv1 = await payload.findByID({
+          collection: 'conversations',
+          id: conv1.id,
+          user: admin as any,
+          overrideAccess: false,
+        })
+
+        const accessedConv2 = await payload.findByID({
+          collection: 'conversations',
+          id: conv2.id,
+          user: admin as any,
+          overrideAccess: false,
+        })
+
+        expect(accessedConv1.id).toBe(conv1.id)
+        expect(accessedConv2.id).toBe(conv2.id)
+      } finally {
+        // Clean up admin user
+        await payload.delete({
+          collection: 'users',
+          id: admin.id,
+        })
+      }
+    })
+  })
 })
