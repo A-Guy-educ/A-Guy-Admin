@@ -99,6 +99,8 @@ jobs:
       PAYLOAD_SECRET: ${{ secrets.PAYLOAD_SECRET || 'test-secret-for-ci' }}
       # OPENAI_API_KEY is required for memory system E2E tests
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY || '' }}
+      # GEMINI_API_KEY is required for memory system E2E tests
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY || '' }}
 
     steps:
       - name: Checkout code
