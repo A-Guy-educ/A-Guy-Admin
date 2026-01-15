@@ -98,6 +98,8 @@ jobs:
       # DATABASE_URL is required for postinstall -> generate:types
       # Falls back to a dummy connection string if secret is not available (e.g., fork PRs)
       DATABASE_URL: ${{ secrets.DATABASE_URL || 'mongodb://localhost:27017/test' }}
+      # PAYLOAD_SECRET is required for Payload CMS initialization in E2E tests
+      PAYLOAD_SECRET: ${{ secrets.PAYLOAD_SECRET || 'test-secret-for-ci' }}
       # OPENAI_API_KEY is required for memory system E2E tests
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY || '' }}
 
