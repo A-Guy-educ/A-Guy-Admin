@@ -34,7 +34,6 @@ import { ConversationService, deriveContextLevel } from '@/lib/services/conversa
 import { logger } from '@/utilities/logger'
 import { PayloadRequest } from 'payload'
 import { z } from 'zod'
-import type { Where } from 'payload'
 
 const requestSchema = z.object({
   message: z.string().min(1).max(1000),
