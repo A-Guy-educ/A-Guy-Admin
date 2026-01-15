@@ -291,8 +291,8 @@ describe('Archived Memory Items', () => {
   it('should differentiate archival patterns', () => {
     // INVARIANT: Conversations: Active = archivedAt field MISSING, Archived = archivedAt field EXISTS
     // MemoryItems: status (active/archived)
-    const conversationArchived = { archivedAt: new Date() }
-    const conversationActive = {} // archivedAt field missing = active
+    const conversationArchived: { archivedAt?: Date } = { archivedAt: new Date() }
+    const conversationActive: { archivedAt?: Date } = {} // archivedAt field missing = active
     const memoryArchived = { status: 'archived' }
     const memoryActive = { status: 'active' }
 

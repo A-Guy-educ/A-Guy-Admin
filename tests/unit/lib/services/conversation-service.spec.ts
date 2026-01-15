@@ -524,7 +524,7 @@ describe('Context Resolution Priority', () => {
 describe('Archival via archivedAt', () => {
   it('should omit archivedAt field for active conversations', () => {
     // INVARIANT: Active = archivedAt field is MISSING
-    const conversation = {
+    const conversation: { id: string; archivedAt?: Date } = {
       id: 'conv-123',
       // archivedAt field missing = active
     }

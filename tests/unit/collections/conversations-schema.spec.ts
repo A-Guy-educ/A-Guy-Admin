@@ -63,7 +63,7 @@ describe('Conversations Schema', () => {
   describe('archivedAt archival pattern', () => {
     it('should omit archivedAt field for active conversations', () => {
       // INVARIANT: Active = archivedAt field is MISSING
-      const activeConversation = {
+      const activeConversation: { id: string; archivedAt?: Date } = {
         id: 'conv-1',
         // archivedAt field is NOT set (missing)
       }
@@ -83,8 +83,8 @@ describe('Conversations Schema', () => {
 
     it('should differentiate active from archived', () => {
       // INVARIANT: Active = field missing, Archived = field exists
-      const active = {} // archivedAt field missing
-      const archived = { archivedAt: new Date() }
+      const active: { archivedAt?: Date } = {} // archivedAt field missing
+      const archived: { archivedAt?: Date } = { archivedAt: new Date() }
 
       expect(active.archivedAt).toBeUndefined()
       expect(archived.archivedAt).toBeDefined()

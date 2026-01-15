@@ -82,7 +82,6 @@ beforeAll(
       testLessonId = lesson.id
     }
   },
-  { timeout: 30000 },
 )
 
 afterAll(async () => {
@@ -106,7 +105,9 @@ afterAll(async () => {
     })
   }
 
-  await payload.db.destroy()
+  if (payload.db?.destroy) {
+    await payload.db.destroy()
+  }
 })
 
 describe.skipIf(!hasDatabaseUrl)('Conversations Collection', () => {
