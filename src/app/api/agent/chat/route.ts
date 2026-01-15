@@ -14,9 +14,19 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
 
     // Validate required fields
-    if (!body.exerciseId) {
-      logger.warn({ requestId }, 'Missing exerciseId in chat request')
-      return NextResponse.json({ error: 'Missing exerciseId', requestId }, { status: 400 })
+    // At least one context ID must be provided (exerciseId, lessonId, chapterId, or courseId)
+    const hasContext =
+      body.exerciseId || body.lessonId || body.chapterId || body.courseId
+
+    if (!hasContext) {
+      logger.warn(
+        { requestId, body: { exerciseId: body.exerciseId, lessonId: body.lessonId, chapterId: body.chapterId, courseId: body.courseId } },
+        'Missing context ID in chat request (requires exerciseId, lessonId, chapterId, or courseId)',
+      )
+      return NextResponse.json(
+        { error: 'Missing context ID (requires exerciseId, lessonId, chapterId, or courseId)', requestId },
+        { status: 400 },
+      )
     }
 
     if (!body.message?.trim()) {
@@ -35,7 +45,16 @@ export async function POST(request: NextRequest) {
       json: async () => body, // Return the already-parsed body
     } as Parameters<typeof agentChat>[0]
 
-    logger.info({ requestId, exerciseId: body.exerciseId }, 'Processing chat request')
+    logger.info(
+      {
+        requestId,
+        exerciseId: body.exerciseId,
+        lessonId: body.lessonId,
+        chapterId: body.chapterId,
+        courseId: body.courseId,
+      },
+      'Processing chat request',
+    )
     return await agentChat(payloadRequest)
   } catch (error) {
     logger.error({ err: error, requestId }, 'Agent chat route error')
