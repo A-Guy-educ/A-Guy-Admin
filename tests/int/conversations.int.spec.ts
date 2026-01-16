@@ -530,7 +530,17 @@ describe.skipIf(!hasDatabaseUrl)('Conversations Collection', () => {
       // Note: MongoDB doesn't support $exists: false in partial index filter expressions
       // We omit archivedAt check and rely on application logic to ensure uniqueness for active conversations
       const indexes = await collection.indexes()
-      const index1Exists = indexes.some((idx: any) => idx.name === 'unique_active_user_exercise')
+      let index1Exists = indexes.some((idx: any) => idx.name === 'unique_active_user_exercise')
+      
+      // Drop and recreate if it exists with wrong definition (has lesson: { $exists: false })
+      if (index1Exists) {
+        const existingIndex = indexes.find((idx: any) => idx.name === 'unique_active_user_exercise')
+        if (existingIndex?.partialFilterExpression?.lesson) {
+          await collection.dropIndex('unique_active_user_exercise')
+          index1Exists = false
+        }
+      }
+      
       if (!index1Exists) {
         await collection.createIndex(
           { user: 1, exercise: 1 },
@@ -538,7 +548,6 @@ describe.skipIf(!hasDatabaseUrl)('Conversations Collection', () => {
             unique: true,
             partialFilterExpression: {
               exercise: { $exists: true },
-              lesson: { $exists: false },
             },
             name: 'unique_active_user_exercise',
           },
@@ -614,7 +623,17 @@ describe.skipIf(!hasDatabaseUrl)('Conversations Collection', () => {
       // Note: MongoDB doesn't support $exists: false in partial index filter expressions
       // We omit archivedAt check and rely on application logic to ensure uniqueness for active conversations
       const indexes = await collection.indexes()
-      const index2Exists = indexes.some((idx: any) => idx.name === 'unique_active_user_lesson')
+      let index2Exists = indexes.some((idx: any) => idx.name === 'unique_active_user_lesson')
+      
+      // Drop and recreate if it exists with wrong definition (has exercise: { $exists: false })
+      if (index2Exists) {
+        const existingIndex = indexes.find((idx: any) => idx.name === 'unique_active_user_lesson')
+        if (existingIndex?.partialFilterExpression?.exercise) {
+          await collection.dropIndex('unique_active_user_lesson')
+          index2Exists = false
+        }
+      }
+      
       if (!index2Exists) {
         await collection.createIndex(
           { user: 1, lesson: 1 },

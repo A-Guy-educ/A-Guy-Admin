@@ -163,6 +163,11 @@ beforeAll(
     }
 
     // Get or create test lesson (required for exercises)
+    // Ensure testChapterId is set before creating lesson
+    if (!testChapterId) {
+      throw new Error('testChapterId must be set before creating lesson')
+    }
+
     const existingLessons = await payload.find({
       collection: 'lessons',
       limit: 1,
