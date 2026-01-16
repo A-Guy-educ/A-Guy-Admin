@@ -1,7 +1,8 @@
-import { useState, useRef, useEffect, useLayoutEffect } from 'react'
-import { toast } from 'sonner'
-import { apiService } from '@/services/api/api-service'
 import { ChatRole } from '@/lib/ai/chat-message-role'
+import { apiService } from '@/services/api/api-service'
+import { logger } from '@/utilities/logger'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { toast } from 'sonner'
 
 export interface ChatMessage {
   role: ChatRole
@@ -18,6 +19,8 @@ interface UseNotebookChatProps {
   acknowledgment: string
   exerciseId?: string
   lessonId?: string
+  chapterId?: string
+  courseId?: string
 }
 
 export function useNotebookChat({
@@ -30,6 +33,8 @@ export function useNotebookChat({
   acknowledgment,
   exerciseId,
   lessonId,
+  chapterId,
+  courseId,
 }: UseNotebookChatProps) {
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -41,6 +46,15 @@ export function useNotebookChat({
   const [inputValue, setInputValue] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [isLoadingHistory, setIsLoadingHistory] = useState(true)
+
+  // Compute contextKey based on available context (priority: Exercise > Lesson > Chapter > Course)
+  const contextKey = useMemo(() => {
+    if (exerciseId) return `exercises:${exerciseId}`
+    if (lessonId) return `lessons:${lessonId}`
+    if (chapterId) return `chapters:${chapterId}`
+    if (courseId) return `courses:${courseId}`
+    return null
+  }, [exerciseId, lessonId, chapterId, courseId])
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -60,28 +74,80 @@ export function useNotebookChat({
   // Load existing conversation history on mount
   useEffect(() => {
     async function loadConversationHistory() {
-      try {
-        const result = await apiService.getConversation(exerciseId, lessonId)
+      if (!contextKey) {
+        setIsLoadingHistory(false)
+        return
+      }
 
-        if (result.success && result.exists && result.messages.length > 0) {
-          // Map API messages to chat messages
-          const loadedMessages: ChatMessage[] = result.messages.map((msg) => ({
-            role: msg.role === 'user' ? ChatRole.User : ChatRole.Assistant,
-            content: msg.content,
-          }))
-          setMessages(loadedMessages)
+      try {
+        const result = await apiService.getConversation(contextKey)
+
+        if (result.authRequired) {
+          // Keep initial message, user needs to log in
+          setIsLoadingHistory(false)
+          return
         }
-        // If no conversation exists, keep the initial welcome message
+
+        if (result.success && result.exists) {
+          if (result.messages && result.messages.length > 0) {
+            // Map API messages to chat messages
+            const loadedMessages: ChatMessage[] = result.messages.map((msg) => ({
+              role:
+                msg.role === ChatRole.User || msg.role === 'user'
+                  ? ChatRole.User
+                  : ChatRole.Assistant,
+              content: msg.content,
+            }))
+
+            // Only update messages if we have valid messages to avoid clearing the chat
+            if (loadedMessages.length > 0) {
+              setMessages(loadedMessages)
+            } else {
+              logger.warn(
+                {
+                  conversationId: result.conversationId,
+                  contextKey,
+                  rawMessages: result.messages,
+                },
+                '[useNotebookChat] Conversation exists but loaded messages are empty',
+              )
+            }
+          } else {
+            // Conversation exists but has no messages yet - keep initial welcome message
+            logger.warn(
+              {
+                conversationId: result.conversationId,
+                contextKey,
+              },
+              '[useNotebookChat] Conversation exists but has no messages',
+            )
+          }
+        } else if (result.success && !result.exists) {
+          // No conversation exists yet - keep initial welcome message
+          // This is expected for new conversations
+          logger.debug({ contextKey }, '[useNotebookChat] No conversation found for contextKey')
+        } else {
+          // API call failed
+          logger.error(
+            {
+              error: result.error,
+              contextKey,
+              success: result.success,
+              exists: result.exists,
+            },
+            '[useNotebookChat] Failed to load conversation',
+          )
+        }
       } catch (error) {
         // Fail silently - keep initial message
-        console.error('Failed to load conversation history:', error)
+        logger.error({ err: error, contextKey }, '[useNotebookChat] Failed to load conversation history')
       } finally {
         setIsLoadingHistory(false)
       }
     }
 
     loadConversationHistory()
-  }, [exerciseId, lessonId, initialMessage])
+  }, [contextKey])
 
   const sendMessage = async (message: string) => {
     if (!message.trim() || isLoading) return
@@ -92,7 +158,12 @@ export function useNotebookChat({
     setIsLoading(true)
 
     try {
-      const result = await apiService.chat(message, acknowledgment, exerciseId, lessonId)
+      const result = await apiService.chat(message, acknowledgment, {
+        exerciseId,
+        lessonId,
+        chapterId,
+        courseId,
+      })
 
       if (!result.success) {
         if (result.authRequired) {
@@ -117,6 +188,29 @@ export function useNotebookChat({
       inputRef.current?.focus()
     }
   }
+
+  const handleReset = useCallback(async () => {
+    if (!contextKey || isLoading) return
+
+    const confirmed = confirm(
+      'Are you sure you want to reset the conversation? This will start a new chat.',
+    )
+    if (!confirmed) return
+
+    try {
+      const result = await apiService.resetChat(contextKey)
+
+      if (result.success) {
+        // Clear messages and show welcome
+        setMessages([{ role: ChatRole.Assistant, content: initialMessage }])
+        toast.success('Conversation reset')
+      } else {
+        toast.error(result.error || 'Failed to reset conversation')
+      }
+    } catch (_error) {
+      toast.error('Failed to reset conversation')
+    }
+  }, [contextKey, isLoading, initialMessage])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -147,9 +241,11 @@ export function useNotebookChat({
     messagesContainerRef,
     messagesEndRef,
     inputRef,
+    contextKey,
     setInputValue,
     handleSubmit,
     handleKeyDown,
     handleQuickAction,
+    handleReset,
   }
 }

@@ -73,8 +73,11 @@ fi
   .husky/check-no-css &
   PID2=$!
 
-  # Wait for both to complete
-  wait $PID1 $PID2
+  .husky/check-archivedAt-invariant &
+  PID3=$!
+
+  # Wait for all to complete
+  wait $PID1 $PID2 $PID3
 }
 
 # If any check failed, exit
