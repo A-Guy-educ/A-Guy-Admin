@@ -108,7 +108,7 @@ export async function getConversation(req: PayloadRequest & { json?: () => Promi
     const messages = rawMessages
       .filter((msg) => msg && msg.role && msg.content) // Filter out invalid messages
       .map((msg) => ({
-        role: msg.role === ChatRole.User || msg.role === 'user' ? ChatRole.User : ChatRole.Assistant,
+        role: msg.role === 'user' ? ChatRole.User : ChatRole.Assistant,
         content: msg.content,
       }))
 
