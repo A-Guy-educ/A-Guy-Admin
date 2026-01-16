@@ -74,167 +74,164 @@ let testChapterId: string
 let testCourseId: string
 let originalDatabaseUrl: string | undefined
 
-beforeAll(
-  async () => {
-    // Save original DATABASE_URL and unset it before starting testcontainers
-    // (testcontainers will fail if DATABASE_URL is set to Atlas)
-    originalDatabaseUrl = process.env.DATABASE_URL
-    // @ts-expect-error - TypeScript doesn't allow delete on process.env, but it's safe here
-    delete process.env.DATABASE_URL
+beforeAll(async () => {
+  // Save original DATABASE_URL and unset it before starting testcontainers
+  // (testcontainers will fail if DATABASE_URL is set to Atlas)
+  originalDatabaseUrl = process.env.DATABASE_URL
+  // @ts-expect-error - TypeScript doesn't allow delete on process.env, but it's safe here
+  delete process.env.DATABASE_URL
 
-    // Start MongoDB test container and set DATABASE_URL to testcontainers URL
-    const mongoUri = await startMongoContainer()
-    process.env.DATABASE_URL = mongoUri
+  // Start MongoDB test container and set DATABASE_URL to testcontainers URL
+  const mongoUri = await startMongoContainer()
+  process.env.DATABASE_URL = mongoUri
 
-    // Import config AFTER setting DATABASE_URL so it uses the test database
-    // The config reads process.env.DATABASE_URL at evaluation time
-    const config = await import('@payload-config')
+  // Import config AFTER setting DATABASE_URL so it uses the test database
+  // The config reads process.env.DATABASE_URL at evaluation time
+  const config = await import('@payload-config')
 
-    // Initialize Payload with the test MongoDB
-    // testcontainers waits for MongoDB to be ready before start() resolves
-    payload = await getPayload({ config: config.default })
+  // Initialize Payload with the test MongoDB
+  // testcontainers waits for MongoDB to be ready before start() resolves
+  payload = await getPayload({ config: config.default })
 
-    // Create first test user
-    const user1 = await payload.create({
-      collection: 'users',
-      data: {
-        email: `conv-history-${Date.now()}@example.com`,
-        password: 'test123456',
-        role: 'student',
-      },
-    })
-    testUserId = user1.id
+  // Create first test user
+  const user1 = await payload.create({
+    collection: 'users',
+    data: {
+      email: `conv-history-${Date.now()}@example.com`,
+      password: 'test123456',
+      role: 'student',
+    },
+  })
+  testUserId = user1.id
 
-    // Create second test user (for access control test)
-    const user2 = await payload.create({
-      collection: 'users',
-      data: {
-        email: `conv-history-2-${Date.now()}@example.com`,
-        password: 'test123456',
-        role: 'student',
-      },
-    })
-    testUserId2 = user2.id
+  // Create second test user (for access control test)
+  const user2 = await payload.create({
+    collection: 'users',
+    data: {
+      email: `conv-history-2-${Date.now()}@example.com`,
+      password: 'test123456',
+      role: 'student',
+    },
+  })
+  testUserId2 = user2.id
 
-    // Get or create test category (required for courses)
-    const existingCategories = await payload.find({
+  // Get or create test category (required for courses)
+  const existingCategories = await payload.find({
+    collection: 'categories',
+    limit: 1,
+  })
+
+  let testCategoryId: string
+  if (existingCategories.docs.length > 0) {
+    testCategoryId = existingCategories.docs[0].id
+  } else {
+    const category = await payload.create({
       collection: 'categories',
-      limit: 1,
+      data: {
+        title: 'Test Category',
+        slug: `test-category-${Date.now()}`,
+      } as any,
     })
+    testCategoryId = category.id
+  }
 
-    let testCategoryId: string
-    if (existingCategories.docs.length > 0) {
-      testCategoryId = existingCategories.docs[0].id
-    } else {
-      const category = await payload.create({
-        collection: 'categories',
-        data: {
-          title: 'Test Category',
-          slug: `test-category-${Date.now()}`,
-        } as any,
-      })
-      testCategoryId = category.id
-    }
+  // Get or create test course (required for chapters)
+  const existingCourses = await payload.find({
+    collection: 'courses',
+    limit: 1,
+  })
 
-    // Get or create test course (required for chapters)
-    const existingCourses = await payload.find({
+  if (existingCourses.docs.length > 0) {
+    testCourseId = existingCourses.docs[0].id
+  } else {
+    const course = await payload.create({
       collection: 'courses',
-      limit: 1,
+      data: {
+        courseLabel: 'Test',
+        title: 'Conversation History Test Course',
+        slug: `conv-history-${Date.now()}`,
+        order: 0,
+        status: 'published',
+        isActive: true,
+        categories: [testCategoryId],
+      } as any,
     })
+    testCourseId = course.id
+  }
 
-    if (existingCourses.docs.length > 0) {
-      testCourseId = existingCourses.docs[0].id
-    } else {
-      const course = await payload.create({
-        collection: 'courses',
-        data: {
-          courseLabel: 'Test',
-          title: 'Conversation History Test Course',
-          slug: `conv-history-${Date.now()}`,
-          order: 0,
-          status: 'published',
-          isActive: true,
-          categories: [testCategoryId],
-        } as any,
-      })
-      testCourseId = course.id
-    }
+  // Get or create test chapter (required for lessons)
+  const existingChapters = await payload.find({
+    collection: 'chapters',
+    limit: 1,
+  })
 
-    // Get or create test chapter (required for lessons)
-    const existingChapters = await payload.find({
+  if (existingChapters.docs.length > 0) {
+    testChapterId = existingChapters.docs[0].id
+  } else {
+    const chapter = await payload.create({
       collection: 'chapters',
-      limit: 1,
+      data: {
+        course: testCourseId,
+        title: 'Conversation History Test Chapter',
+        slug: `conv-history-${Date.now()}`,
+        order: 0,
+        status: 'published',
+        isActive: true,
+      } as any,
     })
+    testChapterId = chapter.id
+  }
 
-    if (existingChapters.docs.length > 0) {
-      testChapterId = existingChapters.docs[0].id
-    } else {
-      const chapter = await payload.create({
-        collection: 'chapters',
-        data: {
-          course: testCourseId,
-          title: 'Conversation History Test Chapter',
-          slug: `conv-history-${Date.now()}`,
-          order: 0,
-          status: 'published',
-          isActive: true,
-        } as any,
-      })
-      testChapterId = chapter.id
-    }
+  // Get or create test lesson (required for exercises)
+  // Ensure testChapterId is set before creating lesson
+  if (!testChapterId) {
+    throw new Error('testChapterId must be set before creating lesson')
+  }
 
-    // Get or create test lesson (required for exercises)
-    // Ensure testChapterId is set before creating lesson
-    if (!testChapterId) {
-      throw new Error('testChapterId must be set before creating lesson')
-    }
+  const existingLessons = await payload.find({
+    collection: 'lessons',
+    limit: 1,
+  })
 
-    const existingLessons = await payload.find({
+  if (existingLessons.docs.length > 0) {
+    testLessonId = existingLessons.docs[0].id
+  } else {
+    const lesson = await payload.create({
       collection: 'lessons',
-      limit: 1,
+      data: {
+        chapter: testChapterId,
+        title: 'Conversation History Test Lesson',
+        slug: `conv-history-${Date.now()}`,
+        order: 0,
+        status: 'published',
+        isActive: true,
+      } as any,
     })
+    testLessonId = lesson.id
+  }
 
-    if (existingLessons.docs.length > 0) {
-      testLessonId = existingLessons.docs[0].id
-    } else {
-      const lesson = await payload.create({
-        collection: 'lessons',
-        data: {
-          chapter: testChapterId,
-          title: 'Conversation History Test Lesson',
-          slug: `conv-history-${Date.now()}`,
-          order: 0,
-          status: 'published',
-          isActive: true,
-        } as any,
-      })
-      testLessonId = lesson.id
-    }
+  // Get or create test exercise
+  const existingExercises = await payload.find({
+    collection: 'exercises',
+    limit: 1,
+  })
 
-    // Get or create test exercise
-    const existingExercises = await payload.find({
+  if (existingExercises.docs.length > 0) {
+    testExerciseId = existingExercises.docs[0].id
+  } else {
+    const exercise = await payload.create({
       collection: 'exercises',
-      limit: 1,
+      data: {
+        title: 'Conversation History Test Exercise',
+        slug: `conv-history-${Date.now()}`,
+        lesson: testLessonId,
+        order: 0,
+        _status: 'published',
+      } as any,
     })
-
-    if (existingExercises.docs.length > 0) {
-      testExerciseId = existingExercises.docs[0].id
-    } else {
-      const exercise = await payload.create({
-        collection: 'exercises',
-        data: {
-          title: 'Conversation History Test Exercise',
-          slug: `conv-history-${Date.now()}`,
-          lesson: testLessonId,
-          order: 0,
-          _status: 'published',
-        } as any,
-      })
-      testExerciseId = exercise.id
-    }
-  },
-  60000,
-)
+    testExerciseId = exercise.id
+  }
+}, 60000)
 
 afterAll(async () => {
   if (!payload) {
@@ -317,10 +314,7 @@ async function fetchConversationViaREST(
   const result = await payload.find({
     collection: 'conversations',
     where: {
-      and: [
-        { contextKey: { equals: contextKey } },
-        { archivedAt: { exists: false } },
-      ],
+      and: [{ contextKey: { equals: contextKey } }, { archivedAt: { exists: false } }],
     },
     limit: 1,
     sort: '-lastMessageAt', // Match actual implementation - sort by most recent
@@ -337,11 +331,13 @@ async function fetchConversationViaREST(
   }
 
   const conversation = result.docs[0]
-  const messages = ((conversation.messages as Array<{
-    role: string
-    content: string
-    timestamp?: string
-  }>) || []).map((msg) => ({
+  const messages = (
+    (conversation.messages as Array<{
+      role: string
+      content: string
+      timestamp?: string
+    }>) || []
+  ).map((msg) => ({
     role: msg.role,
     content: msg.content,
   }))
@@ -651,8 +647,16 @@ describe('Conversation History Loading', () => {
         contextRef: { relationTo: 'exercises', value: testExerciseId },
         contextKey,
         messages: [
-          { role: 'user', content: 'First message', timestamp: new Date(Date.now() - 2000).toISOString() },
-          { role: 'assistant', content: 'Response 1', timestamp: new Date(Date.now() - 1000).toISOString() },
+          {
+            role: 'user',
+            content: 'First message',
+            timestamp: new Date(Date.now() - 2000).toISOString(),
+          },
+          {
+            role: 'assistant',
+            content: 'Response 1',
+            timestamp: new Date(Date.now() - 1000).toISOString(),
+          },
         ],
         lastMessageAt: new Date(Date.now() - 1000).toISOString(),
       } as any,
@@ -737,10 +741,7 @@ describe('Conversation History Loading', () => {
     const user1Result = await payload.find({
       collection: 'conversations',
       where: {
-        and: [
-          { contextKey: { equals: contextKey } },
-          { archivedAt: { exists: false } },
-        ],
+        and: [{ contextKey: { equals: contextKey } }, { archivedAt: { exists: false } }],
       },
       limit: 1,
       sort: '-lastMessageAt',
@@ -750,9 +751,10 @@ describe('Conversation History Loading', () => {
 
     expect(user1Result.docs.length).toBe(1)
     expect(user1Result.docs[0].id).toBe(conv1.id)
-    const user1UserId = typeof user1Result.docs[0].user === 'object' 
-      ? user1Result.docs[0].user.id 
-      : user1Result.docs[0].user
+    const user1UserId =
+      typeof user1Result.docs[0].user === 'object'
+        ? user1Result.docs[0].user.id
+        : user1Result.docs[0].user
     expect(user1UserId).toBe(testUserId)
     expect(user1Result.docs[0].messages?.some((m: any) => m.content.includes('User 1'))).toBe(true)
     expect(user1Result.docs[0].messages?.some((m: any) => m.content.includes('User 2'))).toBe(false)
@@ -761,10 +763,7 @@ describe('Conversation History Loading', () => {
     const user2Result = await payload.find({
       collection: 'conversations',
       where: {
-        and: [
-          { contextKey: { equals: contextKey } },
-          { archivedAt: { exists: false } },
-        ],
+        and: [{ contextKey: { equals: contextKey } }, { archivedAt: { exists: false } }],
       },
       limit: 1,
       sort: '-lastMessageAt',
@@ -774,9 +773,10 @@ describe('Conversation History Loading', () => {
 
     expect(user2Result.docs.length).toBe(1)
     expect(user2Result.docs[0].id).toBe(conv2.id)
-    const user2UserId = typeof user2Result.docs[0].user === 'object' 
-      ? user2Result.docs[0].user.id 
-      : user2Result.docs[0].user
+    const user2UserId =
+      typeof user2Result.docs[0].user === 'object'
+        ? user2Result.docs[0].user.id
+        : user2Result.docs[0].user
     expect(user2UserId).toBe(testUserId2)
     expect(user2Result.docs[0].messages?.some((m: any) => m.content.includes('User 2'))).toBe(true)
     expect(user2Result.docs[0].messages?.some((m: any) => m.content.includes('User 1'))).toBe(false)
@@ -785,10 +785,7 @@ describe('Conversation History Loading', () => {
     const noUserResult = await payload.find({
       collection: 'conversations',
       where: {
-        and: [
-          { contextKey: { equals: contextKey } },
-          { archivedAt: { exists: false } },
-        ],
+        and: [{ contextKey: { equals: contextKey } }, { archivedAt: { exists: false } }],
       },
       limit: 1,
       sort: '-lastMessageAt',
@@ -828,10 +825,7 @@ describe('Conversation History Loading', () => {
     // Simulate the exact query structure that the frontend sends
     // This matches the query in api-service.ts:getConversation()
     const whereQuery: any = {
-      and: [
-        { contextKey: { equals: contextKey } },
-        { archivedAt: { exists: false } },
-      ],
+      and: [{ contextKey: { equals: contextKey } }, { archivedAt: { exists: false } }],
     }
 
     const user = await payload.findByID({ collection: 'users', id: testUserId })
@@ -852,11 +846,10 @@ describe('Conversation History Loading', () => {
     expect(result.docs.length).toBe(1)
     expect(result.docs[0].id).toBe(conv.id)
     expect(result.docs[0].contextKey).toBe(contextKey)
-    
+
     // Verify user ownership
-    const conversationUserId = typeof result.docs[0].user === 'object' 
-      ? result.docs[0].user.id 
-      : result.docs[0].user
+    const conversationUserId =
+      typeof result.docs[0].user === 'object' ? result.docs[0].user.id : result.docs[0].user
     expect(conversationUserId).toBe(testUserId)
 
     // Verify messages are included
@@ -908,7 +901,7 @@ describe('Conversation History Loading', () => {
 
     // Validate REST API endpoint structure:
     // GET /api/conversations?where={...}&limit=1&sort=-lastMessageAt&depth=0
-    // 
+    //
     // The where query should be:
     // {
     //   and: [
@@ -920,10 +913,7 @@ describe('Conversation History Loading', () => {
     // Access control (isOwner) automatically adds: { user: { equals: user.id } }
 
     const whereQuery: any = {
-      and: [
-        { contextKey: { equals: contextKey } },
-        { archivedAt: { exists: false } },
-      ],
+      and: [{ contextKey: { equals: contextKey } }, { archivedAt: { exists: false } }],
     }
 
     // Test User 1 - should only see their own conversation
@@ -942,13 +932,14 @@ describe('Conversation History Loading', () => {
     expect(user1Result).toHaveProperty('docs')
     expect(user1Result).toHaveProperty('totalDocs')
     expect(Array.isArray(user1Result.docs)).toBe(true)
-    
+
     // Verify access control filtered to User 1 only
     expect(user1Result.docs.length).toBe(1)
     expect(user1Result.docs[0].id).toBe(conv1.id)
-    const user1UserId = typeof user1Result.docs[0].user === 'object' 
-      ? user1Result.docs[0].user.id 
-      : user1Result.docs[0].user
+    const user1UserId =
+      typeof user1Result.docs[0].user === 'object'
+        ? user1Result.docs[0].user.id
+        : user1Result.docs[0].user
     expect(user1UserId).toBe(testUserId)
 
     // Test User 2 - should only see their own conversation
@@ -966,9 +957,10 @@ describe('Conversation History Loading', () => {
     // Verify access control filtered to User 2 only
     expect(user2Result.docs.length).toBe(1)
     expect(user2Result.docs[0].id).toBe(conv2.id)
-    const user2UserId = typeof user2Result.docs[0].user === 'object' 
-      ? user2Result.docs[0].user.id 
-      : user2Result.docs[0].user
+    const user2UserId =
+      typeof user2Result.docs[0].user === 'object'
+        ? user2Result.docs[0].user.id
+        : user2Result.docs[0].user
     expect(user2UserId).toBe(testUserId2)
 
     // Verify REST API response format

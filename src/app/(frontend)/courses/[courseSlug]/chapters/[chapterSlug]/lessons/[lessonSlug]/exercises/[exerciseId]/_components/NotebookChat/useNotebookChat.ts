@@ -140,7 +140,10 @@ export function useNotebookChat({
         }
       } catch (error) {
         // Fail silently - keep initial message
-        logger.error({ err: error, contextKey }, '[useNotebookChat] Failed to load conversation history')
+        logger.error(
+          { err: error, contextKey },
+          '[useNotebookChat] Failed to load conversation history',
+        )
       } finally {
         setIsLoadingHistory(false)
       }

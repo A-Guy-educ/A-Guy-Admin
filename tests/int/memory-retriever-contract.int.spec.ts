@@ -112,7 +112,14 @@ async function insertMemoryItem(data: {
       contextKey: data.contextKey || 'global',
       conversationId: data.conversationId,
       importance: data.importance || 3,
-      type: (data.type || 'fact') as 'preference' | 'decision' | 'fact' | 'open_loop' | 'profile' | 'constraint' | 'other',
+      type: (data.type || 'fact') as
+        | 'preference'
+        | 'decision'
+        | 'fact'
+        | 'open_loop'
+        | 'profile'
+        | 'constraint'
+        | 'other',
       source: {
         sourceMessageTimestamp: new Date().toISOString(),
         sourceMessageRole: ChatRole.User,
@@ -283,14 +290,7 @@ describe.skipIf(!hasDatabaseUrl)('Retriever Contract Tests (Deterministic)', () 
     const db = (payload.db as any).connection.db
 
     try {
-      const result = await retrieveMemoryItems(
-        db,
-        userId,
-        'memory',
-        undefined,
-        undefined,
-        payload,
-      )
+      const result = await retrieveMemoryItems(db, userId, 'memory', undefined, undefined, payload)
 
       if (result.items.length > 0) {
         expect(result.items.every((item) => item.status === 'active')).toBe(true)
@@ -342,14 +342,7 @@ describe.skipIf(!hasDatabaseUrl)('Retriever Contract Tests (Deterministic)', () 
 
     // Retrieve for convB (different conversation)
     try {
-      const result = await retrieveMemoryItems(
-        db,
-        userId,
-        'preference',
-        convB,
-        undefined,
-        payload,
-      )
+      const result = await retrieveMemoryItems(db, userId, 'preference', convB, undefined, payload)
 
       if (result.items.length > 0) {
         // ConvA-scoped memory should NOT appear
@@ -447,14 +440,7 @@ describe.skipIf(!hasDatabaseUrl)('Retriever Contract Tests (Deterministic)', () 
     const db = (payload.db as any).connection.db
 
     try {
-      const result = await retrieveMemoryItems(
-        db,
-        userId,
-        'memory',
-        undefined,
-        undefined,
-        payload,
-      )
+      const result = await retrieveMemoryItems(db, userId, 'memory', undefined, undefined, payload)
 
       // Should respect limit (max 8)
       expect(result.items.length).toBeLessThanOrEqual(8)

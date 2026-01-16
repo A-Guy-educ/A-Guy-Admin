@@ -25,151 +25,47 @@ let testLessonId: string
 let testChapterId: string
 let testCourseId: string
 
-beforeAll(
-  async () => {
-    if (!hasDatabaseUrl) {
-      return
-    }
+beforeAll(async () => {
+  if (!hasDatabaseUrl) {
+    return
+  }
 
-    payload = await getPayload({ config })
+  payload = await getPayload({ config })
 
-    // Create test user
-    const user = await payload.create({
-      collection: 'users',
-      data: {
-        email: `conversations-int-${Date.now()}@example.com`,
-        password: 'test123456',
-        role: 'student',
-      },
-    })
-    testUserId = user.id
+  // Create test user
+  const user = await payload.create({
+    collection: 'users',
+    data: {
+      email: `conversations-int-${Date.now()}@example.com`,
+      password: 'test123456',
+      role: 'student',
+    },
+  })
+  testUserId = user.id
 
-    // Get or create test exercise
-    const existingExercises = await payload.find({
-      collection: 'exercises',
-      limit: 1,
-    })
+  // Get or create test exercise
+  const existingExercises = await payload.find({
+    collection: 'exercises',
+    limit: 1,
+  })
 
-    if (existingExercises.docs.length > 0) {
-      testExerciseId = existingExercises.docs[0].id
-    } else {
-      // Need full hierarchy: course -> chapter -> lesson -> exercise
-      let exerciseCourseId: string
-      let exerciseChapterId: string
-      let exerciseLessonId: string
+  if (existingExercises.docs.length > 0) {
+    testExerciseId = existingExercises.docs[0].id
+  } else {
+    // Need full hierarchy: course -> chapter -> lesson -> exercise
+    let exerciseCourseId: string
+    let exerciseChapterId: string
+    let exerciseLessonId: string
 
-      // Get or create category (required for courses)
-      const existingCategories = await payload.find({
-        collection: 'categories',
-        limit: 1,
-      })
-
-      let exerciseCategoryId: string
-      if (existingCategories.docs.length > 0) {
-        exerciseCategoryId = existingCategories.docs[0].id
-      } else {
-        const category = await payload.create({
-          collection: 'categories',
-          data: {
-            title: 'Test Category',
-            slug: `test-category-${Date.now()}`,
-          } as any,
-        })
-        exerciseCategoryId = category.id
-      }
-
-      // Get or create course
-      const existingCourses = await payload.find({
-        collection: 'courses',
-        limit: 1,
-      })
-
-      if (existingCourses.docs.length > 0) {
-        exerciseCourseId = existingCourses.docs[0].id
-      } else {
-        const course = await payload.create({
-          collection: 'courses',
-          data: {
-            courseLabel: 'Test',
-            title: 'Conversations Integration Test Course',
-            slug: `conversations-int-${Date.now()}`,
-            order: 0,
-            status: 'published',
-            isActive: true,
-            categories: [exerciseCategoryId],
-          } as any,
-        })
-        exerciseCourseId = course.id
-      }
-
-      // Get or create chapter
-      const existingChapters = await payload.find({
-        collection: 'chapters',
-        limit: 1,
-      })
-
-      if (existingChapters.docs.length > 0) {
-        exerciseChapterId = existingChapters.docs[0].id
-      } else {
-        const chapter = await payload.create({
-          collection: 'chapters',
-          data: {
-            course: exerciseCourseId,
-            title: 'Conversations Integration Test Chapter',
-            slug: `conversations-int-${Date.now()}`,
-            order: 0,
-            status: 'published',
-            isActive: true,
-          } as any,
-        })
-        exerciseChapterId = chapter.id
-      }
-
-      // Get or create lesson
-      const existingLessons = await payload.find({
-        collection: 'lessons',
-        limit: 1,
-      })
-
-      if (existingLessons.docs.length > 0) {
-        exerciseLessonId = existingLessons.docs[0].id
-      } else {
-        const lesson = await payload.create({
-          collection: 'lessons',
-          data: {
-            chapter: exerciseChapterId,
-            title: 'Conversations Integration Test Lesson',
-            slug: `conversations-int-${Date.now()}`,
-            order: 0,
-            status: 'published',
-            isActive: true,
-          } as any,
-        })
-        exerciseLessonId = lesson.id
-      }
-
-      const exercise = await payload.create({
-        collection: 'exercises',
-        data: {
-          title: 'Conversations Integration Test Exercise',
-          slug: `conversations-int-${Date.now()}`,
-          lesson: exerciseLessonId,
-          order: 0,
-          _status: 'published',
-        } as any,
-      })
-      testExerciseId = exercise.id
-    }
-
-    // Get or create test category (required for courses)
+    // Get or create category (required for courses)
     const existingCategories = await payload.find({
       collection: 'categories',
       limit: 1,
     })
 
-    let testCategoryId: string
+    let exerciseCategoryId: string
     if (existingCategories.docs.length > 0) {
-      testCategoryId = existingCategories.docs[0].id
+      exerciseCategoryId = existingCategories.docs[0].id
     } else {
       const category = await payload.create({
         collection: 'categories',
@@ -178,17 +74,17 @@ beforeAll(
           slug: `test-category-${Date.now()}`,
         } as any,
       })
-      testCategoryId = category.id
+      exerciseCategoryId = category.id
     }
 
-    // Get or create test course (required for chapters)
+    // Get or create course
     const existingCourses = await payload.find({
       collection: 'courses',
       limit: 1,
     })
 
     if (existingCourses.docs.length > 0) {
-      testCourseId = existingCourses.docs[0].id
+      exerciseCourseId = existingCourses.docs[0].id
     } else {
       const course = await payload.create({
         collection: 'courses',
@@ -199,25 +95,25 @@ beforeAll(
           order: 0,
           status: 'published',
           isActive: true,
-          categories: [testCategoryId],
+          categories: [exerciseCategoryId],
         } as any,
       })
-      testCourseId = course.id
+      exerciseCourseId = course.id
     }
 
-    // Get or create test chapter (required for lessons)
+    // Get or create chapter
     const existingChapters = await payload.find({
       collection: 'chapters',
       limit: 1,
     })
 
     if (existingChapters.docs.length > 0) {
-      testChapterId = existingChapters.docs[0].id
+      exerciseChapterId = existingChapters.docs[0].id
     } else {
       const chapter = await payload.create({
         collection: 'chapters',
         data: {
-          course: testCourseId,
+          course: exerciseCourseId,
           title: 'Conversations Integration Test Chapter',
           slug: `conversations-int-${Date.now()}`,
           order: 0,
@@ -225,22 +121,22 @@ beforeAll(
           isActive: true,
         } as any,
       })
-      testChapterId = chapter.id
+      exerciseChapterId = chapter.id
     }
 
-    // Get or create test lesson
+    // Get or create lesson
     const existingLessons = await payload.find({
       collection: 'lessons',
       limit: 1,
     })
 
     if (existingLessons.docs.length > 0) {
-      testLessonId = existingLessons.docs[0].id
+      exerciseLessonId = existingLessons.docs[0].id
     } else {
       const lesson = await payload.create({
         collection: 'lessons',
         data: {
-          chapter: testChapterId,
+          chapter: exerciseChapterId,
           title: 'Conversations Integration Test Lesson',
           slug: `conversations-int-${Date.now()}`,
           order: 0,
@@ -248,10 +144,112 @@ beforeAll(
           isActive: true,
         } as any,
       })
-      testLessonId = lesson.id
+      exerciseLessonId = lesson.id
     }
-  },
-)
+
+    const exercise = await payload.create({
+      collection: 'exercises',
+      data: {
+        title: 'Conversations Integration Test Exercise',
+        slug: `conversations-int-${Date.now()}`,
+        lesson: exerciseLessonId,
+        order: 0,
+        _status: 'published',
+      } as any,
+    })
+    testExerciseId = exercise.id
+  }
+
+  // Get or create test category (required for courses)
+  const existingCategories = await payload.find({
+    collection: 'categories',
+    limit: 1,
+  })
+
+  let testCategoryId: string
+  if (existingCategories.docs.length > 0) {
+    testCategoryId = existingCategories.docs[0].id
+  } else {
+    const category = await payload.create({
+      collection: 'categories',
+      data: {
+        title: 'Test Category',
+        slug: `test-category-${Date.now()}`,
+      } as any,
+    })
+    testCategoryId = category.id
+  }
+
+  // Get or create test course (required for chapters)
+  const existingCourses = await payload.find({
+    collection: 'courses',
+    limit: 1,
+  })
+
+  if (existingCourses.docs.length > 0) {
+    testCourseId = existingCourses.docs[0].id
+  } else {
+    const course = await payload.create({
+      collection: 'courses',
+      data: {
+        courseLabel: 'Test',
+        title: 'Conversations Integration Test Course',
+        slug: `conversations-int-${Date.now()}`,
+        order: 0,
+        status: 'published',
+        isActive: true,
+        categories: [testCategoryId],
+      } as any,
+    })
+    testCourseId = course.id
+  }
+
+  // Get or create test chapter (required for lessons)
+  const existingChapters = await payload.find({
+    collection: 'chapters',
+    limit: 1,
+  })
+
+  if (existingChapters.docs.length > 0) {
+    testChapterId = existingChapters.docs[0].id
+  } else {
+    const chapter = await payload.create({
+      collection: 'chapters',
+      data: {
+        course: testCourseId,
+        title: 'Conversations Integration Test Chapter',
+        slug: `conversations-int-${Date.now()}`,
+        order: 0,
+        status: 'published',
+        isActive: true,
+      } as any,
+    })
+    testChapterId = chapter.id
+  }
+
+  // Get or create test lesson
+  const existingLessons = await payload.find({
+    collection: 'lessons',
+    limit: 1,
+  })
+
+  if (existingLessons.docs.length > 0) {
+    testLessonId = existingLessons.docs[0].id
+  } else {
+    const lesson = await payload.create({
+      collection: 'lessons',
+      data: {
+        chapter: testChapterId,
+        title: 'Conversations Integration Test Lesson',
+        slug: `conversations-int-${Date.now()}`,
+        order: 0,
+        status: 'published',
+        isActive: true,
+      } as any,
+    })
+    testLessonId = lesson.id
+  }
+})
 
 afterAll(async () => {
   if (!hasDatabaseUrl || !payload) {
@@ -298,11 +296,12 @@ describe.skipIf(!hasDatabaseUrl)('Conversations Collection', () => {
       const db = (payload.db as any).connection.db
       const collection = db.collection('conversations')
       const { ObjectId } = await import('mongodb')
-      const convId = typeof conversation.id === 'string' && ObjectId.isValid(conversation.id) 
-        ? new ObjectId(conversation.id) 
-        : conversation.id
+      const convId =
+        typeof conversation.id === 'string' && ObjectId.isValid(conversation.id)
+          ? new ObjectId(conversation.id)
+          : conversation.id
       const rawConv = await collection.findOne({ _id: convId })
-      
+
       // archivedAt should NOT exist in the database document
       expect(rawConv).toBeDefined()
       expect(rawConv.archivedAt).toBeUndefined()
@@ -331,10 +330,7 @@ describe.skipIf(!hasDatabaseUrl)('Conversations Collection', () => {
       const activeConversations = await payload.find({
         collection: 'conversations',
         where: {
-          and: [
-            { user: { equals: testUserId } },
-            { archivedAt: { exists: false } },
-          ],
+          and: [{ user: { equals: testUserId } }, { archivedAt: { exists: false } }],
         },
       })
 
@@ -368,10 +364,7 @@ describe.skipIf(!hasDatabaseUrl)('Conversations Collection', () => {
       const activeConversations = await payload.find({
         collection: 'conversations',
         where: {
-          and: [
-            { user: { equals: testUserId } },
-            { archivedAt: { exists: false } },
-          ],
+          and: [{ user: { equals: testUserId } }, { archivedAt: { exists: false } }],
         },
       })
 
@@ -407,16 +400,14 @@ describe.skipIf(!hasDatabaseUrl)('Conversations Collection', () => {
       const activeConversations = await payload.find({
         collection: 'conversations',
         where: {
-          and: [
-            { user: { equals: testUserId } },
-            { archivedAt: { exists: false } },
-          ],
+          and: [{ user: { equals: testUserId } }, { archivedAt: { exists: false } }],
         },
       })
 
       const lessonConversations = activeConversations.docs.filter((c) => {
         // Check both lesson field (legacy) and contextKey (new)
-        const lesson = typeof (c as any).lesson === 'string' ? (c as any).lesson : (c as any).lesson?.id
+        const lesson =
+          typeof (c as any).lesson === 'string' ? (c as any).lesson : (c as any).lesson?.id
         const contextKey = c.contextKey || ''
         return lesson === testLessonId || contextKey === `lessons:${testLessonId}`
       })
@@ -440,9 +431,10 @@ describe.skipIf(!hasDatabaseUrl)('Conversations Collection', () => {
       const db = (payload.db as any).connection.db
       const collection = db.collection('conversations')
       const { ObjectId } = await import('mongodb')
-      const convId = typeof activeConv.id === 'string' && ObjectId.isValid(activeConv.id) 
-        ? new ObjectId(activeConv.id) 
-        : activeConv.id
+      const convId =
+        typeof activeConv.id === 'string' && ObjectId.isValid(activeConv.id)
+          ? new ObjectId(activeConv.id)
+          : activeConv.id
       const beforeArchiveRaw = await collection.findOne({ _id: convId })
       expect(beforeArchiveRaw).toBeDefined()
       expect(beforeArchiveRaw.archivedAt).toBeUndefined()
@@ -469,10 +461,7 @@ describe.skipIf(!hasDatabaseUrl)('Conversations Collection', () => {
       const activeConversations = await payload.find({
         collection: 'conversations',
         where: {
-          and: [
-            { user: { equals: testUserId } },
-            { archivedAt: { exists: false } },
-          ],
+          and: [{ user: { equals: testUserId } }, { archivedAt: { exists: false } }],
         },
       })
 
@@ -513,11 +502,12 @@ describe.skipIf(!hasDatabaseUrl)('Conversations Collection', () => {
       const db = (payload.db as any).connection.db
       const collection = db.collection('conversations')
       const { ObjectId } = await import('mongodb')
-      const convId = typeof conv2.id === 'string' && ObjectId.isValid(conv2.id) 
-        ? new ObjectId(conv2.id) 
-        : conv2.id
+      const convId =
+        typeof conv2.id === 'string' && ObjectId.isValid(conv2.id)
+          ? new ObjectId(conv2.id)
+          : conv2.id
       const rawConv = await collection.findOne({ _id: convId })
-      
+
       // archivedAt should NOT exist in the database document
       expect(rawConv).toBeDefined()
       expect(rawConv.archivedAt).toBeUndefined()
@@ -544,9 +534,10 @@ describe.skipIf(!hasDatabaseUrl)('Conversations Collection', () => {
       const db = (payload.db as any).connection.db
       const collection = db.collection('conversations')
       const { ObjectId } = await import('mongodb')
-      const convId = typeof activeConv.id === 'string' && ObjectId.isValid(activeConv.id) 
-        ? new ObjectId(activeConv.id) 
-        : activeConv.id
+      const convId =
+        typeof activeConv.id === 'string' && ObjectId.isValid(activeConv.id)
+          ? new ObjectId(activeConv.id)
+          : activeConv.id
       const beforeAttemptRaw = await collection.findOne({ _id: convId })
       expect(beforeAttemptRaw).toBeDefined()
       expect(beforeAttemptRaw.archivedAt).toBeUndefined()
@@ -572,10 +563,7 @@ describe.skipIf(!hasDatabaseUrl)('Conversations Collection', () => {
       const activeConversations = await payload.find({
         collection: 'conversations',
         where: {
-          and: [
-            { user: { equals: testUserId } },
-            { archivedAt: { exists: false } },
-          ],
+          and: [{ user: { equals: testUserId } }, { archivedAt: { exists: false } }],
         },
       })
 
@@ -596,7 +584,7 @@ describe.skipIf(!hasDatabaseUrl)('Conversations Collection', () => {
       // We omit archivedAt check and rely on application logic to ensure uniqueness for active conversations
       const indexes = await collection.indexes()
       let index1Exists = indexes.some((idx: any) => idx.name === 'unique_active_user_exercise')
-      
+
       // Drop and recreate if it exists with wrong definition (has lesson: { $exists: false })
       if (index1Exists) {
         const existingIndex = indexes.find((idx: any) => idx.name === 'unique_active_user_exercise')
@@ -605,7 +593,7 @@ describe.skipIf(!hasDatabaseUrl)('Conversations Collection', () => {
           index1Exists = false
         }
       }
-      
+
       if (!index1Exists) {
         await collection.createIndex(
           { user: 1, exercise: 1 },
@@ -640,15 +628,18 @@ describe.skipIf(!hasDatabaseUrl)('Conversations Collection', () => {
       // Fetch raw Mongo document to get exact stored IDs (ObjectId or string)
       // Convert string ID to ObjectId if needed
       const { ObjectId } = await import('mongodb')
-      const convId = typeof conv1.id === 'string' && ObjectId.isValid(conv1.id) 
-        ? new ObjectId(conv1.id) 
-        : conv1.id
+      const convId =
+        typeof conv1.id === 'string' && ObjectId.isValid(conv1.id)
+          ? new ObjectId(conv1.id)
+          : conv1.id
       let raw1 = await collection.findOne({ _id: convId })
       if (!raw1) {
         // Try with string ID as fallback
         raw1 = await collection.findOne({ _id: conv1.id })
         if (!raw1) {
-          throw new Error(`Failed to fetch created conversation with ID: ${conv1.id} (type: ${typeof conv1.id})`)
+          throw new Error(
+            `Failed to fetch created conversation with ID: ${conv1.id} (type: ${typeof conv1.id})`,
+          )
         }
       }
 
@@ -698,7 +689,7 @@ describe.skipIf(!hasDatabaseUrl)('Conversations Collection', () => {
       // We omit archivedAt check and rely on application logic to ensure uniqueness for active conversations
       const indexes = await collection.indexes()
       let index2Exists = indexes.some((idx: any) => idx.name === 'unique_active_user_lesson')
-      
+
       // Drop and recreate if it exists with wrong definition (has exercise: { $exists: false })
       if (index2Exists) {
         const existingIndex = indexes.find((idx: any) => idx.name === 'unique_active_user_lesson')
@@ -707,7 +698,7 @@ describe.skipIf(!hasDatabaseUrl)('Conversations Collection', () => {
           index2Exists = false
         }
       }
-      
+
       if (!index2Exists) {
         await collection.createIndex(
           { user: 1, lesson: 1 },
@@ -742,15 +733,18 @@ describe.skipIf(!hasDatabaseUrl)('Conversations Collection', () => {
       // Fetch raw Mongo document to get exact stored IDs (ObjectId or string)
       // Convert string ID to ObjectId if needed
       const { ObjectId } = await import('mongodb')
-      const convId = typeof conv1.id === 'string' && ObjectId.isValid(conv1.id) 
-        ? new ObjectId(conv1.id) 
-        : conv1.id
+      const convId =
+        typeof conv1.id === 'string' && ObjectId.isValid(conv1.id)
+          ? new ObjectId(conv1.id)
+          : conv1.id
       let raw1 = await collection.findOne({ _id: convId })
       if (!raw1) {
         // Try with string ID as fallback
         raw1 = await collection.findOne({ _id: conv1.id })
         if (!raw1) {
-          throw new Error(`Failed to fetch created conversation with ID: ${conv1.id} (type: ${typeof conv1.id})`)
+          throw new Error(
+            `Failed to fetch created conversation with ID: ${conv1.id} (type: ${typeof conv1.id})`,
+          )
         }
       }
 
@@ -804,67 +798,67 @@ describe.skipIf(!hasDatabaseUrl)('Conversations Collection', () => {
       const testUserId2 = user2.id
 
       try {
-      const service = new ConversationService(payload)
+        const service = new ConversationService(payload)
 
-      // Create conversation for user 1
-      const conv1 = await service.getOrCreateActiveConversation(testUserId, {
-        relationTo: 'exercises',
-        value: testExerciseId,
-      })
+        // Create conversation for user 1
+        const conv1 = await service.getOrCreateActiveConversation(testUserId, {
+          relationTo: 'exercises',
+          value: testExerciseId,
+        })
 
-      // Create conversation for user 2
-      const conv2 = await service.getOrCreateActiveConversation(testUserId2, {
-        relationTo: 'exercises',
-        value: testExerciseId,
-      })
+        // Create conversation for user 2
+        const conv2 = await service.getOrCreateActiveConversation(testUserId2, {
+          relationTo: 'exercises',
+          value: testExerciseId,
+        })
 
-      // User 1 should only see their own conversation
-      const user1 = await payload.findByID({
-        collection: 'users',
-        id: testUserId,
-      })
+        // User 1 should only see their own conversation
+        const user1 = await payload.findByID({
+          collection: 'users',
+          id: testUserId,
+        })
 
-      const user1Conversations = await payload.find({
-        collection: 'conversations',
-        where: {
-          archivedAt: { exists: false },
-        },
-        user: user1 as any,
-        overrideAccess: false, // CRITICAL: Enforce access control
-      })
+        const user1Conversations = await payload.find({
+          collection: 'conversations',
+          where: {
+            archivedAt: { exists: false },
+          },
+          user: user1 as any,
+          overrideAccess: false, // CRITICAL: Enforce access control
+        })
 
-      // Should only see user 1's conversation
-      expect(user1Conversations.docs.length).toBeGreaterThanOrEqual(1)
-      const foundConv1 = user1Conversations.docs.find((c) => c.id === conv1.id)
-      expect(foundConv1).toBeDefined()
+        // Should only see user 1's conversation
+        expect(user1Conversations.docs.length).toBeGreaterThanOrEqual(1)
+        const foundConv1 = user1Conversations.docs.find((c) => c.id === conv1.id)
+        expect(foundConv1).toBeDefined()
 
-      // Should NOT see user 2's conversation
-      const foundConv2 = user1Conversations.docs.find((c) => c.id === conv2.id)
-      expect(foundConv2).toBeUndefined()
+        // Should NOT see user 2's conversation
+        const foundConv2 = user1Conversations.docs.find((c) => c.id === conv2.id)
+        expect(foundConv2).toBeUndefined()
 
-      // User 2 should only see their own conversation
-      const user2 = await payload.findByID({
-        collection: 'users',
-        id: testUserId2,
-      })
+        // User 2 should only see their own conversation
+        const user2 = await payload.findByID({
+          collection: 'users',
+          id: testUserId2,
+        })
 
-      const user2Conversations = await payload.find({
-        collection: 'conversations',
-        where: {
-          archivedAt: { exists: false },
-        },
-        user: user2 as any,
-        overrideAccess: false, // CRITICAL: Enforce access control
-      })
+        const user2Conversations = await payload.find({
+          collection: 'conversations',
+          where: {
+            archivedAt: { exists: false },
+          },
+          user: user2 as any,
+          overrideAccess: false, // CRITICAL: Enforce access control
+        })
 
-      // Should only see user 2's conversation
-      expect(user2Conversations.docs.length).toBeGreaterThanOrEqual(1)
-      const foundConv2InUser2 = user2Conversations.docs.find((c) => c.id === conv2.id)
-      expect(foundConv2InUser2).toBeDefined()
+        // Should only see user 2's conversation
+        expect(user2Conversations.docs.length).toBeGreaterThanOrEqual(1)
+        const foundConv2InUser2 = user2Conversations.docs.find((c) => c.id === conv2.id)
+        expect(foundConv2InUser2).toBeDefined()
 
-      // Should NOT see user 1's conversation
-      const foundConv1InUser2 = user2Conversations.docs.find((c) => c.id === conv1.id)
-      expect(foundConv1InUser2).toBeUndefined()
+        // Should NOT see user 1's conversation
+        const foundConv1InUser2 = user2Conversations.docs.find((c) => c.id === conv1.id)
+        expect(foundConv1InUser2).toBeUndefined()
       } finally {
         // Clean up second user's conversations
         const conversations = await payload.find({
@@ -890,7 +884,7 @@ describe.skipIf(!hasDatabaseUrl)('Conversations Collection', () => {
       }
     })
 
-    it('should prevent user from accessing another user\'s conversation by ID', async () => {
+    it("should prevent user from accessing another user's conversation by ID", async () => {
       // Create second test user for this test
       const user2 = await payload.create({
         collection: 'users',
@@ -903,37 +897,37 @@ describe.skipIf(!hasDatabaseUrl)('Conversations Collection', () => {
       const testUserId2 = user2.id
 
       try {
-      const service = new ConversationService(payload)
+        const service = new ConversationService(payload)
 
-      // Create conversation for user 2
-      const conv2 = await service.getOrCreateActiveConversation(testUserId2, {
-        relationTo: 'exercises',
-        value: testExerciseId,
-      })
-
-      // User 1 should NOT be able to access user 2's conversation
-      const user1 = await payload.findByID({
-        collection: 'users',
-        id: testUserId,
-      })
-
-      let accessError: Error | null = null
-      try {
-        await payload.findByID({
-          collection: 'conversations',
-          id: conv2.id,
-          user: user1 as any,
-          overrideAccess: false, // CRITICAL: Enforce access control
+        // Create conversation for user 2
+        const conv2 = await service.getOrCreateActiveConversation(testUserId2, {
+          relationTo: 'exercises',
+          value: testExerciseId,
         })
-      } catch (error: any) {
-        accessError = error
-      }
 
-      // Should have access denied error
-      expect(accessError).not.toBeNull()
-      expect(
-        accessError?.message || '',
-      ).toMatch(/access|forbidden|permission|unauthorized|not found/i)
+        // User 1 should NOT be able to access user 2's conversation
+        const user1 = await payload.findByID({
+          collection: 'users',
+          id: testUserId,
+        })
+
+        let accessError: Error | null = null
+        try {
+          await payload.findByID({
+            collection: 'conversations',
+            id: conv2.id,
+            user: user1 as any,
+            overrideAccess: false, // CRITICAL: Enforce access control
+          })
+        } catch (error: any) {
+          accessError = error
+        }
+
+        // Should have access denied error
+        expect(accessError).not.toBeNull()
+        expect(accessError?.message || '').toMatch(
+          /access|forbidden|permission|unauthorized|not found/i,
+        )
       } finally {
         // Clean up second user's conversations
         const conversations = await payload.find({

@@ -222,12 +222,17 @@ describe.skipIf(!hasDatabaseUrl)('Memory Prompt Wiring Tests', () => {
 
     // Mock LLM to check prompt content
     mockChatWithExerciseHelper.mockImplementation(async (input) => {
-      const systemMsg = input.composedPrompt?.messages.find((m: { role: string }) => m.role === 'system')
+      const systemMsg = input.composedPrompt?.messages.find(
+        (m: { role: string }) => m.role === 'system',
+      )
       const hasMemoryBlock = systemMsg?.content.includes(MEMORY_BLOCK_START)
       const hasLmsMemory = systemMsg?.content.includes('mathematics LMS')
 
       if (hasMemoryBlock && hasLmsMemory) {
-        return { success: true, message: "You're building a mathematics LMS for educational purposes." }
+        return {
+          success: true,
+          message: "You're building a mathematics LMS for educational purposes.",
+        }
       }
       return { success: true, message: "I don't have specific context about your project." }
     })
@@ -262,7 +267,9 @@ describe.skipIf(!hasDatabaseUrl)('Memory Prompt Wiring Tests', () => {
       const userId = await createTestUser('toggle-off')
 
       mockChatWithExerciseHelper.mockImplementation(async (input) => {
-        const systemMsg = input.composedPrompt?.messages.find((m: { role: string }) => m.role === 'system')
+        const systemMsg = input.composedPrompt?.messages.find(
+          (m: { role: string }) => m.role === 'system',
+        )
         const hasMemoryBlock = systemMsg?.content.includes(MEMORY_BLOCK_START)
         if (hasMemoryBlock) {
           return { success: true, message: 'Memory was injected (unexpected)' }
@@ -300,7 +307,9 @@ describe.skipIf(!hasDatabaseUrl)('Memory Prompt Wiring Tests', () => {
       })
 
       mockChatWithExerciseHelper.mockImplementation(async (input) => {
-        const systemMsg = input.composedPrompt?.messages.find((m: { role: string }) => m.role === 'system')
+        const systemMsg = input.composedPrompt?.messages.find(
+          (m: { role: string }) => m.role === 'system',
+        )
         const hasMemoryBlock = systemMsg?.content.includes(MEMORY_BLOCK_START)
         const hasLmsMemory = systemMsg?.content.includes('mathematics LMS')
 
