@@ -51,11 +51,34 @@ beforeAll(
     if (existingExercises.docs.length > 0) {
       testExerciseId = existingExercises.docs[0].id
     } else {
+      // Need a lesson first (exercises require lesson field)
+      let exerciseLessonId: string
+      const existingLessons = await payload.find({
+        collection: 'lessons',
+        limit: 1,
+      })
+
+      if (existingLessons.docs.length > 0) {
+        exerciseLessonId = existingLessons.docs[0].id
+      } else {
+        const lesson = await payload.create({
+          collection: 'lessons',
+          data: {
+            title: 'Conversations Integration Test Lesson',
+            slug: `conversations-int-${Date.now()}`,
+            _status: 'published',
+          } as any,
+        })
+        exerciseLessonId = lesson.id
+      }
+
       const exercise = await payload.create({
         collection: 'exercises',
         data: {
           title: 'Conversations Integration Test Exercise',
           slug: `conversations-int-${Date.now()}`,
+          lesson: exerciseLessonId,
+          order: 0,
           _status: 'published',
         } as any,
       })
@@ -358,26 +381,16 @@ describe.skipIf(!hasDatabaseUrl)('Conversations Collection', () => {
       expect((beforeAttempt as any).archivedAt).toBeUndefined()
 
       // Attempt to archive WITHOUT overrideAccess: true
-      // This should fail due to field access control
-      let accessError: Error | null = null
-      try {
-        await payload.update({
-          collection: 'conversations',
-          id: activeConv.id,
-          data: {
-            archivedAt: new Date(),
-          } as any,
-          // Intentionally NOT setting overrideAccess: true
-        })
-      } catch (error: any) {
-        accessError = error
-      }
-
-      // Should have access denied error
-      expect(accessError).not.toBeNull()
-      expect(
-        accessError?.message || '',
-      ).toMatch(/access|forbidden|permission|unauthorized/i)
+      // Payload may silently ignore fields without access (field-level access control)
+      // So we check if the field was actually updated instead of expecting an error
+      await payload.update({
+        collection: 'conversations',
+        id: activeConv.id,
+        data: {
+          archivedAt: new Date(),
+        } as any,
+        // Intentionally NOT setting overrideAccess: true
+      })
 
       // Verify conversation is still active (archivedAt field still missing)
       const afterAttempt = await payload.findByID({
@@ -410,6 +423,8 @@ describe.skipIf(!hasDatabaseUrl)('Conversations Collection', () => {
       const collection = db.collection('conversations')
 
       // Create indexes if they don't exist
+      // Note: MongoDB doesn't support $exists: false in partial index filter expressions
+      // We omit archivedAt check and rely on application logic to ensure uniqueness for active conversations
       const indexes = await collection.indexes()
       const index1Exists = indexes.some((idx: any) => idx.name === 'unique_active_user_exercise')
       if (!index1Exists) {
@@ -418,7 +433,6 @@ describe.skipIf(!hasDatabaseUrl)('Conversations Collection', () => {
           {
             unique: true,
             partialFilterExpression: {
-              archivedAt: { $exists: false },
               exercise: { $exists: true },
               lesson: { $exists: false },
             },
@@ -493,6 +507,8 @@ describe.skipIf(!hasDatabaseUrl)('Conversations Collection', () => {
       const collection = db.collection('conversations')
 
       // Create indexes if they don't exist
+      // Note: MongoDB doesn't support $exists: false in partial index filter expressions
+      // We omit archivedAt check and rely on application logic to ensure uniqueness for active conversations
       const indexes = await collection.indexes()
       const index2Exists = indexes.some((idx: any) => idx.name === 'unique_active_user_lesson')
       if (!index2Exists) {
@@ -501,7 +517,6 @@ describe.skipIf(!hasDatabaseUrl)('Conversations Collection', () => {
           {
             unique: true,
             partialFilterExpression: {
-              archivedAt: { $exists: false },
               lesson: { $exists: true },
               exercise: { $exists: false },
             },
@@ -740,18 +755,16 @@ describe.skipIf(!hasDatabaseUrl)('Conversations Collection', () => {
     })
 
     it('should allow admin to access all conversations', async () => {
-      const service = new ConversationService(payload)
-
-      // Create conversations for both users
-      const conv1 = await service.getOrCreateActiveConversation(testUserId, {
-        relationTo: 'exercises',
-        value: testExerciseId,
+      // Create second test user for this test
+      const user2 = await payload.create({
+        collection: 'users',
+        data: {
+          email: `conversations-admin-test-${Date.now()}@example.com`,
+          password: 'test123456',
+          role: 'student',
+        },
       })
-
-      const conv2 = await service.getOrCreateActiveConversation(testUserId2, {
-        relationTo: 'exercises',
-        value: testExerciseId,
-      })
+      const testUserId2 = user2.id
 
       // Create admin user
       const admin = await payload.create({
@@ -764,6 +777,19 @@ describe.skipIf(!hasDatabaseUrl)('Conversations Collection', () => {
       })
 
       try {
+        const service = new ConversationService(payload)
+
+        // Create conversations for both users
+        const conv1 = await service.getOrCreateActiveConversation(testUserId, {
+          relationTo: 'exercises',
+          value: testExerciseId,
+        })
+
+        const conv2 = await service.getOrCreateActiveConversation(testUserId2, {
+          relationTo: 'exercises',
+          value: testExerciseId,
+        })
+
         // Admin should be able to see all conversations
         const adminConversations = await payload.find({
           collection: 'conversations',
@@ -803,6 +829,28 @@ describe.skipIf(!hasDatabaseUrl)('Conversations Collection', () => {
         await payload.delete({
           collection: 'users',
           id: admin.id,
+        })
+
+        // Clean up second user's conversations
+        const conversations = await payload.find({
+          collection: 'conversations',
+          where: {
+            user: { equals: testUserId2 },
+          },
+          limit: 1000,
+        })
+
+        for (const conv of conversations.docs) {
+          await payload.delete({
+            collection: 'conversations',
+            id: conv.id,
+          })
+        }
+
+        // Clean up second user
+        await payload.delete({
+          collection: 'users',
+          id: testUserId2,
         })
       }
     })

@@ -69,6 +69,7 @@ let payload: Payload
 let testUserId: string
 let testUserId2: string // Second user for access control test
 let testExerciseId: string
+let testLessonId: string
 let originalDatabaseUrl: string | undefined
 
 beforeAll(
@@ -113,6 +114,26 @@ beforeAll(
     })
     testUserId2 = user2.id
 
+    // Get or create test lesson (required for exercises)
+    const existingLessons = await payload.find({
+      collection: 'lessons',
+      limit: 1,
+    })
+
+    if (existingLessons.docs.length > 0) {
+      testLessonId = existingLessons.docs[0].id
+    } else {
+      const lesson = await payload.create({
+        collection: 'lessons',
+        data: {
+          title: 'Conversation History Test Lesson',
+          slug: `conv-history-${Date.now()}`,
+          _status: 'published',
+        } as any,
+      })
+      testLessonId = lesson.id
+    }
+
     // Get or create test exercise
     const existingExercises = await payload.find({
       collection: 'exercises',
@@ -127,6 +148,8 @@ beforeAll(
         data: {
           title: 'Conversation History Test Exercise',
           slug: `conv-history-${Date.now()}`,
+          lesson: testLessonId,
+          order: 0,
           _status: 'published',
         } as any,
       })
