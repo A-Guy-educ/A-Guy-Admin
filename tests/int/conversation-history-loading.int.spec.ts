@@ -116,6 +116,26 @@ beforeAll(
     })
     testUserId2 = user2.id
 
+    // Get or create test category (required for courses)
+    const existingCategories = await payload.find({
+      collection: 'categories',
+      limit: 1,
+    })
+
+    let testCategoryId: string
+    if (existingCategories.docs.length > 0) {
+      testCategoryId = existingCategories.docs[0].id
+    } else {
+      const category = await payload.create({
+        collection: 'categories',
+        data: {
+          title: 'Test Category',
+          slug: `test-category-${Date.now()}`,
+        } as any,
+      })
+      testCategoryId = category.id
+    }
+
     // Get or create test course (required for chapters)
     const existingCourses = await payload.find({
       collection: 'courses',
@@ -134,6 +154,7 @@ beforeAll(
           order: 0,
           status: 'published',
           isActive: true,
+          categories: [testCategoryId],
         } as any,
       })
       testCourseId = course.id
