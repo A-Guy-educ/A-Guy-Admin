@@ -92,32 +92,20 @@ export const apiService = {
   },
 
   /**
-   * Fetch existing conversation history for a context using Payload's REST API
-   * Access control (isOwner) automatically filters by authenticated user
-   * Payload merges the access control constraint with the where query
+   * Fetch existing conversation history for a context using custom endpoint
+   * Custom endpoint explicitly verifies user ownership for security
    *
    * @param contextKey - The context key (e.g., "exercises:abc123")
    * @returns Conversation history with messages
    */
   async getConversation(contextKey: string): Promise<ConversationApiResponse> {
     try {
-      // Use Payload's auto-generated REST API endpoint
-      // The isOwner access control automatically adds { user: { equals: user.id } } to the query
-      // Payload merges this with our where query, ensuring only the authenticated user's conversations are returned
-      const whereQuery = JSON.stringify({
-        and: [
-          { contextKey: { equals: contextKey } },
-          { archivedAt: { exists: false } },
-        ],
-      })
-
-      // Sort by lastMessageAt descending to get the most recent conversation for this user+contextKey
-      // This ensures we get the correct conversation even if multiple exist (shouldn't happen due to unique index, but safety first)
-      const url = `/api/conversations?where=${encodeURIComponent(whereQuery)}&limit=1&sort=-lastMessageAt&depth=0`
+      // Use custom endpoint that explicitly verifies user ownership
+      // This is more reliable than Payload's REST API which may not always apply access control correctly
+      const url = `/api/agent/get-conversation?contextKey=${encodeURIComponent(contextKey)}`
       
       logger.debug({ contextKey, url }, '[getConversation] Fetching conversation')
 
-      // Include depth=0 to ensure messages array is populated (messages is not a relationship)
       const response = await fetch(url, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
@@ -145,33 +133,14 @@ export const apiService = {
           success: false,
           exists: false,
           messages: [],
-          error: data.errors?.[0]?.message || data.error || 'Request failed',
+          error: data.error || 'Request failed',
         }
       }
 
-      // Payload REST API returns { docs: [...], totalDocs, ... }
-      if (data.docs && data.docs.length > 0) {
-        const conversation = data.docs[0] as {
-          id: string
-          user?: string | { id: string }
-          contextKey?: string
-          messages?: Array<{ role: string; content: string; timestamp?: string }>
-        }
-
-        // Verify the conversation matches the expected contextKey (access control should ensure user matches)
-        if (conversation.contextKey && conversation.contextKey !== contextKey) {
-          logger.warn(
-            {
-              conversationId: conversation.id,
-              expectedContextKey: contextKey,
-              actualContextKey: conversation.contextKey,
-            },
-            '[getConversation] Conversation contextKey mismatch - access control may not be working',
-          )
-        }
-
+      // Custom endpoint returns { success, exists, conversationId, messages, ... }
+      if (data.success && data.exists) {
         // Ensure messages array exists and is properly formatted
-        const rawMessages = conversation.messages || []
+        const rawMessages = data.messages || []
         const messages = rawMessages
           .filter((msg) => msg && msg.role && msg.content) // Filter out invalid messages
           .map((msg) => ({
@@ -181,10 +150,8 @@ export const apiService = {
 
         logger.debug(
           {
-            conversationId: conversation.id,
+            conversationId: data.conversationId,
             contextKey,
-            conversationContextKey: conversation.contextKey,
-            userId: typeof conversation.user === 'object' ? conversation.user.id : conversation.user,
             rawMessageCount: rawMessages.length,
             validMessageCount: messages.length,
             hasMessages: rawMessages.length > 0,
@@ -195,7 +162,7 @@ export const apiService = {
         return {
           success: true,
           exists: true,
-          conversationId: conversation.id,
+          conversationId: data.conversationId,
           contextKey,
           messages,
         }
