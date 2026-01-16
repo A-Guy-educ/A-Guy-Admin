@@ -92,24 +92,37 @@ export const apiService = {
   },
 
   /**
-   * Fetch existing conversation history for a context using custom endpoint
-   * Custom endpoint explicitly verifies user ownership for security
+   * Fetch existing conversation history for a context using Payload's REST API
+   * Access control (isOwner) automatically filters by authenticated user
+   * Payload merges the access control constraint with the where query
    *
    * @param contextKey - The context key (e.g., "exercises:abc123")
    * @returns Conversation history with messages
    */
   async getConversation(contextKey: string): Promise<ConversationApiResponse> {
     try {
-      // Use custom endpoint that explicitly verifies user ownership
-      // This is more reliable than Payload's REST API which may not always apply access control correctly
-      const url = `/api/agent/get-conversation?contextKey=${encodeURIComponent(contextKey)}`
+      // Use Payload's auto-generated REST API endpoint
+      // The isOwner access control automatically adds { user: { equals: user.id } } to the query
+      // Payload merges this with our where query, ensuring only the authenticated user's conversations are returned
+      // 
+      // IMPORTANT: The where query should NOT include user filter - access control handles it automatically
+      // Including it explicitly would cause issues if access control isn't working
+      const whereQuery = JSON.stringify({
+        and: [
+          { contextKey: { equals: contextKey } },
+          { archivedAt: { exists: false } },
+        ],
+      })
+
+      // Sort by lastMessageAt descending to get the most recent conversation for this user+contextKey
+      const url = `/api/conversations?where=${encodeURIComponent(whereQuery)}&limit=1&sort=-lastMessageAt&depth=0`
       
-      logger.debug({ contextKey, url }, '[getConversation] Fetching conversation')
+      logger.debug({ contextKey, url }, '[getConversation] Fetching conversation via Payload REST API')
 
       const response = await fetch(url, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include', // Include cookies for authentication
+        credentials: 'include', // CRITICAL: Include cookies for authentication (required for access control)
       })
 
       const data = await response.json()
@@ -137,10 +150,44 @@ export const apiService = {
         }
       }
 
-      // Custom endpoint returns { success, exists, conversationId, messages, ... }
-      if (data.success && data.exists) {
+      // Payload REST API returns { docs: [...], totalDocs, ... }
+      if (data.docs && data.docs.length > 0) {
+        const conversation = data.docs[0] as {
+          id: string
+          user?: string | { id: string }
+          contextKey?: string
+          messages?: Array<{ role: string; content: string; timestamp?: string }>
+        }
+
+        // Verify the conversation matches the expected contextKey
+        if (conversation.contextKey && conversation.contextKey !== contextKey) {
+          logger.warn(
+            {
+              conversationId: conversation.id,
+              expectedContextKey: contextKey,
+              actualContextKey: conversation.contextKey,
+            },
+            '[getConversation] Conversation contextKey mismatch',
+          )
+        }
+
+        // Log conversation user ID for debugging (access control should have already filtered by user)
+        // Note: We can't verify user ownership on client side without making another API call
+        // Payload's REST API with isOwner access control should ensure only current user's conversations are returned
+        const conversationUserId =
+          typeof conversation.user === 'object' ? conversation.user.id : conversation.user
+        logger.debug(
+          {
+            conversationId: conversation.id,
+            conversationUserId,
+            contextKey,
+            note: 'Access control (isOwner) should have filtered to current user only',
+          },
+          '[getConversation] Conversation loaded (user filtered by access control)',
+        )
+
         // Ensure messages array exists and is properly formatted
-        const rawMessages = data.messages || []
+        const rawMessages = conversation.messages || []
         const messages = rawMessages
           .filter((msg) => msg && msg.role && msg.content) // Filter out invalid messages
           .map((msg) => ({
@@ -150,8 +197,10 @@ export const apiService = {
 
         logger.debug(
           {
-            conversationId: data.conversationId,
+            conversationId: conversation.id,
             contextKey,
+            conversationContextKey: conversation.contextKey,
+            userId: conversationUserId,
             rawMessageCount: rawMessages.length,
             validMessageCount: messages.length,
             hasMessages: rawMessages.length > 0,
@@ -162,7 +211,7 @@ export const apiService = {
         return {
           success: true,
           exists: true,
-          conversationId: data.conversationId,
+          conversationId: conversation.id,
           contextKey,
           messages,
         }
