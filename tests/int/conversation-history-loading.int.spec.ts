@@ -9,7 +9,7 @@
  * - Conversation history persists and loads correctly after "refresh" (new request)
  * - Access control ensures users only see their own conversations
  */
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Payload } from 'payload'
 import { getPayload } from 'payload'
 import type { PayloadRequest } from 'payload'
@@ -235,6 +235,29 @@ beforeAll(
   },
   60000,
 )
+
+beforeEach(async () => {
+  if (!payload) return
+
+  // Archive all conversations for test users before each test to ensure isolation
+  const existingConversations = await payload.find({
+    collection: 'conversations',
+    where: {
+      or: [{ user: { equals: testUserId } }, { user: { equals: testUserId2 } }],
+    },
+    limit: 1000,
+    overrideAccess: true,
+  })
+
+  for (const conv of existingConversations.docs) {
+    await payload.update({
+      collection: 'conversations',
+      id: conv.id,
+      data: { archivedAt: new Date() },
+      overrideAccess: true,
+    })
+  }
+})
 
 afterAll(async () => {
   if (!payload) {
