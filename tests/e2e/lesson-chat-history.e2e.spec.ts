@@ -39,6 +39,12 @@ test.describe('Lesson Chat History Loading', () => {
   })
 
   /**
+   * Selector for user chat messages (excludes buttons and other bg-primary elements)
+   * User messages have: ml-auto bg-primary and contain text content
+   */
+  const USER_MESSAGE_SELECTOR = '.bg-primary.ml-auto'
+
+  /**
    * Helper to find chat input - works with both ChatInterface and NotebookChat
    */
   async function findChatInput(page: Page): Promise<Locator> {
@@ -69,8 +75,9 @@ test.describe('Lesson Chat History Loading', () => {
    */
   async function waitForChatMessage(page: Page, timeout = 30000) {
     // Wait for any message div (user or assistant)
+    // User messages have ml-auto class to distinguish from send button
     // ChatInterface uses bg-card for assistant messages, NotebookChat uses bg-muted
-    await page.waitForSelector('.bg-primary, .bg-muted, .bg-card', { timeout })
+    await page.waitForSelector(`${USER_MESSAGE_SELECTOR}, .bg-muted, .bg-card`, { timeout })
   }
 
   /**
@@ -80,7 +87,8 @@ test.describe('Lesson Chat History Loading', () => {
     userMessages: Locator[]
     assistantMessages: Locator[]
   }> {
-    const userMessages = await page.locator('.bg-primary').all()
+    // Use more specific selector for user messages (ml-auto distinguishes from send button)
+    const userMessages = await page.locator(USER_MESSAGE_SELECTOR).all()
     // ChatInterface uses bg-card for assistant messages, NotebookChat uses bg-muted
     const assistantMessages = await page.locator('.bg-muted, .bg-card').all()
     return { userMessages, assistantMessages }
@@ -95,12 +103,22 @@ test.describe('Lesson Chat History Loading', () => {
 
   /**
    * Helper to wait for chat history loading to finish
+   * Waits for either: loading indicator to disappear OR user messages to appear
    */
   async function waitForHistoryLoaded(page: Page, timeout = 30000) {
     const loadingIndicator = page.locator('text=Loading conversation...')
-    if (await loadingIndicator.isVisible().catch(() => false)) {
-      await loadingIndicator.waitFor({ state: 'hidden', timeout })
-    }
+    const userMessages = page.locator(USER_MESSAGE_SELECTOR)
+
+    // Wait for loading to finish (either loading indicator disappears or messages appear)
+    await Promise.race([
+      // Option 1: Loading indicator was visible and becomes hidden
+      loadingIndicator.waitFor({ state: 'hidden', timeout }).catch(() => {}),
+      // Option 2: User messages appear (indicating history loaded)
+      userMessages.first().waitFor({ state: 'visible', timeout }).catch(() => {}),
+    ])
+
+    // Small additional wait for React state to settle
+    await page.waitForTimeout(500)
   }
 
   /**
@@ -168,7 +186,7 @@ test.describe('Lesson Chat History Loading', () => {
     await expect
       .poll(
         async () => {
-          const userMessageTexts = await getChatMessageTexts(page, '.bg-primary')
+          const userMessageTexts = await getChatMessageTexts(page, USER_MESSAGE_SELECTOR)
           return userMessageTexts.join(' ')
         },
         { timeout: 30000 },
@@ -231,7 +249,7 @@ test.describe('Lesson Chat History Loading', () => {
     // OR if there are messages, they should NOT contain User A's message
     if (messagesB.userMessages.length > 0) {
       // If messages exist, verify they don't contain User A's message
-      const userMessageTexts = await getChatMessageTexts(page, '.bg-primary')
+      const userMessageTexts = await getChatMessageTexts(page, USER_MESSAGE_SELECTOR)
       expect(userMessageTexts.join(' ')).not.toContain(userAMessage)
     } else {
       // Empty chat is also valid - User B has no conversation yet
