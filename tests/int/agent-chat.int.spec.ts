@@ -414,9 +414,10 @@ describe.skipIf(!hasDatabaseUrl)('agentChat endpoint', () => {
     })
 
     it('prepends system prompts in createdAt ASC order', async () => {
-      const { chatWithExerciseHelper } = await import(
+      // Import after mocks are set up to get the mocked version
+      const chatWithExerciseHelper = (await import(
         '@/lib/ai/services/exercise-chat-service'
-      )
+      )).chatWithExerciseHelper as ReturnType<typeof vi.fn>
 
       // Delete existing system prompt from beforeAll to ensure clean test
       if (testSystemPromptId) {
@@ -486,8 +487,11 @@ describe.skipIf(!hasDatabaseUrl)('agentChat endpoint', () => {
 
       await agentChat(req)
 
-      // Get the call arguments
-      const callArgs = (chatWithExerciseHelper as unknown as { mock: { calls: Array<[unknown]> } }).mock.calls[0]?.[0] as { composedPrompt: { messages: Array<{ role: string; content: string }> } }
+      // Get the call arguments - use last call to ensure we get this test's call
+      // Previous tests in this describe block may have called the mock
+      const mockCalls = (chatWithExerciseHelper as unknown as { mock: { calls: Array<[unknown]> } }).mock.calls
+      const lastCallIndex = mockCalls.length - 1
+      const callArgs = mockCalls[lastCallIndex]?.[0] as { composedPrompt: { messages: Array<{ role: string; content: string }> } }
       const systemMessage = callArgs?.composedPrompt?.messages?.find(
         (m: { role: string }) => m.role === 'system',
       )?.content
