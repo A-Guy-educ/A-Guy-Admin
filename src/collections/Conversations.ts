@@ -243,7 +243,7 @@ export const Conversations: CollectionConfig = {
   ],
   hooks: {
     beforeChange: [
-      async ({ data, req: _req, operation }) => {
+      async ({ data, req, operation }) => {
         // Derive contextKey from raw contextRef shape
         // contextRef.value is ALWAYS a string ID on writes (never populated object)
         if (operation === 'create' || operation === 'update') {
@@ -257,6 +257,13 @@ export const Conversations: CollectionConfig = {
           if (data.messages && data.messages.length > 0) {
             const lastMessage = data.messages[data.messages.length - 1]
             data.lastMessageAt = lastMessage.timestamp || new Date().toISOString()
+          }
+
+          // Protect archivedAt field - only allow setting if allowArchive context flag is set
+          // This enforces the field-level access control at the hook level
+          // Note: overrideAccess: true doesn't set req.context.overrideAccess, so we use a custom flag
+          if ('archivedAt' in data && !req.context?.allowArchive) {
+            delete data.archivedAt
           }
         }
         return data
