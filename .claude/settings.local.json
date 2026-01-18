@@ -41,7 +41,9 @@
       "Bash(gh pr create:*)",
       "Bash(pnpm exec vitest:*)",
       "Bash(node --version:*)",
-      "Bash(git pull:*)"
+      "Bash(pnpm test:int:*)",
+      "Bash(git ls-tree:*)",
+      "Bash(SKIP_HOOKS=1 git push:*)"
     ]
   }
 }
