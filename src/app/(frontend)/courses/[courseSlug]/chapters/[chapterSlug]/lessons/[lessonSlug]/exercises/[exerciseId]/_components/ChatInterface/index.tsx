@@ -5,6 +5,7 @@ import { useTranslations } from '@/providers/I18n'
 import { cn } from '@/utilities/ui'
 import { BookOpen, Loader2, Plus, Send } from 'lucide-react'
 import React, { useEffect, useState } from 'react'
+import { ChatMessageContent } from '@/components/chat'
 import { FormulaPanel } from '../FormulaPanel'
 import { MathPalette } from '../MathPalette'
 import { useNotebookChat } from '../NotebookChat/useNotebookChat'
@@ -101,7 +102,7 @@ export function ChatInterface({ exerciseId, lessonId }: ChatInterfaceProps) {
                   : 'mr-auto bg-card text-foreground border border-border rounded-[20px] rounded-br-[4px]',
               )}
             >
-              {msg.content}
+              <ChatMessageContent content={msg.content} />
             </div>
           ))}
         {isLoading && (
