@@ -6,7 +6,7 @@ import {
   BreadcrumbLink,
   BreadcrumbPage,
   BreadcrumbSeparator,
-} from '@/components/ui/breadcrumb'
+} from '@/ui/web/components/breadcrumb'
 
 export interface BreadcrumbItemType {
   label: string

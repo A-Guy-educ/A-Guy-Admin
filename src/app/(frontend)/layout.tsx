@@ -1,22 +1,22 @@
 import type { Metadata } from 'next'
 
-import { cn } from '@/utilities/ui'
+import { cn } from '@/infra/utils/ui'
 import { GeistMono } from 'geist/font/mono'
 import { GeistSans } from 'geist/font/sans'
 import { Assistant } from 'next/font/google'
 import React from 'react'
 
-import { AdminBar } from '@/components/AdminBar'
-import { Toaster } from '@/components/ui/toaster'
-import { Footer } from '@/Footer/Component'
-import { Header } from '@/Header/Component'
-import { Providers } from '@/providers'
-import { InitTheme } from '@/providers/Theme/InitTheme'
-import { mergeOpenGraph } from '@/utilities/mergeOpenGraph'
+import { mergeOpenGraph } from '@/infra/utils/mergeOpenGraph'
+import { AdminBar } from '@/ui/web/AdminBar'
+import { Toaster } from '@/ui/web/components/toaster'
+import { Footer } from '@/ui/web/footer/Component'
+import { Header } from '@/ui/web/header/Component'
+import { Providers } from '@/ui/web/providers'
+import { InitTheme } from '@/ui/web/providers/Theme/InitTheme'
 
 import { cookieName, defaultLocale, getDirection, type Locale, locales } from '@/i18n/config'
-import { I18nProvider } from '@/providers/I18n'
-import { getServerSideURL } from '@/utilities/getURL'
+import { getServerSideURL } from '@/infra/utils/getURL'
+import { I18nProvider } from '@/ui/web/providers/I18n'
 import { cookies, headers } from 'next/headers'
 import './globals.css'
 import { LayoutClient } from './LayoutClient'
@@ -52,9 +52,9 @@ async function getLocale(): Promise<Locale> {
 
 async function getMessages(locale: string) {
   try {
-    return (await import(`../../../messages/${locale}.json`, { with: { type: 'json' } })).default
+    return (await import(`../../../src/i18n/${locale}.json`, { with: { type: 'json' } })).default
   } catch {
-    return (await import(`../../../messages/${defaultLocale}.json`, { with: { type: 'json' } }))
+    return (await import(`../../../src/i18n/${defaultLocale}.json`, { with: { type: 'json' } }))
       .default
   }
 }

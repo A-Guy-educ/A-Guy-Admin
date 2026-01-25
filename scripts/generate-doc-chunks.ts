@@ -9,7 +9,7 @@
 import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
-import type { DocChunk, DocChunks } from '../src/lib/ai/doc-chunk-types.js'
+import type { DocChunk, DocChunks } from '../src/infra/llm/doc-chunk-types.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -237,7 +237,7 @@ async function main() {
   docChunks.metadata.totalChunks = docChunks.chunks.length
 
   // Ensure output directory exists
-  const outputDir = path.join(ROOT_DIR, 'docs/ai/indexes')
+  const outputDir = path.join(ROOT_DIR, '.ai-docs/indexes')
   if (!fs.existsSync(outputDir)) {
     fs.mkdirSync(outputDir, { recursive: true })
   }
@@ -268,5 +268,5 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   main().catch(console.error)
 }
 
-export { extractMarkdownSections, extractKeywords, determineCategory }
+export { determineCategory, extractKeywords, extractMarkdownSections }
 // Types are now imported from src/lib/ai/doc-chunk-types.ts

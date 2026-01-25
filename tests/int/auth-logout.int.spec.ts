@@ -8,13 +8,24 @@ const mockCookieStore = vi.hoisted(() => ({
   delete: vi.fn(),
 }))
 
+const mockGetPayload = vi.hoisted(() => vi.fn())
+
 vi.mock('next/headers', () => ({
   cookies: () => mockCookieStore,
 }))
 
+vi.mock('payload', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('payload')>()
+  return {
+    ...actual,
+    getPayload: mockGetPayload,
+  }
+})
+
 describe('Logout Action', () => {
   beforeEach(() => {
     mockCookieStore.delete.mockClear()
+    mockGetPayload.mockResolvedValue({ config: {} })
   })
 
   it('deletes payload-token cookie', async () => {

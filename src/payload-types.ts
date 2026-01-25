@@ -69,6 +69,8 @@ export interface Config {
   collections: {
     pages: Page;
     categories: Category;
+    config_entries: ConfigEntry;
+    config_audit_logs: ConfigAuditLog;
     conversations: Conversation;
     memory_items: MemoryItem;
     tenants: Tenant;
@@ -103,6 +105,8 @@ export interface Config {
   collectionsSelect: {
     pages: PagesSelect<false> | PagesSelect<true>;
     categories: CategoriesSelect<false> | CategoriesSelect<true>;
+    config_entries: ConfigEntriesSelect<false> | ConfigEntriesSelect<true>;
+    config_audit_logs: ConfigAuditLogsSelect<false> | ConfigAuditLogsSelect<true>;
     conversations: ConversationsSelect<false> | ConversationsSelect<true>;
     memory_items: MemoryItemsSelect<false> | MemoryItemsSelect<true>;
     tenants: TenantsSelect<false> | TenantsSelect<true>;
@@ -395,6 +399,15 @@ export interface User {
   id: string;
   name?: string | null;
   role: 'admin' | 'student';
+  googleSub?: string | null;
+  verifiedEmail?: string | null;
+  registrationMethod?: ('google' | 'email') | null;
+  registeredAt?: string | null;
+  googleProfile?: {
+    name?: string | null;
+    picture?: string | null;
+  };
+  oauthLoginSecretEnc?: string | null;
   updatedAt: string;
   createdAt: string;
   email: string;
@@ -494,6 +507,10 @@ export interface Tenant {
  */
 export interface Media {
   id: string;
+  /**
+   * Tenant scope for this document
+   */
+  tenant: string | Tenant;
   /**
    * Auto-detected from file type (admin can override)
    */
@@ -819,6 +836,72 @@ export interface Form {
         id?: string | null;
       }[]
     | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Tenant-scoped configuration key/value store. Variables are plaintext, secrets are encrypted.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "config_entries".
+ */
+export interface ConfigEntry {
+  id: string;
+  /**
+   * Configuration key (snake_case, immutable after creation)
+   */
+  key: string;
+  /**
+   * Tenant this config entry belongs to
+   */
+  tenant: string | Tenant;
+  /**
+   * Variable: stored as plaintext. Secret: encrypted at rest.
+   */
+  kind: 'variable' | 'secret';
+  /**
+   * Configuration value. Secrets are write-only after save.
+   */
+  value: string;
+  /**
+   * Enable or disable this configuration entry
+   */
+  enabled: boolean;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Append-only audit log for config mutations. Secrets never stored in plaintext.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "config_audit_logs".
+ */
+export interface ConfigAuditLog {
+  id: string;
+  /**
+   * Configuration key that was modified
+   */
+  key: string;
+  /**
+   * Tenant of the mutated config entry
+   */
+  tenant: string | Tenant;
+  /**
+   * Type of config entry
+   */
+  kind: 'variable' | 'secret';
+  /**
+   * Action performed
+   */
+  action: 'created' | 'updated' | 'enabled' | 'disabled';
+  /**
+   * Admin user who performed the action
+   */
+  actor: string | User;
+  /**
+   * Optional reason for the change
+   */
+  reason?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1611,6 +1694,14 @@ export interface PayloadLockedDocument {
         value: string | Category;
       } | null)
     | ({
+        relationTo: 'config_entries';
+        value: string | ConfigEntry;
+      } | null)
+    | ({
+        relationTo: 'config_audit_logs';
+        value: string | ConfigAuditLog;
+      } | null)
+    | ({
         relationTo: 'conversations';
         value: string | Conversation;
       } | null)
@@ -1879,6 +1970,33 @@ export interface CategoriesSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "config_entries_select".
+ */
+export interface ConfigEntriesSelect<T extends boolean = true> {
+  key?: T;
+  tenant?: T;
+  kind?: T;
+  value?: T;
+  enabled?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "config_audit_logs_select".
+ */
+export interface ConfigAuditLogsSelect<T extends boolean = true> {
+  key?: T;
+  tenant?: T;
+  kind?: T;
+  action?: T;
+  actor?: T;
+  reason?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "conversations_select".
  */
 export interface ConversationsSelect<T extends boolean = true> {
@@ -2060,6 +2178,17 @@ export interface ExerciseAssetsSelect<T extends boolean = true> {
 export interface UsersSelect<T extends boolean = true> {
   name?: T;
   role?: T;
+  googleSub?: T;
+  verifiedEmail?: T;
+  registrationMethod?: T;
+  registeredAt?: T;
+  googleProfile?:
+    | T
+    | {
+        name?: T;
+        picture?: T;
+      };
+  oauthLoginSecretEnc?: T;
   updatedAt?: T;
   createdAt?: T;
   email?: T;
@@ -2104,6 +2233,7 @@ export interface UserProgressSelect<T extends boolean = true> {
  * via the `definition` "media_select".
  */
 export interface MediaSelect<T extends boolean = true> {
+  tenant?: T;
   type?: T;
   externalUrl?: T;
   alt?: T;

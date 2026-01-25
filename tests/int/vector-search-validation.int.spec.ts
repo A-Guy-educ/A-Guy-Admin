@@ -9,8 +9,8 @@
  * - Performance and latency
  */
 /* eslint-disable @typescript-eslint/no-explicit-any -- MongoDB cursor results use any type */
-import { generateEmbedding } from '@/lib/ai/embeddings'
-import { retrieveMemoryItems } from '@/lib/ai/vector-search'
+import { generateEmbedding } from '@/infra/llm/embeddings'
+import { retrieveMemoryItems } from '@/infra/llm/vector-search'
 import config from '@payload-config'
 import type { Db } from 'mongodb'
 import type { Payload } from 'payload'
@@ -54,7 +54,9 @@ async function checkVectorSearchAvailable(): Promise<boolean> {
     if (
       error.message?.includes('not supported') ||
       error.message?.includes('SearchNotEnabled') ||
-      error.message?.includes('$listSearchIndexes stage is only allowed on MongoDB Atlas')
+      error.message?.includes('$listSearchIndexes stage is only allowed on MongoDB Atlas') ||
+      error.message?.includes('Atlas Search Database Commands') ||
+      error.message?.includes('additional configuration')
     ) {
       return false
     }
@@ -82,7 +84,6 @@ describe.skipIf(!hasOpenAIKey || !hasAtlasUrl)('Vector Search Validation Integra
     db = (payload.db as any).connection?.db
 
     if (!db) {
-      console.log('⚠️  Database connection not available - skipping all tests')
       return
     }
 
@@ -90,8 +91,6 @@ describe.skipIf(!hasOpenAIKey || !hasAtlasUrl)('Vector Search Validation Integra
     hasVectorSearch = await checkVectorSearchAvailable()
 
     if (!hasVectorSearch) {
-      console.log('⚠️  Vector search not available - tests will be skipped')
-      console.log('   This is expected on local MongoDB or M0 clusters')
       return
     }
 
@@ -165,7 +164,6 @@ describe.skipIf(!hasOpenAIKey || !hasAtlasUrl)('Vector Search Validation Integra
   describe('Index Existence and Configuration', () => {
     it('should have vector search index configured', async () => {
       if (!db || !hasVectorSearch) {
-        console.log('Skipping: Vector search not available')
         return
       }
 
@@ -180,7 +178,6 @@ describe.skipIf(!hasOpenAIKey || !hasAtlasUrl)('Vector Search Validation Integra
 
     it('should have correct vector field configuration', async () => {
       if (!db || !hasVectorSearch) {
-        console.log('Skipping: Vector search not available')
         return
       }
 
@@ -201,7 +198,6 @@ describe.skipIf(!hasOpenAIKey || !hasAtlasUrl)('Vector Search Validation Integra
 
     it('should have required filter fields configured', async () => {
       if (!db || !hasVectorSearch) {
-        console.log('Skipping: Vector search not available')
         return
       }
 
@@ -219,7 +215,6 @@ describe.skipIf(!hasOpenAIKey || !hasAtlasUrl)('Vector Search Validation Integra
 
     it('should be in READY status', async () => {
       if (!db || !hasVectorSearch) {
-        console.log('Skipping: Vector search not available')
         return
       }
 
@@ -349,7 +344,6 @@ describe.skipIf(!hasOpenAIKey || !hasAtlasUrl)('Vector Search Validation Integra
 
     it('should perform semantic search and return relevant results', async () => {
       if (!db || !hasVectorSearch || !testUserId || !testConversationId) {
-        console.log('Skipping: Vector search not available or test data missing')
         return
       }
 
@@ -379,7 +373,6 @@ describe.skipIf(!hasOpenAIKey || !hasAtlasUrl)('Vector Search Validation Integra
 
     it('should respect similarity threshold', async () => {
       if (!db || !hasVectorSearch || !testUserId || !testConversationId) {
-        console.log('Skipping: Vector search not available or test data missing')
         return
       }
 
@@ -403,7 +396,6 @@ describe.skipIf(!hasOpenAIKey || !hasAtlasUrl)('Vector Search Validation Integra
 
     it('should rank results by relevance', async () => {
       if (!db || !hasVectorSearch || !testUserId || !testConversationId) {
-        console.log('Skipping: Vector search not available or test data missing')
         return
       }
 
@@ -415,7 +407,6 @@ describe.skipIf(!hasOpenAIKey || !hasAtlasUrl)('Vector Search Validation Integra
       )
 
       if (result.items.length < 2) {
-        console.log('Not enough results to test ranking')
         return
       }
 
@@ -431,7 +422,6 @@ describe.skipIf(!hasOpenAIKey || !hasAtlasUrl)('Vector Search Validation Integra
 
     it('should return conversation-scoped results (local + global)', async () => {
       if (!db || !hasVectorSearch || !testUserId || !testConversationId) {
-        console.log('Skipping: Vector search not available or test data missing')
         return
       }
 
@@ -452,7 +442,6 @@ describe.skipIf(!hasOpenAIKey || !hasAtlasUrl)('Vector Search Validation Integra
 
     it('should handle queries with no matching results gracefully', async () => {
       if (!db || !hasVectorSearch || !testUserId || !testConversationId) {
-        console.log('Skipping: Vector search not available or test data missing')
         return
       }
 
@@ -525,7 +514,6 @@ describe.skipIf(!hasOpenAIKey || !hasAtlasUrl)('Vector Search Validation Integra
 
     it('should not return other users memories in search results', async () => {
       if (!db || !hasVectorSearch || !testUserId || !testConversationId) {
-        console.log('Skipping: Vector search not available or test data missing')
         return
       }
 
@@ -543,7 +531,6 @@ describe.skipIf(!hasOpenAIKey || !hasAtlasUrl)('Vector Search Validation Integra
 
     it('should enforce userId filter in vector search', async () => {
       if (!db || !hasVectorSearch || !testUserId || !testConversationId) {
-        console.log('Skipping: Vector search not available or test data missing')
         return
       }
 
@@ -559,7 +546,6 @@ describe.skipIf(!hasOpenAIKey || !hasAtlasUrl)('Vector Search Validation Integra
   describe('Performance and Latency', () => {
     it('should complete vector search within reasonable time', async () => {
       if (!db || !hasVectorSearch || !testUserId || !testConversationId) {
-        console.log('Skipping: Vector search not available or test data missing')
         return
       }
 
@@ -581,7 +567,6 @@ describe.skipIf(!hasOpenAIKey || !hasAtlasUrl)('Vector Search Validation Integra
 
     it('should report accurate latency metrics', async () => {
       if (!db || !hasVectorSearch || !testUserId || !testConversationId) {
-        console.log('Skipping: Vector search not available or test data missing')
         return
       }
 
@@ -630,7 +615,6 @@ describe.skipIf(!hasOpenAIKey || !hasAtlasUrl)('Vector Search Validation Integra
 
     it('should only return active memories by default', async () => {
       if (!db || !hasVectorSearch || !testUserId || !testConversationId) {
-        console.log('Skipping: Vector search not available or test data missing')
         return
       }
 
@@ -651,7 +635,6 @@ describe.skipIf(!hasOpenAIKey || !hasAtlasUrl)('Vector Search Validation Integra
   describe('Error Handling', () => {
     it('should handle invalid userId gracefully', async () => {
       if (!db || !hasVectorSearch) {
-        console.log('Skipping: Vector search not available')
         return
       }
 
@@ -668,7 +651,6 @@ describe.skipIf(!hasOpenAIKey || !hasAtlasUrl)('Vector Search Validation Integra
 
     it('should handle empty query gracefully', async () => {
       if (!db || !hasVectorSearch || !testUserId || !testConversationId) {
-        console.log('Skipping: Vector search not available or test data missing')
         return
       }
 

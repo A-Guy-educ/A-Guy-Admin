@@ -1,10 +1,10 @@
 'use client'
 
-import { ChatRole } from '@/lib/ai/chat-message-role'
-import { useTranslations } from '@/providers/I18n'
-import { cn } from '@/utilities/ui'
+import { ChatRole } from '@/infra/llm/chat-message-role'
+import { useTranslations } from '@/ui/web/providers/I18n'
+import { cn } from '@/infra/utils/ui'
 import { BookOpen, CheckCircle, Lightbulb, Loader2, RefreshCw, Send } from 'lucide-react'
-import { ChatMessageContent } from '@/components/chat'
+import { ChatMessageContent } from '@/ui/web/chat'
 import { useNotebookChat } from './useNotebookChat'
 
 interface NotebookChatProps {

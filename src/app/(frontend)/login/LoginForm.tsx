@@ -4,15 +4,17 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { useTranslations } from '@/providers/I18n'
+import { Button } from '@/ui/web/components/button'
+import { Card, CardContent, CardFooter, CardHeader } from '@/ui/web/components/card'
+import { Input } from '@/ui/web/components/input'
+import { Label } from '@/ui/web/components/label'
+import { useTranslations } from '@/ui/web/providers/I18n'
 import { loginAction } from './login_authenticate-action'
+import { GoogleLoginButton } from '@/ui/web/auth/GoogleLoginButton'
 
 export function LoginForm() {
   const t = useTranslations('auth.login')
+  const tOauth = useTranslations('auth.oauth')
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -46,6 +48,19 @@ export function LoginForm() {
         <p className="text-sm text-muted-foreground text-center">{t('subtitle')}</p>
       </CardHeader>
       <CardContent>
+        <div className="space-y-4">
+          <GoogleLoginButton returnTo="/" className="w-full" />
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">
+                {tOauth('orDivider')}
+              </span>
+            </div>
+          </div>
+        </div>
         <form onSubmit={onSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">{t('email')}</Label>

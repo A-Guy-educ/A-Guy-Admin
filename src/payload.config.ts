@@ -4,30 +4,32 @@ import { buildConfig, PayloadRequest } from 'payload'
 import sharp from 'sharp'
 import { fileURLToPath } from 'url'
 
-import { defaultLexical } from '@/fields/defaultLexical'
-import { Categories } from './collections/Categories'
-import { Chapters } from './collections/Chapters'
-import { Conversations } from './collections/Conversations'
-import { Courses } from './collections/Courses'
-import { ExerciseAssets } from './collections/ExerciseAssets'
-import { Exercises } from './collections/Exercises'
-import { Lessons } from './collections/Lessons'
-import { Media } from './collections/Media'
-import { MCPAuditLogs } from './collections/MCPAuditLogs'
-import { MemoryItems } from './collections/MemoryItems'
-import { Pages } from './collections/Pages'
-import { Posts } from './collections/Posts'
-import { PricingPlans } from './collections/PricingPlans'
-import { Prompts } from './collections/Prompts'
-import { Tenants } from './collections/Tenants'
-import { UserProgress } from './collections/UserProgress'
-import { Users } from './collections/Users'
-import { importExerciseFromImage } from './endpoints/exercises/import-from-image'
-import { importExerciseFromLesson } from './endpoints/exercises/import-from-lesson'
-import { Footer } from './Footer/config'
-import { Header } from './Header/config'
-import { plugins } from './plugins'
-import { getServerSideURL } from './utilities/getURL'
+import { getServerSideURL } from '@/infra/utils/getURL'
+import { Categories } from '@/server/payload/collections/Categories'
+import { Chapters } from '@/server/payload/collections/Chapters'
+import { ConfigAuditLogs } from '@/server/payload/collections/ConfigAuditLogs'
+import { ConfigEntries } from '@/server/payload/collections/ConfigEntries'
+import { Conversations } from '@/server/payload/collections/Conversations'
+import { Courses } from '@/server/payload/collections/Courses'
+import { ExerciseAssets } from '@/server/payload/collections/ExerciseAssets'
+import { Exercises } from '@/server/payload/collections/Exercises'
+import { Lessons } from '@/server/payload/collections/Lessons'
+import { MCPAuditLogs } from '@/server/payload/collections/MCPAuditLogs'
+import { Media } from '@/server/payload/collections/Media'
+import { MemoryItems } from '@/server/payload/collections/MemoryItems'
+import { Pages } from '@/server/payload/collections/Pages'
+import { Posts } from '@/server/payload/collections/Posts'
+import { PricingPlans } from '@/server/payload/collections/PricingPlans'
+import { Prompts } from '@/server/payload/collections/Prompts'
+import { Tenants } from '@/server/payload/collections/Tenants'
+import { UserProgress } from '@/server/payload/collections/UserProgress'
+import { Users } from '@/server/payload/collections/Users'
+import { importExerciseFromImage } from '@/server/payload/endpoints/exercises/import-from-image'
+import { importExerciseFromLesson } from '@/server/payload/endpoints/exercises/import-from-lesson'
+import { defaultLexical } from '@/server/payload/fields/defaultLexical'
+import { plugins } from '@/server/payload/plugins'
+import { Footer } from '@/ui/web/footer/config'
+import { Header } from '@/ui/web/header/config'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -55,10 +57,10 @@ export default buildConfig({
     components: {
       // The `BeforeLogin` component renders a message that you see while logging into your admin panel.
       // Feel free to delete this at any time. Simply remove the line below.
-      beforeLogin: ['@/components/BeforeLogin'],
+      beforeLogin: ['@/ui/admin/BeforeLogin'],
       // The `BeforeDashboard` component renders the 'welcome' block that you see after logging into your admin panel.
       // Feel free to delete this at any time. Simply remove the line below.
-      beforeDashboard: ['@/components/BeforeDashboard'],
+      beforeDashboard: ['@/ui/admin/BeforeDashboard'],
     },
     importMap: {
       baseDir: path.resolve(dirname),
@@ -95,6 +97,8 @@ export default buildConfig({
   collections: [
     Pages,
     Categories,
+    ConfigEntries,
+    ConfigAuditLogs,
     Conversations,
     MemoryItems,
     Tenants,

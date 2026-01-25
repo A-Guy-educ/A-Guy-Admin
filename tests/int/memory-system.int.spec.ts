@@ -8,19 +8,19 @@
  * - Context composition
  * - End-to-end chat with context
  */
-import { ChatRole } from '@/lib/ai/chat-message-role'
-import { buildRetrievalQuery, composePrompt, getRecentWindow } from '@/lib/ai/context-policy'
-import { generateEmbedding } from '@/lib/ai/embeddings'
-import { runSummaryMaintenance } from '@/lib/ai/maintenance'
-import { extractMemoryCandidates, persistMemoryItems } from '@/lib/ai/memory-extraction'
-import { generateSummary } from '@/lib/ai/summary'
-import { retrieveMemoryItems } from '@/lib/ai/vector-search'
-import type { MemoryItem } from '@/lib/ai/vector-search'
+import { ChatRole } from '@/infra/llm/chat-message-role'
+import { buildRetrievalQuery, composePrompt, getRecentWindow } from '@/infra/llm/context-policy'
+import { generateEmbedding } from '@/infra/llm/embeddings'
+import { runSummaryMaintenance } from '@/infra/llm/maintenance'
+import { extractMemoryCandidates, persistMemoryItems } from '@/infra/llm/memory-extraction'
+import { generateSummary } from '@/infra/llm/summary'
+import type { MemoryItem } from '@/infra/llm/vector-search'
+import { retrieveMemoryItems } from '@/infra/llm/vector-search'
 import config from '@payload-config'
+import type { Db } from 'mongodb'
 import type { Payload } from 'payload'
 import { getPayload } from 'payload'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import type { Db } from 'mongodb'
 
 function getDb(payload: Payload): Db {
   const db = (payload.db as { connection?: { db?: Db } }).connection?.db
@@ -326,6 +326,7 @@ describe.skipIf(!hasOpenAIKey)('Memory System Integration Tests', () => {
         collection: 'conversations',
         id: testConversationId,
         data: { messages: [] },
+        overrideAccess: true,
       })
 
       // Create conversation with 45 messages (above normal threshold)
@@ -339,6 +340,7 @@ describe.skipIf(!hasOpenAIKey)('Memory System Integration Tests', () => {
         collection: 'conversations',
         id: testConversationId,
         data: { messages },
+        overrideAccess: true,
       })
 
       // Run maintenance
@@ -366,6 +368,7 @@ describe.skipIf(!hasOpenAIKey)('Memory System Integration Tests', () => {
         collection: 'conversations',
         id: testConversationId,
         data: { messages: [] },
+        overrideAccess: true,
       })
 
       // Create conversation with 85 messages (above safety threshold)
@@ -379,6 +382,7 @@ describe.skipIf(!hasOpenAIKey)('Memory System Integration Tests', () => {
         collection: 'conversations',
         id: testConversationId,
         data: { messages },
+        overrideAccess: true,
       })
 
       // Run maintenance
@@ -404,6 +408,7 @@ describe.skipIf(!hasOpenAIKey)('Memory System Integration Tests', () => {
         collection: 'conversations',
         id: testConversationId,
         data: { messages: [] },
+        overrideAccess: true,
       })
 
       // Simulate 3 cycles of conversation growth
@@ -432,6 +437,7 @@ describe.skipIf(!hasOpenAIKey)('Memory System Integration Tests', () => {
             collection: 'conversations',
             id: testConversationId,
             data: { messages: [...trimmedMessages, ...newMessages] },
+            overrideAccess: true,
           })
         } else {
           const newMessages = Array.from({ length: 45 }, (_, i) => ({
@@ -444,6 +450,7 @@ describe.skipIf(!hasOpenAIKey)('Memory System Integration Tests', () => {
             collection: 'conversations',
             id: testConversationId,
             data: { messages: [...currentMessages, ...newMessages] },
+            overrideAccess: true,
           })
         }
 
@@ -468,6 +475,7 @@ describe.skipIf(!hasOpenAIKey)('Memory System Integration Tests', () => {
         collection: 'conversations',
         id: testConversationId,
         data: { messages: [] },
+        overrideAccess: true,
       })
 
       // Create a conversation where key information is repeatedly reinforced
@@ -510,6 +518,7 @@ describe.skipIf(!hasOpenAIKey)('Memory System Integration Tests', () => {
         collection: 'conversations',
         id: testConversationId,
         data: { messages },
+        overrideAccess: true,
       })
 
       await runSummaryMaintenance(payload, testConversationId)
@@ -537,10 +546,6 @@ describe.skipIf(!hasOpenAIKey)('Memory System Integration Tests', () => {
         summaryLower.includes('ui') ||
         summaryLower.includes('hooks') ||
         summaryLower.includes('component')
-
-      // Log what was captured for debugging
-      console.log('Summary:', summary)
-      console.log('Preserved:', { hasAlice, hasReact, hasRelevantTerms })
 
       // The summary should at least capture the general topic even if specific names are lost
       // This is more realistic given AI summarization behavior
@@ -591,7 +596,6 @@ describe.skipIf(!hasOpenAIKey)('Memory System Integration Tests', () => {
       // Skip if MongoDB connection not available (needed for vector search)
       const db = getDb(payload)
       if (!db) {
-        console.log('Skipping memory persistence test: MongoDB connection not available')
         return
       }
 
@@ -629,14 +633,11 @@ describe.skipIf(!hasOpenAIKey)('Memory System Integration Tests', () => {
   describe('Memory Isolation and Deduplication', () => {
     it.skip('should isolate memories across different conversations', async () => {
       // SKIPPED: This test requires the new conversation schema with contextRef
-      // The test environment may not have the updated schema yet
-      console.log('Skipping: Requires updated conversation schema with contextRef')
     })
 
     it('should deduplicate similar memories', async () => {
       const db = getDb(payload)
       if (!db) {
-        console.log('Skipping: MongoDB connection not available')
         return
       }
 
@@ -685,11 +686,6 @@ describe.skipIf(!hasOpenAIKey)('Memory System Integration Tests', () => {
       // If vector search is available (Atlas), should deduplicate (0)
       // If not available (local), will create new (1)
       // Both behaviors are acceptable depending on environment
-      if (persisted2 === 0) {
-        console.log('✓ Deduplication working (vector search available)')
-      } else if (persisted2 === 1) {
-        console.log('⚠ Deduplication skipped (vector search not available)')
-      }
       expect([0, 1]).toContain(persisted2)
     }, 60000)
   })
@@ -702,7 +698,6 @@ describe.skipIf(!hasOpenAIKey)('Memory System Integration Tests', () => {
       // Skip if not Atlas
       const db = getDb(payload)
       if (!db) {
-        console.log('Skipping vector search test: MongoDB Atlas not available')
         return
       }
 
@@ -737,7 +732,6 @@ describe.skipIf(!hasOpenAIKey)('Memory System Integration Tests', () => {
         // Only assert if vector search is actually working
         // (fails on local MongoDB without Atlas vector search)
         if (result.items.length === 0) {
-          console.log('Skipping assertions: Vector search returned no results (likely not Atlas)')
           return
         }
 
@@ -746,9 +740,7 @@ describe.skipIf(!hasOpenAIKey)('Memory System Integration Tests', () => {
         expect(result.localCount + result.globalCount).toBeGreaterThan(0)
         expect(result.latencyMs).toBeGreaterThan(0)
       } catch (error: unknown) {
-        if (isVectorSearchUnavailable(error)) {
-          console.log('Skipping: Vector search not available (requires MongoDB Atlas)')
-        } else {
+        if (!isVectorSearchUnavailable(error)) {
           throw error
         }
       }
@@ -757,7 +749,6 @@ describe.skipIf(!hasOpenAIKey)('Memory System Integration Tests', () => {
     it('should enforce tenant isolation in vector search', async () => {
       const db = getDb(payload)
       if (!db) {
-        console.log('Skipping vector search test: MongoDB Atlas not available')
         return
       }
 
@@ -802,9 +793,7 @@ describe.skipIf(!hasOpenAIKey)('Memory System Integration Tests', () => {
         const hasOtherUserMemory = result.items.some((item) => item.userId === otherUser.id)
         expect(hasOtherUserMemory).toBe(false)
       } catch (error: unknown) {
-        if (isVectorSearchUnavailable(error)) {
-          console.log('Skipping: Vector search index not provisioned')
-        } else {
+        if (!isVectorSearchUnavailable(error)) {
           throw error
         }
       }
@@ -834,6 +823,7 @@ describe.skipIf(!hasOpenAIKey)('Memory System Integration Tests', () => {
         collection: 'conversations',
         id: testConversationId,
         data: { messages },
+        overrideAccess: true,
       })
 
       // Get recent window

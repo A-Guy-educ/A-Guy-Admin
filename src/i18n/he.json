@@ -1,0 +1,201 @@
+{
+  "common": {
+    "languageSwitcher": {
+      "label": "שפה",
+      "english": "אנגלית",
+      "hebrew": "עברית"
+    },
+    "notFound": {
+      "title": "404",
+      "message": "דף זה לא נמצא.",
+      "goHome": "חזרה לדף הבית"
+    },
+    "header": {
+      "welcome": "שלום,",
+      "logout": "התנתק",
+      "loggingOut": "מתנתק...",
+      "login": "התחבר",
+      "signup": "הירשם",
+      "myAccount": "החשבון שלי"
+    },
+    "mobileMenu": {
+      "title": "תפריט",
+      "navigation": "ניווט",
+      "resources": "משאבים",
+      "search": "חיפוש",
+      "language": "שפה"
+    }
+  },
+  "auth": {
+    "oauth": {
+      "continueWithGoogle": "המשך עם Google",
+      "signInWithGoogle": "התחבר עם Google",
+      "orDivider": "או",
+      "errors": {
+        "invalid_state": "אימות אבטחה נכשל. אנא נסה שוב.",
+        "missing_code": "קוד אימות חסר. אנא נסה שוב.",
+        "token_exchange_failed": "אימות עם Google נכשל. אנא נסה שוב.",
+        "userinfo_failed": "שליפת מידע החשבון מ-Google נכשלה.",
+        "invalid_userinfo": "מידע חשבון לא תקין מ-Google.",
+        "email_not_verified": "אנא אמת את האימייל שלך ב-Google תחילה.",
+        "collision": "כבר קיים חשבון עם כתובת אימייל זו. אנא התחבר עם הסיסמה שלך או פנה לתמיכה."
+      }
+    },
+    "signup": {
+      "title": "צור חשבון",
+      "subtitle": "הירשם כדי להתחיל ללמוד",
+      "name": "שם",
+      "namePlaceholder": "ישראל ישראלי",
+      "email": "אימייל",
+      "emailPlaceholder": "you@example.com",
+      "password": "סיסמה",
+      "passwordPlaceholder": "••••••••",
+      "confirmPassword": "אשר סיסמה",
+      "createAccount": "צור חשבון",
+      "creatingAccount": "יוצר חשבון...",
+      "alreadyHaveAccount": "כבר יש לך חשבון?",
+      "login": "התחבר",
+      "errors": {
+        "nameRequired": "שם הוא שדה חובה",
+        "invalidEmail": "נדרש אימייל תקין",
+        "passwordTooShort": "הסיסמה חייבת להיות לפחות 8 תווים",
+        "passwordMismatch": "הסיסמאות אינן תואמות",
+        "emailExists": "כבר קיים חשבון עם כתובת אימייל זו",
+        "duplicateEmailMessage": "כבר קיים חשבון עם כתובת אימייל זו. האם תרצה להתחבר במקום?"
+      }
+    },
+    "login": {
+      "title": "ברוך שובך",
+      "subtitle": "התחבר לחשבון שלך",
+      "email": "אימייל",
+      "emailPlaceholder": "you@example.com",
+      "password": "סיסמה",
+      "passwordPlaceholder": "הזן את הסיסמה שלך",
+      "loginButton": "התחבר",
+      "loggingIn": "מתחבר...",
+      "noAccount": "אין לך חשבון?",
+      "signupLink": "הירשם",
+      "errors": {
+        "invalidCredentials": "אימייל או סיסמה שגויים"
+      }
+    },
+    "account": {
+      "title": "חשבון",
+      "name": "שם",
+      "email": "אימייל",
+      "missing": "לא סופק"
+    }
+  },
+  "roles": {
+    "admin": "מנהל",
+    "student": "תלמיד"
+  },
+  "courses": {
+    "title": "קורסים",
+    "description": "עיין בכל הקורסים הזמינים",
+    "heroTitle": "עתיד הלמידה המקוונת",
+    "heroDescription": "שלוט במיומנויות חדשות עם הקורסים המבוססים על פרויקטים, חידונים אינטראקטיביים וקהילת לומדים תומכת.",
+    "liveContent": "תוכן חדש מתווסף באופן קבוע",
+    "featuredTitle": "קורסים מומלצים",
+    "featuredDescription": "קורסים שנבחרו בקפידה כדי לעזור לך במסע הלמידה שלך.",
+    "backToCourses": "חזרה לקורסים",
+    "openCourse": "פתח קורס",
+    "viewChapter": "צפה בפרק",
+    "viewLesson": "צפה בשיעור",
+    "chaptersSection": "פרקים",
+    "lessonsSection": "שיעורים",
+    "chapter": "פרק",
+    "lesson": "שיעור",
+    "exercise": "תרגיל",
+    "noCourses": "אין קורסים זמינים כרגע.",
+    "noChapters": "אין פרקים זמינים לקורס זה.",
+    "noLessons": "אין שיעורים זמינים לפרק זה.",
+    "noExercises": "אין תרגילים זמינים לשיעור זה.",
+    "noPDF": "תוכן PDF אינו זמין לשיעור זה.",
+    "pdfBadge": "PDF",
+    "pdfView": "תצוגת PDF",
+    "interactiveExercises": "תרגילים אינטראקטיביים",
+    "exercisesTitle": "תרגילים אינטראקטיביים",
+    "exercisesDescription": "השלם את התרגילים הבאים כדי לתרגל את מה שלמדת.",
+    "startExercise": "התחל תרגיל",
+    "mcqBadge": "בחירה מרובה",
+    "trueFalseBadge": "נכון/לא נכון",
+    "freeResponseBadge": "תשובה חופשית",
+    "notFound": "לא נמצא",
+    "backToLesson": "חזרה לשיעור",
+    "exerciseTitle": "תרגיל",
+    "submitAnswer": "שלח תשובה",
+    "checkAnswer": "בדוק תשובה",
+    "nextExercise": "תרגיל הבא",
+    "yourAnswer": "התשובה שלך",
+    "correct": "נכון!",
+    "incorrect": "לא נכון",
+    "tryAgain": "נסה שוב",
+    "selectMultiple": "בחר את כל התשובות הנכונות",
+    "selectOne": "בחר תשובה אחת",
+    "enterNumber": "הזן מספר...",
+    "enterAnswer": "הזן את התשובה שלך...",
+    "notebookTitle": "מחברת תרגול",
+    "chatTab": "צ'אט",
+    "chatTitle": "צ'אט",
+    "formulasTab": "נוסחאות",
+    "notesTab": "הערות",
+    "chatWelcome": "היי! אני המורה הדיגיטלי שלך. שאל אותי רמזים, הסברים, או עזרה בפתרון התרגיל!",
+    "chatHint": "רמז",
+    "chatSolution": "פתרון",
+    "chatFullSolution": "מלא",
+    "chatInputPlaceholder": "שלח הודעה...",
+    "chatAuthRequired": "יש להתחבר כדי להשתמש בעוזר הבינה המלאכותית",
+    "chatHintPrompt": "האם תוכל לתת לי רמז שיעזור לי לפתור את התרגיל?",
+    "chatSolutionPrompt": "האם תוכל להסביר את גישת הפתרון?",
+    "chatFullSolutionPrompt": "האם תוכל לספק את הפתרון המלא עם כל השלבים?",
+    "chatAIAcknowledgment": "הבנתי. אני אעזור להדריך תלמידים דרך התרגילים שלהם.",
+    "chatError": "שליחת ההודעה נכשלה. אנא נסה שוב.",
+    "chatThinking": "חושב...",
+    "chatLoadingHistory": "טוען שיחה...",
+    "chatReset": "איפוס",
+    "chatResetConfirm": "האם לאפס את השיחה? פעולה זו תתחיל שיחה חדשה.",
+    "chatResetSuccess": "השיחה אופסה",
+    "chatResetError": "נכשל איפוס השיחה",
+    "mathKeyboard": "מקלדת מתמטית",
+    "formulaSheet": "דף נוסחאות",
+    "uploadFile": "העלאת קובץ",
+    "sendMessage": "שליחה",
+    "algebraFormulas": "אלגברה",
+    "trigonometryFormulas": "טריגונומטריה",
+    "formulaSubtitle": "נוסחאות עזר",
+    "notesSubtitle": "הערות אישיות",
+    "notesPlaceholder": "הוסף הערות כאן..."
+  },
+  "homepage": {
+    "nav": {
+      "study": "ללמוד",
+      "practice": "לתרגל",
+      "ask": "לשאול",
+      "test": "להיבחן"
+    },
+    "greeting": {
+      "welcome": "שלום! אני המורה הדיגיטלי שלך 🤖",
+      "moodQuestion": "איך אתה מרגיש היום?",
+      "moods": {
+        "happy": "😊 שמח",
+        "neutral": "😐 רגוע",
+        "sad": "😔 עצוב",
+        "excited": "🤩 נלהב"
+      },
+      "gradeQuestion": "באיזו כיתה אתה לומד?",
+      "selectGrade": "בחר כיתה",
+      "gradeLabel": "כיתה {{grade}}",
+      "letsStart": "בואו נתחיל!",
+      "loading": "טוען...",
+      "noCoursesAvailable": "אין קורסים זמינים"
+    }
+  },
+  "study": {
+    "loading": "טוען...",
+    "chooseCourse": "בחר קורס",
+    "noCoursesAvailable": "אין קורסים זמינים",
+    "studyTopics": "נושאי לימוד",
+    "noTopicsAvailable": "אין נושאים זמינים בקורס זה"
+  }
+}

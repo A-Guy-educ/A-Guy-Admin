@@ -1,12 +1,12 @@
 'use client'
 
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
+import { Button } from '@/ui/web/components/button'
+import { Card, CardContent, CardFooter, CardHeader } from '@/ui/web/components/card'
 import { detectBrowserLocale } from '@/i18n/config'
-import { PRODUCT_EVENTS } from '@/lib/analytics/contracts/events'
-import { useAnalytics } from '@/lib/analytics/providers/AnalyticsProvider'
-import { updateCachedUserProperties } from '@/lib/analytics/utils/user-properties-cache'
-import { useTranslations } from '@/providers/I18n'
+import { PRODUCT_EVENTS } from '@/infra/analytics/contracts/events'
+import { useAnalytics } from '@/infra/analytics/providers/AnalyticsProvider'
+import { updateCachedUserProperties } from '@/infra/analytics/utils/user-properties-cache'
+import { useTranslations } from '@/ui/web/providers/I18n'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import React, { useState } from 'react'
@@ -14,9 +14,11 @@ import { toast } from 'sonner'
 import { SignupFormFields } from './SignupFormFields'
 import { signupAction } from './actions/signup_createUser-action'
 import { validateSignupForm } from './actions/signup_validation-action'
+import { GoogleLoginButton } from '@/ui/web/auth/GoogleLoginButton'
 
 export function SignupForm() {
   const t = useTranslations('auth.signup')
+  const tOauth = useTranslations('auth.oauth')
   const router = useRouter()
   const analytics = useAnalytics()
   const [isLoading, setIsLoading] = useState(false)
@@ -109,6 +111,19 @@ export function SignupForm() {
         </p>
       </CardHeader>
       <CardContent>
+        <div className="space-y-4">
+          <GoogleLoginButton returnTo="/" className="w-full" />
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">
+                {tOauth('orDivider')}
+              </span>
+            </div>
+          </div>
+        </div>
         <form onSubmit={onSubmit} className="space-y-4">
           <SignupFormFields t={t} isLoading={isLoading} errors={errors} />
 

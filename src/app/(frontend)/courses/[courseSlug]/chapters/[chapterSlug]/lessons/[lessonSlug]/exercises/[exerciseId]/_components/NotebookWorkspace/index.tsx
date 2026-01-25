@@ -3,8 +3,8 @@
 import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { MessageSquare, BookOpen, PenLine, X, Menu } from 'lucide-react'
-import { cn } from '@/utilities/ui'
-import { useTranslations } from '@/providers/I18n'
+import { cn } from '@/infra/utils/ui'
+import { useTranslations } from '@/ui/web/providers/I18n'
 
 type SidebarTab = 'chat' | 'formulas' | 'notes'
 

@@ -12,12 +12,12 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 import type { Payload } from 'payload'
 import { getPayload } from 'payload'
 import type { PayloadRequest } from 'payload'
-import { getConversation } from '@/endpoints/agent/get-conversation'
-import { agentChat } from '@/endpoints/agent/chat'
-import { startMongoContainer, stopMongoContainer } from '@/utilities/test/mongodb-container'
+import { getConversation } from '@/server/payload/endpoints/agent/get-conversation'
+import { agentChat } from '@/server/payload/endpoints/agent/chat'
+import { startMongoContainer, stopMongoContainer } from '@/infra/utils/test/mongodb-container'
 
 // Mock AI and vector-related services
-vi.mock('@/lib/ai/services/exercise-chat-service', () => ({
+vi.mock('@/infra/llm/services/exercise-chat-service', () => ({
   chatWithExerciseHelper: vi.fn(async () => ({
     success: true,
     message: 'Mock assistant response',
@@ -25,11 +25,11 @@ vi.mock('@/lib/ai/services/exercise-chat-service', () => ({
   getSystemPrompt: vi.fn(() => 'You are a helpful assistant.'),
 }))
 
-vi.mock('@/lib/ai/vector-index-check', () => ({
+vi.mock('@/infra/llm/vector-index-check', () => ({
   isVectorIndexAvailable: vi.fn(async () => false),
 }))
 
-vi.mock('@/lib/ai/vector-search', () => ({
+vi.mock('@/infra/llm/vector-search', () => ({
   retrieveMemoryItems: vi.fn(async () => ({
     items: [],
     latencyMs: 0,
@@ -40,12 +40,12 @@ vi.mock('@/lib/ai/vector-search', () => ({
   })),
 }))
 
-vi.mock('@/lib/ai/memory-extraction', () => ({
+vi.mock('@/infra/llm/memory-extraction', () => ({
   extractMemoryCandidates: vi.fn(async () => []),
   persistMemoryItems: vi.fn(async () => 0),
 }))
 
-vi.mock('@/lib/ai/maintenance', () => ({
+vi.mock('@/infra/llm/maintenance', () => ({
   runSummaryMaintenance: vi.fn(async () => ({
     summaryUpdated: false,
     messagesTrimmed: 0,

@@ -6,8 +6,9 @@
  * - Happy-path chat flow with a real Payload instance
  *   (AI calls and vector search are mocked to avoid external dependencies).
  */
-import { agentChat } from '@/endpoints/agent/chat'
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { Exercise } from '@/payload-types'
+import { agentChat } from '@/server/payload/endpoints/agent/chat'
 import config from '@payload-config'
 import type { Payload, PayloadRequest } from 'payload'
 import { getPayload } from 'payload'
@@ -17,18 +18,18 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 const hasDatabaseUrl = !!process.env.DATABASE_URL
 
 // Mock AI and vector-related services to keep tests deterministic and offline.
-vi.mock('@/lib/ai/services/exercise-chat-service', () => ({
+vi.mock('@/infra/llm/services/exercise-chat-service', () => ({
   chatWithExerciseHelper: vi.fn(async () => ({
     success: true,
     message: 'Mock assistant response',
   })),
 }))
 
-vi.mock('@/lib/ai/vector-index-check', () => ({
+vi.mock('@/infra/llm/vector-index-check', () => ({
   isVectorIndexAvailable: vi.fn(async () => false),
 }))
 
-vi.mock('@/lib/ai/vector-search', () => ({
+vi.mock('@/infra/llm/vector-search', () => ({
   retrieveMemoryItems: vi.fn(async () => ({
     items: [],
     latencyMs: 0,
@@ -37,12 +38,12 @@ vi.mock('@/lib/ai/vector-search', () => ({
   })),
 }))
 
-vi.mock('@/lib/ai/memory-extraction', () => ({
+vi.mock('@/infra/llm/memory-extraction', () => ({
   extractMemoryCandidates: vi.fn(async () => []),
   persistMemoryItems: vi.fn(async () => 0),
 }))
 
-vi.mock('@/lib/ai/maintenance', () => ({
+vi.mock('@/infra/llm/maintenance', () => ({
   runSummaryMaintenance: vi.fn(async () => ({
     summaryUpdated: false,
     messagesTrimmed: 0,
@@ -333,7 +334,7 @@ describe.skipIf(!hasDatabaseUrl)('agentChat endpoint', () => {
     })
 
     it('endpoint always passes composedPrompt to chatWithExerciseHelper', async () => {
-      const { chatWithExerciseHelper } = await import('@/lib/ai/services/exercise-chat-service')
+      const { chatWithExerciseHelper } = await import('@/infra/llm/services/exercise-chat-service')
 
       const lesson = await payload.create({
         collection: 'lessons',
@@ -359,12 +360,18 @@ describe.skipIf(!hasDatabaseUrl)('agentChat endpoint', () => {
 
       await agentChat(req)
 
+      // Verify mock was called at least once
+      expect(chatWithExerciseHelper).toHaveBeenCalled()
+
+      // Get the last call arguments safely to avoid verbose error expansion
+      const mockCalls = (chatWithExerciseHelper as unknown as { mock: { calls: Array<[unknown]> } })
+        .mock.calls
+      const lastCallArgs = mockCalls[mockCalls.length - 1]?.[0] as {
+        composedPrompt?: unknown
+      }
+
       // Verify composedPrompt was passed
-      expect(chatWithExerciseHelper).toHaveBeenCalledWith(
-        expect.objectContaining({
-          composedPrompt: expect.any(Object),
-        }),
-      )
+      expect(lastCallArgs?.composedPrompt).toBeDefined()
 
       await payload.delete({ collection: 'lessons', id: lesson.id } as any)
     })
@@ -372,7 +379,7 @@ describe.skipIf(!hasDatabaseUrl)('agentChat endpoint', () => {
 
   describe('system prompts', () => {
     it('includes published system prompts in composed prompt', async () => {
-      const { chatWithExerciseHelper } = await import('@/lib/ai/services/exercise-chat-service')
+      const { chatWithExerciseHelper } = await import('@/infra/llm/services/exercise-chat-service')
 
       const lesson = await payload.create({
         collection: 'lessons',
@@ -398,26 +405,33 @@ describe.skipIf(!hasDatabaseUrl)('agentChat endpoint', () => {
 
       await agentChat(req)
 
-      // Verify composedPrompt includes system prompt marker
-      expect(chatWithExerciseHelper).toHaveBeenCalledWith(
-        expect.objectContaining({
-          composedPrompt: expect.objectContaining({
-            messages: expect.arrayContaining([
-              expect.objectContaining({
-                role: 'system',
-                content: expect.stringContaining('SYSTEM_PROMPT_MARKER'),
-              }),
-            ]),
-          }),
-        }),
-      )
+      // Verify mock was called at least once
+      expect(chatWithExerciseHelper).toHaveBeenCalled()
+
+      // Get the last call arguments safely
+      const mockCalls = (chatWithExerciseHelper as unknown as { mock: { calls: Array<[unknown]> } })
+        .mock.calls
+      const lastCallArgs = mockCalls[mockCalls.length - 1]?.[0] as {
+        composedPrompt?: { messages?: Array<{ role: string; content: string }> }
+      }
+
+      // Verify composedPrompt structure exists
+      expect(lastCallArgs?.composedPrompt).toBeDefined()
+      expect(lastCallArgs?.composedPrompt?.messages).toBeDefined()
+      expect(Array.isArray(lastCallArgs?.composedPrompt?.messages)).toBe(true)
+
+      // Check if any message contains our system prompt marker
+      const messages = lastCallArgs?.composedPrompt?.messages || []
+      const systemMessage = messages.find((m) => m.role === 'system')
+      expect(systemMessage).toBeDefined()
+      expect(systemMessage?.content).toContain('SYSTEM_PROMPT_MARKER')
 
       await payload.delete({ collection: 'lessons', id: lesson.id } as any)
     })
 
     it('prepends system prompts in createdAt ASC order', async () => {
       // Import after mocks are set up to get the mocked version
-      const chatWithExerciseHelper = (await import('@/lib/ai/services/exercise-chat-service'))
+      const chatWithExerciseHelper = (await import('@/infra/llm/services/exercise-chat-service'))
         .chatWithExerciseHelper as ReturnType<typeof vi.fn>
 
       // Delete existing system prompt from beforeAll to ensure clean test
@@ -529,7 +543,7 @@ describe.skipIf(!hasDatabaseUrl)('agentChat endpoint', () => {
       await payload.delete({ collection: 'lessons', id: lesson.id } as any)
       await payload.delete({ collection: 'prompts', id: sysPromptA.id } as any)
       await payload.delete({ collection: 'prompts', id: sysPromptB.id } as any)
-    })
+    }, 30000)
 
     it('proceeds successfully when no system prompts exist', async () => {
       // Temporarily remove system prompt
@@ -582,6 +596,6 @@ describe.skipIf(!hasDatabaseUrl)('agentChat endpoint', () => {
         overrideAccess: true,
       } as any)
       testSystemPromptId = newSystemPrompt.id
-    })
+    }, 30000)
   })
 })

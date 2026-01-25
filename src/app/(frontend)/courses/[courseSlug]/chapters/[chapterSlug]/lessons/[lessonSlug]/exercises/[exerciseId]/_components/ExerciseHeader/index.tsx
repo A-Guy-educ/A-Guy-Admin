@@ -1,18 +1,19 @@
 'use client'
 
-import { TelescopeLogo } from '@/components/TelescopeLogo'
+import { TelescopeLogo } from '@/ui/web/TelescopeLogo'
 import { isRTL } from '@/i18n/config'
-import { useLocale, useTranslations } from '@/providers/I18n'
-import { cn } from '@/utilities/ui'
-import { ArrowLeft, ArrowRight } from 'lucide-react'
+import { useLocale, useTranslations } from '@/ui/web/providers/I18n'
+import { cn } from '@/infra/utils/ui'
+import { ArrowLeft, ArrowRight, Menu } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
 interface ExerciseHeaderProps {
   exerciseTitle: string
   backUrl?: string
+  onMenuClick?: () => void
 }
 
-export function ExerciseHeader({ exerciseTitle, backUrl }: ExerciseHeaderProps) {
+export function ExerciseHeader({ exerciseTitle, backUrl, onMenuClick }: ExerciseHeaderProps) {
   const t = useTranslations('courses')
   const locale = useLocale()
   const rtl = isRTL(locale as 'en' | 'he')
@@ -47,7 +48,7 @@ export function ExerciseHeader({ exerciseTitle, backUrl }: ExerciseHeaderProps) 
         {exerciseTitle}
       </h1>
 
-      {/* Right side in LTR (logo + text) / Left side in RTL (logo + text) - Fixed positioning to viewport edge */}
+      {/* Right side in LTR / Left side in RTL - Fixed positioning to viewport edge */}
       <div
         className={cn(
           'flex items-center gap-1 flex-shrink-0 fixed top-[10px] z-[101]',
@@ -57,8 +58,19 @@ export function ExerciseHeader({ exerciseTitle, backUrl }: ExerciseHeaderProps) 
           [rtl ? 'left' : 'right']: '20px',
         }}
       >
-        <TelescopeLogo className="h-8 w-auto" />
-        <span className="text-primary text-xl font-extrabold tracking-tight">Aguy</span>
+        {/* Logo - Hidden on mobile, shown on desktop */}
+        <TelescopeLogo className="h-8 w-auto hidden lg:flex" />
+
+        {/* Hamburger menu - Shown on mobile, hidden on desktop */}
+        {onMenuClick && (
+          <button
+            onClick={onMenuClick}
+            className="p-2 rounded-lg hover:bg-muted transition-colors lg:hidden text-foreground"
+            aria-label="Open menu"
+          >
+            <Menu className="w-6 h-6 text-foreground" />
+          </button>
+        )}
       </div>
     </header>
   )

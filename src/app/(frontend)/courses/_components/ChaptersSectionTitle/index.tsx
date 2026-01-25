@@ -1,6 +1,6 @@
 'use client'
 
-import { useTranslations } from '@/providers/I18n'
+import { useTranslations } from '@/ui/web/providers/I18n'
 
 export function ChaptersSectionTitle() {
   const t = useTranslations('courses')

@@ -1,18 +1,18 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { getUserProfile } from '@/lib/localStorage/userProfile'
+import { getUserProfile } from '@/client/state/localStorage/userProfile'
 import {
   DEFAULT_LESSON_TYPE,
   getEffectiveLessonType,
   type LessonType,
-} from '@/lib/constants/lesson-types'
-import { useTranslations } from '@/providers/I18n'
+} from '@/server/constants/lesson-types'
+import { useTranslations } from '@/ui/web/providers/I18n'
 import type { Chapter, Lesson } from '@/payload-types'
 import { ChapterHeader } from '@/app/(frontend)/courses/_components/ChapterHeader'
 import { LessonCard } from '@/app/(frontend)/courses/_components/LessonCard'
 import { EmptyState } from '@/app/(frontend)/courses/_components/EmptyState'
-import { logger } from '@/utilities/logger'
+import { logger } from '@/infra/utils/logger'
 
 interface ChapterWithLessons extends Chapter {
   lessons: Lesson[]

@@ -1,7 +1,7 @@
 'use client'
 
-import { ResizablePane } from '@/components/ui/resizable-pane'
-import { useMediaQuery } from '@/hooks/useMediaQuery'
+import { ResizablePane } from '@/ui/web/components/resizable-pane'
+import { useMediaQuery } from '@/server/payload/hooks/useMediaQuery'
 import React from 'react'
 import { ExerciseHeader } from '../ExerciseHeader'
 
@@ -20,9 +20,18 @@ export function ExerciseWorkspace({
 }: ExerciseWorkspaceProps) {
   const isDesktop = useMediaQuery('(min-width: 1024px)')
 
+  // Trigger the existing mobile menu from the main header
+  const handleMenuClick = () => {
+    window.dispatchEvent(new CustomEvent('open-mobile-menu'))
+  }
+
   return (
     <div className="fixed inset-0 bg-background z-50 flex flex-col overflow-hidden">
-      <ExerciseHeader exerciseTitle={exerciseTitle} backUrl={backUrl} />
+      <ExerciseHeader
+        exerciseTitle={exerciseTitle}
+        backUrl={backUrl}
+        onMenuClick={handleMenuClick}
+      />
 
       <ResizablePane
         orientation={isDesktop ? 'horizontal' : 'vertical'}
