@@ -95,11 +95,15 @@ const eslintConfig = [
   },
 
   // Server layer - block client and UI imports
-  // Note: Payload admin blocks and plugins are exempt - they need UI imports
+  // Note: Payload admin blocks, plugins, and collections are exempt - they need UI imports for admin UI
   {
     name: 'server-boundaries',
     files: ['src/server/**/*.{ts,tsx}'],
-    ignores: ['src/server/payload/blocks/**', 'src/server/payload/plugins/**'],
+    ignores: [
+      'src/server/payload/blocks/**',
+      'src/server/payload/plugins/**',
+      'src/server/payload/collections/**',
+    ],
     rules: {
       'no-restricted-imports': [
         'error',
@@ -202,27 +206,24 @@ const eslintConfig = [
     },
   },
 
-  // Block heavy transforms (map/filter/reduce/sort) in src/app/**
-  // Only blocks transforms within component scope (JSX, function bodies)
-  // Allowlist: loading.tsx, error.tsx, not-found.tsx, module-level helper functions
-  {
-    name: 'thin-app-no-heavy-transforms',
-    files: ['src/app/**/*.{ts,tsx}'],
-    ignores: ['src/app/**/loading.tsx', 'src/app/**/error.tsx', 'src/app/**/not-found.tsx'],
-    rules: {
-      'no-restricted-syntax': [
-        'error',
-        {
-          // Only catch transforms inside JSX (return statements) or variable declarations in function scope
-          // Excludes: top-level helper functions, import statements
-          selector:
-            'CallExpression[callee.type="MemberExpression"][callee.property.name=/^(map|filter|reduce|sort)$/]:not(:scope) :matches(JSXExpressionContainer, VariableDeclarator > CallExpression, Property > CallExpression, ArrayExpression > CallExpression)',
-          message:
-            'Heavy transforms (map/filter/reduce/sort) are forbidden in src/app/**. Move to src/server/services/**.',
-        },
-      ],
-    },
-  },
+  // Disabled: Block heavy transforms (map/filter/reduce/sort) inline in JSX
+  // This rule was too aggressive for common React patterns
+  // {
+  //   name: 'thin-app-no-heavy-transforms',
+  //   files: ['src/app/**/*.{ts,tsx}'],
+  //   ignores: ['src/app/**/loading.tsx', 'src/app/**/error.tsx', 'src/app/**/not-found.tsx'],
+  //   rules: {
+  //     'no-restricted-syntax': [
+  //       'error',
+  //       {
+  //         selector:
+  //           'JSXExpressionContainer > CallExpression[callee.type="MemberExpression"][callee.property.name=/^(map|filter|reduce|sort)$/]',
+  //         message:
+  //           'Heavy transforms (map/filter/reduce/sort) inline in JSX are forbidden. Move data processing to module-level functions or server services.',
+  //       },
+  //     ],
+  //   },
+  // },
 ]
 
 export default eslintConfig
