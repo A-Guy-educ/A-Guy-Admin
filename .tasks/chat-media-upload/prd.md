@@ -1,4 +1,3 @@
-
 ---
 
 # PRD — Multimodal Media Upload Support in Chat
@@ -19,16 +18,16 @@ Current chat supports **text-only interactions**.
 
 Limitations:
 
-* Cannot reason over images (diagrams, screenshots, handwritten notes)
-* Cannot process PDFs or media-based exercises
-* Cannot evolve toward multimodal AI assistants
-* Forces out-of-band hacks (copy-paste, external tools, context loss)
+- Cannot reason over images (diagrams, screenshots, handwritten notes)
+- Cannot process PDFs or media-based exercises
+- Cannot evolve toward multimodal AI assistants
+- Forces out-of-band hacks (copy-paste, external tools, context loss)
 
 This blocks:
 
-* Advanced educational flows
-* AI tutors for visual/math content
-* PDF-centric workflows already present in the system
+- Advanced educational flows
+- AI tutors for visual/math content
+- PDF-centric workflows already present in the system
 
 ---
 
@@ -36,26 +35,26 @@ This blocks:
 
 ### Primary Goals
 
-* Allow users to upload media **as part of a chat message**
-* Make uploaded media **accessible to the AI model**
-* Store media **securely and traceably**
-* Support **multiple media types** in a single message
+- Allow users to upload media **as part of a chat message**
+- Make uploaded media **accessible to the AI model**
+- Store media **securely and traceably**
+- Support **multiple media types** in a single message
 
 ### Secondary Goals
 
-* Enable future automation and agent workflows using media
-* Keep model-agnostic architecture (OpenAI, Gemini, future providers)
-* Maintain strict tenant and access isolation
+- Enable future automation and agent workflows using media
+- Keep model-agnostic architecture (OpenAI, Gemini, future providers)
+- Maintain strict tenant and access isolation
 
 ---
 
 ## 4. Non-Goals (Explicit)
 
-* No real-time streaming (v1)
-* No media editing (crop, annotate, etc.)
-* No OCR / transcription guarantees (model-dependent)
-* No public media sharing
-* No CDN optimization work beyond basics
+- No real-time streaming (v1)
+- No media editing (crop, annotate, etc.)
+- No OCR / transcription guarantees (model-dependent)
+- No public media sharing
+- No CDN optimization work beyond basics
 
 ---
 
@@ -70,8 +69,8 @@ This blocks:
 
 Constraints:
 
-* Max file size (configurable, default: 20MB)
-* Max files per message (default: 5)
+- Max file size (configurable, default: 20MB)
+- Max files per message (default: 5)
 
 ---
 
@@ -79,16 +78,16 @@ Constraints:
 
 ### Chat Input
 
-* “Upload media” button next to text input
-* Drag & drop support
-* Preview thumbnails before sending
-* Media + text sent as **one atomic message**
+- “Upload media” button next to text input
+- Drag & drop support
+- Preview thumbnails before sending
+- Media + text sent as **one atomic message**
 
 ### Chat Timeline
 
-* Media rendered inline (image preview, PDF icon, audio player)
-* Clear association between message and media
-* No auto-processing UI promises
+- Media rendered inline (image preview, PDF icon, audio player)
+- Clear association between message and media
+- No auto-processing UI promises
 
 ---
 
@@ -96,25 +95,24 @@ Constraints:
 
 ### Message Composition
 
-* A chat message may contain:
+- A chat message may contain:
+  - Text (optional)
+  - One or more media attachments
 
-  * Text (optional)
-  * One or more media attachments
-* Message send is atomic: **either all parts succeed or none**
+- Message send is atomic: **either all parts succeed or none**
 
 ### Media Handling
 
-* Upload → temporary storage → validation → permanent storage
-* Virus / file-type validation (basic)
-* MIME type verification (not extension-based)
+- Upload → temporary storage → validation → permanent storage
+- Virus / file-type validation (basic)
+- MIME type verification (not extension-based)
 
 ### Model Invocation
 
-* Media must be passed to the model using **provider-native multimodal APIs**
-* Fallback behavior:
-
-  * If model does not support a media type → explicit error
-  * No silent degradation
+- Media must be passed to the model using **provider-native multimodal APIs**
+- Fallback behavior:
+  - If model does not support a media type → explicit error
+  - No silent degradation
 
 ---
 
@@ -124,26 +122,26 @@ Constraints:
 
 #### `ChatMessage`
 
-* `id`
-* `chatId`
-* `sender`
-* `text`
-* `media[]` → references to `MediaAsset`
-* `modelContextSnapshot`
-* `createdAt`
+- `id`
+- `chatId`
+- `sender`
+- `text`
+- `media[]` → references to `MediaAsset`
+- `modelContextSnapshot`
+- `createdAt`
 
 #### `MediaAsset`
 
-* `id`
-* `tenant`
-* `type` (image | pdf | audio | video)
-* `mimeType`
-* `size`
-* `storageUrl`
-* `checksum`
-* `createdBy`
-* `createdAt`
-* `accessScope` (chat-only)
+- `id`
+- `tenant`
+- `type` (image | pdf | audio | video)
+- `mimeType`
+- `size`
+- `storageUrl`
+- `checksum`
+- `createdBy`
+- `createdAt`
+- `accessScope` (chat-only)
 
 ---
 
@@ -168,18 +166,17 @@ Key rule:
 
 ## 10. Security & Access Control
 
-* Media is **tenant-scoped**
-* Media access requires:
+- Media is **tenant-scoped**
+- Media access requires:
+  - Authenticated user
+  - Membership in chat tenant
 
-  * Authenticated user
-  * Membership in chat tenant
-* Signed URLs with expiration
-* No public URLs
-* Audit log includes:
-
-  * Upload
-  * Model access
-  * Deletion
+- Signed URLs with expiration
+- No public URLs
+- Audit log includes:
+  - Upload
+  - Model access
+  - Deletion
 
 ---
 
@@ -187,20 +184,19 @@ Key rule:
 
 ### Provider Abstraction
 
-* Introduce `MultimodalInput` abstraction
-* Each provider adapter maps:
-
-  * Text → text
-  * Media → provider-native format
+- Introduce `MultimodalInput` abstraction
+- Each provider adapter maps:
+  - Text → text
+  - Media → provider-native format
 
 ### Explicit Capability Flags
 
-* Model declares:
+- Model declares:
+  - `supportsImages`
+  - `supportsPDF`
+  - `supportsAudio`
 
-  * `supportsImages`
-  * `supportsPDF`
-  * `supportsAudio`
-* Chat UI enforces compatibility **before send**
+- Chat UI enforces compatibility **before send**
 
 No guessing. No magic.
 
@@ -210,11 +206,11 @@ No guessing. No magic.
 
 Track:
 
-* Media uploads per tenant
-* Media type distribution
-* Model invocations with media
-* Failure reasons (size, format, model incompatibility)
-* Cost attribution (tokens + media)
+- Media uploads per tenant
+- Media type distribution
+- Model invocations with media
+- Failure reasons (size, format, model incompatibility)
+- Cost attribution (tokens + media)
 
 ---
 
@@ -234,30 +230,30 @@ Track:
 
 ### Phase 1
 
-* Images + PDF
-* One model
-* Admin-only flag
+- Images + PDF
+- One model
+- Admin-only flag
 
 ### Phase 2
 
-* Audio
-* Multiple models
-* Usage analytics
+- Audio
+- Multiple models
+- Usage analytics
 
 ### Phase 3
 
-* Video pass-through
-* Agent & automation hooks
+- Video pass-through
+- Agent & automation hooks
 
 ---
 
 ## 15. Success Metrics
 
-* % of chats using media
-* Model success rate with media
-* User retention on multimodal chats
-* Reduction in external tool usage
-* Cost vs value per tenant
+- % of chats using media
+- Model success rate with media
+- User retention on multimodal chats
+- Reduction in external tool usage
+- Cost vs value per tenant
 
 ---
 
@@ -276,4 +272,3 @@ All uploaded media assets are subject to a mandatory expiration policy.
 By default, every `MediaAsset` is assigned an `expiresAt` timestamp of **30 days from upload**.
 Upon reaching expiry, the asset is **permanently deleted** from storage and becomes inaccessible to chat history, models, and automations.
 Extensions or exemptions are allowed **only via explicit system or admin action** and are never implicit.
-

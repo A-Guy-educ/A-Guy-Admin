@@ -24,13 +24,13 @@
 
 ## 2. Canonical AI Documentation
 
-| File                                                                                   | Purpose                                       | When to Read                |
-| -------------------------------------------------------------------------------------- | --------------------------------------------- | --------------------------- |
-| [`AGENTS.md`](./AGENTS.md)                                                             | Primary Payload CMS development rules         | Deep implementation tasks   |
+| File                                                                                 | Purpose                                       | When to Read                |
+| ------------------------------------------------------------------------------------ | --------------------------------------------- | --------------------------- |
+| [`AGENTS.md`](./AGENTS.md)                                                           | Primary Payload CMS development rules         | Deep implementation tasks   |
 | [`.ai-docs/BOOTSTRAP.md`](.ai-docs/BOOTSTRAP.md)                                     | Mandatory agent bootstrap                     | Start here for any task     |
 | [`.ai-docs/quick-reference/CHEAT-SHEET.md`](.ai-docs/quick-reference/CHEAT-SHEET.md) | Token-efficient quick reference (~500 tokens) | First stop for 90% of tasks |
-| [`docs/access-control/README.md`](./docs/access-control/README.md)                     | Access control patterns and examples          | RBAC implementation         |
-| [`docs/admin-components/README.md`](./docs/admin-components/README.md)                 | Admin panel customization                     | Admin UI work               |
+| [`docs/access-control/README.md`](./docs/access-control/README.md)                   | Access control patterns and examples          | RBAC implementation         |
+| [`docs/admin-components/README.md`](./docs/admin-components/README.md)               | Admin panel customization                     | Admin UI work               |
 
 **Recommended Reading Order for Code Agents**
 

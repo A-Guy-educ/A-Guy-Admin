@@ -548,6 +548,7 @@ pnpm verify
 **Status:** ✅ COMPLETED (see `.tasks/folder-restructure/plan-1-llm-migration.md` for details)
 
 **Migration Summary:**
+
 - **Source:** `src/lib/ai/`
 - **Target:** `src/infra/llm/`
 - **Execution:** All files moved in single batch with sed-based import updates
@@ -555,12 +556,14 @@ pnpm verify
 - **Date:** 2026-01-23
 
 **Files Moved:**
+
 - All core LLM modules (embeddings, vector-search, doc-search, smart-doc-loader, etc.)
 - Providers (gemini/)
 - Services (data-extractor, exercise-chat, image-optimizer)
 - Prompts
 
 **Import Pattern:**
+
 ```typescript
 // Before
 import { chatWithExerciseHelper } from '@/lib/ai/services/exercise-chat-service'

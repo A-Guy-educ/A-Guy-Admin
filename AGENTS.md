@@ -1174,18 +1174,18 @@ export const myPlugin =
 
 For deeper exploration of specific topics, refer to the README files throughout the project:
 
-| Topic | Location |
-|-------|----------|
-| Access Control | `docs/access-control/README.md` |
+| Topic            | Location                          |
+| ---------------- | --------------------------------- |
+| Access Control   | `docs/access-control/README.md`   |
 | Admin Components | `docs/admin-components/README.md` |
-| AI Services | `docs/ai-services/README.md` |
-| Block Rendering | `docs/block-rendering/README.md` |
-| Collections | `src/collections/README.md` |
-| Components | `src/components/README.md` |
+| AI Services      | `docs/ai-services/README.md`      |
+| Block Rendering  | `docs/block-rendering/README.md`  |
+| Collections      | `src/collections/README.md`       |
+| Components       | `src/components/README.md`        |
 | Course Hierarchy | `docs/course-hierarchy/README.md` |
-| Exercises | `docs/exercises/README.md` |
-| Exercise Import | `docs/exercise-import/README.md` |
-| Testing | `tests/README.md` |
+| Exercises        | `docs/exercises/README.md`        |
+| Exercise Import  | `docs/exercise-import/README.md`  |
+| Testing          | `tests/README.md`                 |
 
 ### Pattern Discovery
 

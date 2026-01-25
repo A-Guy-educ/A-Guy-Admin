@@ -3,7 +3,7 @@ name: Agent Indexes Refresh (Daily)
 on:
   schedule:
     # Daily at 02:20 UTC
-    - cron: "20 2 * * *"
+    - cron: '20 2 * * *'
   workflow_dispatch: {}
 
 permissions:
@@ -51,8 +51,8 @@ jobs:
         with:
           branch: chore/agent-indexes
           base: dev
-          title: "chore(ai): refresh agent indexes"
-          commit-message: "chore(ai): refresh agent indexes"
+          title: 'chore(ai): refresh agent indexes'
+          commit-message: 'chore(ai): refresh agent indexes'
           body: |
             Automated daily refresh of AI agent indexes.
 

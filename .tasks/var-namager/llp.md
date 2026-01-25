@@ -79,11 +79,11 @@ tests/int/
 
 ### 2.2 Files to Modify
 
-| File | Changes |
-|------|---------|
-| `src/lib/config/config-crypto.ts` | Export `decryptSecret` for runtime use |
-| `src/payload.config.ts` | Optional: Register startup hook |
-| `src/app/api/runtime-config/route.ts` | Optional: Health check endpoint |
+| File                                  | Changes                                |
+| ------------------------------------- | -------------------------------------- |
+| `src/lib/config/config-crypto.ts`     | Export `decryptSecret` for runtime use |
+| `src/payload.config.ts`               | Optional: Register startup hook        |
+| `src/app/api/runtime-config/route.ts` | Optional: Health check endpoint        |
 
 ---
 
@@ -195,11 +195,7 @@ import { decryptSecret } from '../config-crypto'
 import { ConfigKind } from '../config-constants'
 import type { ConfigEntries } from '@/payload-types'
 import type { RuntimeConfigCache, LoadConfigResult } from './types'
-import {
-  ConfigNotLoadedError,
-  ConfigKeyNotFoundError,
-  ConfigLoadError,
-} from './errors'
+import { ConfigNotLoadedError, ConfigKeyNotFoundError, ConfigLoadError } from './errors'
 
 // ============================================
 // Module-Level State (Process Singleton)
@@ -372,7 +368,7 @@ export async function reloadRuntimeConfig(): Promise<LoadConfigResult> {
  */
 export function getVariable(
   key: string,
-  options?: { defaultValue?: string; throwIfNotFound?: boolean }
+  options?: { defaultValue?: string; throwIfNotFound?: boolean },
 ): string {
   assertServerSide()
   assertLoaded()
@@ -420,7 +416,7 @@ export function getVariable(
  */
 export function getSecret(
   key: string,
-  options?: { defaultValue?: string; throwIfNotFound?: boolean }
+  options?: { defaultValue?: string; throwIfNotFound?: boolean },
 ): string {
   assertServerSide()
   assertLoaded()
@@ -552,10 +548,7 @@ import { loadRuntimeConfig } from '@/lib/config/runtime'
  * Auto-load on first access
  * Useful if you don't want explicit startup calls
  */
-export async function getVariable(
-  key: string,
-  options?: GetConfigOptions
-): Promise<string> {
+export async function getVariable(key: string, options?: GetConfigOptions): Promise<string> {
   assertServerSide()
 
   // Auto-load if not already loaded
@@ -610,7 +603,12 @@ describe('Runtime Config', () => {
         find: vi.fn().mockResolvedValue({
           docs: [
             { key: 'test_var', kind: 'variable', value: 'var-value', enabled: true },
-            { key: 'test_secret', kind: 'secret', value: encryptSecret('secret-value'), enabled: true },
+            {
+              key: 'test_secret',
+              kind: 'secret',
+              value: encryptSecret('secret-value'),
+              enabled: true,
+            },
           ],
         }),
         logger: { info: vi.fn() },
@@ -673,7 +671,11 @@ describe('Runtime Config', () => {
   describe('getVariable', () => {
     test('should return process.env override', async () => {
       const mockPayload = {
-        find: vi.fn().mockResolvedValue({ docs: [{ key: 'MY_VAR', kind: 'variable', value: 'db-value', enabled: true }] }),
+        find: vi
+          .fn()
+          .mockResolvedValue({
+            docs: [{ key: 'MY_VAR', kind: 'variable', value: 'db-value', enabled: true }],
+          }),
         logger: { info: vi.fn() },
       }
       ;(getPayload as any).mockResolvedValue(mockPayload)
@@ -688,7 +690,11 @@ describe('Runtime Config', () => {
 
     test('should return DB value when env not set', async () => {
       const mockPayload = {
-        find: vi.fn().mockResolvedValue({ docs: [{ key: 'DB_VAR', kind: 'variable', value: 'db-value', enabled: true }] }),
+        find: vi
+          .fn()
+          .mockResolvedValue({
+            docs: [{ key: 'DB_VAR', kind: 'variable', value: 'db-value', enabled: true }],
+          }),
         logger: { info: vi.fn() },
       }
       ;(getPayload as any).mockResolvedValue(mockPayload)
@@ -732,7 +738,9 @@ describe('Runtime Config', () => {
       const secretValue = 'my-secret-password'
       const mockPayload = {
         find: vi.fn().mockResolvedValue({
-          docs: [{ key: 'MY_SECRET', kind: 'secret', value: encryptSecret(secretValue), enabled: true }],
+          docs: [
+            { key: 'MY_SECRET', kind: 'secret', value: encryptSecret(secretValue), enabled: true },
+          ],
         }),
         logger: { info: vi.fn() },
       }
@@ -768,7 +776,7 @@ describe('Runtime Config', () => {
       if (window === undefined) {
         delete (globalThis as any).window
       } else {
-        (globalThis as any).window = window
+        ;(globalThis as any).window = window
       }
     })
 
@@ -916,23 +924,23 @@ describe('Runtime Config Integration', () => {
 
 ### 6.1 Security Checklist
 
-| Concern | Mitigation |
-|---------|------------|
-| **Client-side exposure** | `typeof window` check + TypeScript types |
-| **Secret logging** | Logger only prints metadata (counts, not values) |
-| **Memory safety** | Secrets in module-level variable (process lifetime only) |
-| **DB connection** | Fail fast on DB errors |
-| **Access control** | Use `overrideAccess: true` (server-side admin) |
-| **Error messages** | Explicit errors, no stack traces with sensitive data |
+| Concern                  | Mitigation                                               |
+| ------------------------ | -------------------------------------------------------- |
+| **Client-side exposure** | `typeof window` check + TypeScript types                 |
+| **Secret logging**       | Logger only prints metadata (counts, not values)         |
+| **Memory safety**        | Secrets in module-level variable (process lifetime only) |
+| **DB connection**        | Fail fast on DB errors                                   |
+| **Access control**       | Use `overrideAccess: true` (server-side admin)           |
+| **Error messages**       | Explicit errors, no stack traces with sensitive data     |
 
 ### 6.2 Threat Model
 
-| Threat | Impact | Mitigation |
-|--------|--------|------------|
+| Threat                      | Impact   | Mitigation                                 |
+| --------------------------- | -------- | ------------------------------------------ |
 | Memory dump exposes secrets | Critical | Container security, short process lifetime |
-| process.env override abuse | Medium | Intentional design for emergency overrides |
-| Unauthorized server access | Critical | Server-only code, no client bundles |
-| Log injection | Low | Structured logging, no user input in logs |
+| process.env override abuse  | Medium   | Intentional design for emergency overrides |
+| Unauthorized server access  | Critical | Server-only code, no client bundles        |
+| Log injection               | Low      | Structured logging, no user input in logs  |
 
 ---
 
@@ -940,12 +948,12 @@ describe('Runtime Config Integration', () => {
 
 ### 7.1 Performance Characteristics
 
-| Operation | Complexity | Notes |
-|-----------|------------|-------|
-| `loadRuntimeConfig()` | O(n) | Single DB query, n = enabled entries |
-| `getVariable()` | O(1) | Hash map lookup |
-| `getSecret()` | O(1) | Hash map lookup |
-| Memory usage | O(n) | Stores all enabled entries in memory |
+| Operation             | Complexity | Notes                                |
+| --------------------- | ---------- | ------------------------------------ |
+| `loadRuntimeConfig()` | O(n)       | Single DB query, n = enabled entries |
+| `getVariable()`       | O(1)       | Hash map lookup                      |
+| `getSecret()`         | O(1)       | Hash map lookup                      |
+| Memory usage          | O(n)       | Stores all enabled entries in memory |
 
 ### 7.2 Optimization Notes
 
@@ -960,46 +968,50 @@ describe('Runtime Config Integration', () => {
 
 ### 8.1 Standards Checklist
 
-| Standard | Compliance | Notes |
-|----------|------------|-------|
-| **TypeScript-First** | ✅ | Full type definitions in `types.ts` |
-| **Security-Critical** | ✅ | Server-side only, no secret logging |
-| **Type Generation** | N/A | No schema changes |
-| **Transaction Safety** | ✅ | No nested operations in hooks |
-| **Access Control** | ✅ | Uses `overrideAccess: true` (server-side) |
-| **File Structure** | ✅ | Follows `src/lib/config/` pattern |
-| **Testing** | ✅ | Unit + integration tests |
-| **Pattern Documentation** | ✅ | `@ai-summary`, `@pattern` tags |
+| Standard                  | Compliance | Notes                                     |
+| ------------------------- | ---------- | ----------------------------------------- |
+| **TypeScript-First**      | ✅         | Full type definitions in `types.ts`       |
+| **Security-Critical**     | ✅         | Server-side only, no secret logging       |
+| **Type Generation**       | N/A        | No schema changes                         |
+| **Transaction Safety**    | ✅         | No nested operations in hooks             |
+| **Access Control**        | ✅         | Uses `overrideAccess: true` (server-side) |
+| **File Structure**        | ✅         | Follows `src/lib/config/` pattern         |
+| **Testing**               | ✅         | Unit + integration tests                  |
+| **Pattern Documentation** | ✅         | `@ai-summary`, `@pattern` tags            |
 
 ### 8.2 Code Quality Metrics
 
-| Metric | Target | Plan Value |
-|--------|--------|------------|
-| Test Coverage | >90% | Unit tests for all branches |
-| Cyclomatic Complexity | <10 | Simple loader pattern |
-| Documentation | 100% | JSDoc on all public APIs |
-| Linting | Pass | Follows project ESLint rules |
+| Metric                | Target | Plan Value                   |
+| --------------------- | ------ | ---------------------------- |
+| Test Coverage         | >90%   | Unit tests for all branches  |
+| Cyclomatic Complexity | <10    | Simple loader pattern        |
+| Documentation         | 100%   | JSDoc on all public APIs     |
+| Linting               | Pass   | Follows project ESLint rules |
 
 ---
 
 ## 9. Implementation Tasks
 
 ### Phase 1: Core Implementation
+
 - [ ] Create `src/lib/config/runtime/types.ts`
 - [ ] Create `src/lib/config/runtime/errors.ts`
 - [ ] Create `src/lib/config/runtime/runtime-config.ts`
 - [ ] Create `src/lib/config/runtime/index.ts`
 
 ### Phase 2: Testing
+
 - [ ] Create `tests/unit/lib/config/runtime/runtime-config.test.ts`
 - [ ] Create `tests/int/runtime-config.int.test.ts`
 - [ ] Run `pnpm test` to verify
 
 ### Phase 3: Documentation
+
 - [ ] Add module documentation comments
 - [ ] Update `src/lib/config/README.md` (if exists)
 
 ### Phase 4: Validation
+
 - [ ] Run `pnpm tsc --noEmit`
 - [ ] Run `pnpm lint:fix`
 - [ ] Run `pnpm generate:types` (if needed)
@@ -1020,6 +1032,7 @@ describe('Runtime Config Integration', () => {
 ### 10.2 Rollback Plan
 
 If issues arise:
+
 1. Remove process.env overrides if causing issues
 2. Clear in-memory cache (`clearConfigCache()`)
 3. Redeploy previous version if needed
@@ -1028,35 +1041,35 @@ If issues arise:
 
 ## 11. Known Limitations (v1)
 
-| Limitation | Reason | Workaround |
-|------------|--------|------------|
-| No auto-reload on DB change | Performance/simplicity | Manual `reloadRuntimeConfig()` call |
-| No hot-reload in dev | Design choice | Restart dev server |
-| No cluster mode support | Process-level singleton | One config per Node process |
-| Max 1000 entries | Safety limit | Increase if needed |
+| Limitation                  | Reason                  | Workaround                          |
+| --------------------------- | ----------------------- | ----------------------------------- |
+| No auto-reload on DB change | Performance/simplicity  | Manual `reloadRuntimeConfig()` call |
+| No hot-reload in dev        | Design choice           | Restart dev server                  |
+| No cluster mode support     | Process-level singleton | One config per Node process         |
+| Max 1000 entries            | Safety limit            | Increase if needed                  |
 
 ---
 
 ## 12. Future Enhancements (Post-v1)
 
-| Enhancement | Priority | Description |
-|-------------|----------|-------------|
-| Auto-reload | Medium | Watch for DB changes via polling |
-| Cluster support | Low | Distributed cache (Redis) |
-| Hot reload | Low | WebSocket通知 |
-| Metrics endpoint | Low | Expose cache stats |
+| Enhancement      | Priority | Description                      |
+| ---------------- | -------- | -------------------------------- |
+| Auto-reload      | Medium   | Watch for DB changes via polling |
+| Cluster support  | Low      | Distributed cache (Redis)        |
+| Hot reload       | Low      | WebSocket通知                    |
+| Metrics endpoint | Low      | Expose cache stats               |
 
 ---
 
 ## 13. References
 
-| Reference | Link |
-|-----------|------|
-| Payload CMS Docs | https://payloadcms.com/docs |
-| Config Manager Spec-1 | `.tasks/var-namager/spec-1.md` |
-| AGENTS.md Security | See "CRITICAL SECURITY PATTERNS" section |
-| Encryption Utils | `src/lib/config/config-crypto.ts` |
-| Config Entries | `src/server/payload/collections/ConfigEntries.ts` |
+| Reference             | Link                                              |
+| --------------------- | ------------------------------------------------- |
+| Payload CMS Docs      | https://payloadcms.com/docs                       |
+| Config Manager Spec-1 | `.tasks/var-namager/spec-1.md`                    |
+| AGENTS.md Security    | See "CRITICAL SECURITY PATTERNS" section          |
+| Encryption Utils      | `src/lib/config/config-crypto.ts`                 |
+| Config Entries        | `src/server/payload/collections/ConfigEntries.ts` |
 
 ---
 

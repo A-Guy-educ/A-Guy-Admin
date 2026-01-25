@@ -1,4 +1,3 @@
-
 ---
 
 # Task: Tenant-Scoped ConfigEntries
@@ -29,27 +28,26 @@ Make `ConfigEntries` tenant-aware by linking each entry to the existing `tenants
 
 Add field:
 
-* `tenant` (relationship → `tenants`, required, indexed)
+- `tenant` (relationship → `tenants`, required, indexed)
 
 Constraints:
 
-* Unique constraint: (`tenant`, `key`)
-
-  * Implement via DB index if supported, otherwise enforce in `beforeChange` hook (must be deterministic and fail loudly)
+- Unique constraint: (`tenant`, `key`)
+  - Implement via DB index if supported, otherwise enforce in `beforeChange` hook (must be deterministic and fail loudly)
 
 Admin UX:
 
-* DefaultColumns: add `tenant`
-* Filters: allow filtering by `tenant`
-* Create/Edit: `tenant` required
-* Optional: auto-default tenant to `DEFAULT_TENANT_SLUG` (env) **only** if your admin flow expects a default; otherwise force explicit selection
+- DefaultColumns: add `tenant`
+- Filters: allow filtering by `tenant`
+- Create/Edit: `tenant` required
+- Optional: auto-default tenant to `DEFAULT_TENANT_SLUG` (env) **only** if your admin flow expects a default; otherwise force explicit selection
 
 ### `ConfigAuditLogs`
 
 Add fields (metadata only):
 
-* `tenant` (relationship → `tenants`, required)
-* Keep audit append-only, and never store secret values
+- `tenant` (relationship → `tenants`, required)
+- Keep audit append-only, and never store secret values
 
 ---
 
@@ -59,16 +57,15 @@ Add fields (metadata only):
 
 Update any getters to require tenant context:
 
-* `getVariable(tenantId, key)`
-* `getSecret(tenantId, key)`
+- `getVariable(tenantId, key)`
+- `getSecret(tenantId, key)`
 
 Rules:
 
-* Throw if tenantId missing
-* Env override still allowed, but must be tenant-safe:
-
-  * Convention: `TENANT_<TENANTSLUG>__<KEY>` or `TENANT_<TENANTID>__<KEY>`
-  * If you don’t want this complexity, disable env override for tenant-scoped config in v1 and rely only on DB.
+- Throw if tenantId missing
+- Env override still allowed, but must be tenant-safe:
+  - Convention: `TENANT_<TENANTSLUG>__<KEY>` or `TENANT_<TENANTID>__<KEY>`
+  - If you don’t want this complexity, disable env override for tenant-scoped config in v1 and rely only on DB.
 
 ---
 
@@ -78,12 +75,12 @@ Rules:
 
 On create/update:
 
-* Ensure no other doc exists with same `tenant` + `key`
-* On update, ignore current doc id
+- Ensure no other doc exists with same `tenant` + `key`
+- On update, ignore current doc id
 
 ### Audit Logging
 
-* When writing audit log, store `tenant` from the mutated doc
+- When writing audit log, store `tenant` from the mutated doc
 
 ---
 
@@ -91,32 +88,32 @@ On create/update:
 
 ### Integration
 
-* Can create same `key` under two different tenants (should succeed)
-* Cannot create duplicate (`tenant`, `key`) (should fail)
-* Updates that omit `key` still work (immutability check remains correct)
-* Audit entries include correct tenant
-* Secrets remain encrypted at rest and write-only UX still holds
+- Can create same `key` under two different tenants (should succeed)
+- Cannot create duplicate (`tenant`, `key`) (should fail)
+- Updates that omit `key` still work (immutability check remains correct)
+- Audit entries include correct tenant
+- Secrets remain encrypted at rest and write-only UX still holds
 
 ### Required Test Setup
 
-* Ensure test harness creates or finds 2 tenant docs
-* Use those tenant ids in create/update calls
+- Ensure test harness creates or finds 2 tenant docs
+- Use those tenant ids in create/update calls
 
 ---
 
 ## Acceptance Criteria
 
-* Every `ConfigEntries` doc is linked to exactly one tenant
-* Duplicate key per tenant is blocked
-* Same key across different tenants is allowed
-* Audit logs include tenant metadata
-* Tests pass in CI
+- Every `ConfigEntries` doc is linked to exactly one tenant
+- Duplicate key per tenant is blocked
+- Same key across different tenants is allowed
+- Audit logs include tenant metadata
+- Tests pass in CI
 
 ---
 
 ## Recommended Docs to Prepare
 
-* **Low risk** change but impacts data integrity → you need a short **High-Level Spec** only (1 page) + this task.
+- **Low risk** change but impacts data integrity → you need a short **High-Level Spec** only (1 page) + this task.
   No PRD needed.
 
 ---
@@ -699,19 +696,19 @@ pnpm generate:importmap
 
 ## Validation Checklist
 
-* [ ] `ConfigEntries` has `tenant` relationship (required, indexed)
-* [ ] `ConfigAuditLogs` has `tenant` relationship (required)
-* [ ] Unique constraint enforced on (`tenant`, `key`) via `beforeChange` hook
-* [ ] Admin UI shows `tenant` column in list view
-* [ ] Admin UI requires tenant selection on create/edit
-* [ ] Audit logs include correct tenant metadata
-* [ ] `getVariable(tenantId, key)` throws if tenantId missing
-* [ ] `getSecret(tenantId, key)` throws if tenantId missing
-* [ ] Same key can exist under different tenants
-* [ ] Duplicate (tenant, key) is blocked
-* [ ] Tests pass in CI
-* [ ] TypeScript compiles without errors
-* [ ] Import map regenerated
+- [ ] `ConfigEntries` has `tenant` relationship (required, indexed)
+- [ ] `ConfigAuditLogs` has `tenant` relationship (required)
+- [ ] Unique constraint enforced on (`tenant`, `key`) via `beforeChange` hook
+- [ ] Admin UI shows `tenant` column in list view
+- [ ] Admin UI requires tenant selection on create/edit
+- [ ] Audit logs include correct tenant metadata
+- [ ] `getVariable(tenantId, key)` throws if tenantId missing
+- [ ] `getSecret(tenantId, key)` throws if tenantId missing
+- [ ] Same key can exist under different tenants
+- [ ] Duplicate (tenant, key) is blocked
+- [ ] Tests pass in CI
+- [ ] TypeScript compiles without errors
+- [ ] Import map regenerated
 
 ---
 
@@ -760,8 +757,8 @@ For existing deployments, a migration script is needed:
 
 ## Dependencies
 
-* `Tenants` collection must exist (already implemented)
-* No new npm dependencies required
-* No external service changes required
+- `Tenants` collection must exist (already implemented)
+- No new npm dependencies required
+- No external service changes required
 
 ---

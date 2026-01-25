@@ -1,7 +1,9 @@
 # PRD: Localization & Locale Ownership Model
 
 ## Goal
+
 Define a clear, enforceable localization model across the platform (LMS, CMS, Chat, AI) that:
+
 - Prevents language mixing
 - Avoids data duplication
 - Scales cleanly to additional languages
@@ -10,6 +12,7 @@ Define a clear, enforceable localization model across the platform (LMS, CMS, Ch
 ---
 
 ## Non-Goals
+
 - Automatic translation
 - Per-field dynamic language switching
 - Fine-grained multilingual content inside a single learning unit
@@ -17,6 +20,7 @@ Define a clear, enforceable localization model across the platform (LMS, CMS, Ch
 ---
 
 ## Core Principle
+
 **Locale is assigned only to user-facing, publishable units.**
 Internal, derived, or technical entities inherit locale implicitly or do not require localization at all.
 
@@ -29,26 +33,31 @@ Internal, derived, or technical entities inherit locale implicitly or do not req
 These entities represent standalone, user-facing content:
 
 #### LMS / CMS
+
 - `Courses`
 - `Pages`
 - `Posts`
 - `Categories` (if visible in UI)
 
 #### CMS Globals
+
 - `Header` (localized variants)
 - `Footer` (localized variants)
 
 #### AI
+
 - `Prompts`
   - Same logical prompt may exist in multiple locale variants
   - Linked by a stable `promptKey`
 
 #### Chat
+
 - `Conversations`
   - Field: `preferredLocale`
   - Defines expected language of AI responses
 
 #### Forms
+
 - `Forms` (definition only)
   - Labels, placeholders, consent text are language-specific
 
@@ -59,12 +68,14 @@ These entities represent standalone, user-facing content:
 These entities are internal, derived, or purely technical:
 
 #### LMS Internals (inherit from Course)
+
 - `Chapters`
 - `Lessons`
 - `Exercises`
 - `Exercise Assets`
 
 #### System / Data
+
 - `Users`
 - `User Progresses`
 - `Tenants`
@@ -96,17 +107,20 @@ These entities are internal, derived, or purely technical:
 ## Inheritance & Guards
 
 ### LMS Guardrails
+
 - All `Chapters`, `Lessons`, `Exercises` inherit locale from parent `Course`
 - Mixing locales within a single course is forbidden
 - Validation required on save and publish
 
 ### Query Rules
+
 - Any content fetch for user display MUST be filtered by `locale`
 - Missing locale in a user-facing query is considered a bug
 
 ---
 
 ## Chat Language Rules
+
 - `preferredLocale` is defined per `Conversation`
 - UI language and chat response language may differ
 - Messages do not require a strict `locale`
@@ -115,6 +129,7 @@ These entities are internal, derived, or purely technical:
 ---
 
 ## Risks if Violated
+
 - Language mixing within pages or lessons
 - Duplicate content trees per language
 - Broken search, analytics, and AI grounding
@@ -123,6 +138,7 @@ These entities are internal, derived, or purely technical:
 ---
 
 ## Success Criteria
+
 - Zero mixed-language pages in production
 - No duplicated LMS trees per language
 - Clear ownership of locale per entity
@@ -131,6 +147,7 @@ These entities are internal, derived, or purely technical:
 ---
 
 ## Open Questions (Explicit)
+
 - Are `Pricing Plans` ever user-facing with rich text?
 - Is `Memory_items` used for user recall or system only?
 - Will CMS Globals be fully duplicated per locale or partially shared?

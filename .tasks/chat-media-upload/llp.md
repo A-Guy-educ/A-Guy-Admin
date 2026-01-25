@@ -18,6 +18,7 @@ This document provides the **executable implementation plan** for adding media u
 - **Images (PNG, JPG, JPEG, WEBP) + PDF** only (v1)
 
 **Runtime Context:**
+
 - Storage: Local filesystem (matches existing Payload upload config)
 - Tenant scoping: Existing `tenantField` on Media collection
 - Response style: `Response.json()` (Next.js/Payload compatible)
@@ -264,10 +265,7 @@ import { resolveMediaFilePath, resolveMediaPublicUrl } from '@/lib/config/storag
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024
 const MAX_ATTACHMENTS = 5
-const ALLOWED_MIME_TYPES = [
-  'image/jpeg', 'image/jpg', 'image/png', 'image/webp',
-  'application/pdf',
-]
+const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'application/pdf']
 const SUPPORTED_TYPES = [MediaType.Image, MediaType.PDF]
 
 export async function validateChatMedia(
@@ -304,10 +302,7 @@ export async function validateChatMedia(
   const mediaDocs = await payload.find({
     collection: 'media',
     where: {
-      and: [
-        { id: { in: mediaIds } },
-        { tenant: { equals: tenantId } },
-      ],
+      and: [{ id: { in: mediaIds } }, { tenant: { equals: tenantId } }],
     },
     limit: mediaIds.length,
     depth: 0,
@@ -599,9 +594,7 @@ export async function mapMultimodalToGemini(
   return { currentMessage: currentParts }
 }
 
-async function convertMediaToGeminiPart(
-  mediaPart: MediaPartWithPath,
-): Promise<Part | null> {
+async function convertMediaToGeminiPart(mediaPart: MediaPartWithPath): Promise<Part | null> {
   const { absoluteFilePath, mimeType, mediaId } = mediaPart
 
   try {
@@ -615,10 +608,7 @@ async function convertMediaToGeminiPart(
       },
     }
   } catch (error) {
-    logger.error(
-      { err: error, mediaId, absoluteFilePath },
-      'Failed to read media file for Gemini',
-    )
+    logger.error({ err: error, mediaId, absoluteFilePath }, 'Failed to read media file for Gemini')
     return null
   }
 }
@@ -655,12 +645,7 @@ export async function chatWithExerciseHelper(
         input.mediaPartsWithPath,
       )
 
-      return await sendMultimodalToGemini(
-        systemPrompt,
-        multimodalParts,
-        input.model,
-        payload,
-      )
+      return await sendMultimodalToGemini(systemPrompt, multimodalParts, input.model, payload)
     }
 
     // ... existing text-only path ...
@@ -855,10 +840,7 @@ import { useState, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Paperclip, X } from 'lucide-react'
 
-const ALLOWED_TYPES = [
-  'image/jpeg', 'image/jpg', 'image/png', 'image/webp',
-  'application/pdf',
-]
+const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'application/pdf']
 const MAX_FILE_SIZE = 10 * 1024 * 1024
 const MAX_FILES = 5
 
@@ -1032,7 +1014,16 @@ describe('Media Validation', () => {
     it('resolves paths using shared storage config', async () => {
       const mockPayload = {
         find: vi.fn().mockResolvedValue({
-          docs: [{ id: 'media1', tenant: 'tenant456', filename: 'test.jpg', mimeType: 'image/jpeg', filesize: 1024, type: 'image' }],
+          docs: [
+            {
+              id: 'media1',
+              tenant: 'tenant456',
+              filename: 'test.jpg',
+              mimeType: 'image/jpeg',
+              filesize: 1024,
+              type: 'image',
+            },
+          ],
         }),
       } as any
 
@@ -1045,7 +1036,15 @@ describe('Media Validation', () => {
     it('rejects media with missing filename', async () => {
       const mockPayload = {
         find: vi.fn().mockResolvedValue({
-          docs: [{ id: 'media1', tenant: 'tenant456', filename: undefined, mimeType: 'image/jpeg', filesize: 1024 }],
+          docs: [
+            {
+              id: 'media1',
+              tenant: 'tenant456',
+              filename: undefined,
+              mimeType: 'image/jpeg',
+              filesize: 1024,
+            },
+          ],
         }),
       } as any
 
@@ -1059,14 +1058,40 @@ describe('Media Validation', () => {
       const mockPayload = {
         find: vi.fn().mockResolvedValue({
           docs: [
-            { id: 'media1', tenant: 'tenant456', filename: 'test.jpg', mimeType: 'image/jpeg', filesize: 1024, type: 'image' },
-            { id: 'media2', tenant: 'tenant456', filename: undefined, mimeType: 'image/png', filesize: 2048, type: 'image' },
-            { id: 'media3', tenant: 'tenant456', filename: 'large.pdf', mimeType: 'application/pdf', filesize: 15 * 1024 * 1024, type: 'pdf' },
+            {
+              id: 'media1',
+              tenant: 'tenant456',
+              filename: 'test.jpg',
+              mimeType: 'image/jpeg',
+              filesize: 1024,
+              type: 'image',
+            },
+            {
+              id: 'media2',
+              tenant: 'tenant456',
+              filename: undefined,
+              mimeType: 'image/png',
+              filesize: 2048,
+              type: 'image',
+            },
+            {
+              id: 'media3',
+              tenant: 'tenant456',
+              filename: 'large.pdf',
+              mimeType: 'application/pdf',
+              filesize: 15 * 1024 * 1024,
+              type: 'pdf',
+            },
           ],
         }),
       } as any
 
-      const result = await validateChatMedia(mockPayload, ['media1', 'media2', 'media3'], 'user123', 'tenant456')
+      const result = await validateChatMedia(
+        mockPayload,
+        ['media1', 'media2', 'media3'],
+        'user123',
+        'tenant456',
+      )
 
       expect(result.valid).toBe(false)
       expect(result.mediaItems).toHaveLength(2)
@@ -1084,7 +1109,13 @@ describe('Media Validation', () => {
       } as any
 
       const validatedParts = [
-        { mediaId: 'media1', type: 'image' as const, absoluteFilePath: '/path/test.jpg', publicUrl: 'http://localhost/media/test.jpg', mimeType: 'image/jpeg' },
+        {
+          mediaId: 'media1',
+          type: 'image' as const,
+          absoluteFilePath: '/path/test.jpg',
+          publicUrl: 'http://localhost/media/test.jpg',
+          mimeType: 'image/jpeg',
+        },
       ]
 
       await setEphemeralRetention(mockPayload, validatedParts)
@@ -1185,10 +1216,7 @@ describe('Chat Media Upload Integration', () => {
       const result = await payload.find({
         collection: 'media',
         where: {
-          and: [
-            { id: { exists: true } },
-            { tenant: { equals: 'non-existent-tenant' } },
-          ],
+          and: [{ id: { exists: true } }, { tenant: { equals: 'non-existent-tenant' } }],
         },
         overrideAccess: true,
       })
@@ -1199,7 +1227,8 @@ describe('Chat Media Upload Integration', () => {
 
   describe('Storage Configuration', () => {
     test('storage constants are defined and match expected pattern', async () => {
-      const { MEDIA_STORAGE_DIR, MEDIA_PUBLIC_URL, resolveMediaFilePath } = await import('@/lib/config/storage')
+      const { MEDIA_STORAGE_DIR, MEDIA_PUBLIC_URL, resolveMediaFilePath } =
+        await import('@/lib/config/storage')
 
       expect(MEDIA_STORAGE_DIR).toBeDefined()
       expect(typeof MEDIA_STORAGE_DIR).toBe('string')
@@ -1214,21 +1243,21 @@ describe('Chat Media Upload Integration', () => {
 
 ## 11. Implementation Tasks Summary
 
-| Phase | Task | File | Pattern |
-|-------|------|------|---------|
-| **0. Storage** | Create shared constants | `src/lib/config/storage.ts` | Config mirrors Payload |
-| **1. Data Model** | Add retention fields | `src/server/payload/collections/Media/index.ts` | Hook enforces |
-| | Create enforcement hook | `src/server/payload/collections/Media/hooks/enforceRetentionPolicy.ts` | Hook authoritative |
-| | Extend messages array | `src/server/payload/collections/Conversations.ts` | Array field |
-| **2. Validation** | Create validation service | `src/infra/llm/multimodal/media-validation.ts` | Tenant-safe, max 5 |
-| | Update types | `src/infra/llm/multimodal/types.ts` | MediaPartWithPath |
-| **3. Multimodal** | Create Gemini mapper | `src/infra/llm/providers/gemini/multimodal-mapper.ts` | No extra queries |
-| | Update chat service | `src/infra/llm/services/exercise-chat-service.ts` | Service update |
-| **4. Chat Endpoint** | Extend request schema | `src/server/payload/endpoints/agent/chat.ts` | Endpoint update |
-| **5. Cleanup** | Create cleanup endpoint | `src/server/payload/endpoints/cron/media-expiry.ts` | File-first, log failures |
-| | Create GitHub workflow | `.github/workflows/media-cleanup.yml` | CI/CD |
-| **6. Frontend** | Create ChatInput | `src/ui/web/chat/ChatInput/index.tsx` | Client component |
-| **7. Testing** | Unit + integration tests | `tests/unit/llm/multimodal/*.test.ts` | Vitest + HTTP test |
+| Phase                | Task                      | File                                                                   | Pattern                  |
+| -------------------- | ------------------------- | ---------------------------------------------------------------------- | ------------------------ |
+| **0. Storage**       | Create shared constants   | `src/lib/config/storage.ts`                                            | Config mirrors Payload   |
+| **1. Data Model**    | Add retention fields      | `src/server/payload/collections/Media/index.ts`                        | Hook enforces            |
+|                      | Create enforcement hook   | `src/server/payload/collections/Media/hooks/enforceRetentionPolicy.ts` | Hook authoritative       |
+|                      | Extend messages array     | `src/server/payload/collections/Conversations.ts`                      | Array field              |
+| **2. Validation**    | Create validation service | `src/infra/llm/multimodal/media-validation.ts`                         | Tenant-safe, max 5       |
+|                      | Update types              | `src/infra/llm/multimodal/types.ts`                                    | MediaPartWithPath        |
+| **3. Multimodal**    | Create Gemini mapper      | `src/infra/llm/providers/gemini/multimodal-mapper.ts`                  | No extra queries         |
+|                      | Update chat service       | `src/infra/llm/services/exercise-chat-service.ts`                      | Service update           |
+| **4. Chat Endpoint** | Extend request schema     | `src/server/payload/endpoints/agent/chat.ts`                           | Endpoint update          |
+| **5. Cleanup**       | Create cleanup endpoint   | `src/server/payload/endpoints/cron/media-expiry.ts`                    | File-first, log failures |
+|                      | Create GitHub workflow    | `.github/workflows/media-cleanup.yml`                                  | CI/CD                    |
+| **6. Frontend**      | Create ChatInput          | `src/ui/web/chat/ChatInput/index.tsx`                                  | Client component         |
+| **7. Testing**       | Unit + integration tests  | `tests/unit/llm/multimodal/*.test.ts`                                  | Vitest + HTTP test       |
 
 ---
 
