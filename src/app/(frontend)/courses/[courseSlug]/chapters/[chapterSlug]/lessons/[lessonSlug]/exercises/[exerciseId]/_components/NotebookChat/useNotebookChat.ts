@@ -358,13 +358,19 @@ export function useNotebookChat({
   const sendMessage = async (message: string) => {
     if ((!message.trim() && uploadedMedia.length === 0) || isLoading) return
 
-    const userMessage: ChatMessage = { role: ChatRole.User, content: message }
+    // Capture mediaIds and metadata before clearing
+    const mediaIds = uploadedMedia.map((m) => m.id)
+    const mediaMetadata = uploadedMedia.map((m) => ({ mediaId: m.id, filename: m.filename }))
+
+    const userMessage: ChatMessage = {
+      role: ChatRole.User,
+      content: message,
+      media: mediaMetadata.length > 0 ? mediaMetadata : undefined,
+    }
     setMessages((prev) => [...prev, userMessage])
     setInputValue('')
     setIsLoading(true)
 
-    // Capture mediaIds before clearing
-    const mediaIds = uploadedMedia.map((m) => m.id)
     setUploadedMedia([])
 
     // Track chat message sent (message length only, NOT content)
