@@ -15,6 +15,7 @@ import { tenantField } from '@/server/payload/fields/tenant'
 import { anyone } from '../../access/anyone'
 import { authenticated } from '../../access/authenticated'
 import { createdByField } from '../../fields/createdBy'
+import { enforceRetentionPolicyHook } from './hooks/enforceRetentionPolicy'
 import { inferMediaTypeHook } from './hooks/inferMediaType'
 import { validateMediaUploadHook } from './hooks/validateMediaUpload'
 
@@ -101,13 +102,49 @@ export const Media: CollectionConfig = {
 
     // Created By
     createdByField,
+
+    // Retention Policy (for ephemeral chat media)
+    {
+      name: 'retentionPolicy',
+      type: 'select',
+      options: [
+        { label: 'Persistent', value: 'persistent' },
+        { label: 'Ephemeral', value: 'ephemeral' },
+      ],
+      defaultValue: 'persistent',
+      required: true,
+      admin: {
+        hidden: true, // Hidden from admin UI
+      },
+      access: {
+        // Access always allows - hook is authoritative for server-only enforcement
+        create: () => true,
+        update: () => true,
+        read: () => true,
+      },
+    },
+    {
+      name: 'expiresAt',
+      type: 'date',
+      admin: {
+        hidden: true,
+        description: 'Auto-set for ephemeral media (30 days from creation)',
+      },
+      access: {
+        // Access always allows - hook is authoritative
+        create: () => true,
+        update: () => true,
+        read: () => true,
+      },
+    },
   ],
   hooks: {
     beforeValidate: [validateMediaUploadHook],
+    beforeChange: [enforceRetentionPolicyHook],
   },
   upload: {
     // Upload to the public/media directory in Next.js making them publicly accessible even outside of Payload
-    staticDir: path.resolve(dirname, '../../../public/media'),
+    staticDir: path.resolve(dirname, '../../../../public/media'),
     adminThumbnail: 'thumbnail',
     focalPoint: true,
     imageSizes: [

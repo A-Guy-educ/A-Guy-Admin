@@ -69,7 +69,7 @@ export async function getConversation(req: PayloadRequest & { json?: () => Promi
         },
         limit: 1,
         sort: '-lastMessageAt', // Most recent first
-        depth: 0, // No relationship population needed
+        depth: 2, // Populate nested media relationships (messages -> media -> mediaId)
         user: req.user,
         overrideAccess: false, // Enforce access control
       })
@@ -158,10 +158,39 @@ export async function getConversation(req: PayloadRequest & { json?: () => Promi
         if (msg.role !== 'user' && msg.role !== 'assistant') return false
         return true
       })
-      .map((msg) => ({
-        role: msg.role === 'user' ? ChatRole.User : ChatRole.Assistant,
-        content: String(msg.content).trim(),
-      }))
+      .map((msg) => {
+        // Log raw media structure
+        if (msg.media && msg.media.length > 0) {
+          reqLogger.info(
+            {
+              msgRole: msg.role,
+              rawMediaStructure: msg.media[0],
+              hasMediaId: 'mediaId' in (msg.media[0] || {}),
+            },
+            '[DEBUG] Raw media structure from DB',
+          )
+        }
+
+        return {
+          role: msg.role === 'user' ? ChatRole.User : ChatRole.Assistant,
+          content: String(msg.content).trim(),
+          media: msg.media?.map((m) => {
+            // Media can be populated object or just ID string
+            if (typeof m === 'object' && m !== null && 'mediaId' in m) {
+              const mediaId = typeof m.mediaId === 'object' ? m.mediaId.id : m.mediaId
+              const filename = typeof m.mediaId === 'object' ? m.mediaId.filename : undefined
+              reqLogger.info({ mediaId, filename }, '[DEBUG] Mapped media item')
+              return {
+                mediaId: String(mediaId),
+                filename,
+              }
+            }
+            // Shouldn't happen but handle gracefully
+            reqLogger.warn({ rawM: m }, '[DEBUG] Unexpected media structure')
+            return { mediaId: String(m), filename: undefined }
+          }),
+        }
+      })
 
     reqLogger.info(
       {
@@ -169,11 +198,13 @@ export async function getConversation(req: PayloadRequest & { json?: () => Promi
         conversationId: conversation.id,
         contextKey: validated.contextKey,
         messageCount: messages.length,
+        messagesWithMedia: messages.filter((m) => m.media && m.media.length > 0).length,
+        firstMessageMedia: messages[0]?.media,
         messagesPreview: messages
           .slice(0, 2)
-          .map((m) => ({ role: m.role, content: m.content.substring(0, 30) })),
+          .map((m) => ({ role: m.role, content: m.content.substring(0, 30), media: m.media })),
       },
-      'Conversation loaded successfully',
+      '[DEBUG] Conversation loaded successfully',
     )
 
     return Response.json({

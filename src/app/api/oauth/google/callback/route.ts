@@ -30,7 +30,10 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const state = searchParams.get('state')
   const correlationId = crypto.randomUUID()
 
-  const res = NextResponse.redirect(new URL('/login', req.url))
+  // Create a basic response that we'll convert to redirect later
+  // Don't use NextResponse.redirect() here because it creates a 307 by default
+  // and modifying headers on a redirect response can cause cookie issues
+  const res = new NextResponse(null, { status: 302 })
 
   // STEP 1: CSRF Protection
   const { valid: stateValid, returnTo } = validateOAuthState(req, res, state)
@@ -146,7 +149,17 @@ async function handleUserLookupAndSession(
   })
 
   if (existingByEmail.docs.length > 0) {
-    return handleCollision(req, res, existingByEmail.docs[0], sub, correlationId, email)
+    return await handleCollision(
+      payload,
+      req,
+      res,
+      existingByEmail.docs[0],
+      sub,
+      correlationId,
+      email,
+      { name, picture },
+      returnTo,
+    )
   }
 
   // D.3: Create new user

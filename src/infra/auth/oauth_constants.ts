@@ -15,9 +15,10 @@ export function getCookieName(payload: Payload): string {
 
 export const AUTH_COOKIE_OPTIONS = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: 'lax' as const,
+  secure: process.env.NODE_ENV === 'production', // Secure only in production (HTTPS required)
+  sameSite: process.env.NODE_ENV === 'production' ? ('none' as const) : ('lax' as const), // 'none' requires secure
   path: '/',
+  maxAge: 60 * 60 * 24 * 7, // 7 days - match Payload's default token expiration
 }
 
 export const STATE_COOKIE_OPTIONS = {

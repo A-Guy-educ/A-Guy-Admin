@@ -3,7 +3,15 @@
 import { ChatRole } from '@/infra/llm/chat-message-role'
 import { useTranslations } from '@/ui/web/providers/I18n'
 import { cn } from '@/infra/utils/ui'
-import { BookOpen, CheckCircle, Lightbulb, Loader2, RefreshCw, Send } from 'lucide-react'
+import {
+  BookOpen,
+  CheckCircle,
+  Lightbulb,
+  Loader2,
+  RefreshCw,
+  Send,
+  Image as ImageIcon,
+} from 'lucide-react'
 import { ChatMessageContent } from '@/ui/web/chat'
 import { useNotebookChat } from './useNotebookChat'
 
@@ -83,6 +91,26 @@ export function NotebookChat({ exerciseId, lessonId, chapterId, courseId }: Note
                   : 'mr-auto bg-muted text-foreground',
               )}
             >
+              {msg.media && msg.media.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {msg.media.map((mediaItem, mediaIdx) => (
+                    <div
+                      key={mediaIdx}
+                      className={cn(
+                        'inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs',
+                        msg.role === ChatRole.User
+                          ? 'bg-primary-foreground/20'
+                          : 'bg-background/50',
+                      )}
+                    >
+                      <ImageIcon className="w-3 h-3" />
+                      <span className="max-w-[120px] truncate">
+                        {mediaItem.filename || `media-${mediaIdx + 1}`}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
               <ChatMessageContent content={msg.content} />
             </div>
           ))}

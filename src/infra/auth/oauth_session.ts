@@ -9,7 +9,7 @@
 
 import { getPayload } from 'payload'
 import config from '@payload-config'
-import { decrypt } from './oauth_crypto'
+import { decrypt, generateSecret } from './oauth_crypto'
 
 export interface SessionResult {
   token: string
@@ -70,4 +70,96 @@ export async function issueSessionWithPlainSecret(
   }
 
   return { token: loginResult.token }
+}
+
+/**
+ * Issue session for linked account (email/password user who added Google).
+ *
+ * For linked accounts:
+ * - User keeps their original password for email/password login
+ * - We can't use payload.login() because OAuth secret ≠ password
+ * - Instead, generate token directly after verifying googleSub
+ *
+ * @param userId - User ID (already verified via googleSub lookup)
+ * @returns Session token
+ */
+export async function issueSessionForLinkedAccount(userId: string): Promise<SessionResult> {
+  const payload = await getPayload({ config })
+
+  // CRITICAL: Payload's auth system strips hash/salt from findByID for security
+  // We must read directly from MongoDB to access these fields
+  const db = payload.db
+  const { ObjectId } = await import('mongodb')
+
+  const userDoc = await db.collections.users.findOne({ _id: new ObjectId(userId) })
+
+  if (!userDoc) {
+    throw new Error('User not found for session generation')
+  }
+
+  // Save original state from MongoDB (has hash/salt)
+  const originalHash = userDoc.hash
+  const originalSalt = userDoc.salt
+
+  if (!originalHash || !originalSalt) {
+    throw new Error('User missing password hash/salt - cannot issue session for linked account')
+  }
+
+  // Generate a temporary secret and use payload.login()
+  // This ensures the JWT is 100% compatible with Payload's expectations
+  const tempSecret = generateSecret()
+
+  try {
+    // Temporarily set OAuth secret as password
+    await payload.update({
+      collection: 'users',
+      id: userId,
+      data: {
+        password: tempSecret,
+      },
+      overrideAccess: true,
+    })
+
+    // Login to get real Payload JWT
+    const loginResult = await payload.login({
+      collection: 'users',
+      data: {
+        email: userDoc.email as string,
+        password: tempSecret,
+      },
+    })
+
+    if (!loginResult || !('token' in loginResult) || !loginResult.token) {
+      throw new Error('Session issuance failed: no token returned')
+    }
+
+    // Restore original password hash using MongoDB direct update
+    await db.collections.users.updateOne(
+      { _id: new ObjectId(userId) },
+      {
+        $set: {
+          hash: originalHash,
+          salt: originalSalt,
+        },
+      },
+    )
+
+    return { token: loginResult.token }
+  } catch (error) {
+    // Try to restore password if login/token generation failed
+    try {
+      await db.collections.users.updateOne(
+        { _id: new ObjectId(userId) },
+        {
+          $set: {
+            hash: originalHash,
+            salt: originalSalt,
+          },
+        },
+      )
+    } catch (_restoreError) {
+      // Silent failure - already in error state
+    }
+    throw error
+  }
 }

@@ -1,4 +1,8 @@
 {
+  "home": {
+    "title": "דף הבית - A-Guy",
+    "description": "המורה הדיגיטלי שלך - לימוד, תרגול, שאלות ומבחנים"
+  },
   "common": {
     "languageSwitcher": {
       "label": "שפה",
@@ -83,7 +87,12 @@
       "title": "חשבון",
       "name": "שם",
       "email": "אימייל",
-      "missing": "לא סופק"
+      "missing": "לא סופק",
+      "selectedCourse": "קורס נבחר",
+      "noCourseSelected": "לא נבחר קורס",
+      "selectCourse": "בחר קורס",
+      "removeCourseSelection": "הסר בחירה",
+      "loadingCourse": "טוען..."
     }
   },
   "roles": {
@@ -157,10 +166,20 @@
     "chatResetConfirm": "האם לאפס את השיחה? פעולה זו תתחיל שיחה חדשה.",
     "chatResetSuccess": "השיחה אופסה",
     "chatResetError": "נכשל איפוס השיחה",
+    "chatAttachFile": "צרף קובץ",
+    "chatRemoveFile": "הסר קובץ",
+    "chatUnsupportedFileType": "סוג קובץ לא נתמך. השתמש ב-JPG, PNG, WebP או PDF.",
+    "chatFileTooLarge": "הקובץ גדול מדי (מקסימום 10MB)",
+    "chatMaxFiles": "מותר עד 5 קבצים",
+    "chatUploadFailed": "העלאת הקובץ נכשלה",
     "mathKeyboard": "מקלדת מתמטית",
     "formulaSheet": "דף נוסחאות",
     "uploadFile": "העלאת קובץ",
     "sendMessage": "שליחה",
+    "switchToChat": "עבור לתצוגת צ'אט",
+    "switchToPdf": "עבור לתצוגת תוכן",
+    "chat": "צ'אט",
+    "content": "תוכן",
     "algebraFormulas": "אלגברה",
     "trigonometryFormulas": "טריגונומטריה",
     "formulaSubtitle": "נוסחאות עזר",
@@ -189,6 +208,13 @@
       "letsStart": "בואו נתחיל!",
       "loading": "טוען...",
       "noCoursesAvailable": "אין קורסים זמינים"
+    },
+    "ask": {
+      "chatWelcome": "היי! שאל אותי כל שאלה על הקורס!",
+      "chatInputPlaceholder": "שאל שאלה...",
+      "chatAuthRequired": "אנא התחבר כדי לשאול שאלות",
+      "loading": "טוען...",
+      "noCourse": "לא נבחר קורס. אנא בחר קורס מדף הבית."
     }
   },
   "study": {
