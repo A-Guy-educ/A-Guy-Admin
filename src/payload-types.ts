@@ -222,7 +222,7 @@ export interface Page {
         }[]
       | null;
   };
-  layout: (CallToActionBlock | ContentBlock | ArchiveBlock | FormBlock)[];
+  layout: (CallToActionBlock | ContentBlock | ArchiveBlock | FormBlock | HtmlBlock)[];
   meta?: {
     title?: string | null;
     description?: string | null;
@@ -465,6 +465,14 @@ export interface Course {
   isActive: boolean;
   categories: (string | Category)[];
   /**
+   * AI system prompt for Ask tab chat in this course (uses default if not set)
+   */
+  prompt?: (string | null) | Prompt;
+  /**
+   * AI context text for this course. Injected into Ask tab chat prompts at runtime.
+   */
+  courseContextText?: string | null;
+  /**
    * URL-friendly identifier (auto-generated from title if empty)
    */
   slug?: string | null;
@@ -640,6 +648,39 @@ export interface FolderInterface {
     totalDocs?: number;
   };
   folderType?: 'media'[] | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "prompts".
+ */
+export interface Prompt {
+  id: string;
+  /**
+   * Human-readable prompt name
+   */
+  title: string;
+  /**
+   * Machine-readable key (e.g., "default-tutor-v1")
+   */
+  key?: string | null;
+  /**
+   * System prompts are always included. Context prompts are lesson-specific.
+   */
+  type: 'system' | 'context';
+  /**
+   * System prompt template for AI tutor
+   */
+  template: string;
+  /**
+   * Only "published" prompts are used at runtime
+   */
+  status: 'draft' | 'published' | 'archived';
+  /**
+   * Use as fallback when lesson has no prompt
+   */
+  isDefaultForAgentChat?: boolean | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -842,6 +883,19 @@ export interface Form {
     | null;
   updatedAt: string;
   createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "HtmlBlock".
+ */
+export interface HtmlBlock {
+  /**
+   * Enter HTML content. Links must be relative (/path or #anchor). Allowed attributes: class, id, data-* on all tags; href (required), title, class, id, data-* on <a> tags; plus safe SVG attributes (e.g., viewBox, fill, stroke, d). No style=, target=, or on*= attributes allowed. The <style> tag is allowed.
+   */
+  html: string;
+  id?: string | null;
+  blockName?: string | null;
+  blockType: 'html';
 }
 /**
  * Tenant-scoped configuration key/value store. Variables are plaintext, secrets are encrypted.
@@ -1114,39 +1168,6 @@ export interface Lesson {
    * User who created this document
    */
   createdBy?: (string | null) | User;
-  updatedAt: string;
-  createdAt: string;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "prompts".
- */
-export interface Prompt {
-  id: string;
-  /**
-   * Human-readable prompt name
-   */
-  title: string;
-  /**
-   * Machine-readable key (e.g., "default-tutor-v1")
-   */
-  key?: string | null;
-  /**
-   * System prompts are always included. Context prompts are lesson-specific.
-   */
-  type: 'system' | 'context';
-  /**
-   * System prompt template for AI tutor
-   */
-  template: string;
-  /**
-   * Only "published" prompts are used at runtime
-   */
-  status: 'draft' | 'published' | 'archived';
-  /**
-   * Use as fallback when lesson has no prompt
-   */
-  isDefaultForAgentChat?: boolean | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1870,6 +1891,7 @@ export interface PagesSelect<T extends boolean = true> {
         content?: T | ContentBlockSelect<T>;
         archive?: T | ArchiveBlockSelect<T>;
         formBlock?: T | FormBlockSelect<T>;
+        html?: T | HtmlBlockSelect<T>;
       };
   meta?:
     | T
@@ -1957,6 +1979,15 @@ export interface FormBlockSelect<T extends boolean = true> {
   form?: T;
   enableIntro?: T;
   introContent?: T;
+  id?: T;
+  blockName?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "HtmlBlock_select".
+ */
+export interface HtmlBlockSelect<T extends boolean = true> {
+  html?: T;
   id?: T;
   blockName?: T;
 }
@@ -2091,6 +2122,8 @@ export interface CoursesSelect<T extends boolean = true> {
   status?: T;
   isActive?: T;
   categories?: T;
+  prompt?: T;
+  courseContextText?: T;
   slug?: T;
   meta?:
     | T

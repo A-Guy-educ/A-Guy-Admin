@@ -15,10 +15,9 @@ import {
   FileUp,
 } from 'lucide-react'
 import React, { useEffect, useState } from 'react'
-import { ChatMessageContent } from '@/ui/web/chat'
+import { ChatMessageContent, useNotebookChat } from '@/ui/web/chat'
 import { FormulaPanel } from '../FormulaPanel'
 import { MathPalette } from '../MathPalette'
-import { useNotebookChat } from '../NotebookChat/useNotebookChat'
 import type { ViewMode } from '../ExerciseWorkspace/exercise-workspace-types'
 
 interface ChatInterfaceProps {

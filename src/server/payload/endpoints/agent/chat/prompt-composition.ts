@@ -15,6 +15,8 @@ import type { ResolvedContext } from './context-resolution'
 interface LessonContext {
   lessonContextText?: string
   lessonPrompt: Prompt | null
+  courseContextText?: string
+  coursePrompt: Prompt | null
 }
 
 /**
@@ -129,23 +131,94 @@ async function fetchExerciseLessonContext(
 }
 
 /**
+ * Fetch course context and prompt (for course-level context, e.g., Ask tab)
+ */
+async function fetchCourseContext(
+  payload: Payload,
+  courseId: string,
+  user: { id: string },
+  reqLogger: Logger,
+): Promise<{ courseContextText?: string; coursePrompt: Prompt | null }> {
+  try {
+    const course = await payload.findByID({
+      collection: 'courses',
+      id: courseId,
+      depth: 0,
+      user,
+      overrideAccess: false,
+    })
+
+    const courseContextText =
+      (course as { courseContextText?: string }).courseContextText ?? undefined
+    let coursePrompt: Prompt | null = null
+
+    // Fetch course prompt separately if course has one (admin-only, requires override)
+    if ((course as { prompt?: unknown }).prompt) {
+      const promptId =
+        typeof (course as { prompt: unknown }).prompt === 'string'
+          ? (course as { prompt: string }).prompt
+          : (course as { prompt: { id: string } }).prompt.id
+
+      try {
+        coursePrompt = (await payload.findByID({
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          collection: 'prompts' as any,
+          id: promptId,
+          overrideAccess: true, // Prompts are admin-only
+        })) as Prompt | null
+
+        reqLogger.info({ promptId, courseId }, 'Loaded course-specific prompt')
+      } catch (error) {
+        reqLogger.warn({ err: error, promptId, courseId }, 'Failed to fetch course prompt')
+      }
+    }
+
+    return { courseContextText, coursePrompt }
+  } catch (error) {
+    reqLogger.warn(
+      { err: error, courseId },
+      'Failed to fetch course for prompt resolution, continuing with defaults',
+    )
+    return { courseContextText: undefined, coursePrompt: null }
+  }
+}
+
+/**
  * Fetch lesson context based on resolved context type
+ * Also fetches course context if courseId is provided
  */
 export async function fetchLessonContextForContext(
   payload: Payload,
   context: ResolvedContext,
   user: { id: string },
   reqLogger: Logger,
+  courseId?: string,
 ): Promise<LessonContext> {
+  let lessonContext: LessonContext
+
   if (context.relationTo === 'lessons') {
-    return fetchLessonContext(payload, context.value, user, reqLogger)
+    lessonContext = await fetchLessonContext(payload, context.value, user, reqLogger)
+  } else if (context.relationTo === 'exercises') {
+    lessonContext = await fetchExerciseLessonContext(payload, context.value, user, reqLogger)
+  } else {
+    lessonContext = { lessonContextText: undefined, lessonPrompt: null }
   }
 
-  if (context.relationTo === 'exercises') {
-    return fetchExerciseLessonContext(payload, context.value, user, reqLogger)
+  // Fetch course prompt if no lesson prompt and courseId is provided
+  if (!lessonContext.lessonPrompt && courseId) {
+    const courseContext = await fetchCourseContext(payload, courseId, user, reqLogger)
+    return {
+      ...lessonContext,
+      courseContextText: courseContext.courseContextText,
+      coursePrompt: courseContext.coursePrompt,
+    }
   }
 
-  return { lessonContextText: undefined, lessonPrompt: null }
+  return {
+    ...lessonContext,
+    courseContextText: undefined,
+    coursePrompt: null,
+  }
 }
 
 export interface ComposedSystemInstructions {
@@ -161,12 +234,15 @@ export interface ComposedSystemInstructions {
 
 /**
  * Compose full system instructions from all sources
+ * Priority: lesson prompt > course prompt > default prompt
  */
 export async function composeFullSystemInstructions(
   payload: Payload,
   lessonPrompt: Prompt | null,
   lessonContextText: string | undefined,
   reqLogger: Logger,
+  coursePrompt?: Prompt | null,
+  courseContextText?: string,
 ): Promise<ComposedSystemInstructions> {
   // Fetch published system prompts (always included)
   const systemPromptsResult = await fetchPublishedSystemPrompts(payload)
@@ -183,7 +259,8 @@ export async function composeFullSystemInstructions(
   }
 
   // Resolve system prompt using pre-loaded prompt object
-  const promptResolution = await resolveAgentSystemPrompt(payload, lessonPrompt)
+  // Priority: lesson prompt > course prompt > default prompt
+  const promptResolution = await resolveAgentSystemPrompt(payload, lessonPrompt || coursePrompt || null)
 
   reqLogger.info(
     {
@@ -191,15 +268,17 @@ export async function composeFullSystemInstructions(
       promptTitle: promptResolution.promptTitle,
       resolvedFrom: promptResolution.resolvedFrom,
       ...(promptResolution.fallbackReason && { fallbackReason: promptResolution.fallbackReason }),
+      usedCoursePrompt: !lessonPrompt && !!coursePrompt,
     },
     'Resolved system prompt',
   )
 
-  // Compose final system instructions
+  // Compose final system instructions: system prompts + lesson/course prompt + lesson/course context
+  // Priority: lesson context > course context
   const instructions = composeSystemInstructions(
     systemPromptsResult.templates,
     promptResolution.template,
-    lessonContextText,
+    lessonContextText || courseContextText,
   )
 
   return {

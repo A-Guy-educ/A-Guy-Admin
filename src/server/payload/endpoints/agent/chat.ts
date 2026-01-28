@@ -200,6 +200,7 @@ export async function agentChat(req: PayloadRequest & { json?: () => Promise<unk
       context,
       req.user,
       reqLogger,
+      validated.courseId,
     )
 
     let composedInstructions
@@ -209,6 +210,8 @@ export async function agentChat(req: PayloadRequest & { json?: () => Promise<unk
         lessonContext.lessonPrompt,
         lessonContext.lessonContextText,
         reqLogger,
+        lessonContext.coursePrompt,
+        lessonContext.courseContextText,
       )
     } catch (error) {
       if (error instanceof Error && error.message.includes('exceeds maximum')) {

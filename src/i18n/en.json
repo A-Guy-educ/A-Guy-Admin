@@ -64,7 +64,12 @@
       "title": "Account",
       "name": "Name",
       "email": "Email",
-      "missing": "Not provided"
+      "missing": "Not provided",
+      "selectedCourse": "Selected Course",
+      "noCourseSelected": "No course selected",
+      "selectCourse": "Select a Course",
+      "removeCourseSelection": "Remove Selection",
+      "loadingCourse": "Loading..."
     },
     "signup": {
       "title": "Create Account",
@@ -203,6 +208,13 @@
       "letsStart": "Let's start!",
       "loading": "Loading...",
       "noCoursesAvailable": "No courses available"
+    },
+    "ask": {
+      "chatWelcome": "Hi! Ask me anything about the course!",
+      "chatInputPlaceholder": "Ask a question...",
+      "chatAuthRequired": "Please sign in to ask questions",
+      "loading": "Loading...",
+      "noCourse": "No course selected. Please select a course from the home page."
     }
   },
   "study": {

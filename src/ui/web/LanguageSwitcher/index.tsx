@@ -13,7 +13,11 @@ import { useLocale, useTranslations } from '@/ui/web/providers/I18n'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
-export function LanguageSwitcher() {
+interface LanguageSwitcherProps {
+  portalContainer?: HTMLElement | null
+}
+
+export function LanguageSwitcher({ portalContainer }: LanguageSwitcherProps = {}) {
   const t = useTranslations('common.languageSwitcher')
   const serverLocale = useLocale()
   const router = useRouter()
@@ -74,7 +78,7 @@ export function LanguageSwitcher() {
         <SelectTrigger className="w-[150px]">
           <SelectValue placeholder={t('label')} />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent container={portalContainer}>
           <SelectGroup>
             {locales.map((loc) => (
               <SelectItem key={loc} value={loc}>
