@@ -153,6 +153,22 @@ export const Conversations: CollectionConfig = {
             },
           },
         },
+        {
+          name: 'media',
+          type: 'array',
+          maxRows: 5,
+          admin: {
+            description: 'Media attachments for this message (max 5)',
+          },
+          fields: [
+            {
+              name: 'mediaId',
+              type: 'relationship',
+              relationTo: 'media',
+              required: true,
+            },
+          ],
+        },
       ],
     },
 

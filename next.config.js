@@ -33,6 +33,10 @@ const nextConfig = {
   outputFileTracingExcludes: {
     '*': ['**/node_modules/@swc/core*/**/*'],
   },
+  // Include prompt files in serverless bundles (they're loaded via readFileSync)
+  outputFileTracingIncludes: {
+    '/api/agent/chat': ['./src/infra/llm/prompts/**/*'],
+  },
   webpack: (webpackConfig) => {
     webpackConfig.resolve.extensionAlias = {
       '.cjs': ['.cts', '.cjs'],
