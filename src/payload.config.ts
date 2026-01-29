@@ -27,6 +27,7 @@ import { Users } from '@/server/payload/collections/Users'
 import { importExerciseFromImage } from '@/server/payload/endpoints/exercises/import-from-image'
 import { importExerciseFromLesson } from '@/server/payload/endpoints/exercises/import-from-lesson'
 import { defaultLexical } from '@/server/payload/fields/defaultLexical'
+import { pdfToExercisesTask } from '@/server/payload/jobs/pdf-to-exercises-task'
 import { plugins } from '@/server/payload/plugins'
 import { Footer } from '@/ui/web/footer/config'
 import { Header } from '@/ui/web/header/config'
@@ -150,6 +151,6 @@ export default buildConfig({
         return authHeader === `Bearer ${process.env.CRON_SECRET}`
       },
     },
-    tasks: [],
+    tasks: [pdfToExercisesTask],
   },
 })
