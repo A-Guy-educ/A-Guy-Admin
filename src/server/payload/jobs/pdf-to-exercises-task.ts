@@ -1,28 +1,33 @@
-import type { JobTask } from 'payload'
-import { getPayload } from 'payload'
-import config from '@payload-config'
-import { nanoid } from 'nanoid'
 import {
-  PDF_MAX_BYTES,
-  MAX_SEGMENT_PAGES,
   MAX_EXERCISES_PER_SEGMENT,
+  MAX_SEGMENT_PAGES,
+  PDF_MAX_BYTES,
 } from '@/server/config/constants'
 import { getPdfBufferFromBlob } from '@/server/services/pdf-fetcher'
 import { computeContentHash } from '@/server/utils/hash'
+import config from '@payload-config'
+// JobTask type is not exported from payload, define inline
+import { getPayload } from 'payload'
 
 // v2.1: Use EXISTING LLM infrastructure
-import { mapMultimodalToGemini } from '@/infra/llm/providers/gemini/multimodal-mapper'
-import { getGeminiClient } from '@/server/llm/gemini.client'
 import type { MediaPartWithPath } from '@/infra/llm/multimodal/types'
-import { toExerciseInput, toPayloadContent, enrichBlockIds, parseExtractorResponseText, parseVerifierResponseText } from '@/lib/exercise-conversion/helpers'
+import { mapMultimodalToGemini } from '@/infra/llm/providers/gemini/multimodal-mapper'
+import {
+  enrichBlockIds,
+  parseExtractorResponseText,
+  parseVerifierResponseText,
+  toExerciseInput,
+  toPayloadContent,
+} from '@/lib/exercise-conversion/helpers'
+import { getGeminiClient } from '@/server/llm/gemini.client'
 import { z } from 'zod'
 
-export const pdfToExercisesTask: JobTask = {
+export const pdfToExercisesTask = {
   slug: 'pdf_to_exercises',
   input: {},
   output: {},
 
-  async handler({ job, req }) {
+  async handler({ job, req }: { job: any; req: any }) {
     // v2.1 Fix 1: Use req.payload when available (testability), fallback to getPayload
     const payload = req.payload ?? (await getPayload({ config }))
     const input = job.input as any
@@ -57,7 +62,11 @@ export const pdfToExercisesTask: JobTask = {
       })
 
       if (!media || !media.url) {
-        throw { stage: 'PASS0_EXTRACT', code: 'MEDIA_NOT_FOUND', message: 'Media document has no URL' }
+        throw {
+          stage: 'PASS0_EXTRACT',
+          code: 'MEDIA_NOT_FOUND',
+          message: 'Media document has no URL',
+        }
       }
 
       // PASS 1: Segment Indexing (using buffer)
@@ -181,8 +190,8 @@ export const pdfToExercisesTask: JobTask = {
 
 async function segmentPdf(pdfBuffer: Buffer, maxPagesPerSegment: number) {
   const pdfjs = await import('pdfjs-dist')
-  // Use buffer data instead of file path
-  const pdf = await pdfjs.getDocument({ data: pdfBuffer }).promise
+  // Use buffer data - cast to Uint8Array for pdfjs-dist compatibility
+  const pdf = await pdfjs.getDocument({ data: Uint8Array.from(pdfBuffer) }).promise
   const pageCount = pdf.numPages
 
   const segments = []
@@ -233,13 +242,12 @@ Return a JSON array of exercises with this schema:
   const model = geminiClient.getGenerativeModel({ model: 'gemini-1.5-pro' })
 
   const extractorResult = await model.generateContent({
-    contents: [{
-      role: 'user',
-      parts: [
-        { text: extractorPromptWithContext },
-        ...geminiParts.currentMessage,
-      ],
-    }],
+    contents: [
+      {
+        role: 'user',
+        parts: [{ text: extractorPromptWithContext }, ...geminiParts.currentMessage],
+      },
+    ],
   })
 
   const extractorResponse = extractorResult.response.text()
@@ -249,7 +257,7 @@ Return a JSON array of exercises with this schema:
   const extracted = validateExtractedExercises(rawExtracted, segment)
 
   // ========== v2.1: Enrich with block IDs if missing ==========
-  const enrichedExercises = extracted.map(exercise => enrichBlockIds(exercise))
+  const enrichedExercises = extracted.map((exercise) => enrichBlockIds(exercise))
 
   // ========== v2.1: Call Verifier with RETRY-ONCE-THEN-SKIP logic ==========
   const validExercises: any[] = []
@@ -275,7 +283,9 @@ Return JSON: { "valid": boolean, "reason": "..." }`
 
     // v2.1: Skip invalid exercises instead of failing the job
     if (!verification.valid) {
-      console.warn(`[PDF→Exercises] Skipping exercise "${exercise.title}" after retry: ${verification.reason}`)
+      console.warn(
+        `[PDF→Exercises] Skipping exercise "${exercise.title}" after retry: ${verification.reason}`,
+      )
       output.errors.push({
         stage: 'PASS2_VERIFY',
         pageRange: { start: segment.pageStart, end: segment.pageEnd },
@@ -304,13 +314,12 @@ async function callVerifier(
 ): Promise<{ valid: boolean; reason?: string }> {
   try {
     const result = await model.generateContent({
-      contents: [{
-        role: 'user',
-        parts: [
-          { text: prompt },
-          ...geminiParts.currentMessage,
-        ],
-      }],
+      contents: [
+        {
+          role: 'user',
+          parts: [{ text: prompt }, ...geminiParts.currentMessage],
+        },
+      ],
     })
     return parseVerifierResponseText(result.response.text())
   } catch (error) {

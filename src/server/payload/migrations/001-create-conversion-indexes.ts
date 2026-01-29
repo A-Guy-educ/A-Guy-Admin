@@ -1,7 +1,8 @@
 import type { Migration } from 'payload'
 
 export const createConversionIndexes: Migration = {
-  async up(db) {
+  name: 'create-conversion-indexes',
+  async up(db: any) {
     // Prompts indexes
     await db
       .collection('prompts')
@@ -39,7 +40,7 @@ export const createConversionIndexes: Migration = {
     )
   },
 
-  async down(db) {
+  async down(db: any) {
     await db.collection('prompts').dropIndex('idx_prompt_tenant_status_usage')
     await db.collection('exercises').dropIndex('idx_exercise_dedup')
     await db.collection('exercises').dropIndex('idx_exercise_job')

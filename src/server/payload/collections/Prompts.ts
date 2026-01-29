@@ -100,9 +100,5 @@ export const Prompts: CollectionConfig = {
       },
     },
   ],
-  indexes: [
-    // Compound index for tenant + status + usage filtering
-    { fields: ['tenant', 'status', 'usage'], name: 'idx_prompt_tenant_status_usage' },
-  ],
   timestamps: true,
 }

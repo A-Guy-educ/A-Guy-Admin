@@ -1,7 +1,7 @@
+import { ENV } from '@/server/config/constants'
+import config from '@payload-config'
 import { NextRequest, NextResponse } from 'next/server'
 import { getPayload } from 'payload'
-import config from '@payload-config'
-import { ENV } from '@/server/config/constants'
 
 type ErrorCode = 'UNAUTHORIZED' | 'VALIDATION_ERROR' | 'LESSON_NOT_FOUND' | 'INTERNAL_ERROR' | 'METHOD_NOT_ALLOWED'
 
@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     const { user } = await payload.auth({ headers: request.headers })
 
     let isAdmin = false
-    if (user && Array.isArray(user.roles) && user.roles.includes('admin')) {
+    if (user && Array.isArray(user.role) && (user.role as string[]).includes('admin')) {
       isAdmin = true
     }
 
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
       return errorResponse('LESSON_NOT_FOUND', 'Lesson not found', 404)
     }
 
-    const course = lesson.course
+    const course = (lesson as any).course
     const tenantId = course?.tenant?.id || course?.tenant
 
     if (!tenantId) {

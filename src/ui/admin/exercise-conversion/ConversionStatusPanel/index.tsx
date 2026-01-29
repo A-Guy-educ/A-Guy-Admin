@@ -1,7 +1,7 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
 import { buildJobsWhereQuery } from '@/lib/exercise-conversion/helpers'
+import { useEffect, useState } from 'react'
 
 interface ConversionStatusPanelProps {
   lessonId: string
@@ -31,7 +31,11 @@ interface JobStatus {
   updatedAt: string
 }
 
-export function ConversionStatusPanel({ lessonId, mediaId, onViewExercises }: ConversionStatusPanelProps) {
+export function ConversionStatusPanel({
+  lessonId,
+  mediaId,
+  onViewExercises,
+}: ConversionStatusPanelProps) {
   const [status, setStatus] = useState<JobStatus | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
@@ -40,9 +44,7 @@ export function ConversionStatusPanel({ lessonId, mediaId, onViewExercises }: Co
       try {
         // Fetch from Payload Jobs REST API with proper where clause
         // Use relative URL to avoid cross-origin cookie issues
-        const where = encodeURIComponent(
-          JSON.stringify(buildJobsWhereQuery(lessonId, mediaId))
-        )
+        const where = encodeURIComponent(JSON.stringify(buildJobsWhereQuery(lessonId, mediaId)))
 
         const response = await fetch(`/api/jobs?where=${where}&limit=1&sort=-createdAt`)
         if (response.ok) {
@@ -51,7 +53,7 @@ export function ConversionStatusPanel({ lessonId, mediaId, onViewExercises }: Co
             setStatus(data.docs[0])
           }
         }
-      } catch (err) {
+      } catch (_err) {
         // Silently fail - no active job
       } finally {
         setIsLoading(false)
@@ -101,7 +103,8 @@ export function ConversionStatusPanel({ lessonId, mediaId, onViewExercises }: Co
               <span className="label">Exercises</span>
               <span className="value">
                 {status.output.exercisesCreated} created
-                {status.output.exercisesDeduped > 0 && ` (${status.output.exercisesDeduped} deduped)`}
+                {status.output.exercisesDeduped > 0 &&
+                  ` (${status.output.exercisesDeduped} deduped)`}
                 {/* v2.1 Fix 6: Show skipped count */}
                 {status.output.exercisesSkipped && status.output.exercisesSkipped > 0 && (
                   <span className="skipped"> ({status.output.exercisesSkipped} skipped)</span>

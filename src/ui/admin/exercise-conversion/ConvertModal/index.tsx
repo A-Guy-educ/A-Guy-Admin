@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 
 interface ConvertModalProps {
   lessonId: string
@@ -44,7 +44,7 @@ export function ConvertModal({ lessonId, mediaId, filename, onClose }: ConvertMo
         const data = await response.json()
         setExtractorPrompts(data.extractors || [])
         setVerifierPrompts(data.verifiers || [])
-      } catch (err) {
+      } catch (_err) {
         setError('Failed to load prompts')
       } finally {
         setIsLoading(false)
