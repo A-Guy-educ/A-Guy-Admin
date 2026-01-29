@@ -37,6 +37,7 @@ describe('resolveAgentSystemPrompt', () => {
         isDefaultForAgentChat: false,
         createdAt: '',
         updatedAt: '',
+        tenant: 'default',
       }
 
       const result = await resolveAgentSystemPrompt(
@@ -62,6 +63,7 @@ describe('resolveAgentSystemPrompt', () => {
         isDefaultForAgentChat: false,
         createdAt: '',
         updatedAt: '',
+        tenant: 'default',
       }
       mockPayload.find.mockResolvedValue({
         docs: [
@@ -98,6 +100,7 @@ describe('resolveAgentSystemPrompt', () => {
         isDefaultForAgentChat: false,
         createdAt: '',
         updatedAt: '',
+        tenant: 'default',
       }
       mockPayload.find.mockResolvedValue({
         docs: [{ id: 'default-1', template: 'Default.', status: 'published', type: 'context' }],

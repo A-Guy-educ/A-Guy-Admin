@@ -151,6 +151,7 @@ export interface Config {
   };
   jobs: {
     tasks: {
+      pdf_to_exercises: TaskPdfToExercises;
       schedulePublish: TaskSchedulePublish;
       inline: {
         input: unknown;
@@ -681,6 +682,14 @@ export interface Prompt {
    * Use as fallback when lesson has no prompt
    */
   isDefaultForAgentChat?: boolean | null;
+  /**
+   * Tenant scope for this document
+   */
+  tenant: string | Tenant;
+  /**
+   * Purpose of this prompt: chat conversation, PDF extraction, or PDF verification
+   */
+  usage?: ('chat' | 'extractor' | 'verifier') | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1209,6 +1218,31 @@ export interface Exercise {
    * User who created this document
    */
   createdBy?: (string | null) | User;
+  origin: 'manual' | 'conversion' | 'import';
+  /**
+   * Original PDF media for conversion exercises
+   */
+  sourceDoc?: (string | null) | Media;
+  /**
+   * Payload job ID that created this exercise
+   */
+  conversionJobId?: string | null;
+  /**
+   * Starting page in source PDF
+   */
+  sourcePageStart?: number | null;
+  /**
+   * Ending page in source PDF
+   */
+  sourcePageEnd?: number | null;
+  /**
+   * Order within the segment (1-indexed)
+   */
+  sourceOrderInSegment?: number | null;
+  /**
+   * SHA256 hash for deduplication
+   */
+  contentHash?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1672,7 +1706,7 @@ export interface PayloadJob {
     | {
         executedAt: string;
         completedAt: string;
-        taskSlug: 'inline' | 'schedulePublish';
+        taskSlug: 'inline' | 'pdf_to_exercises' | 'schedulePublish';
         taskID: string;
         input?:
           | {
@@ -1705,7 +1739,7 @@ export interface PayloadJob {
         id?: string | null;
       }[]
     | null;
-  taskSlug?: ('inline' | 'schedulePublish') | null;
+  taskSlug?: ('inline' | 'pdf_to_exercises' | 'schedulePublish') | null;
   queue?: string | null;
   waitUntil?: string | null;
   processing?: boolean | null;
@@ -2186,6 +2220,13 @@ export interface ExercisesSelect<T extends boolean = true> {
   lesson?: T;
   content?: T;
   createdBy?: T;
+  origin?: T;
+  sourceDoc?: T;
+  conversionJobId?: T;
+  sourcePageStart?: T;
+  sourcePageEnd?: T;
+  sourceOrderInSegment?: T;
+  contentHash?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -2200,6 +2241,8 @@ export interface PromptsSelect<T extends boolean = true> {
   template?: T;
   status?: T;
   isDefaultForAgentChat?: T;
+  tenant?: T;
+  usage?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -2810,6 +2853,14 @@ export interface FooterSelect<T extends boolean = true> {
   updatedAt?: T;
   createdAt?: T;
   globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskPdf_to_exercises".
+ */
+export interface TaskPdfToExercises {
+  input?: unknown;
+  output?: unknown;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

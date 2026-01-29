@@ -41,8 +41,8 @@ export async function getPdfBufferFromBlob(
     throw stageError('NOT_PDF', `Expected application/pdf, got ${media.mimeType}`)
   }
 
-  // Get file size from media document
-  let filesize = media.filesize as number | undefined
+  // Get file size from media document (unused variable, kept for documentation)
+  const _filesize = media.filesize as number | undefined
 
   // Fetch the file from Blob storage using the URL
   if (!media.url) {
@@ -62,7 +62,10 @@ export async function getPdfBufferFromBlob(
     const response = await fetch(media.url, { headers })
 
     if (!response.ok) {
-      throw stageError('FETCH_FAILED', `Failed to fetch PDF: ${response.status} ${response.statusText}`)
+      throw stageError(
+        'FETCH_FAILED',
+        `Failed to fetch PDF: ${response.status} ${response.statusText}`,
+      )
     }
 
     const arrayBuffer = await response.arrayBuffer()
@@ -119,7 +122,7 @@ export async function getPdfFileSize(mediaId: string, payload: any): Promise<num
           filesize = parseInt(contentLength, 10)
         }
       }
-    } catch (error) {
+    } catch (_error) {
       // Fallback: fetch full file if HEAD fails
       const buffer = await getPdfBufferFromBlob(mediaId, payload)
       filesize = buffer.length

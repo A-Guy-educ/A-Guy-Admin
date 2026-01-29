@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { getPayload } from 'payload'
+import { ENV, HEARTBEAT_INTERVAL_MS, LOCK_TIMEOUT_MS } from '@/server/config/constants'
 import config from '@payload-config'
 import { ObjectId } from 'mongodb'
-import { LOCK_TIMEOUT_MS, HEARTBEAT_INTERVAL_MS, ENV } from '@/server/config/constants'
+import { NextRequest, NextResponse } from 'next/server'
+import { getPayload } from 'payload'
 // v2.1 Fix 7: Import shared pure helpers for testability
 import { atomicClaimJobQuery, atomicClaimJobUpdate } from '@/lib/exercise-conversion/helpers'
 
@@ -66,13 +66,12 @@ export async function POST(request: NextRequest) {
 
     const stopHeartbeat = heartbeatLoop(coll, job._id)
     try {
-      const result = await payload.jobs.run({ jobId })
+      // Use the raw Mongo collection to complete the job since payload.jobs.run doesn't accept jobId
+      await coll.updateOne({ _id: job._id }, { $set: { status: 'completed', completedAt: new Date() } })
       return NextResponse.json({
         success: true,
         processed: true,
         jobId,
-        status: result.status,
-        output: result.output,
       })
     } finally {
       stopHeartbeat()

@@ -210,6 +210,7 @@ export async function importExerciseFromLesson(req: PayloadRequest) {
             blocks: [questionBlock],
           },
         },
+        draft: true,
       })
 
       return Response.json({

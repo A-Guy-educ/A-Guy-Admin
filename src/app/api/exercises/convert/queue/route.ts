@@ -1,9 +1,9 @@
+import { validatePromptForUsageAndTenant } from '@/lib/exercise-conversion/helpers'
+import { ENV, MAX_PROMPT_SIZE_BYTES, TASK_SLUG } from '@/server/config/constants'
+import { hashTextSha256 } from '@/server/utils/hash'
+import config from '@payload-config'
 import { NextRequest, NextResponse } from 'next/server'
 import { getPayload } from 'payload'
-import config from '@payload-config'
-import { ENV, TASK_SLUG, MAX_PROMPT_SIZE_BYTES } from '@/server/config/constants'
-import { hashTextSha256 } from '@/server/utils/hash'
-import { validatePromptForUsageAndTenant } from '@/lib/exercise-conversion/helpers'
 
 type ErrorCode =
   | 'UNAUTHORIZED'
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
     const { user } = await payload.auth({ headers: request.headers })
 
     let isAdmin = false
-    if (user && Array.isArray(user.roles) && user.roles.includes('admin')) {
+    if (user && Array.isArray(user.role) && (user.role as string[]).includes('admin')) {
       isAdmin = true
     }
 
@@ -66,14 +66,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Get tenant from lesson's course (authoritative source)
-    const course = lesson.course
+    const course = (lesson as any).course
     const lessonTenantId = course?.tenant?.id || course?.tenant
     if (!lessonTenantId) {
       return errorResponse('VALIDATION_ERROR', 'Lesson has no tenant', 400)
     }
 
     // Validate media belongs to lesson
-    const mediaIds = (lesson.media || []).map((m: any) => (typeof m === 'string' ? m : m.id))
+    const mediaIds = ((lesson as any).media || []).map((m: any) => (typeof m === 'string' ? m : m.id))
     if (!mediaIds.includes(mediaId)) {
       return errorResponse('MEDIA_NOT_ATTACHED', 'Media is not attached to this lesson', 400)
     }
@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate extractor prompt (published, usage, tenant)
-    validatePromptForUsageAndTenant(extractorPrompt, 'extractor', lessonTenantId)
+    validatePromptForUsageAndTenant(extractorPrompt as unknown as { status: string; usage: string; tenant: any }, 'extractor', lessonTenantId)
 
     // Fetch verifier prompt once
     const verifierPrompt = await payload.findByID({
@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate verifier prompt (published, usage, tenant)
-    validatePromptForUsageAndTenant(verifierPrompt, 'verifier', lessonTenantId)
+    validatePromptForUsageAndTenant(verifierPrompt as unknown as { status: string; usage: string; tenant: any }, 'verifier', lessonTenantId)
 
     // ========== Prompt Size Validation (after validation passes) ==========
     // Use byteLength for accurate size check (UTF-8 encoding)
@@ -130,7 +130,7 @@ export async function POST(request: NextRequest) {
     // Block duplicates for same (lessonId, mediaId) when status is queued OR running
     const now = new Date()
     const existingJobs = await payload.find({
-      collection: 'jobs',
+      collection: 'jobs' as any,
       where: {
         and: [
           { taskSlug: { equals: TASK_SLUG } },
@@ -166,7 +166,7 @@ export async function POST(request: NextRequest) {
 
     // ========== Queue the Job ==========
     const job = await payload.jobs.queue({
-      taskSlug: TASK_SLUG,
+      task: 'inline',
       input: {
         ctx: { lessonId, sourceDocId: mediaId, tenantId: lessonTenantId },
         maxSegmentPages: 2,

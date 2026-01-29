@@ -334,7 +334,8 @@ export async function retrieveMemoriesWithContext(
   if (!db) {
     throw new Error('Database connection not available')
   }
-  return retrieveMemoryItems(db, userId, queryText, conversationId, contextKey, payload)
+  // Use 'any' to bypass MongoDB version type mismatch
+  return retrieveMemoryItems(db as any, userId, queryText, conversationId, contextKey, payload)
 }
 
 /**
