@@ -18,6 +18,43 @@ interface Exercise {
   sourceOrderInSegment?: number
 }
 
+const listStyle: React.CSSProperties = {
+  marginTop: '0.75rem',
+  padding: '0.75rem',
+  background: 'var(--theme-elevation-50)',
+  borderRadius: '4px',
+}
+
+const listHeaderStyle: React.CSSProperties = {
+  margin: '0 0 0.5rem 0',
+  fontSize: '0.9rem',
+}
+
+const listStyleObj: React.CSSProperties = {
+  listStyle: 'none',
+  padding: 0,
+  margin: 0,
+}
+
+const listItemStyle: React.CSSProperties = {
+  marginBottom: '0.25rem',
+}
+
+const linkStyle: React.CSSProperties = {
+  background: 'none',
+  border: 'none',
+  color: 'var(--theme-text)',
+  cursor: 'pointer',
+  textAlign: 'left',
+  padding: '0.25rem 0',
+  width: '100%',
+}
+
+const pageRangeStyle: React.CSSProperties = {
+  color: 'var(--theme-elevation-400)',
+  fontSize: '0.85rem',
+}
+
 export function DraftExercisesList({ lessonId, sourceDocId }: DraftExercisesListProps) {
   const [exercises, setExercises] = useState<Exercise[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -56,30 +93,32 @@ export function DraftExercisesList({ lessonId, sourceDocId }: DraftExercisesList
   }, [lessonId, sourceDocId])
 
   if (isLoading) {
-    return <div className="draft-exercises-list loading">Loading exercises...</div>
+    return (
+      <div style={{ ...listStyle, color: 'var(--theme-elevation-500)' }}>Loading exercises...</div>
+    )
   }
 
   if (exercises.length === 0) {
     return (
-      <div className="draft-exercises-list empty">
+      <div style={listStyle}>
         <p>No draft exercises found for this conversion.</p>
       </div>
     )
   }
 
   return (
-    <div className="draft-exercises-list">
-      <h3>Draft Exercises ({exercises.length})</h3>
-      <ul>
+    <div style={listStyle}>
+      <h3 style={listHeaderStyle}>Draft Exercises ({exercises.length})</h3>
+      <ul style={listStyleObj}>
         {exercises.map((exercise) => (
-          <li key={exercise.id}>
+          <li key={exercise.id} style={listItemStyle}>
             <button
-              className="exercise-link"
+              style={linkStyle}
               onClick={() => router.push(`/admin/collections/exercises/${exercise.id}`)}
             >
               {exercise.title}
               {exercise.sourcePageStart && exercise.sourcePageEnd && (
-                <span className="page-range">
+                <span style={pageRangeStyle}>
                   {' '}
                   (Pages {exercise.sourcePageStart}-{exercise.sourcePageEnd})
                 </span>

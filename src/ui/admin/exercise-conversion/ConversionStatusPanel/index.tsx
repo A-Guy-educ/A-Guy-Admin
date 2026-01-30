@@ -26,6 +26,14 @@ interface ConversionStatusPanelProps {
   onViewExercises?: () => void
 }
 
+// Badge color styles based on status
+const badgeColors = {
+  queued: 'background-color: var(--theme-warning-100); color: var(--theme-warning-500);',
+  running: 'background-color: var(--theme-info-100); color: var(--theme-info-500);',
+  completed: 'background-color: var(--theme-success-100); color: var(--theme-success-500);',
+  failed: 'background-color: var(--theme-error-100); color: var(--theme-error-500);',
+}
+
 export function ConversionStatusPanel({
   lessonId,
   mediaId,
@@ -96,7 +104,18 @@ export function ConversionStatusPanel({
   }
 
   if (isLoading) {
-    return <div className="conversion-status loading">Loading status...</div>
+    return (
+      <div
+        style={{
+          padding: '0.75rem',
+          borderRadius: '4px',
+          background: 'var(--theme-elevation-100)',
+          color: 'var(--theme-elevation-500)',
+        }}
+      >
+        Loading status...
+      </div>
+    )
   }
 
   if (!status) {
@@ -110,18 +129,59 @@ export function ConversionStatusPanel({
   const canRun = status.status === 'queued' || status.status === 'failed'
 
   return (
-    <div className={`conversion-status ${status.status}`}>
-      <div className="status-header">
-        <h3>Conversion Status</h3>
+    <div
+      style={{
+        padding: '0.75rem',
+        borderRadius: '4px',
+        background: 'var(--theme-elevation-100)',
+        marginTop: '0.5rem',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '0.5rem',
+        }}
+      >
+        <h3 style={{ margin: 0, fontSize: '0.9rem' }}>Conversion Status</h3>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <span className={`badge badge-${status.status}`}>{status.status}</span>
+          <span
+            style={{
+              padding: '0.25rem 0.5rem',
+              borderRadius: '4px',
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              textTransform: 'uppercase',
+              ...Object.fromEntries(
+                badgeColors[status.status]
+                  .split('; ')
+                  .filter(Boolean)
+                  .map((s) => {
+                    const [key, value] = s.split(': ')
+                    return [key, value]
+                  }),
+              ),
+            }}
+          >
+            {status.status}
+          </span>
           {canRun && (
             <button
               type="button"
-              className="btn btn-secondary"
+              style={{
+                padding: '4px 12px',
+                borderRadius: '4px',
+                fontWeight: 500,
+                cursor: isRunning ? 'not-allowed' : 'pointer',
+                background: 'var(--theme-elevation-150)',
+                color: 'var(--theme-text)',
+                border: 'none',
+                opacity: isRunning ? 0.5 : 1,
+              }}
               onClick={handleRunNow}
               disabled={isRunning}
-              style={{ padding: '4px 12px', fontSize: '12px' }}
             >
               {isRunning ? 'Running...' : '▶ Run Now'}
             </button>
@@ -130,23 +190,42 @@ export function ConversionStatusPanel({
       </div>
 
       {status.status === 'running' && (
-        <div className="progress-bar">
-          <div className="progress-fill" style={{ width: `${progress}%` }} />
+        <div
+          style={{
+            height: '8px',
+            background: 'var(--theme-elevation-200)',
+            borderRadius: '4px',
+            overflow: 'hidden',
+            marginBottom: '0.5rem',
+          }}
+        >
+          <div
+            style={{
+              height: '100%',
+              background: 'var(--theme-success-500)',
+              width: `${progress}%`,
+              transition: 'width 0.3s ease',
+            }}
+          />
         </div>
       )}
 
-      <div className="status-details">
+      <div style={{ display: 'flex', gap: '1rem', fontSize: '0.85rem' }}>
         {status.output && (
           <>
-            <div className="stat">
-              <span className="label">Segments</span>
-              <span className="value">
+            <div>
+              <span style={{ color: 'var(--theme-elevation-500)', marginRight: '0.25rem' }}>
+                Segments
+              </span>
+              <span>
                 {status.output.segmentsDone} / {status.output.segmentsTotal}
               </span>
             </div>
-            <div className="stat">
-              <span className="label">Exercises</span>
-              <span className="value">
+            <div>
+              <span style={{ color: 'var(--theme-elevation-500)', marginRight: '0.25rem' }}>
+                Exercises
+              </span>
+              <span>
                 {status.output.exercisesCreated} created
                 {status.output.exercisesDeduped > 0 &&
                   ` (${status.output.exercisesDeduped} deduped)`}
@@ -157,7 +236,19 @@ export function ConversionStatusPanel({
       </div>
 
       {status.status === 'completed' && onViewExercises && (
-        <button className="btn btn-secondary" onClick={onViewExercises}>
+        <button
+          style={{
+            marginTop: '0.75rem',
+            padding: '0.5rem 1rem',
+            borderRadius: '4px',
+            fontWeight: 500,
+            cursor: 'pointer',
+            background: 'var(--theme-elevation-150)',
+            color: 'var(--theme-text)',
+            border: 'none',
+          }}
+          onClick={onViewExercises}
+        >
           View Created Exercises
         </button>
       )}
