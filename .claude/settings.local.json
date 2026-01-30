@@ -44,7 +44,8 @@
       "Bash(pnpm test:int:*)",
       "Bash(git ls-tree:*)",
       "Bash(SKIP_HOOKS=1 git push:*)",
-      "Bash(git diff:*)"
+      "Bash(git diff:*)",
+      "WebFetch(domain:payloadcms.com)"
     ]
   }
 }

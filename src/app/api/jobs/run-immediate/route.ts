@@ -123,7 +123,8 @@ export async function POST(request: NextRequest) {
 
     // Try to update job status to failed if we can identify the job
     try {
-      const payload = await getPayload({ config: configPromise })
+      // Payload not needed here, just need config for getJobsCollection
+      await getPayload({ config: configPromise })
       const coll = await getJobsCollection(configPromise)
       const { jobId } = await request.json().catch(() => ({}))
 
