@@ -1,13 +1,8 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+import * as DialogPrimitive from '@radix-ui/react-dialog'
+import { X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 interface ConvertModalProps {
@@ -25,6 +20,73 @@ interface PromptOption {
   usage: string
 }
 
+// Custom dialog components that work in Payload admin
+const Dialog = DialogPrimitive.Root
+const DialogTrigger = DialogPrimitive.Trigger
+const DialogClose = DialogPrimitive.Close
+const DialogOverlay = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Overlay>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
+>(({ className, ...props }, ref) => (
+  <DialogPrimitive.Overlay
+    ref={ref}
+    className={cn(
+      'fixed inset-0 z-[1000] bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
+      className,
+    )}
+    {...props}
+  />
+))
+DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
+
+const DialogContent = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Content>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
+>(({ className, children, ...props }, ref) => (
+  <div className="fixed left-[50%] top-[50%] z-[1001] grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg">
+    <DialogPrimitive.Content ref={ref} className={cn('', className)} {...props}>
+      {children}
+      <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
+        <X className="h-4 w-4" />
+        <span className="sr-only">Close</span>
+      </DialogPrimitive.Close>
+    </DialogPrimitive.Content>
+  </div>
+))
+DialogContent.displayName = DialogPrimitive.Content.displayName
+
+const DialogHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+  <div className={cn('flex flex-col space-y-1.5 text-center sm:text-left', className)} {...props} />
+)
+DialogHeader.displayName = 'DialogHeader'
+
+const DialogTitle = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Title>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title>
+>(({ className, ...props }, ref) => (
+  <DialogPrimitive.Title
+    ref={ref}
+    className={cn('text-lg font-semibold leading-none tracking-tight', className)}
+    {...props}
+  />
+))
+DialogTitle.displayName = DialogPrimitive.Title.displayName
+
+const DialogDescription = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Description>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Description>
+>(({ className, ...props }, ref) => (
+  <DialogPrimitive.Description
+    ref={ref}
+    className={cn('text-sm text-muted-foreground', className)}
+    {...props}
+  />
+))
+DialogDescription.displayName = DialogPrimitive.Description.displayName
+
+import { cn } from '@/infra/utils/ui'
+import * as React from 'react'
+
 export function ConvertModal({ lessonId, mediaId, filename, onClose }: ConvertModalProps) {
   const [extractorPrompts, setExtractorPrompts] = useState<PromptOption[]>([])
   const [verifierPrompts, setVerifierPrompts] = useState<PromptOption[]>([])
@@ -34,6 +96,11 @@ export function ConvertModal({ lessonId, mediaId, filename, onClose }: ConvertMo
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const [open, setOpen] = useState(false)
+
+  useEffect(() => {
+    setOpen(true)
+  }, [])
 
   useEffect(() => {
     async function loadPrompts() {
@@ -59,8 +126,10 @@ export function ConvertModal({ lessonId, mediaId, filename, onClose }: ConvertMo
       }
     }
 
-    loadPrompts()
-  }, [lessonId])
+    if (open) {
+      loadPrompts()
+    }
+  }, [lessonId, open])
 
   async function handleSubmit() {
     setIsSubmitting(true)
@@ -87,6 +156,7 @@ export function ConvertModal({ lessonId, mediaId, filename, onClose }: ConvertMo
       const data = await response.json()
       setSuccess(`Conversion queued! Job ID: ${data.jobId}`)
       setTimeout(() => {
+        setOpen(false)
         onClose()
       }, 2000)
     } catch (err) {
@@ -96,9 +166,16 @@ export function ConvertModal({ lessonId, mediaId, filename, onClose }: ConvertMo
     }
   }
 
+  const handleOpenChange = (newOpen: boolean) => {
+    setOpen(newOpen)
+    if (!newOpen) {
+      onClose()
+    }
+  }
+
   return (
-    <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[425px]">
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>Convert PDF to Exercises</DialogTitle>
           <DialogDescription>File: {filename}</DialogDescription>
@@ -156,9 +233,11 @@ export function ConvertModal({ lessonId, mediaId, filename, onClose }: ConvertMo
             </div>
 
             <div className="flex justify-end gap-2 mt-4">
-              <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
-                Cancel
-              </Button>
+              <DialogClose asChild>
+                <Button variant="outline" disabled={isSubmitting}>
+                  Cancel
+                </Button>
+              </DialogClose>
               <Button
                 onClick={handleSubmit}
                 disabled={isSubmitting || !selectedExtractor || !selectedVerifier}
