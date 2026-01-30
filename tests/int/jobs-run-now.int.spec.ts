@@ -1,3 +1,12 @@
+/**
+ * Integration tests for Jobs Run Now functionality
+ *
+ * These tests require:
+ * 1. Docker running (for MongoDB testcontainers)
+ * 2. BLOB_READ_WRITE_TOKEN set for blob storage operations
+ */
+
+import { getMediaBlobAdapter } from '@/infra/blob/vercel-blob-adapter'
 import { startMongoContainer, stopMongoContainer } from '@/infra/utils/test/mongodb-container'
 import { ObjectId } from 'mongodb'
 import { getPayload, Payload } from 'payload'
@@ -6,6 +15,12 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 let payload: Payload
 let originalDatabaseUrl: string | undefined
+
+// Check if we have the required blob token
+const hasBlobToken =
+  process.env.BLOB_READ_WRITE_TOKEN &&
+  process.env.BLOB_READ_WRITE_TOKEN !== '' &&
+  process.env.BLOB_READ_WRITE_TOKEN !== 'mock-token-for-testing'
 
 describe('Jobs Run Now', () => {
   beforeAll(async () => {
@@ -39,6 +54,11 @@ describe('Jobs Run Now', () => {
   })
 
   it('should queue a job and allow claiming it (run-now simulation)', async () => {
+    if (!hasBlobToken) {
+      console.log('Skipping: BLOB_READ_WRITE_TOKEN not set')
+      return
+    }
+
     // Create a test tenant first (required for exercises)
     const tenant = await payload.create({
       collection: 'tenants',
@@ -104,14 +124,26 @@ describe('Jobs Run Now', () => {
       } as any,
     })
 
-    // Create a test media
+    // Upload a test PDF to our own blob storage
+    const testPdfContent = Buffer.from(
+      '%PDF-1.4\n1 0 obj\n<<\n/Type /Catalog\n>>\nendobj\ntrailer\n<<\n/Root 1 0 R\n>>\n%%EOF',
+      'utf-8',
+    )
+    const blobAdapter = getMediaBlobAdapter()
+    const blobResult = await blobAdapter.uploadBuffer(
+      `test-${Date.now()}.pdf`,
+      testPdfContent,
+      'application/pdf',
+    )
+
+    // Create a test media record pointing to our blob storage URL
     const media = await payload.create({
       collection: 'media',
       data: {
         filename: 'test.pdf',
         mimeType: 'application/pdf',
-        url: 'https://example.com/test.pdf',
-        filesize: 1000,
+        type: 'external',
+        externalUrl: blobResult.url,
       } as any,
     })
 
@@ -198,9 +230,13 @@ describe('Jobs Run Now', () => {
     await payload.delete({ collection: 'prompts', id: verifierPrompt.id })
     await payload.delete({ collection: 'users', id: user.id })
     await payload.delete({ collection: 'tenants', id: tenant.id })
+
+    // Clean up blob
+    await blobAdapter.delete(blobResult.url)
   })
 
   it('should fail concurrent claims (lock contention)', async () => {
+    // This test doesn't require blob storage - just tests job locking
     const db = payload.db as any
     const jobsColl = db.connection?.collection?.('payload-jobs')
 
