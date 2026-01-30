@@ -7,9 +7,11 @@ import { getPayload } from 'payload'
 
 async function getJobsCollection(configToUse: SanitizedConfig | Promise<SanitizedConfig>) {
   const resolvedConfig = await configToUse
-  const db = (resolvedConfig as { db?: { connection?: { collection: (name: string) => unknown } } })
-    .db
-  const coll = db?.connection?.collection?.('payload-jobs')
+  const payload = await getPayload({ config: resolvedConfig })
+  const db = payload.db as any
+  // Payload 3.x: Use collections.jobs or collection('jobs')
+  const coll =
+    db.collections?.jobs || db.collection?.('jobs') || db.connection?.collection?.('payload-jobs')
   if (!coll) throw new Error('Cannot access Jobs collection')
   return coll
 }
@@ -121,8 +123,6 @@ export async function POST(request: NextRequest) {
 
     // Try to update job status to failed if we can identify the job
     try {
-      // Payload not needed here, just need config for getJobsCollection
-      await getPayload({ config: configPromise })
       const coll = await getJobsCollection(configPromise)
       const { jobId } = await request.json().catch(() => ({}))
 

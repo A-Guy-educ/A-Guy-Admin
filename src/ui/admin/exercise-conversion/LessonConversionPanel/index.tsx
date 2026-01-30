@@ -4,6 +4,7 @@ import { useDocumentInfo, useFormFields } from '@payloadcms/ui'
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { ConversionStatusPanel } from '../ConversionStatusPanel'
 import { DraftExercisesList } from '../DraftExercisesList'
+import '../styles.css' // Import custom styles for exercise conversion panel
 
 // Lazy load the ConvertModal component
 const ConvertModal = lazy(() =>
@@ -19,7 +20,8 @@ interface MediaItem {
 export const LessonConversionPanel = () => {
   const { id: lessonId } = useDocumentInfo()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const contentFilesField = useFormFields((context: any) => context.contentFiles)
+  const contentFilesField = useFormFields(([fields]: any[]) => fields?.contentFiles)
+  const contentFilesValue = contentFilesField?.value
 
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -29,7 +31,7 @@ export const LessonConversionPanel = () => {
   // Resolve media IDs to full objects
   useEffect(() => {
     async function resolveMedia() {
-      const value = contentFilesField?.value
+      const value = contentFilesValue
       if (!value || !Array.isArray(value) || value.length === 0) {
         setMediaItems([])
         setIsLoading(false)
@@ -64,7 +66,7 @@ export const LessonConversionPanel = () => {
     }
 
     resolveMedia()
-  }, [contentFilesField?.value])
+  }, [contentFilesValue])
 
   // Filter for PDFs only
   const pdfFiles = mediaItems.filter((m) => m.mimeType === 'application/pdf')
