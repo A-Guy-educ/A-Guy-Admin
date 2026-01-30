@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 import { ENV, HEARTBEAT_INTERVAL_MS, LOCK_TIMEOUT_MS } from '@/server/config/constants'
 import config from '@payload-config'
 import { ObjectId } from 'mongodb'
@@ -5,6 +6,19 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getPayload } from 'payload'
 // v2.1 Fix 7: Import shared pure helpers for testability
 import { atomicClaimJobQuery, atomicClaimJobUpdate } from '@/lib/exercise-conversion/helpers'
+=======
+import { apiError, apiSuccess } from '@/server/api/responses'
+import { ENV } from '@/server/config/constants'
+import { HEARTBEAT_INTERVAL_MS, LOCK_TIMEOUT_MS } from '@/server/payload/jobs/constants'
+import {
+  atomicClaimJobQuery,
+  atomicClaimJobUpdate,
+} from '@/server/services/exercise-conversion/helpers'
+import config from '@payload-config'
+import { ObjectId } from 'mongodb'
+import { NextRequest } from 'next/server'
+import { getPayload } from 'payload'
+>>>>>>> Stashed changes
 
 function getJobCollection(payload: any) {
   const db = payload.db as any
@@ -16,7 +30,6 @@ function getJobCollection(payload: any) {
   }
 }
 
-// v2.1 Fix 7: Use shared pure helpers for query/update
 async function atomicClaimJob(coll: any): Promise<any> {
   const now = new Date()
 
@@ -49,7 +62,7 @@ export async function POST(request: NextRequest) {
   const expectedSecret = process.env[ENV.CRON_SECRET]
 
   if (!expectedSecret || authHeader !== `Bearer ${expectedSecret}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return apiError('UNAUTHORIZED', 'Invalid cron secret', 401)
   }
 
   try {
@@ -58,7 +71,7 @@ export async function POST(request: NextRequest) {
     const job = await atomicClaimJob(coll)
 
     if (!job) {
-      return NextResponse.json({ success: true, processed: false, message: 'No queued jobs found' })
+      return apiSuccess({ processed: false, message: 'No queued jobs found' })
     }
 
     // Treat claimed job as raw Mongo doc - job._id is ObjectId
@@ -66,21 +79,17 @@ export async function POST(request: NextRequest) {
 
     const stopHeartbeat = heartbeatLoop(coll, job._id)
     try {
-      // Use the raw Mongo collection to complete the job since payload.jobs.run doesn't accept jobId
+      // Use the raw Mongo collection to complete the job
       await coll.updateOne(
         { _id: job._id },
         { $set: { status: 'completed', completedAt: new Date() } },
       )
-      return NextResponse.json({
-        success: true,
-        processed: true,
-        jobId,
-      })
+      return apiSuccess({ processed: true, jobId }, 'Job completed')
     } finally {
       stopHeartbeat()
     }
   } catch (error) {
     console.error('[Runner] Error:', error)
-    return NextResponse.json({ error: 'Job execution failed' }, { status: 500 })
+    return apiError('INTERNAL_ERROR', 'Job execution failed', 500)
   }
 }

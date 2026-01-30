@@ -48,9 +48,11 @@ export function ConversionStatusPanel({
           return
         }
 
-        const data = await response.json()
-        if (data.docs && data.docs.length > 0) {
-          setStatus(data.docs[0])
+        const json = await response.json()
+        // API returns { success: true, data: { docs: [...] } }
+        const docs = json.data?.docs || json.docs || []
+        if (docs.length > 0) {
+          setStatus(docs[0])
         } else {
           setStatus(null)
         }
@@ -88,7 +90,6 @@ export function ConversionStatusPanel({
       setStatus(null)
       setIsLoading(true)
     } catch (error) {
-      console.error('[ConversionStatusPanel] Error:', error)
       alert(`Failed to run job: ${error instanceof Error ? error.message : 'Unknown error'}`)
     } finally {
       setIsRunning(false)

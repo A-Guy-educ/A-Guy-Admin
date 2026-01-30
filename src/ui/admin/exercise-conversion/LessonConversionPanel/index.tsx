@@ -1,7 +1,12 @@
 'use client'
 
 import { useDocumentInfo, useFormFields } from '@payloadcms/ui'
+<<<<<<< Updated upstream
 import { lazy, Suspense, useEffect, useState } from 'react'
+=======
+import type { UIFieldClientComponent } from 'payload'
+import { Suspense, useEffect, useState } from 'react'
+>>>>>>> Stashed changes
 import { ConversionStatusPanel } from '../ConversionStatusPanel'
 import { DraftExercisesList } from '../DraftExercisesList'
 
@@ -16,15 +21,24 @@ interface MediaItem {
   mimeType?: string
 }
 
-export const LessonConversionPanel = () => {
+export const LessonConversionPanel: UIFieldClientComponent = () => {
   const { id: lessonId } = useDocumentInfo()
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+<<<<<<< Updated upstream
   const contentFilesField = useFormFields((context: any) => context.contentFiles)
+=======
+  const [contentFilesField] = useFormFields(([fields]: any[]) => {
+    return [fields?.contentFiles]
+  })
+  const contentFilesValue = contentFilesField?.value
+>>>>>>> Stashed changes
 
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [activeModal, setActiveModal] = useState<string | null>(null)
   const [expandedPdf, setExpandedPdf] = useState<string | null>(null)
+  const [refreshKey, setRefreshKey] = useState(0)
 
   // Resolve media IDs to full objects
   useEffect(() => {
@@ -56,8 +70,8 @@ export const LessonConversionPanel = () => {
           const data = await response.json()
           setMediaItems(data.docs || [])
         }
-      } catch (err) {
-        console.error('Failed to fetch media:', err)
+      } catch {
+        // Silently fail - media may not be accessible
       } finally {
         setIsLoading(false)
       }
@@ -108,12 +122,24 @@ export const LessonConversionPanel = () => {
             </button>
           </div>
 
+<<<<<<< Updated upstream
           {/* Status Panel - always visible for this PDF */}
           <ConversionStatusPanel
             lessonId={String(lessonId)}
             mediaId={pdf.id}
             onViewExercises={() => setExpandedPdf(expandedPdf === pdf.id ? null : pdf.id)}
           />
+=======
+          {/* Status Panel */}
+          <div style={{ marginTop: 4 }}>
+            <ConversionStatusPanel
+              key={`${pdf.id}-${refreshKey}`}
+              lessonId={String(lessonId)}
+              mediaId={pdf.id}
+              onViewExercises={() => setExpandedPdf(expandedPdf === pdf.id ? null : pdf.id)}
+            />
+          </div>
+>>>>>>> Stashed changes
 
           {/* Draft Exercises - expandable */}
           {expandedPdf === pdf.id && (
@@ -127,7 +153,12 @@ export const LessonConversionPanel = () => {
                 lessonId={String(lessonId)}
                 mediaId={pdf.id}
                 filename={String(pdf.filename || pdf.id)}
+<<<<<<< Updated upstream
                 onClose={() => setActiveModal(null)}
+=======
+                onClose={() => setActiveForm(null)}
+                onJobCreated={() => setRefreshKey((k) => k + 1)}
+>>>>>>> Stashed changes
               />
             </Suspense>
           )}
