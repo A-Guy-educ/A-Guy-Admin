@@ -1,5 +1,13 @@
 'use client'
 
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { useEffect, useState } from 'react'
 
 interface ConvertModalProps {
@@ -89,34 +97,26 @@ export function ConvertModal({ lessonId, mediaId, filename, onClose }: ConvertMo
   }
 
   return (
-    <div
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-[1000]"
-      onClick={onClose}
-    >
-      <div
-        className="bg-white dark:bg-zinc-900 p-6 rounded-lg w-full max-w-md max-h-[90vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 className="text-xl font-semibold mb-1">Convert PDF to Exercises</h2>
-        <p className="text-zinc-500 dark:text-zinc-400 mb-4">File: {filename}</p>
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Convert PDF to Exercises</DialogTitle>
+          <DialogDescription>File: {filename}</DialogDescription>
+        </DialogHeader>
 
         {error && (
-          <div className="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded p-3 mb-4">
-            {error}
-          </div>
+          <div className="bg-destructive/15 text-destructive p-3 rounded-md text-sm">{error}</div>
         )}
         {success && (
-          <div className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded p-3 mb-4">
-            {success}
-          </div>
+          <div className="bg-green-100 text-green-700 p-3 rounded-md text-sm">{success}</div>
         )}
 
         {isLoading ? (
-          <div className="text-zinc-500">Loading prompts...</div>
+          <div className="text-muted-foreground">Loading prompts...</div>
         ) : (
-          <div>
-            <div className="mb-4">
-              <label htmlFor="extractor" className="block font-medium mb-1">
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <label htmlFor="extractor" className="text-sm font-medium">
                 Extractor Prompt
               </label>
               <select
@@ -124,7 +124,7 @@ export function ConvertModal({ lessonId, mediaId, filename, onClose }: ConvertMo
                 value={selectedExtractor}
                 onChange={(e) => setSelectedExtractor(e.target.value)}
                 required
-                className="w-full p-2 border border-zinc-200 dark:border-zinc-700 rounded bg-white dark:bg-zinc-800"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
                 <option value="">Select extractor prompt...</option>
                 {extractorPrompts.map((prompt) => (
@@ -135,8 +135,8 @@ export function ConvertModal({ lessonId, mediaId, filename, onClose }: ConvertMo
               </select>
             </div>
 
-            <div className="mb-4">
-              <label htmlFor="verifier" className="block font-medium mb-1">
+            <div className="grid gap-2">
+              <label htmlFor="verifier" className="text-sm font-medium">
                 Verifier Prompt
               </label>
               <select
@@ -144,7 +144,7 @@ export function ConvertModal({ lessonId, mediaId, filename, onClose }: ConvertMo
                 value={selectedVerifier}
                 onChange={(e) => setSelectedVerifier(e.target.value)}
                 required
-                className="w-full p-2 border border-zinc-200 dark:border-zinc-700 rounded bg-white dark:bg-zinc-800"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
                 <option value="">Select verifier prompt...</option>
                 {verifierPrompts.map((prompt) => (
@@ -155,27 +155,20 @@ export function ConvertModal({ lessonId, mediaId, filename, onClose }: ConvertMo
               </select>
             </div>
 
-            <div className="flex gap-2 justify-end mt-6">
-              <button
-                type="button"
-                className="px-4 py-2 bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 rounded font-medium hover:bg-zinc-200 dark:hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                onClick={onClose}
-                disabled={isSubmitting}
-              >
+            <div className="flex justify-end gap-2 mt-4">
+              <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
                 Cancel
-              </button>
-              <button
-                type="button"
-                className="px-4 py-2 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 rounded font-medium hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              </Button>
+              <Button
                 onClick={handleSubmit}
                 disabled={isSubmitting || !selectedExtractor || !selectedVerifier}
               >
                 {isSubmitting ? 'Queuing...' : 'Queue Conversion'}
-              </button>
+              </Button>
             </div>
           </div>
         )}
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }
