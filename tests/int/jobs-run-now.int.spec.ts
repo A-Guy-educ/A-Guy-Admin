@@ -43,6 +43,7 @@ describe('Jobs Run Now', () => {
     const tenant = await payload.create({
       collection: 'tenants',
       data: {
+        name: `Test Tenant ${Date.now()}`,
         slug: `test-tenant-${Date.now()}`,
       } as any,
     })

@@ -15,10 +15,12 @@ import { getPayload } from 'payload'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 let payload: Payload
-let testAdminToken: string
 
 // Skip tests if DATABASE_URL is not set
 const hasDatabaseUrl = !!process.env.DATABASE_URL
+
+// These tests require a running Next.js server - skip if not available
+const hasServerUrl = !!process.env.SERVER_URL
 
 // Get test admin secret from environment
 const TEST_ADMIN_SECRET = process.env.TEST_ADMIN_SECRET || ''
@@ -34,8 +36,8 @@ describe.skipIf(!hasDatabaseUrl)('Exercise Conversion API', () => {
     const timestamp = Date.now()
     const testEmail = `exercise-conversion-test-${timestamp}@example.com`
 
-    // Create admin user
-    const adminUser = await payload.create({
+    // Create admin user (unused but creates test data for potential future use)
+    await payload.create({
       collection: 'users',
       data: {
         email: testEmail,
@@ -61,26 +63,32 @@ describe.skipIf(!hasDatabaseUrl)('Exercise Conversion API', () => {
   })
 
   describe('POST /api/prompts/for-conversion', () => {
-    it('should return 401 when no auth is provided', async () => {
-      const response = await fetch('http://localhost:3000/api/prompts/for-conversion', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lessonId: 'some-lesson-id' }),
-      })
+    it.skipIf(!hasServerUrl)('should return 401 when no auth is provided', async () => {
+      const response = await fetch(
+        `${process.env.SERVER_URL || 'http://localhost:3000'}/api/prompts/for-conversion`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ lessonId: 'some-lesson-id' }),
+        },
+      )
 
       // Should fail without auth
       expect(response.status).toBe(401)
     })
 
-    it('should return 401 with invalid Bearer token', async () => {
-      const response = await fetch('http://localhost:3000/api/prompts/for-conversion', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: 'Bearer invalid-token',
+    it.skipIf(!hasServerUrl)('should return 401 with invalid Bearer token', async () => {
+      const response = await fetch(
+        `${process.env.SERVER_URL || 'http://localhost:3000'}/api/prompts/for-conversion`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: 'Bearer invalid-token',
+          },
+          body: JSON.stringify({ lessonId: 'some-lesson-id' }),
         },
-        body: JSON.stringify({ lessonId: 'some-lesson-id' }),
-      })
+      )
 
       // Should fail with invalid token
       expect(response.status).toBe(401)
@@ -201,17 +209,20 @@ describe.skipIf(!hasDatabaseUrl)('Exercise Conversion API', () => {
   })
 
   describe('POST /api/exercises/convert/queue', () => {
-    it('should return 401 when no auth is provided', async () => {
-      const response = await fetch('http://localhost:3000/api/exercises/convert/queue', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          lessonId: 'some-lesson-id',
-          mediaId: 'some-media-id',
-          extractorPromptId: 'some-prompt-id',
-          verifierPromptId: 'some-prompt-id',
-        }),
-      })
+    it.skipIf(!hasServerUrl)('should return 401 when no auth is provided', async () => {
+      const response = await fetch(
+        `${process.env.SERVER_URL || 'http://localhost:3000'}/api/exercises/convert/queue`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            lessonId: 'some-lesson-id',
+            mediaId: 'some-media-id',
+            extractorPromptId: 'some-prompt-id',
+            verifierPromptId: 'some-prompt-id',
+          }),
+        },
+      )
 
       // Should fail without auth
       expect(response.status).toBe(401)
