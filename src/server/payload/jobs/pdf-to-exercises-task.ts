@@ -224,7 +224,6 @@ async function updateJobStatus(
 
   try {
     await coll.updateOne({ _id: new ObjectId(jobId) }, { $set: update })
-    console.log(`[PDF→Exercises] Job ${jobId} marked as ${status}`)
   } catch (err) {
     console.error(`[PDF→Exercises] Failed to update job status:`, err)
   }
@@ -320,7 +319,6 @@ Return JSON: { "valid": boolean, "reason": "..." }`
 
     // Retry once if verification fails
     if (!verification.valid) {
-      console.log(`[PDF→Exercises] Verification failed for "${exercise.title}", retrying...`)
       verification = await callVerifier(payload, geminiParts, verifierPromptWithContext)
     }
 

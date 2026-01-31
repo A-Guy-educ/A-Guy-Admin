@@ -1,6 +1,6 @@
-import { cache } from 'react'
-import { getPayload } from 'payload'
 import configPromise from '@payload-config'
+import { getPayload } from 'payload'
+import { cache } from 'react'
 
 export const queryCourseBySlug = cache(async ({ slug }: { slug: string }) => {
   const payload = await getPayload({ config: configPromise })
@@ -45,17 +45,6 @@ export const queryPublishedCourses = cache(async () => {
     pagination: false,
   })
 
-  console.log('Total courses in DB:', allCourses.docs.length)
-  if (allCourses.docs.length > 0) {
-    console.log('First course:', {
-      id: allCourses.docs[0].id,
-      title: allCourses.docs[0].title,
-      status: allCourses.docs[0].status,
-      isActive: allCourses.docs[0].isActive,
-      slug: allCourses.docs[0].slug,
-    })
-  }
-
   // Filter published and active courses
   const result = await payload.find({
     collection: 'courses',
@@ -78,8 +67,6 @@ export const queryPublishedCourses = cache(async () => {
     pagination: false,
     depth: 2,
   })
-
-  console.log('Published & active courses:', result.docs.length)
 
   return result.docs
 })
