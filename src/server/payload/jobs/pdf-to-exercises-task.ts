@@ -20,7 +20,7 @@ import {
   parseVerifierResponseText,
   toExerciseInput,
   toPayloadContent,
-} from '@/lib/exercise-conversion/helpers'
+} from '@/server/services/exercise-conversion/helpers'
 import { z } from 'zod'
 
 export const pdfToExercisesTask = {

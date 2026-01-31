@@ -19,7 +19,7 @@
 
 import type { CollectionConfig } from 'payload'
 
-import { ConfigKind } from '@/lib/config/config-constants'
+import { ConfigKind } from '@/infra/config/config-constants'
 import { configAdminOnly } from '../access/configAdminOnly'
 
 export const ConfigAuditLogs: CollectionConfig = {

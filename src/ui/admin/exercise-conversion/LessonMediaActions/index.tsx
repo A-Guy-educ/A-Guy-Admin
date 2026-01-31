@@ -1,7 +1,8 @@
 'use client'
 
-import React from 'react'
+import { ConvertForm } from '@/ui/admin/exercise-conversion/ConvertForm'
 import { useAuth } from '@payloadcms/ui'
+import React from 'react'
 
 interface LessonMediaActionsProps {
   media: {
@@ -38,28 +39,61 @@ function ConvertButton({
   mediaId: string
   filename: string
 }) {
-  const [isModalOpen, setIsModalOpen] = React.useState(false)
-  const ConvertModal = React.lazy(() =>
-    import('@/ui/admin/exercise-conversion/ConvertModal').then((m) => ({
-      default: m.ConvertModal,
-    })),
-  )
+  const [isFormOpen, setIsFormOpen] = React.useState(false)
 
   return (
     <>
-      <button className="btn btn-secondary" onClick={() => setIsModalOpen(true)}>
+      <button
+        className="btn btn-secondary"
+        onClick={() => setIsFormOpen(true)}
+        style={{
+          padding: '4px 12px',
+          fontSize: 11,
+          fontWeight: 500,
+          border: '1px solid var(--theme-elevation-200)',
+          borderRadius: 3,
+          backgroundColor: 'var(--theme-elevation-100)',
+          color: 'var(--theme-elevation-700)',
+          cursor: 'pointer',
+        }}
+      >
         Convert → Exercises
       </button>
 
-      {isModalOpen && (
-        <React.Suspense fallback={<div>Loading...</div>}>
-          <ConvertModal
+      {isFormOpen && (
+        <div
+          style={{
+            marginTop: 8,
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'flex-end',
+              marginBottom: 4,
+            }}
+          >
+            <button
+              onClick={() => setIsFormOpen(false)}
+              style={{
+                padding: '2px 8px',
+                fontSize: 10,
+                background: 'none',
+                border: 'none',
+                color: 'var(--theme-elevation-500)',
+                cursor: 'pointer',
+              }}
+            >
+              Close
+            </button>
+          </div>
+          <ConvertForm
             lessonId={lessonId}
             mediaId={mediaId}
             filename={filename}
-            onClose={() => setIsModalOpen(false)}
+            onClose={() => setIsFormOpen(false)}
           />
-        </React.Suspense>
+        </div>
       )}
     </>
   )

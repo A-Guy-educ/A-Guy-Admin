@@ -56,31 +56,95 @@ export function DraftExercisesList({ lessonId, sourceDocId }: DraftExercisesList
   }, [lessonId, sourceDocId])
 
   if (isLoading) {
-    return <div className="draft-exercises-list loading">Loading exercises...</div>
+    return (
+      <div
+        style={{
+          marginTop: 4,
+          padding: 8,
+          backgroundColor: 'var(--theme-elevation-50)',
+          borderRadius: 4,
+          color: 'var(--theme-elevation-500)',
+          fontSize: 11,
+        }}
+      >
+        Loading exercises...
+      </div>
+    )
   }
 
   if (exercises.length === 0) {
     return (
-      <div className="draft-exercises-list empty">
-        <p>No draft exercises found for this conversion.</p>
+      <div
+        style={{
+          marginTop: 4,
+          padding: 8,
+          backgroundColor: 'var(--theme-elevation-50)',
+          borderRadius: 4,
+        }}
+      >
+        <p
+          style={{
+            fontSize: 11,
+            color: 'var(--theme-elevation-500)',
+          }}
+        >
+          No draft exercises found for this conversion.
+        </p>
       </div>
     )
   }
 
   return (
-    <div className="draft-exercises-list">
-      <h3>Draft Exercises ({exercises.length})</h3>
-      <ul>
+    <div
+      style={{
+        marginTop: 4,
+        padding: 8,
+        backgroundColor: 'var(--theme-elevation-50)',
+        borderRadius: 4,
+      }}
+    >
+      <span
+        style={{
+          fontSize: 12,
+          fontWeight: 600,
+          color: 'var(--theme-elevation-700)',
+          marginBottom: 8,
+          display: 'block',
+        }}
+      >
+        Draft Exercises ({exercises.length})
+      </span>
+      <ul
+        style={{
+          listStyle: 'none',
+          padding: 0,
+          margin: 0,
+        }}
+      >
         {exercises.map((exercise) => (
-          <li key={exercise.id}>
+          <li key={exercise.id} style={{ marginBottom: 4 }}>
             <button
-              className="exercise-link"
               onClick={() => router.push(`/admin/collections/exercises/${exercise.id}`)}
+              style={{
+                width: '100%',
+                textAlign: 'left',
+                padding: '2px 0',
+                backgroundColor: 'transparent',
+                border: 'none',
+                color: 'var(--theme-elevation-700)',
+                cursor: 'pointer',
+                fontSize: 11,
+              }}
             >
               {exercise.title}
               {exercise.sourcePageStart && exercise.sourcePageEnd && (
-                <span className="page-range">
-                  {' '}
+                <span
+                  style={{
+                    color: 'var(--theme-elevation-400)',
+                    fontSize: 10,
+                    marginLeft: 4,
+                  }}
+                >
                   (Pages {exercise.sourcePageStart}-{exercise.sourcePageEnd})
                 </span>
               )}

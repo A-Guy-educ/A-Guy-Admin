@@ -6,7 +6,7 @@ import React, { useEffect, useState } from 'react'
 
 import type { Header } from '@/payload-types'
 
-import { useCurrentUser } from '@/hooks/useCurrentUser'
+import { useCurrentUser } from '@/client/hooks/useCurrentUser'
 import { TelescopeLogo } from '@/ui/web/TelescopeLogo'
 import { MobileMenu, MobileMenuButton } from './MobileMenu'
 import { HeaderNav } from './Nav'

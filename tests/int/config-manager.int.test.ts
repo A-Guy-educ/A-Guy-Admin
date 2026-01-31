@@ -10,8 +10,8 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- Test file requires any for PayloadRequest typing */
 
-import { ConfigKind } from '@/lib/config/config-constants'
-import { decryptSecret, encryptSecret } from '@/lib/config/config-crypto'
+import { ConfigKind } from '@/infra/config/config-constants'
+import { decryptSecret, encryptSecret } from '@/infra/config/config-crypto'
 import type { Tenant, User } from '@/payload-types'
 import config from '@payload-config'
 import { getPayload } from 'payload'

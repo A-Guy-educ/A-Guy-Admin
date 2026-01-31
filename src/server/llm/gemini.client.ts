@@ -4,7 +4,7 @@
  *
  * @internal This module is used by gemini.provider.ts only
  */
-import { getSecret, isConfigLoaded, loadRuntimeConfig } from '@/lib/config/runtime'
+import { getSecret, isConfigLoaded, loadRuntimeConfig } from '@/infra/config/runtime'
 import { getDefaultTenantId } from '@/server/repos/tenant/get-default-tenant'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import type { Payload } from 'payload'

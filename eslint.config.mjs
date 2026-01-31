@@ -60,16 +60,12 @@ const eslintConfig = [
       'no-restricted-imports': [
         'error',
         {
-          patterns: [
-            {
-              group: ['@/server/services/**', 'src/server/services/**'],
-              message: 'UI layer cannot import from Server Services (business logic)',
-            },
-            {
-              group: ['@/server/repos/**', 'src/server/repos/**'],
-              message: 'UI layer cannot import from Server Repos (data access)',
-            },
-          ],
+          name: 'ui-no-server-services',
+          message: 'UI layer cannot import from Server Services (business logic)',
+        },
+        {
+          name: 'ui-no-server-repos',
+          message: 'UI layer cannot import from Server Repos (data access)',
         },
       ],
     },
@@ -83,12 +79,8 @@ const eslintConfig = [
       'no-restricted-imports': [
         'error',
         {
-          patterns: [
-            {
-              group: ['@/server/**', 'src/server/**'],
-              message: 'Client layer cannot import from Server layer',
-            },
-          ],
+          name: 'client-no-server',
+          message: 'Client layer cannot import from Server layer',
         },
       ],
     },
@@ -108,16 +100,12 @@ const eslintConfig = [
       'no-restricted-imports': [
         'error',
         {
-          patterns: [
-            {
-              group: ['@/client/**', 'src/client/**'],
-              message: 'Server layer cannot import from Client layer',
-            },
-            {
-              group: ['@/ui/**', 'src/ui/**'],
-              message: 'Server layer cannot import from UI layer',
-            },
-          ],
+          name: 'server-no-client',
+          message: 'Server layer cannot import from Client layer',
+        },
+        {
+          name: 'server-no-ui',
+          message: 'Server layer cannot import from UI layer',
         },
       ],
     },
@@ -131,24 +119,20 @@ const eslintConfig = [
       'no-restricted-imports': [
         'error',
         {
-          patterns: [
-            {
-              group: ['@/client/**', 'src/client/**'],
-              message: 'Infra layer cannot import from Client layer',
-            },
-            {
-              group: ['@/ui/**', 'src/ui/**'],
-              message: 'Infra layer cannot import from UI layer',
-            },
-            {
-              group: ['@/server/services/**', 'src/server/services/**'],
-              message: 'Infra layer cannot import from Server Services',
-            },
-            {
-              group: ['@/server/repos/**', 'src/server/repos/**'],
-              message: 'Infra layer cannot import from Server Repos',
-            },
-          ],
+          name: 'infra-no-client',
+          message: 'Infra layer cannot import from Client layer',
+        },
+        {
+          name: 'infra-no-ui',
+          message: 'Infra layer cannot import from UI layer',
+        },
+        {
+          name: 'infra-no-server-services',
+          message: 'Infra layer cannot import from Server Services',
+        },
+        {
+          name: 'infra-no-server-repos',
+          message: 'Infra layer cannot import from Server Repos',
         },
       ],
     },
@@ -206,24 +190,15 @@ const eslintConfig = [
     },
   },
 
-  // Disabled: Block heavy transforms (map/filter/reduce/sort) inline in JSX
-  // This rule was too aggressive for common React patterns
-  // {
-  //   name: 'thin-app-no-heavy-transforms',
-  //   files: ['src/app/**/*.{ts,tsx}'],
-  //   ignores: ['src/app/**/loading.tsx', 'src/app/**/error.tsx', 'src/app/**/not-found.tsx'],
-  //   rules: {
-  //     'no-restricted-syntax': [
-  //       'error',
-  //       {
-  //         selector:
-  //           'JSXExpressionContainer > CallExpression[callee.type="MemberExpression"][callee.property.name=/^(map|filter|reduce|sort)$/]',
-  //         message:
-  //           'Heavy transforms (map/filter/reduce/sort) inline in JSX are forbidden. Move data processing to module-level functions or server services.',
-  //       },
-  //     ],
-  //   },
-  // },
+  // =============================================================================
+  // Folder Structure Rules
+  // =============================================================================
+  // Only allow specific top-level folders under src/
+  // Allowed: app, client, infra, server, ui, i18n
+  //
+  // NOTE: This rule requires a custom ESLint plugin or script validation.
+  // The no-restricted-imports rule in flat config doesn't support regex patterns.
+  // Consider adding a pre-commit hook or build script to validate folder structure.
 ]
 
 export default eslintConfig

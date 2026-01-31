@@ -5,15 +5,15 @@
  */
 import type { Payload } from 'payload'
 
-import { resolveMediaFilePath, resolveMediaPublicUrl } from '@/lib/config/storage'
+import { resolveMediaFilePath, resolveMediaPublicUrl } from '@/infra/config/storage'
 import { MediaType } from '@/infra/media/types'
 import { logger } from '@/infra/utils/logger'
 
 import type {
+  MediaItemResult,
   MediaPartType,
   MediaPartWithPath,
   MediaValidationResult,
-  MediaItemResult,
 } from './types'
 
 // Validation constants

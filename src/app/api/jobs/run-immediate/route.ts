@@ -2,14 +2,14 @@ import { LOCK_TIMEOUT_MS } from '@/server/config/constants'
 import configPromise from '@payload-config'
 import { ObjectId } from 'mongodb'
 import { NextRequest, NextResponse } from 'next/server'
-import type { SanitizedConfig } from 'payload'
+import type { Payload } from 'payload'
 import { getPayload } from 'payload'
 
-async function getJobsCollection(configToUse: SanitizedConfig | Promise<SanitizedConfig>) {
-  const resolvedConfig = await configToUse
-  const db = (resolvedConfig as { db?: { connection?: { collection: (name: string) => unknown } } })
-    .db
-  const coll = db?.connection?.collection?.('payload-jobs')
+async function getJobsCollection(payloadInstance: Payload) {
+  const db = payloadInstance.db as any
+  // Payload 3.x: Use collections.jobs or collection('jobs')
+  const coll =
+    db.collections?.jobs || db.collection?.('jobs') || db.connection?.collection?.('payload-jobs')
   if (!coll) throw new Error('Cannot access Jobs collection')
   return coll
 }
@@ -65,8 +65,10 @@ async function updateJobStatus(
 }
 
 export async function POST(request: NextRequest) {
+  let payload: Payload | null = null
+
   try {
-    const payload = await getPayload({ config: configPromise })
+    payload = await getPayload({ config: configPromise })
     const { user } = await payload.auth({ headers: request.headers })
 
     // Admin-only access
@@ -81,7 +83,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'jobId is required' }, { status: 400 })
     }
 
-    const coll = await getJobsCollection(configPromise)
+    // Access the jobs collection through payload.db with a properly connected instance
+    const coll = await getJobsCollection(payload)
+
     const job = await atomicClaimAndRunJob(coll, jobId)
 
     if (!job) {
@@ -121,13 +125,13 @@ export async function POST(request: NextRequest) {
 
     // Try to update job status to failed if we can identify the job
     try {
-      // Payload not needed here, just need config for getJobsCollection
-      await getPayload({ config: configPromise })
-      const coll = await getJobsCollection(configPromise)
-      const { jobId } = await request.json().catch(() => ({}))
+      if (payload) {
+        const coll = await getJobsCollection(payload)
+        const { jobId } = await request.json().catch(() => ({}))
 
-      if (jobId) {
-        await updateJobStatus(coll, jobId, 'failed', { error: String(error) })
+        if (jobId) {
+          await updateJobStatus(coll, jobId, 'failed', { error: String(error) })
+        }
       }
     } catch (updateError) {
       console.error('[run-immediately] Failed to update job status:', updateError)

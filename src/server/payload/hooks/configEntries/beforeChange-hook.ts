@@ -15,8 +15,8 @@
 
 import type { CollectionBeforeChangeHook, Payload, Where } from 'payload'
 
-import { ConfigKind, isSnakeCase, looksLikeSecret } from '@/lib/config/config-constants'
-import { encryptSecret } from '@/lib/config/config-crypto'
+import { ConfigKind, isSnakeCase, looksLikeSecret } from '@/infra/config/config-constants'
+import { encryptSecret } from '@/infra/config/config-crypto'
 
 // Type for ConfigEntries data (partial for validation)
 type ConfigEntriesFields = {

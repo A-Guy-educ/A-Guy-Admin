@@ -1,14 +1,10 @@
 'use client'
 
 import { useDocumentInfo, useFormFields } from '@payloadcms/ui'
-import { lazy, Suspense, useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { ConversionStatusPanel } from '../ConversionStatusPanel'
+import { ConvertForm } from '../ConvertForm'
 import { DraftExercisesList } from '../DraftExercisesList'
-
-// Lazy load the ConvertModal component
-const ConvertModal = lazy(() =>
-  import('../ConvertModal').then((m) => ({ default: m.ConvertModal })),
-)
 
 interface MediaItem {
   id: string
@@ -19,17 +15,18 @@ interface MediaItem {
 export const LessonConversionPanel = () => {
   const { id: lessonId } = useDocumentInfo()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const contentFilesField = useFormFields((context: any) => context.contentFiles)
+  const contentFilesField = useFormFields(([fields]: any[]) => fields?.contentFiles)
+  const contentFilesValue = contentFilesField?.value
 
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [activeModal, setActiveModal] = useState<string | null>(null)
+  const [activeForm, setActiveForm] = useState<string | null>(null)
   const [expandedPdf, setExpandedPdf] = useState<string | null>(null)
 
   // Resolve media IDs to full objects
   useEffect(() => {
     async function resolveMedia() {
-      const value = contentFilesField?.value
+      const value = contentFilesValue
       if (!value || !Array.isArray(value) || value.length === 0) {
         setMediaItems([])
         setIsLoading(false)
@@ -64,7 +61,7 @@ export const LessonConversionPanel = () => {
     }
 
     resolveMedia()
-  }, [contentFilesField?.value])
+  }, [contentFilesValue])
 
   // Filter for PDFs only
   const pdfFiles = mediaItems.filter((m) => m.mimeType === 'application/pdf')
@@ -75,61 +72,167 @@ export const LessonConversionPanel = () => {
 
   if (isLoading) {
     return (
-      <div className="p-4 border rounded-lg bg-gray-50">
-        <h3 className="text-lg font-semibold mb-2">Exercise Conversion</h3>
-        <p>Loading media files...</p>
+      <div
+        style={{
+          padding: 12,
+          border: '1px solid var(--theme-elevation-200)',
+          borderRadius: 4,
+          backgroundColor: 'var(--theme-elevation-50)',
+        }}
+      >
+        <h3
+          style={{
+            fontSize: 14,
+            fontWeight: 600,
+            color: 'var(--theme-elevation-1000)',
+            marginBottom: 4,
+          }}
+        >
+          Exercise Conversion
+        </h3>
+        <p style={{ fontSize: 12, color: 'var(--theme-elevation-500)' }}>Loading...</p>
       </div>
     )
   }
 
   if (pdfFiles.length === 0) {
     return (
-      <div className="p-4 border rounded-lg bg-gray-50">
-        <h3 className="text-lg font-semibold mb-2">Exercise Conversion</h3>
-        <p>No PDF files attached to this lesson.</p>
+      <div
+        style={{
+          padding: 12,
+          border: '1px solid var(--theme-elevation-200)',
+          borderRadius: 4,
+          backgroundColor: 'var(--theme-elevation-50)',
+        }}
+      >
+        <h3
+          style={{
+            fontSize: 14,
+            fontWeight: 600,
+            color: 'var(--theme-elevation-1000)',
+            marginBottom: 4,
+          }}
+        >
+          Exercise Conversion
+        </h3>
+        <p style={{ fontSize: 12, color: 'var(--theme-elevation-500)' }}>No PDFs attached.</p>
       </div>
     )
   }
 
   return (
-    <div className="p-4 border rounded-lg bg-gray-50">
-      <h3 className="text-lg font-semibold mb-4">Exercise Conversion</h3>
+    <div
+      style={{
+        padding: 12,
+        border: '1px solid var(--theme-elevation-200)',
+        borderRadius: 4,
+        backgroundColor: 'var(--theme-elevation-50)',
+      }}
+    >
+      <h3
+        style={{
+          fontSize: 14,
+          fontWeight: 600,
+          color: 'var(--theme-elevation-1000)',
+          marginBottom: 8,
+        }}
+      >
+        Exercise Conversion
+      </h3>
 
       {pdfFiles.map((pdf) => (
-        <div key={pdf.id} className="mb-4 p-3 border rounded bg-white">
-          <div className="flex items-center gap-2 mb-2">
-            <span>📄</span>
-            <span className="font-medium">{pdf.filename || pdf.id}</span>
-            <button
-              className="ml-auto px-3 py-1 bg-secondary text-secondary-foreground rounded"
-              onClick={() => setActiveModal(pdf.id)}
+        <div
+          key={pdf.id}
+          style={{
+            marginBottom: 8,
+            padding: 8,
+            border: '1px solid var(--theme-elevation-200)',
+            borderRadius: 4,
+            backgroundColor: 'var(--theme-elevation-0)',
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+            }}
+          >
+            <span
+              style={{
+                fontSize: 11,
+                fontWeight: 600,
+                color: 'var(--theme-elevation-600)',
+              }}
             >
-              Convert → Exercises
+              PDF
+            </span>
+            <span
+              style={{
+                flex: 1,
+                fontSize: 12,
+                fontWeight: 500,
+                color: 'var(--theme-elevation-1000)',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {pdf.filename || pdf.id}
+            </span>
+            <button
+              onClick={() => setActiveForm(activeForm === pdf.id ? null : pdf.id)}
+              style={{
+                padding: '4px 12px',
+                fontSize: 11,
+                fontWeight: 500,
+                border: activeForm === pdf.id ? '1px solid var(--theme-elevation-200)' : 'none',
+                borderRadius: 3,
+                backgroundColor:
+                  activeForm === pdf.id
+                    ? 'var(--theme-elevation-100)'
+                    : 'var(--theme-elevation-900)',
+                color:
+                  activeForm === pdf.id ? 'var(--theme-elevation-700)' : 'var(--theme-elevation-0)',
+                cursor: 'pointer',
+              }}
+            >
+              {activeForm === pdf.id ? 'Cancel' : 'Convert'}
             </button>
           </div>
 
-          {/* Status Panel - always visible for this PDF */}
-          <ConversionStatusPanel
-            lessonId={String(lessonId)}
-            mediaId={pdf.id}
-            onViewExercises={() => setExpandedPdf(expandedPdf === pdf.id ? null : pdf.id)}
-          />
+          {/* Status Panel */}
+          <div style={{ marginTop: 4 }}>
+            <ConversionStatusPanel
+              lessonId={String(lessonId)}
+              mediaId={pdf.id}
+              onViewExercises={() => setExpandedPdf(expandedPdf === pdf.id ? null : pdf.id)}
+            />
+          </div>
 
-          {/* Draft Exercises - expandable */}
-          {expandedPdf === pdf.id && (
-            <DraftExercisesList lessonId={String(lessonId)} sourceDocId={pdf.id} />
-          )}
-
-          {/* Convert Modal */}
-          {activeModal === pdf.id && (
-            <Suspense fallback={<div>Loading...</div>}>
-              <ConvertModal
+          {/* Inline Convert Form */}
+          {activeForm === pdf.id && (
+            <Suspense
+              fallback={
+                <div style={{ marginTop: 8, fontSize: 11, color: 'var(--theme-elevation-500)' }}>
+                  Loading...
+                </div>
+              }
+            >
+              <ConvertForm
                 lessonId={String(lessonId)}
                 mediaId={pdf.id}
                 filename={String(pdf.filename || pdf.id)}
-                onClose={() => setActiveModal(null)}
+                onClose={() => setActiveForm(null)}
               />
             </Suspense>
+          )}
+
+          {/* Draft Exercises */}
+          {expandedPdf === pdf.id && (
+            <div style={{ marginTop: 4 }}>
+              <DraftExercisesList lessonId={String(lessonId)} sourceDocId={pdf.id} />
+            </div>
           )}
         </div>
       ))}

@@ -80,7 +80,7 @@ function assertLoaded(): void {
  * ```typescript
  * import { getPayload } from 'payload'
  * import config from '@payload-config'
- * import { loadRuntimeConfig } from '@/lib/config/runtime'
+ * import { loadRuntimeConfig } from '@/infra/config/runtime'
  *
  * const payload = await getPayload({ config })
  * await loadRuntimeConfig(payload)

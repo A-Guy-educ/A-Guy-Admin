@@ -6,8 +6,8 @@
  * @pattern integration, tenant-scoped
  */
 
-import { ConfigKind } from '@/lib/config/config-constants'
-import { clearConfigCache, getSecret, getVariable, loadRuntimeConfig } from '@/lib/config/runtime'
+import { ConfigKind } from '@/infra/config/config-constants'
+import { clearConfigCache, getSecret, getVariable, loadRuntimeConfig } from '@/infra/config/runtime'
 import { getDefaultTenantId } from '@/server/repos/tenant/get-default-tenant'
 import config from '@payload-config'
 import { getPayload } from 'payload'

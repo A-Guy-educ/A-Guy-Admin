@@ -15,11 +15,11 @@
  * - Deletes database records (authoritative)
  * - Returns deletion stats for monitoring
  */
-import type { Endpoint, Payload } from 'payload'
 import fs from 'fs/promises'
+import type { Endpoint, Payload } from 'payload'
 import type { Logger } from 'pino'
 
-import { resolveMediaFilePath } from '@/lib/config/storage'
+import { resolveMediaFilePath } from '@/infra/config/storage'
 
 import { withCronMiddleware, type CronResult } from './cron-middleware'
 

@@ -1,5 +1,5 @@
-import { validatePromptForUsageAndTenant } from '@/lib/exercise-conversion/helpers'
 import { ENV, MAX_PROMPT_SIZE_BYTES } from '@/server/config/constants'
+import { validatePromptForUsageAndTenant } from '@/server/services/exercise-conversion/helpers'
 import { hashTextSha256 } from '@/server/utils/hash'
 import config from '@payload-config'
 import { NextRequest, NextResponse } from 'next/server'

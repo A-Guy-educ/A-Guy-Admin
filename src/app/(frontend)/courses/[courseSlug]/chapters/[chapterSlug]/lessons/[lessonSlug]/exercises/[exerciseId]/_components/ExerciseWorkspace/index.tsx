@@ -1,6 +1,6 @@
 'use client'
 
-import { useCurrentUser } from '@/hooks/useCurrentUser'
+import { useCurrentUser } from '@/client/hooks/useCurrentUser'
 import { cn } from '@/infra/utils/ui'
 import { useMediaQuery } from '@/server/payload/hooks/useMediaQuery'
 import { ResizablePane } from '@/ui/web/components/resizable-pane'

@@ -8,7 +8,7 @@
 
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 
-import { encryptSecret } from '@/lib/config/config-crypto'
+import { encryptSecret } from '@/infra/config/config-crypto'
 import {
   clearConfigCache,
   getCacheMetadata,
@@ -19,7 +19,7 @@ import {
   isConfigLoaded,
   loadRuntimeConfig,
   reloadRuntimeConfig,
-} from '@/lib/config/runtime'
+} from '@/infra/config/runtime'
 import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest'
 
 // Setup: Ensure tests run in a server-like environment (no window)

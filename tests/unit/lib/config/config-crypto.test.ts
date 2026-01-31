@@ -7,7 +7,7 @@
  * @ai-summary Unit tests for config encryption utilities
  */
 
-import { decryptSecret, encryptSecret } from '@/lib/config/config-crypto'
+import { decryptSecret, encryptSecret } from '@/infra/config/config-crypto'
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 
 // Set test environment

@@ -15,7 +15,7 @@
 
 import type { CollectionConfig } from 'payload'
 
-import { ConfigKind, isSnakeCase } from '@/lib/config/config-constants'
+import { ConfigKind, isSnakeCase } from '@/infra/config/config-constants'
 import { configAdminOnly } from '../access/configAdminOnly'
 import { afterChangeAuditLog } from '../hooks/configEntries/afterChange-hook'
 import { afterReadHideSecretValue } from '../hooks/configEntries/afterRead-hook'
