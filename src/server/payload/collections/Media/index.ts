@@ -5,8 +5,6 @@ import {
   InlineToolbarFeature,
   lexicalEditor,
 } from '@payloadcms/richtext-lexical'
-import path from 'path'
-import { fileURLToPath } from 'url'
 
 import { MediaType } from '@/infra/media/types'
 import { isUsersCollectionUser } from '@/server/payload/access/isUsersCollectionUser'
@@ -18,9 +16,6 @@ import { createdByField } from '../../fields/createdBy'
 import { enforceRetentionPolicyHook } from './hooks/enforceRetentionPolicy'
 import { inferMediaTypeHook } from './hooks/inferMediaType'
 import { validateMediaUploadHook } from './hooks/validateMediaUpload'
-
-const filename = fileURLToPath(import.meta.url)
-const dirname = path.dirname(filename)
 
 export const Media: CollectionConfig = {
   slug: 'media',
@@ -142,9 +137,9 @@ export const Media: CollectionConfig = {
     beforeValidate: [validateMediaUploadHook],
     beforeChange: [enforceRetentionPolicyHook],
   },
+  // File storage is handled by @payloadcms/storage-vercel-blob plugin
+  // This config only defines admin UI preferences (thumbnails, focal point, image sizes)
   upload: {
-    // Upload to the public/media directory in Next.js making them publicly accessible even outside of Payload
-    staticDir: path.resolve(dirname, '../../../../public/media'),
     adminThumbnail: 'thumbnail',
     focalPoint: true,
     imageSizes: [
