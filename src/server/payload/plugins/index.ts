@@ -31,9 +31,6 @@ const generateURL: GenerateURL<Page> = ({ doc }) => {
   return doc?.slug ? `${url}/${doc.slug}` : url
 }
 
-// Runtime validation - throws at module load time if token is missing
-validateBlobStorageConfig()
-
 // Vercel Blob storage plugin with runtime token validation
 // The token check runs at runtime (not during postinstall/generate:types)
 const vercelBlobPlugin = vercelBlobStorage({
@@ -45,8 +42,14 @@ const vercelBlobPlugin = vercelBlobStorage({
   token: process.env.BLOB_READ_WRITE_TOKEN,
 })
 
-// Runtime validation function - called at module load time to enforce blob storage
+// Runtime validation function - called at startup to enforce blob storage
+// Skipped during type generation to allow generate:types to run
 function validateBlobStorageConfig(): void {
+  // Skip validation during type generation
+  if (process.env.PAYLOAD_GENERATE_TYPES === 'true') {
+    return
+  }
+
   const blobToken = process.env.BLOB_READ_WRITE_TOKEN
   if (!blobToken) {
     throw new Error(
@@ -56,6 +59,9 @@ function validateBlobStorageConfig(): void {
     )
   }
 }
+
+// Validate at module load time (skipped during type generation)
+validateBlobStorageConfig()
 
 // Export for testing
 export { validateBlobStorageConfig }
