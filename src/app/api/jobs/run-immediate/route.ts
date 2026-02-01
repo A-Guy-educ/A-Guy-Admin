@@ -111,10 +111,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Execute the task synchronously by calling the handler directly
+    // Extract auth headers from request for downstream services
     const req = {
       payload,
       user,
-      headers: request.headers,
+      headers: {
+        authorization: request.headers.get('authorization') ?? undefined,
+        cookie: request.headers.get('cookie') ?? undefined,
+      },
     }
 
     // Dynamic import to avoid ES module initialization order issues
