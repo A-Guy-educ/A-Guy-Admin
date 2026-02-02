@@ -59,7 +59,7 @@ const getPagesSitemap = unstable_cache(
 
       return [...defaultSitemap, ...sitemap]
     } catch {
-      // Return minimal sitemap if payload initialization fails (e.g., missing blob token)
+      // Return minimal sitemap if payload initialization fails
       const SITE_URL =
         process.env.NEXT_PUBLIC_SERVER_URL ||
         process.env.VERCEL_PROJECT_PRODUCTION_URL ||
