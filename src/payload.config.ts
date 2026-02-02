@@ -29,7 +29,7 @@ import { importExerciseFromLesson } from '@/server/payload/endpoints/exercises/i
 import { defaultLexical } from '@/server/payload/fields/defaultLexical'
 import { pdfToExercisesTask } from '@/server/payload/jobs/pdf-to-exercises-task'
 import type { JobDocument } from '@/server/payload/jobs/types'
-import { plugins, validateBlobStorageConfig } from '@/server/payload/plugins'
+import { plugins } from '@/server/payload/plugins'
 import { Footer } from '@/ui/web/footer/config'
 import { Header } from '@/ui/web/header/config'
 
@@ -53,9 +53,6 @@ if (
 ) {
   throw new Error('DEFAULT_TENANT_SLUG environment variable is required when MCP_ENABLED=true.')
 }
-
-// Validate BLOB_READ_WRITE_TOKEN is set - Vercel Blob storage is mandatory
-validateBlobStorageConfig()
 
 export default buildConfig({
   admin: {

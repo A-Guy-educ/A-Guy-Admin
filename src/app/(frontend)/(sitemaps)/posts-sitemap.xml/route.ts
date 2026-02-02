@@ -46,7 +46,7 @@ const getPostsSitemap = unstable_cache(
 
       return sitemap
     } catch {
-      // Return empty sitemap if payload initialization fails (e.g., missing blob token)
+      // Return empty sitemap if payload initialization fails
       return []
     }
   },
