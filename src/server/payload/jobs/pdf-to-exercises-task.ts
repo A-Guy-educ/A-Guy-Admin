@@ -124,6 +124,7 @@ export const pdfToExercisesTask = {
               },
               limit: 1,
               depth: 0,
+              overrideAccess: true,
               req,
             })
 
@@ -145,6 +146,7 @@ export const pdfToExercisesTask = {
                     conversionJobId: job.id,
                     updatedAt: new Date(),
                   },
+                  overrideAccess: true,
                   req,
                 })
               }
@@ -169,6 +171,7 @@ export const pdfToExercisesTask = {
                     sourceOrderInSegment: exercise.orderInSegment,
                     contentHash,
                   },
+                  overrideAccess: true,
                   req,
                 })
                 created++
@@ -187,6 +190,7 @@ export const pdfToExercisesTask = {
                     },
                     limit: 1,
                     depth: 0,
+                    overrideAccess: true,
                     req,
                   })
                   if (retryFind.docs.length > 0) {
