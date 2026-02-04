@@ -45,13 +45,13 @@ describe('LLM Model Configuration Validation', () => {
   })
 
   describe('Model Configuration Structure', () => {
-    it('should have valid AIModel structure for all models and providers', async () => {
+    it('should have valid AIModel structure for all models and providers', () => {
       const modelKeys: AIModelKey[] = ['EXERCISE_CHAT', 'IMAGE_TO_EXERCISE', 'PDF_TO_EXERCISE']
       const providers = [LLMProviderType.GEMINI, LLMProviderType.OPENAI_COMPATIBLE]
 
       for (const provider of providers) {
         for (const modelKey of modelKeys) {
-          const modelConfig = await getProviderModelConfig(provider, modelKey)
+          const modelConfig = getProviderModelConfig(provider, modelKey)
 
           // Validate required AIModel fields
           expect(modelConfig).toHaveProperty('name')
@@ -67,84 +67,84 @@ describe('LLM Model Configuration Validation', () => {
       }
     })
 
-    it('should have correct model names for Gemini provider', async () => {
+    it('should have correct model names for Gemini provider', () => {
       // Gemini uses gemini-2.0-flash-001 for all models
-      expect((await getProviderModelConfig(LLMProviderType.GEMINI, 'EXERCISE_CHAT')).name).toBe(
+      expect(getProviderModelConfig(LLMProviderType.GEMINI, 'EXERCISE_CHAT').name).toBe(
         'gemini-2.0-flash-001',
       )
-      expect((await getProviderModelConfig(LLMProviderType.GEMINI, 'IMAGE_TO_EXERCISE')).name).toBe(
+      expect(getProviderModelConfig(LLMProviderType.GEMINI, 'IMAGE_TO_EXERCISE').name).toBe(
         'gemini-2.0-flash-001',
       )
-      expect((await getProviderModelConfig(LLMProviderType.GEMINI, 'PDF_TO_EXERCISE')).name).toBe(
+      expect(getProviderModelConfig(LLMProviderType.GEMINI, 'PDF_TO_EXERCISE').name).toBe(
         'gemini-2.0-flash-001',
       )
     })
 
-    it('should have correct model names for OpenAI-compatible provider', async () => {
+    it('should have correct model names for OpenAI-compatible provider', () => {
       // OpenAI-compatible uses MiniMax-M2.1 for all models
+      expect(getProviderModelConfig(LLMProviderType.OPENAI_COMPATIBLE, 'EXERCISE_CHAT').name).toBe(
+        'MiniMax-M2.1',
+      )
       expect(
-        (await getProviderModelConfig(LLMProviderType.OPENAI_COMPATIBLE, 'EXERCISE_CHAT')).name,
+        getProviderModelConfig(LLMProviderType.OPENAI_COMPATIBLE, 'IMAGE_TO_EXERCISE').name,
       ).toBe('MiniMax-M2.1')
       expect(
-        (await getProviderModelConfig(LLMProviderType.OPENAI_COMPATIBLE, 'IMAGE_TO_EXERCISE')).name,
-      ).toBe('MiniMax-M2.1')
-      expect(
-        (await getProviderModelConfig(LLMProviderType.OPENAI_COMPATIBLE, 'PDF_TO_EXERCISE')).name,
+        getProviderModelConfig(LLMProviderType.OPENAI_COMPATIBLE, 'PDF_TO_EXERCISE').name,
       ).toBe('MiniMax-M2.1')
     })
 
-    it('should have appropriate temperature settings per model use case', async () => {
+    it('should have appropriate temperature settings per model use case', () => {
       // EXERCISE_CHAT: Higher temperature (0.7) for creative/chat responses
-      const chatConfig = await getProviderModelConfig(LLMProviderType.GEMINI, 'EXERCISE_CHAT')
+      const chatConfig = getProviderModelConfig(LLMProviderType.GEMINI, 'EXERCISE_CHAT')
       expect(chatConfig.temperature).toBe(0.7)
       expect(chatConfig.temperature).toBeGreaterThan(0.5) // Should be relatively high for creativity
 
       // IMAGE_TO_EXERCISE: Lower temperature (0.2) for consistent extraction
-      const imageConfig = await getProviderModelConfig(LLMProviderType.GEMINI, 'IMAGE_TO_EXERCISE')
+      const imageConfig = getProviderModelConfig(LLMProviderType.GEMINI, 'IMAGE_TO_EXERCISE')
       expect(imageConfig.temperature).toBe(0.2)
       expect(imageConfig.temperature).toBeLessThan(0.5) // Should be lower for consistency
 
       // PDF_TO_EXERCISE: Lowest temperature (0.1) for accurate extraction
-      const pdfConfig = await getProviderModelConfig(LLMProviderType.GEMINI, 'PDF_TO_EXERCISE')
+      const pdfConfig = getProviderModelConfig(LLMProviderType.GEMINI, 'PDF_TO_EXERCISE')
       expect(pdfConfig.temperature).toBe(0.1)
       expect(pdfConfig.temperature).toBeLessThan(0.3) // Should be lowest for accuracy
     })
 
-    it('should have appropriate maxOutputTokens per model use case', async () => {
+    it('should have appropriate maxOutputTokens per model use case', () => {
       // EXERCISE_CHAT: Moderate tokens for chat responses (2048)
-      const chatConfig = await getProviderModelConfig(LLMProviderType.GEMINI, 'EXERCISE_CHAT')
+      const chatConfig = getProviderModelConfig(LLMProviderType.GEMINI, 'EXERCISE_CHAT')
       expect(chatConfig.maxOutputTokens).toBe(2048)
       expect(chatConfig.maxOutputTokens).toBeLessThan(8192)
 
       // IMAGE_TO_EXERCISE: High tokens for detailed extraction (8192)
-      const imageConfig = await getProviderModelConfig(LLMProviderType.GEMINI, 'IMAGE_TO_EXERCISE')
+      const imageConfig = getProviderModelConfig(LLMProviderType.GEMINI, 'IMAGE_TO_EXERCISE')
       expect(imageConfig.maxOutputTokens).toBe(8192)
 
       // PDF_TO_EXERCISE: High tokens for document extraction (8192)
-      const pdfConfig = await getProviderModelConfig(LLMProviderType.GEMINI, 'PDF_TO_EXERCISE')
+      const pdfConfig = getProviderModelConfig(LLMProviderType.GEMINI, 'PDF_TO_EXERCISE')
       expect(pdfConfig.maxOutputTokens).toBe(8192)
     })
 
-    it('should have temperature within valid range (0.0 - 2.0)', async () => {
+    it('should have temperature within valid range (0.0 - 2.0)', () => {
       const modelKeys: AIModelKey[] = ['EXERCISE_CHAT', 'IMAGE_TO_EXERCISE', 'PDF_TO_EXERCISE']
       const providers = [LLMProviderType.GEMINI, LLMProviderType.OPENAI_COMPATIBLE]
 
       for (const provider of providers) {
         for (const modelKey of modelKeys) {
-          const modelConfig = await getProviderModelConfig(provider, modelKey)
+          const modelConfig = getProviderModelConfig(provider, modelKey)
           expect(modelConfig.temperature).toBeGreaterThanOrEqual(0.0)
           expect(modelConfig.temperature).toBeLessThanOrEqual(2.0)
         }
       }
     })
 
-    it('should have positive maxOutputTokens', async () => {
+    it('should have positive maxOutputTokens', () => {
       const modelKeys: AIModelKey[] = ['EXERCISE_CHAT', 'IMAGE_TO_EXERCISE', 'PDF_TO_EXERCISE']
       const providers = [LLMProviderType.GEMINI, LLMProviderType.OPENAI_COMPATIBLE]
 
       for (const provider of providers) {
         for (const modelKey of modelKeys) {
-          const modelConfig = await getProviderModelConfig(provider, modelKey)
+          const modelConfig = getProviderModelConfig(provider, modelKey)
           expect(modelConfig.maxOutputTokens).toBeGreaterThan(0)
         }
       }
@@ -152,27 +152,27 @@ describe('LLM Model Configuration Validation', () => {
   })
 
   describe('Provider Model Name Getters', () => {
-    it('should return correct model names via getProviderModelConfig', async () => {
+    it('should return correct model names via getProviderModelConfig', () => {
       // Gemini provider
-      expect((await getProviderModelConfig(LLMProviderType.GEMINI, 'EXERCISE_CHAT')).name).toBe(
+      expect(getProviderModelConfig(LLMProviderType.GEMINI, 'EXERCISE_CHAT').name).toBe(
         'gemini-2.0-flash-001',
       )
-      expect((await getProviderModelConfig(LLMProviderType.GEMINI, 'IMAGE_TO_EXERCISE')).name).toBe(
+      expect(getProviderModelConfig(LLMProviderType.GEMINI, 'IMAGE_TO_EXERCISE').name).toBe(
         'gemini-2.0-flash-001',
       )
-      expect((await getProviderModelConfig(LLMProviderType.GEMINI, 'PDF_TO_EXERCISE')).name).toBe(
+      expect(getProviderModelConfig(LLMProviderType.GEMINI, 'PDF_TO_EXERCISE').name).toBe(
         'gemini-2.0-flash-001',
       )
 
       // OpenAI-compatible provider
+      expect(getProviderModelConfig(LLMProviderType.OPENAI_COMPATIBLE, 'EXERCISE_CHAT').name).toBe(
+        'MiniMax-M2.1',
+      )
       expect(
-        (await getProviderModelConfig(LLMProviderType.OPENAI_COMPATIBLE, 'EXERCISE_CHAT')).name,
+        getProviderModelConfig(LLMProviderType.OPENAI_COMPATIBLE, 'IMAGE_TO_EXERCISE').name,
       ).toBe('MiniMax-M2.1')
       expect(
-        (await getProviderModelConfig(LLMProviderType.OPENAI_COMPATIBLE, 'IMAGE_TO_EXERCISE')).name,
-      ).toBe('MiniMax-M2.1')
-      expect(
-        (await getProviderModelConfig(LLMProviderType.OPENAI_COMPATIBLE, 'PDF_TO_EXERCISE')).name,
+        getProviderModelConfig(LLMProviderType.OPENAI_COMPATIBLE, 'PDF_TO_EXERCISE').name,
       ).toBe('MiniMax-M2.1')
     })
   })
@@ -192,7 +192,7 @@ describe('LLM Model Configuration Validation', () => {
       const providerType = await getProviderTypeFromEnv()
       expect(providerType).toBe(LLMProviderType.GEMINI)
 
-      const modelConfig = await getProviderModelConfig(providerType, 'EXERCISE_CHAT')
+      const modelConfig = getProviderModelConfig(providerType, 'EXERCISE_CHAT')
       expect(modelConfig.name).toBe('gemini-2.0-flash-001')
     })
 
@@ -201,7 +201,7 @@ describe('LLM Model Configuration Validation', () => {
       const providerType = await getProviderTypeFromEnv()
       expect(providerType).toBe(LLMProviderType.OPENAI_COMPATIBLE)
 
-      const modelConfig = await getProviderModelConfig(providerType, 'EXERCISE_CHAT')
+      const modelConfig = getProviderModelConfig(providerType, 'EXERCISE_CHAT')
       expect(modelConfig.name).toBe('MiniMax-M2.1')
     })
 
@@ -227,16 +227,13 @@ describe('LLM Model Configuration Validation', () => {
   })
 
   describe('Model Configuration Consistency', () => {
-    it('should have consistent temperature settings across providers for same model key', async () => {
+    it('should have consistent temperature settings across providers for same model key', () => {
       // Temperature should be the same regardless of provider (it's a model use case setting)
       const modelKeys: AIModelKey[] = ['EXERCISE_CHAT', 'IMAGE_TO_EXERCISE', 'PDF_TO_EXERCISE']
 
       for (const modelKey of modelKeys) {
-        const geminiConfig = await getProviderModelConfig(LLMProviderType.GEMINI, modelKey)
-        const openaiConfig = await getProviderModelConfig(
-          LLMProviderType.OPENAI_COMPATIBLE,
-          modelKey,
-        )
+        const geminiConfig = getProviderModelConfig(LLMProviderType.GEMINI, modelKey)
+        const openaiConfig = getProviderModelConfig(LLMProviderType.OPENAI_COMPATIBLE, modelKey)
 
         // Temperature should match (it's defined by model use case, not provider)
         expect(geminiConfig.temperature).toBe(openaiConfig.temperature)
@@ -244,23 +241,17 @@ describe('LLM Model Configuration Validation', () => {
       }
     })
 
-    it('should have different temperature settings for different model use cases', async () => {
+    it('should have different temperature settings for different model use cases', () => {
       // All three models should have different temperatures
-      expect(
-        (await getProviderModelConfig(LLMProviderType.GEMINI, 'EXERCISE_CHAT')).temperature,
-      ).not.toBe(
-        (await getProviderModelConfig(LLMProviderType.GEMINI, 'IMAGE_TO_EXERCISE')).temperature,
+      expect(getProviderModelConfig(LLMProviderType.GEMINI, 'EXERCISE_CHAT').temperature).not.toBe(
+        getProviderModelConfig(LLMProviderType.GEMINI, 'IMAGE_TO_EXERCISE').temperature,
+      )
+      expect(getProviderModelConfig(LLMProviderType.GEMINI, 'EXERCISE_CHAT').temperature).not.toBe(
+        getProviderModelConfig(LLMProviderType.GEMINI, 'PDF_TO_EXERCISE').temperature,
       )
       expect(
-        (await getProviderModelConfig(LLMProviderType.GEMINI, 'EXERCISE_CHAT')).temperature,
-      ).not.toBe(
-        (await getProviderModelConfig(LLMProviderType.GEMINI, 'PDF_TO_EXERCISE')).temperature,
-      )
-      expect(
-        (await getProviderModelConfig(LLMProviderType.GEMINI, 'IMAGE_TO_EXERCISE')).temperature,
-      ).not.toBe(
-        (await getProviderModelConfig(LLMProviderType.GEMINI, 'PDF_TO_EXERCISE')).temperature,
-      )
+        getProviderModelConfig(LLMProviderType.GEMINI, 'IMAGE_TO_EXERCISE').temperature,
+      ).not.toBe(getProviderModelConfig(LLMProviderType.GEMINI, 'PDF_TO_EXERCISE').temperature)
     })
   })
 
@@ -318,7 +309,7 @@ describe('LLM Model API Validation (Manual Test)', () => {
     it.skipIf(!process.env.GEMINI_API_KEY)(
       'should validate EXERCISE_CHAT model configuration for Gemini API',
       async () => {
-        const modelConfig = await getProviderModelConfig(LLMProviderType.GEMINI, 'EXERCISE_CHAT')
+        const modelConfig = getProviderModelConfig(LLMProviderType.GEMINI, 'EXERCISE_CHAT')
         expect(modelConfig.name).toBe('gemini-2.0-flash-001')
         expect(modelConfig.temperature).toBe(0.7)
         expect(modelConfig.maxOutputTokens).toBe(2048)
@@ -330,10 +321,7 @@ describe('LLM Model API Validation (Manual Test)', () => {
     it.skipIf(!process.env.GEMINI_API_KEY)(
       'should validate IMAGE_TO_EXERCISE model configuration for Gemini API',
       async () => {
-        const modelConfig = await getProviderModelConfig(
-          LLMProviderType.GEMINI,
-          'IMAGE_TO_EXERCISE',
-        )
+        const modelConfig = getProviderModelConfig(LLMProviderType.GEMINI, 'IMAGE_TO_EXERCISE')
         expect(modelConfig.name).toBe('gemini-2.0-flash-001')
         expect(modelConfig.temperature).toBe(0.2)
         expect(modelConfig.maxOutputTokens).toBe(8192)
@@ -345,7 +333,7 @@ describe('LLM Model API Validation (Manual Test)', () => {
     it.skipIf(!process.env.GEMINI_API_KEY)(
       'should validate PDF_TO_EXERCISE model configuration for Gemini API',
       async () => {
-        const modelConfig = await getProviderModelConfig(LLMProviderType.GEMINI, 'PDF_TO_EXERCISE')
+        const modelConfig = getProviderModelConfig(LLMProviderType.GEMINI, 'PDF_TO_EXERCISE')
         expect(modelConfig.name).toBe('gemini-2.0-flash-001')
         expect(modelConfig.temperature).toBe(0.1)
         expect(modelConfig.maxOutputTokens).toBe(8192)
@@ -367,7 +355,7 @@ describe('LLM Model API Validation (Manual Test)', () => {
     it.skipIf(!process.env.OPENAI_COMPATIBLE_API_KEY)(
       'should validate EXERCISE_CHAT model configuration for OpenAI API',
       async () => {
-        const modelConfig = await getProviderModelConfig(
+        const modelConfig = getProviderModelConfig(
           LLMProviderType.OPENAI_COMPATIBLE,
           'EXERCISE_CHAT',
         )
@@ -382,7 +370,7 @@ describe('LLM Model API Validation (Manual Test)', () => {
     it.skipIf(!process.env.OPENAI_COMPATIBLE_API_KEY)(
       'should validate IMAGE_TO_EXERCISE model configuration for OpenAI API',
       async () => {
-        const modelConfig = await getProviderModelConfig(
+        const modelConfig = getProviderModelConfig(
           LLMProviderType.OPENAI_COMPATIBLE,
           'IMAGE_TO_EXERCISE',
         )
@@ -397,7 +385,7 @@ describe('LLM Model API Validation (Manual Test)', () => {
     it.skipIf(!process.env.OPENAI_COMPATIBLE_API_KEY)(
       'should validate PDF_TO_EXERCISE model configuration for OpenAI API',
       async () => {
-        const modelConfig = await getProviderModelConfig(
+        const modelConfig = getProviderModelConfig(
           LLMProviderType.OPENAI_COMPATIBLE,
           'PDF_TO_EXERCISE',
         )

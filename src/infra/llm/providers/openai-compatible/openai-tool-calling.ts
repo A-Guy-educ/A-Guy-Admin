@@ -8,12 +8,11 @@
  * @domain ai
  * @pattern tool-calling, function-calling, mcp-integration
  */
-import { createErrorClassifier, withRetry } from '@/infra/llm/providers/shared'
-import { getChatConfig } from '@/infra/llm/providers/shared/chat-config'
+import { createErrorClassifier, LLM_DEFAULTS, withRetry } from '@/infra/llm/providers/shared'
 import { logger } from '@/infra/utils/logger'
 import type { MCPTool } from '@/server/repos/mcp/client/types'
 import type { Payload } from 'payload'
-import { getOpenAIClient } from './openai.client'
+import { getOpenAICompatibleClient } from './openai.client'
 import {
   extractTextFromOpenAIResponse,
   extractToolCalls,
@@ -50,6 +49,16 @@ export interface ToolCallingOutput extends GenerateChatOutput {
   toolCalls?: Array<{ name: string; args: Record<string, unknown> }>
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Configuration
+// ─────────────────────────────────────────────────────────────────────────────
+
+const MAX_TOOL_ITERATIONS = 5 // Prevent infinite loops
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Main API
+// ─────────────────────────────────────────────────────────────────────────────
+
 /**
  * Generate a chat completion with tool calling support
  *
@@ -68,14 +77,13 @@ export async function generateChatCompletionWithTools(
   input: ToolCallingInput,
   payload: Payload,
 ): Promise<ToolCallingOutput> {
-  const config = await getChatConfig()
-  const timeoutMs = input.timeoutMs ?? config.chatSettings.defaultToolTimeoutMs
+  const timeoutMs = input.timeoutMs ?? LLM_DEFAULTS.toolTimeoutMs
 
   return withRetry<ToolCallingOutput, Error>(
     () => executeToolCallingWithTimeout(input, timeoutMs, payload),
     {
-      maxRetries: config.retry.maxRetries,
-      delayMs: config.retry.delayMs,
+      maxRetries: LLM_DEFAULTS.maxRetries,
+      delayMs: LLM_DEFAULTS.retryDelayMs,
       isRetryable: isRetryableError,
       wrapError: (e: Error) => wrapOpenAIError(e),
       logPrefix: '[OpenAIToolCalling]',
@@ -98,7 +106,7 @@ async function executeToolCallingWithTimeout(
   timeoutMs: number,
   payload: Payload,
 ): Promise<ToolCallingOutput> {
-  const client = await getOpenAIClient(payload)
+  const client = await getOpenAICompatibleClient(payload)
 
   // Convert MCP tools to OpenAI function tools with required name field
   // OpenAI requires parameters with at least { type: 'object' }
@@ -232,15 +240,11 @@ async function executeToolCallingWithTimeout(
     '[OpenAIToolCalling] Initial response received',
   )
 
-  // Get max iterations from config
-  const config = await getChatConfig()
-  const maxToolIterations = config.chatSettings.maxToolIterations
-
   while (toolCalls.length > 0) {
     iterations++
 
     // Prevent infinite loops
-    if (iterations > maxToolIterations) {
+    if (iterations > MAX_TOOL_ITERATIONS) {
       logger.warn('[OpenAIToolCalling] Max tool iterations reached, stopping')
       break
     }
@@ -319,7 +323,6 @@ async function executeToolCallingWithTimeout(
     // Get the next completion with full conversation history
     const nextCompletionPromise = client.chat.completions.create({
       model: input.model.name,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       messages: conversationHistory as any,
       temperature: input.model.temperature,
       max_tokens: input.model.maxOutputTokens,

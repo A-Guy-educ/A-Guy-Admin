@@ -6,18 +6,23 @@
  * @domain ai
  * @pattern provider-factory, abstraction, dependency-injection
  *
- * Model configurations are loaded from ConfigValues (chat domain).
- * See: src/infra/llm/providers/shared/chat-config.ts for getModelConfig()
+ * Uses centralized MODEL_REGISTRY and PROVIDER_MODEL_NAMES from @/infra/llm/models.ts
+ * for model configurations. This ensures a single source of truth for all model definitions.
  */
 import { getSystemParam, isConfigLoaded, loadRuntimeConfig } from '@/infra/config/runtime'
-import { getModelConfig } from '@/infra/llm/providers/shared/chat-config'
 import { logger } from '@/infra/utils/logger'
 import { getDefaultTenantId } from '@/server/repos/tenant/get-default-tenant'
 import type { Payload } from 'payload'
 import { LLMProviderType } from './types'
 export { LLMProviderType }
 
-import { mapProviderToConfig, type AIModel, type AIModelKey } from '../models'
+import {
+  MODEL_REGISTRY,
+  PROVIDER_MODEL_NAMES,
+  getModelNameOverride,
+  type AIModel,
+  type AIModelKey,
+} from '../models'
 
 // Configuration
 export interface LLMProviderConfig {
@@ -100,16 +105,18 @@ async function resolveProviderType(
 
 /**
  * Get custom base URL for openai-compatible provider
+ * ONLY uses OPENAI_COMPATIBLE_BASE_URL - no fallback to OPENAI_BASE_URL
  */
 export function getOpenAICompatibleBaseUrl(): string | undefined {
-  return process.env.OPENAI_COMPATIBLE_BASE_URL || process.env.OPENAI_BASE_URL
+  return process.env.OPENAI_COMPATIBLE_BASE_URL
 }
 
 /**
  * Get API key for openai-compatible provider
+ * ONLY uses OPENAI_COMPATIBLE_API_KEY - no fallback to OPENAI_API_KEY
  */
 export function getOpenAICompatibleApiKey(): string | undefined {
-  return process.env.OPENAI_COMPATIBLE_API_KEY || process.env.OPENAI_API_KEY
+  return process.env.OPENAI_COMPATIBLE_API_KEY
 }
 
 // Unified provider interface
@@ -168,21 +175,21 @@ export interface UnifiedLLMProvider {
 
 /**
  * Get model config for a specific provider and task
- * Loads configuration from ConfigValues (chat domain)
- *
- * @deprecated Use getModelConfig() from chat-config.ts instead
+ * Uses centralized MODEL_REGISTRY (temperature, maxOutputTokens) and provider-specific model names
+ * Supports runtime overrides via LLM_MODEL_OVERRIDE_* environment variables
  */
-export async function getProviderModelConfig(
+export function getProviderModelConfig(
   providerType: LLMProviderType,
   modelKey: AIModelKey = DEFAULT_MODEL_KEY,
-): Promise<AIModel> {
-  const configProvider = mapProviderToConfig(providerType)
-  const task = modelKey.toLowerCase().replace(/_([a-z])/g, (_, letter) => letter.toUpperCase()) as
-    | 'exerciseChat'
-    | 'imageToExercise'
-    | 'pdfToExercise'
+): AIModel {
+  // Check for runtime model name override first
+  const overrideName = getModelNameOverride(modelKey)
+  const modelName = overrideName ?? PROVIDER_MODEL_NAMES[providerType][modelKey]
 
-  return getModelConfig(configProvider, task)
+  return {
+    name: modelName,
+    ...MODEL_REGISTRY[modelKey],
+  }
 }
 
 /**
@@ -198,7 +205,7 @@ export async function getLLMProvider(
 
   switch (providerType) {
     case LLMProviderType.OPENAI_COMPATIBLE: {
-      const mod = await import('./openai')
+      const mod = await import('./openai-compatible')
       return createOpenAIProvider(mod)
     }
     case LLMProviderType.GEMINI:
@@ -217,11 +224,11 @@ export async function checkProviderAvailability(payload: Payload): Promise<{
   'openai-compatible': boolean
 }> {
   const { isGeminiApiKeyConfigured } = await import('./gemini')
-  const { isOpenAIApiKeyConfigured } = await import('./openai')
+  const { isOpenAICompatibleApiKeyConfigured } = await import('./openai-compatible')
 
   const [gemini, openaiCompatible] = await Promise.all([
     isGeminiApiKeyConfigured(payload),
-    isOpenAIApiKeyConfigured(payload),
+    isOpenAICompatibleApiKeyConfigured(payload),
   ])
 
   return { gemini, 'openai-compatible': openaiCompatible }
@@ -292,14 +299,14 @@ function createOpenAIProvider(mod: {
   generateChatCompletion: UnifiedLLMProvider['generateChatCompletion']
   generateMultimodalCompletion: UnifiedLLMProvider['generateMultimodalCompletion']
   generateChatCompletionWithTools: UnifiedLLMProvider['generateChatCompletionWithTools']
-  isOpenAIApiKeyConfigured: (payload: Payload) => Promise<boolean>
+  isOpenAICompatibleApiKeyConfigured: (payload: Payload) => Promise<boolean>
   OpenAIErrorCode: Record<string, string>
 }): UnifiedLLMProvider {
   return {
     generateChatCompletion: mod.generateChatCompletion,
     generateMultimodalCompletion: mod.generateMultimodalCompletion,
     generateChatCompletionWithTools: mod.generateChatCompletionWithTools,
-    isConfigured: mod.isOpenAIApiKeyConfigured,
+    isConfigured: mod.isOpenAICompatibleApiKeyConfigured,
     errorCodes: mod.OpenAIErrorCode,
   }
 }

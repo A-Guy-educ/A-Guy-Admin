@@ -294,22 +294,24 @@ describe('Media Cleanup Endpoint', () => {
     it('handles multiple expired media documents', async () => {
       const expiredDate = new Date(Date.now() - 1000 * 60 * 60).toISOString()
 
-      // Create multiple expired media
-      await createTestMedia({
-        filename: 'expired-1.jpg',
-        retentionPolicy: 'ephemeral',
-        expiresAt: expiredDate,
-      })
-      await createTestMedia({
-        filename: 'expired-2.jpg',
-        retentionPolicy: 'ephemeral',
-        expiresAt: expiredDate,
-      })
-      await createTestMedia({
-        filename: 'expired-3.jpg',
-        retentionPolicy: 'ephemeral',
-        expiresAt: expiredDate,
-      })
+      // Create multiple expired media in parallel
+      await Promise.all([
+        createTestMedia({
+          filename: 'expired-1.jpg',
+          retentionPolicy: 'ephemeral',
+          expiresAt: expiredDate,
+        }),
+        createTestMedia({
+          filename: 'expired-2.jpg',
+          retentionPolicy: 'ephemeral',
+          expiresAt: expiredDate,
+        }),
+        createTestMedia({
+          filename: 'expired-3.jpg',
+          retentionPolicy: 'ephemeral',
+          expiresAt: expiredDate,
+        }),
+      ])
 
       const req = createCronRequest(`Bearer ${TEST_CRON_SECRET}`)
       const res = await mediaExpiryCleanupEndpoint.handler(req)

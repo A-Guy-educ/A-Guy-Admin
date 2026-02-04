@@ -7,14 +7,14 @@
 import type { AIModel } from '@/infra/llm/models'
 import {
   createErrorClassifier,
+  LLM_DEFAULTS,
   LLMError,
   LLMErrorCode,
   withRetry,
 } from '@/infra/llm/providers/shared'
-import { getChatConfig } from '@/infra/llm/providers/shared/chat-config'
 import { logger } from '@/infra/utils/logger'
 import type { Payload } from 'payload'
-import { getOpenAIClient } from './openai.client'
+import { getOpenAICompatibleClient } from './openai.client'
 import {
   extractTextFromOpenAIResponse,
   mapMessagesToOpenAIFormat,
@@ -71,17 +71,26 @@ const { isRetryable, wrapError: wrapOpenAIError } = createErrorClassifier('opena
 
 /**
  * Generate a chat completion using OpenAI-compatible API
+ *
+ * Features:
+ * - Automatic retry with exponential backoff
+ * - Timeout handling
+ * - Error normalization
+ *
+ * @param input - Chat input with system prompt, messages, and model config
+ * @param payload - Optional Payload instance for runtime config access
+ * @returns Chat output with response text
+ * @throws OpenAIError on failure after retries
  */
 export async function generateChatCompletion(
   input: GenerateChatInput,
   payload: Payload,
 ): Promise<GenerateChatOutput> {
-  const config = await getChatConfig()
-  const timeoutMs = input.timeoutMs ?? config.chatSettings.defaultChatTimeoutMs
+  const timeoutMs = input.timeoutMs ?? LLM_DEFAULTS.chatTimeoutMs
 
   return withRetry<GenerateChatOutput, Error>(() => executeWithTimeout(input, timeoutMs, payload), {
-    maxRetries: config.chatSettings.defaultMaxRetries,
-    delayMs: config.chatSettings.defaultRetryDelayMs,
+    maxRetries: LLM_DEFAULTS.maxRetries,
+    delayMs: LLM_DEFAULTS.retryDelayMs,
     isRetryable,
     wrapError: (e: Error) => wrapOpenAIError(e),
     logPrefix: '[OpenAIProvider]',
@@ -93,19 +102,29 @@ export async function generateChatCompletion(
 
 /**
  * Generate a multimodal completion using OpenAI-compatible API
+ *
+ * Features:
+ * - Supports file attachments (images) via base64
+ * - Automatic retry with exponential backoff
+ * - Timeout handling
+ * - Error normalization
+ *
+ * @param input - Multimodal input with prompt, attachments, and model config
+ * @param payload - Payload instance for config access
+ * @returns Chat output with response text
+ * @throws OpenAIError on failure after retries
  */
 export async function generateMultimodalCompletion(
   input: GenerateMultimodalInput,
   payload: Payload,
 ): Promise<GenerateChatOutput> {
-  const config = await getChatConfig()
-  const timeoutMs = input.timeoutMs ?? config.chatSettings.defaultChatTimeoutMs
+  const timeoutMs = input.timeoutMs ?? LLM_DEFAULTS.chatTimeoutMs
 
   return withRetry<GenerateChatOutput, Error>(
     () => executeMultimodalWithTimeout(input, timeoutMs, payload),
     {
-      maxRetries: config.chatSettings.defaultMaxRetries,
-      delayMs: config.chatSettings.defaultRetryDelayMs,
+      maxRetries: LLM_DEFAULTS.maxRetries,
+      delayMs: LLM_DEFAULTS.retryDelayMs,
       isRetryable,
       wrapError: (e: Error) => wrapOpenAIError(e),
       logPrefix: '[OpenAIProvider]',
@@ -128,7 +147,7 @@ async function executeWithTimeout(
   timeoutMs: number,
   payload: Payload,
 ): Promise<GenerateChatOutput> {
-  const client = await getOpenAIClient(payload)
+  const client = await getOpenAICompatibleClient(payload)
 
   // Build messages array with system message first
   const allMessages: ChatMessage[] = [{ role: 'system', content: input.system }, ...input.messages]
@@ -197,7 +216,7 @@ async function executeMultimodalWithTimeout(
   timeoutMs: number,
   payload: Payload,
 ): Promise<GenerateChatOutput> {
-  const client = await getOpenAIClient(payload)
+  const client = await getOpenAICompatibleClient(payload)
 
   // Log provider details for multimodal request
   logger.info(
@@ -277,4 +296,4 @@ async function executeMultimodalWithTimeout(
   }
 }
 
-export { isOpenAIApiKeyConfigured } from './openai.client'
+export { isOpenAICompatibleApiKeyConfigured } from './openai.client'

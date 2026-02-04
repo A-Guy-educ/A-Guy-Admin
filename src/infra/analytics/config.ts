@@ -17,18 +17,7 @@ import type { AnalyticsConfig } from './types'
  * Debug mode is enabled in development only
  */
 export function getAnalyticsConfig(): AnalyticsConfig {
-  const isClient = typeof window !== 'undefined'
-
-  // Only initialize on client-side
-  if (!isClient) {
-    return {
-      enabled: false,
-      debugMode: false,
-      ga4: { measurementId: undefined, enabled: false },
-      mixpanel: { token: undefined, enabled: false },
-    }
-  }
-
+  // NEXT_PUBLIC_ env vars are available everywhere (SSR and client)
   const ga4MeasurementId = process.env.NEXT_PUBLIC_GA4_MEASUREMENT_ID
   const mixpanelToken = process.env.NEXT_PUBLIC_MIXPANEL_TOKEN
 
@@ -55,9 +44,19 @@ export function getAnalyticsConfig(): AnalyticsConfig {
 }
 
 /**
- * Singleton config instance
+ * Singleton config instance (lazy-loaded to avoid SSR issues)
+ * Using Proxy to defer config creation until first access, ensuring it runs client-side
  */
-export const analyticsConfig = getAnalyticsConfig()
+let _analyticsConfig: AnalyticsConfig | null = null
+
+export const analyticsConfig: AnalyticsConfig = new Proxy({} as AnalyticsConfig, {
+  get(_target, prop) {
+    if (!_analyticsConfig) {
+      _analyticsConfig = getAnalyticsConfig()
+    }
+    return _analyticsConfig[prop as keyof AnalyticsConfig]
+  },
+})
 
 /**
  * Validate configuration (call before first use)

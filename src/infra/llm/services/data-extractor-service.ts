@@ -54,7 +54,7 @@ export async function extractFromImage(
     // Detect best available provider and get model config
     const providerType = await detectBestProvider(payload)
     const provider = await getLLMProvider(payload, { type: providerType })
-    modelConfig = await getProviderModelConfig(providerType, 'IMAGE_TO_EXERCISE')
+    modelConfig = getProviderModelConfig(providerType, 'IMAGE_TO_EXERCISE')
 
     // Prepare multimodal input
     const prompt = `${SIMPLE_TEXT_QUESTION_PROMPT}\n\nExtract the question, options (A, B, C, D), correct answer, and explanation from this image. Return JSON with: question, options[], correctAnswer (index), explanation(optional).`

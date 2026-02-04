@@ -8,8 +8,7 @@
  * @domain ai
  * @pattern tool-calling, function-calling, mcp-integration
  */
-import { createErrorClassifier, withRetry } from '@/infra/llm/providers/shared'
-import { getChatConfig } from '@/infra/llm/providers/shared/chat-config'
+import { createErrorClassifier, LLM_DEFAULTS, withRetry } from '@/infra/llm/providers/shared'
 import { logger } from '@/infra/utils/logger'
 import type { MCPTool } from '@/server/repos/mcp/client/types'
 import {
@@ -75,6 +74,12 @@ function getResponseText(result: GenerateContentResult): string {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Configuration
+// ─────────────────────────────────────────────────────────────────────────────
+
+const MAX_TOOL_ITERATIONS = 5 // Prevent infinite loops
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Main API
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -96,14 +101,13 @@ export async function generateChatCompletionWithTools(
   input: ToolCallingInput,
   payload: Payload,
 ): Promise<ToolCallingOutput> {
-  const config = await getChatConfig()
-  const timeoutMs = input.timeoutMs ?? config.chatSettings.defaultToolTimeoutMs
+  const timeoutMs = input.timeoutMs ?? LLM_DEFAULTS.toolTimeoutMs
 
   return withRetry<ToolCallingOutput, Error>(
     () => executeToolCallingWithTimeout(input, timeoutMs, payload),
     {
-      maxRetries: config.retry.maxRetries,
-      delayMs: config.retry.delayMs,
+      maxRetries: LLM_DEFAULTS.maxRetries,
+      delayMs: LLM_DEFAULTS.retryDelayMs,
       isRetryable: isRetryableError,
       wrapError: (e: Error) => wrapGeminiError(e),
       logPrefix: '[GeminiToolCalling]',
@@ -240,15 +244,11 @@ async function executeToolCallingWithTimeout(
     '[GeminiToolCalling] Initial response received',
   )
 
-  // Get max iterations from config
-  const config = await getChatConfig()
-  const maxToolIterations = config.chatSettings.maxToolIterations
-
   while (functionCalls && functionCalls.length > 0) {
     iterations++
 
     // Prevent infinite loops
-    if (iterations > maxToolIterations) {
+    if (iterations > MAX_TOOL_ITERATIONS) {
       logger.warn('[GeminiToolCalling] Max tool iterations reached, stopping')
       break
     }
