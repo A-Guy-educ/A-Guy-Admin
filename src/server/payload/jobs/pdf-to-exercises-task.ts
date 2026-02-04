@@ -307,7 +307,7 @@ Return a JSON array of exercises with this schema:
   // Use factory provider with AI_MODELS configuration
   const provider = await getLLMProvider(payload)
   const providerType = await getProviderTypeFromEnv(payload)
-  const modelConfig = getProviderModelConfig(providerType, 'PDF_TO_EXERCISE')
+  const modelConfig = await getProviderModelConfig(providerType, 'PDF_TO_EXERCISE')
 
   const extractorResult = await provider.generateMultimodalCompletion(
     {
@@ -382,7 +382,7 @@ async function callVerifier(
   try {
     const provider = await getLLMProvider(payload)
     const providerType = await getProviderTypeFromEnv(payload)
-    const modelConfig = getProviderModelConfig(providerType, 'PDF_TO_EXERCISE')
+    const modelConfig = await getProviderModelConfig(providerType, 'PDF_TO_EXERCISE')
 
     const result = await provider.generateMultimodalCompletion(
       {

@@ -57,7 +57,7 @@ export async function chatWithExerciseHelper(
     // Detect provider and get model config
     const providerType = await detectBestProvider(payload)
     const provider = await getLLMProvider(payload, { type: providerType })
-    const modelConfig = getProviderModelConfig(providerType, 'EXERCISE_CHAT')
+    const modelConfig = await getProviderModelConfig(providerType, 'EXERCISE_CHAT')
 
     // Build messages from composedPrompt or legacy format
     let systemPrompt: string

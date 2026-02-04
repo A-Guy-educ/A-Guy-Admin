@@ -6,23 +6,18 @@
  * @domain ai
  * @pattern provider-factory, abstraction, dependency-injection
  *
- * Uses centralized MODEL_REGISTRY and PROVIDER_MODEL_NAMES from @/infra/llm/models.ts
- * for model configurations. This ensures a single source of truth for all model definitions.
+ * Model configurations are loaded from ConfigValues (chat domain).
+ * See: src/infra/llm/providers/shared/chat-config.ts for getModelConfig()
  */
 import { getSystemParam, isConfigLoaded, loadRuntimeConfig } from '@/infra/config/runtime'
+import { getModelConfig } from '@/infra/llm/providers/shared/chat-config'
 import { logger } from '@/infra/utils/logger'
 import { getDefaultTenantId } from '@/server/repos/tenant/get-default-tenant'
 import type { Payload } from 'payload'
 import { LLMProviderType } from './types'
 export { LLMProviderType }
 
-import {
-  MODEL_REGISTRY,
-  PROVIDER_MODEL_NAMES,
-  getModelNameOverride,
-  type AIModel,
-  type AIModelKey,
-} from '../models'
+import { mapProviderToConfig, type AIModel, type AIModelKey } from '../models'
 
 // Configuration
 export interface LLMProviderConfig {
@@ -173,21 +168,21 @@ export interface UnifiedLLMProvider {
 
 /**
  * Get model config for a specific provider and task
- * Uses centralized MODEL_REGISTRY (temperature, maxOutputTokens) and provider-specific model names
- * Supports runtime overrides via LLM_MODEL_OVERRIDE_* environment variables
+ * Loads configuration from ConfigValues (chat domain)
+ *
+ * @deprecated Use getModelConfig() from chat-config.ts instead
  */
-export function getProviderModelConfig(
+export async function getProviderModelConfig(
   providerType: LLMProviderType,
   modelKey: AIModelKey = DEFAULT_MODEL_KEY,
-): AIModel {
-  // Check for runtime model name override first
-  const overrideName = getModelNameOverride(modelKey)
-  const modelName = overrideName ?? PROVIDER_MODEL_NAMES[providerType][modelKey]
+): Promise<AIModel> {
+  const configProvider = mapProviderToConfig(providerType)
+  const task = modelKey.toLowerCase().replace(/_([a-z])/g, (_, letter) => letter.toUpperCase()) as
+    | 'exerciseChat'
+    | 'imageToExercise'
+    | 'pdfToExercise'
 
-  return {
-    name: modelName,
-    ...MODEL_REGISTRY[modelKey],
-  }
+  return getModelConfig(configProvider, task)
 }
 
 /**

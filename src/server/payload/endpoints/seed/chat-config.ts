@@ -49,6 +49,27 @@ const chatConfigData = {
     defaultChatTimeoutMs: 30000,
     defaultToolTimeoutMs: 60000,
   },
+  // Model settings - replaces hardcoded MODEL_REGISTRY
+  models: {
+    exerciseChat: {
+      gemini: 'gemini-2.0-flash-001',
+      openaiCompatible: 'MiniMax-M2.1',
+      maxOutputTokens: 2048,
+      capabilities: ['multimodal', 'chat'],
+    },
+    imageToExercise: {
+      gemini: 'gemini-2.0-flash-001',
+      openaiCompatible: 'MiniMax-M2.1',
+      maxOutputTokens: 8192,
+      capabilities: ['multimodal', 'vision'],
+    },
+    pdfToExercise: {
+      gemini: 'gemini-2.0-flash-001',
+      openaiCompatible: 'MiniMax-M2.1',
+      maxOutputTokens: 8192,
+      capabilities: ['document', 'extraction'],
+    },
+  },
 }
 
 export async function seedChatConfig(payload: Payload, tenantId: string): Promise<void> {

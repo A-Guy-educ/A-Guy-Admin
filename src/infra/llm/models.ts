@@ -1,36 +1,28 @@
 /**
- * LLM Model Registry - Single Source of Truth for All Model Definitions
+ * LLM Model Types - Config-Driven Configuration
  *
- * This module centralizes all model configurations to eliminate duplication
- * and enable proper provider switching at runtime.
+ * All model configurations are now loaded from ConfigValues (chat domain).
+ * This file contains types and mapping helpers only.
  *
- * Architecture:
- * - MODEL_REGISTRY: Provider-agnostic configs (temperature, maxTokens, capabilities)
- * - PROVIDER_MODEL_NAMES: Provider-specific model name mappings
- * - AI_MODELS: Convenience export for backward compatibility (Gemini defaults)
+ * Configuration is stored in: config_values collection (domain: "chat")
+ * Structure:
+ * - models.exerciseChat: model settings for chat
+ * - models.imageToExercise: model settings for image conversion
+ * - models.pdfToExercise: model settings for PDF conversion
  *
  * Usage:
  * ```typescript
- * import { MODEL_REGISTRY, PROVIDER_MODEL_NAMES, AI_MODELS, getProviderModelConfig } from '@/infra/llm/models'
- * import { LLMProviderType } from '@/infra/llm/providers/factory'
+ * import { getModelConfig } from '@/infra/llm/providers/shared/chat-config'
  *
- * // Get model config for specific provider
- * const config = getProviderModelConfig(LLMProviderType.GEMINI, 'EXERCISE_CHAT')
- *
- * // Access raw registry for custom logic
- * const registry = MODEL_REGISTRY.EXERCISE_CHAT
+ * const config = await getModelConfig('openaiCompatible', 'exerciseChat')
+ * // Returns: { name, temperature, maxOutputTokens, capabilities }
  * ```
- *
- * Runtime Model Overrides:
- * Set LLM_MODEL_OVERRIDE_<MODEL_KEY> environment variables to override models:
- * - LLM_MODEL_OVERRIDE_EXERCISE_CHAT=gemini-1.5-pro
- * - LLM_MODEL_OVERRIDE_DEFAULT=gpt-4o
  */
 
 import { LLMProviderType } from './providers/types'
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Shared Types (consolidated from providers)
+// Types
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -50,154 +42,56 @@ export interface AIModel {
 
 /**
  * Union type of all valid model keys
- * Add new models here to extend the registry
+ * Maps to ConfigValues: chat → models.<key>
  */
 export type AIModelKey = 'IMAGE_TO_EXERCISE' | 'EXERCISE_CHAT' | 'PDF_TO_EXERCISE'
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Model Registry - Single Source of Truth
-// ─────────────────────────────────────────────────────────────────────────────
-
 /**
- * Provider-agnostic model configurations
- * Defines temperature, maxTokens, and capabilities for each task
- *
- * To add a new model:
- * 1. Add key to AIModelKey type
- * 2. Add entry to MODEL_REGISTRY
- * 3. Add entries to PROVIDER_MODEL_NAMES for each provider
- * 4. Optionally add to AI_MODELS for backward compatibility
+ * Map AIModelKey to ConfigValues task names
  */
-export const MODEL_REGISTRY: Record<AIModelKey, Omit<AIModel, 'name'>> = {
-  IMAGE_TO_EXERCISE: {
-    temperature: 0.2,
-    maxOutputTokens: 8192,
-    capabilities: ['multimodal', 'vision'],
-  },
-  EXERCISE_CHAT: {
-    temperature: 0.7,
-    maxOutputTokens: 2048,
-    capabilities: ['multimodal', 'chat'],
-  },
-  PDF_TO_EXERCISE: {
-    temperature: 0.1,
-    maxOutputTokens: 8192,
-    capabilities: ['document', 'extraction'],
-  },
-} as const
-
-/**
- * Provider-specific model name mappings
- * Maps each AIModelKey to the actual model name for each provider
- *
- * This is the ONLY place where provider-specific model names are defined,
- * eliminating duplication between models.ts and factory.ts
- */
-export const PROVIDER_MODEL_NAMES: Record<LLMProviderType, Record<AIModelKey, string>> = {
-  [LLMProviderType.GEMINI]: {
-    IMAGE_TO_EXERCISE: 'gemini-2.0-flash-001',
-    EXERCISE_CHAT: 'gemini-2.0-flash-001',
-    PDF_TO_EXERCISE: 'gemini-2.0-flash-001',
-  },
-  [LLMProviderType.OPENAI_COMPATIBLE]: {
-    IMAGE_TO_EXERCISE: 'MiniMax-M2.1',
-    EXERCISE_CHAT: 'MiniMax-M2.1',
-    PDF_TO_EXERCISE: 'MiniMax-M2.1',
-  },
-} as const
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Runtime Override Support
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Get model name override from environment variables
- * Supports:
- * - LLM_MODEL_OVERRIDE_<MODEL_KEY> (e.g., LLM_MODEL_OVERRIDE_EXERCISE_CHAT)
- * - LLM_MODEL_OVERRIDE_DEFAULT (fallback for all models)
- */
-export function getModelNameOverride(modelKey: AIModelKey): string | undefined {
-  // Check specific model override first
-  const specificOverride = process.env[`LLM_MODEL_OVERRIDE_${modelKey}`]
-  if (specificOverride) {
-    return specificOverride
-  }
-
-  // Check default override
-  return process.env.LLM_MODEL_OVERRIDE_DEFAULT
-}
-
-/**
- * Check if any model override is configured
- */
-export function isModelOverrideConfigured(): boolean {
-  return (
-    Object.keys(process.env).some((key) => key.startsWith('LLM_MODEL_OVERRIDE_')) ||
-    process.env.LLM_MODEL_OVERRIDE_DEFAULT !== undefined
-  )
+const _CONFIG_TASK_MAP: Record<AIModelKey, 'imageToExercise' | 'exerciseChat' | 'pdfToExercise'> = {
+  IMAGE_TO_EXERCISE: 'imageToExercise',
+  EXERCISE_CHAT: 'exerciseChat',
+  PDF_TO_EXERCISE: 'pdfToExercise',
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Convenience Exports (backward compatibility)
+// Provider Type Mapping
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * AI Models configuration - backward compatible export
- * Uses Gemini as the default provider for existing consumers
- *
- * @deprecated Use getProviderModelConfig() for provider-aware selection
+ * Map LLMProviderType to ConfigValues provider names
  */
-export const AI_MODELS: Record<AIModelKey, AIModel> = {
-  IMAGE_TO_EXERCISE: {
-    ...MODEL_REGISTRY.IMAGE_TO_EXERCISE,
-    name: PROVIDER_MODEL_NAMES[LLMProviderType.GEMINI].IMAGE_TO_EXERCISE,
-  },
-  EXERCISE_CHAT: {
-    ...MODEL_REGISTRY.EXERCISE_CHAT,
-    name: PROVIDER_MODEL_NAMES[LLMProviderType.GEMINI].EXERCISE_CHAT,
-  },
-  PDF_TO_EXERCISE: {
-    ...MODEL_REGISTRY.PDF_TO_EXERCISE,
-    name: PROVIDER_MODEL_NAMES[LLMProviderType.GEMINI].PDF_TO_EXERCISE,
-  },
-} as const
-
-/**
- * Type for AI_MODELS values - preserved for backward compatibility
- */
-export type AIModelConfig = AIModel
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Helper Functions
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Get model registry entry for a given key
- * Useful for accessing provider-agnostic config
- */
-export function getModelRegistryEntry(modelKey: AIModelKey): Omit<AIModel, 'name'> {
-  return MODEL_REGISTRY[modelKey]
+export function mapProviderToConfig(providerType: LLMProviderType): 'gemini' | 'openaiCompatible' {
+  return providerType === LLMProviderType.GEMINI ? 'gemini' : 'openaiCompatible'
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Capability Helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
 /**
- * Get provider-specific model name for a given key and provider
+ * Capability definitions for each task
+ * These are fixed and cannot be changed via config
  */
-export function getProviderModelName(providerType: LLMProviderType, modelKey: AIModelKey): string {
-  return PROVIDER_MODEL_NAMES[providerType][modelKey]
+export const TASK_CAPABILITIES: Record<AIModelKey, string[]> = {
+  IMAGE_TO_EXERCISE: ['multimodal', 'vision'],
+  EXERCISE_CHAT: ['multimodal', 'chat'],
+  PDF_TO_EXERCISE: ['document', 'extraction'],
 }
 
 /**
  * Check if a model supports a specific capability
  */
 export function modelSupportsCapability(modelKey: AIModelKey, capability: string): boolean {
-  return MODEL_REGISTRY[modelKey].capabilities?.includes(capability) ?? false
+  return TASK_CAPABILITIES[modelKey]?.includes(capability) ?? false
 }
 
 /**
  * Get all model keys that support a specific capability
  */
 export function getModelsWithCapability(capability: string): AIModelKey[] {
-  return (Object.keys(MODEL_REGISTRY) as AIModelKey[]).filter((key) =>
-    MODEL_REGISTRY[key].capabilities?.includes(capability),
+  return (Object.keys(TASK_CAPABILITIES) as AIModelKey[]).filter((key) =>
+    TASK_CAPABILITIES[key].includes(capability),
   )
 }

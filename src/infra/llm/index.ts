@@ -32,17 +32,9 @@ export {
 
 // Model config - centralized from models.ts
 export {
-  AI_MODELS,
-  getModelNameOverride,
-  getModelRegistryEntry,
   getModelsWithCapability,
-  getProviderModelName,
-  isModelOverrideConfigured,
-  MODEL_REGISTRY,
   modelSupportsCapability,
-  PROVIDER_MODEL_NAMES,
   type AIModel,
-  type AIModelConfig,
   type AIModelKey,
 } from './models'
 
