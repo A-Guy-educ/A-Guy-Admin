@@ -123,7 +123,6 @@ export function buildDiagramPrompt(
   segment: { pageStart: number; pageEnd: number },
 ): string {
   return `${basePrompt}
-
 ## Diagram to Convert
 
 **Exercise**: ${exerciseTitle}
@@ -131,24 +130,7 @@ export function buildDiagramPrompt(
 
 **Diagram Description**:
 ${diagramDescription}
-
-## Output Format
-
-Return ONLY valid JSON (no markdown code blocks):
-{
-  "tikz": "\\begin{tikzpicture}...\\end{tikzpicture}",
-  "confidence": "low" | "medium" | "high",
-  "notes": "optional brief note about any assumptions made"
-}
-
-## Guidelines
-
-1. Create a SCHEMATIC representation - simple geometric shapes
-2. Use basic TikZ primitives: \\draw, \\node, \\filldraw
-3. Do NOT infer or add elements not described
-4. Do NOT solve or interpret the exercise
-5. If uncertain about an element, OMIT it rather than guess
-6. Prefer clarity over complexity`
+`
 }
 
 /**

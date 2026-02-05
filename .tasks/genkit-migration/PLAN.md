@@ -9,6 +9,7 @@ Replace the existing in-house LLM access layer with [Firebase Genkit](https://gi
 ## Current Architecture Summary
 
 ### LLM Layer Structure
+
 ```
 src/infra/llm/
 ├── models.ts                    # MODEL_REGISTRY, PROVIDER_MODEL_NAMES, AIModelKey
@@ -27,6 +28,7 @@ src/infra/llm/
 ```
 
 ### Configuration Hierarchy (Preserved)
+
 ```
 Priority (highest → lowest):
 1. process.env.* (LLM_PROVIDER, LLM_MODEL_OVERRIDE_*)
@@ -36,12 +38,13 @@ Priority (highest → lowest):
 ```
 
 ### Current Use Cases
-| Use Case | File | LLM Method |
-|----------|------|------------|
-| Exercise Chat | `exercise-chat-service.ts` | `generateChatCompletion` / `WithTools` |
-| Image → Exercise | `data-extractor-service.ts` | `generateMultimodalCompletion` |
-| PDF → Exercise (job) | `pdf-to-exercises-task.ts` | `generateMultimodalCompletion` × 2 |
-| Admin Chat + Tools | `endpoints/agent/chat.ts` | `generateChatCompletionWithTools` |
+
+| Use Case             | File                        | LLM Method                             |
+| -------------------- | --------------------------- | -------------------------------------- |
+| Exercise Chat        | `exercise-chat-service.ts`  | `generateChatCompletion` / `WithTools` |
+| Image → Exercise     | `data-extractor-service.ts` | `generateMultimodalCompletion`         |
+| PDF → Exercise (job) | `pdf-to-exercises-task.ts`  | `generateMultimodalCompletion` × 2     |
+| Admin Chat + Tools   | `endpoints/agent/chat.ts`   | `generateChatCompletionWithTools`      |
 
 ---
 
@@ -49,14 +52,14 @@ Priority (highest → lowest):
 
 ### Q1: Config Shape Mapping
 
-| ConfigValues Key | Genkit Equivalent | Action |
-|------------------|-------------------|--------|
-| `temperature.default` | `config.temperature` | Direct map |
-| `models.*.maxOutputTokens` | `config.maxOutputTokens` | Direct map |
-| `retry.*` | N/A (Genkit has no retry) | Keep `withRetry()` wrapper |
-| `chatSettings.defaultChatTimeoutMs` | `config.timeout` (seconds) | Convert ms → s |
-| `models.*.gemini` | `googleai/{modelName}` | Resolver prefixes |
-| `models.*.openaiCompatible` | `openai/{modelName}` | Resolver prefixes |
+| ConfigValues Key                    | Genkit Equivalent          | Action                     |
+| ----------------------------------- | -------------------------- | -------------------------- |
+| `temperature.default`               | `config.temperature`       | Direct map                 |
+| `models.*.maxOutputTokens`          | `config.maxOutputTokens`   | Direct map                 |
+| `retry.*`                           | N/A (Genkit has no retry)  | Keep `withRetry()` wrapper |
+| `chatSettings.defaultChatTimeoutMs` | `config.timeout` (seconds) | Convert ms → s             |
+| `models.*.gemini`                   | `googleai/{modelName}`     | Resolver prefixes          |
+| `models.*.openaiCompatible`         | `openai/{modelName}`       | Resolver prefixes          |
 
 **New keys needed**: None. Existing config is sufficient.
 
@@ -84,16 +87,16 @@ Genkit instance initialized once per provider type. Model selection resolved per
 'googleai/gemini-2.0-flash-001'
 
 // Resolved for OpenAI-compatible
-'openai/MiniMax-M2.1'  // with baseURL injected in plugin config
+'openai/MiniMax-M2.1' // with baseURL injected in plugin config
 ```
 
 ### Q4: Error/Retry Policy
 
-| Policy | Location | Genkit Strategy |
-|--------|----------|-----------------|
-| Retry logic | `shared/retry.ts` | **Keep** - wrap Genkit calls |
-| Retryable errors | `shared/errors.ts` | **Keep** - map Genkit errors |
-| Timeouts | ConfigValues | Pass to Genkit `timeout` option |
+| Policy           | Location           | Genkit Strategy                 |
+| ---------------- | ------------------ | ------------------------------- |
+| Retry logic      | `shared/retry.ts`  | **Keep** - wrap Genkit calls    |
+| Retryable errors | `shared/errors.ts` | **Keep** - map Genkit errors    |
+| Timeouts         | ConfigValues       | Pass to Genkit `timeout` option |
 
 ### Q5: Streaming
 
@@ -134,6 +137,7 @@ Genkit instance initialized once per provider type. Model selection resolved per
 **Goal**: Create Genkit infrastructure coexisting with current system.
 
 **New files**:
+
 ```
 src/infra/llm/genkit/
 ├── index.ts                     # Public exports
@@ -152,15 +156,15 @@ src/infra/llm/genkit/
 ```typescript
 // config-resolver.ts
 interface GenkitModelConfig {
-  model: string           // 'googleai/gemini-2.0-flash-001'
+  model: string // 'googleai/gemini-2.0-flash-001'
   temperature: number
   maxOutputTokens: number
-  timeout?: number        // seconds
+  timeout?: number // seconds
 }
 
 export async function resolveGenkitConfig(
   modelKey: AIModelKey,
-  tenantId?: string
+  tenantId?: string,
 ): Promise<GenkitModelConfig> {
   // 1. Check LLM_MODEL_OVERRIDE_* env vars
   // 2. Load ConfigValues for tenant
@@ -179,10 +183,7 @@ import { openAI } from 'genkitx-openai'
 // Cache per provider type (single provider per tenant)
 const instances = new Map<LLMProviderType, Genkit>()
 
-export async function getGenkitInstance(
-  payload: Payload,
-  tenantId?: string
-): Promise<Genkit> {
+export async function getGenkitInstance(payload: Payload, tenantId?: string): Promise<Genkit> {
   const providerType = await getProviderTypeFromEnv(payload)
 
   if (instances.has(providerType)) {
@@ -193,9 +194,8 @@ export async function getGenkitInstance(
   // BaseURL now tenant-scoped via ConfigSecrets
   const baseURL = await getOpenAICompatibleBaseUrl(payload, tenantId)
 
-  const plugins = providerType === LLMProviderType.GEMINI
-    ? [googleAI({ apiKey })]
-    : [openAI({ apiKey, baseURL })]
+  const plugins =
+    providerType === LLMProviderType.GEMINI ? [googleAI({ apiKey })] : [openAI({ apiKey, baseURL })]
 
   const instance = genkit({ plugins })
   instances.set(providerType, instance)
@@ -204,6 +204,7 @@ export async function getGenkitInstance(
 ```
 
 **Tests**:
+
 - `config-resolver.test.ts`: All ConfigValues paths, env overrides, tenant scoping
 - `genkit-instance.test.ts`: Plugin initialization, singleton behavior
 
@@ -214,17 +215,25 @@ export async function getGenkitInstance(
 **Goal**: Replace direct provider calls with Genkit `generate()`.
 
 **Files to modify**:
+
 - `src/infra/llm/services/exercise-chat-service.ts`
 - `src/infra/llm/services/data-extractor-service.ts`
 - `src/infra/llm/providers/factory.ts` (backward-compat shim)
 
 **Migration pattern**:
+
 ```typescript
 // Before
 const provider = await getLLMProvider(payload)
-const result = await provider.generateMultimodalCompletion({
-  prompt, model, attachments, timeoutMs
-}, payload)
+const result = await provider.generateMultimodalCompletion(
+  {
+    prompt,
+    model,
+    attachments,
+    timeoutMs,
+  },
+  payload,
+)
 
 // After
 const ai = await getGenkitInstance(payload)
@@ -232,19 +241,17 @@ const config = await resolveGenkitConfig('IMAGE_TO_EXERCISE', tenantId)
 const result = await withRetry(() =>
   ai.generate({
     model: config.model,
-    prompt: [
-      { media: { url: `data:${mimeType};base64,${data}` } },
-      { text: prompt }
-    ],
+    prompt: [{ media: { url: `data:${mimeType};base64,${data}` } }, { text: prompt }],
     config: {
       temperature: config.temperature,
       maxOutputTokens: config.maxOutputTokens,
-    }
-  })
+    },
+  }),
 )
 ```
 
 **Backward compatibility shim**:
+
 ```typescript
 // factory.ts - Keep getLLMProvider() working during migration
 export async function getLLMProvider(payload, config?): Promise<UnifiedLLMProvider> {
@@ -253,6 +260,7 @@ export async function getLLMProvider(payload, config?): Promise<UnifiedLLMProvid
 ```
 
 **Tests**:
+
 - Integration: Exercise chat works with Genkit backend
 - Integration: Image extraction returns same format
 - Regression: All existing tests pass
@@ -264,6 +272,7 @@ export async function getLLMProvider(payload, config?): Promise<UnifiedLLMProvid
 **Goal**: Migrate MCP tools to Genkit's tool system.
 
 **New files**:
+
 ```
 src/infra/llm/genkit/tools/
 ├── mcp-tool-adapter.ts          # MCPTool → Genkit defineTool()
@@ -271,24 +280,30 @@ src/infra/llm/genkit/tools/
 ```
 
 **Files to modify**:
+
 - `src/server/payload/endpoints/agent/chat.ts`
 
 **Tool conversion**:
+
 ```typescript
 import { defineTool } from 'genkit'
 import { z } from 'zod'
 
 export function mcpToolToGenkitTool(mcpTool: MCPTool, executor: ToolExecutor) {
-  return defineTool({
-    name: mcpTool.name,
-    description: mcpTool.description,
-    inputSchema: convertToZod(mcpTool.inputSchema),
-    outputSchema: z.string(),
-  }, async (input) => executor(mcpTool.name, input))
+  return defineTool(
+    {
+      name: mcpTool.name,
+      description: mcpTool.description,
+      inputSchema: convertToZod(mcpTool.inputSchema),
+      outputSchema: z.string(),
+    },
+    async (input) => executor(mcpTool.name, input),
+  )
 }
 ```
 
 **Tests**:
+
 - Unit: MCP tool → Genkit tool conversion
 - Integration: Admin chat with tools end-to-end
 
@@ -299,6 +314,7 @@ export function mcpToolToGenkitTool(mcpTool: MCPTool, executor: ToolExecutor) {
 **Goal**: Use Genkit Flows ONLY in PDF conversion background jobs.
 
 **New files**:
+
 ```
 src/infra/llm/genkit/flows/
 ├── index.ts
@@ -307,9 +323,11 @@ src/infra/llm/genkit/flows/
 ```
 
 **Files to modify**:
+
 - `src/server/payload/jobs/pdf-to-exercises-task.ts`
 
 **Flow definition**:
+
 ```typescript
 // pdf-extraction-flow.ts
 import { z } from 'zod'
@@ -336,11 +354,12 @@ export const pdfExtractionFlow = ai.defineFlow(
       config,
     })
     return parseExtractorResponseText(result.text)
-  }
+  },
 )
 ```
 
 **Job integration** (Payload Jobs remains scheduler):
+
 ```typescript
 // pdf-to-exercises-task.ts
 import { pdfExtractionFlow, pdfVerificationFlow } from '@/infra/llm/genkit/flows'
@@ -359,11 +378,14 @@ for (const exercise of exercises) {
   if (!verification.valid) {
     verification = await pdfVerificationFlow({ exercise, verifierPrompt }) // retry once
   }
-  if (!verification.valid) { skip() }
+  if (!verification.valid) {
+    skip()
+  }
 }
 ```
 
 **Tests**:
+
 - Unit: Flow schemas validate correctly
 - Integration: PDF extraction flow produces valid exercises
 - Integration: Full job runs with flows
@@ -376,12 +398,14 @@ for (const exercise of exercises) {
 **Goal**: Remove deprecated code, add observability.
 
 **Files to deprecate** (not delete yet):
+
 - `src/infra/llm/providers/gemini/gemini.provider.ts`
 - `src/infra/llm/providers/gemini/gemini.client.ts`
 - `src/infra/llm/providers/openai-compatible/openai.provider.ts`
 - `src/infra/llm/providers/openai-compatible/openai.client.ts`
 
 **Optimizations**:
+
 1. Plugin caching per provider type
 2. Config resolution caching with TTL
 3. Genkit telemetry for observability
@@ -391,20 +415,23 @@ for (const exercise of exercises) {
 ## Test Strategy
 
 ### Unit Tests
-| Component | File | Coverage |
-|-----------|------|----------|
-| Config Resolver | `config-resolver.test.ts` | ConfigValues mapping, env overrides, tenant scoping |
-| Model Resolution | `model-resolver.test.ts` | Priority order, provider prefixes, fallbacks |
-| Error Adapter | `error-adapter.test.ts` | Genkit → LLMError mapping |
+
+| Component        | File                      | Coverage                                            |
+| ---------------- | ------------------------- | --------------------------------------------------- |
+| Config Resolver  | `config-resolver.test.ts` | ConfigValues mapping, env overrides, tenant scoping |
+| Model Resolution | `model-resolver.test.ts`  | Priority order, provider prefixes, fallbacks        |
+| Error Adapter    | `error-adapter.test.ts`   | Genkit → LLMError mapping                           |
 
 ### Integration Tests
-| Scenario | File | Assertions |
-|----------|------|------------|
-| E2E model call | `genkit-integration.int.spec.ts` | Response format, timing |
-| PDF conversion flow | `pdf-flow.int.spec.ts` | Extraction, verification |
-| Tool calling | `tool-calling.int.spec.ts` | MCP tools, execution loop |
+
+| Scenario            | File                             | Assertions                |
+| ------------------- | -------------------------------- | ------------------------- |
+| E2E model call      | `genkit-integration.int.spec.ts` | Response format, timing   |
+| PDF conversion flow | `pdf-flow.int.spec.ts`           | Extraction, verification  |
+| Tool calling        | `tool-calling.int.spec.ts`       | MCP tools, execution loop |
 
 ### Regression Tests
+
 - All tests in `tests/int/*.int.spec.ts` must pass
 - All tests in `tests/unit/*.test.ts` must pass
 - Response format parity
@@ -415,6 +442,7 @@ for (const exercise of exercises) {
 ## Critical Files
 
 ### To Create
+
 - `src/infra/llm/genkit/config-resolver.ts`
 - `src/infra/llm/genkit/genkit-instance.ts`
 - `src/infra/llm/genkit/plugins/gemini-plugin.ts`
@@ -424,6 +452,7 @@ for (const exercise of exercises) {
 - `src/infra/llm/genkit/flows/pdf-verification-flow.ts`
 
 ### To Modify
+
 - `src/infra/llm/providers/factory.ts` - backward-compat shim
 - `src/infra/llm/services/exercise-chat-service.ts` - migrate to Genkit
 - `src/infra/llm/services/data-extractor-service.ts` - migrate to Genkit
@@ -431,10 +460,12 @@ for (const exercise of exercises) {
 - `src/server/payload/endpoints/agent/chat.ts` - Genkit tool calling
 
 ### To Deprecate (Phase 5)
+
 - `src/infra/llm/providers/gemini/*.ts`
 - `src/infra/llm/providers/openai-compatible/*.ts`
 
 ### ConfigSecrets Addition
+
 - Add `OPENAI_COMPATIBLE_BASE_URL` as a tenant-scoped secret key
 
 ---
@@ -469,6 +500,7 @@ pnpm genkit start -- pnpm dev
 ```
 
 The DevUI provides:
+
 - Visual flow execution traces
 - Input/output inspection
 - Model call debugging

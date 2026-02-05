@@ -11,6 +11,7 @@
 Add a second LLM pass for diagram-to-TikZ conversion in the PDF→Exercises pipeline. Runs at segment-level post-processing, batch processes all diagram-containing exercises, fails gracefully without breaking the pipeline.
 
 **Key Decisions**:
+
 - Run location: End of segment (per-segment batch)
 - Model config: Reuse `PDF_TO_EXERCISE` (no new model key)
 - Prompt source: Select from Prompts collection (new `diagram_generator` usage type)
@@ -131,7 +132,7 @@ export interface DiagramBlockInfo {
   exerciseIndex: number
   blockIndex: number
   blockId: string
-  description: string  // The "Diagram:" block value (without prefix)
+  description: string // The "Diagram:" block value (without prefix)
 }
 
 export interface DiagramPassContext {
@@ -139,7 +140,7 @@ export interface DiagramPassContext {
   segment: { pageStart: number; pageEnd: number }
   diagramPrompt: string
   exercises: EnrichedExercise[]
-  req: any  // Transaction safety - pass through for nested operations
+  req: any // Transaction safety - pass through for nested operations
 }
 ```
 
@@ -148,6 +149,7 @@ export interface DiagramPassContext {
 **File**: `src/server/payload/jobs/types.ts`
 
 Add to `JobOutput` interface:
+
 ```typescript
 export interface PdfToExercisesOutput {
   // Existing fields...
@@ -193,7 +195,7 @@ export interface SegmentResult {
 
 **File**: `src/server/services/exercise-conversion/diagram-pass.ts` (NEW)
 
-```typescript
+````typescript
 /**
  * Diagram Pass - TikZ Generation for PDF Exercises
  *
@@ -218,10 +220,7 @@ export function detectDiagramBlocks(exercises: EnrichedExercise[]): DiagramBlock
     const exercise = exercises[exIdx]
     for (let blkIdx = 0; blkIdx < exercise.blocks.length; blkIdx++) {
       const block = exercise.blocks[blkIdx]
-      if (
-        block.type === 'rich_text' &&
-        block.value?.startsWith(DIAGRAM_PREFIX)
-      ) {
+      if (block.type === 'rich_text' && block.value?.startsWith(DIAGRAM_PREFIX)) {
         diagrams.push({
           exerciseIndex: exIdx,
           blockIndex: blkIdx,
@@ -242,8 +241,8 @@ export function detectDiagramBlocks(exercises: EnrichedExercise[]): DiagramBlock
 export function parseDiagramResponse(responseText: string): DiagramPassResult | null {
   try {
     // Extract JSON from response (handle markdown code blocks)
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/) ||
-                      responseText.match(/```json\n([\s\S]*?)\n```/)
+    const jsonMatch =
+      responseText.match(/\{[\s\S]*\}/) || responseText.match(/```json\n([\s\S]*?)\n```/)
     const jsonStr = jsonMatch?.[1] || jsonMatch?.[0] || responseText
 
     const parsed = JSON.parse(jsonStr)
@@ -255,9 +254,7 @@ export function parseDiagramResponse(responseText: string): DiagramPassResult | 
 
     // Validate confidence if present
     const validConfidence = ['low', 'medium', 'high']
-    const confidence = validConfidence.includes(parsed.confidence)
-      ? parsed.confidence
-      : 'low'
+    const confidence = validConfidence.includes(parsed.confidence) ? parsed.confidence : 'low'
 
     return {
       tikz: parsed.tikz,
@@ -303,14 +300,18 @@ export function createDiagramMetrics(): DiagramPassMetrics {
     latencyMs: 0,
   }
 }
-```
+````
 
 #### Task 2.2: Create Diagram Pass LLM Caller
 
 **File**: `src/server/services/exercise-conversion/diagram-pass.ts` (continued)
 
 ```typescript
-import { getLLMProvider, getProviderTypeFromEnv, getProviderModelConfig } from '@/infra/llm/providers/factory'
+import {
+  getLLMProvider,
+  getProviderTypeFromEnv,
+  getProviderModelConfig,
+} from '@/infra/llm/providers/factory'
 import type { Payload } from 'payload'
 
 /**
@@ -398,7 +399,7 @@ export async function callDiagramGenerator(
  */
 export async function runDiagramPass(
   payload: Payload,
-  req: any,  // Transaction safety - pass through for nested operations (per AGENTS.md)
+  req: any, // Transaction safety - pass through for nested operations (per AGENTS.md)
   context: {
     attachments: Array<{ data: string; mimeType: string }>
     segment: { pageStart: number; pageEnd: number }
@@ -415,15 +416,17 @@ export async function runDiagramPass(
   metrics.detected = diagramBlocks.length
 
   if (diagramBlocks.length === 0) {
-    metrics.skipped = 1  // Segment skipped (no diagrams)
+    metrics.skipped = 1 // Segment skipped (no diagrams)
     return metrics
   }
 
-  console.log(`[DiagramPass] Segment ${segment.pageStart}-${segment.pageEnd}: Found ${diagramBlocks.length} diagram(s)`)
+  console.log(
+    `[DiagramPass] Segment ${segment.pageStart}-${segment.pageEnd}: Found ${diagramBlocks.length} diagram(s)`,
+  )
 
   // Step 2: Process each diagram
   // Track which exercises have had blocks inserted (affects subsequent indices)
-  const insertionOffsets = new Map<number, number>()  // exerciseIndex -> offset
+  const insertionOffsets = new Map<number, number>() // exerciseIndex -> offset
 
   for (const diagram of diagramBlocks) {
     metrics.attempted++
@@ -433,12 +436,7 @@ export async function runDiagramPass(
     const adjustedBlockIndex = diagram.blockIndex + offset
 
     // Build prompt for this specific diagram
-    const prompt = buildDiagramPrompt(
-      diagramPrompt,
-      diagram.description,
-      exercise.title,
-      segment,
-    )
+    const prompt = buildDiagramPrompt(diagramPrompt, diagram.description, exercise.title, segment)
 
     // Call LLM
     const result = await callDiagramGenerator(payload, attachments, prompt)
@@ -451,7 +449,9 @@ export async function runDiagramPass(
       insertionOffsets.set(diagram.exerciseIndex, offset + 1)
 
       metrics.succeeded++
-      console.log(`[DiagramPass] Generated TikZ for "${exercise.title}" (confidence: ${result.confidence})`)
+      console.log(
+        `[DiagramPass] Generated TikZ for "${exercise.title}" (confidence: ${result.confidence})`,
+      )
     } else {
       metrics.failed++
       console.warn(`[DiagramPass] Failed to generate TikZ for "${exercise.title}"`)
@@ -461,7 +461,9 @@ export async function runDiagramPass(
 
   metrics.latencyMs = Date.now() - startTime
 
-  console.log(`[DiagramPass] Segment complete: ${metrics.succeeded}/${metrics.attempted} succeeded in ${metrics.latencyMs}ms`)
+  console.log(
+    `[DiagramPass] Segment complete: ${metrics.succeeded}/${metrics.attempted} succeeded in ${metrics.latencyMs}ms`,
+  )
 
   return metrics
 }
@@ -519,7 +521,7 @@ async function processSegmentWithMultimodal(
     segment: { pageStart: number; pageEnd: number }
     extractorPrompt: string
     verifierPrompt: string
-    diagramPrompt: string | null  // NEW
+    diagramPrompt: string | null // NEW
     output: any
     tenantId: string
   },
@@ -530,14 +532,15 @@ async function processSegmentWithMultimodal(
   let diagramMetrics = createDiagramMetrics()
 
   if (diagramPrompt && validExercises.length > 0) {
-    diagramMetrics = await runDiagramPass(payload, req, {  // Pass req for transaction safety
+    diagramMetrics = await runDiagramPass(payload, req, {
+      // Pass req for transaction safety
       attachments,
       segment,
       diagramPrompt,
       exercises: validExercises,
     })
   } else if (!diagramPrompt) {
-    diagramMetrics.skipped = validExercises.length  // All skipped - no prompt configured
+    diagramMetrics.skipped = validExercises.length // All skipped - no prompt configured
   }
 
   return { exercises: validExercises, diagramMetrics }
@@ -584,7 +587,7 @@ output.segments.push({
   // existing...
   debug: {
     proposedIdempotencyKeys,
-    diagramPass: diagramMetrics,  // NEW
+    diagramPass: diagramMetrics, // NEW
   },
 })
 ```
@@ -735,9 +738,7 @@ describe('Diagram Pass', () => {
         {
           title: 'No Diagram',
           orderInSegment: 1,
-          blocks: [
-            { id: 'b1', type: 'rich_text', value: 'Just text' },
-          ],
+          blocks: [{ id: 'b1', type: 'rich_text', value: 'Just text' }],
         },
       ]
 
@@ -749,9 +750,7 @@ describe('Diagram Pass', () => {
         {
           title: 'Ex1',
           orderInSegment: 1,
-          blocks: [
-            { id: 'b1', type: 'rich_text', value: 'Diagram: Circle' },
-          ],
+          blocks: [{ id: 'b1', type: 'rich_text', value: 'Diagram: Circle' }],
         },
         {
           title: 'Ex2',
@@ -813,7 +812,7 @@ describe('Diagram Pass', () => {
       expect(exercise.blocks).toHaveLength(3)
       expect(exercise.blocks[1].type).toBe('latex')
       expect(exercise.blocks[1].latex).toBe('\\begin{tikzpicture}\\end{tikzpicture}')
-      expect(exercise.blocks[2].id).toBe('b2')  // Original block shifted
+      expect(exercise.blocks[2].id).toBe('b2') // Original block shifted
     })
   })
 })
@@ -825,7 +824,10 @@ describe('Diagram Pass', () => {
 
 ```typescript
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { runDiagramPass, createDiagramMetrics } from '@/server/services/exercise-conversion/diagram-pass'
+import {
+  runDiagramPass,
+  createDiagramMetrics,
+} from '@/server/services/exercise-conversion/diagram-pass'
 
 // Mock LLM provider
 vi.mock('@/infra/llm/providers/factory', () => ({
@@ -835,12 +837,14 @@ vi.mock('@/infra/llm/providers/factory', () => ({
     }),
   }),
   getProviderTypeFromEnv: vi.fn().mockResolvedValue('GEMINI'),
-  getProviderModelConfig: vi.fn().mockReturnValue({ name: 'test', temperature: 0.1, maxOutputTokens: 8192 }),
+  getProviderModelConfig: vi
+    .fn()
+    .mockReturnValue({ name: 'test', temperature: 0.1, maxOutputTokens: 8192 }),
 }))
 
 describe('Diagram Pass Integration', () => {
   const mockPayload = {} as any
-  const mockReq = {} as any  // Transaction safety
+  const mockReq = {} as any // Transaction safety
   const mockAttachments = [{ data: 'base64pdf', mimeType: 'application/pdf' }]
   const mockSegment = { pageStart: 1, pageEnd: 2 }
   const mockPrompt = 'Generate TikZ'
@@ -879,9 +883,7 @@ describe('Diagram Pass Integration', () => {
       {
         title: 'Text Only',
         orderInSegment: 1,
-        blocks: [
-          { id: 'b1', type: 'rich_text', value: 'Just some text' },
-        ],
+        blocks: [{ id: 'b1', type: 'rich_text', value: 'Just some text' }],
       },
     ]
 
@@ -894,7 +896,7 @@ describe('Diagram Pass Integration', () => {
 
     expect(metrics.detected).toBe(0)
     expect(metrics.skipped).toBe(1)
-    expect(exercises[0].blocks).toHaveLength(1)  // Unchanged
+    expect(exercises[0].blocks).toHaveLength(1) // Unchanged
   })
 })
 ```
@@ -915,17 +917,17 @@ Document how to create/configure diagram generator prompts in the Prompts collec
 
 ## File Change Summary
 
-| File | Change Type | Description |
-|------|-------------|-------------|
-| `src/server/payload/collections/Prompts.ts` | MODIFY | Add `diagram_generator` usage option |
-| `src/server/services/exercise-conversion/diagram-pass.types.ts` | NEW | Type definitions |
-| `src/server/services/exercise-conversion/diagram-pass.ts` | NEW | Core implementation (with `req` param) |
-| `src/server/payload/jobs/types.ts` | MODIFY | Extend output types |
-| `src/server/payload/jobs/pdf-to-exercises-task.ts` | MODIFY | Integrate diagram pass |
-| `src/server/payload/services/exercise-conversion-service.ts` | MODIFY | Include diagram prompt in queue |
-| `src/infra/llm/prompts/diagram-generator.ts` | NEW | Default prompt |
-| `tests/int/diagram-pass.int.spec.ts` | NEW | Unit tests |
-| `tests/int/diagram-pass-integration.int.spec.ts` | NEW | Integration tests |
+| File                                                            | Change Type | Description                            |
+| --------------------------------------------------------------- | ----------- | -------------------------------------- |
+| `src/server/payload/collections/Prompts.ts`                     | MODIFY      | Add `diagram_generator` usage option   |
+| `src/server/services/exercise-conversion/diagram-pass.types.ts` | NEW         | Type definitions                       |
+| `src/server/services/exercise-conversion/diagram-pass.ts`       | NEW         | Core implementation (with `req` param) |
+| `src/server/payload/jobs/types.ts`                              | MODIFY      | Extend output types                    |
+| `src/server/payload/jobs/pdf-to-exercises-task.ts`              | MODIFY      | Integrate diagram pass                 |
+| `src/server/payload/services/exercise-conversion-service.ts`    | MODIFY      | Include diagram prompt in queue        |
+| `src/infra/llm/prompts/diagram-generator.ts`                    | NEW         | Default prompt                         |
+| `tests/int/diagram-pass.int.spec.ts`                            | NEW         | Unit tests                             |
+| `tests/int/diagram-pass-integration.int.spec.ts`                | NEW         | Integration tests                      |
 
 ---
 
@@ -934,6 +936,7 @@ Document how to create/configure diagram generator prompts in the Prompts collec
 ### Step 1: Feature Flag (Optional)
 
 If desired, add to SystemParams:
+
 ```typescript
 pdf_conversion_diagram_pass_enabled: boolean (default: false)
 ```
@@ -945,6 +948,7 @@ Create initial `diagram_generator` prompt in Prompts collection for test tenant.
 ### Step 3: Test on Single Tenant
 
 Run conversion on test PDF with diagrams, verify:
+
 - Diagrams detected correctly
 - TikZ generated and inserted
 - Metrics recorded in job output
@@ -975,17 +979,19 @@ Remove feature flag or enable for all tenants.
 
 ```json
 {
-  "segments": [{
-    "debug": {
-      "diagramPass": {
-        "detected": 2,
-        "attempted": 2,
-        "succeeded": 2,
-        "failed": 0,
-        "latencyMs": 1500
+  "segments": [
+    {
+      "debug": {
+        "diagramPass": {
+          "detected": 2,
+          "attempted": 2,
+          "succeeded": 2,
+          "failed": 0,
+          "latencyMs": 1500
+        }
       }
     }
-  }]
+  ]
 }
 ```
 
@@ -1024,6 +1030,7 @@ The following items are intentionally deferred to V1.1 for simplicity:
 **Deferred**: Parallel `Promise.all()` for diagrams within same exercise
 
 **Rationale**:
+
 - Sequential is simpler to debug
 - LLM rate limits could cause parallel failures
 - Insertion offset tracking is complex with parallel mutations
@@ -1035,14 +1042,15 @@ The following items are intentionally deferred to V1.1 for simplicity:
 **Deferred**: Optional `pdf_conversion_diagram_min_confidence` SystemParam
 
 **Future implementation**:
+
 ```typescript
 // In system-params.ts (V1.1)
-pdf_conversion_diagram_min_confidence: 'low' | 'medium' | 'high' | null  // null = always insert
+pdf_conversion_diagram_min_confidence: 'low' | 'medium' | 'high' | null // null = always insert
 
 // In diagram-pass.ts (V1.1)
 if (minConfidence && confidenceLevel < minConfidence) {
   metrics.skippedLowConfidence++
-  continue  // Don't insert
+  continue // Don't insert
 }
 ```
 
