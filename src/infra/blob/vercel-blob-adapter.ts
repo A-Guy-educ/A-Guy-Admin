@@ -352,15 +352,25 @@ export function isVercelBlobUrl(url: string): boolean {
  * Uses VERCEL_PROJECT_PRODUCTION_URL in production, localhost for development
  */
 export async function getExternalStorageUrl(): Promise<string> {
+  const vercelEnv = process.env.VERCEL
+  const vercelProdEnv = process.env.VERCEL_ENV
+  const prodUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL
+
+  console.log(
+    `[getExternalStorageUrl] VERCEL=${vercelEnv}, VERCEL_ENV=${vercelProdEnv}, VERCEL_PROJECT_PRODUCTION_URL=${prodUrl}`,
+  )
+
   // Check for production environment
   if (process.env.VERCEL === '1' && process.env.VERCEL_ENV === 'production') {
     // Production: use the production URL
-    const prodUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL
     if (prodUrl) {
-      return `https://${prodUrl}`
+      const url = `https://${prodUrl}`
+      console.log(`[getExternalStorageUrl] returning production URL: ${url}`)
+      return url
     }
   }
   // Development/other: use localhost
+  console.log(`[getExternalStorageUrl] returning localhost URL`)
   return 'http://localhost:3000'
 }
 

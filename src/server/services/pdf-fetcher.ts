@@ -74,12 +74,16 @@ export async function getPdfBufferFromBlob(
 
   let pdfBuffer: Buffer
 
+  // Debug: log the URL being fetched
+  console.log(`[pdf-fetcher] media.url=${media.url}, isVercelBlobUrl=${isVercelBlobUrl(media.url)}`)
+
   if (isVercelBlobUrl(media.url)) {
     // Vercel Blob URL - use adapter's optimized function
     pdfBuffer = await getPdfBufferFromUrl(media.url)
   } else {
     // Payload API endpoint or relative URL - use generic HTTP fetch with auth headers
     const normalizedUrl = await normalizeToAbsoluteUrl(media.url)
+    console.log(`[pdf-fetcher] normalizedUrl=${normalizedUrl}`)
 
     // Build auth headers from request if provided
     const headers: Record<string, string> = {}
