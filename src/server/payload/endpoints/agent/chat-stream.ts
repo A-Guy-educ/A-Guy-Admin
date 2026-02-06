@@ -15,7 +15,6 @@
 import { streamChatWithExerciseHelper } from '@/infra/llm/services/exercise-chat-service'
 import { logger } from '@/infra/utils/logger'
 import { isUsersCollectionUser } from '@/server/payload/access/isUsersCollectionUser'
-import { AccountRole } from '@/server/payload/collections/Users/roles'
 import type { PayloadRequest } from 'payload'
 import { z } from 'zod'
 import { scheduleMemoryExtraction, scheduleSummaryMaintenance } from './chat/background-tasks'
@@ -68,10 +67,8 @@ export async function agentChatStream(
     const validated: z.infer<typeof chatRequestSchema> = parseResult.data
 
     // 3) Check if admin mode - streaming doesn't support admin mode
-    const isAdmin = (req.user.role as AccountRole) === AccountRole.Admin
-    const adminMode = isAdmin && validated.adminMode === true
-
-    if (adminMode) {
+    // Reject adminMode regardless of user role (streaming doesn't support it)
+    if (validated.adminMode === true) {
       return Response.json(
         { error: 'Admin mode is not supported in streaming mode' },
         { status: 400 },
