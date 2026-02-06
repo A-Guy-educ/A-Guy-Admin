@@ -9,10 +9,9 @@ const NEXT_PUBLIC_SERVER_URL = process.env.VERCEL_PROJECT_PRODUCTION_URL
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Externalize packages that have runtime dependencies on native modules
-  // pdfjs-dist: worker paths work correctly when loaded from node_modules
-  // require-in-the-middle: OpenTelemetry instrumentation dependency that needs node_modules access
-  serverExternalPackages: ['pdfjs-dist', 'require-in-the-middle'],
+  // Externalize pdfjs-dist to avoid bundled worker path issues in server contexts
+  // This allows pdfjs-dist to load from node_modules at runtime, where worker paths work correctly
+  serverExternalPackages: ['pdfjs-dist', 'require-in-the-middle', 'import-in-the-middle'],
   images: {
     remotePatterns: [
       ...[NEXT_PUBLIC_SERVER_URL /* 'https://example.com' */].map((item) => {
