@@ -22,13 +22,13 @@
 
 ## File Locations
 
-| Requirement | File |
-|------------|------|
-| FR-API-1..7 | `src/app/api/health/route.ts` |
-| FR-UI-1 | `src/components/ui/HealthBadge.tsx` |
-| FR-UI-2-4 | `src/app/(frontend)/api-status/page.tsx` |
-| FR-TEST-1 | `tests/int/health.api.int.spec.ts` |
-| FR-TEST-2 | `tests/int/health-badge.int.spec.ts` |
+| Requirement | File                                     |
+| ----------- | ---------------------------------------- |
+| FR-API-1..7 | `src/app/api/health/route.ts`            |
+| FR-UI-1     | `src/components/ui/HealthBadge.tsx`      |
+| FR-UI-2-4   | `src/app/(frontend)/api-status/page.tsx` |
+| FR-TEST-1   | `tests/int/health.api.int.spec.ts`       |
+| FR-TEST-2   | `tests/int/health-badge.int.spec.ts`     |
 
 ## Git Branch
 
@@ -39,11 +39,13 @@ feature/pipe-001-health-endpoint-badge
 ## Dependencies & Prerequisites
 
 ### Critical
+
 - Existing consumers of `/api/health` (playwright.config.ts, docs) expect 200 response
 - `git` CLI must be available for `git rev-parse HEAD` fallback
 - `package.json` must have `payload` dependency and `version` field
 
 ### Testing
+
 - Stub `process.env.GIT_SHA` in tests for determinism
 - Use `vi.stubGlobal` to mock fetch for UI tests
 - Follow existing patterns in `tests/unit/components/` and `tests/int/`
