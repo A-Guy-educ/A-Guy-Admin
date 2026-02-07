@@ -1,4 +1,4 @@
-import { HealthBadge } from '@/components/ui/HealthBadge'
+import { HealthBadge } from '@/ui/web/components/HealthBadge'
 
 export default function ApiStatusPage() {
   return (

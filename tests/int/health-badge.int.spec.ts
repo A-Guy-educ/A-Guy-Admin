@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React from 'react'
-import { HealthBadge } from '@/components/ui/HealthBadge'
+import { HealthBadge } from '@/ui/web/components/HealthBadge'
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
