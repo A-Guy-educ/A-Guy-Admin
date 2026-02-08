@@ -190,7 +190,18 @@
     "trigonometryFormulas": "Trigonometry",
     "formulaSubtitle": "Helper Formulas",
     "notesSubtitle": "Personal Notes",
-    "notesPlaceholder": "Add your notes here..."
+    "notesPlaceholder": "Add your notes here...",
+    "selectBadge": "Select",
+    "of": "of",
+    "exercisesPagerIntroDescription": "This lesson contains {count} exercises. Let's begin!",
+    "exercisesPagerStart": "Start",
+    "exercisesPagerCompletedTitle": "Great Work!",
+    "exercisesPagerCompletedDescription": "You've completed all exercises for this lesson.",
+    "exercisesPagerComplete": "Complete",
+    "exercisesPagerPrev": "Previous",
+    "exercisesPagerNext": "Next",
+    "exercisesPagerIntro": "Intro",
+    "exercisesPagerCompleted": "Completed"
   },
   "homepage": {
     "nav": {

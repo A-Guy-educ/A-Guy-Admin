@@ -190,7 +190,18 @@
     "trigonometryFormulas": "טריגונומטריה",
     "formulaSubtitle": "נוסחאות עזר",
     "notesSubtitle": "הערות אישיות",
-    "notesPlaceholder": "הוסף הערות כאן..."
+    "notesPlaceholder": "הוסף הערות כאן...",
+    "selectBadge": "בחירה",
+    "of": "מתוך",
+    "exercisesPagerIntroDescription": "השיעור מכיל {count} תרגילים. בואו נתחיל!",
+    "exercisesPagerStart": "התחל",
+    "exercisesPagerCompletedTitle": "עבודה מצוינת!",
+    "exercisesPagerCompletedDescription": "השלמת את כל התרגילים בשיעור זה.",
+    "exercisesPagerComplete": "סיים",
+    "exercisesPagerPrev": "הקודם",
+    "exercisesPagerNext": "הבא",
+    "exercisesPagerIntro": "פתיחה",
+    "exercisesPagerCompleted": "הושלם"
   },
   "homepage": {
     "nav": {
