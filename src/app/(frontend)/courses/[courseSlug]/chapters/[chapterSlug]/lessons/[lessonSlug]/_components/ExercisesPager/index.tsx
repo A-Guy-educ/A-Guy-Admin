@@ -16,11 +16,11 @@ interface ExercisesPagerProps {
   backUrl: string
 }
 
-type PageType = 'intro' | 'exercise' | 'completed'
+type PageType = 'intro' | 'exercise' | 'outro'
 
 interface PageState {
   type: PageType
-  /** 0 = intro, 1..N = exercise index, N+1 = completed */
+  /** 0 = intro, 1..N = exercise index, N+1 = outro */
   pageNumber: number
   /** For exercise pages, the exercise being displayed */
   exerciseIndex?: number
@@ -35,14 +35,14 @@ export function ExercisesPager({ exercises, lessonTitle, backUrl }: ExercisesPag
   })
 
   const totalExercises = exercises.length
-  const totalPages = totalExercises + 2 // intro + exercises + completed
+  const totalPages = totalExercises + 2 // intro + exercises + outro
   const progressPercent = ((pageState.pageNumber + 1) / totalPages) * 100
 
   const handleNext = () => {
     const nextPage = pageState.pageNumber + 1
 
     if (nextPage === totalPages - 1) {
-      setPageState({ type: 'completed', pageNumber: nextPage })
+      setPageState({ type: 'outro', pageNumber: nextPage })
     } else if (nextPage > 0 && nextPage < totalPages - 1) {
       setPageState({
         type: 'exercise',
@@ -169,14 +169,15 @@ export function ExercisesPager({ exercises, lessonTitle, backUrl }: ExercisesPag
 
               {/* Navigation */}
               <div className="flex justify-between items-center pt-4">
-                <button
+                <Button
+                  variant="ghost"
                   onClick={handlePrev}
                   disabled={!canGoPrev}
-                  className="text-muted-foreground text-sm hover:text-foreground transition-colors duration-300 flex items-center gap-1.5 disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="text-muted-foreground text-sm hover:text-foreground transition-colors duration-300 gap-1.5"
                 >
                   <ChevronRight className="w-4 h-4 rtl:rotate-0 ltr:rotate-180" />{' '}
                   {t('exercisesPagerPrev')}
-                </button>
+                </Button>
                 <Button
                   onClick={handleNext}
                   disabled={!canGoNext}
@@ -189,8 +190,8 @@ export function ExercisesPager({ exercises, lessonTitle, backUrl }: ExercisesPag
             </div>
           )}
 
-          {/* ── Completed / Outro Page ── */}
-          {pageState.type === 'completed' && (
+          {/* ── Outro Page ── */}
+          {pageState.type === 'outro' && (
             <div className="space-y-8">
               {/* Header */}
               <header className="text-center">
@@ -232,13 +233,14 @@ export function ExercisesPager({ exercises, lessonTitle, backUrl }: ExercisesPag
 
               {/* Back link */}
               <div className="flex justify-center pt-4">
-                <button
+                <Button
+                  variant="ghost"
                   onClick={handlePrev}
-                  className="text-muted-foreground text-sm hover:text-foreground transition-colors duration-300 flex items-center gap-1.5"
+                  className="text-muted-foreground text-sm hover:text-foreground transition-colors duration-300 gap-1.5"
                 >
                   <ChevronRight className="w-4 h-4 rtl:rotate-0 ltr:rotate-180" />{' '}
                   {t('exercisesPagerPrev')}
-                </button>
+                </Button>
               </div>
             </div>
           )}
