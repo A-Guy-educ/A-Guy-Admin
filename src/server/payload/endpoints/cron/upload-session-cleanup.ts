@@ -29,85 +29,86 @@ async function cleanupUploadSessions({
 
   const now = new Date().toISOString()
 
-  try {
-    const { docs: expiredSessions } = await payload.find({
-      collection: 'upload-sessions',
-      where: {
-        and: [
-          {
-            or: [
-              { status: { equals: 'initiated' } },
-              { status: { equals: 'uploaded' } },
-              { status: { equals: 'failed' } },
-              { status: { equals: 'cancelled' } },
-            ],
-          },
-          {
-            expiresAt: { less_than_equal: now },
-          },
-        ],
-      },
-      limit: 100,
-      overrideAccess: true,
-    })
+  let hasMore = true
+  while (hasMore) {
+    try {
+      const { docs: expiredSessions } = await payload.find({
+        collection: 'upload-sessions',
+        where: {
+          and: [
+            {
+              or: [
+                { status: { equals: 'initiated' } },
+                { status: { equals: 'uploaded' } },
+                { status: { equals: 'failed' } },
+                { status: { equals: 'cancelled' } },
+              ],
+            },
+            {
+              expiresAt: { less_than_equal: now },
+            },
+          ],
+        },
+        limit: 100,
+        overrideAccess: true,
+      })
 
-    reqLogger.info(
-      { count: expiredSessions.length },
-      '[upload-session-cleanup] Found expired sessions',
-    )
+      hasMore = expiredSessions.length === 100
 
-    for (const session of expiredSessions) {
-      try {
-        if (session.blobUrl) {
-          try {
-            const { del } = await import('@vercel/blob')
-            await del(session.blobUrl)
-            reqLogger.info(
-              { sessionId: session.id, blobUrl: session.blobUrl },
-              '[upload-session-cleanup] Deleted blob',
-            )
-          } catch (blobError) {
-            const errorMessage = blobError instanceof Error ? blobError.message : String(blobError)
-            reqLogger.warn(
-              { sessionId: session.id, error: errorMessage },
-              '[upload-session-cleanup] Failed to delete blob',
-            )
-            result.failedDeletions++
-            result.errors.push(`Session ${session.id}: blob delete failed - ${errorMessage}`)
+      reqLogger.info(
+        { count: expiredSessions.length },
+        '[upload-session-cleanup] Found expired sessions',
+      )
+
+      for (const session of expiredSessions) {
+        try {
+          if (session.blobUrl) {
+            try {
+              const { del } = await import('@vercel/blob')
+              await del(session.blobUrl)
+              reqLogger.info(
+                { sessionId: session.id, blobUrl: session.blobUrl },
+                '[upload-session-cleanup] Deleted blob',
+              )
+            } catch (blobError) {
+              const errorMessage =
+                blobError instanceof Error ? blobError.message : String(blobError)
+              reqLogger.warn(
+                { sessionId: session.id, error: errorMessage },
+                '[upload-session-cleanup] Failed to delete blob',
+              )
+              result.failedDeletions++
+              result.errors.push(`Session ${session.id}: blob delete failed - ${errorMessage}`)
+            }
           }
+
+          await payload.delete({
+            collection: 'upload-sessions',
+            id: session.id,
+            overrideAccess: true,
+          })
+
+          result.deletedSessions++
+          reqLogger.info({ sessionId: session.id }, '[upload-session-cleanup] Deleted session')
+        } catch (sessionError) {
+          const errorMessage =
+            sessionError instanceof Error ? sessionError.message : String(sessionError)
+          reqLogger.error(
+            { sessionId: session.id, error: errorMessage },
+            '[upload-session-cleanup] Failed to delete session',
+          )
+          result.errors.push(`Session ${session.id}: delete failed - ${errorMessage}`)
         }
-
-        await payload.delete({
-          collection: 'upload-sessions',
-          id: session.id,
-          overrideAccess: true,
-        })
-
-        result.deletedSessions++
-        reqLogger.info({ sessionId: session.id }, '[upload-session-cleanup] Deleted session')
-      } catch (sessionError) {
-        const errorMessage =
-          sessionError instanceof Error ? sessionError.message : String(sessionError)
-        reqLogger.error(
-          { sessionId: session.id, error: errorMessage },
-          '[upload-session-cleanup] Failed to delete session',
-        )
-        result.errors.push(`Session ${session.id}: delete failed - ${errorMessage}`)
       }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      reqLogger.error({ error: errorMessage }, '[upload-session-cleanup] Fatal error')
+      result.errors.push(`Fatal error: ${errorMessage}`)
+      return result
     }
-
-    reqLogger.info(
-      { deletedSessions: result.deletedSessions, failedDeletions: result.failedDeletions },
-      '[upload-session-cleanup] Cleanup completed',
-    )
-
-    return result
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error)
-    reqLogger.error({ error: errorMessage }, '[upload-session-cleanup] Fatal error')
-    result.errors.push(`Fatal error: ${errorMessage}`)
-    return result
   }
+
+  return result
 }
 
 export const uploadSessionCleanupEndpoint = {

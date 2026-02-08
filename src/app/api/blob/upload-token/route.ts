@@ -146,9 +146,7 @@ export async function POST(request: Request): Promise<Response> {
     })
 
     return Response.json(result)
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error'
-    console.error('[handleUpload] Error:', error)
-    return Response.json({ error: message }, { status: 500 })
+  } catch {
+    return Response.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

@@ -121,9 +121,10 @@ export const ChatAssets: CollectionConfig = {
       name: 'uploadSessionId',
       type: 'text',
       required: true,
+      unique: true,
       index: true,
       admin: {
-        hidden: true, // Hidden in admin, used internally
+        hidden: true,
       },
     },
   ],

@@ -36,7 +36,7 @@ export function createSlidingWindowLimiter(config: RateLimiterConfig): {
 
     if (!existing) {
       const newEntry: RateLimitEntry = {
-        count: 1,
+        count: 0,
         resetAt: now + windowMs,
       }
       store.set(key, newEntry)
@@ -45,7 +45,7 @@ export function createSlidingWindowLimiter(config: RateLimiterConfig): {
 
     if (now >= existing.resetAt) {
       const newEntry: RateLimitEntry = {
-        count: 1,
+        count: 0,
         resetAt: now + windowMs,
       }
       store.set(key, newEntry)
@@ -59,7 +59,9 @@ export function createSlidingWindowLimiter(config: RateLimiterConfig): {
     check(key: string): boolean {
       cleanup()
       const entry = getEntry(key)
-      return entry.count < maxRequests
+      if (entry.count >= maxRequests) return false
+      entry.count++
+      return true
     },
 
     getRemaining(key: string): number {

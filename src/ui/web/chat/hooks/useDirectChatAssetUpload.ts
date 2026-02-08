@@ -52,11 +52,7 @@ function generateLocalId(): string {
 }
 
 function isRetryableError(status: number): boolean {
-  return status === 0 || status >= 500
-}
-
-function _getRetryDelay(_retryCount: number): number {
-  return BASE_DELAY_MS * Math.pow(2, _retryCount) + Math.random() * 500
+  return status === 0 || status === 429 || status >= 500
 }
 
 export function useDirectChatAssetUpload(): UseDirectChatAssetUploadReturn {
@@ -117,169 +113,155 @@ export function useDirectChatAssetUpload(): UseDirectChatAssetUploadReturn {
   }, [])
 
   const clearAll = useCallback(() => {
-    setUploadingFiles((prev) =>
-      prev.map((f) => {
-        if (f.abortController) {
-          f.abortController.abort()
-        }
-        return { ...f, status: 'cancelled' as const, abortController: undefined }
-      }),
-    )
+    setUploadingFiles((prev) => {
+      for (const f of prev) {
+        if (f.abortController) f.abortController.abort()
+      }
+      return []
+    })
     setUploadQueue([])
   }, [])
 
-  const uploadAndFinalize = useCallback(
-    async (fileRecord: UploadingFile) => {
-      const { file, localId } = fileRecord
+  const uploadAndFinalize = useCallback(async (fileRecord: UploadingFile) => {
+    const { file, localId } = fileRecord
 
-      if (file.size > CHAT_ASSET_MAX_BYTES) {
-        setUploadingFiles((prev) =>
-          prev.map((f) =>
-            f.localId === localId
-              ? { ...f, status: 'failed' as const, error: 'File size exceeds maximum' }
-              : f,
-          ),
-        )
-        return
-      }
+    if (file.size > CHAT_ASSET_MAX_BYTES) {
+      setUploadingFiles((prev) =>
+        prev.map((f) =>
+          f.localId === localId
+            ? { ...f, status: 'failed' as const, error: 'File size exceeds maximum' }
+            : f,
+        ),
+      )
+      return
+    }
 
-      if (
-        !CHAT_ASSET_ALLOWED_MIME_TYPES.includes(
-          file.type as (typeof CHAT_ASSET_ALLOWED_MIME_TYPES)[number],
-        )
-      ) {
-        setUploadingFiles((prev) =>
-          prev.map((f) =>
-            f.localId === localId
-              ? { ...f, status: 'failed' as const, error: 'File type not allowed' }
-              : f,
-          ),
-        )
-        return
-      }
+    if (
+      !CHAT_ASSET_ALLOWED_MIME_TYPES.includes(
+        file.type as (typeof CHAT_ASSET_ALLOWED_MIME_TYPES)[number],
+      )
+    ) {
+      setUploadingFiles((prev) =>
+        prev.map((f) =>
+          f.localId === localId
+            ? { ...f, status: 'failed' as const, error: 'File type not allowed' }
+            : f,
+        ),
+      )
+      return
+    }
 
-      const abortController = new AbortController()
-      const clientPayload = JSON.stringify({
-        originalFilename: file.name,
-        contentType: file.type,
-        size: file.size,
-        purpose: 'chat-media',
+    const abortController = new AbortController()
+    const clientPayload = JSON.stringify({
+      originalFilename: file.name,
+      contentType: file.type,
+      size: file.size,
+      purpose: 'chat-media',
+    })
+
+    setUploadingFiles((prev) =>
+      prev.map((f) =>
+        f.localId === localId
+          ? { ...f, status: 'uploading' as const, progress: 0, abortController }
+          : f,
+      ),
+    )
+
+    try {
+      const pathname = `chat-assets/pending/${localId}/${file.name}`
+
+      const blobResult = await upload(pathname, file, {
+        access: 'public',
+        clientPayload,
+        handleUploadUrl: '/api/blob/upload-token',
+        abortSignal: abortController.signal,
+        onUploadProgress: ({ loaded, total }: { loaded: number; total: number }) => {
+          const progress = total > 0 ? (loaded / total) * 100 : 0
+          setUploadingFiles((prev) =>
+            prev.map((f) => (f.localId === localId ? { ...f, progress: Math.round(progress) } : f)),
+          )
+        },
       })
 
       setUploadingFiles((prev) =>
         prev.map((f) =>
-          f.localId === localId
-            ? { ...f, status: 'uploading' as const, progress: 0, abortController }
-            : f,
+          f.localId === localId ? { ...f, status: 'finalizing' as const, progress: 100 } : f,
         ),
       )
 
+      // Try to get uploadSessionId from tokenPayload, otherwise use the localId as fallback
+      let uploadSessionIdVal = localId
       try {
-        const pathname = `chat-assets/pending/${localId}/${file.name}`
-
-        const blobResult = await upload(pathname, file, {
-          access: 'public',
-          clientPayload,
-          handleUploadUrl: '/api/blob/upload-token',
-          abortSignal: abortController.signal,
-          onUploadProgress: ({ loaded, total }: { loaded: number; total: number }) => {
-            const progress = total > 0 ? (loaded / total) * 100 : 0
-            setUploadingFiles((prev) =>
-              prev.map((f) =>
-                f.localId === localId ? { ...f, progress: Math.round(progress) } : f,
-              ),
-            )
-          },
-        })
-
-        setUploadingFiles((prev) =>
-          prev.map((f) =>
-            f.localId === localId ? { ...f, status: 'finalizing' as const, progress: 100 } : f,
-          ),
-        )
-
-        // Try to get uploadSessionId from tokenPayload, otherwise use the localId as fallback
-        let uploadSessionIdVal = localId
-        try {
-          const rawTokenPayload = (blobResult as { tokenPayload?: string }).tokenPayload
-          if (rawTokenPayload) {
-            const parsed = JSON.parse(rawTokenPayload) as { uploadSessionId?: unknown }
-            if (parsed && typeof parsed.uploadSessionId === 'string') {
-              uploadSessionIdVal = parsed.uploadSessionId
-            }
+        const rawTokenPayload = (blobResult as { tokenPayload?: string }).tokenPayload
+        if (rawTokenPayload) {
+          const parsed = JSON.parse(rawTokenPayload) as { uploadSessionId?: unknown }
+          if (parsed && typeof parsed.uploadSessionId === 'string') {
+            uploadSessionIdVal = parsed.uploadSessionId
           }
-        } catch {
-          // Ignore parse errors - use localId fallback
         }
-
-        const finalizeResponse = await fetch('/api/chat-assets/finalize', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ uploadSessionId: uploadSessionIdVal || '' }),
-        })
-
-        if (!finalizeResponse.ok) {
-          const errorData = await finalizeResponse.json()
-          throw new Error(errorData.error || 'Finalize failed')
-        }
-
-        const finalizeResult = await finalizeResponse.json()
-
-        setUploadingFiles((prev) =>
-          prev.map((f) =>
-            f.localId === localId
-              ? {
-                  ...f,
-                  status: 'complete' as const,
-                  chatAssetId: finalizeResult.chatAssetId,
-                  chatAsset: finalizeResult.chatAsset,
-                }
-              : f,
-          ),
-        )
-      } catch (error) {
-        const statusVal: number =
-          error instanceof Error && 'status' in error && typeof error.status === 'number'
-            ? error.status
-            : 0
-        const canRetry = isRetryableError(statusVal)
-        const currentFile = uploadingFiles.find((f) => f.localId === localId)
-        const retryCountNum: number =
-          currentFile && typeof currentFile.retryCount === 'number' ? currentFile.retryCount : 0
-        const shouldRetry = retryCountNum < MAX_RETRIES
-
-        if (canRetry && shouldRetry) {
-          setUploadingFiles((prev) =>
-            prev.map((f) =>
-              f.localId === localId
-                ? { ...f, retryCount: retryCountNum + 1, status: 'queued' as const }
-                : f,
-            ),
-          )
-
-          const delay = BASE_DELAY_MS * Math.pow(2, retryCountNum) + Math.random() * 500
-          await new Promise((resolve) => setTimeout(resolve, delay))
-
-          setUploadQueue((prev) => [...prev, localId])
-        } else {
-          const errorMessage = error instanceof Error ? error.message : 'Upload failed'
-          setUploadingFiles((prev) =>
-            prev.map((f) =>
-              f.localId === localId
-                ? {
-                    ...f,
-                    status: 'failed' as const,
-                    error: errorMessage,
-                    abortController: undefined,
-                  }
-                : f,
-            ),
-          )
-        }
+      } catch {
+        // Ignore parse errors - use localId fallback
       }
-    },
-    [uploadingFiles],
-  )
+
+      const finalizeResponse = await fetch('/api/chat-assets/finalize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uploadSessionId: uploadSessionIdVal || '' }),
+      })
+
+      if (!finalizeResponse.ok) {
+        const errorData = await finalizeResponse.json()
+        throw new Error(errorData.error || 'Finalize failed')
+      }
+
+      const finalizeResult = await finalizeResponse.json()
+
+      setUploadingFiles((prev) =>
+        prev.map((f) =>
+          f.localId === localId
+            ? {
+                ...f,
+                status: 'complete' as const,
+                chatAssetId: finalizeResult.chatAssetId,
+                chatAsset: finalizeResult.chatAsset,
+              }
+            : f,
+        ),
+      )
+    } catch (error) {
+      const statusVal: number =
+        error instanceof Error && 'status' in error && typeof error.status === 'number'
+          ? error.status
+          : 0
+      const canRetry = isRetryableError(statusVal)
+
+      setUploadingFiles((prev) => {
+        const currentFile = prev.find((f) => f.localId === localId)
+        if (!currentFile) return prev
+
+        const retryCountNum = currentFile.retryCount ?? 0
+        const shouldRetry = canRetry && retryCountNum < MAX_RETRIES
+
+        if (shouldRetry) {
+          const delay = BASE_DELAY_MS * Math.pow(2, retryCountNum) + Math.random() * 500
+          setTimeout(() => setUploadQueue((q) => [...q, localId]), delay)
+
+          return prev.map((f) =>
+            f.localId === localId
+              ? { ...f, retryCount: retryCountNum + 1, status: 'queued' as const }
+              : f,
+          )
+        }
+
+        const errorMessage = error instanceof Error ? error.message : 'Upload failed'
+        return prev.map((f) =>
+          f.localId === localId
+            ? { ...f, status: 'failed' as const, error: errorMessage, abortController: undefined }
+            : f,
+        )
+      })
+    }
+  }, [])
 
   useEffect(() => {
     const uploading = uploadingFiles.filter(

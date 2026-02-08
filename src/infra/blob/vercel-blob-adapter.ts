@@ -5,6 +5,9 @@
  * of media files. Works in both Next.js server context and standalone worker context.
  */
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* Reason: Vercel Blob SDK doesn't export proper types for all responses */
+
 import { del, list, put } from '@vercel/blob'
 
 // Environment variable names
@@ -344,7 +347,12 @@ export function getPrivateBlobAdapter(): VercelBlobAdapter {
  * Helper function to check if a URL is a Vercel Blob URL
  */
 export function isVercelBlobUrl(url: string): boolean {
-  return url.includes('.blob.vercel-storage.com') || url.includes('public.blob.vercel-storage.com')
+  try {
+    const parsed = new URL(url)
+    return parsed.hostname.endsWith('.blob.vercel-storage.com')
+  } catch {
+    return false
+  }
 }
 
 /**

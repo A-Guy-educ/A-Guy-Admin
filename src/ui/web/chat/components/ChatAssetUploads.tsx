@@ -31,15 +31,19 @@ export function ChatAssetUploads({ isVisible, onClose }: ChatAssetUploadsProps) 
   }
 
   return (
-    <div className="chat-asset-uploads">
-      <div className="chat-asset-uploads-header">
-        <h3>Uploads</h3>
-        <button onClick={onClose} className="close-button" type="button">
+    <div className="space-y-2 rounded-lg border border-border bg-card p-3">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-medium">Uploads</h3>
+        <button
+          onClick={onClose}
+          className="text-muted-foreground hover:text-foreground text-lg leading-none"
+          type="button"
+        >
           ×
         </button>
       </div>
 
-      <div className="chat-asset-uploads-list">
+      <div className="flex flex-col gap-2">
         {uploadingFiles.map((file) => (
           <UploadItem
             key={file.localId}
@@ -57,7 +61,7 @@ export function ChatAssetUploads({ isVisible, onClose }: ChatAssetUploadsProps) 
             clearCompleted()
             onClose()
           }}
-          className="clear-all-button"
+          className="w-full text-sm text-muted-foreground hover:text-foreground py-2 rounded-md hover:bg-muted/50"
           type="button"
         >
           Clear all
@@ -105,53 +109,68 @@ function UploadItem({ file, onCancel, onRetry, onRemove }: UploadItemProps) {
   const getStatusClass = (): string => {
     switch (file.status) {
       case 'complete':
-        return 'status-complete'
+        return 'border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950'
       case 'failed':
-        return 'status-failed'
+        return 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950'
       case 'cancelled':
-        return 'status-cancelled'
+        return 'border-muted bg-muted/50'
       default:
-        return 'status-progress'
+        return 'border-border bg-card'
     }
   }
 
   const isInProgress = file.status === 'uploading' || file.status === 'finalizing'
 
   return (
-    <div className={`upload-item ${getStatusClass()}`}>
-      <div className="upload-item-info">
-        <div className="upload-item-name" title={file.file.name}>
+    <div className={`flex flex-col gap-1 rounded-md border p-2 ${getStatusClass()}`}>
+      <div className="flex flex-col gap-0.5">
+        <div className="text-sm font-medium truncate max-w-[180px]" title={file.file.name}>
           {file.file.name}
         </div>
-        <div className="upload-item-meta">
-          <span className="upload-item-size">{formatFileSize(file.file.size)}</span>
-          <span className="upload-item-status">{getStatusText()}</span>
+        <div className="text-xs text-muted-foreground flex gap-2">
+          <span>{formatFileSize(file.file.size)}</span>
+          <span>{getStatusText()}</span>
         </div>
       </div>
 
       {isInProgress && (
-        <div className="upload-item-progress">
-          <div className="progress-bar">
-            <div className="progress-fill" style={{ width: `${file.progress}%` }} />
+        <div className="mt-1">
+          <div className="h-1.5 w-full rounded-full bg-muted">
+            <div
+              className="h-full rounded-full bg-primary transition-all"
+              style={{ width: `${file.progress}%` }}
+            />
           </div>
         </div>
       )}
 
-      <div className="upload-item-actions">
+      <div className="flex items-center gap-1 mt-1">
         {isInProgress && (
-          <button onClick={onCancel} className="action-button cancel" type="button">
+          <button
+            onClick={onCancel}
+            className="text-xs text-muted-foreground hover:text-destructive p-1 rounded"
+            type="button"
+          >
             Cancel
           </button>
         )}
         {file.status === 'failed' && (
-          <button onClick={onRetry} className="action-button retry" type="button">
+          <button
+            onClick={onRetry}
+            className="text-xs text-muted-foreground hover:text-yellow-600 p-1 rounded"
+            type="button"
+          >
             Retry
           </button>
         )}
         {(file.status === 'complete' ||
           file.status === 'cancelled' ||
           file.status === 'failed') && (
-          <button onClick={onRemove} className="action-button remove" type="button">
+          <button
+            onClick={onRemove}
+            className="text-xs text-muted-foreground hover:text-destructive p-1 rounded"
+            type="button"
+          >
             ×
           </button>
         )}

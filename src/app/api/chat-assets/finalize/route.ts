@@ -17,7 +17,7 @@ import { getMediaBlobAdapter } from '@/infra/blob/vercel-blob-adapter'
 import { FINALIZE_ROUTE_LIMITER } from '@/server/utils/rate-limiter'
 
 const finalizeSchema = z.object({
-  uploadSessionId: z.string().min(1).optional(),
+  uploadSessionId: z.string().min(1),
 })
 
 export async function POST(request: Request): Promise<Response> {
@@ -50,10 +50,6 @@ export async function POST(request: Request): Promise<Response> {
     }
 
     const { uploadSessionId } = validated.data
-
-    if (!uploadSessionId) {
-      return Response.json({ error: 'Upload session ID is required' }, { status: 400 })
-    }
 
     const session = await payload.findByID({
       collection: 'upload-sessions',
@@ -174,8 +170,7 @@ export async function POST(request: Request): Promise<Response> {
       },
     })
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error'
     console.error('[finalize] Error:', error)
-    return Response.json({ error: message }, { status: 500 })
+    return Response.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
