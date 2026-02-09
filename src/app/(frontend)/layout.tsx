@@ -13,6 +13,7 @@ import { Footer } from '@/ui/web/footer/Component'
 import { Header } from '@/ui/web/header/Component'
 import { Providers } from '@/ui/web/providers'
 import { InitTheme } from '@/ui/web/providers/Theme/InitTheme'
+import { RouteLoadingIndicator } from '@/infra/loading/components/RouteLoadingIndicator'
 
 import { cookieName, defaultLocale, getDirection, type Locale, locales } from '@/i18n/config'
 import { getServerSideURL } from '@/infra/utils/getURL'
@@ -20,6 +21,7 @@ import { I18nProvider } from '@/ui/web/providers/I18n'
 import { cookies, headers } from 'next/headers'
 import './globals.css'
 import { LayoutClient } from './LayoutClient'
+import { AnalyticsProvider } from '@/infra/analytics'
 
 const assistant = Assistant({
   subsets: ['latin', 'hebrew'],
@@ -85,7 +87,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body>
         <I18nProvider locale={locale} messages={messages}>
           <Providers>
+            <RouteLoadingIndicator />
             <LayoutClient />
+            <AnalyticsProvider />
             <AdminBar
               adminBarProps={{
                 preview: isEnabled,

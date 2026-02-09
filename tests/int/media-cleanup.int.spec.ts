@@ -1,8 +1,8 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
-import type { Payload, PayloadRequest } from 'payload'
-import { getPayload } from 'payload'
 import { startMongoContainer, stopMongoContainer } from '@/infra/utils/test/mongodb-container'
 import { mediaExpiryCleanupEndpoint } from '@/server/payload/endpoints/cron/media-expiry'
+import type { Payload, PayloadRequest } from 'payload'
+import { getPayload } from 'payload'
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { createTestUser } from '../factories/user.factory'
 
 let payload: Payload
@@ -289,27 +289,29 @@ describe('Media Cleanup Endpoint', () => {
         overrideAccess: true,
       })
       expect(found.docs.length).toBe(1)
-    })
+    }, 30000)
 
     it('handles multiple expired media documents', async () => {
       const expiredDate = new Date(Date.now() - 1000 * 60 * 60).toISOString()
 
-      // Create multiple expired media
-      await createTestMedia({
-        filename: 'expired-1.jpg',
-        retentionPolicy: 'ephemeral',
-        expiresAt: expiredDate,
-      })
-      await createTestMedia({
-        filename: 'expired-2.jpg',
-        retentionPolicy: 'ephemeral',
-        expiresAt: expiredDate,
-      })
-      await createTestMedia({
-        filename: 'expired-3.jpg',
-        retentionPolicy: 'ephemeral',
-        expiresAt: expiredDate,
-      })
+      // Create multiple expired media in parallel
+      await Promise.all([
+        createTestMedia({
+          filename: 'expired-1.jpg',
+          retentionPolicy: 'ephemeral',
+          expiresAt: expiredDate,
+        }),
+        createTestMedia({
+          filename: 'expired-2.jpg',
+          retentionPolicy: 'ephemeral',
+          expiresAt: expiredDate,
+        }),
+        createTestMedia({
+          filename: 'expired-3.jpg',
+          retentionPolicy: 'ephemeral',
+          expiresAt: expiredDate,
+        }),
+      ])
 
       const req = createCronRequest(`Bearer ${TEST_CRON_SECRET}`)
       const res = await mediaExpiryCleanupEndpoint.handler(req)

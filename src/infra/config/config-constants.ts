@@ -8,14 +8,32 @@
  */
 
 /**
- * Kind enum for config entry types
+ * Kind enum for config entry types (ConfigEntries collection)
  */
 export const ConfigKind = {
   Variable: 'variable',
   Secret: 'secret',
+  SystemParam: 'system_param',
 } as const
 
 export type ConfigKind = (typeof ConfigKind)[keyof typeof ConfigKind]
+
+/**
+ * Domain enum for config values (ConfigValues collection)
+ * Groups configuration by feature domain for organized management
+ */
+export const ConfigDomain = {
+  Chat: 'chat',
+  PdfConversion: 'pdf_conversion',
+  Global: 'global',
+} as const
+
+export type ConfigDomain = (typeof ConfigDomain)[keyof typeof ConfigDomain]
+
+/**
+ * All domains as array for select options
+ */
+export const CONFIG_DOMAINS = Object.values(ConfigDomain)
 
 /**
  * Action enum for audit log entries

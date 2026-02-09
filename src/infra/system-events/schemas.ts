@@ -10,6 +10,14 @@ import { z } from 'zod'
 import { SYSTEM_EVENTS } from './events'
 
 // ============================================================================
+// Site Init Event
+// ============================================================================
+
+export const SiteInitSchema = z.object({}).strict()
+
+export type SiteInitPayload = z.infer<typeof SiteInitSchema>
+
+// ============================================================================
 // Page View Event
 // ============================================================================
 
@@ -103,9 +111,15 @@ export type LessonEndedPayload = z.infer<typeof LessonEndedSchema>
 // PDF Viewed Event
 // ============================================================================
 
+// URL validator that accepts both absolute URLs and /api/media relative paths
+const pdfUrlSchema = z.union([
+  z.string().url('pdf_url must be a valid URL'),
+  z.string().regex(/^\/api\/media\//, 'pdf_url must be a valid URL or /api/media/... path'),
+])
+
 export const PdfViewedSchema = z
   .object({
-    pdf_url: z.string().url('pdf_url must be a valid URL'),
+    pdf_url: pdfUrlSchema,
     pdf_title: z.string().optional(),
     file_name: z.string().optional(),
     document_id: z.string().optional(),
@@ -195,6 +209,7 @@ export function containsPII(payload: Record<string, unknown>): string[] {
  * Used for validation and type inference.
  */
 export const eventSchemas = {
+  [SYSTEM_EVENTS.SITE_INIT]: SiteInitSchema,
   [SYSTEM_EVENTS.PAGE_VIEWED]: PageViewedSchema,
   [SYSTEM_EVENTS.SESSION_STARTED]: SessionStartedSchema,
   [SYSTEM_EVENTS.USER_RESOLVED]: UserResolvedSchema,

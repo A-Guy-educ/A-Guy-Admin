@@ -65,6 +65,7 @@ export function buildJobsWhereQuery(lessonId: string, mediaId: string): object {
  * Validate prompt document for expected usage and tenant.
  * Returns void or throws typed error.
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function validatePromptForUsageAndTenant(
   promptDoc: { status: string; usage: string; tenant: any },
   expectedUsage: 'extractor' | 'verifier',
@@ -130,6 +131,7 @@ export function normalizeExerciseForHash(extracted: {
  * Parse extractor response - pure string parsing.
  * v2.2 Fix: Handle malformed JSON with escape sequence issues from LLM.
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function parseExtractorResponseText(responseText: string): any[] {
   try {
     const jsonMatch =
@@ -263,9 +265,47 @@ export function toExerciseInput(extracted: {
 }
 
 /**
+ * Normalize exercise for stable content identity - applied BEFORE enrichment.
+ * This ensures consistent hashing regardless of nanoid variations in block IDs.
+ * Only collapses whitespace - does NOT modify operator spacing to preserve meaning.
+ */
+export function normalizeExerciseInput(extracted: {
+  title: string
+  blocks: Array<{
+    type: string
+    id?: string
+    value?: string
+    format?: string
+    latex?: string
+    renderMode?: string
+  }>
+}): { title: string; blocks: Array<{ blockType: string; content?: string; latex?: string }> } {
+  return {
+    title: extracted.title.trim().replace(/\s+/g, ' '),
+    blocks: extracted.blocks.map((b) => {
+      if (b.type === 'rich_text') {
+        return {
+          blockType: 'rich_text',
+          content: b.value?.trim().replace(/\s+/g, ' '),
+        }
+      }
+      if (b.type === 'latex') {
+        return {
+          blockType: 'latex',
+          // Normalize LaTeX whitespace: collapse multiple spaces, trim
+          latex: b.latex?.trim().replace(/\s+/g, ' '),
+        }
+      }
+      return { blockType: b.type }
+    }),
+  }
+}
+
+/**
  * Adapter: Convert ExerciseExtractedEnriched to Payload content format
  * Maps to ContentBlockSchema union (LatexBlockSchema, RichTextBlockSchema, etc.)
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function toPayloadContent(extracted: {
   title: string
   blocks: Array<{

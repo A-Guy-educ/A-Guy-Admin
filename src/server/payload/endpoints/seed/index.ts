@@ -1,7 +1,10 @@
 import type { CollectionSlug, GlobalSlug, Payload, PayloadRequest } from 'payload'
 
+import { getDefaultTenantId } from '@/server/repos/tenant/get-default-tenant'
+import { seedChatConfig } from './chat-config'
 import { contactForm as contactFormData } from './contact-form'
 import { contact as contactPageData } from './contact-page'
+import { seedSystemParams } from './system-params'
 
 const collections: CollectionSlug[] = ['categories', 'pages', 'forms', 'form-submissions', 'search']
 
@@ -135,6 +138,13 @@ export const seed = async ({
       },
     }),
   ])
+
+  // Seed system parameters
+  const defaultTenantId = await getDefaultTenantId(payload)
+  if (defaultTenantId) {
+    await seedSystemParams(payload, defaultTenantId)
+    await seedChatConfig(payload, defaultTenantId)
+  }
 
   payload.logger.info('Seeded database successfully!')
 }

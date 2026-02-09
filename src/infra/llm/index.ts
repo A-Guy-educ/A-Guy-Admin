@@ -8,19 +8,38 @@
  * - Auto-grading assistance
  */
 
-// Provider exports (new location)
-export {
-  GeminiError,
-  GeminiErrorCode,
-  generateChatCompletion,
-  isGeminiApiKeyConfigured,
-  type GenerateChatInput,
-  type GenerateChatOutput,
-  type ChatMessage as ProviderChatMessage,
-} from './providers/gemini'
+// Genkit-based provider exports
+export { createGenkitUnifiedAdapter, isGenkitConfigured } from './genkit'
 
-// Model config
-export { AI_MODELS, type AIModelConfig, type AIModelKey } from './models'
+// Provider factory for runtime provider switching
+export {
+  checkProviderAvailability,
+  detectBestProvider,
+  getLLMProvider,
+  getProviderModelConfig,
+  LLMProviderType,
+  type LLMProviderConfig,
+  type UnifiedLLMProvider,
+} from './providers/factory'
+
+// Shared error handling
+export { createErrorClassifier, LLMError, LLMErrorCode } from './providers/shared/errors'
+
+// Model config - centralized from models.ts
+export {
+  AI_MODELS,
+  getModelNameOverride,
+  getModelRegistryEntry,
+  getModelsWithCapability,
+  getProviderModelName,
+  isModelOverrideConfigured,
+  MODEL_REGISTRY,
+  modelSupportsCapability,
+  PROVIDER_MODEL_NAMES,
+  type AIModel,
+  type AIModelConfig,
+  type AIModelKey,
+} from './models'
 
 // Image services
 export {

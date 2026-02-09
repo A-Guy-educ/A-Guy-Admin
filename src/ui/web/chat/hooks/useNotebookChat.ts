@@ -45,6 +45,11 @@ interface UseNotebookChatProps {
   lessonId?: string
   chapterId?: string
   courseId?: string
+  // Admin context - category for admin chat scope
+  categoryId?: string
+  // Admin mode - uses user-specific context without course/lesson context
+  adminMode?: boolean
+  userId?: string
   // Media upload messages
   unsupportedFileTypeMessage?: string
   fileTooLargeMessage?: string
@@ -67,6 +72,9 @@ export function useNotebookChat({
   lessonId,
   chapterId,
   courseId,
+  categoryId,
+  adminMode = false,
+  userId,
   unsupportedFileTypeMessage = 'Unsupported file type',
   fileTooLargeMessage = 'File too large (max 10MB)',
   maxFilesMessage = 'Maximum 5 files allowed',
@@ -91,14 +99,18 @@ export function useNotebookChat({
   // Error state
   const [chatError, setChatError] = useState<ChatError | null>(null)
 
-  // Compute contextKey based on available context (priority: Exercise > Lesson > Chapter > Course)
+  // Compute contextKey based on available context
+  // For admin mode: use users:{userId} (user-scoped conversation)
+  // Priority for regular mode: Exercise > Lesson > Chapter > Course > Category
   const contextKey = useMemo(() => {
     if (exerciseId) return `exercises:${exerciseId}`
     if (lessonId) return `lessons:${lessonId}`
     if (chapterId) return `chapters:${chapterId}`
     if (courseId) return `courses:${courseId}`
+    if (categoryId) return `categories:${categoryId}`
+    if (adminMode && userId) return `users:${userId}`
     return null
-  }, [exerciseId, lessonId, chapterId, courseId])
+  }, [exerciseId, lessonId, chapterId, courseId, categoryId, adminMode, userId])
 
   // Simple scroll to bottom using scrollTop instead of scrollIntoView
   // scrollIntoView can cause layout issues in nested flex containers
@@ -379,18 +391,117 @@ export function useNotebookChat({
       message_length: message.length,
     })
 
+    const context = {
+      exerciseId,
+      lessonId,
+      chapterId,
+      courseId,
+      categoryId,
+    }
+
+    // Use streaming when no media attached and not in admin mode
+    const useStreaming = mediaIds.length === 0 && !adminMode
+
+    if (useStreaming) {
+      await streamMessage(message, acknowledgment, context)
+    } else {
+      await sendMessageSync(message, acknowledgment, context, mediaIds)
+    }
+  }
+
+  /**
+   * Send message using streaming (SSE)
+   */
+  const streamMessage = async (
+    message: string,
+    acknowledgment: string,
+    context: {
+      exerciseId?: string
+      lessonId?: string
+      chapterId?: string
+      courseId?: string
+      categoryId?: string
+    },
+  ) => {
     try {
-      const result = await apiService.chat(
-        message,
-        acknowledgment,
-        {
-          exerciseId,
-          lessonId,
-          chapterId,
-          courseId,
-        },
-        mediaIds.length > 0 ? mediaIds : undefined,
-      )
+      const stream = apiService.chatStream(message, acknowledgment, context)
+
+      // Create placeholder assistant message for streaming
+      const placeholderMessage: ChatMessage = {
+        role: ChatRole.Assistant,
+        content: '',
+      }
+      setMessages((prev) => [...prev, placeholderMessage])
+
+      let fullText = ''
+
+      let hasAuthError = false
+
+      for await (const event of stream) {
+        if (event.type === 'chunk' && event.text) {
+          fullText += event.text
+          // Update the last message with streaming content
+          setMessages((prev) => {
+            const updated = [...prev]
+            updated[updated.length - 1] = { ...placeholderMessage, content: fullText }
+            return updated
+          })
+          scrollToBottom()
+        } else if (event.type === 'done') {
+          // done event received, conversation metadata available for future features
+        } else if (event.type === 'error') {
+          const errMsg = event.error || errorMessage
+          // Check if this is an auth error (contains "auth" or "authentication")
+          if (errMsg?.toLowerCase().includes('auth')) {
+            hasAuthError = true
+            setChatError({ type: 'auth' as const, message: authRequiredMessage })
+          } else {
+            toast.error(errMsg || errorMessage)
+          }
+          // Remove the empty/partial message on error
+          setMessages((prev) => prev.slice(0, -1))
+          break
+        }
+      }
+
+      // If auth error occurred, skip finalizing the message
+      if (hasAuthError) {
+        return
+      }
+
+      // Finalize the message
+      if (fullText) {
+        setMessages((prev) => {
+          const updated = [...prev]
+          updated[updated.length - 1] = { ...placeholderMessage, content: fullText }
+          return updated
+        })
+      }
+    } catch (_error) {
+      toast.error(errorMessage)
+    } finally {
+      setIsLoading(false)
+      inputRef.current?.focus()
+    }
+  }
+
+  /**
+   * Send message synchronously (with media or admin mode)
+   */
+  const sendMessageSync = async (
+    message: string,
+    acknowledgment: string,
+    context: {
+      exerciseId?: string
+      lessonId?: string
+      chapterId?: string
+      courseId?: string
+      categoryId?: string
+    },
+    mediaIds?: string[],
+  ) => {
+    try {
+      const result = await apiService.chat(message, acknowledgment, context, mediaIds, adminMode)
 
       if (!result.success) {
         if (result.authRequired) {
@@ -462,7 +573,16 @@ export function useNotebookChat({
       solution: solutionPrompt,
       full: fullSolutionPrompt,
     }
-    sendMessage(prompts[actionType])
+    // Quick actions use synchronous chat for backward compatibility
+    const prompt = prompts[actionType]
+    const context = {
+      exerciseId,
+      lessonId,
+      chapterId,
+      courseId,
+      categoryId,
+    }
+    sendMessageSync(prompt, acknowledgment, context)
   }
 
   const dismissError = useCallback(() => {

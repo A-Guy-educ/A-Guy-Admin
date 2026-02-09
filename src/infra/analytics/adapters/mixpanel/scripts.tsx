@@ -4,7 +4,7 @@
  * Loads Mixpanel SDK
  * Only loads when analytics is enabled
  *
- * NO session recording in this phase (per task requirements)
+ * Session recording enabled at 100% to capture all user sessions
  */
 
 'use client'
@@ -95,8 +95,23 @@ export function MixpanelScripts() {
             // NO auto-capture - we track explicitly
             track_pageview: false,
 
-            // NO session recording in this phase
-            record_sessions_percent: 0,
+            // Session recording enabled - 100% of sessions recorded for analysis
+            record_sessions_percent: 100,
+
+            // Session recording configuration - unmask all text elements
+            // By default Mixpanel masks all text with "*", setting to "" unmasks everything
+            record_mask_text_selector: '',  // Empty string = show all text
+            record_block_selector: '',       // Empty string = don't block any elements
+            record_collect_fonts: true,      // Collect fonts for better rendering
+
+            // Individual elements can still be masked by adding class="mp-mask"
+            // or blocked entirely with class="mp-block"
+            record_mask_text_class: 'mp-mask',
+            record_block_class: 'mp-block',
+
+            // Use sendBeacon for reliable event tracking during page unload
+            // sendBeacon is non-blocking and browsers prioritize it even during tab close
+            api_transport: 'sendBeacon',
 
             // Cookie-based persistence (fallback to localStorage)
             persistence: 'localStorage+cookie',

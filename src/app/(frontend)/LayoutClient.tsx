@@ -1,18 +1,21 @@
 /**
  * Frontend Layout Client Component
  *
- * Handles client-side concerns for the frontend layout
- * CRITICAL: Only place for page view tracking (avoid duplicates)
+ * Handles client-side concerns for the frontend layout.
+ * Emits system events for other services to subscribe to.
  */
 
 'use client'
 
-import { usePageView } from '@/infra/analytics/hooks/usePageView'
+import { SYSTEM_EVENTS, systemEventBus } from '@/infra/system-events'
+import { useEffect } from 'react'
 
 export function LayoutClient() {
-  // Track page views automatically on route changes
-  // This is the ONLY place page_view should be tracked
-  usePageView()
+  // Emit SITE_INIT once on mount
+  // Other services (like analytics) subscribe to this event
+  useEffect(() => {
+    systemEventBus.emit(SYSTEM_EVENTS.SITE_INIT, {})
+  }, [])
 
   return null
 }

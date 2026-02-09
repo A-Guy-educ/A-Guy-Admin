@@ -29,7 +29,7 @@ export interface JobWithStatus extends JobDocument {
   status: JobStatus
 }
 
-// Task-specific input types (Phase 3.2)
+// Task-specific input types
 export interface PdfToExercisesInput {
   ctx: JobContext
   maxSegmentPages: number
@@ -47,14 +47,22 @@ export interface PdfToExercisesInput {
   }
 }
 
-// Task-specific output types (Phase 3.2)
+// Task-specific output types
 export interface PdfToExercisesOutput {
   exerciseIds: string[]
   segmentCount: number
   errors?: string[]
+  segments: Array<{
+    pageStart: number
+    pageEnd: number
+    exerciseCount: number
+    debug?: {
+      proposedIdempotencyKeys: string[]
+    }
+  }>
 }
 
-// Generic typed job (Phase 3.2) - for type assertions in handlers
+// Generic typed job - for type assertions in handlers
 // Use 'unknown' as input type to avoid generic constraint issues
 export type TypedJob<TOutput = unknown> = Omit<JobDocument, 'input' | 'output'> & {
   input: {

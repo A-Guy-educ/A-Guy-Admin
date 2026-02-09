@@ -1,8 +1,4 @@
-import {
-  getExternalStorageUrl,
-  getPdfBufferFromUrl,
-  isVercelBlobUrl,
-} from '@/infra/blob/vercel-blob-adapter'
+import { getPdfBufferFromUrl, isVercelBlobUrl } from '@/infra/blob/vercel-blob-adapter'
 import { fetchBuffer } from '@/infra/utils/http'
 import { PDF_MAX_BYTES } from '@/server/config/constants'
 
@@ -28,7 +24,8 @@ const PROXY_TO_STAGE: Record<string, string> = {
 
 /**
  * Normalize URL to absolute URL
- * Handles relative URLs by prepending the external storage base URL
+ * Returns absolute URLs as-is (Vercel Blob URLs)
+ * For relative URLs, prepends the production server URL
  */
 export async function normalizeToAbsoluteUrl(url: string): Promise<string> {
   // If already absolute URL (http:// or https://), return as-is
@@ -36,13 +33,22 @@ export async function normalizeToAbsoluteUrl(url: string): Promise<string> {
     return url
   }
 
-  // If it's a relative URL starting with /, prepend external storage base URL
+  // For relative URLs, prepend the production server URL
+  // Use VERCEL_PROJECT_PRODUCTION_URL or NEXT_PUBLIC_SERVER_URL
   if (url.startsWith('/')) {
-    const baseUrl = await getExternalStorageUrl()
+    let baseUrl: string
+    if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+      baseUrl = `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+    } else if (process.env.NEXT_PUBLIC_SERVER_URL) {
+      baseUrl = process.env.NEXT_PUBLIC_SERVER_URL
+    } else {
+      // Fallback to localhost for development
+      baseUrl = 'http://localhost:3000'
+    }
     return `${baseUrl}${url}`
   }
 
-  // Otherwise, treat as Vercel Blob URL (should be absolute)
+  // Treat as-is for any other case
   return url
 }
 
@@ -75,12 +81,22 @@ export async function getPdfBufferFromBlob(
   let pdfBuffer: Buffer
 
   if (isVercelBlobUrl(media.url)) {
-    // Vercel Blob URL - use adapter's optimized function
+    // Vercel Blob URL - fetch directly from blob storage
     pdfBuffer = await getPdfBufferFromUrl(media.url)
   } else {
-    // Payload API endpoint or relative URL - use generic HTTP fetch
+    // Relative URL or other absolute URL - normalize and fetch
     const normalizedUrl = await normalizeToAbsoluteUrl(media.url)
-    pdfBuffer = await fetchBuffer(normalizedUrl)
+
+    // Build auth headers from request if provided
+    const headers: Record<string, string> = {}
+    if (_req?.headers?.authorization) {
+      headers['Authorization'] = _req.headers.authorization
+    }
+    if (_req?.headers?.cookie) {
+      headers['Cookie'] = _req.headers.cookie
+    }
+
+    pdfBuffer = await fetchBuffer(normalizedUrl, 30000, headers)
   }
 
   // Validate size
