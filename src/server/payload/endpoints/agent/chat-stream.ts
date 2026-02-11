@@ -56,7 +56,13 @@ export async function agentChatStream(
   let guestCookieHeader: string | undefined
 
   // 1) Auth - check for authenticated user OR guest session
-  const { user } = await req.payload.auth({ headers: req.headers })
+  // req.user is set by Payload middleware for real HTTP requests.
+  // Fall back to payload.auth() for cases where middleware hasn't run.
+  let user = req.user
+  if (!user) {
+    const authResult = await req.payload.auth({ headers: req.headers })
+    user = authResult.user
+  }
 
   if (!user) {
     // Check for guest session

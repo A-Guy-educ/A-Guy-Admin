@@ -104,6 +104,7 @@ export async function setGuestSessionCookie(
 }
 
 export function getGuestSessionCookie(headers: Headers): string | null {
+  if (!headers) return null
   const cookieHeader = headers.get('cookie')
   if (!cookieHeader) return null
 
