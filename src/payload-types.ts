@@ -74,6 +74,7 @@ export interface Config {
     config_values: ConfigValue;
     config_audit_logs: ConfigAuditLog;
     conversations: Conversation;
+    'guest-sessions': GuestSession;
     memory_items: MemoryItem;
     tenants: Tenant;
     courses: Course;
@@ -112,6 +113,7 @@ export interface Config {
     config_values: ConfigValuesSelect<false> | ConfigValuesSelect<true>;
     config_audit_logs: ConfigAuditLogsSelect<false> | ConfigAuditLogsSelect<true>;
     conversations: ConversationsSelect<false> | ConversationsSelect<true>;
+    'guest-sessions': GuestSessionsSelect<false> | GuestSessionsSelect<true>;
     memory_items: MemoryItemsSelect<false> | MemoryItemsSelect<true>;
     tenants: TenantsSelect<false> | TenantsSelect<true>;
     courses: CoursesSelect<false> | CoursesSelect<true>;
@@ -594,6 +596,9 @@ export interface Media {
     | number
     | boolean
     | null;
+  folder?: (string | null) | FolderInterface;
+  updatedAt: string;
+  createdAt: string;
   url?: string | null;
   thumbnailURL?: string | null;
   filename?: string | null;
@@ -603,9 +608,6 @@ export interface Media {
   height?: number | null;
   focalX?: number | null;
   focalY?: number | null;
-  folder?: (string | null) | FolderInterface;
-  updatedAt: string;
-  createdAt: string;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -929,7 +931,7 @@ export interface ConfigValue {
   /**
    * Feature domain for this configuration
    */
-  domain: 'chat' | 'pdf_conversion' | 'global';
+  domain: 'chat' | 'pdf_conversion' | 'global' | 'guest_chat';
   /**
    * Tenant this configuration belongs to
    */
@@ -993,9 +995,13 @@ export interface ConfigAuditLog {
 export interface Conversation {
   id: string;
   /**
-   * Student who owns this conversation
+   * Student who owns this conversation (null for guest-owned)
    */
-  user: string | User;
+  user?: (string | null) | User;
+  /**
+   * Guest session owner (set for anonymous chats)
+   */
+  guestSession?: (string | null) | GuestSession;
   /**
    * Polymorphic context reference (Course/Chapter/Lesson/Exercise/Tenant)
    */
@@ -1077,6 +1083,64 @@ export interface Conversation {
   archivedAt?: string | null;
   updatedAt: string;
   createdAt: string;
+}
+/**
+ * Anonymous user sessions for guest chat
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "guest-sessions".
+ */
+export interface GuestSession {
+  id: string;
+  /**
+   * SHA-256 hash of session token (never store raw token)
+   */
+  tokenHash: string;
+  /**
+   * Allows token rotation/invalidation without session deletion
+   */
+  tokenVersion: number;
+  /**
+   * Session creation timestamp
+   */
+  createdAt: string;
+  /**
+   * Last activity timestamp (extends sliding TTL)
+   */
+  lastActiveAt: string;
+  /**
+   * Sliding TTL expiration (extends on activity, clamped by hard cap)
+   */
+  expiresAt: string;
+  /**
+   * Absolute hard cap - session cannot extend beyond this
+   */
+  hardExpiresAt: string;
+  /**
+   * SHA-256 hash of IP address (privacy-preserving abuse tracking)
+   */
+  ipHash?: string | null;
+  /**
+   * SHA-256 hash of User-Agent (privacy-preserving abuse tracking)
+   */
+  userAgentHash?: string | null;
+  /**
+   * Session status: active = usable, expired = past TTL, revoked = claimed by user
+   */
+  status: 'active' | 'expired' | 'revoked';
+  /**
+   * User who claimed this session on upgrade
+   */
+  claimedByUser?: (string | null) | User;
+  /**
+   * When this session was claimed by a user
+   */
+  claimedAt?: string | null;
+  /**
+   * Total messages sent in this guest session (capped at GUEST_SESSION_MAX_MESSAGES)
+   */
+  messageCount: number;
+  updatedAt: string;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -1214,6 +1278,10 @@ export interface Exercise {
    * The lesson this exercise belongs to
    */
   lesson: string | Lesson;
+  /**
+   * URL-friendly identifier (auto-generated from title, unique within lesson)
+   */
+  slug?: string | null;
   /**
    * Ordered blocks stream. Use question_* blocks to add questions, and rich_text blocks for instructions/notes between questions.
    */
@@ -1694,18 +1762,30 @@ export interface PayloadMcpApiKey {
      * Allow clients to find courses.
      */
     find?: boolean | null;
+    /**
+     * Allow clients to create courses.
+     */
+    create?: boolean | null;
   };
   chapters?: {
     /**
      * Allow clients to find chapters.
      */
     find?: boolean | null;
+    /**
+     * Allow clients to create chapters.
+     */
+    create?: boolean | null;
   };
   lessons?: {
     /**
      * Allow clients to find lessons.
      */
     find?: boolean | null;
+    /**
+     * Allow clients to create lessons.
+     */
+    create?: boolean | null;
   };
   exercises?: {
     /**
@@ -1864,6 +1944,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'conversations';
         value: string | Conversation;
+      } | null)
+    | ({
+        relationTo: 'guest-sessions';
+        value: string | GuestSession;
       } | null)
     | ({
         relationTo: 'memory_items';
@@ -2196,6 +2280,7 @@ export interface ConfigAuditLogsSelect<T extends boolean = true> {
  */
 export interface ConversationsSelect<T extends boolean = true> {
   user?: T;
+  guestSession?: T;
   contextRef?: T;
   contextKey?: T;
   exercise?: T;
@@ -2221,6 +2306,25 @@ export interface ConversationsSelect<T extends boolean = true> {
   archivedAt?: T;
   updatedAt?: T;
   createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "guest-sessions_select".
+ */
+export interface GuestSessionsSelect<T extends boolean = true> {
+  tokenHash?: T;
+  tokenVersion?: T;
+  createdAt?: T;
+  lastActiveAt?: T;
+  expiresAt?: T;
+  hardExpiresAt?: T;
+  ipHash?: T;
+  userAgentHash?: T;
+  status?: T;
+  claimedByUser?: T;
+  claimedAt?: T;
+  messageCount?: T;
+  updatedAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -2335,6 +2439,7 @@ export interface ExercisesSelect<T extends boolean = true> {
   title?: T;
   order?: T;
   lesson?: T;
+  slug?: T;
   content?: T;
   createdBy?: T;
   origin?: T;
@@ -2456,6 +2561,9 @@ export interface MediaSelect<T extends boolean = true> {
   retentionPolicy?: T;
   expiresAt?: T;
   sizes?: T;
+  folder?: T;
+  updatedAt?: T;
+  createdAt?: T;
   url?: T;
   thumbnailURL?: T;
   filename?: T;
@@ -2465,9 +2573,6 @@ export interface MediaSelect<T extends boolean = true> {
   height?: T;
   focalX?: T;
   focalY?: T;
-  folder?: T;
-  updatedAt?: T;
-  createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -2736,16 +2841,19 @@ export interface PayloadMcpApiKeysSelect<T extends boolean = true> {
     | T
     | {
         find?: T;
+        create?: T;
       };
   chapters?:
     | T
     | {
         find?: T;
+        create?: T;
       };
   lessons?:
     | T
     | {
         find?: T;
+        create?: T;
       };
   exercises?:
     | T

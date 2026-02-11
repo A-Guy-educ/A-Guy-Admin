@@ -17,7 +17,7 @@ import {
   Send,
   X,
 } from 'lucide-react'
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { ChatErrorSurface } from '../ChatErrorSurface'
 import { ChatMessageContent } from '../ChatMessageContent'
 import { useNotebookChat } from '../hooks/useNotebookChat'
@@ -52,6 +52,7 @@ interface ChatInterfaceProps {
 
   // Translations
   translationNamespace?: string
+  guestLimitMessage?: string
 
   // Features
   showQuickActions?: boolean
@@ -77,6 +78,7 @@ export function ChatInterface({
   adminMode = false,
   userId,
   translationNamespace = 'homepage.ask',
+  guestLimitMessage: _guestLimitMessage,
   showQuickActions = false,
   showResetButton = false,
   showMathTools = false,
@@ -112,9 +114,12 @@ export function ChatInterface({
     // Error handling
     chatError,
     dismissError,
+    // Programmatic contextual help
+    sendContextualHelp,
   } = useNotebookChat({
     initialMessage: t('chatWelcome'),
     authRequiredMessage: t('chatAuthRequired'),
+    guestLimitMessage: tCourses('chatGuestLimitMessage'),
     errorMessage: tCourses('chatError'),
     hintPrompt: tCourses('chatHintPrompt'),
     solutionPrompt: tCourses('chatSolutionPrompt'),
@@ -137,6 +142,25 @@ export function ChatInterface({
     uploadFailedMessage: tCourses('chatUploadFailed'),
   })
 
+  // Auto-send contextual help on incorrect answer (ref pattern for stable listener)
+  const incorrectAnswerRef = useRef<(e: Event) => void>(() => {})
+  incorrectAnswerRef.current = (e: Event) => {
+    const { questionJson, studentAnswer } = (e as CustomEvent).detail as {
+      questionJson: string
+      studentAnswer: string
+    }
+    onChatInteraction?.()
+    sendContextualHelp(
+      `The student answered incorrectly. Here is the full question data:\n${questionJson}\n\nThe student's answer was: "${studentAnswer}"\n\nPlease help them understand why their answer is wrong and guide them toward the correct solution. Be encouraging and supportive.`,
+    )
+  }
+
+  useEffect(() => {
+    const handler = (e: Event) => incorrectAnswerRef.current(e)
+    window.addEventListener('exercise-incorrect-answer', handler)
+    return () => window.removeEventListener('exercise-incorrect-answer', handler)
+  }, [])
+
   // Math tools state
   const [isMathPaletteOpen, setIsMathPaletteOpen] = useState(false)
   const [isFormulaPanelOpen, setIsFormulaPanelOpen] = useState(false)
@@ -145,12 +169,12 @@ export function ChatInterface({
   // Lazy-load math tools components if needed
   useEffect(() => {
     if (showMathTools && !FormulaPanel) {
-      import('@/app/(frontend)/courses/[courseSlug]/chapters/[chapterSlug]/lessons/[lessonSlug]/exercises/[exerciseId]/_components/FormulaPanel').then(
+      import('@/app/(frontend)/courses/[courseSlug]/chapters/[chapterSlug]/lessons/[lessonSlug]/exercises/[exerciseSlug]/_components/FormulaPanel').then(
         (mod) => {
           FormulaPanel = mod.FormulaPanel
         },
       )
-      import('@/app/(frontend)/courses/[courseSlug]/chapters/[chapterSlug]/lessons/[lessonSlug]/exercises/[exerciseId]/_components/MathPalette').then(
+      import('@/app/(frontend)/courses/[courseSlug]/chapters/[chapterSlug]/lessons/[lessonSlug]/exercises/[exerciseSlug]/_components/MathPalette').then(
         (mod) => {
           MathPalette = mod.MathPalette
         },
