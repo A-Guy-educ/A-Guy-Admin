@@ -1234,6 +1234,18 @@ export interface Lesson {
    */
   isActive: boolean;
   /**
+   * Show an intro/about page before the lesson starts
+   */
+  introEnabled?: boolean | null;
+  /**
+   * Short explanation shown on the intro page (what the student will learn)
+   */
+  introDescription?: string | null;
+  /**
+   * Image, SVG, or video displayed on the intro page
+   */
+  introMedia?: (string | null) | Media;
+  /**
    * Upload lesson content files (PDFs, videos, images, etc.)
    */
   contentFiles?: (string | Media)[] | null;
@@ -2422,6 +2434,9 @@ export interface LessonsSelect<T extends boolean = true> {
   order?: T;
   status?: T;
   isActive?: T;
+  introEnabled?: T;
+  introDescription?: T;
+  introMedia?: T;
   contentFiles?: T;
   lessonContextText?: T;
   prompt?: T;
