@@ -21,7 +21,7 @@ export interface UploadedMedia {
 }
 
 export interface ChatError {
-  type: 'auth' | 'general'
+  type: 'auth' | 'limit' | 'general'
   message: string
 }
 
@@ -34,6 +34,7 @@ interface UseNotebookChatProps {
   initialMessage: string
   authRequiredMessage: string
   errorMessage: string
+  guestLimitMessage?: string
   hintPrompt: string
   solutionPrompt: string
   fullSolutionPrompt: string
@@ -61,6 +62,7 @@ export function useNotebookChat({
   initialMessage,
   authRequiredMessage,
   errorMessage,
+  guestLimitMessage,
   hintPrompt,
   solutionPrompt,
   fullSolutionPrompt,
@@ -99,12 +101,16 @@ export function useNotebookChat({
   // Error state
   const [chatError, setChatError] = useState<ChatError | null>(null)
 
+  // Guest mode state
+  const [_isGuestMode, setIsGuestMode] = useState(false)
+
   // Compute contextKey based on available context
   // For admin mode: use users:{userId} (user-scoped conversation)
-  // Priority for regular mode: Exercise > Lesson > Chapter > Course > Category
+  // Priority for regular mode: Lesson > Exercise (fallback) > Chapter > Course > Category
+  // Exercises within the same lesson share a single conversation
   const contextKey = useMemo(() => {
-    if (exerciseId) return `exercises:${exerciseId}`
     if (lessonId) return `lessons:${lessonId}`
+    if (exerciseId) return `exercises:${exerciseId}`
     if (chapterId) return `chapters:${chapterId}`
     if (courseId) return `courses:${courseId}`
     if (categoryId) return `categories:${categoryId}`
@@ -253,8 +259,17 @@ export function useNotebookChat({
           if (result.success && !result.exists) {
             // No conversation exists yet - keep initial welcome message
             logger.debug({ contextKey }, '[useNotebookChat] No conversation found for contextKey')
+            // Track guest mode status
+            if (result.isGuestMode) {
+              setIsGuestMode(true)
+            }
             setIsLoadingHistory(false)
             return
+          }
+
+          // Track guest mode from successful response
+          if (result.isGuestMode) {
+            setIsGuestMode(true)
           }
 
           // API call failed
@@ -455,6 +470,12 @@ export function useNotebookChat({
           if (errMsg?.toLowerCase().includes('auth')) {
             hasAuthError = true
             setChatError({ type: 'auth' as const, message: authRequiredMessage })
+          } else if (errMsg?.toLowerCase().includes('guest message limit')) {
+            setChatError({
+              type: 'limit' as const,
+              message:
+                guestLimitMessage || 'Guest message limit reached. Sign up for unlimited access.',
+            })
           } else {
             toast.error(errMsg || errorMessage)
           }
@@ -505,11 +526,22 @@ export function useNotebookChat({
 
       if (!result.success) {
         if (result.authRequired) {
-          setChatError({ type: 'auth', message: authRequiredMessage })
+          setChatError({ type: 'auth' as const, message: authRequiredMessage })
+        } else if (result.guestLimitReached) {
+          setChatError({
+            type: 'limit' as const,
+            message:
+              guestLimitMessage || 'Guest message limit reached. Sign up for unlimited access.',
+          })
         } else {
           toast.error(result.error || errorMessage)
         }
         return
+      }
+
+      // Track guest mode
+      if (result.isGuestMode) {
+        setIsGuestMode(true)
       }
 
       if (result.message) {
@@ -540,6 +572,10 @@ export function useNotebookChat({
         // Clear messages and show welcome
         setMessages([{ role: ChatRole.Assistant, content: initialMessage }])
         toast.success(resetSuccessMessage)
+        // Track guest mode
+        if (result.isGuestMode) {
+          setIsGuestMode(true)
+        }
       } else {
         toast.error(result.error || resetErrorMessage)
       }
@@ -628,6 +664,8 @@ export function useNotebookChat({
     // Error handling
     chatError,
     dismissError,
+    // Guest mode
+    isGuestMode: _isGuestMode,
     // Programmatic message injection
     addAssistantMessage,
     sendContextualHelp,
