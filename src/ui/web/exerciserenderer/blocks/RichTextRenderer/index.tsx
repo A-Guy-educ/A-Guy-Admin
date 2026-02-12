@@ -4,6 +4,7 @@
  */
 
 import { MathMarkdown } from '@/ui/web/shared/MathMarkdown'
+import { preprocessNewlines } from '@/infra/utils/textPreprocessing'
 
 interface RichTextRendererProps {
   block: {
@@ -15,9 +16,11 @@ interface RichTextRendererProps {
 }
 
 export function RichTextRenderer({ block }: RichTextRendererProps) {
+  const processedValue = preprocessNewlines(block.value)
+
   return (
     <MathMarkdown
-      content={block.value}
+      content={processedValue}
       className="rich-text-content leading-relaxed text-foreground"
     />
   )
