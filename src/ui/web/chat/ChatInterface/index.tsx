@@ -161,6 +161,35 @@ export function ChatInterface({
     return () => window.removeEventListener('exercise-incorrect-answer', handler)
   }, [])
 
+  // Ask page actions (hint, solution, check solution from canvas)
+  const askActionRef = useRef<(e: Event) => void>(() => {})
+  askActionRef.current = (e: Event) => {
+    const { type, title } = (e as CustomEvent).detail as {
+      type: 'hint' | 'solution' | 'check'
+      title: string
+    }
+    onChatInteraction?.()
+    if (type === 'hint') {
+      sendContextualHelp(
+        `The student is working on "${title}" and needs a hint. Provide a helpful hint without giving away the answer. Be encouraging.`,
+      )
+    } else if (type === 'solution') {
+      sendContextualHelp(
+        `The student is working on "${title}" and wants to see the solution approach. Guide them step by step through the solution.`,
+      )
+    } else if (type === 'check') {
+      sendContextualHelp(
+        `The student drew a solution for "${title}" on the canvas and wants it checked. Analyze their approach and provide feedback. Be encouraging and supportive.`,
+      )
+    }
+  }
+
+  useEffect(() => {
+    const handler = (e: Event) => askActionRef.current(e)
+    window.addEventListener('ask-action', handler)
+    return () => window.removeEventListener('ask-action', handler)
+  }, [])
+
   // Math tools state
   const [isMathPaletteOpen, setIsMathPaletteOpen] = useState(false)
   const [isFormulaPanelOpen, setIsFormulaPanelOpen] = useState(false)
