@@ -226,16 +226,34 @@ async function sendMultimodalToGenkit(
   payload: Payload,
 ): Promise<ExerciseChatResult> {
   // Convert media parts to Genkit-compatible attachments
-  // Uses publicUrl from validated MediaPartWithPath (already resolved with correct baseUrl)
+  // Fetches the direct blob URL from the media document (no auth required)
+  // since the Payload file-serving endpoint requires authentication
   const attachments: Array<{ data: string; mimeType: string }> = []
 
   for (const mediaPart of mediaPartsWithPath) {
     try {
-      const response = await fetch(mediaPart.publicUrl)
+      // Get the media doc to access the direct blob URL
+      const mediaDoc = await payload.findByID({
+        collection: 'media',
+        id: mediaPart.mediaId,
+        depth: 0,
+        overrideAccess: true,
+      })
+
+      const blobUrl = (mediaDoc as { url?: string }).url
+      if (!blobUrl) {
+        logger.warn(
+          { mediaId: mediaPart.mediaId },
+          '[ExerciseChat] Media document has no url field',
+        )
+        continue
+      }
+
+      const response = await fetch(blobUrl)
       if (!response.ok) {
         logger.warn(
-          { mediaId: mediaPart.mediaId, status: response.status, url: mediaPart.publicUrl },
-          '[ExerciseChat] Failed to fetch media - non-OK response',
+          { mediaId: mediaPart.mediaId, status: response.status, url: blobUrl },
+          '[ExerciseChat] Failed to fetch media from blob - non-OK response',
         )
         continue
       }
@@ -248,7 +266,7 @@ async function sendMultimodalToGenkit(
       })
     } catch (fetchError) {
       logger.warn(
-        { err: fetchError, mediaId: mediaPart.mediaId, url: mediaPart.publicUrl },
+        { err: fetchError, mediaId: mediaPart.mediaId },
         '[ExerciseChat] Failed to fetch media',
       )
     }
