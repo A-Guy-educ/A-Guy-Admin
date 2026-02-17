@@ -18,6 +18,9 @@ import { LLMProviderType } from '../providers/types'
 export interface ChatMessage {
   role: 'user' | 'assistant'
   content: string
+  timestamp?: string
+  hidden?: boolean
+  media?: Array<{ mediaId: string }>
 }
 
 export interface ExerciseChatInput {

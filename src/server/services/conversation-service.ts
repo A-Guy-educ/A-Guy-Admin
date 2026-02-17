@@ -14,8 +14,8 @@
  * - Validate enrollment/ownership for access control
  */
 import { logger } from '@/infra/utils/logger'
-import { AccountRole } from '@/server/payload/collections/Users/roles'
 import { getGuestChatConfig } from '@/server/config/guest-chat-config'
+import { AccountRole } from '@/server/payload/collections/Users/roles'
 import type { Payload } from 'payload'
 
 export class GuestConversationLimitError extends Error {
@@ -52,6 +52,7 @@ export interface ChatMessage {
   role: 'user' | 'assistant'
   content: string
   timestamp: string
+  hidden?: boolean
 }
 
 /**
