@@ -715,8 +715,13 @@ export function useNotebookChat({
    * Send a contextual help prompt with an image (e.g. canvas drawing).
    * Uploads the image, then sends via sync path (media requires sync).
    * No user message bubble shown — only the AI response appears.
+   * @param additionalMediaIds - extra media IDs to include (e.g. the exercise image)
    */
-  const sendContextualHelpWithMedia = async (prompt: string, imageDataUrl: string) => {
+  const sendContextualHelpWithMedia = async (
+    prompt: string,
+    imageDataUrl: string,
+    additionalMediaIds?: string[],
+  ) => {
     if (isLoading || isLoadingHistory) return
     setIsLoading(true)
     const context = { exerciseId, lessonId, chapterId, courseId, categoryId }
@@ -748,8 +753,9 @@ export function useNotebookChat({
       const doc = await response.json()
       const mediaId = doc.doc?.id || doc.id
 
-      // Send via sync path with uploaded media (no user bubble)
-      await sendMessageSync(prompt, acknowledgment, context, [mediaId])
+      // Send canvas drawing + any additional media (e.g. exercise image)
+      const allMediaIds = [mediaId, ...(additionalMediaIds ?? [])]
+      await sendMessageSync(prompt, acknowledgment, context, allMediaIds)
     } catch (error) {
       logger.error({ err: error }, 'Failed to send canvas for check')
       toast.error(errorMessage)

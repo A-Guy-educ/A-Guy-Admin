@@ -245,8 +245,9 @@ export function ChatInterface({
       }
     } else if (type === 'check' && imageData) {
       sendContextualHelpWithMedia(
-        `The student drew a solution for "${title}" on the canvas. Analyze the image of their work and tell them if their approach looks correct. Be encouraging and supportive.`,
+        `The student drew a solution for "${title}" on the canvas. You are receiving two images: the first is the student's handwritten work from the canvas, and the second is the original exercise/question. Compare the student's work against the original question and tell them if their approach and answer look correct. Be encouraging and supportive.`,
         imageData,
+        mediaId ? [mediaId] : undefined,
       )
     }
   }
