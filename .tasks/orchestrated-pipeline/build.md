@@ -2,66 +2,52 @@
 
 ## Branch
 
-- **Branch:** `feat/orchestrated-pipeline`
+- **Branch:** feat/orchestrated-pipeline
 
 ## Changes
 
-- **`.github/workflows/pipeline-orchestrated.yml`** - New workflow with two-job architecture:
-  - `parse` job: Read-only, validates trigger (dispatch or comment), extracts parameters, gates execution
-  - `orchestrate` job: Write permissions, obtains GitHub App token, runs orchestrator
-  - Supports `workflow_dispatch` and `issue_comment` triggers
-  - Safety filters: bot filter, author_association gating, pattern matching (`^/oc\s+`)
-  - Concurrency: `task_id || issue.number` fallback
+- **`.github/workflows/pipeline-orchestrated.yml`** - Fixed 15 issues blocking workflow execution:
+  - Added missing `pnpm/action-setup` step (critical - workflow would fail without pnpm)
+  - Fixed CLI arg parsing to handle `--key=value` syntax (critical - all args were silently ignored)
+  - Fixed shell injection vulnerability in safety check using env vars (critical - security fix)
+  - Added `GH_TOKEN` to parse job for error comment posting (critical - error feedback)
+  - Fixed sed regex for `/oc` prefix stripping (was broken)
+  - Simplified `--feedback` extraction (was fragile for multi-word)
+  - Fixed `DRY_RUN` boolean expansion (always truthy due to `"false"` string)
+  - Added `timeout-minutes` to jobs (parse: 5min, orchestrate: 60min)
+  - Downgraded action versions to v4 for compatibility
 
-- **`scripts/orchestrator.ts`** - Central orchestration logic (~400 lines):
-  - CLI argument parsing via orchestrator-utils
-  - Modes: spec, impl, full, rerun, status
-  - Agent execution with file watching, timeouts
-  - Status management (status.json)
-  - Comment posting to GitHub issues
+- **`.github/workflows/opencode.yml`** - Prevented dual trigger:
+  - Added exclusions for pipeline commands (`/oc spec`, `/oc impl`, `/oc rerun`, `/oc full`, `/oc status`) to prevent running alongside pipeline-orchestrated.yml
 
-- **`scripts/orchestrator-utils.ts`** - CI utilities (~350 lines):
-  - Types: OrchestratorInput, PipelineStatus, StageStatus
-  - Status file management (read/write/update)
-  - GitHub API helpers (postComment, getIssueComments)
-  - CLI argument parsing
-  - Auth validation (OPENCODE_GITHUB_TOKEN)
-  - Formatting helpers (duration, status comments)
+- **`scripts/orchestrator-utils.ts`** - Fixed CLI parser:
+  - Added normalization logic to handle both `--flag value` and `--flag=value` argument syntax
 
-- **`tests/unit/scripts/orchestrator.spec.ts`** - Full test suite for orchestrator.ts (50 tests):
-  - Unit tests for CLI argument parsing (parseCliArgs)
-  - Auth validation tests (validateAuth)
-  - Status management tests (initStatus, updateStageStatus, readStatus, completeStatus)
-  - Pipeline flow tests (runSpecPipeline, runImplPipeline, runRerunPipeline logic)
-  - File watch/timeout detection tests
-  - Failure handling tests
-  - Retry logic documentation
-  - Status comment formatting tests
-  - GitHub comment posting tests
-  - Validation helpers tests (isValidMode, isValidStage, validateTaskId)
-  - Edge case tests
+- **`tests/unit/scripts/orchestrator.spec.ts`** - Added unit tests (50 tests):
+  - CLI argument parsing (parseCliArgs)
+  - Auth validation (validateAuth)
+  - Status management (initStatus, updateStageStatus, readStatus, completeStatus)
+  - Pipeline flow tests (spec, impl, rerun)
+  - File watch/timeout detection
+  - Failure handling, retry logic, status comment formatting
+  - GitHub comment posting, validation helpers, edge cases
 
-- **`docs/pipeline-orchestrated-plan.md`** - Full plan documentation (~480 lines)
-
-- **`package.json`** - Added `"pipeline:orchestrate": "pnpm tsx scripts/orchestrator.ts"` script
+- **`tests/int/scripts/orchestrator.int.spec.ts`** - Added integration tests (25 tests):
+  - Full CLI argument parsing integration
+  - Status file management (read/write)
+  - Timeout handling, failure handling with error messages
+  - Retry exhaustion tracking, stage file operations
+  - Task validation, comment formatting for all states
+  - Pipeline stage definitions, rerun logic
 
 ## Quality
 
-- TypeScript: **PASS** (`pnpm typecheck`)
-- Lint: **PASS** (pre-existing warnings only, no errors in new files)
-- Build: **PASS** (full build completed)
-- Unit Tests: **PASS** (all 181 tests passed - 50 new orchestrator tests + 131 existing)
+- TypeScript: PASS (pnpm tsc --noEmit)
+- Lint: PASS (only pre-existing warnings, no errors)
+- YAML Syntax: PASS (validated with js-yaml)
 
 ## Commits
 
-- `06eb3861` feat(pipeline): Add orchestrated GitHub Actions pipeline
-
-## Notes
-
-- Branch pushed to origin. PR to dev can be created with:
-  ```bash
-  gh pr create --base dev --head feat/orchestrated-pipeline
-  ```
-- Coexists with existing `pipeline.yml` (local pipeline)
-- Uses `OPENCODE_GITHUB_TOKEN` env var for GitHub App authentication
-- All LLM provider keys available (MINIMAX_API_KEY, GEMINI_API_KEY, OPENAI_API_KEY, OPENCODE_API_KEY)
+- `74b4378d` test(orchestrator): Add full test suite for orchestrator.ts
+- `10fde7f4` test(orchestrator): Add mocked integration tests for orchestrator.ts
+- `2ed7f05c` fix(pipeline-orchestrated): Resolve 15 issues blocking workflow execution
