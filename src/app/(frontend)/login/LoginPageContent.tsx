@@ -3,7 +3,7 @@
 import { useTranslations } from '@/ui/web/providers/I18n'
 import { LoginForm } from './LoginForm'
 
-export function LoginPageContent({ passwordEnabled }: { passwordEnabled: boolean }) {
+export function LoginPageContent() {
   const t = useTranslations('auth.login')
 
   return (
@@ -13,7 +13,7 @@ export function LoginPageContent({ passwordEnabled }: { passwordEnabled: boolean
           <h1 className="text-3xl font-bold mb-2">{t('title')}</h1>
           <p className="text-muted-foreground">{t('subtitle')}</p>
         </div>
-        <LoginForm passwordEnabled={passwordEnabled} />
+        <LoginForm />
       </div>
     </div>
   )

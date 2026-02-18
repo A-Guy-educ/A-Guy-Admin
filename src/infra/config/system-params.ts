@@ -40,28 +40,6 @@ async function getSystemParamValue(
  */
 export const SystemParams = {
   // =========================================
-  // Login
-  // =========================================
-
-  /**
-   * Whether password-based login is enabled
-   * Admin ConfigValues (global domain): { "login": { "password": true } }
-   *
-   * @default true (enabled if not configured)
-   * @returns true if password login is enabled
-   */
-  async isPasswordLoginEnabled(): Promise<boolean> {
-    try {
-      const value = await getConfigValueByKey<boolean>(SYSTEM_PARAMS_DOMAIN, 'login.password', {
-        throwIfNotFound: false,
-      })
-      return value !== false
-    } catch {
-      return true
-    }
-  },
-
-  // =========================================
   // PDF Conversion
   // =========================================
 
@@ -105,10 +83,6 @@ export const SystemParams = {
 // =========================================
 // Standalone exports for backward compatibility
 // =========================================
-
-export async function isPasswordLoginEnabled(): Promise<boolean> {
-  return SystemParams.isPasswordLoginEnabled()
-}
 
 export async function getPdfConversionMaxSegmentPages(tenantId?: string): Promise<number> {
   return SystemParams.getPdfConversionMaxSegmentPages(tenantId)

@@ -4,8 +4,6 @@ import { cookies } from 'next/headers'
 import { getPayload } from 'payload'
 import { claimGuestConversations } from '@/server/services/guest-session-upgrade'
 import { clearGuestSessionCookie, GUEST_SESSION_COOKIE_NAME } from '@/server/services/guest-session'
-import { isPasswordLoginEnabled } from '@/infra/config/system-params'
-import { loadConfigValues } from '@/infra/config/runtime/config-values'
 
 type CookieStore = {
   set: (
@@ -33,13 +31,6 @@ export async function loginAction(formData: FormData, cookieStore?: CookieStore)
   try {
     const config = (await import('@payload-config')).default
     const payload = await getPayload({ config })
-
-    await loadConfigValues(payload)
-    const passwordEnabled = await isPasswordLoginEnabled()
-    if (!passwordEnabled) {
-      return { success: false, error: 'passwordLoginDisabled' }
-    }
-
     const usersCollection = payload.collections?.users
     const shouldRestoreToken = usersCollection?.config?.auth?.removeTokenFromResponses === true
     const cookiePrefix = payload.config.cookiePrefix || 'payload'

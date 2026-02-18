@@ -80,8 +80,7 @@
       "noAccount": "אין לך חשבון?",
       "signupLink": "הירשם",
       "errors": {
-        "invalidCredentials": "אימייל או סיסמה שגויים",
-        "passwordLoginDisabled": "התחברות עם סיסמה אינה זמינה"
+        "invalidCredentials": "אימייל או סיסמה שגויים"
       }
     },
     "account": {
