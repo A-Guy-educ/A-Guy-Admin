@@ -199,10 +199,10 @@ jobs:
           # If no task-id provided, generate a new one
           if [[ -z "$TASK_ID" ]]; then
             echo "No task-id provided, generating new one..."
-            # Generate ID: YYMMDD-nn (e.g., 260218-01)
+            # Generate ID: YYMMDD-auto-N (e.g., 260218-auto-1)
             DATE_PREFIX=$(date +'%y%m%d')
-            RANDOM_SUFFIX=$(shuf -i 1-99 -n 1 | xargs printf '%02d')
-            TASK_ID="${DATE_PREFIX}-${RANDOM_SUFFIX}"
+            COUNTER=$(shuf -i 1-99 -n 1 | xargs printf '%02d')
+            TASK_ID="${DATE_PREFIX}-auto-${COUNTER}"
             echo "Generated new task-id: $TASK_ID"
           fi
 
@@ -277,11 +277,30 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Install OpenCode CLI
+      # OpenCode CLI setup — replicated from anomalyco/opencode/github@latest action.yml
+      # We don't use the Action directly because the orchestrator spawns
+      # `opencode github run` multiple times (once per pipeline stage).
+      - name: Get opencode version
+        id: oc-version
         run: |
-          curl -fsSL https://opencode.ai/install | bash
+          VERSION=$(curl -sf https://api.github.com/repos/anomalyco/opencode/releases/latest | grep -o '"tag_name": *"[^"]*"' | cut -d'"' -f4)
+          echo "version=${VERSION:-latest}" >> $GITHUB_OUTPUT
+
+      - name: Cache opencode
+        uses: actions/cache@v4
+        id: oc-cache
+        with:
+          path: ~/.opencode/bin
+          key: opencode-${{ runner.os }}-${{ runner.arch }}-${{ steps.oc-version.outputs.version }}
+
+      - name: Install opencode
+        if: steps.oc-cache.outputs.cache-hit != 'true'
+        run: curl -fsSL https://opencode.ai/install | bash
+
+      - name: Add opencode to PATH
+        run: |
           echo "$HOME/.opencode/bin" >> $GITHUB_PATH
-          opencode --version
+          $HOME/.opencode/bin/opencode --version
 
       - name: Run orchestrated pipeline
         env:
