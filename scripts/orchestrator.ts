@@ -481,6 +481,8 @@ function runAgentWithFileWatch(
       MODEL: process.env.OPENCODE_MODEL || 'minimax-coding-plan/MiniMax-M2.5',
       AGENT: stage,
       PROMPT: buildStagePrompt(input, stage),
+      // Skip husky hooks during opencode agent runs (agents may create non-conventional commits)
+      SKIP_HOOKS: '1',
     }
 
     let retries = 0

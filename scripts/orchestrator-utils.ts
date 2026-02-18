@@ -321,7 +321,13 @@ export function validateAuth(): void {
 // ============================================================================
 
 function escapeShell(str: string): string {
-  return str.replace(/"/g, '\\"').replace(/\n/g, '\\n')
+  // Escape backslashes first, then other shell metacharacters
+  return str
+    .replace(/\\/g, '\\\\')
+    .replace(/"/g, '\\"')
+    .replace(/`/g, '\\`')
+    .replace(/\$/g, '\\$')
+    .replace(/\n/g, '\\n')
 }
 
 export function formatDuration(ms: number): string {
