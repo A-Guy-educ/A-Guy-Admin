@@ -159,6 +159,7 @@ import { runAgentWithFileWatch } from './agent-runner'
 import { STAGE_TIMEOUTS, DEFAULT_TIMEOUT } from './agent-runner'
 import { ensureFeatureBranch } from './git-utils'
 import { createRunner } from './runner-backend'
+import { runVerifyStage, runPrStage } from './scripted-stages'
 import { preflight } from './preflight'
 import type { RunnerBackend } from './runner-backend'
 
@@ -559,24 +560,41 @@ async function runImplPipeline(
       continue
     }
 
-    // Run agent with timeout
-    const timeout = STAGE_TIMEOUTS[stage] ?? DEFAULT_TIMEOUT
-    const result = await runAgentWithFileWatch(input, stage, outputFile, timeout, { backend })
+    // Scripted stages: verify and pr run directly, no LLM needed
+    if (stage === 'verify') {
+      const verifyResult = runVerifyStage(outputFile)
+      if (!verifyResult.passed) {
+        updateStageStatus(input.taskId, stage, 'failed', { retries: 0 })
+      } else {
+        updateStageStatus(input.taskId, stage, 'completed', { retries: 0, outputFile: path.basename(outputFile) })
+      }
+    } else if (stage === 'pr') {
+      const prResult = runPrStage(taskDir, outputFile)
+      if (!prResult.url) {
+        updateStageStatus(input.taskId, stage, 'failed', { retries: 0 })
+        throw new Error('PR creation failed')
+      }
+      updateStageStatus(input.taskId, stage, 'completed', { retries: 0, outputFile: path.basename(outputFile) })
+    } else {
+      // Agent-based stages: architect, build, test, auditor
+      const timeout = STAGE_TIMEOUTS[stage] ?? DEFAULT_TIMEOUT
+      const result = await runAgentWithFileWatch(input, stage, outputFile, timeout, { backend })
 
-    if (result.timedOut) {
-      updateStageStatus(input.taskId, stage, 'timeout', { retries: result.retries })
-      throw new Error(`Stage "${stage}" timed out after ${Math.round(timeout / 60000)} minutes`)
+      if (result.timedOut) {
+        updateStageStatus(input.taskId, stage, 'timeout', { retries: result.retries })
+        throw new Error(`Stage "${stage}" timed out after ${Math.round(timeout / 60000)} minutes`)
+      }
+
+      if (!result.succeeded) {
+        updateStageStatus(input.taskId, stage, 'failed', { retries: result.retries })
+        throw new Error(`Stage "${stage}" failed after ${result.retries} retries`)
+      }
+
+      updateStageStatus(input.taskId, stage, 'completed', {
+        retries: result.retries,
+        outputFile: path.basename(outputFile),
+      })
     }
-
-    if (!result.succeeded) {
-      updateStageStatus(input.taskId, stage, 'failed', { retries: result.retries })
-      throw new Error(`Stage "${stage}" failed after ${result.retries} retries`)
-    }
-
-    updateStageStatus(input.taskId, stage, 'completed', {
-      retries: result.retries,
-      outputFile: path.basename(outputFile),
-    })
 
     // Consume rerun-feedback.md after architect succeeds (prevent re-triggering on retry)
     if (stage === 'architect' && fs.existsSync(path.join(taskDir, 'rerun-feedback.md'))) {
