@@ -23,6 +23,41 @@ import { execSync } from 'child_process'
 import * as fs from 'fs'
 import * as path from 'path'
 
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+/**
+ * Check if questions.md contains actual questions that need answering
+ */
+function checkForQuestions(questionsPath: string): boolean {
+  const content = fs.readFileSync(questionsPath, 'utf-8').trim()
+
+  // If file is empty or just placeholder text, no questions
+  if (!content || content.length < 10) {
+    return false
+  }
+
+  // Check for question patterns:
+  // - Lines starting with numbers followed by period or parenthesis (1. 2. 1) 2))
+  // - Lines containing "?" character
+  // - Sections like "## Questions" or "### Clarifications Needed"
+  const hasNumberedQuestions = /^\d+[.)]\s+/m.test(content)
+  const hasQuestionMarks = /\?/.test(content)
+  const hasQuestionHeader = /^#{1,3}\s*(Questions|Clarifications|Needs Clarification)/m.test(
+    content,
+  )
+
+  // Also check for "APPROVED" or "No clarifications needed" as indicators of no questions
+  const isApproved = /^#{1,3}\s*APPROVED/im.test(content)
+  const noClarifications = /no clarifications needed/i.test(content)
+
+  // Has questions if there's question content AND not explicitly approved
+  const hasQuestionContent = hasNumberedQuestions || hasQuestionMarks || hasQuestionHeader
+
+  return hasQuestionContent && !isApproved && !noClarifications
+}
+
 // Import utilities from cody-utils
 import {
   parseCliArgs,
@@ -237,7 +272,33 @@ async function runSpecPipeline(
     console.log(`✓ ${stage} complete`)
   }
 
-  // Create clarified.md if needed (for impl pipeline)
+  // Check if there are pending questions from clarify stage
+  const questionsPath = path.join(taskDir, 'questions.md')
+  const hasQuestions = fs.existsSync(questionsPath) && checkForQuestions(questionsPath)
+
+  if (hasQuestions) {
+    // Questions exist - stop and ask for clarification
+    console.log('\n⚠️ Clarify stage has questions that need answering')
+    console.log('Stopping pipeline. Answer the questions and call /cody again to proceed.\n')
+
+    // Post comment asking for clarification
+    if (input.issueNumber) {
+      const questionsContent = fs.readFileSync(questionsPath, 'utf-8')
+      const preview = questionsContent.slice(0, 1500)
+      postComment(
+        input.issueNumber,
+        `🔄 Cody stopped at clarify stage - questions need answering:\n\n${preview}\n\nPlease answer these questions and call \`/cody\` again to proceed with implementation.`,
+      )
+    }
+
+    // Don't create default clarified.md - let user provide clarifications
+    // Stop here - impl pipeline will run on subsequent /cody call
+    completeStatus(input.taskId, 'completed')
+    console.log('✅ Cody SPEC pipeline complete (waiting for clarification)')
+    return
+  }
+
+  // No questions - create default clarified.md and proceed
   const clarifiedPath = path.join(taskDir, 'clarified.md')
   if (!fs.existsSync(clarifiedPath)) {
     fs.writeFileSync(clarifiedPath, '# Clarified\n\nUse recommended answers.\n')
