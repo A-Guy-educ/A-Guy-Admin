@@ -1,6 +1,6 @@
 import '@/infra/config/server-init'
 
-import { DynamicLesson } from '@/demos/dynamic-lesson'
+import { EmptyLessonPlaceholder } from './_components/EmptyLessonPlaceholder'
 import type { Media } from '@/payload-types'
 import { SystemParams } from '@/infra/config/system-params'
 import { resolveAccessType } from '@/server/constants/access-types'
@@ -118,7 +118,7 @@ export default async function LessonPage({ params }: LessonPageProps) {
             <ExerciseWorkspace
               exerciseTitle={lesson.title}
               backUrl={backUrl}
-              primaryContent={<DynamicLesson />}
+              primaryContent={<EmptyLessonPlaceholder />}
               chatContent={
                 <ChatInterface
                   lessonId={chatLessonId}
