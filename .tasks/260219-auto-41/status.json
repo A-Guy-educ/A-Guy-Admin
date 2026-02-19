@@ -3,9 +3,9 @@
   "mode": "full",
   "pipeline": "spec_execute_verify",
   "startedAt": "2026-02-19T20:05:07.243Z",
-  "updatedAt": "2026-02-19T20:09:17.338Z",
+  "updatedAt": "2026-02-19T20:18:48.492Z",
   "state": "running",
-  "currentStage": "clarify",
+  "currentStage": "auditor",
   "stages": {
     "taskify": {
       "state": "completed",
@@ -27,6 +27,24 @@
       "startedAt": "2026-02-19T20:07:55.434Z",
       "completedAt": "2026-02-19T20:09:17.338Z",
       "elapsed": 81904
+    },
+    "test": {
+      "state": "completed",
+      "retries": 0,
+      "outputFile": "test.md",
+      "completedAt": "2026-02-19T20:18:19.348Z"
+    },
+    "verify": {
+      "state": "completed",
+      "retries": 0,
+      "startedAt": "2026-02-19T20:18:19.348Z",
+      "completedAt": "2026-02-19T20:18:48.492Z",
+      "elapsed": 29144
+    },
+    "auditor": {
+      "state": "running",
+      "retries": 0,
+      "startedAt": "2026-02-19T20:18:48.492Z"
     }
   },
   "triggeredBy": "comment",

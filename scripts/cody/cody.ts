@@ -566,7 +566,10 @@ async function runImplPipeline(
       if (!verifyResult.passed) {
         updateStageStatus(input.taskId, stage, 'failed', { retries: 0 })
       } else {
-        updateStageStatus(input.taskId, stage, 'completed', { retries: 0, outputFile: path.basename(outputFile) })
+        updateStageStatus(input.taskId, stage, 'completed', {
+          retries: 0,
+          outputFile: path.basename(outputFile),
+        })
       }
     } else if (stage === 'pr') {
       const prResult = runPrStage(taskDir, outputFile)
@@ -574,7 +577,10 @@ async function runImplPipeline(
         updateStageStatus(input.taskId, stage, 'failed', { retries: 0 })
         throw new Error('PR creation failed')
       }
-      updateStageStatus(input.taskId, stage, 'completed', { retries: 0, outputFile: path.basename(outputFile) })
+      updateStageStatus(input.taskId, stage, 'completed', {
+        retries: 0,
+        outputFile: path.basename(outputFile),
+      })
     } else {
       // Agent-based stages: architect, build, test, auditor
       const timeout = STAGE_TIMEOUTS[stage] ?? DEFAULT_TIMEOUT
