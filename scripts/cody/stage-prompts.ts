@@ -99,14 +99,20 @@ Report PASS or FAIL for each. If any fail, include the error output. Do NOT run 
 
   pr: (taskId) => `Create a pull request for the changes in this branch.
 
-IMPORTANT: First check if a PR already exists for this branch using "gh pr list --head <branch-name>". If a PR already exists, do NOT create a new one - just write the PR URL to the output file and finish.
+STEP 1: Check if a PR already exists for this branch using "gh pr list --head <branch-name>". If one exists, just write the PR URL to the output file and stop.
 
-REQUIREMENTS:
-- The PR title MUST be a conventional commit format (e.g. "fix: resolve login crash", "feat: add dark mode toggle")
-- The PR title MUST describe WHAT the code change does, based on the actual code diff (not the spec pipeline status)
-- The PR body should summarize what changed, why, and how it was tested
-- Read .tasks/${taskId}/task.md and .tasks/${taskId}/spec.md for context on the task objective
-- Use git diff to understand the actual code changes`,
+STEP 2: Determine the PR title. This is critical:
+- Run "git log --oneline dev..HEAD" to see what commits were made
+- Read .tasks/${taskId}/task.md to understand the original task
+- The title MUST follow conventional commit format: "type: short description"
+  where type is feat/fix/refactor/chore/docs based on the actual changes
+- GOOD examples: "fix: reduce typing speed in GreetingFlow", "feat: add user avatar upload"
+- BAD examples: "Spec valid, ready to implement", "Update code", "Changes for task"
+- The title must describe the USER-VISIBLE change, not internal pipeline status
+
+STEP 3: Create the PR with "gh pr create --title <title> --body <body>"
+- Body should summarize: what changed, why, files affected
+- Reference the task: .tasks/${taskId}/`,
 }
 
 // ============================================================================
