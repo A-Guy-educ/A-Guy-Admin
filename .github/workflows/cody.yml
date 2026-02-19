@@ -112,8 +112,7 @@ jobs:
           COMMENT_BODY: ${{ github.event.comment.body }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
         run: |
-          # Default outputs
-          echo "task_id=" >> $GITHUB_OUTPUT
+          # Default outputs (task_id intentionally omitted — set later after discovery)
           echo "mode=full" >> $GITHUB_OUTPUT
           echo "dry_run=false" >> $GITHUB_OUTPUT
           echo "from_stage=" >> $GITHUB_OUTPUT
