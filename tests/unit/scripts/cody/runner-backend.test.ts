@@ -70,7 +70,7 @@ describe('LocalRunner', () => {
     expect(runner.name).toBe('opencode-local')
   })
 
-  it('should call spawn with "pnpm" and correct arguments including fullPrompt', () => {
+  it('should call spawn with "pnpm" and correct arguments', () => {
     const runner = new LocalRunner()
     const env = { PATH: '/usr/bin' } as unknown as NodeJS.ProcessEnv
 
@@ -79,22 +79,29 @@ describe('LocalRunner', () => {
     expect(spawn).toHaveBeenCalledOnce()
     expect(spawn).toHaveBeenCalledWith(
       'pnpm',
-      ['ocode', 'run', '--agent', 'spec', 'Execute spec for this task. Write a spec'],
-      expect.objectContaining({ cwd: '/my/project', stdio: 'inherit' }),
+      ['ocode', 'run', '--agent', 'spec'],
+      expect.objectContaining({
+        cwd: '/my/project',
+        stdio: 'inherit',
+        env: expect.objectContaining({
+          AGENT: 'spec',
+          PROMPT: 'Write a spec',
+        }),
+      }),
     )
   })
 
-  it('should construct fullPrompt that includes stage name and original prompt', () => {
+  it('should pass prompt via PROMPT env var', () => {
     const runner = new LocalRunner()
     const env = {} as NodeJS.ProcessEnv
 
     runner.spawn('execute', 'Implement the feature', env, '/cwd')
 
-    const calledArgs = vi.mocked(spawn).mock.calls[0][1]
-    const fullPrompt = calledArgs![calledArgs!.length - 1]
-    expect(fullPrompt).toBe('Execute execute for this task. Implement the feature')
-    expect(fullPrompt).toContain('execute')
-    expect(fullPrompt).toContain('Implement the feature')
+    const calledEnv = vi.mocked(spawn).mock.calls[0][2]?.env
+    expect(calledEnv).toMatchObject({
+      AGENT: 'execute',
+      PROMPT: 'Implement the feature',
+    })
   })
 
   it('should pass MODEL env var through', () => {
