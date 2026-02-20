@@ -337,7 +337,7 @@ async function runSpecPipeline(
     commitPipelineFiles({
       taskDir,
       taskId: input.taskId,
-      message: `ci(cody): save task files for ${input.taskId}\n\nAuto-committed by Cody pipeline`,
+      message: `ci(cody): Save task files for ${input.taskId}\n\nAuto-committed by Cody pipeline`,
       ensureBranch: true,
       cleanDirtyState: true,
       stagingStrategy: 'task-only',
@@ -354,7 +354,7 @@ async function runSpecPipeline(
   commitPipelineFiles({
     taskDir,
     taskId: input.taskId,
-    message: `ci(cody): save task files for ${input.taskId}\n\nAuto-committed by Cody pipeline`,
+    message: `ci(cody): Save task files for ${input.taskId}\n\nAuto-committed by Cody pipeline`,
     ensureBranch: true,
     cleanDirtyState: true,
     stagingStrategy: 'task-only',
@@ -600,7 +600,7 @@ async function runImplPipeline(
         const autofixResult = commitPipelineFiles({
           taskDir,
           taskId: input.taskId,
-          message: `fix: autofix corrections for ${input.taskId}`,
+          message: `fix: Autofix corrections for ${input.taskId}\n\nApply automated lint, type, and format fixes`,
           stagingStrategy: 'tracked+task',
           push: true,
           dryRun: input.dryRun,
