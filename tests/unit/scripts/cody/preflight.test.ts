@@ -14,18 +14,10 @@ import * as fs from 'fs'
 import { preflight } from '../../../../scripts/cody/preflight'
 
 describe('preflight', () => {
-  let exitSpy: ReturnType<typeof vi.spyOn>
   let consoleSpy: { log: ReturnType<typeof vi.spyOn>; error: ReturnType<typeof vi.spyOn> }
 
   beforeEach(() => {
     vi.clearAllMocks()
-
-    // Mock process.exit to prevent actual exit — throw to stop execution flow
-    exitSpy = vi
-      .spyOn(process, 'exit')
-      .mockImplementation((code?: number | string | null | undefined) => {
-        throw new Error(`process.exit(${code})`)
-      })
 
     // Suppress console output during tests
     consoleSpy = {
@@ -44,20 +36,18 @@ describe('preflight', () => {
   })
 
   afterEach(() => {
-    exitSpy.mockRestore()
     consoleSpy.log.mockRestore()
     consoleSpy.error.mockRestore()
   })
 
-  it('should pass all checks without calling process.exit', () => {
+  it('should pass all checks without throwing', () => {
     preflight()
 
-    expect(exitSpy).not.toHaveBeenCalled()
     // Should print the success message
     expect(consoleSpy.log).toHaveBeenCalledWith(expect.stringContaining('Pre-flight complete'))
   })
 
-  it('should call process.exit(1) when ocode CLI is missing', () => {
+  it('should throw Error (not process.exit) when ocode CLI is missing', () => {
     vi.mocked(execSync).mockImplementation((cmd: string) => {
       if (typeof cmd === 'string' && cmd.includes('pnpm ocode --version')) {
         throw new Error('command not found: ocode')
@@ -68,11 +58,11 @@ describe('preflight', () => {
       return Buffer.from('')
     })
 
-    expect(() => preflight()).toThrow('process.exit(1)')
-    expect(exitSpy).toHaveBeenCalledWith(1)
+    expect(() => preflight()).toThrow('Pre-flight checks failed')
+    expect(() => preflight()).toThrow(/Install.*opencode/)
   })
 
-  it('should call process.exit(1) when git repo is missing', () => {
+  it('should throw Error when git repo is missing', () => {
     vi.mocked(execSync).mockImplementation((cmd: string) => {
       if (typeof cmd === 'string' && cmd.includes('git rev-parse --git-dir')) {
         throw new Error('fatal: not a git repository')
@@ -83,11 +73,10 @@ describe('preflight', () => {
       return Buffer.from('')
     })
 
-    expect(() => preflight()).toThrow('process.exit(1)')
-    expect(exitSpy).toHaveBeenCalledWith(1)
+    expect(() => preflight()).toThrow('Pre-flight checks failed')
   })
 
-  it('should call process.exit(1) when Node.js is too old (v16)', () => {
+  it('should throw Error when Node.js is too old (v16)', () => {
     vi.mocked(execSync).mockImplementation((cmd: string) => {
       if (typeof cmd === 'string' && cmd.includes('node --version')) {
         return 'v16.20.0'
@@ -95,18 +84,16 @@ describe('preflight', () => {
       return Buffer.from('')
     })
 
-    expect(() => preflight()).toThrow('process.exit(1)')
-    expect(exitSpy).toHaveBeenCalledWith(1)
+    expect(() => preflight()).toThrow('Pre-flight checks failed')
   })
 
-  it('should call process.exit(1) when package.json is missing', () => {
+  it('should throw Error when package.json is missing', () => {
     vi.mocked(fs.existsSync).mockReturnValue(false)
 
-    expect(() => preflight()).toThrow('process.exit(1)')
-    expect(exitSpy).toHaveBeenCalledWith(1)
+    expect(() => preflight()).toThrow('Pre-flight checks failed')
   })
 
-  it('should collect all errors when multiple checks fail', () => {
+  it('should collect all error messages in thrown Error when multiple checks fail', () => {
     // Fail ocode CLI, git repo, and pnpm
     vi.mocked(execSync).mockImplementation((cmd: string) => {
       if (typeof cmd === 'string' && cmd.includes('pnpm ocode --version')) {
@@ -125,20 +112,25 @@ describe('preflight', () => {
     })
     vi.mocked(fs.existsSync).mockReturnValue(false)
 
-    expect(() => preflight()).toThrow('process.exit(1)')
+    let thrownError: Error | undefined
+    try {
+      preflight()
+    } catch (e) {
+      thrownError = e as Error
+    }
+
+    expect(thrownError).toBeDefined()
+    expect(thrownError!.message).toContain('Pre-flight checks failed')
+    expect(thrownError!.message).toContain('Install: curl -fsSL https://opencode.ai/install | bash')
+    expect(thrownError!.message).toContain('Initialize git: git init')
+    expect(thrownError!.message).toContain('Install: npm install -g pnpm')
+    expect(thrownError!.message).toContain('Run from project root with package.json')
 
     // Should have logged multiple failure lines (❌)
     const failureLogs = consoleSpy.log.mock.calls.filter(
       (args: unknown[]) => typeof args[0] === 'string' && args[0].includes('❌'),
     )
     expect(failureLogs.length).toBeGreaterThanOrEqual(4)
-
-    // Should have printed all error messages
-    const errorMessages = consoleSpy.error.mock.calls.map((args: unknown[]) => args[0]).join('\n')
-    expect(errorMessages).toContain('Install: curl -fsSL https://opencode.ai/install | bash')
-    expect(errorMessages).toContain('Initialize git: git init')
-    expect(errorMessages).toContain('Install: npm install -g pnpm')
-    expect(errorMessages).toContain('Run from project root with package.json')
   })
 
   it('should log ✅ for each passing check', () => {
@@ -151,7 +143,7 @@ describe('preflight', () => {
     expect(passLogs.length).toBeGreaterThanOrEqual(5)
   })
 
-  it('should call process.exit(1) when pnpm is missing', () => {
+  it('should throw Error when pnpm is missing', () => {
     vi.mocked(execSync).mockImplementation((cmd: string) => {
       if (typeof cmd === 'string' && cmd.includes('which pnpm')) {
         throw new Error('pnpm not found')
@@ -162,8 +154,7 @@ describe('preflight', () => {
       return Buffer.from('')
     })
 
-    expect(() => preflight()).toThrow('process.exit(1)')
-    expect(exitSpy).toHaveBeenCalledWith(1)
+    expect(() => preflight()).toThrow('Pre-flight checks failed')
   })
 
   it('should accept Node.js v18 as valid', () => {
@@ -175,6 +166,20 @@ describe('preflight', () => {
     })
 
     preflight()
-    expect(exitSpy).not.toHaveBeenCalled()
+    // Should not throw
+  })
+
+  it('should throw an Error instance (not call process.exit)', () => {
+    vi.mocked(fs.existsSync).mockReturnValue(false)
+
+    try {
+      preflight()
+      expect.fail('Should have thrown')
+    } catch (e) {
+      expect(e).toBeInstanceOf(Error)
+      // Verify it's NOT a process.exit mock error
+      expect((e as Error).message).not.toContain('process.exit')
+      expect((e as Error).message).toContain('Pre-flight checks failed')
+    }
   })
 })

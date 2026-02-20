@@ -10,6 +10,7 @@ vi.mock('fs', () => ({
   readFileSync: vi.fn(),
   writeFileSync: vi.fn(),
   mkdirSync: vi.fn(),
+  renameSync: vi.fn(),
 }))
 
 import * as fs from 'fs'
@@ -620,7 +621,7 @@ describe('status management', () => {
   })
 
   describe('writeStatus', () => {
-    it('should write JSON status to the correct file path', () => {
+    it('should write JSON status atomically via temp file + rename', () => {
       const mockStatus: CodyPipelineStatus = {
         taskId: '260218-task',
         mode: 'full',
@@ -635,9 +636,15 @@ describe('status management', () => {
 
       writeStatus('260218-task', mockStatus)
 
+      // Should write to .tmp first (atomic write pattern)
       expect(fs.writeFileSync).toHaveBeenCalledWith(
-        `${MOCK_CWD}/.tasks/260218-task/status.json`,
+        `${MOCK_CWD}/.tasks/260218-task/status.json.tmp`,
         JSON.stringify(mockStatus, null, 2),
+      )
+      // Then rename .tmp to final
+      expect((fs as Record<string, unknown>).renameSync).toHaveBeenCalledWith(
+        `${MOCK_CWD}/.tasks/260218-task/status.json.tmp`,
+        `${MOCK_CWD}/.tasks/260218-task/status.json`,
       )
     })
   })

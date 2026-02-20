@@ -126,10 +126,20 @@ function commitTaskFilesCI(input: CodyInput, taskDir: string): void {
       taskType = taskData.task_type || 'implement_feature'
     }
 
-    // Ensure feature branch exists
+    // Ensure feature branch exists — may switch branches
     ensureFeatureBranch(input.taskId, taskType)
 
-    // Commit task files
+    // Clean any dirty state left by agent operations before staging task files.
+    // ensureFeatureBranch may have switched branches, leaving untracked/modified files
+    // from the previous branch context. We only care about task files here.
+    try {
+      execSync('git checkout -- .', { cwd: process.cwd(), stdio: 'pipe' })
+      execSync('git clean -fd --exclude=.tasks', { cwd: process.cwd(), stdio: 'pipe' })
+    } catch {
+      // Ignore — working tree may already be clean
+    }
+
+    // Commit only task files (not unrelated artifacts)
     execSync(`git add ${taskDir}`, { cwd: process.cwd(), stdio: 'inherit' })
     execSync(`git commit --no-gpg-sign -m "cody: save task files for ${input.taskId}"`, {
       cwd: process.cwd(),
@@ -790,7 +800,11 @@ async function runImplPipeline(
         // so autofix changes would be lost without this explicit commit
         if (!input.dryRun) {
           try {
-            execSync('git add -A', { cwd: process.cwd(), stdio: 'inherit' })
+            // Stage only source files and config — not .env, secrets, or unrelated files.
+            // Use 'git add -u' (tracked files only) + task dir, instead of 'git add -A' which
+            // would stage ALL untracked files including potential secrets or debug artifacts.
+            execSync('git add -u', { cwd: process.cwd(), stdio: 'inherit' })
+            execSync(`git add ${taskDir}`, { cwd: process.cwd(), stdio: 'inherit' })
             execSync(`git commit --no-gpg-sign -m "fix: autofix corrections for ${input.taskId}"`, {
               cwd: process.cwd(),
               stdio: 'inherit',

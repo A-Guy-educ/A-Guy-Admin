@@ -449,21 +449,24 @@ describe('orchestrator integration', () => {
   })
 
   describe('pipeline stage integration', () => {
-    it('defines correct stages for spec pipeline', async () => {
-      const { SPEC_ONLY_STAGES, SPEC_EXECUTE_VERIFY_STAGES } =
+    it('defines correct stages for spec and impl pipelines', async () => {
+      const { SPEC_ONLY_STAGES, ALL_IMPL_STAGE_NAMES } =
         await import('../../../scripts/cody/pipeline-utils')
 
       // Spec pipeline should have spec and clarify stages
       expect(SPEC_ONLY_STAGES).toContain('spec')
       expect(SPEC_ONLY_STAGES).toContain('clarify')
 
-      // Impl pipeline should have execute and verify stages
-      expect(SPEC_EXECUTE_VERIFY_STAGES).toContain('architect')
-      expect(SPEC_EXECUTE_VERIFY_STAGES).toContain('build')
-      expect(SPEC_EXECUTE_VERIFY_STAGES).toContain('test')
-      expect(SPEC_EXECUTE_VERIFY_STAGES).toContain('verify')
-      expect(SPEC_EXECUTE_VERIFY_STAGES).toContain('auditor')
-      expect(SPEC_EXECUTE_VERIFY_STAGES).toContain('pr')
+      // Impl pipeline should have all stages including plan-review and commit
+      expect(ALL_IMPL_STAGE_NAMES).toContain('architect')
+      expect(ALL_IMPL_STAGE_NAMES).toContain('plan-review')
+      expect(ALL_IMPL_STAGE_NAMES).toContain('build')
+      expect(ALL_IMPL_STAGE_NAMES).toContain('commit')
+      expect(ALL_IMPL_STAGE_NAMES).toContain('test')
+      expect(ALL_IMPL_STAGE_NAMES).toContain('verify')
+      expect(ALL_IMPL_STAGE_NAMES).toContain('auditor')
+      expect(ALL_IMPL_STAGE_NAMES).toContain('pr')
+      expect(ALL_IMPL_STAGE_NAMES).toHaveLength(8)
     })
 
     it('excludes auditor on rerun', async () => {

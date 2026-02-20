@@ -435,3 +435,59 @@ describe('pipeline-utils', () => {
     })
   })
 })
+
+// ==========================================================================
+// Pipeline stage definitions (BUG-3 fix verification)
+// ==========================================================================
+describe('pipeline stage definitions', () => {
+  it('should export ALL_IMPL_STAGE_NAMES matching IMPL_PIPELINE', async () => {
+    const { ALL_IMPL_STAGE_NAMES, IMPL_PIPELINE, flattenPipeline } = await import(
+      '../../../../scripts/cody/pipeline-utils'
+    )
+    expect(ALL_IMPL_STAGE_NAMES).toEqual(flattenPipeline(IMPL_PIPELINE))
+  })
+
+  it('should include plan-review and commit in ALL_IMPL_STAGE_NAMES', async () => {
+    const { ALL_IMPL_STAGE_NAMES } = await import('../../../../scripts/cody/pipeline-utils')
+    expect(ALL_IMPL_STAGE_NAMES).toContain('plan-review')
+    expect(ALL_IMPL_STAGE_NAMES).toContain('commit')
+  })
+
+  it('should have exactly 8 impl stages', async () => {
+    const { ALL_IMPL_STAGE_NAMES } = await import('../../../../scripts/cody/pipeline-utils')
+    expect(ALL_IMPL_STAGE_NAMES).toHaveLength(8)
+  })
+
+  it('should have correct stage order', async () => {
+    const { ALL_IMPL_STAGE_NAMES } = await import('../../../../scripts/cody/pipeline-utils')
+    const architectIdx = ALL_IMPL_STAGE_NAMES.indexOf('architect')
+    const planReviewIdx = ALL_IMPL_STAGE_NAMES.indexOf('plan-review')
+    const buildIdx = ALL_IMPL_STAGE_NAMES.indexOf('build')
+    const commitIdx = ALL_IMPL_STAGE_NAMES.indexOf('commit')
+    const testIdx = ALL_IMPL_STAGE_NAMES.indexOf('test')
+
+    // architect < plan-review < build < commit < test
+    expect(architectIdx).toBeLessThan(planReviewIdx)
+    expect(planReviewIdx).toBeLessThan(buildIdx)
+    expect(buildIdx).toBeLessThan(commitIdx)
+    expect(commitIdx).toBeLessThan(testIdx)
+  })
+
+  it('should flatten parallel groups correctly', async () => {
+    const { flattenPipeline, flattenStage, isParallelStage } = await import(
+      '../../../../scripts/cody/pipeline-utils'
+    )
+
+    // Sequential stage
+    expect(flattenStage('build')).toEqual(['build'])
+
+    // Parallel group
+    const parallel = { parallel: ['auditor', 'pr'] }
+    expect(isParallelStage(parallel)).toBe(true)
+    expect(flattenStage(parallel)).toEqual(['auditor', 'pr'])
+
+    // Mixed pipeline
+    const pipeline = ['architect', { parallel: ['a', 'b'] }, 'test']
+    expect(flattenPipeline(pipeline)).toEqual(['architect', 'a', 'b', 'test'])
+  })
+})

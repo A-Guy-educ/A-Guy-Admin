@@ -273,10 +273,9 @@ export function stageOutputFile(taskDir: string, stage: string): string {
 // --- Pipeline stage definitions ---
 
 export const SPEC_ONLY_STAGES = ['spec', 'clarify']
-export const SPEC_EXECUTE_VERIFY_STAGES = ['architect', 'build', 'test', 'verify', 'auditor', 'pr']
 
-// All valid stages for rerun
-export const ALL_IMPL_STAGES = [...SPEC_EXECUTE_VERIFY_STAGES]
+// NOTE: SPEC_EXECUTE_VERIFY_STAGES and ALL_IMPL_STAGES were removed (stale).
+// Use IMPL_PIPELINE and ALL_IMPL_STAGE_NAMES instead (defined below).
 
 // --- Dry-run support ---
 

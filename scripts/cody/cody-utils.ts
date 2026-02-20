@@ -121,7 +121,11 @@ export function readStatus(taskId: string): CodyPipelineStatus | null {
 
 export function writeStatus(taskId: string, status: CodyPipelineStatus): void {
   const statusFile = path.join(getTaskDir(taskId), 'status.json')
-  fs.writeFileSync(statusFile, JSON.stringify(status, null, 2))
+  // Atomic write: write to temp file then rename to prevent corruption
+  // if the process is killed mid-write (e.g., timeout SIGKILL).
+  const tmpFile = statusFile + '.tmp'
+  fs.writeFileSync(tmpFile, JSON.stringify(status, null, 2))
+  fs.renameSync(tmpFile, statusFile)
 }
 
 export function initStatus(input: CodyInput): CodyPipelineStatus {
@@ -144,6 +148,15 @@ export function initStatus(input: CodyInput): CodyPipelineStatus {
   return status
 }
 
+/**
+ * Update stage status with read-modify-write to status.json.
+ *
+ * Concurrency safety: parallel stages (e.g., auditor + pr) call this from
+ * separate promise callbacks, but Node.js is single-threaded — only one
+ * callback runs at a time, so read-modify-write is atomic on the event loop.
+ * The atomic writeStatus (write-to-tmp + rename) guards against corruption
+ * from process kills (SIGTERM/SIGKILL during write).
+ */
 export function updateStageStatus(
   taskId: string,
   stage: string,
