@@ -85,6 +85,15 @@ jobs:
           ASSOCIATION: ${{ github.event.comment.author_association }}
         run: ./scripts/cody/parse-safety.sh
 
+      # Add reaction to acknowledge command (shows instantly on the comment)
+      - name: Acknowledge command with reaction
+        if: github.event_name == 'issue_comment' && steps.safety.outputs.valid == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}/reactions \
+            -X POST -f content=eyes
+
       # Parse command: dispatch inputs forwarded, comment body passed to orchestrator
       - name: Parse command inputs
         id: parse
