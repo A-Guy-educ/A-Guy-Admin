@@ -22,6 +22,22 @@
       "model": "google/gemini-3-pro-preview",
       "description": "Collects operator questions and answers"
     },
+    "taskify": {
+      "model": "minimax-coding-plan/MiniMax-M2.5",
+      "description": "Converts free-text tasks into structured task.json for pipeline routing"
+    },
+    "plan-review": {
+      "model": "minimax-coding-plan/MiniMax-M2.5",
+      "description": "Reviews architect plan for quality and completeness"
+    },
+    "autofix": {
+      "model": "minimax-coding-plan/MiniMax-M2.5",
+      "description": "Automatically fixes lint, type, and format errors from verify stage"
+    },
+    "apply-audit": {
+      "model": "minimax-coding-plan/MiniMax-M2.5",
+      "description": "Applies auditor recommendations to pipeline artifacts"
+    },
     "verify": {
       "model": "minimax-coding-plan/MiniMax-M2.5",
       "description": "Runs tests, validates implementation passes all gates"
