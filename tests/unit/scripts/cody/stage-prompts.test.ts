@@ -29,13 +29,13 @@ describe('stage-prompts', () => {
   })
 
   describe('SCRIPTED_STAGES', () => {
-    it('should contain verify and pr', () => {
-      expect([...SCRIPTED_STAGES]).toEqual(['verify', 'pr'])
+    it('should contain verify, commit, and pr', () => {
+      expect([...SCRIPTED_STAGES]).toEqual(['verify', 'commit', 'pr'])
     })
   })
 
   describe('ALL_STAGES', () => {
-    it('should contain all stages including plan-review, commit, autofix', () => {
+    it('should contain all stages including plan-review, commit, autofix, apply-audit', () => {
       const stages = [...ALL_STAGES]
       expect(stages).toContain('taskify')
       expect(stages).toContain('spec')
@@ -44,10 +44,10 @@ describe('stage-prompts', () => {
       expect(stages).toContain('plan-review')
       expect(stages).toContain('build')
       expect(stages).toContain('commit')
-      expect(stages).toContain('test')
       expect(stages).toContain('verify')
       expect(stages).toContain('autofix')
       expect(stages).toContain('auditor')
+      expect(stages).toContain('apply-audit')
       expect(stages).toContain('pr')
       expect(stages).toHaveLength(12)
     })
@@ -107,9 +107,9 @@ describe('stage-prompts', () => {
         'plan-review',
         'build',
         'commit',
-        'test',
         'verify',
         'auditor',
+        'apply-audit',
         'pr',
       ])
     })

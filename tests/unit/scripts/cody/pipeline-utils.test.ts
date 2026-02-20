@@ -463,13 +463,13 @@ describe('pipeline stage definitions', () => {
     const planReviewIdx = ALL_IMPL_STAGE_NAMES.indexOf('plan-review')
     const buildIdx = ALL_IMPL_STAGE_NAMES.indexOf('build')
     const commitIdx = ALL_IMPL_STAGE_NAMES.indexOf('commit')
-    const testIdx = ALL_IMPL_STAGE_NAMES.indexOf('test')
+    const verifyIdx = ALL_IMPL_STAGE_NAMES.indexOf('verify')
 
-    // architect < plan-review < build < commit < test
+    // architect < plan-review < build < commit < verify
     expect(architectIdx).toBeLessThan(planReviewIdx)
     expect(planReviewIdx).toBeLessThan(buildIdx)
     expect(buildIdx).toBeLessThan(commitIdx)
-    expect(commitIdx).toBeLessThan(testIdx)
+    expect(commitIdx).toBeLessThan(verifyIdx)
   })
 
   it('should flatten parallel groups correctly', async () => {
@@ -479,13 +479,13 @@ describe('pipeline stage definitions', () => {
     // Sequential stage
     expect(flattenStage('build')).toEqual(['build'])
 
-    // Parallel group
+    // Parallel group (if present in any pipeline)
     const parallel = { parallel: ['auditor', 'pr'] }
     expect(isParallelStage(parallel)).toBe(true)
     expect(flattenStage(parallel)).toEqual(['auditor', 'pr'])
 
-    // Mixed pipeline
-    const pipeline = ['architect', { parallel: ['a', 'b'] }, 'test']
-    expect(flattenPipeline(pipeline)).toEqual(['architect', 'a', 'b', 'test'])
+    // Mixed pipeline with parallel group
+    const pipeline = ['architect', { parallel: ['a', 'b'] }, 'verify']
+    expect(flattenPipeline(pipeline)).toEqual(['architect', 'a', 'b', 'verify'])
   })
 })

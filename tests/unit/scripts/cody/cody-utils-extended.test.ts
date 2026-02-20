@@ -154,10 +154,13 @@ describe('parseCommentBody', () => {
       'spec',
       'clarify',
       'architect',
+      'plan-review',
       'build',
-      'test',
+      'commit',
       'verify',
+      'autofix',
       'auditor',
+      'apply-audit',
       'pr',
     ]
     for (const stage of validStages) {
@@ -915,10 +918,13 @@ describe('isValidStage', () => {
       'spec',
       'clarify',
       'architect',
+      'plan-review',
       'build',
-      'test',
+      'commit',
+      'autofix',
       'verify',
       'auditor',
+      'apply-audit',
       'pr',
     ]
     for (const stage of stages) {

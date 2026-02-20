@@ -155,5 +155,5 @@ export function getSpecStages(): string[] {
  * Get implementation pipeline stages
  */
 export function getImplStages(): string[] {
-  return ['architect', 'plan-review', 'build', 'commit', 'test', 'verify', 'auditor', 'pr']
+  return ['architect', 'plan-review', 'build', 'commit', 'verify', 'auditor', 'apply-audit', 'pr']
 }
