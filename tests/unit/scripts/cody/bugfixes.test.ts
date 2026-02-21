@@ -54,7 +54,7 @@ describe('BUG-3: Stale pipeline exports removed', () => {
 
   it('should still export SPEC_ONLY_STAGES', async () => {
     const { SPEC_ONLY_STAGES } = await import('../../../../scripts/cody/pipeline-utils')
-    expect(SPEC_ONLY_STAGES).toEqual(['spec', 'clarify'])
+    expect(SPEC_ONLY_STAGES).toEqual(['spec', 'gap', 'clarify'])
   })
 })
 
@@ -177,8 +177,8 @@ describe('BUG-5: Autofix uses targeted staging', () => {
     // Read cody.ts and verify the fix
     const codyContent = fs.readFileSync(path.join(process.cwd(), 'scripts/cody/cody.ts'), 'utf-8')
 
-    // Find the autofix commit code section
-    const autofixSection = codyContent.slice(
+    // Find the autofix commit code section (verify it exists)
+    const _autofixSection = codyContent.slice(
       codyContent.indexOf('Commit autofix changes'),
       codyContent.indexOf('Autofix changes committed and pushed'),
     )

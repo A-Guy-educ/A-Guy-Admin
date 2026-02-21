@@ -188,3 +188,27 @@ export function extractVerifySummary(content: string): VerifySummary {
 export function isVerifyFailed(verifyContent: string): boolean {
   return /\bResult:\s*FAIL\b/i.test(verifyContent)
 }
+
+// ============================================================================
+// Gap Report Validation
+// ============================================================================
+
+/**
+ * Validate that gap report contains required sections.
+ * Returns true if valid, false otherwise.
+ */
+export function validateGapReport(gapContent: string): boolean {
+  const trimmed = gapContent.trim()
+
+  // Empty content is invalid
+  if (!trimmed || trimmed.length < 10) {
+    return false
+  }
+
+  // Check for required sections
+  const hasGapsFound = /##\s*Gaps? Found/i.test(gapContent)
+  const hasChangesMade = /##\s*Changes Made/i.test(gapContent)
+  const hasNoGaps = /no gaps identified/i.test(gapContent.toLowerCase())
+
+  return hasGapsFound || hasChangesMade || hasNoGaps
+}

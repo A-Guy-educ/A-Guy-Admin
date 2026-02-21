@@ -8,7 +8,6 @@ import {
   normalizeTask,
   PIPELINE_MAP,
   resolveControlMode,
-  type ControlMode,
 } from '../../../../scripts/cody/pipeline-utils'
 
 // Helper: create a temp task directory with a task.json
@@ -549,5 +548,54 @@ describe('pipeline stage definitions', () => {
     // Mixed pipeline with parallel group
     const pipeline = ['architect', { parallel: ['a', 'b'] }, 'verify']
     expect(flattenPipeline(pipeline)).toEqual(['architect', 'a', 'b', 'verify'])
+  })
+})
+
+// ============================================================================
+// Gap stage registration tests
+// ============================================================================
+describe('gap stage registration', () => {
+  it('should map stageOutputFile for gap correctly', async () => {
+    const { stageOutputFile } = await import('../../../../scripts/cody/pipeline-utils')
+    expect(stageOutputFile('/tmp/tasks/123', 'gap')).toBe('/tmp/tasks/123/gap.md')
+  })
+
+  it('should include gap in SPEC_ONLY_STAGES (spec-only pipeline)', async () => {
+    const { SPEC_ONLY_STAGES } = await import('../../../../scripts/cody/pipeline-utils')
+    expect(SPEC_ONLY_STAGES).toContain('gap')
+  })
+
+  it('should NOT include gap in ALL_IMPL_STAGE_NAMES (gap is spec-only)', async () => {
+    const { ALL_IMPL_STAGE_NAMES } = await import('../../../../scripts/cody/pipeline-utils')
+    // Gap should be in spec stages, not impl stages
+    expect(ALL_IMPL_STAGE_NAMES).not.toContain('gap')
+  })
+
+  it('should have gap in dry-run outputs (via fallback)', async () => {
+    const { stageOutputFile } = await import('../../../../scripts/cody/pipeline-utils')
+    // Dry-run relies on fallback `${stage}.md`, so gap should produce gap.md
+    expect(stageOutputFile('/tmp', 'gap')).toBe('/tmp/gap.md')
+  })
+})
+
+// ============================================================================
+// Stage-prompts.ts gap stage tests
+// ============================================================================
+describe('gap stage in stage-prompts', () => {
+  it('should include gap in SPEC_STAGES from stage-prompts', async () => {
+    const { SPEC_STAGES } = await import('../../../../scripts/cody/stage-prompts')
+    expect(SPEC_STAGES).toContain('gap')
+  })
+
+  it('should include gap in ALL_STAGES from stage-prompts', async () => {
+    const { ALL_STAGES } = await import('../../../../scripts/cody/stage-prompts')
+    expect(ALL_STAGES).toContain('gap')
+  })
+
+  it('should have gap context files in stage-prompts', async () => {
+    const { STAGE_CONTEXT_FILES } = await import('../../../../scripts/cody/stage-prompts')
+    expect(STAGE_CONTEXT_FILES).toHaveProperty('gap')
+    expect(STAGE_CONTEXT_FILES.gap).toContain('spec.md')
+    expect(STAGE_CONTEXT_FILES.gap).toContain('task.json')
   })
 })

@@ -72,6 +72,7 @@ const VALID_MODES = ['spec', 'impl', 'rerun', 'full', 'status'] as const
 const VALID_STAGES = [
   'taskify',
   'spec',
+  'gap',
   'clarify',
   'architect',
   'plan-review',

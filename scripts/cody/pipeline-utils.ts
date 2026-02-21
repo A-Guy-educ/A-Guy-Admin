@@ -279,6 +279,7 @@ export function readTask(taskDir: string): TaskDefinition | null {
 
 const STAGE_OUTPUT_MAP: Record<string, string> = {
   taskify: 'task.json',
+  gap: 'gap.md',
   clarify: 'questions.md',
   architect: 'plan.md',
   'plan-review': 'plan-review.md',
@@ -293,7 +294,7 @@ export function stageOutputFile(taskDir: string, stage: string): string {
 
 // --- Pipeline stage definitions ---
 
-export const SPEC_ONLY_STAGES = ['spec', 'clarify']
+export const SPEC_ONLY_STAGES = ['spec', 'gap', 'clarify']
 
 // NOTE: SPEC_EXECUTE_VERIFY_STAGES and ALL_IMPL_STAGES were removed (stale).
 // Use IMPL_PIPELINE and ALL_IMPL_STAGE_NAMES instead (defined below).
@@ -316,6 +317,7 @@ const DRY_RUN_OUTPUTS: Record<string, (taskId: string) => string> = {
       2,
     ),
   spec: (taskId) => `# Spec (dry-run)\n\nMock spec for ${taskId}.\n`,
+  gap: (taskId) => `# Gap Analysis (dry-run)\n\nNo gaps identified for ${taskId}.\n`,
   clarify: (taskId) => `# Questions (dry-run)\n\n1. Mock question for ${taskId}?\n`,
   architect: (taskId) => `# Plan (dry-run)\n\nMock plan for ${taskId}.\n`,
   build: (taskId) => `# Build (dry-run)\n\nMock build output for ${taskId}.\n`,

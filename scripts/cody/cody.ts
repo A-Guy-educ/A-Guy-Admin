@@ -19,7 +19,6 @@
  * We pass MODEL, AGENT, PROMPT as env vars to control each stage execution.
  */
 
-import { execSync } from 'child_process'
 import * as fs from 'fs'
 import * as path from 'path'
 
@@ -48,7 +47,6 @@ import {
   postComment,
   formatStatusComment,
   getIssueBody,
-  getLatestIssueComment,
   ensureTaskMarkerComment,
   type CodyInput,
 } from './cody-utils'
@@ -62,7 +60,6 @@ import {
   isParallelStage,
   type PipelineStage,
   resolveControlMode,
-  type ControlMode,
 } from './pipeline-utils'
 
 // Import from new modules
@@ -216,7 +213,8 @@ async function runSpecPipeline(
 
   // Clarify stage: only run if --clarify flag is set (opt-in)
   // Default: skip, auto-create clarified.md with "Use recommended answers"
-  const stages = input.clarify ? ['taskify', 'spec', 'clarify'] : ['taskify', 'spec']
+  // Gap stage runs between spec and clarify to analyze and revise spec
+  const stages = input.clarify ? ['taskify', 'spec', 'gap', 'clarify'] : ['taskify', 'spec', 'gap']
 
   for (let i = 0; i < stages.length; i++) {
     const stage = stages[i]
@@ -358,6 +356,36 @@ async function runSpecPipeline(
         throw new Error(
           'Spec is missing ## Requirements or ## Acceptance Criteria — cannot proceed to architect',
         )
+      }
+    }
+
+    // Gap stage validation: verify gap.md is valid AND re-validate spec.md (gap may have revised it)
+    if (stage === 'gap' && fs.existsSync(outputFile)) {
+      const { validateGapReport } = await import('./content-validators')
+      const gapContent = fs.readFileSync(outputFile, 'utf-8')
+      if (!validateGapReport(gapContent)) {
+        fs.unlinkSync(outputFile)
+        updateStageStatus(input.taskId, stage, 'failed', {
+          error: 'Gap report missing Gaps Found or Changes Made sections',
+        })
+        throw new Error(
+          'Gap report is invalid — cannot proceed. Must contain ## Gaps Found, ## Changes Made, or "No gaps identified"',
+        )
+      }
+
+      // Re-validate spec.md after gap agent may have revised it
+      const specFile = path.join(taskDir, 'spec.md')
+      if (fs.existsSync(specFile)) {
+        const specContent = fs.readFileSync(specFile, 'utf-8')
+        if (!validateSpecContent(specContent)) {
+          updateStageStatus(input.taskId, stage, 'failed', {
+            error: 'Gap agent corrupted spec.md',
+          })
+          throw new Error(
+            'Gap agent removed ## Requirements or ## Acceptance Criteria from spec.md — pipeline failed',
+          )
+        }
+        console.log('  ✓ Spec validated after gap revision')
       }
     }
 

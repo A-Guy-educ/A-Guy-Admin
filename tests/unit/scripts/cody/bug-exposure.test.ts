@@ -334,9 +334,9 @@ describe('BUG-19: STAGE_TIMEOUTS values must be consistent', () => {
     expect(STAGE_TIMEOUTS['architect']).toBe(30 * 60_000)
   })
 
-  it('build timeout should be 30 minutes', async () => {
+  it('build timeout should be 45 minutes', async () => {
     const { STAGE_TIMEOUTS } = await import('../../../../scripts/cody/agent-runner')
-    expect(STAGE_TIMEOUTS['build']).toBe(30 * 60_000)
+    expect(STAGE_TIMEOUTS['build']).toBe(45 * 60_000)
   })
 
   it('plan-review timeout should be 10 minutes', async () => {

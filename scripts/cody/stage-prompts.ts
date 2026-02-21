@@ -18,7 +18,7 @@ import { stageOutputFile } from './pipeline-utils'
 /**
  * Spec-only stages that don't produce code (skip hooks, as they auto-commit but shouldn't be enforced)
  */
-export const SPEC_STAGES = ['taskify', 'spec', 'clarify'] as const
+export const SPEC_STAGES = ['taskify', 'spec', 'gap', 'clarify'] as const
 
 export type SpecStage = (typeof SPEC_STAGES)[number]
 
@@ -29,6 +29,7 @@ export type SpecStage = (typeof SPEC_STAGES)[number]
 export const ALL_STAGES = [
   'taskify',
   'spec',
+  'gap',
   'clarify',
   'architect',
   'plan-review',
@@ -64,6 +65,7 @@ export const SCRIPTED_STAGES = ['verify', 'commit', 'pr'] as const
 export const STAGE_CONTEXT_FILES: Record<Stage, string[]> = {
   taskify: ['task.md'],
   spec: ['task.md', 'task.json'],
+  gap: ['spec.md', 'task.json'],
   clarify: ['task.md', 'spec.md'],
   architect: ['spec.md', 'clarified.md', 'rerun-feedback.md', 'plan-review.rejected.md'],
   'plan-review': ['spec.md', 'plan.md'],
@@ -91,6 +93,8 @@ export const stageInstructions: Record<Stage, (taskId: string) => string> = {
   taskify: (taskId) => `${specOnlyInstructionTemplate.replace('{TASK_ID}', taskId)}`,
 
   spec: (taskId) => `${specOnlyInstructionTemplate.replace('{TASK_ID}', taskId)}`,
+
+  gap: (taskId) => `${specOnlyInstructionTemplate.replace('{TASK_ID}', taskId)}`,
 
   clarify: (taskId) => `${specOnlyInstructionTemplate.replace('{TASK_ID}', taskId)}`,
 

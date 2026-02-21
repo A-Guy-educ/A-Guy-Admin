@@ -33,6 +33,7 @@ export const DEFAULT_TIMEOUT = 10 * 60_000
 export const STAGE_TIMEOUTS: Record<string, number> = {
   architect: 30 * 60_000,
   build: 45 * 60_000,
+  gap: 15 * 60_000,
   'plan-review': 10 * 60_000,
   verify: 10 * 60_000,
   auditor: 5 * 60_000,
