@@ -430,18 +430,21 @@ export function commitAndPush(
       }
     }
 
-    // Stage tracked changes only (BUG-15 fix: avoid staging secrets/env files with -A)
+    // Stage tracked changes (modifications + deletions)
     execSync('git add -u', { cwd: workDir, stdio: 'inherit' })
 
-    // Also stage new files in safe directories that are specifically in .tasks/ directory
-    // (only stage task files created by the agent, not all files in src/tests)
-    try {
-      const taskDirPath = path.join(workDir, '.tasks', taskId)
-      if (fs.existsSync(taskDirPath)) {
-        execFileSync('git', ['add', '--', taskDirPath], { cwd: workDir, stdio: 'pipe' })
+    // Stage new files from safe directories only (BUG-15: avoid root-level .env files)
+    // Pre-commit hooks (check-secrets, check-no-css) provide additional safety
+    const safeDirs = ['src', 'tests', 'scripts', 'public', 'docs', '.tasks']
+    for (const dir of safeDirs) {
+      const dirPath = path.join(workDir, dir)
+      if (fs.existsSync(dirPath)) {
+        try {
+          execFileSync('git', ['add', '--', dirPath], { cwd: workDir, stdio: 'pipe' })
+        } catch {
+          // Directory may have no new files - that's fine
+        }
       }
-    } catch {
-      // Directory may not exist or have no new files - that's fine
     }
 
     // Commit using execFileSync to prevent shell injection (BUG-4 fix)
