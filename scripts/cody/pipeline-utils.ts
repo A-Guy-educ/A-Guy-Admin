@@ -400,8 +400,7 @@ export const IMPL_PIPELINE: PipelineStage[] = [
   'plan-review',
   'build',
   'commit',
-  'verify',
-  'auditor',
+  { parallel: ['verify', 'auditor'] },
   'apply-audit',
   'pr',
 ]
