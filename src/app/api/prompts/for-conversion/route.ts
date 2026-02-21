@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
 
     const lessonTyped = lesson as unknown as Lesson
     const tenant = lessonTyped.tenant
-    const tenantId = typeof tenant === 'object' ? tenant?.id ?? null : tenant
+    const tenantId = typeof tenant === 'object' ? (tenant?.id ?? null) : tenant
 
     if (!tenantId) {
       return errorResponse('VALIDATION_ERROR', 'Lesson has no tenant', 400)

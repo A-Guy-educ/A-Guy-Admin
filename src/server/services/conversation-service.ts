@@ -217,7 +217,9 @@ export class ConversationService {
         depth: 0,
       })
       const lessonId =
-        typeof exercise.lesson === 'string' ? exercise.lesson : (exercise.lesson as { id?: string })?.id
+        typeof exercise.lesson === 'string'
+          ? exercise.lesson
+          : (exercise.lesson as { id?: string })?.id
       if (lessonId) {
         return {
           relationTo: 'lessons',

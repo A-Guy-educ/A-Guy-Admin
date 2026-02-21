@@ -134,12 +134,12 @@ export class VercelBlobAdapter {
     const pathname = this.buildPathname(filename)
 
     // Note: @vercel/blob requires 'public' access for all blobs
-    const result = (await put(pathname, data as Parameters<typeof put>[1], {
+    const result = await put(pathname, data as Parameters<typeof put>[1], {
       token: this.token,
       access: 'public',
       contentType: options?.contentType,
       cacheControlMaxAge: this.config.cacheControlSeconds,
-    }))
+    })
 
     return {
       url: result.url,

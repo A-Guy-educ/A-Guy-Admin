@@ -35,10 +35,19 @@ export const pdfToExercisesTask = {
   input: {},
   output: {},
 
-  async handler({ job, req }: { job: { id: string; input: Record<string, unknown> }; req: { payload?: import('payload').Payload } }) {
+  async handler({
+    job,
+    req,
+  }: {
+    job: { id: string; input: Record<string, unknown> }
+    req: { payload?: import('payload').Payload }
+  }) {
     // v2.1 Fix 1: Use req.payload when available (testability), fallback to getPayload
     const payload = req.payload ?? (await getPayload({ config }))
-    const input = job.input as { ctx: { lessonId: string; sourceDocId: string; tenantId: string }; promptSnapshot: { extractor: string; verifier: string } }
+    const input = job.input as {
+      ctx: { lessonId: string; sourceDocId: string; tenantId: string }
+      promptSnapshot: { extractor: string; verifier: string }
+    }
     const { lessonId, sourceDocId, tenantId } = input.ctx
 
     const output: Record<string, unknown> = {
@@ -380,14 +389,33 @@ async function segmentPdf(pdfBuffer: Buffer, maxPagesPerSegment: number) {
  * Uses Gemini provider for API calls with retry and timeout handling
  */
 async function processSegmentWithMultimodal(
-  payload: { findByID: (opts: { collection: string; id: string; depth?: number }) => Promise<unknown>; create: (opts: { collection: string; data: unknown; overrideAccess?: boolean }) => Promise<unknown>; update: (opts: { collection: string; id: string; data: unknown; overrideAccess?: boolean }) => Promise<unknown>; find: (opts: { collection: string; where: Record<string, unknown>; limit?: number; depth?: number }) => Promise<{ docs: unknown[] }> },
+  payload: {
+    findByID: (opts: { collection: string; id: string; depth?: number }) => Promise<unknown>
+    create: (opts: {
+      collection: string
+      data: unknown
+      overrideAccess?: boolean
+    }) => Promise<unknown>
+    update: (opts: {
+      collection: string
+      id: string
+      data: unknown
+      overrideAccess?: boolean
+    }) => Promise<unknown>
+    find: (opts: {
+      collection: string
+      where: Record<string, unknown>
+      limit?: number
+      depth?: number
+    }) => Promise<{ docs: unknown[] }>
+  },
   req: Record<string, unknown>,
   context: {
     attachments: Array<{ data: string; mimeType: string }> // Provider-agnostic format
     segment: { pageStart: number; pageEnd: number }
     extractorPrompt: string
     verifierPrompt: string
-    output: { exercisesSkipped?: number; errors: Array<unknown> },
+    output: { exercisesSkipped?: number; errors: Array<unknown> }
     tenantId: string // For SystemParams access
   },
 ) {
@@ -487,7 +515,27 @@ Return JSON: { "valid": boolean, "reason": "..." }`
  * Helper to call verifier using factory provider
  */
 async function callVerifier(
-  payload: { findByID: (opts: { collection: string; id: string; depth?: number }) => Promise<unknown>; create: (opts: { collection: string; data: unknown; overrideAccess?: boolean }) => Promise<unknown>; update: (opts: { collection: string; id: string; data: unknown; overrideAccess?: boolean }) => Promise<unknown>; find: (opts: { collection: string; where: Record<string, unknown>; limit?: number; depth?: number }) => Promise<{ docs: unknown[] }>; db: unknown },
+  payload: {
+    findByID: (opts: { collection: string; id: string; depth?: number }) => Promise<unknown>
+    create: (opts: {
+      collection: string
+      data: unknown
+      overrideAccess?: boolean
+    }) => Promise<unknown>
+    update: (opts: {
+      collection: string
+      id: string
+      data: unknown
+      overrideAccess?: boolean
+    }) => Promise<unknown>
+    find: (opts: {
+      collection: string
+      where: Record<string, unknown>
+      limit?: number
+      depth?: number
+    }) => Promise<{ docs: unknown[] }>
+    db: unknown
+  },
   attachments: Array<{ data: string; mimeType: string }>,
   prompt: string,
 ): Promise<{ valid: boolean; reason?: string }> {
