@@ -35,13 +35,13 @@ export const pdfToExercisesTask = {
   input: {},
   output: {},
 
-  async handler({ job, req }: { job: any; req: any }) {
+  async handler({ job, req }: { job: { id: string; input: Record<string, unknown> }; req: { payload?: import('payload').Payload } }) {
     // v2.1 Fix 1: Use req.payload when available (testability), fallback to getPayload
     const payload = req.payload ?? (await getPayload({ config }))
-    const input = job.input as any
+    const input = job.input as { ctx: { lessonId: string; sourceDocId: string; tenantId: string }; promptSnapshot: { extractor: string; verifier: string } }
     const { lessonId, sourceDocId, tenantId } = input.ctx
 
-    const output: any = {
+    const output: Record<string, unknown> = {
       segmentsTotal: 0,
       segmentsDone: 0,
       segmentsFailed: 0,
@@ -226,7 +226,7 @@ export const pdfToExercisesTask = {
                   req,
                 })
                 created++
-              } catch (createError: any) {
+              } catch (createError: unknown) {
                 // Handle duplicate key error (concurrency scenario - race condition)
                 if (createError.code === 11000 || createError.message?.includes('duplicate key')) {
                   // Someone else created it first - find and update (Last Wins)
@@ -289,7 +289,7 @@ export const pdfToExercisesTask = {
               proposedIdempotencyKeys,
             },
           })
-        } catch (segmentError: any) {
+        } catch (segmentError: unknown) {
           output.segmentsFailed++
           output.errors.push({
             stage: 'PASS2_EXTRACT',
@@ -311,7 +311,7 @@ export const pdfToExercisesTask = {
       // Mark job as completed
       await updateJobStatus(payload, job.id, 'completed', output)
       return output
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(`[PDF→Exercises] Job ${job.id} failed:`, error)
       await updateJobStatus(payload, job.id, 'failed', {
         ...output,
@@ -327,19 +327,19 @@ export const pdfToExercisesTask = {
  * This fixes the issue where jobs get stuck with "processing: true"
  */
 async function updateJobStatus(
-  payload: any,
+  payload: { db: unknown },
   jobId: string,
   status: 'completed' | 'failed',
-  output?: any,
+  output?: Record<string, unknown>,
 ): Promise<void> {
-  const db = payload.db as any
+  const db = payload.db
   const coll = db.connection?.collection?.('payload-jobs')
   if (!coll) {
     console.warn('[PDF→Exercises] Cannot update job status - jobs collection not accessible')
     return
   }
 
-  const update: any = {
+  const update: Record<string, unknown> = {
     processing: false,
     completedAt: new Date(),
     hasError: status === 'failed',
@@ -380,14 +380,14 @@ async function segmentPdf(pdfBuffer: Buffer, maxPagesPerSegment: number) {
  * Uses Gemini provider for API calls with retry and timeout handling
  */
 async function processSegmentWithMultimodal(
-  payload: any,
-  req: any,
+  payload: { findByID: (opts: { collection: string; id: string; depth?: number }) => Promise<unknown>; create: (opts: { collection: string; data: unknown; overrideAccess?: boolean }) => Promise<unknown>; update: (opts: { collection: string; id: string; data: unknown; overrideAccess?: boolean }) => Promise<unknown>; find: (opts: { collection: string; where: Record<string, unknown>; limit?: number; depth?: number }) => Promise<{ docs: unknown[] }> },
+  req: Record<string, unknown>,
   context: {
     attachments: Array<{ data: string; mimeType: string }> // Provider-agnostic format
     segment: { pageStart: number; pageEnd: number }
     extractorPrompt: string
     verifierPrompt: string
-    output: any // For tracking exercisesSkipped
+    output: { exercisesSkipped?: number; errors: Array<unknown> },
     tenantId: string // For SystemParams access
   },
 ) {
@@ -440,7 +440,7 @@ Return a JSON array of exercises with this schema:
   const enrichedExercises = extracted.map((exercise) => enrichBlockIds(exercise))
 
   // ========== Call Verifier with RETRY-ONCE-THEN-SKIP logic ==========
-  const validExercises: any[] = []
+  const validExercises: Array<{ title: string; blocks: unknown[]; orderInSegment: number }> = []
 
   for (const exercise of enrichedExercises) {
     const verifierPromptWithContext = `${verifierPrompt}
@@ -487,7 +487,7 @@ Return JSON: { "valid": boolean, "reason": "..." }`
  * Helper to call verifier using factory provider
  */
 async function callVerifier(
-  payload: any,
+  payload: { findByID: (opts: { collection: string; id: string; depth?: number }) => Promise<unknown>; create: (opts: { collection: string; data: unknown; overrideAccess?: boolean }) => Promise<unknown>; update: (opts: { collection: string; id: string; data: unknown; overrideAccess?: boolean }) => Promise<unknown>; find: (opts: { collection: string; where: Record<string, unknown>; limit?: number; depth?: number }) => Promise<{ docs: unknown[] }>; db: unknown },
   attachments: Array<{ data: string; mimeType: string }>,
   prompt: string,
 ): Promise<{ valid: boolean; reason?: string }> {
@@ -540,21 +540,21 @@ const ExerciseExtractedSchema = z.object({
  * This mirrors the verifier pattern where invalid exercises are skipped rather than failing the job
  */
 function validateExtractedExercises(
-  raw: any[],
+  raw: unknown[],
   segment: { pageStart: number; pageEnd: number },
   maxExercisesPerSegment: number,
   output?: {
     errors: Array<{
       stage: string
-      pageRange: any
+      pageRange: { start: number; end: number }
       code: string
       message: string
       skipped?: boolean
     }>
     exercisesSkipped?: number
   },
-): any[] {
-  const validated: any[] = []
+): Array<{ title: string; blocks: unknown[]; orderInSegment: number }> {
+  const validated: Array<{ title: string; blocks: unknown[]; orderInSegment: number }> = []
   const validationErrors: string[] = []
   let skippedCount = 0
 

@@ -44,6 +44,11 @@ interface V2JobInput {
   }
 }
 
+interface HandlerParams {
+  job: { input: V2JobInput; id: string }
+  req: { payload?: Payload }
+}
+
 /**
  * An exercise strip ready for upload. May span one or two pages.
  */
@@ -58,7 +63,7 @@ export const pdfToExercisesV2Task = {
   input: {},
   output: {},
 
-  async handler({ job, req }: { job: any; req: any }) {
+  async handler({ job, req }: HandlerParams) {
     const payload = req.payload ?? (await getPayload({ config }))
     const input = job.input as V2JobInput
     const { lessonId, sourceDocId, tenantId } = input.ctx
@@ -160,8 +165,10 @@ export const pdfToExercisesV2Task = {
           }
 
           output.pagesProcessed++
-        } catch (pageError: any) {
-          console.error(`[V2] Failed to detect on page ${i}:`, pageError.message)
+        } catch (pageError: unknown) {
+          const pageErrorMessage =
+            pageError instanceof Error ? pageError.message : 'Detection failed'
+          console.error(`[V2] Failed to detect on page ${i}:`, pageErrorMessage)
           detections.push({
             contentStartY: 0,
             contentEndY: 1,
@@ -170,7 +177,7 @@ export const pdfToExercisesV2Task = {
           })
           output.errors.push({
             pageIndex: i,
-            reason: pageError.message || 'Detection failed',
+            reason: pageErrorMessage,
           })
         }
       }
@@ -234,11 +241,13 @@ export const pdfToExercisesV2Task = {
           })
 
           output.exercisesCreated++
-        } catch (uploadError: any) {
-          console.warn(`[V2] Failed to create exercise ${strip.label}:`, uploadError.message)
+        } catch (uploadError: unknown) {
+          const uploadErrorMessage =
+            uploadError instanceof Error ? uploadError.message : 'Upload/create failed'
+          console.warn(`[V2] Failed to create exercise ${strip.label}:`, uploadErrorMessage)
           output.errors.push({
             pageIndex: strip.sourcePageIndex,
-            reason: uploadError.message || 'Upload/create failed',
+            reason: uploadErrorMessage,
           })
         }
       }
@@ -255,11 +264,12 @@ export const pdfToExercisesV2Task = {
 
       await updateJobStatus(payload, job.id, 'completed', output)
       return output
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
       console.error(`[V2] Job ${job.id} failed:`, error)
       await updateJobStatus(payload, job.id, 'failed', {
         ...output,
-        error: error.message,
+        error: errorMessage,
       })
       throw error
     }
@@ -361,14 +371,23 @@ async function updateJobStatus(
   status: 'completed' | 'failed',
   output?: unknown,
 ): Promise<void> {
-  const db = payload.db as any
+  const db = payload.db as {
+    connection?: {
+      collection: (name: string) => {
+        updateOne: (
+          filter: Record<string, unknown>,
+          update: Record<string, unknown>,
+        ) => Promise<unknown>
+      }
+    }
+  }
   const coll = db.connection?.collection?.('payload-jobs')
   if (!coll) {
     console.warn('[V2] Cannot update job status - jobs collection not accessible')
     return
   }
 
-  const update: any = {
+  const update: Record<string, unknown> = {
     processing: false,
     completedAt: new Date(),
     hasError: status === 'failed',
