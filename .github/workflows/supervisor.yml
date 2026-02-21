@@ -1,0 +1,73 @@
+# Supervisor - Monitors Cody failures, analyzes, and triggers retries
+
+name: supervisor
+
+on:
+  issue_comment:
+    types: [created]
+
+# Concurrency: prevent parallel supervisor runs for the same issue
+concurrency:
+  group: supervisor-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+# Permissions: needs to read issues and check out branches
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  supervise:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    env:
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract task ID and checkout branch
+        id: extract
+        env:
+          COMMENT_BODY: ${{ github.event.comment.body }}
+        run: |
+          TASK_ID=$(echo "$COMMENT_BODY" | grep -oP '`\K[0-9]{6}-[\w-]+(?=`)' | head -1)
+          echo "task_id=$TASK_ID" >> "$GITHUB_OUTPUT"
+          if [ -n "$TASK_ID" ]; then
+            echo "Checking out branch for task: $TASK_ID"
+            TASK_ID="$TASK_ID" bash scripts/cody/checkout-task-branch.sh
+          else
+            echo "No task ID found in comment"
+          fi
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run Supervisor
+        if: steps.extract.outputs.task_id != ''
+        env:
+          MINIMAX_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          COMMENT_BODY: ${{ github.event.comment.body }}
+          TASK_ID: ${{ steps.extract.outputs.task_id }}
+          REPO: ${{ github.repository }}
+        run: pnpm tsx scripts/supervisor/supervisor.ts
+
+      - name: No task ID found
+        if: steps.extract.outputs.task_id == ''
+        run: echo "No task ID found in comment, supervisor exiting"
