@@ -365,34 +365,27 @@ describe('runVerifyStage', () => {
     })
 
     it('should skip remaining gates when cumulative time exceeds timeout', () => {
-      // Mock first gate to pass quickly, second gate to take too long
-      let callCount = 0
-      mockExecSync.mockImplementation((cmd: string) => {
-        callCount++
-        if (typeof cmd === 'string' && cmd.includes('tsc')) {
-          // First gate passes quickly
-          return 'OK'
-        }
-        if (typeof cmd === 'string' && cmd.includes('lint')) {
-          // Second gate exceeds the aggregate timeout
-          // Simulate a long-running command that would exceed cumulative timeout
-          const error = new Error('Command timed out') as Error & {
-            stdout?: string
-            stderr?: string
-            code?: string
-          }
-          error.stdout = ''
-          error.stderr = ''
-          error.code = 'ETIMEDOUT'
-          throw error
-        }
-        // Subsequent gates should be skipped
-        return 'OK'
+      // Simulate: first gate passes, then aggregate timeout is exceeded
+      // The implementation checks elapsed time before each gate
+      let gateIndex = 0
+      const originalDateNow = Date.now
+
+      // Mock Date.now to simulate time advancing past timeout after first gate
+      vi.spyOn(Date, 'now').mockImplementation(() => {
+        gateIndex++
+        // First call (startTime), second call (before Lint) - both return early time
+        // Third+ calls (before Format, Unit Tests) - return time past timeout
+        if (gateIndex <= 2) return originalDateNow()
+        return originalDateNow() + 1000 // 1 second elapsed - definitely exceeds any reasonable timeout
       })
 
-      // Use a very short aggregate timeout (1ms) to trigger skip behavior
-      // The implementation should track cumulative time and skip remaining gates
-      const result = runVerifyStage('/tmp/verify.md', '/fake/cwd', 1)
+      mockExecSync.mockReturnValue('OK')
+
+      // Use 50ms timeout
+      const result = runVerifyStage('/tmp/verify.md', '/fake/cwd', 50)
+
+      // Restore Date.now
+      Date.now = originalDateNow
 
       // First gate should have passed
       expect(result.report).toContain('## TypeScript: PASS ✅')
@@ -548,9 +541,14 @@ describe('runPrStage', () => {
       return ''
     })
 
-    // execFileSync handles array-based commands: gh pr list, git push, gh pr create
+    // execFileSync handles array-based commands: gh pr list, git push, gh pr create, git log
     mockExecFileSync.mockImplementation((file: string, args?: readonly string[]) => {
       const argsArr = args || []
+
+      // getCommitSummary: git log --oneline <branch>..HEAD
+      if (file === 'git' && argsArr[0] === 'log' && argsArr.includes('--oneline')) {
+        return `${commitSummary}\n`
+      }
 
       // getExistingPr: gh pr list --head <branch> ...
       if (file === 'gh' && argsArr[0] === 'pr' && argsArr[1] === 'list') {
