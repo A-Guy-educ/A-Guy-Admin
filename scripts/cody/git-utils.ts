@@ -98,6 +98,26 @@ export function getDefaultBranch(cwd: string = process.cwd()): string {
 }
 
 /**
+ * Merge the default branch into the current branch.
+ * This keeps the feature branch up-to-date with the latest changes from dev.
+ * If a merge conflict occurs, aborts the merge and throws an error.
+ */
+function mergeDefaultBranch(cwd: string): void {
+  const defaultBranch = getDefaultBranch(cwd)
+  console.log(`[branch] Merging latest ${defaultBranch} into current branch`)
+  try {
+    execSync(`git merge origin/${defaultBranch} --no-edit`, { cwd, stdio: 'inherit' })
+  } catch (error) {
+    console.error(`[branch] Merge conflict detected while merging ${defaultBranch}`)
+    console.log('[branch] Aborting merge')
+    execSync('git merge --abort', { cwd, stdio: 'inherit' })
+    throw new Error(
+      `Merge conflict while merging ${defaultBranch} into feature branch. Please resolve conflicts manually.`,
+    )
+  }
+}
+
+/**
  * Creates a feature branch before the build stage if needed.
  * This ensures the branch follows project conventions: fix/260218-description
  *
@@ -167,6 +187,9 @@ export function ensureFeatureBranch(taskId: string, taskType: string, projectDir
     execSync(`git checkout ${branchName}`, { cwd, stdio: 'inherit' })
     execSync(`git pull origin ${branchName}`, { cwd, stdio: 'inherit' })
 
+    // Merge default branch after pulling feature branch to keep it up-to-date
+    mergeDefaultBranch(cwd)
+
     // BUG-16 fix: Restore stashed changes in local mode
     if (!process.env.GITHUB_ACTIONS) {
       try {
@@ -219,6 +242,9 @@ export function ensureFeatureBranch(taskId: string, taskType: string, projectDir
       }
 
       execSync(`git checkout ${branchName}`, { cwd, stdio: 'inherit' })
+
+      // Merge default branch after checking out local branch to keep it up-to-date
+      mergeDefaultBranch(cwd)
 
       // Restore stash (only in local mode)
       if (!process.env.GITHUB_ACTIONS) {

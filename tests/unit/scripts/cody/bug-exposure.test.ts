@@ -167,6 +167,28 @@ describe('BUG-8: checkout-task-branch.sh must fetch before rev-parse', () => {
 })
 
 // ============================================================================
+// BUG-NEW: checkout-task-branch.sh must merge default branch after pulling feature branch
+// ============================================================================
+
+describe('BUG-NEW: checkout-task-branch.sh must merge default branch after pull', () => {
+  it('should run git merge after git pull in checkout-task-branch.sh', () => {
+    const script = fs.readFileSync(
+      path.join(process.cwd(), 'scripts/cody/checkout-task-branch.sh'),
+      'utf-8',
+    )
+
+    // Find positions of key commands
+    const pullPos = script.indexOf('git pull origin')
+    const mergePos = script.indexOf('git merge origin/')
+
+    // After pulling the feature branch, we must merge the default branch
+    expect(pullPos).toBeGreaterThan(-1) // git pull must exist
+    expect(mergePos).toBeGreaterThan(-1) // git merge must exist
+    expect(mergePos).toBeGreaterThan(pullPos) // merge must come after pull
+  })
+})
+
+// ============================================================================
 // BUG-16: ensureFeatureBranch stashes but never unstashes in local mode
 // ============================================================================
 

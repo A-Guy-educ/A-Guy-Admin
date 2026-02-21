@@ -899,6 +899,114 @@ describe('ensureFeatureBranch', () => {
       expect(calls).toContain('git push origin feat/260218-push-test')
     })
   })
+
+  // --------------------------------------------------------------------------
+  // Merge default branch into feature branch (re-run with updated dev)
+  // --------------------------------------------------------------------------
+
+  describe('merge default branch after pulling remote feature branch', () => {
+    it('should merge default branch after pulling remote feature branch', () => {
+      mockExecSync.mockImplementation((cmd: string) => {
+        if (typeof cmd === 'string' && cmd.includes('git branch --show-current')) {
+          return 'dev\n'
+        }
+        // Remote branch exists
+        if (typeof cmd === 'string' && cmd.includes('git rev-parse --verify ')) {
+          if (cmd.includes('origin/')) {
+            return 'abc123\n'
+          }
+          throw new Error('not found')
+        }
+        if (typeof cmd === 'string' && cmd.includes('git status --porcelain')) {
+          return ''
+        }
+        // git symbolic-ref for getDefaultBranch - used by the merge step
+        if (typeof cmd === 'string' && cmd.includes('git symbolic-ref')) {
+          return 'refs/remotes/origin/dev\n'
+        }
+        return Buffer.from('')
+      })
+
+      ensureFeatureBranch('260218-merge-test', 'implement_feature')
+
+      const calls = mockExecSync.mock.calls.map((c) => c[0])
+
+      // Should checkout and pull feature branch first
+      expect(calls).toContain('git checkout feat/260218-merge-test')
+      expect(calls).toContain('git pull origin feat/260218-merge-test')
+      // Should merge default branch after pulling feature branch
+      expect(calls).toContain('git merge origin/dev --no-edit')
+    })
+
+    it('should merge default branch after pulling local-only feature branch', () => {
+      mockExecSync.mockImplementation((cmd: string) => {
+        if (typeof cmd === 'string' && cmd.includes('git branch --show-current')) {
+          return 'dev\n'
+        }
+        // Remote doesn't exist, local does
+        if (typeof cmd === 'string' && cmd.includes('git rev-parse --verify ')) {
+          if (cmd.includes('origin/')) {
+            throw new Error('not found')
+          }
+          return 'abc123\n' // Local exists
+        }
+        if (typeof cmd === 'string' && cmd.includes('git status --porcelain')) {
+          return ''
+        }
+        if (typeof cmd === 'string' && cmd.includes('git symbolic-ref')) {
+          return 'refs/remotes/origin/dev\n'
+        }
+        return Buffer.from('')
+      })
+
+      ensureFeatureBranch('260218-local-merge-test', 'implement_feature')
+
+      const calls = mockExecSync.mock.calls.map((c) => c[0])
+
+      // Should checkout local branch
+      expect(calls).toContain('git checkout feat/260218-local-merge-test')
+      // Should merge default branch
+      expect(calls).toContain('git merge origin/dev --no-edit')
+    })
+
+    it('should abort merge and throw error on conflict', () => {
+      let mergeAttempted = false
+      mockExecSync.mockImplementation((cmd: string) => {
+        if (typeof cmd === 'string' && cmd.includes('git branch --show-current')) {
+          return 'dev\n'
+        }
+        if (typeof cmd === 'string' && cmd.includes('git rev-parse --verify ')) {
+          if (cmd.includes('origin/')) {
+            return 'abc123\n'
+          }
+          throw new Error('not found')
+        }
+        if (typeof cmd === 'string' && cmd.includes('git status --porcelain')) {
+          return ''
+        }
+        if (typeof cmd === 'string' && cmd.includes('git symbolic-ref')) {
+          return 'refs/remotes/origin/dev\n'
+        }
+        // Simulate merge conflict
+        if (typeof cmd === 'string' && cmd.includes('git merge origin/')) {
+          mergeAttempted = true
+          throw new Error('Merge failed: Conflict in file.txt')
+        }
+        return Buffer.from('')
+      })
+
+      expect(() => {
+        ensureFeatureBranch('260218-conflict-test', 'implement_feature')
+      }).toThrow()
+
+      const calls = mockExecSync.mock.calls.map((c) => c[0])
+
+      // Should have attempted merge
+      expect(mergeAttempted).toBe(true)
+      // Should abort merge after conflict
+      expect(calls).toContain('git merge --abort')
+    })
+  })
 })
 
 // ============================================================================
