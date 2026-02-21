@@ -134,19 +134,19 @@ export class VercelBlobAdapter {
     const pathname = this.buildPathname(filename)
 
     // Note: @vercel/blob requires 'public' access for all blobs
-    const result = (await put(pathname, data as any, {
+    const result = await put(pathname, data as Parameters<typeof put>[1], {
       token: this.token,
       access: 'public',
       contentType: options?.contentType,
       cacheControlMaxAge: this.config.cacheControlSeconds,
-    })) as any
+    })
 
     return {
       url: result.url,
       pathname: result.pathname,
       contentDisposition: result.contentDisposition,
       contentType: result.contentType,
-      size: (result as any).size,
+      size: (result as { size?: number }).size,
     }
   }
 
@@ -214,9 +214,9 @@ export class VercelBlobAdapter {
       blobs: result.blobs.map((blob) => ({
         url: blob.url,
         pathname: blob.pathname,
-        size: (blob as any).size,
-        contentType: (blob as any).contentType,
-        uploadedAt: (blob as any).uploadedAt,
+        size: blob.size,
+        contentType: blob.contentType,
+        uploadedAt: blob.uploadedAt,
       })),
       cursor: result.cursor,
       hasMore: !!result.cursor,
@@ -271,9 +271,9 @@ export class VercelBlobAdapter {
       const blob = result.blobs[0]
       return {
         pathname: blob.pathname,
-        size: (blob as any).size,
-        contentType: (blob as any).contentType,
-        uploadedAt: (blob as any).uploadedAt,
+        size: blob.size,
+        contentType: blob.contentType,
+        uploadedAt: blob.uploadedAt,
       }
     } catch {
       return null

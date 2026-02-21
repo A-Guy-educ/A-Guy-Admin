@@ -13,6 +13,7 @@
  * - Cookies are HttpOnly, Secure (prod), SameSite=Lax (S2)
  */
 import { getPayload } from 'payload'
+import type { CollectionConfig } from 'payload'
 import config from '@payload-config'
 import crypto from 'crypto'
 import { logger } from '@/infra/utils/logger'
@@ -146,7 +147,7 @@ export async function createGuestSession(options: {
   expiresAt.setDate(expiresAt.getDate() + guestConfig.sliding_ttl_days)
 
   const session = await payload.create({
-    collection: 'guest-sessions' as any,
+    collection: 'guest-sessions' as CollectionConfig,
     data: {
       tokenHash,
       tokenVersion: 1,
@@ -170,7 +171,7 @@ export async function getGuestSessionByToken(token: string): Promise<GuestSessio
   const tokenHash = hashToken(token)
 
   const sessions = await payload.find({
-    collection: 'guest-sessions' as any,
+    collection: 'guest-sessions' as CollectionConfig,
     where: {
       and: [{ tokenHash: { equals: tokenHash } }, { status: { equals: 'active' } }],
     },
@@ -194,7 +195,7 @@ export async function updateGuestSessionActivity(
   const payload = await getPayload({ config })
 
   const session = await payload.findByID({
-    collection: 'guest-sessions' as any,
+    collection: 'guest-sessions' as CollectionConfig,
     id: sessionId,
   })
 
@@ -215,7 +216,7 @@ export async function updateGuestSessionActivity(
   }
 
   const updated = await payload.update({
-    collection: 'guest-sessions' as any,
+    collection: 'guest-sessions' as CollectionConfig,
     id: sessionId,
     data: {
       lastActiveAt: now.toISOString(),
@@ -233,7 +234,7 @@ export async function revokeGuestSession(
   const payload = await getPayload({ config })
 
   const updated = await payload.update({
-    collection: 'guest-sessions' as any,
+    collection: 'guest-sessions' as CollectionConfig,
     id: sessionId,
     data: {
       status: 'revoked',
@@ -259,7 +260,7 @@ export async function checkAndIncrementGuestMessageCount(
   const guestConfig = await getGuestChatConfig()
 
   const session = await payload.findByID({
-    collection: 'guest-sessions' as any,
+    collection: 'guest-sessions' as CollectionConfig,
     id: guestSessionId,
   })
 
@@ -280,7 +281,7 @@ export async function checkAndIncrementGuestMessageCount(
   }
 
   await payload.update({
-    collection: 'guest-sessions' as any,
+    collection: 'guest-sessions' as CollectionConfig,
     id: guestSessionId,
     data: {
       messageCount: currentCount + 1,
