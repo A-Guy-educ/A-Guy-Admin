@@ -1,4 +1,4 @@
-import DOMPurify from 'isomorphic-dompurify'
+import DOMPurify from 'dompurify'
 
 /**
  * Sanitize SVG markup for safe rendering via dangerouslySetInnerHTML.
@@ -6,6 +6,8 @@ import DOMPurify from 'isomorphic-dompurify'
  * Preserves data-hotspot-id attributes for interactive SVGs.
  */
 export function sanitizeSvg(svgMarkup: string): string {
+  if (!svgMarkup) return ''
+  if (typeof window === 'undefined') return svgMarkup
   return DOMPurify.sanitize(svgMarkup, {
     USE_PROFILES: { svg: true, svgFilters: true },
     ADD_ATTR: ['data-hotspot-id'],

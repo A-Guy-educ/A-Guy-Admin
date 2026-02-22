@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, it, expect } from 'vitest'
 import { sanitizeSvg } from '@/ui/web/exerciserenderer/utils/svgSanitize'
 
