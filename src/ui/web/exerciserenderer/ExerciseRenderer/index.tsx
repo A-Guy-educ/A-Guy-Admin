@@ -22,6 +22,7 @@ import type {
   UserAnswer,
   CheckResult,
 } from '../types'
+import { HtmlBlockRenderer } from '../blocks/HtmlBlockRenderer'
 import { RichTextRenderer } from '../blocks/RichTextRenderer'
 import { TrueFalseQuestion } from '../questions/TrueFalseQuestion'
 import { McqQuestion } from '../questions/McqQuestion'
@@ -275,6 +276,18 @@ export function ExerciseRenderer({
                     className="prose prose-slate dark:prose-invert max-w-none text-foreground leading-relaxed"
                   >
                     <RichTextRenderer block={block} />
+                  </div>
+                )
+              }
+
+              // HTML block - render sanitized HTML
+              if (block.type === 'html') {
+                return (
+                  <div
+                    key={block.id}
+                    className="prose prose-slate dark:prose-invert max-w-none text-foreground leading-relaxed"
+                  >
+                    <HtmlBlockRenderer block={block} />
                   </div>
                 )
               }

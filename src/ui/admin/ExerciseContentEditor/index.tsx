@@ -13,6 +13,7 @@ import { JSONInspector } from './JSONInspector'
 import { MediaPicker } from './MediaPicker'
 import { RichTextEditor } from './RichTextEditor'
 import { FreeResponseEditor } from './editors/FreeResponseEditor'
+import { HtmlBlockEditor } from './editors/HtmlBlockEditor'
 import { McqEditor } from './editors/McqEditor'
 import { QuestionBlockWrapper } from './editors/QuestionBlockWrapper'
 import { TableEditor } from './editors/TableEditor'
@@ -448,6 +449,7 @@ function getBlockTypeLabel(block: ContentBlock): string {
   if (block.type === 'question_select' && block.variant === 'mcq') return 'Multiple Choice'
   if (block.type === 'question_free_response') return 'Free Response'
   if (block.type === 'question_table') return 'Table Question'
+  if (block.type === 'html') return 'HTML Block'
   return block.type
 }
 
@@ -567,6 +569,67 @@ interface BlockListProps {
   onRemoveMedia: (blockId: string, mediaId: string) => void
 }
 
+function ContentBlockHeader({
+  blockId,
+  index,
+  blockCount,
+  onMoveBlock,
+  onDuplicateBlock,
+  onDeleteBlock,
+}: {
+  blockId: string
+  index: number
+  blockCount: number
+  onMoveBlock: (id: string, direction: 'up' | 'down') => void
+  onDuplicateBlock: (id: string) => void
+  onDeleteBlock: (id: string) => void
+}) {
+  return (
+    <div className="block-header">
+      <div className="block-header-left">
+        <span className="block-number">Block {index + 1}</span>
+      </div>
+      <div className="block-actions">
+        <button
+          className="block-action-button"
+          onClick={() => onMoveBlock(blockId, 'up')}
+          disabled={index === 0}
+          title="Move up"
+          type="button"
+        >
+          <MoveUp size={14} />
+        </button>
+        <button
+          className="block-action-button"
+          onClick={() => onMoveBlock(blockId, 'down')}
+          disabled={index === blockCount - 1}
+          title="Move down"
+          type="button"
+        >
+          <MoveDown size={14} />
+        </button>
+        <button
+          className="block-action-button"
+          onClick={() => onDuplicateBlock(blockId)}
+          title="Duplicate block"
+          type="button"
+        >
+          <Copy size={14} />
+        </button>
+        <button
+          className="block-action-button block-action-button--danger"
+          onClick={() => onDeleteBlock(blockId)}
+          disabled={blockCount === 1}
+          title="Delete block"
+          type="button"
+        >
+          <Trash2 size={14} />
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function BlockList({
   blocks,
   selectedBlockId,
@@ -583,6 +646,7 @@ function BlockList({
     <div className="block-list">
       {blocks.map((block, index) => {
         const isRichText = block.type === 'rich_text'
+        const isHtml = block.type === 'html'
 
         return (
           <div
@@ -591,48 +655,14 @@ function BlockList({
           >
             {isRichText ? (
               <>
-                <div className="block-header">
-                  <div className="block-header-left">
-                    <span className="block-number">Block {index + 1}</span>
-                  </div>
-                  <div className="block-actions">
-                    <button
-                      className="block-action-button"
-                      onClick={() => onMoveBlock(block.id, 'up')}
-                      disabled={index === 0}
-                      title="Move up"
-                      type="button"
-                    >
-                      <MoveUp size={14} />
-                    </button>
-                    <button
-                      className="block-action-button"
-                      onClick={() => onMoveBlock(block.id, 'down')}
-                      disabled={index === blocks.length - 1}
-                      title="Move down"
-                      type="button"
-                    >
-                      <MoveDown size={14} />
-                    </button>
-                    <button
-                      className="block-action-button"
-                      onClick={() => onDuplicateBlock(block.id)}
-                      title="Duplicate block"
-                      type="button"
-                    >
-                      <Copy size={14} />
-                    </button>
-                    <button
-                      className="block-action-button block-action-button--danger"
-                      onClick={() => onDeleteBlock(block.id)}
-                      disabled={blocks.length === 1}
-                      title="Delete block"
-                      type="button"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                </div>
+                <ContentBlockHeader
+                  blockId={block.id}
+                  index={index}
+                  blockCount={blocks.length}
+                  onMoveBlock={onMoveBlock}
+                  onDuplicateBlock={onDuplicateBlock}
+                  onDeleteBlock={onDeleteBlock}
+                />
                 <div className="block-content">
                   <div onClick={() => onSelect(block.id)} onFocus={() => onSelect(block.id)}>
                     <RichTextEditor
@@ -663,6 +693,25 @@ function BlockList({
                       onRemoveMedia={onRemoveMedia}
                     />
                   )}
+                </div>
+              </>
+            ) : isHtml ? (
+              <>
+                <ContentBlockHeader
+                  blockId={block.id}
+                  index={index}
+                  blockCount={blocks.length}
+                  onMoveBlock={onMoveBlock}
+                  onDuplicateBlock={onDuplicateBlock}
+                  onDeleteBlock={onDeleteBlock}
+                />
+                <div className="block-content" onClick={() => onSelect(block.id)}>
+                  <HtmlBlockEditor
+                    block={
+                      block as import('@/server/payload/collections/Exercises/types').HtmlBlock
+                    }
+                    onChange={(updatedBlock) => onUpdateBlock(block.id, updatedBlock)}
+                  />
                 </div>
               </>
             ) : (
