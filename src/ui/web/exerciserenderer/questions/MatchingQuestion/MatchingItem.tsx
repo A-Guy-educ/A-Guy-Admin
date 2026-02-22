@@ -53,14 +53,16 @@ export function MatchingItem({
         !disabled &&
           !isSelected &&
           !isConnected &&
-          'hover:border-primary/60 hover:shadow-md hover:-translate-y-0.5 cursor-pointer',
-        canSelect && !isConnected && 'border-primary/40 bg-primary/5 cursor-pointer',
+          'hover:border-blue-400 hover:shadow-md hover:-translate-y-0.5 cursor-pointer',
+        canSelect &&
+          !isConnected &&
+          'border-blue-300 bg-blue-50 dark:bg-blue-500/10 cursor-pointer',
         isSelected &&
-          'border-primary bg-primary/10 border-[3px] shadow-[0_0_10px_rgba(59,130,246,0.3)]',
+          'border-blue-500 bg-blue-50 dark:bg-blue-500/15 border-[3px] shadow-[0_0_10px_rgba(59,130,246,0.3)]',
         isConnected &&
           !isSelected &&
           !checkResult(correctState) &&
-          'border-primary/60 bg-primary/5',
+          'border-blue-400 bg-blue-50 dark:bg-blue-500/10',
         disabled && 'cursor-not-allowed opacity-70',
         correctState === true && 'border-green-500 bg-green-50 dark:bg-green-500/10',
         correctState === false && 'border-destructive bg-red-50 dark:bg-destructive/10',

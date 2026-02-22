@@ -144,7 +144,7 @@ export function MatchingQuestion({
         <RichTextRenderer block={promptBlock} />
       </div>
 
-      <div className="flex items-center gap-2 px-4 py-3 rounded-lg bg-primary/5 border border-primary/20 text-sm text-primary">
+      <div className="flex items-center gap-2 px-4 py-3 rounded-lg bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 text-sm text-blue-600 dark:text-blue-400">
         <Info className="w-4 h-4 shrink-0" />
         {t('matchingInstruction')}
       </div>
