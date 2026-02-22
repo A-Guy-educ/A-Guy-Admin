@@ -10,25 +10,12 @@ import * as path from 'path'
 import { execSync } from 'child_process'
 
 import { stageOutputFile } from './pipeline-utils'
-import { updateStageStatus } from './cody-utils'
 import {
-  isPlanReviewFail,
   validateBuildFile,
   extractVerifySummary,
   isVerifyFailed,
+  validateGapReport,
 } from './content-validators'
-
-// ============================================================================
-// Error Types
-// ============================================================================
-
-/** Thrown by plan-review gate to signal architect should retry */
-export class PlanReviewFailError extends Error {
-  constructor() {
-    super('Plan review verdict: FAIL')
-    this.name = 'PlanReviewFailError'
-  }
-}
 
 // ============================================================================
 // Hook Options
@@ -61,38 +48,35 @@ export function handleRerunFeedbackArchive(options: StageHookOptions): void {
 }
 
 /**
- * Handle plan-review gate - check verdict and throw PlanReviewFailError on FAIL
+ * Handle plan-gap validation - verify gap report is valid and plan.md still exists
  */
-export function handlePlanReviewGate(options: StageHookOptions): void {
-  const { taskId, taskDir } = options
-  const outputFile = stageOutputFile(taskDir, 'plan-review')
+export function handlePlanGapValidation(options: StageHookOptions): void {
+  const { taskDir } = options
+  const outputFile = stageOutputFile(taskDir, 'plan-gap')
 
   if (!fs.existsSync(outputFile)) {
-    return
+    return // No output file = stage didn't run or was skipped
   }
 
-  const reviewContent = fs.readFileSync(outputFile, 'utf-8')
-
-  if (isPlanReviewFail(reviewContent)) {
-    console.error(`\n❌ Plan review FAILED for ${taskId}`)
-    console.error('  The plan does not meet spec requirements. Looping back to architect.\n')
-
-    // Delete plan.md so architect reruns
-    const planFile = stageOutputFile(taskDir, 'architect')
-    if (fs.existsSync(planFile)) fs.unlinkSync(planFile)
-
-    // Delete plan-review.md so it reruns after new plan
-    fs.unlinkSync(outputFile)
-
-    updateStageStatus(taskId, 'plan-review', 'failed', { error: 'Plan review verdict: FAIL' })
-    throw new PlanReviewFailError()
+  const gapContent = fs.readFileSync(outputFile, 'utf-8')
+  if (!validateGapReport(gapContent)) {
+    throw new Error(
+      'Plan gap report is invalid — must contain ## Gaps Found, ## Changes Made, or "No gaps identified"',
+    )
   }
 
-  console.log('  ✅ Plan review: PASS')
+  // Re-validate plan.md after gap agent may have revised it
+  const planFile = path.join(taskDir, 'plan.md')
+  if (!fs.existsSync(planFile)) {
+    throw new Error('plan.md missing after plan-gap agent ran — agent may have deleted it')
+  }
+
+  console.log('  ✅ Plan gap analysis complete')
 }
 
 /**
  * Handle build content validation - check for Changes section
+ * Throws an error if build report is missing Changes section
  */
 export function handleBuildValidation(options: StageHookOptions): void {
   const { taskDir } = options
@@ -100,7 +84,8 @@ export function handleBuildValidation(options: StageHookOptions): void {
 
   const warning = validateBuildFile(outputFile)
   if (warning) {
-    console.warn(`  ⚠️  ${warning}`)
+    console.error(`  ❌ ${warning}`)
+    throw new Error(warning)
   }
 }
 

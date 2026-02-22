@@ -85,21 +85,21 @@ describe('parseCommentBody', () => {
     expect(result.input?.feedback).toBe('fix')
   })
 
-  it('should return error for unknown subcommand "/cody badcommand"', () => {
+  it('should treat unknown subcommand as rerun with implicit feedback', () => {
     const result = parseCommentBody('/cody badcommand')
-    expect(result.success).toBe(false)
-    expect(result.error).toContain('Unknown subcommand: badcommand')
-    expect(result.errorComment).toBeDefined()
-    expect(result.errorComment).toContain('badcommand')
-    expect(result.errorComment).toContain('Valid commands')
+    expect(result.success).toBe(true)
+    expect(result.input?.mode).toBe('rerun')
+    expect(result.input?.feedback).toBe('badcommand')
+    expect(result.input?.taskId).toBe('')
   })
 
-  it('should return error for invalid task-id format "/cody spec bad-task-id"', () => {
+  it('should treat invalid task-id format as empty (auto-discovery)', () => {
+    // When user provides text that doesn't match task-id pattern with a valid mode,
+    // treat it as no task-id provided - will be auto-discovered from issue
     const result = parseCommentBody('/cody spec bad-task-id')
-    expect(result.success).toBe(false)
-    expect(result.error).toContain('Invalid task-id format: bad-task-id')
-    expect(result.errorComment).toContain('bad-task-id')
-    expect(result.errorComment).toContain('YYMMDD-description')
+    expect(result.success).toBe(true)
+    expect(result.input?.mode).toBe('spec')
+    expect(result.input?.taskId).toBe('')
   })
 
   it('should decode JSON-encoded body (starts/ends with quotes)', () => {
@@ -154,7 +154,7 @@ describe('parseCommentBody', () => {
       'spec',
       'clarify',
       'architect',
-      'plan-review',
+      'plan-gap',
       'build',
       'commit',
       'verify',
@@ -295,10 +295,11 @@ describe('parseCliArgs', () => {
     expect(result.commentBody).toBe('/cody spec 260218-task')
   })
 
-  it('should throw when --comment-body contains an invalid command', () => {
-    expect(() => parseCliArgs(['--comment-body', '/cody badcommand'])).toThrow(
-      /Unknown subcommand: badcommand/,
-    )
+  it('should treat unknown subcommand in --comment-body as rerun with implicit feedback', () => {
+    const result = parseCliArgs(['--comment-body', '/cody badcommand'])
+    expect(result.mode).toBe('rerun')
+    expect(result.feedback).toBe('badcommand')
+    expect(result.triggerType).toBe('comment')
   })
 
   it('should auto-generate task-id when not provided (format YYMMDD-auto-XX)', () => {
@@ -312,7 +313,6 @@ describe('parseCliArgs', () => {
   })
 
   it('should generate task-id from --file path/to/feature.md', () => {
-    const mockDate = new Date('2026-02-18T12:00:00.000Z')
     vi.spyOn(Date.prototype, 'toISOString').mockReturnValue('2026-02-18T12:00:00.000Z')
 
     const result = parseCliArgs(['--file', 'path/to/my-feature.md'])
@@ -916,9 +916,10 @@ describe('isValidStage', () => {
     const stages = [
       'taskify',
       'spec',
+      'gap',
       'clarify',
       'architect',
-      'plan-review',
+      'plan-gap',
       'build',
       'commit',
       'autofix',

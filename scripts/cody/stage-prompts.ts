@@ -9,6 +9,7 @@ import * as fs from 'fs'
 import * as path from 'path'
 
 import type { CodyInput } from './cody-utils'
+import { stageOutputFile } from './pipeline-utils'
 
 // ============================================================================
 // Constants
@@ -17,7 +18,7 @@ import type { CodyInput } from './cody-utils'
 /**
  * Spec-only stages that don't produce code (skip hooks, as they auto-commit but shouldn't be enforced)
  */
-export const SPEC_STAGES = ['taskify', 'spec', 'clarify'] as const
+export const SPEC_STAGES = ['taskify', 'spec', 'gap', 'clarify'] as const
 
 export type SpecStage = (typeof SPEC_STAGES)[number]
 
@@ -28,9 +29,10 @@ export type SpecStage = (typeof SPEC_STAGES)[number]
 export const ALL_STAGES = [
   'taskify',
   'spec',
+  'gap',
   'clarify',
   'architect',
-  'plan-review',
+  'plan-gap',
   'build',
   'commit',
   'verify',
@@ -59,14 +61,18 @@ export const SCRIPTED_STAGES = ['verify', 'commit', 'pr'] as const
  * Design principle: each agent gets ONLY what it needs.
  * Behavioral instructions live in .opencode/agents/<stage>.md (system prompt).
  * This file provides only runtime context (task ID, file paths).
+ *
+ * Note: Some files may not exist (e.g., rerun-feedback.md on first runs).
+ * The agent should gracefully handle missing optional files.
  */
 export const STAGE_CONTEXT_FILES: Record<Stage, string[]> = {
   taskify: ['task.md'],
   spec: ['task.md', 'task.json'],
+  gap: ['spec.md', 'task.json'],
   clarify: ['task.md', 'spec.md'],
   architect: ['spec.md', 'clarified.md', 'rerun-feedback.md'],
-  'plan-review': ['spec.md', 'plan.md'],
-  build: ['spec.md', 'clarified.md', 'plan.md', 'plan-review.md'],
+  'plan-gap': ['spec.md', 'plan.md', 'task.json'],
+  build: ['spec.md', 'clarified.md', 'plan.md', 'plan-gap.md'],
   commit: ['task.json'],
   verify: [], // scripted — no LLM prompt needed
   autofix: ['verify.md'],
@@ -91,11 +97,13 @@ export const stageInstructions: Record<Stage, (taskId: string) => string> = {
 
   spec: (taskId) => `${specOnlyInstructionTemplate.replace('{TASK_ID}', taskId)}`,
 
+  gap: (taskId) => `${specOnlyInstructionTemplate.replace('{TASK_ID}', taskId)}`,
+
   clarify: (taskId) => `${specOnlyInstructionTemplate.replace('{TASK_ID}', taskId)}`,
 
   architect: () => ``,
 
-  'plan-review': () => ``,
+  'plan-gap': () => ``,
 
   build: () => ``,
 
@@ -140,6 +148,9 @@ function getTaskType(taskId: string): string {
  * the agent needs to read. Behavioral instructions come from the agent's
  * .opencode/agents/<stage>.md system prompt.
  *
+ * Note: Some context files may not exist (e.g., rerun-feedback.md on first runs).
+ * The agent should gracefully skip reading files that don't exist - do NOT treat missing files as errors.
+ *
  * @param input - Orchestrator input containing taskId
  * @param stage - The stage to build the prompt for
  * @returns The complete prompt string to pass to the agent
@@ -164,12 +175,14 @@ export function buildStagePrompt(input: CodyInput, stage: string): string {
   const taskTypeSection =
     stage === 'architect' || stage === 'build' ? `\nTask Type: ${taskType}` : ''
 
+  const outputFile = stageOutputFile(taskDir, stage)
+
   const parts = [
     instruction,
     `Task ID: ${taskId}`,
     taskTypeSection,
     filesSection,
-    `Write your output to the expected output file in ${taskDir}/.`,
+    `Write your output to ${outputFile}`,
   ].filter(Boolean)
 
   return parts.join('\n\n')
@@ -186,5 +199,5 @@ export function getSpecStages(): string[] {
  * Get implementation pipeline stages
  */
 export function getImplStages(): string[] {
-  return ['architect', 'plan-review', 'build', 'commit', 'verify', 'auditor', 'apply-audit', 'pr']
+  return ['architect', 'plan-gap', 'build', 'commit', 'verify', 'auditor', 'apply-audit', 'pr']
 }

@@ -10,11 +10,9 @@ import * as fs from 'fs'
 import * as path from 'path'
 import * as os from 'os'
 import {
-  PlanReviewFailError,
   handleRerunFeedbackArchive,
-  handlePlanReviewGate,
+  handlePlanGapValidation,
   handleBuildValidation,
-  handlePostBuildTsc,
   handleVerifyResult,
 } from '../../../../scripts/cody/stage-hooks'
 
@@ -56,45 +54,69 @@ describe('stage-hooks', () => {
   })
 
   // ========================================================================
-  // handlePlanReviewGate
+  // handlePlanGapValidation
   // ========================================================================
 
-  describe('handlePlanReviewGate', () => {
-    it('does nothing when plan-review.md does not exist', () => {
+  describe('handlePlanGapValidation', () => {
+    it('does nothing when plan-gap.md does not exist', () => {
       const taskDir = path.join(tempDir, '.tasks', '260218-test')
       const opts = { taskId: '260218-test', taskDir, dryRun: false, isCI: false }
-      expect(() => handlePlanReviewGate(opts)).not.toThrow()
+      expect(() => handlePlanGapValidation(opts)).not.toThrow()
     })
 
-    it('does nothing when verdict is PASS', () => {
+    it('succeeds when plan-gap.md has valid gap report (## Gaps Found)', () => {
       const taskDir = path.join(tempDir, '.tasks', '260218-test')
       const opts = { taskId: '260218-test', taskDir, dryRun: false, isCI: false }
-      fs.writeFileSync(path.join(taskDir, 'plan-review.md'), '# Plan Review\n\nVerdict: PASS')
-      expect(() => handlePlanReviewGate(opts)).not.toThrow()
-    })
-
-    it('throws PlanReviewFailError when verdict is FAIL', () => {
-      const taskDir = path.join(tempDir, '.tasks', '260218-test')
-      const opts = { taskId: '260218-test', taskDir, dryRun: false, isCI: false }
-      fs.writeFileSync(path.join(taskDir, 'plan-review.md'), '# Plan Review\n\nVerdict: FAIL')
+      fs.writeFileSync(
+        path.join(taskDir, 'plan-gap.md'),
+        '# Plan Gap Analysis\n\n## Gaps Found\n\n- Gap 1: Missing step',
+      )
       fs.writeFileSync(path.join(taskDir, 'plan.md'), '# Plan\n\nSome plan')
-      expect(() => handlePlanReviewGate(opts)).toThrow(PlanReviewFailError)
+      expect(() => handlePlanGapValidation(opts)).not.toThrow()
     })
 
-    it('deletes plan.md and plan-review.md on FAIL', () => {
+    it('succeeds when plan-gap.md has ## Changes Made', () => {
       const taskDir = path.join(tempDir, '.tasks', '260218-test')
       const opts = { taskId: '260218-test', taskDir, dryRun: false, isCI: false }
-      fs.writeFileSync(path.join(taskDir, 'plan-review.md'), '# Plan Review\n\nVerdict: FAIL')
+      fs.writeFileSync(
+        path.join(taskDir, 'plan-gap.md'),
+        '# Plan Gap Analysis\n\n## Changes Made\n\n- Added Step 1',
+      )
       fs.writeFileSync(path.join(taskDir, 'plan.md'), '# Plan')
+      expect(() => handlePlanGapValidation(opts)).not.toThrow()
+    })
 
-      try {
-        handlePlanReviewGate(opts)
-      } catch {
-        // Expected
-      }
+    it('succeeds when plan-gap.md says "No gaps identified"', () => {
+      const taskDir = path.join(tempDir, '.tasks', '260218-test')
+      const opts = { taskId: '260218-test', taskDir, dryRun: false, isCI: false }
+      fs.writeFileSync(
+        path.join(taskDir, 'plan-gap.md'),
+        '# Plan Gap Analysis\n\nNo gaps identified.',
+      )
+      fs.writeFileSync(path.join(taskDir, 'plan.md'), '# Plan')
+      expect(() => handlePlanGapValidation(opts)).not.toThrow()
+    })
 
-      expect(fs.existsSync(path.join(taskDir, 'plan-review.md'))).toBe(false)
-      expect(fs.existsSync(path.join(taskDir, 'plan.md'))).toBe(false)
+    it('throws when plan-gap.md is invalid (empty/missing sections)', () => {
+      const taskDir = path.join(tempDir, '.tasks', '260218-test')
+      const opts = { taskId: '260218-test', taskDir, dryRun: false, isCI: false }
+      fs.writeFileSync(path.join(taskDir, 'plan-gap.md'), 'Invalid content')
+      expect(() => handlePlanGapValidation(opts)).toThrow(
+        'Plan gap report is invalid — must contain ## Gaps Found, ## Changes Made, or "No gaps identified"',
+      )
+    })
+
+    it('throws when plan.md is missing after gap agent ran', () => {
+      const taskDir = path.join(tempDir, '.tasks', '260218-test')
+      const opts = { taskId: '260218-test', taskDir, dryRun: false, isCI: false }
+      fs.writeFileSync(
+        path.join(taskDir, 'plan-gap.md'),
+        '# Plan Gap Analysis\n\nNo gaps identified.',
+      )
+      // No plan.md
+      expect(() => handlePlanGapValidation(opts)).toThrow(
+        'plan.md missing after plan-gap agent ran — agent may have deleted it',
+      )
     })
   })
 
@@ -109,11 +131,13 @@ describe('stage-hooks', () => {
       expect(() => handleBuildValidation(opts)).not.toThrow()
     })
 
-    it('logs warning when build.md missing Changes section', () => {
+    it('throws error when build.md missing Changes section', () => {
       const taskDir = path.join(tempDir, '.tasks', '260218-test')
       const opts = { taskId: '260218-test', taskDir, dryRun: false, isCI: false }
       fs.writeFileSync(path.join(taskDir, 'build.md'), '# Build\n\nNo changes here.')
-      expect(() => handleBuildValidation(opts)).not.toThrow()
+      expect(() => handleBuildValidation(opts)).toThrow(
+        'Build report missing Changes section — agent may not have implemented anything',
+      )
     })
 
     it('does not warn when build.md has Changes section', () => {
@@ -156,23 +180,6 @@ describe('stage-hooks', () => {
       expect(result.summary).toBeDefined()
       expect(result.summary?.typeScriptErrors).toBe(5)
       expect(result.summary?.testFailures).toBe(2)
-    })
-  })
-
-  // ========================================================================
-  // PlanReviewFailError
-  // ========================================================================
-
-  describe('PlanReviewFailError', () => {
-    it('has correct name and message', () => {
-      const error = new PlanReviewFailError()
-      expect(error.name).toBe('PlanReviewFailError')
-      expect(error.message).toBe('Plan review verdict: FAIL')
-    })
-
-    it('is instanceof Error', () => {
-      const error = new PlanReviewFailError()
-      expect(error).toBeInstanceOf(Error)
     })
   })
 })

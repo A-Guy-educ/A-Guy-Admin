@@ -23,8 +23,8 @@ describe('stage-prompts', () => {
   // ===========================================================================
 
   describe('SPEC_STAGES', () => {
-    it('should contain taskify, spec, clarify', () => {
-      expect([...SPEC_STAGES]).toEqual(['taskify', 'spec', 'clarify'])
+    it('should contain taskify, spec, gap, clarify', () => {
+      expect([...SPEC_STAGES]).toEqual(['taskify', 'spec', 'gap', 'clarify'])
     })
   })
 
@@ -35,13 +35,14 @@ describe('stage-prompts', () => {
   })
 
   describe('ALL_STAGES', () => {
-    it('should contain all stages including plan-review, commit, autofix, apply-audit', () => {
+    it('should contain all stages including gap, plan-gap, commit, autofix, apply-audit', () => {
       const stages = [...ALL_STAGES]
       expect(stages).toContain('taskify')
       expect(stages).toContain('spec')
+      expect(stages).toContain('gap')
       expect(stages).toContain('clarify')
       expect(stages).toContain('architect')
-      expect(stages).toContain('plan-review')
+      expect(stages).toContain('plan-gap')
       expect(stages).toContain('build')
       expect(stages).toContain('commit')
       expect(stages).toContain('verify')
@@ -49,7 +50,7 @@ describe('stage-prompts', () => {
       expect(stages).toContain('auditor')
       expect(stages).toContain('apply-audit')
       expect(stages).toContain('pr')
-      expect(stages).toHaveLength(12)
+      expect(stages).toHaveLength(13)
     })
   })
 
@@ -61,18 +62,19 @@ describe('stage-prompts', () => {
     it('should map stages to their correct file lists', () => {
       expect(STAGE_CONTEXT_FILES.taskify).toEqual(['task.md'])
       expect(STAGE_CONTEXT_FILES.spec).toEqual(['task.md', 'task.json'])
+      expect(STAGE_CONTEXT_FILES.gap).toEqual(['spec.md', 'task.json'])
       expect(STAGE_CONTEXT_FILES.clarify).toEqual(['task.md', 'spec.md'])
       expect(STAGE_CONTEXT_FILES.architect).toEqual([
         'spec.md',
         'clarified.md',
         'rerun-feedback.md',
       ])
-      expect(STAGE_CONTEXT_FILES['plan-review']).toEqual(['spec.md', 'plan.md'])
+      expect(STAGE_CONTEXT_FILES['plan-gap']).toEqual(['spec.md', 'plan.md', 'task.json'])
       expect(STAGE_CONTEXT_FILES.build).toEqual([
         'spec.md',
         'clarified.md',
         'plan.md',
-        'plan-review.md',
+        'plan-gap.md',
       ])
       expect(STAGE_CONTEXT_FILES.commit).toEqual(['task.json'])
       expect(STAGE_CONTEXT_FILES.verify).toEqual([])
@@ -95,8 +97,8 @@ describe('stage-prompts', () => {
   // ===========================================================================
 
   describe('getSpecStages', () => {
-    it('should return taskify, spec, clarify', () => {
-      expect(getSpecStages()).toEqual(['taskify', 'spec', 'clarify'])
+    it('should return taskify, spec, gap, clarify', () => {
+      expect(getSpecStages()).toEqual(['taskify', 'spec', 'gap', 'clarify'])
     })
   })
 
@@ -104,7 +106,7 @@ describe('stage-prompts', () => {
     it('should return implementation stages in order', () => {
       expect(getImplStages()).toEqual([
         'architect',
-        'plan-review',
+        'plan-gap',
         'build',
         'commit',
         'verify',

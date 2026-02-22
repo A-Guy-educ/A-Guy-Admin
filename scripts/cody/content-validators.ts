@@ -101,30 +101,28 @@ export function validateBuildFile(buildFilePath: string): string {
 }
 
 // ============================================================================
-// Plan Review Verdict Validation
+// Plan Gap Report Validation
 // ============================================================================
 
 /**
- * Check if plan-review verdict is FAIL
+ * Validate plan-gap report content.
+ * Reuses same logic as validateGapReport - both follow same format.
+ * Returns true if valid, false otherwise.
  */
-export function isPlanReviewFail(reviewContent: string): boolean {
-  return /Verdict:\s*FAIL/i.test(reviewContent)
-}
+export function validatePlanGapReport(gapContent: string): boolean {
+  const trimmed = gapContent.trim()
 
-/**
- * Validate plan-review file verdict.
- * Returns true if PASS, false if FAIL.
- */
-export function validatePlanReviewVerdict(reviewFilePath: string): boolean {
-  if (!fs.existsSync(reviewFilePath)) {
-    throw new Error(`Plan review file not found: ${reviewFilePath}`)
-  }
-
-  const reviewContent = fs.readFileSync(reviewFilePath, 'utf-8')
-  if (isPlanReviewFail(reviewContent)) {
+  // Empty content is invalid
+  if (!trimmed || trimmed.length < 10) {
     return false
   }
-  return true
+
+  // Check for required sections
+  const hasGapsFound = /##\s*Gaps? Found/i.test(gapContent)
+  const hasChangesMade = /##\s*Changes Made/i.test(gapContent)
+  const hasNoGaps = /no gaps identified/i.test(gapContent.toLowerCase())
+
+  return hasGapsFound || hasChangesMade || hasNoGaps
 }
 
 // ============================================================================
@@ -179,4 +177,28 @@ export function extractVerifySummary(content: string): VerifySummary {
  */
 export function isVerifyFailed(verifyContent: string): boolean {
   return /\bResult:\s*FAIL\b/i.test(verifyContent)
+}
+
+// ============================================================================
+// Gap Report Validation
+// ============================================================================
+
+/**
+ * Validate that gap report contains required sections.
+ * Returns true if valid, false otherwise.
+ */
+export function validateGapReport(gapContent: string): boolean {
+  const trimmed = gapContent.trim()
+
+  // Empty content is invalid
+  if (!trimmed || trimmed.length < 10) {
+    return false
+  }
+
+  // Check for required sections
+  const hasGapsFound = /##\s*Gaps? Found/i.test(gapContent)
+  const hasChangesMade = /##\s*Changes Made/i.test(gapContent)
+  const hasNoGaps = /no gaps identified/i.test(gapContent.toLowerCase())
+
+  return hasGapsFound || hasChangesMade || hasNoGaps
 }

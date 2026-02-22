@@ -60,7 +60,7 @@ pnpm test:unit
 ### 1. Implementation
 
 - Follow the SPEC and PLAN exactly
-- Address any SUGGESTIONS from plan-review.md (non-blocking, but improve quality)
+- Address any SUGGESTIONS from plan-gap.md (non-blocking, but improve quality)
 - Do NOT change the spec
 - Do NOT expand scope
 
@@ -70,6 +70,12 @@ Run after implementing all steps:
 
 ```bash
 pnpm -s tsc --noEmit && pnpm -s lint
+```
+
+After creating or modifying admin components, regenerate the import map:
+
+```bash
+pnpm generate:importmap
 ```
 
 ### 3. Write Output File (REQUIRED)

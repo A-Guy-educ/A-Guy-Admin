@@ -87,8 +87,8 @@ importers:
         specifier: ^10.32.1
         version: 10.38.0(@opentelemetry/context-async-hooks@2.5.0(@opentelemetry/api@1.9.0))(@opentelemetry/core@2.5.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.5.0(@opentelemetry/api@1.9.0))(next@15.5.9(@babel/core@7.28.6)(@opentelemetry/api@1.9.0)(@playwright/test@1.57.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(sass@1.77.4))(react@19.2.3)(webpack@5.104.1(esbuild@0.27.2))
       '@vercel/blob':
-        specifier: ^0.22.3
-        version: 0.22.3
+        specifier: ^2.0.0
+        version: 2.0.1
       ajv:
         specifier: ^8.17.1
         version: 8.17.1
@@ -292,8 +292,8 @@ importers:
         specifier: ^16.2.7
         version: 16.2.7
       opencode-ai:
-        specifier: ^1.1.53
-        version: 1.2.9
+        specifier: ^1.2.10
+        version: 1.2.10
       playwright:
         specifier: 1.57.0
         version: 1.57.0
@@ -3798,6 +3798,10 @@ packages:
     resolution: {integrity: sha512-l0t2KhbOO/I8ZNOl9zypYf1NE0837aO4/CPQNGR/RAxtj8FpdYKjhyUADUXj2gERLQmnhun+teaVs/G7vZJ/TQ==}
     engines: {node: '>=16.14'}
 
+  '@vercel/blob@2.0.1':
+    resolution: {integrity: sha512-DeJmC/B5oH1ExazYh/UvjbN6Mg0q0wlDz29GPIPNhi4COjVzqYRkyPYjOcAZd+RgXVzWqGXholZWtGcLCPuL8A==}
+    engines: {node: '>=20.0.0'}
+
   '@vercel/mcp-adapter@1.0.0':
     resolution: {integrity: sha512-o/QA4LhYCJvuL7/i8CfKPpOm29u25/L4m1LWH44EQZ8cfYJlc4B7Bu+YzDHl23m8A3hDxCJQmlgZEGmsPAQ0vQ==}
     hasBin: true
@@ -6015,6 +6019,9 @@ packages:
     resolution: {integrity: sha512-5KoIu2Ngpyek75jXodFvnafB6DJgr3u8uuK0LEZJjrU19DrMD3EVERaR8sjz8CCGgpZvxPl9SuE1GMVPFHx1mw==}
     engines: {node: '>= 0.4'}
 
+  is-node-process@1.2.0:
+    resolution: {integrity: sha512-Vg4o6/fqPxIjtxgUH5QLJhwZ7gW5diGCVlXpuUfELC62CuxM1iHcRe51f2W1FDy04Ai4KJkagKjx3XaqyfRKXw==}
+
   is-number-object@1.1.1:
     resolution: {integrity: sha512-lZhclumE1G6VYD8VHe35wFaIif+CTy5SJIi5+3y4psDgWu4wPDoBhF8NxUOinEc7pHgiTsT6MaBb92rKhhD+Xw==}
     engines: {node: '>= 0.4'}
@@ -7253,62 +7260,62 @@ packages:
       zod:
         optional: true
 
-  opencode-ai@1.2.9:
-    resolution: {integrity: sha512-0W7YiNWIR+Wu+cXkWhDD8hDXsQ8kp5IEZKjo8+gNYpgv5E03vi3JGJ5saOZJ1DnyasnvrcKCiVikjohI8hzTiA==}
+  opencode-ai@1.2.10:
+    resolution: {integrity: sha512-hF93CJSJJE++cw/P2YKNp8YD3pZBYOboaZV/ZkOi9hnifFN8UCyoJDeqJrfBZSHp9k9url/7b5mCRan1sOVEzQ==}
     hasBin: true
 
-  opencode-darwin-arm64@1.2.9:
-    resolution: {integrity: sha512-VfHWjkqkL1fPz6CZIhjMzF7E46q0JPTolyGsD54e3i1gCi83K3eJQm8wpO/Kq9K1GHcfCkzP8yvyKbTOQ2lTCQ==}
+  opencode-darwin-arm64@1.2.10:
+    resolution: {integrity: sha512-r4kxYe1tWc9P2sZ8igUC77JDqQM23fS82C6C1DlIJg6+dbcg1XLqESYsKyByIMIiST4ZDzPOnMQt8u8fGy4S1g==}
     cpu: [arm64]
     os: [darwin]
 
-  opencode-darwin-x64-baseline@1.2.9:
-    resolution: {integrity: sha512-p/yFCbS9W6C0xywBfgdAeak4Eg56IL5hgcOdX6Ru7oHyTK8Rh4rAkHwCSV2xASN+Zuwi6/3GtwarLj9+mD8caQ==}
+  opencode-darwin-x64-baseline@1.2.10:
+    resolution: {integrity: sha512-9O4I3RQpGAIixIDUz1tT1iJ3l1DGb84xGD+Cvik7QBTcRxYLg/JEP70jx8XGQUVVN6rRvsHQqTw7uPsjtIgvJQ==}
     cpu: [x64]
     os: [darwin]
 
-  opencode-darwin-x64@1.2.9:
-    resolution: {integrity: sha512-b44hG6vmHpOJfLVhc0bcmLIfr2aMR5+jFuhE82YbhQuU2TXC0uYDIruF4vbMowiwmOi+7VqQcZ7UWSUyrN6Rkg==}
+  opencode-darwin-x64@1.2.10:
+    resolution: {integrity: sha512-fpkoTb6e8g1Nwl4KX/Jj7DmT7pXYXSd28oHZ/A3q0dJ7T8lS94V2vaK8O3QfHuD5H5jgDKxFpNh4XP/w1pyAiQ==}
     cpu: [x64]
     os: [darwin]
 
-  opencode-linux-arm64-musl@1.2.9:
-    resolution: {integrity: sha512-LylvTo6F8Z5V8XMfnIexdL66oQLvRpRbk1jb/R4JTuN2W9rId8MAXxxbufBBj2DBUmUTbP6rvbZ1g05P9leuEw==}
+  opencode-linux-arm64-musl@1.2.10:
+    resolution: {integrity: sha512-VHylFyTXjOpgv9gheq8wwnt5gZZPFyUatFuoAffZNNUvNGlk8hQNYZH4+FryDceWYqCrZl1R9H0Gj68jipNQ3A==}
     cpu: [arm64]
     os: [linux]
 
-  opencode-linux-arm64@1.2.9:
-    resolution: {integrity: sha512-7ZJXpKp11vjKzbdwhtOE/lHnkBdfA0kcGCmrUjvBbg8buEnmZ/q26JYm8RvUUycDSf5y/Fs0+fOf78R9gwp1DQ==}
+  opencode-linux-arm64@1.2.10:
+    resolution: {integrity: sha512-p/FDTWCoQ4AfGy1ejZWYgYor87J/e3X1H0n5piNI420L4LTB8L9KZWvqpgV95NBVNdAgEvrR5JKHYfUIRzk13Q==}
     cpu: [arm64]
     os: [linux]
 
-  opencode-linux-x64-baseline-musl@1.2.9:
-    resolution: {integrity: sha512-YXq0PQz5OnZ3z6CNvKkIjbW+AhmnUdWJ8aPay2Voh/eGcOqZnXCWgp+RDI17ZVw+kFJXL2rwqfyP30Cg+purGg==}
+  opencode-linux-x64-baseline-musl@1.2.10:
+    resolution: {integrity: sha512-+s5kT6mcJPBahgdIgK5Tj6g16bXkQfM2HqNRpuNEpIJnf54GtWkTz5S2mu5OTquKS7botXzXuUdegvhos03qQw==}
     cpu: [x64]
     os: [linux]
 
-  opencode-linux-x64-baseline@1.2.9:
-    resolution: {integrity: sha512-uTEjxc9+zv55WbIraUoTTRUIpSkzssMik4ik+nzMoEHQPlCADiu1FczmNdHp+rMVtQtEzAGcxPYOr3knT07/fQ==}
+  opencode-linux-x64-baseline@1.2.10:
+    resolution: {integrity: sha512-L7Lb1M2Op3GE068sb8/clIyUgyUZpEtkoBkpdYU163fMKDX8dhwljUb+nxsywhmS2qZRDk1q8AIUpCpsRUYIIg==}
     cpu: [x64]
     os: [linux]
 
-  opencode-linux-x64-musl@1.2.9:
-    resolution: {integrity: sha512-Mq3AgBq0m16RrU15Kj+rA5AEeOjMX6g+7ELq2MmgmsaXcnShkcrU2Kh8mu3aKge4ZSFhGqBy+ll173R8MiSQaw==}
+  opencode-linux-x64-musl@1.2.10:
+    resolution: {integrity: sha512-ihSqT1AWCMCsLitd6duLocfeamjq1CWtIehFMpLKIysAdBN5LjZAcPaoJD8aiKtOe8Ehu63IH22Knc8s1UFjTg==}
     cpu: [x64]
     os: [linux]
 
-  opencode-linux-x64@1.2.9:
-    resolution: {integrity: sha512-v4sKEroCrIab2NANsq4TlL4HVZQg5zL+OPMIhMqP1BaWE/Qe3LWL/W956f/zDS5iFwaYk8CL0QR5XKAUQifCqQ==}
+  opencode-linux-x64@1.2.10:
+    resolution: {integrity: sha512-JiRyKYMwpWX7lm8hJ6Qs/P/9bpAJkijL47b2ujauRbt9XVIlV6kVq/kCX2DggiHVWP9oHPrcTXNev3n8739w5Q==}
     cpu: [x64]
     os: [linux]
 
-  opencode-windows-x64-baseline@1.2.9:
-    resolution: {integrity: sha512-EhhInPMz2MTEvKOG9prVRHYSI9g6/zvmO22h1z5iol93sh+/If45SKqEdU29J9nvW9PhBy8U0I8btnbREXueQw==}
+  opencode-windows-x64-baseline@1.2.10:
+    resolution: {integrity: sha512-ImHpnIAyBqPMJ66qab5KNIFteuPp9j+5ZlvybtMN3dnBMDiK+HWz0FttwomODOfz791a5mAZBHrKgznHb3qDbQ==}
     cpu: [x64]
     os: [win32]
 
-  opencode-windows-x64@1.2.9:
-    resolution: {integrity: sha512-MFI97TPHHC27xp3fHKAjtnsv2Snr+V1DHYxCxQWCnctZjCaqa9uHIWnPMWfMXJs9O5EC4Tnm3Mk8Mt/GbG6UwA==}
+  opencode-windows-x64@1.2.10:
+    resolution: {integrity: sha512-Apa0LyS0XUKLc7dX8fcwqAxnxQinX3ZzQdyiXO0JM209EM427dxgK4pWxE2xHRoLm6IooWF0crw9NWhZ1DgYkQ==}
     cpu: [x64]
     os: [win32]
 
@@ -8583,6 +8590,10 @@ packages:
     resolution: {integrity: sha512-UcuBd3eanB3T10nXWRRMwfwoaC6VMk7qe3/5YIWP2Jtw+EbHqJ0p1/K3x8ixiR5dozKSSfcg1W+0e33G1Di3XA==}
     engines: {node: '>= 0.10.x'}
     hasBin: true
+
+  throttleit@2.1.0:
+    resolution: {integrity: sha512-nt6AMGKW1p/70DF/hGBdJB57B8Tspmbp5gfJ8ilhLnt7kkr2ye7hzD6NVG8GGErk2HWF34igrL2CXmNIkzKqKw==}
+    engines: {node: '>=18'}
 
   through2@2.0.5:
     resolution: {integrity: sha512-/mrRod8xqpA+IHSLyGCQ2s8SPHiCDEeQJSep1jqLYeEUClOFG2Qsh+4FU6G9VeqpZnGW/Su8LQGc4YKni5rYSQ==}
@@ -13396,6 +13407,14 @@ snapshots:
       is-buffer: 2.0.5
       undici: 5.29.0
 
+  '@vercel/blob@2.0.1':
+    dependencies:
+      async-retry: 1.3.3
+      is-buffer: 2.0.5
+      is-node-process: 1.2.0
+      throttleit: 2.1.0
+      undici: 6.23.0
+
   '@vercel/mcp-adapter@1.0.0(@modelcontextprotocol/sdk@1.25.3(@cfworker/json-schema@4.1.1)(hono@4.11.7)(zod@3.25.76))(next@15.5.9(@babel/core@7.28.6)(@opentelemetry/api@1.9.0)(@playwright/test@1.57.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(sass@1.77.4))':
     dependencies:
       '@modelcontextprotocol/sdk': 1.25.3(@cfworker/json-schema@4.1.1)(hono@4.11.7)(zod@4.3.6)
@@ -16126,6 +16145,8 @@ snapshots:
 
   is-negative-zero@2.0.3: {}
 
+  is-node-process@1.2.0: {}
+
   is-number-object@1.1.1:
     dependencies:
       call-bound: 1.0.4
@@ -17469,51 +17490,51 @@ snapshots:
     transitivePeerDependencies:
       - encoding
 
-  opencode-ai@1.2.9:
+  opencode-ai@1.2.10:
     optionalDependencies:
-      opencode-darwin-arm64: 1.2.9
-      opencode-darwin-x64: 1.2.9
-      opencode-darwin-x64-baseline: 1.2.9
-      opencode-linux-arm64: 1.2.9
-      opencode-linux-arm64-musl: 1.2.9
-      opencode-linux-x64: 1.2.9
-      opencode-linux-x64-baseline: 1.2.9
-      opencode-linux-x64-baseline-musl: 1.2.9
-      opencode-linux-x64-musl: 1.2.9
-      opencode-windows-x64: 1.2.9
-      opencode-windows-x64-baseline: 1.2.9
+      opencode-darwin-arm64: 1.2.10
+      opencode-darwin-x64: 1.2.10
+      opencode-darwin-x64-baseline: 1.2.10
+      opencode-linux-arm64: 1.2.10
+      opencode-linux-arm64-musl: 1.2.10
+      opencode-linux-x64: 1.2.10
+      opencode-linux-x64-baseline: 1.2.10
+      opencode-linux-x64-baseline-musl: 1.2.10
+      opencode-linux-x64-musl: 1.2.10
+      opencode-windows-x64: 1.2.10
+      opencode-windows-x64-baseline: 1.2.10
 
-  opencode-darwin-arm64@1.2.9:
+  opencode-darwin-arm64@1.2.10:
     optional: true
 
-  opencode-darwin-x64-baseline@1.2.9:
+  opencode-darwin-x64-baseline@1.2.10:
     optional: true
 
-  opencode-darwin-x64@1.2.9:
+  opencode-darwin-x64@1.2.10:
     optional: true
 
-  opencode-linux-arm64-musl@1.2.9:
+  opencode-linux-arm64-musl@1.2.10:
     optional: true
 
-  opencode-linux-arm64@1.2.9:
+  opencode-linux-arm64@1.2.10:
     optional: true
 
-  opencode-linux-x64-baseline-musl@1.2.9:
+  opencode-linux-x64-baseline-musl@1.2.10:
     optional: true
 
-  opencode-linux-x64-baseline@1.2.9:
+  opencode-linux-x64-baseline@1.2.10:
     optional: true
 
-  opencode-linux-x64-musl@1.2.9:
+  opencode-linux-x64-musl@1.2.10:
     optional: true
 
-  opencode-linux-x64@1.2.9:
+  opencode-linux-x64@1.2.10:
     optional: true
 
-  opencode-windows-x64-baseline@1.2.9:
+  opencode-windows-x64-baseline@1.2.10:
     optional: true
 
-  opencode-windows-x64@1.2.9:
+  opencode-windows-x64@1.2.10:
     optional: true
 
   opencollective-postinstall@2.0.3: {}
@@ -19181,6 +19202,8 @@ snapshots:
       bufrw: 1.4.0
       error: 7.0.2
       long: 2.4.0
+
+  throttleit@2.1.0: {}
 
   through2@2.0.5:
     dependencies:

@@ -66,6 +66,37 @@ Install before implementation:
 
 The build agent will see this and install the skills before implementing.
 
+## Domain-Specific Validation
+
+After writing the plan, validate it with relevant domain experts:
+
+### @payload-expert
+
+**When:** Plan involves Payload CMS collections, hooks, access control, API endpoints, or database schema
+**What to ask:** "Review my plan. Will the proposed file changes work with Payload 3.x patterns? Did I pass req to nested operations? Is overrideAccess set correctly?"
+
+### @web-expert
+
+**When:** Plan involves frontend UI, pages, components, i18n, or routing
+**What to ask:** "Review my plan. Do the proposed component changes follow our design system? Are translations using useTranslations()? Does routing work with Next.js patterns?"
+
+### @admin-expert
+
+**When:** Plan involves Payload admin panel customizations, field components, or admin UI
+**What to ask:** "Review my plan. Are admin components using correct Payload CSS variables? Did I run generate:importmap where needed?"
+
+### @llm-expert
+
+**When:** Plan involves AI features, LLM prompts, embeddings, vector search, or chat pipelines
+**What to ask:** "Review my plan. Does the AI implementation follow Context Policy patterns? Is output validated with Zod? Am I using the singleton pattern?"
+
+### @security-auditor
+
+**When:** Plan involves authentication, authorization, secrets, API endpoints, or sensitive data
+**What to ask:** "Review my plan. Are there any access control gaps? Did I handle auth correctly? Any hardcoded secrets or data exposure risks?"
+
+Invoke these subagents as needed based on your plan's scope. Address their feedback by updating the plan.
+
 ## Bug Fix Plans (when Task Type is fix_bug)
 
 When the prompt includes `Task Type: fix_bug`, EVERY plan step MUST follow this TDD bug-fix pattern:

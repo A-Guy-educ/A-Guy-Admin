@@ -66,3 +66,34 @@ Brief description of the feature/fix.
 ## If Missing Information
 
 If required information is missing from the task, flag unknowns in a "## Open Questions" section but still produce the spec. Do NOT stop — a separate clarify agent handles Q&A.
+
+## Domain-Specific Validation
+
+After writing the spec, validate it with relevant domain experts:
+
+### @payload-expert
+
+**When:** Spec involves Payload CMS collections, hooks, access control, API endpoints, or database schema
+**What to ask:** "Review my spec. Will the proposed collection structure work with Payload 3.x patterns? Are hooks correctly placed? Is access control properly scoped?"
+
+### @web-expert
+
+**When:** Spec involves frontend UI, pages, components, i18n, or routing
+**What to ask:** "Review my spec. Does the proposed UI match our design system patterns? Are translations properly accounted for? Does the routing approach work with Next.js?"
+
+### @admin-expert
+
+**When:** Spec involves Payload admin panel customizations, field components, or admin UI
+**What to ask:** "Review my spec. Are the admin components using correct Payload CSS variables? Is the field configuration valid?"
+
+### @llm-expert
+
+**When:** Spec involves AI features, LLM prompts, embeddings, vector search, or chat pipelines
+**What to ask:** "Review my spec. Does the AI architecture follow Context Policy patterns? Is the prompt structure valid? Are there any model constraints to consider?"
+
+### @security-auditor
+
+**When:** Spec involves authentication, authorization, secrets, API endpoints, or sensitive data
+**What to ask:** "Review my spec. Are there any security gaps? Is access control properly defined? Are there any hardcoded secrets or data exposure risks?"
+
+Invoke these subagents as needed based on your spec's scope. Include their feedback in the spec or note open items in "## Open Questions".

@@ -18,18 +18,22 @@ describe('GitHubRunner', () => {
     expect(runner.name).toBe('opencode-github')
   })
 
-  it('should call spawn with "opencode" and ["github", "run"]', () => {
+  it('should call spawn with "pnpm exec opencode" and ["run", "--agent", stage, prompt]', () => {
     const runner = new GitHubRunner()
     const env = { PATH: '/usr/bin' } as unknown as NodeJS.ProcessEnv
 
     runner.spawn('spec', 'Write tests', env, '/my/project')
 
     expect(spawn).toHaveBeenCalledOnce()
-    expect(spawn).toHaveBeenCalledWith('opencode', ['github', 'run'], {
-      cwd: '/my/project',
-      stdio: 'inherit',
-      env: { PATH: '/usr/bin', AGENT: 'spec', PROMPT: 'Write tests' },
-    })
+    expect(spawn).toHaveBeenCalledWith(
+      'pnpm',
+      ['exec', 'opencode', 'run', '--agent', 'spec', 'Write tests'],
+      {
+        cwd: '/my/project',
+        stdio: 'inherit',
+        env: { PATH: '/usr/bin' },
+      },
+    )
   })
 
   it('should pass cwd correctly', () => {
@@ -39,23 +43,22 @@ describe('GitHubRunner', () => {
     runner.spawn('execute', 'Do the thing', env, '/workspace/repo')
 
     expect(spawn).toHaveBeenCalledWith(
-      'opencode',
-      ['github', 'run'],
-      expect.objectContaining({ cwd: '/workspace/repo' }),
+      'pnpm',
+      ['exec', 'opencode', 'run', '--agent', 'execute', 'Do the thing'],
+      expect.objectContaining({ cwd: '/workspace/repo', stdio: 'inherit', env: {} }),
     )
   })
 
-  it('should set AGENT and PROMPT env vars from arguments', () => {
+  it('should pass env vars through unchanged', () => {
     const runner = new GitHubRunner()
-    const env = { EXISTING: 'value' } as unknown as NodeJS.ProcessEnv
+    const env = { EXISTING: 'value', MODEL: 'gpt-4' } as unknown as NodeJS.ProcessEnv
 
     runner.spawn('verify', 'Check results', env, '/cwd')
 
     const calledEnv = vi.mocked(spawn).mock.calls[0][2]?.env
     expect(calledEnv).toMatchObject({
       EXISTING: 'value',
-      AGENT: 'verify',
-      PROMPT: 'Check results',
+      MODEL: 'gpt-4',
     })
   })
 })
@@ -70,37 +73,31 @@ describe('LocalRunner', () => {
     expect(runner.name).toBe('opencode-local')
   })
 
-  it('should call spawn with "pnpm" and correct arguments', () => {
+  it('should call spawn with "pnpm" and --agent flag', () => {
     const runner = new LocalRunner()
     const env = { PATH: '/usr/bin' } as unknown as NodeJS.ProcessEnv
 
     runner.spawn('spec', 'Write a spec', env, '/my/project')
 
     expect(spawn).toHaveBeenCalledOnce()
+    // Prompt is passed as positional argument after --agent
     expect(spawn).toHaveBeenCalledWith(
       'pnpm',
-      ['ocode', 'run', '--agent', 'spec'],
-      expect.objectContaining({
-        cwd: '/my/project',
-        stdio: 'inherit',
-        env: expect.objectContaining({
-          AGENT: 'spec',
-          PROMPT: 'Write a spec',
-        }),
-      }),
+      ['ocode', 'run', '--agent', 'spec', 'Write a spec'],
+      expect.objectContaining({ cwd: '/my/project', stdio: 'inherit' }),
     )
   })
 
-  it('should pass prompt via PROMPT env var', () => {
+  it('should pass AGENT and MODEL in env vars', () => {
     const runner = new LocalRunner()
-    const env = {} as NodeJS.ProcessEnv
+    const env = { MODEL: 'gpt-4' } as unknown as NodeJS.ProcessEnv
 
     runner.spawn('execute', 'Implement the feature', env, '/cwd')
 
     const calledEnv = vi.mocked(spawn).mock.calls[0][2]?.env
     expect(calledEnv).toMatchObject({
       AGENT: 'execute',
-      PROMPT: 'Implement the feature',
+      MODEL: 'gpt-4',
     })
   })
 
