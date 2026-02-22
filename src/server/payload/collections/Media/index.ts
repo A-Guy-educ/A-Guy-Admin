@@ -15,6 +15,7 @@ import { authenticated } from '../../access/authenticated'
 import { createdByField } from '../../fields/createdBy'
 import { enforceRetentionPolicyHook } from './hooks/enforceRetentionPolicy'
 import { inferMediaTypeHook } from './hooks/inferMediaType'
+import { resolveEmbedHook } from './hooks/resolveEmbed'
 import { validateMediaUploadHook } from './hooks/validateMediaUpload'
 
 export const Media: CollectionConfig = {
@@ -90,6 +91,63 @@ export const Media: CollectionConfig = {
       admin: {
         condition: (data) => data?.type === MediaType.External,
         description: 'URL for external embed or link',
+      },
+      required: false,
+    },
+    {
+      name: 'embedProvider',
+      type: 'select',
+      options: [
+        { label: 'YouTube', value: 'youtube' },
+        { label: 'Generic', value: 'generic' },
+      ],
+      admin: {
+        condition: (data) => data?.type === MediaType.External,
+        position: 'sidebar',
+        description: 'Auto-detected from URL. Do not change manually.',
+        readOnly: true,
+      },
+      required: false,
+    },
+    {
+      name: 'embedVideoId',
+      type: 'text',
+      admin: {
+        condition: (data) => data?.type === MediaType.External,
+        position: 'sidebar',
+        description: 'Provider-specific video/content ID',
+        readOnly: true,
+      },
+      required: false,
+    },
+    {
+      name: 'embedUrl',
+      type: 'text',
+      admin: {
+        condition: (data) => data?.type === MediaType.External,
+        position: 'sidebar',
+        description: 'Embed-ready URL for iframe (auto-generated)',
+        readOnly: true,
+      },
+      required: false,
+    },
+    {
+      name: 'embedTitle',
+      type: 'text',
+      admin: {
+        condition: (data) => data?.type === MediaType.External,
+        description: 'Title fetched from provider (auto-populated)',
+        readOnly: true,
+      },
+      required: false,
+    },
+    {
+      name: 'embedThumbnailUrl',
+      type: 'text',
+      admin: {
+        condition: (data) => data?.type === MediaType.External,
+        description: 'Thumbnail URL fetched from provider (auto-populated)',
+        readOnly: true,
       },
       required: false,
     },
@@ -171,7 +229,7 @@ export const Media: CollectionConfig = {
   ],
   hooks: {
     beforeValidate: [validateMediaUploadHook],
-    beforeChange: [enforceRetentionPolicyHook],
+    beforeChange: [resolveEmbedHook, enforceRetentionPolicyHook],
   },
   // File storage is handled by @payloadcms/storage-vercel-blob plugin
   // The plugin adds disableLocalStorage: true and adapter handlers to this collection
