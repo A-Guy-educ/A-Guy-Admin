@@ -140,6 +140,7 @@ export const Media: CollectionConfig = {
       type: 'select',
       options: [
         { label: 'YouTube', value: 'youtube' },
+        { label: 'Vimeo', value: 'vimeo' },
         { label: 'Generic', value: 'generic' },
       ],
       admin: {
