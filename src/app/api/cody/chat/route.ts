@@ -6,7 +6,7 @@
  */
 import { createMCPClient } from '@ai-sdk/mcp'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
-import { streamText, tool } from 'ai'
+import { streamText, tool, stepCountIs } from 'ai'
 import { z } from 'zod'
 import { logger } from '@/infra/utils/logger/logger'
 import { NextRequest, NextResponse } from 'next/server'
@@ -57,7 +57,7 @@ const customTools = {
   listCodyTasks: tool({
     description:
       'List Cody operations tasks from the dashboard. Use this to get an overview of all tasks and their status.',
-    parameters: z.object({
+    inputSchema: z.object({
       days: z.number().optional().describe('Number of days to look back (default: 30)'),
       status: z.string().optional().describe('Filter by status label'),
     }),
@@ -99,7 +99,7 @@ const customTools = {
   getCodyTask: tool({
     description:
       'Get detailed information about a specific Cody task including its pipeline status.',
-    parameters: z.object({
+    inputSchema: z.object({
       taskId: z.string().describe('The task ID (e.g., "260221-test" or issue number)'),
     }),
     execute: async ({ taskId }) => {
@@ -173,7 +173,7 @@ const customTools = {
   getPipelineStatus: tool({
     description:
       'Get the pipeline/CI status for a specific Cody task. Shows stage-by-stage progress.',
-    parameters: z.object({
+    inputSchema: z.object({
       taskId: z.string().describe('The task ID'),
     }),
     execute: async ({ taskId }) => {
@@ -204,7 +204,7 @@ const customTools = {
   // Get workflow runs
   getWorkflowRuns: tool({
     description: 'Get recent GitHub Actions workflow runs for the Cody pipeline.',
-    parameters: z.object({
+    inputSchema: z.object({
       status: z
         .string()
         .optional()
@@ -241,7 +241,7 @@ const customTools = {
   // Get associated PR for a task
   getTaskPR: tool({
     description: 'Get the pull request associated with a Cody task.',
-    parameters: z.object({
+    inputSchema: z.object({
       taskId: z.string().describe('The task ID'),
     }),
     execute: async ({ taskId }) => {
@@ -372,17 +372,17 @@ export async function POST(req: NextRequest) {
       apiKey: process.env.GEMINI_API_KEY,
     })
 
-    // Stream the response
+    // Stream the response using AI SDK v6
     const result = streamText({
       model: googleProvider('gemini-3.1-pro-preview'),
       tools: allTools,
       system: SYSTEM_PROMPT,
       messages: aiMessages,
-      maxSteps: 15, // Allow multi-step tool calling
+      stopWhen: stepCountIs(15), // v6: replaces maxSteps
     })
 
-    // Return streaming response
-    return result.toDataStreamResponse()
+    // Return streaming response using v6 UI message stream
+    return result.toUIMessageStreamResponse()
   } catch (error) {
     logger.error({ err: error, requestId }, 'Chat route error')
     return NextResponse.json(

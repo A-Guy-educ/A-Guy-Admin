@@ -77,45 +77,55 @@ export function CodyChat() {
         throw new Error('No response body')
       }
 
-      // Handle streaming response
+      // Handle streaming response - AI SDK v6 UI message stream (SSE format)
       const reader = response.body.getReader()
       const decoder = new TextDecoder()
       let buffer = ''
       let accumulatedContent = ''
 
-      // Parse NDJSON stream
-      const parseChunk = (text: string) => {
+      // Parse SSE stream (AI SDK v6 UI message stream protocol)
+      const parseSSEChunk = (text: string) => {
         const lines = text.split('\n')
         for (const line of lines) {
-          if (!line.trim()) continue
+          // SSE format: "data: {json}" or "data: [DONE]"
+          if (!line.startsWith('data: ')) continue
+          const data = line.slice(6) // Remove "data: " prefix
 
-          // Handle Vercel AI SDK data stream format
-          // 0: = text, a: = tool call, b: = tool result, d: = done, e: = error
-          const prefix = line[0]
-          const data = line.slice(2) // Skip prefix and colon (e.g., "0:")
+          // End of stream
+          if (data === '[DONE]') continue
 
           try {
             const parsed = JSON.parse(data)
 
-            // Handle different message types from AI SDK
-            if (prefix === '0') {
-              // Text delta
-              accumulatedContent += parsed
-              setMessages((prev) => {
-                const newMessages = [...prev]
-                const lastMsg = newMessages[newMessages.length - 1]
-                if (lastMsg?.role === 'assistant') {
-                  lastMsg.content = accumulatedContent
-                }
-                return newMessages
-              })
-            } else if (prefix === 'a') {
-              // Tool call start
-              setToolCalls((prev) => [...prev, { name: parsed.toolName, arguments: {} }])
-            } else if (prefix === 'e') {
-              console.error('Stream error:', parsed)
-            } else if (prefix === 'd' || prefix === 'd') {
-              // Done message - handled by stream end
+            switch (parsed.type) {
+              case 'text-delta': {
+                // Text content streaming
+                accumulatedContent += parsed.delta
+                setMessages((prev) => {
+                  const newMessages = [...prev]
+                  const lastMsg = newMessages[newMessages.length - 1]
+                  if (lastMsg?.role === 'assistant') {
+                    lastMsg.content = accumulatedContent
+                  }
+                  return newMessages
+                })
+                break
+              }
+              case 'tool-input-start': {
+                // Tool call starting
+                setToolCalls((prev) => [...prev, { name: parsed.toolName, arguments: {} }])
+                break
+              }
+              case 'tool-output-available': {
+                // Tool result received - the model will continue with text after this
+                break
+              }
+              case 'error': {
+                console.error('Stream error:', parsed.errorText)
+                break
+              }
+              // Ignore other event types: start, text-start, text-end,
+              // tool-input-delta, tool-input-available, start-step, finish-step, finish
             }
           } catch {
             // Skip malformed JSON
@@ -128,8 +138,19 @@ export function CodyChat() {
         if (done) break
 
         buffer += decoder.decode(value, { stream: true })
-        parseChunk(buffer)
-        buffer = ''
+
+        // Process complete lines from buffer
+        const lastNewline = buffer.lastIndexOf('\n')
+        if (lastNewline !== -1) {
+          const completeLines = buffer.slice(0, lastNewline + 1)
+          buffer = buffer.slice(lastNewline + 1)
+          parseSSEChunk(completeLines)
+        }
+      }
+
+      // Process remaining buffer
+      if (buffer.trim()) {
+        parseSSEChunk(buffer)
       }
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {

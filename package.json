@@ -96,8 +96,9 @@
     "supervisor": "pnpm tsx scripts/supervisor/supervisor.ts"
   },
   "dependencies": {
-    "@ai-sdk/google": "^1.0.0",
+    "@ai-sdk/google": "^3.0.30",
     "@ai-sdk/mcp": "^1.0.0",
+    "@ai-sdk/react": "^3.0.99",
     "@copilotkit/react-core": "^1.51.4",
     "@copilotkit/react-ui": "^1.51.4",
     "@copilotkit/runtime": "^1.51.4",
@@ -130,7 +131,7 @@
     "@radix-ui/react-slot": "^1.0.2",
     "@sentry/nextjs": "^10.32.1",
     "@vercel/blob": "^0.22.3",
-    "ai": "^4.0.0",
+    "ai": "^6.0.97",
     "ajv": "^8.17.1",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
