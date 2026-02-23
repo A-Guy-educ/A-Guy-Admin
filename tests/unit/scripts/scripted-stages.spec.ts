@@ -131,7 +131,8 @@ describe('buildPrTitle (via runPrStage title output)', () => {
     expect(createCall).toBeDefined()
     const titleArg: string = createCall![1][createCall![1].indexOf('--title') + 1]
     expect(titleArg).not.toContain('##')
-    expect(titleArg).toContain('description')
+    // '## Description' is filtered out as a common section heading - falls back to next line
+    expect(titleArg).toContain('remove redundant inline')
     expect(result.created).toBe(true)
   })
 
@@ -212,9 +213,9 @@ describe('buildPrTitle (via runPrStage title output)', () => {
       (call) => call[1][0] === 'pr' && call[1][1] === 'create',
     )
     const titleArg: string = createCall![1][createCall![1].indexOf('--title') + 1]
-    // '## Overview' stripped → 'Overview' is the first non-empty token
+    // '## Overview' is filtered out as a common section heading - falls back to next line
     expect(titleArg).not.toContain('##')
-    expect(titleArg.toLowerCase()).toContain('overview')
+    expect(titleArg.toLowerCase()).toContain('actual description')
   })
 
   it('does NOT duplicate fix: prefix when task.md starts with "fix:"', async () => {
