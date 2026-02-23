@@ -9,7 +9,7 @@ import * as fs from 'fs'
 import * as path from 'path'
 
 import type { CodyInput } from './cody-utils'
-import { stageOutputFile } from './pipeline-utils'
+import { stageOutputFile, getSpecStagesForProfile, getAllImplStageNames } from './pipeline-utils'
 
 // ============================================================================
 // Constants
@@ -76,7 +76,7 @@ export const STAGE_CONTEXT_FILES: Record<Stage, string[]> = {
   commit: ['task.json'],
   verify: [], // scripted — no LLM prompt needed
   autofix: ['verify.md'],
-  auditor: ['task.md', 'spec.md', 'build.md', 'verify.md', 'audit-history.json'],
+  auditor: ['task.md', 'spec.md', 'build.md', 'verify.md', '../audit-history.json'],
   'apply-audit': ['auditor.md'],
   pr: [], // scripted — no LLM prompt needed
 }
@@ -189,14 +189,16 @@ export function buildStagePrompt(input: CodyInput, stage: string, feedback?: str
 
 /**
  * Get spec pipeline stages (taskify, spec, clarify)
+ * @param profile - Optional pipeline profile ('lightweight' | 'standard'), defaults to 'standard'
  */
-export function getSpecStages(): string[] {
-  return [...SPEC_STAGES]
+export function getSpecStages(profile?: 'lightweight' | 'standard'): string[] {
+  return getSpecStagesForProfile(profile ?? 'standard', false)
 }
 
 /**
  * Get implementation pipeline stages
+ * @param profile - Optional pipeline profile ('lightweight' | 'standard'), defaults to 'standard'
  */
-export function getImplStages(): string[] {
-  return ['architect', 'plan-gap', 'build', 'commit', 'verify', 'auditor', 'apply-audit', 'pr']
+export function getImplStages(profile?: 'lightweight' | 'standard'): string[] {
+  return getAllImplStageNames(profile ?? 'standard')
 }

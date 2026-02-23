@@ -52,9 +52,14 @@ permissions:
 
 jobs:
   # Job 1: Parse trigger, validate inputs, gate execution
+  # Only run for workflow_dispatch or comments containing /cody or @cody
   parse:
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'issue_comment' &&
+       (contains(github.event.comment.body, '/cody') || contains(github.event.comment.body, '@cody')))
     env:
       GH_TOKEN: ${{ github.token }}
     outputs:
@@ -87,7 +92,7 @@ jobs:
 
       # Add reaction to acknowledge command (shows instantly on the comment)
       - name: Acknowledge command with reaction
-        if: github.event_name == 'issue_comment' && steps.safety.outputs.valid == 'true'
+        if: github.event_name == 'issue_comment' && steps.safety.outputs.valid
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -118,7 +123,7 @@ jobs:
   # Job 2: Orchestrate - run the pipeline
   orchestrate:
     needs: parse
-    if: needs.parse.outputs.valid == 'true'
+    if: needs.parse.outputs.valid
     runs-on: ubuntu-latest
     timeout-minutes: 90
     permissions:
@@ -162,8 +167,9 @@ jobs:
 
       - name: Run Cody
         env:
-          # GitHub token for gh CLI
+          # GitHub token for gh CLI (GH_PAT takes precedence for PR creation)
           GH_TOKEN: ${{ github.token }}
+          GH_PAT: ${{ secrets.GH_PAT }}
 
           # LLM provider keys (all available)
           # Note: GOOGLE_GENERATIVE_AI_API_KEY is for Vercel AI SDK (@ai-sdk/google),

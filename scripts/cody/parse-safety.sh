@@ -22,8 +22,8 @@ if [[ "$ASSOCIATION" != "OWNER" ]] && [[ "$ASSOCIATION" != "MEMBER" ]] && [[ "$A
   exit 0
 fi
 
-# Pattern: must match ^/cody (with optional trailing space)
-if ! echo "$COMMENT_BODY" | grep -qE '^/cody([[:space:]]|$)'; then
+# Pattern: must match ^/cody (with optional trailing space) OR contain @cody
+if ! echo "$COMMENT_BODY" | grep -qE '(^/cody([[:space:]]|$)|@cody)'; then
   echo "valid=false" >> "$GITHUB_OUTPUT"
   echo "reason=pattern" >> "$GITHUB_OUTPUT"
   exit 0
