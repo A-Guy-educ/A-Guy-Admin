@@ -269,6 +269,41 @@ export function getIssueBody(issueNumber: number): string | null {
   }
 }
 
+export function getIssue(issueNumber: number): { body: string | null; title: string | null } {
+  if (!issueNumber) return { body: null, title: null }
+
+  try {
+    const output = execSync(
+      `gh issue view ${issueNumber} --json body,title --jq '{body: .body, title: .title}'`,
+      {
+        encoding: 'utf-8',
+      },
+    )
+    const data = JSON.parse(output)
+    return {
+      body: data.body?.trim() || null,
+      title: data.title?.trim() || null,
+    }
+  } catch (error) {
+    console.error(`Failed to get issue #${issueNumber}:`, error)
+    return { body: null, title: null }
+  }
+}
+
+export function getIssueTitle(issueNumber: number): string | null {
+  if (!issueNumber) return null
+
+  try {
+    const output = execSync(`gh issue view ${issueNumber} --json title --jq '.title'`, {
+      encoding: 'utf-8',
+    })
+    return output.trim() || null
+  } catch (error) {
+    console.error(`Failed to get issue title for #${issueNumber}:`, error)
+    return null
+  }
+}
+
 /**
  * Extract the gate comment body from a gate-*.md file.
  * The file is written as: `# Gate Request\n\n${formatGateComment(...)}\n`
