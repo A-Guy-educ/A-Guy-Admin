@@ -3,6 +3,7 @@
 import {
   ArrowRightLeft,
   CheckSquare,
+  Code,
   Edit3,
   FileText,
   Image as ImageIcon,
@@ -62,6 +63,12 @@ export const BlockTypeSelector: React.FC<BlockTypeSelectorProps> = ({
       label: 'Table Question',
       description: 'Table-based question with fillable cells',
       icon: <TableIcon size={20} />,
+    },
+    {
+      type: 'html',
+      label: 'HTML Block',
+      description: 'Rich WYSIWYG content (headings, lists, images, links)',
+      icon: <Code size={20} />,
     },
     {
       type: 'question_matching',

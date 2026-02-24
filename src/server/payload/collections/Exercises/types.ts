@@ -206,6 +206,15 @@ export interface QuestionAxisBlock {
 }
 
 // ---------------------------------
+// HTML Block (WYSIWYG rich content)
+// ---------------------------------
+export interface HtmlBlock {
+  id: string
+  type: 'html'
+  html: string
+}
+
+// ---------------------------------
 // Union Type
 // ---------------------------------
 export type ContentBlock =
@@ -219,6 +228,7 @@ export type ContentBlock =
   | SvgBlock
   | QuestionGeometryBlock
   | QuestionAxisBlock
+  | HtmlBlock
 
 // ---------------------------------
 // Content Container

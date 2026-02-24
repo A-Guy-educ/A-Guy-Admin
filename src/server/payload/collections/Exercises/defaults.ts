@@ -7,6 +7,7 @@
 
 import type {
   ContentBlock,
+  HtmlBlock,
   InlineRichText,
   LatexBlock,
   QuestionAxisBlock,
@@ -212,6 +213,12 @@ export const ExerciseBlockDefaults: Record<string, () => ContentBlock> = {
     type: 'latex',
     latex: '',
     renderMode: 'block',
+  }),
+
+  html: (): HtmlBlock => ({
+    id: generateId(),
+    type: 'html',
+    html: '',
   }),
 
   question_matching: (): QuestionMatchingBlock => ({
