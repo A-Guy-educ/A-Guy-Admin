@@ -140,25 +140,23 @@ describe('BUG-FIX: GitHub Actions YAML truthy condition evaluation', () => {
     const workflowPath = path.join(process.cwd(), '.github/workflows/cody.yml')
     const content = fs.readFileSync(workflowPath, 'utf-8')
 
-    // The fix: use truthy check instead of string comparison
-    // BAD (before fix):  steps.safety.outputs.valid == 'true'
-    // GOOD (after fix): steps.safety.outputs.valid
+    // The fix: use string comparison 'true' because GitHub Actions outputs are strings
+    // and the string "false" is truthy in YAML expressions
+    // GOOD (after fix): steps.safety.outputs.valid == 'true'
 
-    // Check that the reaction step uses truthy check
+    // Check that the reaction step uses string comparison with 'true'
     const reactionStepMatch = content.match(
       /name: Acknowledge command with reaction[\s\S]*?if: (.+)/,
     )
     expect(reactionStepMatch).toBeTruthy()
 
     const condition = reactionStepMatch![1]
-    // Should NOT contain string comparison with 'true'
-    expect(condition).not.toContain("== 'true'")
-    expect(condition).not.toContain('== "true"')
-    // Should use truthy evaluation
+    // Should contain string comparison with 'true'
+    expect(condition).toContain("== 'true'")
     expect(condition).toContain('steps.safety.outputs.valid')
   })
 
-  it('should use truthy check for orchestrate job condition', () => {
+  it('should use string comparison for orchestrate job condition', () => {
     const workflowPath = path.join(process.cwd(), '.github/workflows/cody.yml')
     const content = fs.readFileSync(workflowPath, 'utf-8')
 
@@ -168,10 +166,8 @@ describe('BUG-FIX: GitHub Actions YAML truthy condition evaluation', () => {
     expect(orchestrateMatch).toBeTruthy()
 
     const condition = orchestrateMatch![1]
-    // Should NOT contain string comparison
-    expect(condition).not.toContain("== 'true'")
-    expect(condition).not.toContain('== "true"')
-    // Should use truthy evaluation
+    // Should contain string comparison (the fix for GitHub Actions string outputs)
+    expect(condition).toContain("== 'true'")
     expect(condition).toContain('needs.parse.outputs.valid')
   })
 })

@@ -162,10 +162,21 @@ function buildPrTitle(taskDir: string, defaultBranch: string, cwd: string): stri
   // Read task.md for context
   const taskMdPath = path.join(taskDir, 'task.md')
   let taskDescription = ''
+  let issueTitle = ''
   if (fs.existsSync(taskMdPath)) {
-    taskDescription = fs
-      .readFileSync(taskMdPath, 'utf-8')
+    const taskMdContent = fs.readFileSync(taskMdPath, 'utf-8')
+
+    // First try to extract ## Issue Title section (highest priority)
+    // More forgiving regex: accepts variable whitespace between heading and value
+    const issueTitleMatch = taskMdContent.match(/^##\s*Issue\s*Title\s*\n+([^\n]+)/im)
+    if (issueTitleMatch) {
+      issueTitle = issueTitleMatch[1].trim()
+    }
+
+    // Then get the rest of the description (strip both # Task and ## Issue Title sections)
+    taskDescription = taskMdContent
       .replace(/^#\s*Task\s*/i, '')
+      .replace(/^##\s*Issue\s*Title\s*\n+[^\n]*\n*/gim, '')
       .trim()
   }
 
@@ -189,13 +200,20 @@ function buildPrTitle(taskDir: string, defaultBranch: string, cwd: string): stri
     }
   }
 
+  // Priority: 1) Issue title from task.md, 2) First content line from task.md, 3) Commit messages
+
+  // Strip severity tags from issue title (e.g., [MEDIUM], [HIGH], [LOW], [BUG], etc.)
+  const cleanedIssueTitle = issueTitle.replace(/^\[[^\]]+\]\s*/, '')
+
   // Get first non-empty, non-heading line of task description as summary
-  // First strip conventional commit prefix to avoid duplicating with taskType prefix,
-  // THEN strip markdown heading markers (# or ##)
+  // More robust heading detection: track lines that were originally markdown headings
+  const commonHeadings = ['description', 'summary', 'overview', 'details', 'background']
   const firstLine =
     taskDescription
       .split('\n')
       .map((l) => {
+        const originalLine = l
+
         // Strip conventional commit prefix first (fix:, feat:, etc.)
         let cleaned = l.replace(
           /^(fix|feat|refactor|docs|chore|test|style|perf|ci|build)(\([^)]*\))?:/i,
@@ -205,12 +223,21 @@ function buildPrTitle(taskDir: string, defaultBranch: string, cwd: string): stri
         cleaned = cleaned.trim()
         // Then strip markdown heading markers
         cleaned = cleaned.replace(/^#+\s*/, '').trim()
-        return cleaned
+
+        return { original: originalLine, cleaned }
       })
-      .find((l) => l.length > 0) ?? ''
+      // Exclude lines that were headings (matched /^#+\s*\S/) AND ended up as common heading words
+      .filter(({ original, cleaned }) => {
+        const isCommonHeading = commonHeadings.includes(cleaned.toLowerCase())
+        const wasHeading = /^#+\s*\S/.test(original.trim())
+        return cleaned.length > 0 && !(wasHeading && isCommonHeading)
+      })[0]?.cleaned ?? ''
+
+  // Use issue title if available, otherwise fall back to first content line
+  const titleSource = cleanedIssueTitle || firstLine
 
   // Use commit messages as fallback
-  if (!firstLine) {
+  if (!titleSource) {
     const commits = getCommitSummary(defaultBranch, cwd)
     const firstCommit = commits.split('\n')[0] || 'implement changes'
     // Strip commit hash
@@ -218,7 +245,7 @@ function buildPrTitle(taskDir: string, defaultBranch: string, cwd: string): stri
   }
 
   // Truncate to reasonable length
-  const summary = firstLine.length > 72 ? firstLine.slice(0, 69) + '...' : firstLine
+  const summary = titleSource.length > 72 ? titleSource.slice(0, 69) + '...' : titleSource
   return `${taskType}: ${summary.toLowerCase()}`
 }
 

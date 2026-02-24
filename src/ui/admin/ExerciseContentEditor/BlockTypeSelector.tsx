@@ -1,6 +1,18 @@
 'use client'
 
-import { CheckSquare, Code, Edit3, FileText, List, Table as TableIcon, X } from 'lucide-react'
+import {
+  ArrowRightLeft,
+  CheckSquare,
+  Code,
+  Edit3,
+  FileText,
+  Image as ImageIcon,
+  LineChart,
+  List,
+  Table as TableIcon,
+  Triangle,
+  X,
+} from 'lucide-react'
 import React from 'react'
 
 interface BlockTypeSelectorProps {
@@ -57,6 +69,30 @@ export const BlockTypeSelector: React.FC<BlockTypeSelectorProps> = ({
       label: 'HTML Block',
       description: 'Rich WYSIWYG content (headings, lists, images, links)',
       icon: <Code size={20} />,
+    },
+    {
+      type: 'question_matching',
+      label: 'Matching',
+      description: 'Match items between two columns',
+      icon: <ArrowRightLeft size={20} />,
+    },
+    {
+      type: 'svg',
+      label: 'SVG Image',
+      description: 'Raw SVG markup with live preview',
+      icon: <ImageIcon size={20} />,
+    },
+    {
+      type: 'question_geometry',
+      label: 'Geometry',
+      description: 'Interactive geometry diagram',
+      icon: <Triangle size={20} />,
+    },
+    {
+      type: 'question_axis',
+      label: 'Axis Graph',
+      description: 'Coordinate graph with functions',
+      icon: <LineChart size={20} />,
     },
   ]
 

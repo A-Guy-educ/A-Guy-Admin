@@ -63,7 +63,7 @@ import {
   readStatus,
   postComment,
   formatStatusComment,
-  getIssueBody,
+  getIssue,
   ensureTaskMarkerComment,
   getLastFailedStage,
   extractGateCommentBody,
@@ -92,6 +92,7 @@ import { createRunner } from './runner-backend'
 import { runVerifyStage, runCommitStage, runPrStage } from './scripted-stages'
 import { preflight } from './preflight'
 import type { RunnerBackend } from './runner-backend'
+import { setGlobalContext } from './logger'
 
 /**
  * Get a content validator for a specific stage.
@@ -194,6 +195,28 @@ async function main() {
     console.error('❌ Failed to parse arguments:', error instanceof Error ? error.message : error)
     process.exit(1)
   }
+
+  // Set global logging context for structured logging
+  setGlobalContext({ taskId: input.taskId, runId: input.runId })
+
+  // Set up signal handlers for graceful shutdown when CI runner kills the process
+  // This ensures status.json is updated to "failed" instead of being left stuck at "running"
+  const currentTaskId = input.taskId
+  const cleanupOnSignal = (signal: string) => {
+    console.error(`\n⚠ Received ${signal} — CI runner shutting down`)
+    if (currentTaskId) {
+      try {
+        completeStatus(currentTaskId, 'failed')
+        console.error(`  Updated status.json to "failed" for task ${currentTaskId}`)
+      } catch (err) {
+        console.error(`  Failed to update status:`, err)
+      }
+    }
+    process.exit(128 + (signal === 'SIGTERM' ? 15 : 2))
+  }
+
+  process.on('SIGTERM', () => cleanupOnSignal('SIGTERM'))
+  process.on('SIGINT', () => cleanupOnSignal('SIGINT'))
 
   console.log(`Task: ${input.taskId}`)
   console.log(`Mode: ${input.mode}`)
@@ -312,10 +335,14 @@ async function runSpecPipeline(
   if (!fs.existsSync(taskMdPath)) {
     if (input.issueNumber) {
       console.log('task.md not found, fetching issue body to create it...')
-      const issueBody = getIssueBody(input.issueNumber)
+      const { body: issueBody, title: issueTitle } = getIssue(input.issueNumber)
       if (issueBody) {
-        fs.writeFileSync(taskMdPath, `# Task\n\n${issueBody}\n`)
-        console.log(`Created task.md from issue #${input.issueNumber}`)
+        // Include issue title for better PR titles later
+        const titleSection = issueTitle ? `## Issue Title\n\n${issueTitle}\n` : ''
+        fs.writeFileSync(taskMdPath, `# Task\n\n${titleSection}${issueBody}\n`)
+        console.log(
+          `Created task.md from issue #${input.issueNumber}${issueTitle ? ` (title: "${issueTitle}")` : ''}`,
+        )
       } else {
         throw new Error(
           `task.md not found in .tasks/${input.taskId}/ and issue #${input.issueNumber} has no body. Create it first.`,
@@ -502,7 +529,24 @@ async function runSpecPipeline(
   }
 
   // Handle clarification workflow using extracted module
-  const clarifyResult = handleClarification(input, taskDir)
+  // Only run if clarify mode is enabled - if disabled, ensure clarified.md exists and continue
+  // This prevents residual questions.md from a previous clarify-enabled run from pausing the pipeline
+  let clarifyResult: 'answered' | 'waiting' | 'no-questions' = 'no-questions'
+  if (input.clarify) {
+    clarifyResult = handleClarification(input, taskDir)
+  } else {
+    // Clarify disabled: ensure clarified.md exists (may have been created by taskify or previous run)
+    const clarifiedPath = path.join(taskDir, 'clarified.md')
+    if (!fs.existsSync(clarifiedPath)) {
+      fs.writeFileSync(clarifiedPath, '# Clarified\n\nUse recommended answers.\n')
+    }
+    // Clean up residual questions.md from previous clarify-enabled run to prevent confusion
+    const questionsPath = path.join(taskDir, 'questions.md')
+    if (fs.existsSync(questionsPath)) {
+      fs.unlinkSync(questionsPath)
+      console.log('  ℹ️ Cleaned up residual questions.md from previous clarify-enabled run')
+    }
+  }
 
   if (clarifyResult === 'answered') {
     console.log('📝 Created clarified.md from user answer\n')
@@ -674,6 +718,17 @@ async function runImplPipeline(
       return
     }
 
+    // Skip apply-audit if auditor.md doesn't exist (auditor didn't complete)
+    // This handles cases where auditor failed/timeout but verify passed
+    if (stage === 'apply-audit') {
+      const auditorOutput = path.join(taskDir, 'auditor.md')
+      if (!fs.existsSync(auditorOutput)) {
+        console.log(`  ${stage} skipped — no auditor.md (auditor did not complete)`)
+        updateStageStatus(input.taskId, stage, 'completed', { skipped: 'no_auditor_output' })
+        return
+      }
+    }
+
     console.log(`  Running ${stage}...`)
     updateStageStatus(input.taskId, stage, 'running')
     // Set up feature branch before build stage
@@ -694,6 +749,8 @@ async function runImplPipeline(
       const verifyTimeout = STAGE_TIMEOUTS[stage] ?? DEFAULT_TIMEOUT
       const verifyResult = runVerifyStage(outputFile, undefined, verifyTimeout)
       if (!verifyResult.passed) {
+        // Note: Don't throw here - the post-stage hook (below) runs autofix to recover
+        // The status will be updated to 'failed' now, but may become 'completed' if autofix succeeds
         updateStageStatus(input.taskId, stage, 'failed', { retries: 0 })
       } else {
         updateStageStatus(input.taskId, stage, 'completed', {
@@ -939,12 +996,36 @@ async function runImplPipeline(
       const stageNames = pipelineStage.parallel
       console.log(`[${i + 1}/${pipeline.length}] Running parallel: [${stageNames.join(', ')}]...`)
       const results = await Promise.allSettled(stageNames.map((s) => runSingleStage(s)))
-      const failures = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected')
-      if (failures.length > 0) {
-        const failedNames = stageNames.filter((_, i) => results[i].status === 'rejected')
-        const errors = failures.map((f) => f.reason?.message || String(f.reason)).join('; ')
+
+      // Distinguish between CRITICAL and ADVISORY stage failures
+      // - CRITICAL (verify): pipeline cannot continue without passing quality gates
+      // - ADVISORy (auditor): advisory only, can proceed even if it fails
+      const ADVISORY_STAGES = new Set(['auditor'])
+      const criticalFailures: { name: string; reason: string }[] = []
+      const advisoryFailures: { name: string; reason: string }[] = []
+
+      for (let j = 0; j < results.length; j++) {
+        if (results[j].status === 'rejected') {
+          const name = stageNames[j]
+          const reason =
+            (results[j] as PromiseRejectedResult).reason?.message ||
+            String((results[j] as PromiseRejectedResult).reason)
+          if (ADVISORY_STAGES.has(name)) {
+            advisoryFailures.push({ name, reason })
+            console.warn(`  ⚠ Advisory stage "${name}" failed (non-fatal): ${reason}`)
+          } else {
+            criticalFailures.push({ name, reason })
+          }
+        }
+      }
+
+      // Only throw if a CRITICAL stage failed
+      if (criticalFailures.length > 0) {
+        const errors = criticalFailures.map((f) => f.reason).join('; ')
+        const failedNames = criticalFailures.map((f) => f.name)
         throw new Error(`Parallel stages [${failedNames.join(', ')}] failed: ${errors}`)
       }
+
       console.log(`✓ parallel group [${stageNames.join(', ')}] complete`)
     } else {
       // Run sequential stage
