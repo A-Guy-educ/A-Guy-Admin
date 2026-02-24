@@ -1,0 +1,76 @@
+{
+  "taskId": "260224-auto-15",
+  "mode": "full",
+  "pipeline": "spec_execute_verify",
+  "startedAt": "2026-02-24T10:19:10.443Z",
+  "updatedAt": "2026-02-24T11:29:08.292Z",
+  "state": "running",
+  "currentStage": "auditor",
+  "stages": {
+    "taskify": {
+      "state": "completed",
+      "retries": 0,
+      "startedAt": "2026-02-24T10:19:12.266Z",
+      "outputFile": "task.json",
+      "completedAt": "2026-02-24T10:20:57.374Z",
+      "elapsed": 105108
+    },
+    "architect": {
+      "state": "completed",
+      "retries": 0,
+      "startedAt": "2026-02-24T10:48:08.605Z",
+      "outputFile": "plan.md",
+      "completedAt": "2026-02-24T11:16:44.233Z",
+      "elapsed": 1715628
+    },
+    "plan-gap": {
+      "state": "completed",
+      "retries": 0,
+      "startedAt": "2026-02-24T11:16:44.234Z",
+      "outputFile": "plan-gap.md",
+      "completedAt": "2026-02-24T11:17:20.275Z",
+      "elapsed": 36041
+    },
+    "build": {
+      "state": "completed",
+      "retries": 0,
+      "startedAt": "2026-02-24T11:17:20.276Z",
+      "outputFile": "build.md",
+      "completedAt": "2026-02-24T11:24:02.711Z",
+      "elapsed": 402435
+    },
+    "commit": {
+      "state": "completed",
+      "retries": 0,
+      "startedAt": "2026-02-24T11:24:54.426Z",
+      "outputFile": "commit.md",
+      "completedAt": "2026-02-24T11:24:55.152Z",
+      "elapsed": 726
+    },
+    "verify": {
+      "state": "completed",
+      "retries": 0,
+      "startedAt": "2026-02-24T11:24:55.153Z",
+      "completedAt": "2026-02-24T11:29:08.292Z",
+      "elapsed": 253139,
+      "outputFile": "verify.md"
+    },
+    "autofix": {
+      "state": "completed",
+      "retries": 0,
+      "startedAt": "2026-02-24T11:26:08.437Z",
+      "outputFile": "autofix.md",
+      "completedAt": "2026-02-24T11:27:56.564Z",
+      "elapsed": 108127
+    },
+    "auditor": {
+      "state": "running",
+      "retries": 0,
+      "startedAt": "2026-02-24T11:26:08.442Z"
+    }
+  },
+  "triggeredBy": "comment",
+  "issueNumber": 506,
+  "runId": "22346478328",
+  "runUrl": "https://github.com/A-Guy-educ/A-Guy/actions/runs/22346478328"
+}

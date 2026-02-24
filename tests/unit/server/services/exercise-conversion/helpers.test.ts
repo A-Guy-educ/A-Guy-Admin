@@ -1,11 +1,15 @@
 /**
  * Unit tests for exercise-conversion helpers
  */
+import fs from 'fs'
 import {
   buildJobsWhereQuery,
   validatePromptForUsageAndTenant,
 } from '@/server/services/exercise-conversion/helpers'
 import { describe, expect, it } from 'vitest'
+
+// Path to the source file for regression testing
+const SOURCE_FILE_PATH = 'src/server/services/exercise-conversion/helpers.ts'
 
 describe('exercise-conversion helpers', () => {
   describe('buildJobsWhereQuery', () => {
@@ -26,51 +30,77 @@ describe('exercise-conversion helpers', () => {
       const prompt = {
         status: 'published',
         usage: 'extractor',
-        tenant: { id: 'tenant-123' },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        tenant: { id: 'tenant-123' } as any,
       }
-      expect(() => validatePromptForUsageAndTenant(prompt, 'extractor', 'tenant-123')).not.toThrow()
+      expect(() =>
+        validatePromptForUsageAndTenant(prompt as any, 'extractor', 'tenant-123'),
+      ).not.toThrow()
     })
 
     it('should pass for valid verifier prompt', () => {
       const prompt = {
         status: 'published',
         usage: 'verifier',
-        tenant: { id: 'tenant-123' },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        tenant: { id: 'tenant-123' } as any,
       }
-      expect(() => validatePromptForUsageAndTenant(prompt, 'verifier', 'tenant-123')).not.toThrow()
+      expect(() =>
+        validatePromptForUsageAndTenant(prompt as any, 'verifier', 'tenant-123'),
+      ).not.toThrow()
     })
 
     it('should throw for draft prompt', () => {
       const prompt = {
         status: 'draft',
         usage: 'extractor',
-        tenant: { id: 'tenant-123' },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        tenant: { id: 'tenant-123' } as any,
       }
-      expect(() => validatePromptForUsageAndTenant(prompt, 'extractor', 'tenant-123')).toThrow(
-        'Prompt is not published',
-      )
+      expect(() =>
+        validatePromptForUsageAndTenant(prompt as any, 'extractor', 'tenant-123'),
+      ).toThrow('Prompt is not published')
     })
 
     it('should throw for wrong usage type', () => {
       const prompt = {
         status: 'published',
         usage: 'extractor',
-        tenant: { id: 'tenant-123' },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        tenant: { id: 'tenant-123' } as any,
       }
-      expect(() => validatePromptForUsageAndTenant(prompt, 'verifier', 'tenant-123')).toThrow(
-        'Prompt usage is extractor',
-      )
+      expect(() =>
+        validatePromptForUsageAndTenant(prompt as any, 'verifier', 'tenant-123'),
+      ).toThrow('Prompt usage is extractor')
     })
 
     it('should throw for wrong tenant', () => {
       const prompt = {
         status: 'published',
         usage: 'extractor',
-        tenant: { id: 'other-tenant' },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        tenant: { id: 'other-tenant' } as any,
       }
-      expect(() => validatePromptForUsageAndTenant(prompt, 'extractor', 'tenant-123')).toThrow(
-        'Prompt tenant mismatch',
-      )
+      expect(() =>
+        validatePromptForUsageAndTenant(prompt as any, 'extractor', 'tenant-123'),
+      ).toThrow('Prompt tenant mismatch')
+    })
+  })
+
+  describe('code quality', () => {
+    it('should not contain eslint-disable-next-line comments', () => {
+      const sourceCode = fs.readFileSync(SOURCE_FILE_PATH, 'utf-8')
+      const eslintDisableNextLineRegex = /eslint-disable-next-line/g
+      const matches = sourceCode.match(eslintDisableNextLineRegex)
+      expect(matches).toBeNull()
+    })
+
+    it('should not contain any type assertions', () => {
+      const sourceCode = fs.readFileSync(SOURCE_FILE_PATH, 'utf-8')
+      // Match patterns like "as any", "as unknown", "as SomeType" but not "any[]" or "AsyncAny"
+      const anyTypeAssertionRegex = /\bas\s+any\b(?!\w)/g
+      const matches = sourceCode.match(anyTypeAssertionRegex)
+      expect(matches).toBeNull()
     })
   })
 })

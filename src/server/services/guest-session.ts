@@ -12,8 +12,10 @@
  * - Only tokenHash is stored in DB (S1)
  * - Cookies are HttpOnly, Secure (prod), SameSite=Lax (S2)
  */
-import { getPayload } from 'payload'
-import config from '@payload-config'
+
+/* eslint-disable @typescript-eslint/no-explicit-any -- Payload collection types */
+
+import type { Payload } from 'payload'
 import crypto from 'crypto'
 import { logger } from '@/infra/utils/logger'
 import { getGuestChatConfig } from '@/server/config/guest-chat-config'
@@ -128,12 +130,13 @@ export function clearGuestSessionCookie(headers: Headers = new Headers()): void 
   )
 }
 
-export async function createGuestSession(options: {
-  req?: Request
-  ipHash?: string
-  userAgentHash?: string
-}): Promise<{ session: GuestSessionDoc; token: string }> {
-  const payload = await getPayload({ config })
+export async function createGuestSession(
+  payload: Payload,
+  options: {
+    ipHash?: string
+    userAgentHash?: string
+  },
+): Promise<{ session: GuestSessionDoc; token: string }> {
   const token = generateSessionToken()
   const tokenHash = hashToken(token)
   const now = new Date()
@@ -146,7 +149,7 @@ export async function createGuestSession(options: {
   expiresAt.setDate(expiresAt.getDate() + guestConfig.sliding_ttl_days)
 
   const session = await payload.create({
-    collection: 'guest-sessions' as any,
+    collection: 'guest-sessions' as const,
     data: {
       tokenHash,
       tokenVersion: 1,
@@ -155,18 +158,22 @@ export async function createGuestSession(options: {
       expiresAt: expiresAt.toISOString(),
       hardExpiresAt: hardExpiresAt.toISOString(),
       status: 'active',
+      messageCount: 0,
       ipHash: options.ipHash,
       userAgentHash: options.userAgentHash,
     },
+    draft: false,
   })
 
   logger.info({ sessionId: session.id }, 'Created guest session')
 
-  return { session: session as GuestSessionDoc, token }
+  return { session: session as unknown as GuestSessionDoc, token }
 }
 
-export async function getGuestSessionByToken(token: string): Promise<GuestSessionDoc | null> {
-  const payload = await getPayload({ config })
+export async function getGuestSessionByToken(
+  payload: Payload,
+  token: string,
+): Promise<GuestSessionDoc | null> {
   const tokenHash = hashToken(token)
 
   const sessions = await payload.find({
@@ -189,10 +196,9 @@ export async function getGuestSessionByToken(token: string): Promise<GuestSessio
 }
 
 export async function updateGuestSessionActivity(
+  payload: Payload,
   sessionId: string,
 ): Promise<GuestSessionDoc | null> {
-  const payload = await getPayload({ config })
-
   const session = await payload.findByID({
     collection: 'guest-sessions' as any,
     id: sessionId,
@@ -227,11 +233,10 @@ export async function updateGuestSessionActivity(
 }
 
 export async function revokeGuestSession(
+  payload: Payload,
   sessionId: string,
   claimedByUser: string,
 ): Promise<GuestSessionDoc | null> {
-  const payload = await getPayload({ config })
-
   const updated = await payload.update({
     collection: 'guest-sessions' as any,
     id: sessionId,
@@ -253,9 +258,9 @@ export interface GuestMessageLimitResult {
 }
 
 export async function checkAndIncrementGuestMessageCount(
+  payload: Payload,
   guestSessionId: string,
 ): Promise<GuestMessageLimitResult> {
-  const payload = await getPayload({ config })
   const guestConfig = await getGuestChatConfig()
 
   const session = await payload.findByID({

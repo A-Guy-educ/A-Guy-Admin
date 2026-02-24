@@ -1,8 +1,9 @@
 import type { CollectionConfig } from 'payload'
 
+import { DEFAULT_LESSON_ACCESS_TYPE } from '@/server/constants/access-types'
 import { tenantField } from '@/server/payload/fields/tenant'
 import { anyone } from '../access/anyone'
-import { authenticated } from '../access/authenticated'
+import { adminOnly } from '../access/adminOnly'
 import { createdByField } from '../fields/createdBy'
 
 const formatSlug = (val: string): string =>
@@ -14,10 +15,10 @@ const formatSlug = (val: string): string =>
 export const Lessons: CollectionConfig = {
   slug: 'lessons',
   access: {
-    create: authenticated,
-    delete: authenticated,
+    create: adminOnly,
+    delete: adminOnly,
     read: anyone,
-    update: authenticated,
+    update: adminOnly,
   },
   hooks: {
     beforeChange: [
@@ -100,6 +101,9 @@ export const Lessons: CollectionConfig = {
       type: 'textarea',
       admin: {
         description: 'Detailed description of the lesson',
+        components: {
+          Field: '@/ui/admin/QuillField#QuillField',
+        },
       },
     },
     {
@@ -144,6 +148,26 @@ export const Lessons: CollectionConfig = {
         description: 'Whether this lesson is currently active',
       },
     },
+    {
+      name: 'accessType',
+      type: 'select',
+      required: true,
+      defaultValue: DEFAULT_LESSON_ACCESS_TYPE,
+      options: [
+        { label: 'Inherit from Course', value: 'inherit' },
+        { label: 'Free Access', value: 'free' },
+        { label: 'Require Registration', value: 'mandatory' },
+        {
+          label: 'Gated (5-Minute Delay)',
+          value: 'gated',
+        },
+      ],
+      admin: {
+        position: 'sidebar',
+        description:
+          'Access control for this lesson. "Inherit" uses the parent course setting. "Gated" is a client-side nudge, not hard enforcement.',
+      },
+    },
     // --- Intro Page (pre-lesson context screen) ---
     {
       name: 'introEnabled',
@@ -160,6 +184,9 @@ export const Lessons: CollectionConfig = {
       admin: {
         description: 'HTML content for the intro page. Supports raw HTML (bold, lists, etc).',
         condition: (data) => Boolean(data?.introEnabled),
+        components: {
+          Field: '@/ui/admin/QuillField#QuillField',
+        },
       },
     },
     {

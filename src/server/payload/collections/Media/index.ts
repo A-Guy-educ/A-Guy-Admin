@@ -6,25 +6,93 @@ import {
   lexicalEditor,
 } from '@payloadcms/richtext-lexical'
 
+import { extractYouTubeVideoId, isYouTubeUrl } from '@/infra/media/youtube'
 import { MediaType } from '@/infra/media/types'
 import { isUsersCollectionUser } from '@/server/payload/access/isUsersCollectionUser'
 import { AccountRole } from '@/server/payload/collections/Users/roles'
 import { tenantField } from '@/server/payload/fields/tenant'
 import { anyone } from '../../access/anyone'
-import { authenticated } from '../../access/authenticated'
+import { adminOnly } from '../../access/adminOnly'
 import { createdByField } from '../../fields/createdBy'
 import { enforceRetentionPolicyHook } from './hooks/enforceRetentionPolicy'
 import { inferMediaTypeHook } from './hooks/inferMediaType'
+import { resolveEmbedHook } from './hooks/resolveEmbed'
 import { validateMediaUploadHook } from './hooks/validateMediaUpload'
 
 export const Media: CollectionConfig = {
   slug: 'media',
-  folders: true,
+  // folders: true, // Disabled - conflicts with Vercel Blob plugin
+  upload: {
+    // Allow External media type to be saved without a file upload.
+    // Our validateMediaUploadHook enforces file presence for non-External types.
+    filesRequiredOnCreate: false,
+    // Vercel Blob storage plugin handles actual file storage
+    // Plugin injects disableLocalStorage: true and adapter handlers
+    // Show thumbnail in admin list view - uses function to handle External media
+    adminThumbnail: ({ doc }) => {
+      // Cast doc to access typed properties
+      const docData = doc as {
+        type?: string
+        externalUrl?: string
+        url?: string
+        embedThumbnailUrl?: string | null
+      }
+      if (docData.type === MediaType.External) {
+        // YouTube: use YouTube's CDN thumbnail directly (no API needed)
+        if (docData.externalUrl && isYouTubeUrl(docData.externalUrl)) {
+          const videoId = extractYouTubeVideoId(docData.externalUrl)
+          if (videoId) {
+            return `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`
+          }
+        }
+        // Vimeo (and other providers): use the thumbnail fetched by resolveEmbedHook
+        if (docData.embedThumbnailUrl) {
+          return docData.embedThumbnailUrl
+        }
+        return null
+      }
+      // Uploaded files: return the main URL (false to disable if url is undefined)
+      return docData.url || false
+    },
+    // Skip Payload's buffer-based checkFileRestrictions.
+    // With clientUploads=true, Payload re-fetches the entire file from Vercel Blob into
+    // server memory before running restrictions — causing OOM/timeouts for large video files.
+    // Our validateMediaUploadHook already handles MIME type and size validation server-side.
+    allowRestrictedFileTypes: true,
+    mimeTypes: [
+      'image/*',
+      // Explicit video MIME types + extensions for browser file-picker compatibility.
+      // macOS Safari requires 'video/quicktime' or '.mov' explicitly — 'video/*' alone
+      // does not show .mov files in the file picker on all browsers.
+      'video/*',
+      'video/mp4',
+      'video/quicktime',
+      '.mp4',
+      '.mov',
+      'audio/*',
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.ms-powerpoint',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      'text/*',
+    ],
+    // NOTE: imageSizes disabled - causes issues with Vercel Blob plugin
+    // The plugin generates sizes as a group field which conflicts with our setup
+    // imageSizes: [
+    //   { name: 'thumbnail', width: 300, height: 300 },
+    //   { name: 'small', width: 600, height: 600 },
+    //   { name: 'medium', width: 1024, height: 1024 },
+    //   { name: 'large', width: 1920, height: 1920 },
+    // ],
+  },
   access: {
-    create: authenticated,
-    delete: authenticated,
+    create: adminOnly,
+    delete: adminOnly,
     read: anyone,
-    update: authenticated,
+    update: adminOnly,
   },
   fields: [
     // Tenant
@@ -64,6 +132,64 @@ export const Media: CollectionConfig = {
       admin: {
         condition: (data) => data?.type === MediaType.External,
         description: 'URL for external embed or link',
+      },
+      required: false,
+    },
+    {
+      name: 'embedProvider',
+      type: 'select',
+      options: [
+        { label: 'YouTube', value: 'youtube' },
+        { label: 'Vimeo', value: 'vimeo' },
+        { label: 'Generic', value: 'generic' },
+      ],
+      admin: {
+        condition: (data) => data?.type === MediaType.External,
+        position: 'sidebar',
+        description: 'Auto-detected from URL. Do not change manually.',
+        readOnly: true,
+      },
+      required: false,
+    },
+    {
+      name: 'embedVideoId',
+      type: 'text',
+      admin: {
+        condition: (data) => data?.type === MediaType.External,
+        position: 'sidebar',
+        description: 'Provider-specific video/content ID',
+        readOnly: true,
+      },
+      required: false,
+    },
+    {
+      name: 'embedUrl',
+      type: 'text',
+      admin: {
+        condition: (data) => data?.type === MediaType.External,
+        position: 'sidebar',
+        description: 'Embed-ready URL for iframe (auto-generated)',
+        readOnly: true,
+      },
+      required: false,
+    },
+    {
+      name: 'embedTitle',
+      type: 'text',
+      admin: {
+        condition: (data) => data?.type === MediaType.External,
+        description: 'Title fetched from provider (auto-populated)',
+        readOnly: true,
+      },
+      required: false,
+    },
+    {
+      name: 'embedThumbnailUrl',
+      type: 'text',
+      admin: {
+        condition: (data) => data?.type === MediaType.External,
+        description: 'Thumbnail URL fetched from provider (auto-populated)',
+        readOnly: true,
       },
       required: false,
     },
@@ -132,136 +258,24 @@ export const Media: CollectionConfig = {
         read: () => true,
       },
     },
-    // Image sizes for responsive images (managed by Vercel Blob storage plugin)
-    // Structure matches Payload's standard upload.sizes format: { thumbnail: { url, width, height, ... }, ... }
-    {
-      name: 'sizes',
-      type: 'json',
-      admin: {
-        hidden: true,
-        description: 'Responsive image sizes metadata (auto-generated by blob storage)',
-      },
-      access: {
-        create: () => true,
-        update: () => true,
-        read: () => true,
-      },
-    },
-    // File metadata fields (managed by Vercel Blob storage plugin)
-    {
-      name: 'url',
-      type: 'text',
-      admin: {
-        hidden: true,
-      },
-      access: {
-        create: () => true,
-        update: () => true,
-        read: () => true,
-      },
-    },
-    {
-      name: 'thumbnailURL',
-      type: 'text',
-      admin: {
-        hidden: true,
-      },
-      access: {
-        create: () => true,
-        update: () => true,
-        read: () => true,
-      },
-    },
-    {
-      name: 'filename',
-      type: 'text',
-      admin: {
-        hidden: true,
-      },
-      access: {
-        create: () => true,
-        update: () => true,
-        read: () => true,
-      },
-    },
-    {
-      name: 'mimeType',
-      type: 'text',
-      admin: {
-        hidden: true,
-      },
-      access: {
-        create: () => true,
-        update: () => true,
-        read: () => true,
-      },
-    },
-    {
-      name: 'filesize',
-      type: 'number',
-      admin: {
-        hidden: true,
-      },
-      access: {
-        create: () => true,
-        update: () => true,
-        read: () => true,
-      },
-    },
-    {
-      name: 'width',
-      type: 'number',
-      admin: {
-        hidden: true,
-      },
-      access: {
-        create: () => true,
-        update: () => true,
-        read: () => true,
-      },
-    },
-    {
-      name: 'height',
-      type: 'number',
-      admin: {
-        hidden: true,
-      },
-      access: {
-        create: () => true,
-        update: () => true,
-        read: () => true,
-      },
-    },
-    {
-      name: 'focalX',
-      type: 'number',
-      admin: {
-        hidden: true,
-      },
-      access: {
-        create: () => true,
-        update: () => true,
-        read: () => true,
-      },
-    },
-    {
-      name: 'focalY',
-      type: 'number',
-      admin: {
-        hidden: true,
-      },
-      access: {
-        create: () => true,
-        update: () => true,
-        read: () => true,
-      },
-    },
+    // NOTE: The following fields are now auto-generated by Payload's upload config:
+    // - url: The public URL of the uploaded file (proxied through Payload)
+    // - filename: The filename stored in blob storage
+    // - mimeType: The file's MIME type
+    // - filesize: The file size in bytes
+    // - width: Image width in pixels (images only)
+    // - height: Image height in pixels (images only)
+    // - focalX: Focal point X (0-100)
+    // - focalY: Focal point Y (0-100)
+    // - sizes: Responsive image sizes (thumbnail, small, medium, large)
   ],
   hooks: {
     beforeValidate: [validateMediaUploadHook],
-    beforeChange: [enforceRetentionPolicyHook],
+    beforeChange: [resolveEmbedHook, enforceRetentionPolicyHook],
   },
   // File storage is handled by @payloadcms/storage-vercel-blob plugin
-  // The plugin intercepts uploads and stores files in Vercel Blob
-  // DO NOT add 'upload' config here - it will override the plugin behavior
+  // The plugin adds disableLocalStorage: true and adapter handlers to this collection
+  // URLs are proxied through Payload (/api/media/file/...) for backward compatibility
+  // NOTE: The 'upload' config above is required for Payload to process file uploads
+  // and for the Vercel Blob plugin to work correctly
 }

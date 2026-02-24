@@ -5,9 +5,11 @@
  * @ai-summary CI-specific utilities for the Cody pipeline: comment parsing, GitHub API helpers, status management
  */
 
-import { execSync } from 'child_process'
 import * as fs from 'fs'
 import * as path from 'path'
+
+import { ALL_STAGES } from './stage-prompts'
+import { discoverTaskIdFromIssue } from './github-api'
 
 // ============================================================================
 // Types
@@ -29,6 +31,10 @@ export interface CodyInput {
   local?: boolean
   // Path to task description file (for auto-generating task-id and task.md)
   file?: string
+  // Opt-in to run clarify stage (default: skip, auto-create clarified.md)
+  clarify?: boolean
+  // Control mode override: auto, risk-gated, hard-stop
+  controlMode?: 'auto' | 'risk-gated' | 'hard-stop'
 }
 
 export interface CodyPipelineStatus {
@@ -37,23 +43,34 @@ export interface CodyPipelineStatus {
   pipeline: string
   startedAt: string
   updatedAt: string
-  state: 'running' | 'completed' | 'failed' | 'timeout'
+  completedAt?: string
+  totalElapsed?: number
+  state: 'running' | 'completed' | 'failed' | 'timeout' | 'paused'
   currentStage: string | null
   stages: Record<string, StageStatus>
   triggeredBy: string
   issueNumber?: number
   runId?: string
   runUrl?: string
+  controlMode?: 'auto' | 'risk-gated' | 'hard-stop'
+  gatePoint?: string
+  botCommentId?: number
 }
 
 export interface StageStatus {
-  state: 'pending' | 'running' | 'completed' | 'failed' | 'timeout' | 'skipped'
+  state: 'pending' | 'running' | 'completed' | 'failed' | 'timeout' | 'skipped' | 'gate-waiting'
   startedAt?: string
   completedAt?: string
   elapsed?: number
   retries: number
   outputFile?: string
+  skipped?: string // Reason for skip (e.g., 'input_quality')
   error?: string
+  // Token usage for cost tracking (schema only - not populated)
+  tokenUsage?: {
+    input: number
+    output: number
+  }
 }
 
 // ============================================================================
@@ -61,17 +78,9 @@ export interface StageStatus {
 // ============================================================================
 
 const VALID_MODES = ['spec', 'impl', 'rerun', 'full', 'status'] as const
-const VALID_STAGES = [
-  'taskify',
-  'spec',
-  'clarify',
-  'architect',
-  'build',
-  'test',
-  'verify',
-  'auditor',
-  'pr',
-]
+
+// VALID_STAGES derived from stage-prompts to avoid duplication
+const VALID_STAGES = [...ALL_STAGES]
 
 export function isValidMode(mode: string): mode is (typeof VALID_MODES)[number] {
   return VALID_MODES.includes(mode as (typeof VALID_MODES)[number])
@@ -102,6 +111,10 @@ export function ensureTaskDir(taskId: string): string {
   return dir
 }
 
+/**
+ * @deprecated Use engine/status.ts loadState/writeState/completeState instead.
+ * This function is kept for backward compatibility with existing tests.
+ */
 export function readStatus(taskId: string): CodyPipelineStatus | null {
   const statusFile = path.join(getTaskDir(taskId), 'status.json')
   if (!fs.existsSync(statusFile)) {
@@ -114,11 +127,61 @@ export function readStatus(taskId: string): CodyPipelineStatus | null {
   }
 }
 
-export function writeStatus(taskId: string, status: CodyPipelineStatus): void {
+/**
+ * Get the last failed stage from status.json for smart rerun default.
+ * Returns the stage name that most recently failed, or null if none.
+ * Updated to use v2 schema (G(utils-1/2)).
+ */
+export function getLastFailedStage(taskId: string): string | null {
   const statusFile = path.join(getTaskDir(taskId), 'status.json')
-  fs.writeFileSync(statusFile, JSON.stringify(status, null, 2))
+  if (!fs.existsSync(statusFile)) {
+    return null
+  }
+
+  try {
+    const content = fs.readFileSync(statusFile, 'utf-8')
+    const status = JSON.parse(content) as {
+      version?: number
+      stages?: Record<string, { state: string }>
+    }
+
+    // Check if it's v2 format (has version: 2)
+    if (status.version === 2 && status.stages) {
+      const failedStages = Object.entries(status.stages)
+        .filter(([, s]) => s.state === 'failed' || s.state === 'timeout')
+        .map(([name]) => name)
+      return failedStages.length > 0 ? failedStages[failedStages.length - 1] : null
+    }
+
+    // Fallback to v1 format
+    if (status?.stages) {
+      const failedStages = Object.entries(status.stages)
+        .filter(([, s]) => s.state === 'failed' || s.state === 'timeout')
+        .map(([name]) => name)
+      return failedStages.length > 0 ? failedStages[failedStages.length - 1] : null
+    }
+
+    return null
+  } catch {
+    return null
+  }
 }
 
+/**
+ * @deprecated Use engine/status.ts loadState/writeState/completeState instead.
+ */
+export function writeStatus(taskId: string, status: CodyPipelineStatus): void {
+  const statusFile = path.join(getTaskDir(taskId), 'status.json')
+  // Atomic write: write to temp file then rename to prevent corruption
+  // if the process is killed mid-write (e.g., timeout SIGKILL).
+  const tmpFile = statusFile + '.tmp'
+  fs.writeFileSync(tmpFile, JSON.stringify(status, null, 2))
+  fs.renameSync(tmpFile, statusFile)
+}
+
+/**
+ * @deprecated Use engine/status.ts loadState/writeState/completeState instead.
+ */
 export function initStatus(input: CodyInput): CodyPipelineStatus {
   const now = new Date().toISOString()
   const status: CodyPipelineStatus = {
@@ -139,6 +202,19 @@ export function initStatus(input: CodyInput): CodyPipelineStatus {
   return status
 }
 
+/**
+ * Update stage status with read-modify-write to status.json.
+ *
+ * Concurrency safety: parallel stages (e.g., auditor + pr) call this from
+ * separate promise callbacks, but Node.js is single-threaded — only one
+ * callback runs at a time, so read-modify-write is atomic on the event loop.
+ * The atomic writeStatus (write-to-tmp + rename) guards against corruption
+ * from process kills (SIGTERM/SIGKILL during write).
+ */
+
+/**
+ * @deprecated Use engine/status.ts loadState/writeState/completeState instead.
+ */
 export function updateStageStatus(
   taskId: string,
   stage: string,
@@ -163,6 +239,13 @@ export function updateStageStatus(
 
   const stageStatus = status.stages[stage]
 
+  // Apply extras (retries, outputFile, error) — works for both new and existing stages
+  if (extras) {
+    if (extras.retries !== undefined) stageStatus.retries = extras.retries
+    if (extras.outputFile !== undefined) stageStatus.outputFile = extras.outputFile
+    if (extras.error !== undefined) stageStatus.error = extras.error
+  }
+
   if (state === 'running') {
     stageStatus.state = 'running'
     stageStatus.startedAt = now
@@ -172,9 +255,6 @@ export function updateStageStatus(
     if (stageStatus.startedAt) {
       stageStatus.elapsed = new Date(now).getTime() - new Date(stageStatus.startedAt).getTime()
     }
-    if (extras?.error) {
-      stageStatus.error = extras.error
-    }
   }
 
   status.currentStage = state === 'running' ? stage : status.currentStage
@@ -182,123 +262,41 @@ export function updateStageStatus(
   writeStatus(taskId, status)
 }
 
+/**
+ * @deprecated Use engine/status.ts loadState/writeState/completeState instead.
+ */
 export function completeStatus(taskId: string, state: CodyPipelineStatus['state']): void {
   const status = readStatus(taskId)
   if (!status) return
 
+  const now = new Date().toISOString()
   status.state = state
-  status.updatedAt = new Date().toISOString()
+  status.updatedAt = now
+  status.completedAt = now
+  if (status.startedAt) {
+    status.totalElapsed = new Date(now).getTime() - new Date(status.startedAt).getTime()
+  }
   writeStatus(taskId, status)
 }
 
 // ============================================================================
-// GitHub API Helpers
+// GitHub API Helpers (re-exported from github-api.ts)
 // ============================================================================
 
-export function postComment(issueNumber: number, body: string): void {
-  if (!issueNumber) return
-
-  try {
-    // Use --body-file - to pipe body via stdin, preserving newlines and special characters
-    execSync(`gh issue comment ${issueNumber} --body-file -`, {
-      input: body,
-      stdio: ['pipe', 'inherit', 'inherit'],
-    })
-  } catch (error) {
-    console.error(`Failed to post comment to issue ${issueNumber}:`, error)
-  }
-}
-
-export function getIssueBody(issueNumber: number): string | null {
-  if (!issueNumber) return null
-
-  try {
-    const output = execSync(`gh issue view ${issueNumber} --json body --jq '.body'`, {
-      encoding: 'utf-8',
-    })
-    return output.trim() || null
-  } catch (error) {
-    console.error(`Failed to get issue body for #${issueNumber}:`, error)
-    return null
-  }
-}
-
-export function editComment(_commentId: string, _body: string): void {
-  // TODO: Implement if needed - gh api required for editing comments
-  console.warn('editComment not implemented')
-}
-
-/**
- * Get the latest comment on an issue (not from the bot, not a /cody command)
- */
-export function getLatestIssueComment(issueNumber: number, excludeAuthor?: string): string | null {
-  if (!issueNumber) return null
-
-  try {
-    const exclude = excludeAuthor || 'github-actions[bot]'
-    // Get comments, exclude bot and /cody commands, return the latest plain-text answer
-    const output = execSync(
-      `gh issue view ${issueNumber} --json comments --jq '[.comments[] | select(.author.login != "${exclude}" and (.body | startswith("/cody") | not))] | last | .body'`,
-      { encoding: 'utf-8' },
-    )
-    return output.trim() || null
-  } catch {
-    return null
-  }
-}
-
-/**
- * Discover task-id from a previous Cody run by parsing bot comments on the issue.
- * Looks for "Task created: `XXXXXX-task-name`" in bot comments.
- */
-export function discoverTaskIdFromIssue(issueNumber: number): string | null {
-  if (!issueNumber) return null
-
-  try {
-    const output = execSync(
-      `gh issue view ${issueNumber} --json comments --jq '[.comments[] | select(.author.login == "github-actions[bot]")] | .[].body'`,
-      { encoding: 'utf-8' },
-    )
-    // Look for "Task created: `XXXXXX-task-name`"
-    const match = output.match(/Task created: `(\d{6}-[a-zA-Z0-9-]+)`/)
-    return match ? match[1] : null
-  } catch {
-    return null
-  }
-}
-
-/**
- * Ensure the "Task created" marker comment exists on the issue.
- *
- * This is critical for task-id discovery: when someone runs `/cody` on an issue,
- * the pipeline discovers the existing task-id by searching for a bot comment
- * containing "Task created: `XXXXXX-task-name`". Without this marker,
- * subsequent runs auto-generate a new task-id instead of reusing the existing one.
- *
- * Previously, the marker was only posted when task.md was created from the issue body
- * (inside runSpecPipeline). This meant dispatch-triggered runs or runs where task.md
- * already existed never posted the marker, breaking discovery on subsequent issue-based runs.
- */
-export function ensureTaskMarkerComment(issueNumber: number, taskId: string): void {
-  if (!issueNumber || !taskId) return
-
-  // Check if marker already exists for ANY task-id on this issue
-  const existingTaskId = discoverTaskIdFromIssue(issueNumber)
-  if (existingTaskId) {
-    if (existingTaskId === taskId) {
-      console.log(`Task marker already exists on issue #${issueNumber} for ${taskId}`)
-    } else {
-      console.log(
-        `Task marker exists on issue #${issueNumber} for ${existingTaskId} (current: ${taskId})`,
-      )
-    }
-    return
-  }
-
-  // No marker found — post one
-  console.log(`Posting task marker comment on issue #${issueNumber} for ${taskId}`)
-  postComment(issueNumber, `🎯 Task created: \`${taskId}\`\n\nCody will now process this task.`)
-}
+// Re-export all GitHub API functions from github-api.ts
+export {
+  postComment,
+  getIssueBody,
+  getIssue,
+  getIssueTitle,
+  editComment,
+  getLatestIssueComment,
+  TASK_ID_MARKER_REGEX,
+  extractTaskIdFromMarker,
+  discoverTaskIdFromIssue,
+  extractGateCommentBody,
+  ensureTaskMarkerComment,
+} from './github-api'
 
 // ============================================================================
 // CLI Argument Parsing
@@ -364,6 +362,12 @@ export function parseCliArgs(argv: string[]): CodyInput {
       }
       input.fromStage = stage
       i++
+    } else if (arg === '--auto') {
+      input.controlMode = 'auto'
+    } else if (arg === '--gate') {
+      input.controlMode = 'risk-gated'
+    } else if (arg === '--hard-stop') {
+      input.controlMode = 'hard-stop'
     } else if (arg === '--issue-number' && normalized[i + 1]) {
       input.issueNumber = parseInt(normalized[i + 1], 10)
       i++
@@ -376,6 +380,29 @@ export function parseCliArgs(argv: string[]): CodyInput {
     } else if (arg === '--run-url' && normalized[i + 1]) {
       input.runUrl = normalized[i + 1]
       i++
+    } else if (arg.startsWith('--comment-body-env=')) {
+      // For comment triggers: read the raw comment body from env var
+      // This avoids shell injection when passing comment content through CI
+      const envVarName = arg.slice('--comment-body-env='.length)
+      const commentBodyFromEnv = process.env[envVarName]
+      if (commentBodyFromEnv) {
+        const parsed = parseCommentBody(commentBodyFromEnv, undefined)
+        if (!parsed.success) {
+          throw new Error(parsed.error || 'Failed to parse comment body from env var')
+        }
+        if (parsed.input) {
+          input.mode = parsed.input.mode
+          if (parsed.input.taskId) input.taskId = parsed.input.taskId
+          input.dryRun = parsed.input.dryRun
+          input.feedback = parsed.input.feedback
+          input.fromStage = parsed.input.fromStage
+          input.triggerType = 'comment'
+          if (parsed.input.controlMode) input.controlMode = parsed.input.controlMode
+          if (parsed.input.issueNumber) {
+            input.issueNumber = parsed.input.issueNumber
+          }
+        }
+      }
     } else if (arg === '--comment-body' && normalized[i + 1]) {
       // For comment triggers: parse the raw comment body
       // Note: issueNumber may not be parsed yet, so we pass undefined and merge later
@@ -396,6 +423,7 @@ export function parseCliArgs(argv: string[]): CodyInput {
         input.feedback = parsed.input.feedback
         input.fromStage = parsed.input.fromStage
         input.triggerType = 'comment'
+        if (parsed.input.controlMode) input.controlMode = parsed.input.controlMode
         // Store issueNumber from comment to merge after --issue-number is processed
         if (parsed.input.issueNumber) {
           input.issueNumber = parsed.input.issueNumber
@@ -407,6 +435,8 @@ export function parseCliArgs(argv: string[]): CodyInput {
       i++
     } else if (arg === '--local') {
       input.local = true
+    } else if (arg === '--clarify') {
+      input.clarify = true
     }
   }
 
@@ -501,6 +531,7 @@ export function parseCommentBody(body: string, issueNumber?: number): ParseComme
   // Handle empty command: /cody with no subcommand defaults to full
   let mode: CodyInput['mode'] = 'full'
   let taskId = rest
+  let implicitFeedback: string | undefined
 
   // Handle task-id as subcommand: /cody 260218-task defaults to full with that task
   const isTaskId = /^[0-9]{6}-[a-zA-Z0-9-]+$/.test(subCmd)
@@ -510,36 +541,54 @@ export function parseCommentBody(body: string, issueNumber?: number): ParseComme
     // When task-id is the subcommand, we need to track what was "rest" for options parsing
     // The reconstructed taskId now contains both the ID and options, so use it as original
   } else if (subCmd) {
-    // Validate subcommand
-    if (!isValidMode(subCmd)) {
-      return {
-        success: false,
-        error: `Unknown subcommand: ${subCmd}`,
-        errorComment: `Unknown command \`${subCmd}\`. Valid commands: \`spec\`, \`impl\`, \`rerun\`, \`status\`, \`full\`, or omit for full pipeline`,
-      }
+    // Handle approve/reject specially - these are for gate approval, not mode selection
+    const lowerSubCmd = subCmd.toLowerCase()
+    if (
+      lowerSubCmd === 'approve' ||
+      lowerSubCmd === 'reject' ||
+      lowerSubCmd === 'yes' ||
+      lowerSubCmd === 'no' ||
+      lowerSubCmd === 'go' ||
+      lowerSubCmd === 'proceed'
+    ) {
+      // Keep existing mode - gate approval logic will detect these keywords
+      // Don't change mode, just pass through. The gate check will handle approval detection.
+      // If no mode is set yet, default to full for resuming gated tasks
+      if (!mode) mode = 'full'
+    } else if (isValidMode(subCmd)) {
+      // Validate subcommand
+      mode = subCmd as CodyInput['mode']
+    } else {
+      // Unrecognized subcommand: treat as rerun with implicit feedback
+      // e.g., "/cody fix tests" → rerun mode, feedback = "fix tests"
+      mode = 'rerun'
+      // Capture both the subcommand and rest as implicit feedback
+      implicitFeedback = rest ? `${subCmd} ${rest}`.trim() : subCmd
     }
-    mode = subCmd as CodyInput['mode']
   }
 
-  // Extract task-id (first word of remaining)
+  // Extract task-id — ONLY if it matches the task-id pattern (YYMMDD-description)
+  // If it doesn't match, for rerun mode treat remaining text as implicit feedback
+  // For other modes, leave task-id empty (will be auto-discovered from issue)
+  const taskIdPattern = /^[0-9]{6}-[a-zA-Z0-9-]+$/
+
   if (taskId) {
-    const taskIdEnd = taskId.indexOf(' ')
-    if (taskIdEnd !== -1) {
-      taskId = taskId.slice(0, taskIdEnd)
+    const firstWord = taskId.split(' ')[0]
+    if (taskIdPattern.test(firstWord)) {
+      // First word is a valid task-id
+      taskId = firstWord
+    } else {
+      // First word is NOT a task-id
+      if (mode === 'rerun') {
+        // For rerun: treat all remaining text as implicit feedback
+        implicitFeedback = taskId
+      }
+      taskId = '' // will be auto-discovered from issue
     }
   }
 
   // Don't auto-generate task-id here — let parseCliArgs handle discovery + fallback generation
   // This allows discoverTaskIdFromIssue to find the task-id from previous bot comments
-
-  // Validate task-id format (skip if empty — parseCliArgs will handle it)
-  if (taskId && !validateTaskId(taskId)) {
-    return {
-      success: false,
-      error: `Invalid task-id format: ${taskId}`,
-      errorComment: `Invalid task ID format: \`${taskId}\`. Expected: \`YYMMDD-description\` (e.g., \`260217-user-metrics\`)`,
-    }
-  }
 
   // Parse remaining options (--feedback, --from, --dry-run)
   // rest contains: for isTaskId case: "options", for explicit mode case: "task-id options"
@@ -560,6 +609,7 @@ export function parseCommentBody(body: string, issueNumber?: number): ParseComme
   let dryRun = false
   let feedback: string | undefined
   let fromStage: string | undefined
+  let controlMode: CodyInput['controlMode'] = undefined
 
   let i = 0
   while (i < options.length) {
@@ -567,9 +617,25 @@ export function parseCommentBody(body: string, issueNumber?: number): ParseComme
     if (opt === '--dry-run') {
       dryRun = true
       i++
+    } else if (opt === '--auto') {
+      controlMode = 'auto'
+      i++
+    } else if (opt === '--gate') {
+      controlMode = 'risk-gated'
+      i++
+    } else if (opt === '--hard-stop') {
+      controlMode = 'hard-stop'
+      i++
     } else if (opt === '--feedback' && options[i + 1]) {
-      feedback = options[i + 1]
-      i += 2
+      // Capture all remaining words until the next --flag as feedback
+      const feedbackParts: string[] = []
+      let j = i + 1
+      while (j < options.length && !options[j].startsWith('--')) {
+        feedbackParts.push(options[j])
+        j++
+      }
+      feedback = feedbackParts.join(' ')
+      i = j
     } else if (opt === '--from' && options[i + 1]) {
       fromStage = options[i + 1]
       // Validate from stage
@@ -587,16 +653,20 @@ export function parseCommentBody(body: string, issueNumber?: number): ParseComme
     }
   }
 
+  // Use implicit feedback if no explicit --feedback was provided (for rerun mode)
+  const finalFeedback = feedback || implicitFeedback
+
   return {
     success: true,
     input: {
       mode,
       taskId,
       dryRun,
-      feedback,
+      feedback: finalFeedback,
       fromStage,
       issueNumber,
       triggerType: 'comment',
+      controlMode,
     },
   }
 }
@@ -665,6 +735,22 @@ export function formatStatusComment(
   } else if (status.state === 'completed') {
     lines.push(`✅ Cody completed for \`${input.taskId}\`!`)
     lines.push(`Mode: ${input.mode}`)
+
+    // Add per-stage timing for completed pipeline
+    const completedStages = Object.entries(status.stages)
+    if (completedStages.length > 0) {
+      lines.push('')
+      for (const [stage, stageStatus] of completedStages) {
+        const icon = stageStatus.state === 'completed' ? '✅' : '❌'
+        const elapsed = stageStatus.elapsed ? ` (${formatDuration(stageStatus.elapsed)})` : ''
+        lines.push(`  ${icon} ${stage}${elapsed}`)
+      }
+    }
+  } else if (status.state === 'paused') {
+    lines.push(`⏸️ Cody paused for \`${input.taskId}\``)
+    lines.push(
+      'Awaiting approval — reply with `/cody approve` to proceed or `/cody reject` to cancel.',
+    )
   } else if (status.state === 'failed') {
     lines.push(`❌ Cody failed for \`${input.taskId}\``)
   } else if (status.state === 'timeout') {
@@ -672,4 +758,10 @@ export function formatStatusComment(
   }
 
   return lines.join('\n')
+}
+
+export async function formatStatusCommentV2(input: CodyInput, stateV2: unknown): Promise<string> {
+  const { stateToV1 } = await import('./engine/status')
+  const v1Status = stateV2 as Parameters<typeof stateToV1>[0]
+  return formatStatusComment(input, stateToV1(v1Status))
 }

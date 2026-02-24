@@ -2,7 +2,7 @@ import type { CollectionConfig } from 'payload'
 
 import { tenantField } from '@/server/payload/fields/tenant'
 import { anyone } from '../access/anyone'
-import { authenticated } from '../access/authenticated'
+import { adminOnly } from '../access/adminOnly'
 import { createdByField } from '../fields/createdBy'
 import { computeAdminTitle } from '../hooks/chapters/computeAdminTitle'
 
@@ -15,15 +15,14 @@ const formatSlug = (val: string): string =>
 export const Chapters: CollectionConfig = {
   slug: 'chapters',
   access: {
-    create: authenticated,
-    delete: authenticated,
+    create: adminOnly,
+    delete: adminOnly,
     read: anyone,
-    update: authenticated,
+    update: adminOnly,
   },
   hooks: {
     beforeChange: [
       ({ data }) => {
-        console.log('data:', data)
         if (data?.title && !data?.slug) {
           data.slug = formatSlug(data.title)
         }
@@ -79,6 +78,9 @@ export const Chapters: CollectionConfig = {
       type: 'textarea',
       admin: {
         description: 'Detailed description of the chapter',
+        components: {
+          Field: '@/ui/admin/QuillField#QuillField',
+        },
       },
     },
     {

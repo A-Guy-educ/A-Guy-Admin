@@ -1,7 +1,13 @@
+import '@/infra/config/server-init'
+
 import { notFound } from 'next/navigation'
 import { queryCourseBySlug } from '@/server/repos/queries/courses'
 import { queryChapterBySlug } from '@/server/repos/queries/chapters'
 import { queryLessonsByChapter } from '@/server/repos/queries/lessons'
+import { SystemParams } from '@/infra/config/system-params'
+import { isAuthenticatedServer } from '@/server/utils/access-gate-server'
+import { AccessGateProvider } from '@/ui/web/auth/AccessGateProvider'
+import { stripHtml } from '@/lib/utils/strip-html'
 import { ChapterPageBreadcrumb } from '../../../_components/ChapterPageBreadcrumb'
 import { ChapterHeader } from '../../../_components/ChapterHeader'
 import { LessonsSectionTitle } from '../../../_components/LessonsSectionTitle'
@@ -34,41 +40,68 @@ export default async function ChapterPage({ params }: ChapterPageProps) {
     notFound()
   }
 
+  const courseAccessType = course.pageAccessType ?? 'free'
+  const [gatedDelayMs, gatedWarningMs] = await Promise.all([
+    SystemParams.getGatedDelayMs(),
+    SystemParams.getGatedWarningMs(),
+  ])
+
+  // Server-side block: for mandatory mode, don't render content for unauthenticated users
+  if (courseAccessType === 'mandatory' && !(await isAuthenticatedServer())) {
+    return (
+      <AccessGateProvider
+        accessType={courseAccessType}
+        courseSlug={courseSlug}
+        gatedDelayMs={gatedDelayMs}
+        gatedWarningMs={gatedWarningMs}
+      >
+        <div className="min-h-screen" />
+      </AccessGateProvider>
+    )
+  }
+
   const lessons = await queryLessonsByChapter({ chapterId: chapter.id })
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <ChapterPageBreadcrumb
-        courseTitle={course.title}
-        courseSlug={courseSlug}
-        chapterTitle={chapter.title}
-      />
+    <AccessGateProvider
+      accessType={courseAccessType}
+      courseSlug={courseSlug}
+      gatedDelayMs={gatedDelayMs}
+      gatedWarningMs={gatedWarningMs}
+    >
+      <div className="container mx-auto px-4 py-8">
+        <ChapterPageBreadcrumb
+          courseTitle={course.title}
+          courseSlug={courseSlug}
+          chapterTitle={chapter.title}
+        />
 
-      <ChapterHeader
-        chapterLabel={chapter.chapterLabel}
-        title={chapter.title}
-        description={chapter.description}
-      />
+        <ChapterHeader
+          chapterLabel={chapter.chapterLabel}
+          title={chapter.title}
+          description={chapter.description}
+        />
 
-      <section>
-        <LessonsSectionTitle />
+        <section>
+          <LessonsSectionTitle />
 
-        {lessons.length === 0 ? (
-          <EmptyState type="noLessons" />
-        ) : (
-          <div className="space-y-3">
-            {lessons.map((lesson) => (
-              <LessonCard
-                key={lesson.id}
-                lesson={lesson}
-                courseSlug={courseSlug}
-                chapterSlug={chapterSlug}
-              />
-            ))}
-          </div>
-        )}
-      </section>
-    </div>
+          {lessons.length === 0 ? (
+            <EmptyState type="noLessons" />
+          ) : (
+            <div className="space-y-3">
+              {lessons.map((lesson) => (
+                <LessonCard
+                  key={lesson.id}
+                  lesson={lesson}
+                  courseSlug={courseSlug}
+                  chapterSlug={chapterSlug}
+                />
+              ))}
+            </div>
+          )}
+        </section>
+      </div>
+    </AccessGateProvider>
   )
 }
 
@@ -96,6 +129,6 @@ export async function generateMetadata({ params }: ChapterPageProps) {
 
   return {
     title: `${chapter.title} - ${course.title}`,
-    description: chapter.description || `Chapter: ${chapter.title}`,
+    description: chapter.description ? stripHtml(chapter.description) : `Chapter: ${chapter.title}`,
   }
 }
