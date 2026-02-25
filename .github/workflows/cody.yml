@@ -1,5 +1,5 @@
 # Cody - Runs multi-agent pipeline in CI via OpenCode GitHub mode
-# Triggers: workflow_dispatch, issue_comment (@cody <subcommand>)
+# Triggers: workflow_dispatch, issue_comment (@cody <subcommand>), push to dev/main (smoke test)
 
 name: cody
 
@@ -35,6 +35,15 @@ on:
         required: false
         type: string
         default: ''
+
+  push:
+    branches:
+      - dev
+      - main
+    paths:
+      - 'scripts/cody/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
 
   issue_comment:
     types: [created]
@@ -139,6 +148,56 @@ jobs:
         run: |
           gh issue comment ${{ needs.parse.outputs.issue_number }} \
             --body "⚠️ Invalid \`@cody\` command. Use: \`@cody [spec|impl|rerun|full|status] [task-id] [options]\`"
+
+  # Smoke test: runs on push to dev/main to validate cody scripts work
+  smoke-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: >-
+      github.event_name == 'push' &&
+      (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main')
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            scripts/cody
+            package.json
+            pnpm-lock.yaml
+          sparse-checkout-cone-mode: false
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run parse-inputs validation
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DISPATCH_TASK_ID: ''
+          DISPATCH_MODE: ''
+          DISPATCH_DRY_RUN: 'false'
+          DISPATCH_FEEDBACK: ''
+          DISPATCH_FROM_STAGE: ''
+          DISPATCH_CLARIFY: 'false'
+          COMMENT_BODY: ''
+          ISSUE_NUMBER: ''
+          GITHUB_EVENT_NAME: 'push'
+          SAFETY_VALID: 'true'
+          SAFETY_REASON: ''
+        run: pnpm tsx scripts/cody/parse-inputs.ts
+
+      - name: Validate cody entry can be loaded
+        run: pnpm tsx scripts/cody/entry.ts --help
 
   # Job 2: Orchestrate - run the pipeline
   orchestrate:
