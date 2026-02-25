@@ -481,6 +481,39 @@ export function parseCliArgs(argv: string[]): CodyInput {
     }
   }
 
+  // Read from environment variables (for CI workflow)
+  // CLI args take precedence over env vars
+  if (!input.taskId && process.env.TASK_ID) {
+    input.taskId = process.env.TASK_ID
+  }
+  if (process.env.MODE && isValidMode(process.env.MODE)) {
+    input.mode = process.env.MODE
+  }
+  if (process.env.DRY_RUN === 'true') {
+    input.dryRun = true
+  }
+  if (process.env.FEEDBACK) {
+    input.feedback = process.env.FEEDBACK
+  }
+  if (process.env.FROM_STAGE) {
+    input.fromStage = process.env.FROM_STAGE
+  }
+  if (process.env.CLARIFY === 'true') {
+    input.clarify = true
+  }
+  if (process.env.ISSUE_NUMBER) {
+    input.issueNumber = parseInt(process.env.ISSUE_NUMBER, 10)
+  }
+  if (process.env.TRIGGER_TYPE) {
+    input.triggerType = process.env.TRIGGER_TYPE as 'dispatch' | 'comment'
+  }
+  if (process.env.RUN_ID) {
+    input.runId = process.env.RUN_ID
+  }
+  if (process.env.RUN_URL) {
+    input.runUrl = process.env.RUN_URL
+  }
+
   // Determine local mode: explicitly set or auto-detect from GITHUB_ACTIONS
   if (input.local === undefined) {
     input.local = !process.env.GITHUB_ACTIONS
