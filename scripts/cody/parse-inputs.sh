@@ -84,6 +84,40 @@ else
     fi
   fi
 
+  # Detect approval commands - @cody, @cody approve, /cody, /cody approve, etc.
+  # These should trigger gate approval check, not a full pipeline run
+  NORMALIZED_COMMENT=$(echo "${COMMENT_BODY:-}" | tr '[:upper:]' '[:lower:]' | xargs || true)
+  if [[ -n "$NORMALIZED_COMMENT" ]]; then
+    # Remove /cody or @cody prefix
+    CMD_AFTER_CODY=$(echo "$NORMALIZED_COMMENT" | sed 's/^[\/]@*cody[[:space:]]*//' | xargs || true)
+    
+    # Check if it's just @cody alone or followed by approval keywords
+    APPROVAL_KEYWORDS="approve approved yes go proceed y continue"
+    IS_APPROVAL=false
+    
+    if [[ -z "$CMD_AFTER_CODY" ]]; then
+      # @cody alone - treat as approval (user wants to proceed)
+      IS_APPROVAL=true
+      echo "=== Detected @cody alone - treating as approval command ==="
+    else
+      # Check if the command after @cody is an approval keyword
+      for keyword in $APPROVAL_KEYWORDS; do
+        if [[ "$CMD_AFTER_CODY" == "$keyword" ]] || [[ "$CMD_AFTER_CODY" == "$keyword"* ]]; then
+          IS_APPROVAL=true
+          echo "=== Detected approval keyword: $keyword ==="
+          break
+        fi
+      done
+    fi
+    
+    if [[ "$IS_APPROVAL" == "true" ]]; then
+      # For approval commands, use rerun mode
+      # This will check for approval and proceed if approved
+      # The pipeline will resume from the last failed stage (or build by default)
+      OUTPUT_MODE="rerun"
+    fi
+  fi
+
   # Pass raw comment body to orchestrator for parsing
   # Escape for JSON/GITHUB_OUTPUT (replace newlines, quotes)
   # Use printf '%s' to avoid echo's trailing newline being captured by jq
