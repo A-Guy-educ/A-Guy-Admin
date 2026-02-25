@@ -249,8 +249,19 @@ export function rebuildPipelineAfterTaskify(
   _currentPipeline: PipelineDefinition,
   ctx: PipelineContext,
 ): PipelineDefinition {
-  // Re-build with the resolved profile - use 'impl' mode to get BOTH spec + impl stages
-  return buildPipeline('impl', ctx.profile, ctx.input.clarify ?? false, ctx)
+  // For full mode, we need BOTH spec stages (completed) AND impl stages (to run)
+  // Build spec stages based on profile
+  const specOrder = ctx.profile === 'standard' ? SPEC_ORDER_STANDARD : SPEC_ORDER_LIGHTWEIGHT
+  const filteredSpecOrder = ctx.input.clarify ? specOrder : specOrder.filter((s) => s !== 'clarify')
+
+  // Build impl stages based on profile
+  const implOrder = ctx.profile === 'standard' ? IMPL_ORDER_STANDARD : IMPL_ORDER_LIGHTWEIGHT
+
+  // Combine: spec stages first (already completed), then impl stages (to run)
+  return {
+    stages: createStageDefinitions(ctx),
+    order: [...filteredSpecOrder, ...implOrder],
+  }
 }
 
 /**
