@@ -102,7 +102,8 @@ else
   NORMALIZED_COMMENT=$(echo "${COMMENT_BODY:-}" | tr '[:upper:]' '[:lower:]' | xargs || true)
   if [[ -n "$NORMALIZED_COMMENT" ]]; then
     # Remove /cody or @cody prefix to get the command/arguments
-    CMD_AFTER_CODY=$(echo "$NORMALIZED_COMMENT" | sed 's/^[\/]@*cody[[:space:]]*//' | xargs || true)
+    # Note: [\/@] matches / or @ (both work in character class)
+    CMD_AFTER_CODY=$(echo "$NORMALIZED_COMMENT" | sed 's/^[\/@]cody[[:space:]]*//' | xargs || true)
     
     # Check if it's an approval command (approve, approved, yes, go, proceed, y, continue)
     APPROVAL_KEYWORDS="approve approved yes go proceed y continue"
