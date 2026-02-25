@@ -1,164 +1,94 @@
-# Cody Pipeline Scripts
+# Cody Pipeline
 
-Cody is the AI-powered development pipeline that runs in CI to implement features and fix bugs automatically.
+AI agent pipeline for automated feature implementation and bug fixes.
 
-## Overview
+## Trigger
 
-Cody runs a multi-stage pipeline triggered by:
+- `@cody [spec|impl|rerun|full|status] [task-id]` on GitHub issues
+- `workflow_dispatch` with `task_id` input
 
-- `@cody` commands on GitHub issues
-- `workflow_dispatch` events (manual runs)
+## Pipeline Modes
 
-The pipeline operates in different modes:
+| Mode    | Stages                                                                      |
+| ------- | --------------------------------------------------------------------------- |
+| `spec`  | taskify → spec → gap → clarify                                              |
+| `impl`  | architect → plan-gap → build → commit → verify → auditor → apply-audit → pr |
+| `full`  | spec + impl (two-phase)                                                     |
+| `rerun` | Resume from failure                                                         |
 
-- **spec** - Run only specification stages (taskify, spec, gap)
-- **impl** - Run only implementation stages
-- **full** - Run full pipeline (spec + impl)
-- **rerun** - Resume from a failed stage
-
-## Pipeline Stages
-
-### Spec Stages (First Phase)
-
-| Stage     | Description                                 |
-| --------- | ------------------------------------------- |
-| `taskify` | Parse issue into structured task definition |
-| `spec`    | Generate detailed specification document    |
-| `gap`     | Analyze spec for implementation gaps        |
-| `clarify` | Q&A loop for clarifying requirements        |
-
-### Impl Stages (Second Phase)
-
-| Stage         | Description                    |
-| ------------- | ------------------------------ |
-| `architect`   | Design implementation approach |
-| `plan-gap`    | Analyze plan for gaps          |
-| `build`       | Implement the changes          |
-| `commit`      | Commit changes to branch       |
-| `verify`      | Run tests and verify           |
-| `auditor`     | Review code for issues         |
-| `apply-audit` | Apply auditor suggestions      |
-| `pr`          | Create pull request            |
-
-## Directory Structure
-
-```
-scripts/cody/
-├── entry.ts                 # Main entry point, mode routing
-├── cody-utils.ts           # Core utilities (readTask, writeState, etc.)
-├── pipeline-utils.ts        # Pipeline resolution utilities
-├── agent-runner.ts         # GitHub Actions / Local runner
-├── runner-backend.ts       # Runner interface
-├── git-utils.ts            # Git operations (commit, push, PR)
-├── stage-prompts.ts        # System prompts for each stage
-├── content-validators.ts   # Validation for stage outputs
-├── clarify-workflow.ts     # Q&A loop handling
-├── github-api.ts           # GitHub API helpers
-├── logger.ts               # Logging utilities
-├── preflight.ts            # Pre-flight checks
-├── scripted-stages.ts      # Non-agent stages
-│
-├── engine/                 # Core pipeline engine
-│   ├── state-machine.ts    # Main execution loop
-│   ├── types.ts            # Type definitions
-│   └── pipeline-resolver.ts # Pipeline resolution
-│
-├── handlers/               # Stage handlers
-│   ├── handler.ts          # Main handler dispatcher
-│   ├── taskify.ts          # Taskify stage handler
-│   ├── spec.ts             # Spec stage handler
-│   └── ...
-│
-└── pipeline/               # Pipeline definitions
-    ├── definitions.ts      # Stage definitions & order
-    ├── post-actions.ts     # Post-stage actions
-    └── skip-conditions.ts # Stage skip logic
-```
-
-## Key Concepts
-
-### Two-Phase Pipeline
-
-The "full" mode uses two-phase construction:
+## Two-Phase Execution
 
 1. **Phase 1**: Run spec stages (taskify, spec, gap)
-2. **Rebuild**: After taskify, rebuild pipeline to include impl stages
-3. **Phase 2**: Run impl stages (architect, build, commit, pr)
+2. **After taskify**: `resolve-profile` post-action sets `ctx.pipelineNeedsRebuild = true`
+3. **Rebuild**: `rebuildPipelineAfterTaskify()` returns full pipeline with BOTH completed + pending stages
+4. **Phase 2**: Continue with impl stages
 
-This allows the pipeline to:
+## Profiles
 
-- Resolve the task profile (standard vs lightweight) after taskify
-- Include both completed and pending stages in state
+- `standard`: Full pipeline (includes gap, plan-gap, auditor, apply-audit)
+- `lightweight`: Skips spec, gap, plan-gap, auditor, apply-audit
 
-### Pipeline Profiles
+Profile is resolved in `resolve-profile` post-action based on:
 
-- **standard**: Full pipeline with all stages (spec, gap, architect, plan-gap, auditor, apply-audit)
-- **lightweight**: Simplified pipeline for low-risk tasks (skips spec, gap, plan-gap, auditor, apply-audit)
+- Explicit `pipeline_profile` in task.json
+- Task type + risk level (fix_bug/refactor/ops + low risk = lightweight)
 
-### Task Definition (task.json)
+## Key Files
 
-```json
-{
-  "task_type": "implement_feature",
-  "risk_level": "medium",
-  "confidence": 0.95,
-  "primary_domain": "backend",
-  "scope": ["collections", "hooks"],
-  "pipeline_profile": "standard"
-}
-```
+| File                          | Purpose                                                            |
+| ----------------------------- | ------------------------------------------------------------------ |
+| `entry.ts`                    | Main entry, mode routing                                           |
+| `engine/state-machine.ts`     | Pipeline execution loop                                            |
+| `pipeline/definitions.ts`     | Stage definitions, stage order                                     |
+| `pipeline/post-actions.ts`    | Post-stage actions (validate, resolve-profile, commit, check-gate) |
+| `pipeline/skip-conditions.ts` | Stage skip logic                                                   |
 
-## Usage
+## Task Files
 
-### Trigger via Issue Comment
+Generated in `.tasks/<task-id>/`:
 
-```bash
-@cody full 260225-auto-40
-@cody spec 260225-auto-40     # Run spec stages only
-@cody impl 260225-auto-40     # Run impl stages only
-@cody rerun 260225-auto-40    # Resume from failure
-@cody status 260225-auto-40    # Check status
-```
-
-### Trigger via Workflow Dispatch
-
-```bash
-gh workflow run cody.yml -f task_id=260225-auto-40 --repo owner/repo
-```
-
-## Files Generated
-
-The pipeline creates task files in `.tasks/<task_id>/`:
-
-- `task.json` - Task definition
-- `task.md` - Original issue content
+- `task.json` - Task definition (task_type, risk_level, profile)
+- `task.md` - Original issue
 - `spec.md` - Generated specification
 - `plan.md` - Implementation plan
 - `gap.md` - Gap analysis
 - `status.json` - Pipeline state
 
-## Debugging
+## State Machine
 
-### Check Pipeline Status
+```
+while (true):
+  if ctx.pipelineNeedsRebuild && rebuildPipeline:
+    pipeline = rebuildPipeline(ctx)
 
-```bash
-# View status.json
-cat .tasks/<task-id>/status.json
+  nextStep = resolveNextStep(state, pipeline)
+  if not nextStep: break  // done
+
+  executeStep(nextStep)
+  writeState()
+
+  if state.failed or state.paused: break
 ```
 
-### Resume from Specific Stage
+## Post-Actions (after each stage)
+
+- `validate-task-json` - Ensure task.json is valid
+- `resolve-profile` - Set ctx.profile, signal rebuild
+- `check-gate` - Pause for approval if needed
+- `commit-task-files` - Commit and push
+
+## Important Context
+
+- `ctx.pipelineNeedsRebuild` - Set by `resolve-profile` to trigger two-phase construction
+- `ctx.profile` - Resolved after taskify (standard vs lightweight)
+- `state.stages[stageName].state` - pending | running | completed | failed | skipped | paused
+
+## Debug
 
 ```bash
+# Check status
+cat .tasks/<task-id>/status.json
+
+# Resume from stage
 @cody rerun <task-id> --from build
 ```
-
-### Dry Run Mode
-
-```bash
-@cody full <task-id> --dry-run
-```
-
-## Related
-
-- `.github/workflows/cody.yml` - CI workflow
-- `tests/unit/scripts/cody/` - Test suite
