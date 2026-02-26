@@ -121,6 +121,14 @@ Examples:
   // Parse CLI args
   const input = parseCliArgs(args)
 
+  // Post "started" comment with run URL at the beginning of the pipeline
+  if (input.issueNumber && input.runUrl) {
+    postComment(
+      input.issueNumber,
+      `🚀 Cody started for \`${input.taskId}\` (mode: ${input.mode})\n\nRun: ${input.runUrl}`,
+    )
+  }
+
   // Set global logging context
   setGlobalContext({ taskId: input.taskId, runId: input.runId })
 
