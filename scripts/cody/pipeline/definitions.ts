@@ -47,7 +47,8 @@ export const IMPL_ORDER_LIGHTWEIGHT: PipelineStep[] = [
   'architect',
   'build',
   'commit',
-  'verify',
+  { parallel: ['verify', 'auditor'] },
+  'apply-audit',
   'pr',
 ]
 
