@@ -34,11 +34,6 @@ export function DayCard({ day, topics, onToggleStatus, onEdit }: DayCardProps) {
 
   const isCompleted = day.status === 'completed'
 
-  // Get topic labels for display
-  const topicLabels = day.topicIds
-    .map((id) => topics.find((t) => t.topicId === id)?.topicLabel)
-    .filter(Boolean)
-
   const handleSaveEdit = () => {
     if (onEdit) {
       onEdit({

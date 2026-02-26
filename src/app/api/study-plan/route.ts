@@ -44,7 +44,10 @@ const EditDaySchema = z.object({
   gradeLevel: z.string().min(1),
   userTopicIds: z.array(z.string()).optional(),
   userDurationMinutes: z.number().min(0).optional(),
-  userStartTime: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+  userStartTime: z
+    .string()
+    .regex(/^\d{2}:\d{2}$/)
+    .optional(),
 })
 
 const RequestSchema = z.discriminatedUnion('action', [
@@ -168,9 +171,6 @@ async function handleGenerate(
     gradeLevel,
   })
 
-  // Find existing plan in studyPlans array
-  const existingPlan = userProgress?.studyPlans?.find((p) => p.courseId === courseId)
-
   // Generate plan input
   const generateInput = {
     today,
@@ -263,7 +263,10 @@ async function handleToggleStatus(
   // Toggle: if completed → planned, else → completed
   const days = plan.days.map((day) => {
     if (day.dayId === dayId) {
-      return { ...day, status: day.status === 'completed' ? ('planned' as const) : ('completed' as const) }
+      return {
+        ...day,
+        status: day.status === 'completed' ? ('planned' as const) : ('completed' as const),
+      }
     }
     return day
   })
