@@ -300,7 +300,8 @@ export function buildPipeline(
   } else if (mode === 'rerun') {
     // Rerun mode: include both spec and impl stages to support resuming from any stage
     // The engine will skip completed stages and start from the specified fromStage
-    const specOrder = profile === 'standard' ? SPEC_ORDER_STANDARD : SPEC_ORDER_LIGHTWEIGHT
+    // Always use standard spec order to ensure spec/gap stages are included in rebuild
+    const specOrder = SPEC_ORDER_STANDARD
     const implOrder = profile === 'standard' ? IMPL_ORDER_STANDARD : IMPL_ORDER_LIGHTWEIGHT
     const filteredSpecOrder = clarify ? specOrder : specOrder.filter((s) => s !== 'clarify')
     order = [...filteredSpecOrder, ...implOrder]
