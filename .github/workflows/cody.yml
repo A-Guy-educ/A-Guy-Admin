@@ -290,6 +290,9 @@ jobs:
           # Blob storage token for verify stage (unit tests need it)
           BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN }}
 
+          # Database URL for verify stage (unit tests need it)
+          DATABASE_URL: ${{ secrets.DATABASE_URL || 'mongodb://localhost:27017/test' }}
+
           # LLM provider keys (all available)
           # Note: GOOGLE_GENERATIVE_AI_API_KEY is for Vercel AI SDK (@ai-sdk/google),
           # GEMINI_API_KEY is for Google's own SDK (@google/generative-ai)
