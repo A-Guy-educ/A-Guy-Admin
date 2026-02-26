@@ -287,6 +287,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_PAT: ${{ secrets.GH_PAT }}
 
+          # Blob storage token for verify stage (unit tests need it)
+          BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN }}
+
           # LLM provider keys (all available)
           # Note: GOOGLE_GENERATIVE_AI_API_KEY is for Vercel AI SDK (@ai-sdk/google),
           # GEMINI_API_KEY is for Google's own SDK (@google/generative-ai)
