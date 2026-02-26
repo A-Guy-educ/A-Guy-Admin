@@ -4,16 +4,12 @@
  * @pattern route-group
  * @ai-summary Root layout for Cody dashboard - uses frontend styles with CopilotKit
  */
-import type { Metadata } from 'next'
+'use client'
+
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 import { InitTheme } from '@/ui/web/providers/Theme/InitTheme'
 import '@/app/(frontend)/globals.css'
-
-export const metadata: Metadata = {
-  title: 'Cody Operations Dashboard',
-  description: 'Developer operations dashboard for monitoring Cody CI build agent',
-}
 
 function MakeQueryClient() {
   return new QueryClient({

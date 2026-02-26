@@ -93,8 +93,9 @@ export default withSentryConfig(configWithPayload, {
     treeshake: {
       removeDebugLogging: true,
     },
+    // Disable react component annotation to avoid prerender errors with Client Components
     reactComponentAnnotation: {
-      enabled: true,
+      enabled: false,
     },
     automaticVercelMonitors: true,
   },
