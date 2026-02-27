@@ -124,7 +124,7 @@ describe('buildPrTitle (via runPrStage title output)', () => {
     })
 
     const { runPrStage } = await import('../../../scripts/cody/scripted-stages')
-    const result = runPrStage(TASK_DIR, `${TASK_DIR}/pr.md`, process.cwd())
+    const result = await runPrStage(TASK_DIR, `${TASK_DIR}/pr.md`, process.cwd())
 
     // Title passed to gh pr create should NOT contain '##'
     const createCall = mockExecFileSync.mock.calls.find(
@@ -465,7 +465,7 @@ describe('runPrStage existing PR', () => {
     })
 
     const { runPrStage } = await import('../../../scripts/cody/scripted-stages')
-    const result = runPrStage(TASK_DIR, `${TASK_DIR}/pr.md`, process.cwd(), 518)
+    const result = await runPrStage(TASK_DIR, `${TASK_DIR}/pr.md`, process.cwd(), 518)
 
     expect(result.created).toBe(false)
     expect(result.url).toBe('https://github.com/org/repo/pull/546')
@@ -499,7 +499,7 @@ describe('runPrStage failure handling', () => {
     })
 
     const { runPrStage } = await import('../../../scripts/cody/scripted-stages')
-    const result = runPrStage(TASK_DIR, `${TASK_DIR}/pr.md`, process.cwd(), 518)
+    const result = await runPrStage(TASK_DIR, `${TASK_DIR}/pr.md`, process.cwd(), 518)
 
     expect(result.created).toBe(false)
     expect(result.url).toBe('')

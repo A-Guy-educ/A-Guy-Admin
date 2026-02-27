@@ -579,19 +579,19 @@ describe('runPrStage', () => {
   // Existing PR found
   // ---------------------------------------------------------------------------
   describe('when existing PR is found', () => {
-    it('should return { created: false } with the existing URL', () => {
+    it('should return { created: false } with the existing URL', async () => {
       setupPrMocks({ existingPrUrl: 'https://github.com/owner/repo/pull/99' })
 
-      const result = runPrStage('/fake/task-dir', '/tmp/pr.md', '/fake/cwd')
+      const result = await runPrStage('/fake/task-dir', '/tmp/pr.md', '/fake/cwd')
 
       expect(result.created).toBe(false)
       expect(result.url).toBe('https://github.com/owner/repo/pull/99')
     })
 
-    it('should write a report mentioning the existing PR', () => {
+    it('should write a report mentioning the existing PR', async () => {
       setupPrMocks({ existingPrUrl: 'https://github.com/owner/repo/pull/99' })
 
-      const result = runPrStage('/fake/task-dir', '/tmp/pr.md', '/fake/cwd')
+      const result = await runPrStage('/fake/task-dir', '/tmp/pr.md', '/fake/cwd')
       expect(result.report).toContain('Existing PR found')
       expect(result.report).toContain('https://github.com/owner/repo/pull/99')
     })
@@ -633,19 +633,19 @@ describe('runPrStage', () => {
   // Successful PR creation
   // ---------------------------------------------------------------------------
   describe('when PR is created successfully', () => {
-    it('should return { created: true } with the new PR URL', () => {
+    it('should return { created: true } with the new PR URL', async () => {
       setupPrMocks({ prCreateUrl: 'https://github.com/owner/repo/pull/42' })
 
-      const result = runPrStage('/fake/task-dir', '/tmp/pr.md', '/fake/cwd')
+      const result = await runPrStage('/fake/task-dir', '/tmp/pr.md', '/fake/cwd')
 
       expect(result.created).toBe(true)
       expect(result.url).toBe('https://github.com/owner/repo/pull/42')
     })
 
-    it('should write a report with the PR URL and title', () => {
+    it('should write a report with the PR URL and title', async () => {
       setupPrMocks()
 
-      const result = runPrStage('/fake/task-dir', '/tmp/pr.md', '/fake/cwd')
+      const result = await runPrStage('/fake/task-dir', '/tmp/pr.md', '/fake/cwd')
       expect(result.report).toContain('PR created')
       expect(result.report).toContain('https://github.com/owner/repo/pull/42')
       expect(result.report).toContain('Title:')
@@ -664,11 +664,11 @@ describe('runPrStage', () => {
       expect((pushCall![1] as string[]).includes('feat/new-thing')).toBe(true)
     })
 
-    it('should continue even if push fails', () => {
+    it('should continue even if push fails', async () => {
       setupPrMocks({ pushFails: true })
 
       // Should not throw
-      const result = runPrStage('/fake/task-dir', '/tmp/pr.md', '/fake/cwd')
+      const result = await runPrStage('/fake/task-dir', '/tmp/pr.md', '/fake/cwd')
       expect(result.created).toBe(true)
     })
 
@@ -720,7 +720,7 @@ describe('runPrStage', () => {
   // PR creation fails
   // ---------------------------------------------------------------------------
   describe('when PR creation fails', () => {
-    it('should return { created: false, url: "" }', () => {
+    it('should return { created: false, url: "" }', async () => {
       mockExecSync.mockImplementation((cmd: string) => {
         const cmdStr = String(cmd)
         if (cmdStr.includes('git branch --show-current')) return 'feat/x\n'
@@ -737,13 +737,13 @@ describe('runPrStage', () => {
         return ''
       })
 
-      const result = runPrStage('/fake/task-dir', '/tmp/pr.md', '/fake/cwd')
+      const result = await runPrStage('/fake/task-dir', '/tmp/pr.md', '/fake/cwd')
 
       expect(result.created).toBe(false)
       expect(result.url).toBe('')
     })
 
-    it('should include the error message in the report', () => {
+    it('should include the error message in the report', async () => {
       mockExecSync.mockImplementation((cmd: string) => {
         const cmdStr = String(cmd)
         if (cmdStr.includes('git branch --show-current')) return 'feat/x\n'
@@ -760,13 +760,13 @@ describe('runPrStage', () => {
         return ''
       })
 
-      const result = runPrStage('/fake/task-dir', '/tmp/pr.md', '/fake/cwd')
+      const result = await runPrStage('/fake/task-dir', '/tmp/pr.md', '/fake/cwd')
 
       expect(result.report).toContain('Failed to create PR')
       expect(result.report).toContain('base branch not found')
     })
 
-    it('should write the failure report to the output file', () => {
+    it('should write the failure report to the output file', async () => {
       mockExecSync.mockImplementation((cmd: string) => {
         const cmdStr = String(cmd)
         if (cmdStr.includes('git branch --show-current')) return 'feat/x\n'
@@ -783,7 +783,7 @@ describe('runPrStage', () => {
         return ''
       })
 
-      const result = runPrStage('/fake/task-dir', '/tmp/pr.md', '/fake/cwd')
+      const result = await runPrStage('/fake/task-dir', '/tmp/pr.md', '/fake/cwd')
 
       expect(mockWriteFileSync).toHaveBeenCalledWith('/tmp/pr.md', result.report)
     })
@@ -793,7 +793,7 @@ describe('runPrStage', () => {
   // buildPrTitle — task.md
   // ---------------------------------------------------------------------------
   describe('PR title from task.md', () => {
-    it('should use task.md first line as title', () => {
+    it('should use task.md first line as title', async () => {
       setupPrMocks()
       mockExistsSync.mockImplementation((p: unknown) => {
         const pathStr = String(p)
@@ -807,12 +807,12 @@ describe('runPrStage', () => {
         return ''
       })
 
-      const result = runPrStage('/fake/task-dir', '/tmp/pr.md', '/fake/cwd')
+      const result = await runPrStage('/fake/task-dir', '/tmp/pr.md', '/fake/cwd')
 
       expect(result.report).toContain('add support for youtube embeds in lessons')
     })
 
-    it('should strip "# Task" prefix from task.md', () => {
+    it('should strip "# Task" prefix from task.md', async () => {
       setupPrMocks()
       mockExistsSync.mockImplementation((p: unknown) => String(p).endsWith('task.md'))
       mockReadFileSync.mockImplementation((p: unknown) => {
@@ -822,7 +822,7 @@ describe('runPrStage', () => {
         return ''
       })
 
-      const result = runPrStage('/fake/task-dir', '/tmp/pr.md', '/fake/cwd')
+      const result = await runPrStage('/fake/task-dir', '/tmp/pr.md', '/fake/cwd')
 
       // Should not contain "# Task" or "Task" prefix, just the description
       expect(result.report).toContain('fix the broken login form')
@@ -849,56 +849,56 @@ describe('runPrStage', () => {
       })
     }
 
-    it('should use "fix:" prefix for fix_bug task type', () => {
+    it('should use "fix:" prefix for fix_bug task type', async () => {
       setupWithTaskJson('fix_bug')
 
-      const result = runPrStage('/fake/task-dir', '/tmp/pr.md', '/fake/cwd')
+      const result = await runPrStage('/fake/task-dir', '/tmp/pr.md', '/fake/cwd')
       expect(result.report).toMatch(/Title: fix: /)
     })
 
-    it('should use "feat:" prefix for implement_feature task type', () => {
+    it('should use "feat:" prefix for implement_feature task type', async () => {
       setupWithTaskJson('implement_feature')
 
-      const result = runPrStage('/fake/task-dir', '/tmp/pr.md', '/fake/cwd')
+      const result = await runPrStage('/fake/task-dir', '/tmp/pr.md', '/fake/cwd')
       expect(result.report).toMatch(/Title: feat: /)
     })
 
-    it('should use "refactor:" prefix for refactor task type', () => {
+    it('should use "refactor:" prefix for refactor task type', async () => {
       setupWithTaskJson('refactor')
 
-      const result = runPrStage('/fake/task-dir', '/tmp/pr.md', '/fake/cwd')
+      const result = await runPrStage('/fake/task-dir', '/tmp/pr.md', '/fake/cwd')
       expect(result.report).toMatch(/Title: refactor: /)
     })
 
-    it('should use "docs:" prefix for docs task type', () => {
+    it('should use "docs:" prefix for docs task type', async () => {
       setupWithTaskJson('docs')
 
-      const result = runPrStage('/fake/task-dir', '/tmp/pr.md', '/fake/cwd')
+      const result = await runPrStage('/fake/task-dir', '/tmp/pr.md', '/fake/cwd')
       expect(result.report).toMatch(/Title: docs: /)
     })
 
-    it('should use "chore:" prefix for ops task type', () => {
+    it('should use "chore:" prefix for ops task type', async () => {
       setupWithTaskJson('ops')
 
-      const result = runPrStage('/fake/task-dir', '/tmp/pr.md', '/fake/cwd')
+      const result = await runPrStage('/fake/task-dir', '/tmp/pr.md', '/fake/cwd')
       expect(result.report).toMatch(/Title: chore: /)
     })
 
-    it('should use "chore:" prefix for research task type', () => {
+    it('should use "chore:" prefix for research task type', async () => {
       setupWithTaskJson('research')
 
-      const result = runPrStage('/fake/task-dir', '/tmp/pr.md', '/fake/cwd')
+      const result = await runPrStage('/fake/task-dir', '/tmp/pr.md', '/fake/cwd')
       expect(result.report).toMatch(/Title: chore: /)
     })
 
-    it('should default to "feat:" when task_type is unknown', () => {
+    it('should default to "feat:" when task_type is unknown', async () => {
       setupWithTaskJson('banana')
 
-      const result = runPrStage('/fake/task-dir', '/tmp/pr.md', '/fake/cwd')
+      const result = await runPrStage('/fake/task-dir', '/tmp/pr.md', '/fake/cwd')
       expect(result.report).toMatch(/Title: feat: /)
     })
 
-    it('should default to "feat:" when task.json is invalid JSON', () => {
+    it('should default to "feat:" when task.json is invalid JSON', async () => {
       setupPrMocks()
       mockExistsSync.mockImplementation((p: unknown) => {
         const pathStr = String(p)
@@ -911,7 +911,7 @@ describe('runPrStage', () => {
         return ''
       })
 
-      const result = runPrStage('/fake/task-dir', '/tmp/pr.md', '/fake/cwd')
+      const result = await runPrStage('/fake/task-dir', '/tmp/pr.md', '/fake/cwd')
       expect(result.report).toMatch(/Title: feat: /)
     })
   })
@@ -920,41 +920,41 @@ describe('runPrStage', () => {
   // buildPrTitle — fallback to commit messages
   // ---------------------------------------------------------------------------
   describe('PR title fallback to commit messages', () => {
-    it('should use first commit message when no task.md exists', () => {
+    it('should use first commit message when no task.md exists', async () => {
       setupPrMocks({ commitSummary: 'abc1234 fix login form validation' })
       // No task.md, no task.json
       mockExistsSync.mockReturnValue(false)
 
-      const result = runPrStage('/fake/task-dir', '/tmp/pr.md', '/fake/cwd')
+      const result = await runPrStage('/fake/task-dir', '/tmp/pr.md', '/fake/cwd')
 
       expect(result.report).toContain('Title: feat: fix login form validation')
     })
 
-    it('should strip commit hash from the fallback title', () => {
+    it('should strip commit hash from the fallback title', async () => {
       setupPrMocks({ commitSummary: 'deadbeef add new feature' })
       mockExistsSync.mockReturnValue(false)
 
-      const result = runPrStage('/fake/task-dir', '/tmp/pr.md', '/fake/cwd')
+      const result = await runPrStage('/fake/task-dir', '/tmp/pr.md', '/fake/cwd')
 
       // Should strip "deadbeef " prefix
       expect(result.report).toContain('Title: feat: add new feature')
       expect(result.report).not.toContain('deadbeef')
     })
 
-    it('should use "implement changes" when no commits and no task.md', () => {
+    it('should use "implement changes" when no commits and no task.md', async () => {
       setupPrMocks({ commitSummary: '' })
       mockExistsSync.mockReturnValue(false)
 
-      const result = runPrStage('/fake/task-dir', '/tmp/pr.md', '/fake/cwd')
+      const result = await runPrStage('/fake/task-dir', '/tmp/pr.md', '/fake/cwd')
 
       expect(result.report).toContain('Title: feat: implement changes')
     })
 
-    it('should use first commit only when multiple commits exist', () => {
+    it('should use first commit only when multiple commits exist', async () => {
       setupPrMocks({ commitSummary: 'abc1234 first commit\ndef5678 second commit' })
       mockExistsSync.mockReturnValue(false)
 
-      const result = runPrStage('/fake/task-dir', '/tmp/pr.md', '/fake/cwd')
+      const result = await runPrStage('/fake/task-dir', '/tmp/pr.md', '/fake/cwd')
 
       expect(result.report).toContain('first commit')
       expect(result.report).not.toContain('second commit')
@@ -965,7 +965,7 @@ describe('runPrStage', () => {
   // buildPrTitle — truncation
   // ---------------------------------------------------------------------------
   describe('PR title truncation', () => {
-    it('should truncate titles longer than 72 chars with "..."', () => {
+    it('should truncate titles longer than 72 chars with "..."', async () => {
       const longTitle = 'A'.repeat(100) // 100 chars > 72
 
       setupPrMocks()
@@ -975,7 +975,7 @@ describe('runPrStage', () => {
         return ''
       })
 
-      const result = runPrStage('/fake/task-dir', '/tmp/pr.md', '/fake/cwd')
+      const result = await runPrStage('/fake/task-dir', '/tmp/pr.md', '/fake/cwd')
 
       // Title should be: "feat: " + truncated description
       // The description is lowercased and truncated to 69 chars + "..."
@@ -983,7 +983,7 @@ describe('runPrStage', () => {
       expect(result.report).toContain(`Title: feat: ${expectedDesc}`)
     })
 
-    it('should NOT truncate titles of exactly 72 chars', () => {
+    it('should NOT truncate titles of exactly 72 chars', async () => {
       const exactTitle = 'A'.repeat(72)
 
       setupPrMocks()
@@ -993,14 +993,14 @@ describe('runPrStage', () => {
         return ''
       })
 
-      const result = runPrStage('/fake/task-dir', '/tmp/pr.md', '/fake/cwd')
+      const result = await runPrStage('/fake/task-dir', '/tmp/pr.md', '/fake/cwd')
 
       // 72 chars is exactly the limit, should not be truncated
       expect(result.report).toContain(`Title: feat: ${'a'.repeat(72)}`)
       expect(result.report).not.toContain('...')
     })
 
-    it('should NOT truncate titles shorter than 72 chars', () => {
+    it('should NOT truncate titles shorter than 72 chars', async () => {
       const shortTitle = 'Fix login bug'
 
       setupPrMocks()
@@ -1010,7 +1010,7 @@ describe('runPrStage', () => {
         return ''
       })
 
-      const result = runPrStage('/fake/task-dir', '/tmp/pr.md', '/fake/cwd')
+      const result = await runPrStage('/fake/task-dir', '/tmp/pr.md', '/fake/cwd')
 
       expect(result.report).toContain('Title: feat: fix login bug')
       expect(result.report).not.toContain('...')
@@ -1172,7 +1172,7 @@ describe('runPrStage', () => {
   // ---------------------------------------------------------------------------
   describe('edge cases', () => {
     // BUG-F fix: Test that empty GH_PAT is handled correctly
-    it('should handle empty GH_PAT env var (BUG-F fix)', () => {
+    it('should handle empty GH_PAT env var (BUG-F fix)', async () => {
       // Set GH_PAT to empty string (simulating missing secret)
       const originalGH_PAT = process.env.GH_PAT
       process.env.GH_PAT = ''
@@ -1196,7 +1196,7 @@ describe('runPrStage', () => {
       })
       mockExistsSync.mockReturnValue(false)
 
-      const result = runPrStage('/fake/task-dir', '/tmp/pr.md', '/fake/cwd')
+      const result = await runPrStage('/fake/task-dir', '/tmp/pr.md', '/fake/cwd')
       expect(result.created).toBe(false)
       expect(result.report).toContain('not authenticated')
 
@@ -1208,7 +1208,7 @@ describe('runPrStage', () => {
       }
     })
 
-    it('should handle getExistingPr returning null on error', () => {
+    it('should handle getExistingPr returning null on error', async () => {
       mockExecSync.mockImplementation((cmd: string) => {
         const cmdStr = String(cmd)
         if (cmdStr.includes('git branch --show-current')) return 'feat/x\n'
@@ -1228,11 +1228,11 @@ describe('runPrStage', () => {
       mockExistsSync.mockReturnValue(false)
 
       // Should not throw — getExistingPr catches the error and returns null
-      const result = runPrStage('/fake/task-dir', '/tmp/pr.md', '/fake/cwd')
+      const result = await runPrStage('/fake/task-dir', '/tmp/pr.md', '/fake/cwd')
       expect(result.created).toBe(true)
     })
 
-    it('should handle getCommitSummary returning empty on error', () => {
+    it('should handle getCommitSummary returning empty on error', async () => {
       mockExecSync.mockImplementation((cmd: string) => {
         const cmdStr = String(cmd)
         if (cmdStr.includes('git branch --show-current')) return 'feat/x\n'
@@ -1250,7 +1250,7 @@ describe('runPrStage', () => {
       mockExistsSync.mockReturnValue(false)
 
       // Should not throw — getCommitSummary catches and returns ''
-      const result = runPrStage('/fake/task-dir', '/tmp/pr.md', '/fake/cwd')
+      const result = await runPrStage('/fake/task-dir', '/tmp/pr.md', '/fake/cwd')
       expect(result.created).toBe(true)
       expect(result.report).toContain('Title: feat: implement changes')
     })
@@ -1275,7 +1275,7 @@ describe('runPrStage', () => {
       expect(args[titleIdx + 1]).toContain('fix "broken" login form')
     })
 
-    it('should lowercase the PR title from task.md', () => {
+    it('should lowercase the PR title from task.md', async () => {
       setupPrMocks()
       mockExistsSync.mockImplementation((p: unknown) => String(p).endsWith('task.md'))
       mockReadFileSync.mockImplementation((p: unknown) => {
@@ -1283,12 +1283,12 @@ describe('runPrStage', () => {
         return ''
       })
 
-      const result = runPrStage('/fake/task-dir', '/tmp/pr.md', '/fake/cwd')
+      const result = await runPrStage('/fake/task-dir', '/tmp/pr.md', '/fake/cwd')
 
       expect(result.report).toContain('Title: feat: add youtube embed support')
     })
 
-    it('should use multiline task.md first line only', () => {
+    it('should use multiline task.md first line only', async () => {
       setupPrMocks()
       mockExistsSync.mockImplementation((p: unknown) => String(p).endsWith('task.md'))
       mockReadFileSync.mockImplementation((p: unknown) => {
@@ -1298,18 +1298,18 @@ describe('runPrStage', () => {
         return ''
       })
 
-      const result = runPrStage('/fake/task-dir', '/tmp/pr.md', '/fake/cwd')
+      const result = await runPrStage('/fake/task-dir', '/tmp/pr.md', '/fake/cwd')
 
       expect(result.report).toContain('first line for title')
       expect(result.report).not.toContain('Second line')
     })
 
     // Phase 2.1: Shell injection fix verification
-    it('should use execFileSync for git log to prevent shell injection', () => {
+    it('should use execFileSync for git log to prevent shell injection', async () => {
       setupPrMocks()
       // Verify that getCommitSummary uses execFileSync, not execSync with string interpolation
       // This is verified by checking that the execFileSync mock was called with git log
-      const result = runPrStage('/fake/task-dir', '/tmp/pr.md', '/fake/cwd')
+      const result = await runPrStage('/fake/task-dir', '/tmp/pr.md', '/fake/cwd')
 
       // The function should complete without throwing
       expect(result.created).toBe(true)
