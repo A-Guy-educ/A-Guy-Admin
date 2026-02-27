@@ -448,6 +448,63 @@ export async function fetchOpenPRs(): Promise<GitHubPR[]> {
   return prs
 }
 
+// ============ Vercel Preview URLs ============
+
+/**
+ * Fetch Vercel preview URLs for a set of PR head SHAs.
+ * Strategy: 1 bulk call for recent deployments, then 1 status call per matched deployment.
+ * Returns a Map of SHA -> preview URL.
+ */
+export async function fetchDeploymentPreviews(prShas: string[]): Promise<Map<string, string>> {
+  if (prShas.length === 0) return new Map()
+
+  const cacheKey = `previews:${prShas.sort().join(',')}`
+  const cached = getCached<Map<string, string>>(cacheKey)
+  if (cached) return cached
+
+  const octokit = getOctokit()
+  const result = new Map<string, string>()
+
+  try {
+    // 1. Bulk fetch recent Preview deployments (1 API call)
+    const { data: deployments } = await octokit.repos.listDeployments({
+      owner: GITHUB_OWNER,
+      repo: GITHUB_REPO,
+      environment: 'Preview',
+      per_page: 30,
+    })
+
+    // 2. Match deployments to our PR SHAs
+    const shaSet = new Set(prShas)
+    const matched = deployments.filter((d) => shaSet.has(d.sha))
+
+    // 3. Fetch status for each matched deployment (1 call per match, typically 1-3)
+    await Promise.all(
+      matched.map(async (deployment) => {
+        try {
+          const { data: statuses } = await octokit.repos.listDeploymentStatuses({
+            owner: GITHUB_OWNER,
+            repo: GITHUB_REPO,
+            deployment_id: deployment.id,
+            per_page: 1,
+          })
+          if (statuses.length > 0 && statuses[0].environment_url) {
+            result.set(deployment.sha, statuses[0].environment_url)
+          }
+        } catch {
+          // Skip individual failures
+        }
+      }),
+    )
+  } catch (error) {
+    console.error('[Cody] Error fetching deployment previews:', error)
+  }
+
+  // Cache for 2 minutes (deployments don't change often)
+  setCache(cacheKey, CACHE_TTL.prs, result)
+  return result
+}
+
 // ============ PR Discovery ============
 
 /**

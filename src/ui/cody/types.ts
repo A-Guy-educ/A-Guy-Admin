@@ -148,6 +148,7 @@ export interface GitHubIssue {
   html_url: string
   // Cody-specific fields
   isCodyAssigned?: boolean
+  previewUrl?: string
 }
 
 export interface GitHubComment {
@@ -194,6 +195,7 @@ export interface CodyTask {
   // Additional fields for UI
   assignees?: Array<{ login: string; avatar_url: string }>
   isCodyAssigned?: boolean
+  previewUrl?: string
 }
 
 // ============ API Response Types ============

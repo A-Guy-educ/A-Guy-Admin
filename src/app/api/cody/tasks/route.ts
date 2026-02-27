@@ -7,7 +7,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from 'next/server'
 
-import { fetchIssues, fetchWorkflowRuns, fetchOpenPRs, findTaskBranch, getStatusFromBranch, createIssue } from '@/ui/cody/github-client'
+import { fetchIssues, fetchWorkflowRuns, fetchOpenPRs, fetchDeploymentPreviews, findTaskBranch, getStatusFromBranch, createIssue } from '@/ui/cody/github-client'
 import type { CodyTask, ColumnId, GitHubIssue, GitHubPR, WorkflowRun } from '@/ui/cody/types'
 
 // Map GitHub issue state to column using agent labels, workflow runs, and PR status
@@ -103,6 +103,16 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    // Fetch Vercel preview URLs for PRs that have them (1 bulk + N status calls, cached)
+    const prShas = openPRs.map(pr => pr.head.sha)
+    const previewUrls = await fetchDeploymentPreviews(prShas)
+    // Build SHA -> preview URL lookup keyed by PR number for easy access
+    const previewByPrNumber = new Map<number, string>()
+    for (const pr of openPRs) {
+      const url = previewUrls.get(pr.head.sha)
+      if (url) previewByPrNumber.set(pr.number, url)
+    }
+
     // Parse issues into tasks with additional metadata
     const tasks: CodyTask[] = await Promise.all(
       issues.map(async (issue) => {
@@ -164,6 +174,7 @@ export async function GET(req: NextRequest) {
           } : null,
           assignees: issue.assignees,
           isCodyAssigned: issue.isCodyAssigned,
+          previewUrl: pr ? previewByPrNumber.get(pr.number) : undefined,
         }
       })
     )

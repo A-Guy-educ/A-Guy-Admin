@@ -13,6 +13,7 @@ import { ALL_STAGES } from '../constants'
 import { Button } from '@/ui/web/components/button'
 import {
   GitPullRequest,
+  ExternalLink,
   Play,
   Bot,
   User,
@@ -210,6 +211,20 @@ export function TaskList({ tasks, selectedTask, onTaskSelect, onExecuteTask }: T
                     >
                       <GitPullRequest className="w-3 h-3" />
                       <span className="hidden sm:inline">PR</span> #{task.associatedPR!.number}
+                    </a>
+                  )}
+
+                  {/* Vercel preview link */}
+                  {task.previewUrl && (
+                    <a
+                      href={task.previewUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="inline-flex items-center gap-1 text-[11px] text-emerald-400 hover:text-emerald-300 hover:underline"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      <span className="hidden sm:inline">Preview</span>
                     </a>
                   )}
 
