@@ -3,6 +3,11 @@ import * as childProcess from 'child_process'
 import * as fs from 'fs'
 import { getDefaultBranch } from '../../../../scripts/cody/git-utils'
 
+// Mock for fetch - need to use hoisted mock
+const { mockFetch } = vi.hoisted(() => ({
+  mockFetch: vi.fn(),
+}))
+
 // Mock child_process and fs before importing the module under test
 vi.mock('child_process', () => ({
   execSync: vi.fn(),
@@ -14,6 +19,10 @@ vi.mock('fs', () => ({
   readFileSync: vi.fn(),
   writeFileSync: vi.fn(),
   mkdirSync: vi.fn(),
+}))
+
+vi.mock('fetch', () => ({
+  fetch: mockFetch,
 }))
 
 vi.mock('../../../../scripts/cody/git-utils', () => ({
@@ -495,12 +504,23 @@ describe('runPrStage', () => {
     // Default mocks for fs
     mockExistsSync.mockReturnValue(false)
     mockReadFileSync.mockReturnValue('')
+    // Default fetch mock - returns success for most tests
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ html_url: 'https://github.com/owner/repo/pull/42' }),
+    })
+    // Also mock global fetch
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({ html_url: 'https://github.com/owner/repo/pull/42' }),
+    } as unknown as Response)
   })
 
   /**
-   * Set up execSync and execFileSync responses for the standard PR flow.
+   * Set up execSync, execFileSync, and fetch responses for the standard PR flow.
    * execSync handles: git branch, git log
-   * execFileSync handles: gh pr list, git push, gh pr create
+   * execFileSync handles: gh pr list, git push
+   * fetch handles: GitHub API PR creation
    * Callers can override specific commands.
    */
   function setupPrMocks(
@@ -541,7 +561,7 @@ describe('runPrStage', () => {
       return ''
     })
 
-    // execFileSync handles array-based commands: gh pr list, git push, gh pr create, git log
+    // execFileSync handles array-based commands: gh pr list, git push, git log, git remote
     mockExecFileSync.mockImplementation((file: string, args?: readonly string[]) => {
       const argsArr = args || []
 
@@ -566,12 +586,23 @@ describe('runPrStage', () => {
         return ''
       }
 
-      // gh pr create --title ... --base ... --body-file -
-      if (file === 'gh' && argsArr[0] === 'pr' && argsArr[1] === 'create') {
-        return `${prCreateUrl}\n`
+      // git remote get-url origin
+      if (
+        file === 'git' &&
+        argsArr[0] === 'remote' &&
+        argsArr[1] === 'get-url' &&
+        argsArr[2] === 'origin'
+      ) {
+        return 'https://github.com/owner/repo.git'
       }
 
       return ''
+    })
+
+    // Mock fetch for GitHub API PR creation
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ html_url: prCreateUrl }),
     })
   }
 
@@ -1221,9 +1252,13 @@ describe('runPrStage', () => {
         if (file === 'gh' && argsArr[0] === 'pr' && argsArr[1] === 'list')
           throw new Error('gh: network error')
         if (file === 'git' && argsArr[0] === 'push') return ''
-        if (file === 'gh' && argsArr[0] === 'pr' && argsArr[1] === 'create')
-          return 'https://github.com/o/r/pull/1\n'
+        if (file === 'git' && argsArr[0] === 'remote' && argsArr[1] === 'get-url')
+          return 'https://github.com/owner/repo.git'
         return ''
+      })
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({ html_url: 'https://github.com/o/r/pull/1' }),
       })
       mockExistsSync.mockReturnValue(false)
 
@@ -1243,9 +1278,13 @@ describe('runPrStage', () => {
         const argsArr = args || []
         if (file === 'gh' && argsArr[0] === 'pr' && argsArr[1] === 'list') return '\n'
         if (file === 'git' && argsArr[0] === 'push') return ''
-        if (file === 'gh' && argsArr[0] === 'pr' && argsArr[1] === 'create')
-          return 'https://github.com/o/r/pull/1\n'
+        if (file === 'git' && argsArr[0] === 'remote' && argsArr[1] === 'get-url')
+          return 'https://github.com/owner/repo.git'
         return ''
+      })
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({ html_url: 'https://github.com/o/r/pull/1' }),
       })
       mockExistsSync.mockReturnValue(false)
 
@@ -1255,7 +1294,7 @@ describe('runPrStage', () => {
       expect(result.report).toContain('Title: feat: implement changes')
     })
 
-    it('should pass title as arg array element without shell escaping', () => {
+    it('should pass title as arg array element without shell escaping', async () => {
       setupPrMocks()
       mockExistsSync.mockImplementation((p: unknown) => String(p).endsWith('task.md'))
       mockReadFileSync.mockImplementation((p: unknown) => {
@@ -1263,16 +1302,15 @@ describe('runPrStage', () => {
         return ''
       })
 
-      runPrStage('/fake/task-dir', '/tmp/pr.md', '/fake/cwd')
+      const result = await runPrStage('/fake/task-dir', '/tmp/pr.md', '/fake/cwd')
 
-      const prCreateCall = mockExecFileSync.mock.calls.find(
-        (c) => c[0] === 'gh' && (c[1] as string[])?.[1] === 'create',
-      )
-      expect(prCreateCall).toBeDefined()
-      const args = prCreateCall![1] as string[]
-      const titleIdx = args.indexOf('--title')
-      // Title is passed as-is in the arg array (no shell escaping needed)
-      expect(args[titleIdx + 1]).toContain('fix "broken" login form')
+      // The fetch should have been called with the title
+      expect(mockFetch).toHaveBeenCalled()
+      const fetchCall = mockFetch.mock.calls[0]
+      const body = JSON.parse(fetchCall[1].body as string)
+      // Title should be passed as-is (no shell escaping needed)
+      expect(body.title).toContain('fix "broken" login form')
+      expect(result.created).toBe(true)
     })
 
     it('should lowercase the PR title from task.md', async () => {
