@@ -23,6 +23,9 @@ import {
   RotateCcw,
   CircleDot,
   Siren,
+  Clock,
+  AlertCircle,
+  RefreshCw,
 } from 'lucide-react'
 
 interface TaskListProps {
@@ -178,10 +181,16 @@ export function TaskList({
                     </span>
                   )}
 
+                  {/* Gate badges */}
                   {task.column === 'gate-waiting' && task.gateType === 'hard-stop' ? (
-                    <span className="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-red-600 text-white text-xs font-bold">
-                      <Siren className="w-3.5 h-3.5" />
+                    <span className="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded bg-red-600 text-white text-xs font-bold">
+                      <Siren className="w-3 h-3" />
                       HARD STOP
+                    </span>
+                  ) : task.column === 'gate-waiting' && task.gateType === 'risk-gated' ? (
+                    <span className="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded bg-yellow-600 text-white text-xs font-bold">
+                      <AlertCircle className="w-3 h-3" />
+                      RISK GATED
                     </span>
                   ) : (
                     <span
@@ -198,6 +207,32 @@ export function TaskList({
                     >
                       {task.column === 'gate-waiting' && <AlertTriangle className="w-3.5 h-3.5" />}
                       {indicator.label}
+                    </span>
+                  )}
+
+                  {/* Sub-status badges - show important states */}
+                  {task.isTimeout && (
+                    <span className="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded bg-orange-600 text-white text-xs font-bold">
+                      <Clock className="w-3 h-3" />
+                      TIMEOUT
+                    </span>
+                  )}
+                  {task.isExhausted && (
+                    <span className="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded bg-red-600 text-white text-xs font-bold">
+                      <RefreshCw className="w-3 h-3" />
+                      EXHAUSTED
+                    </span>
+                  )}
+                  {task.isSupervisorError && (
+                    <span className="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded bg-red-600 text-white text-xs font-bold">
+                      <AlertCircle className="w-3 h-3" />
+                      ERROR
+                    </span>
+                  )}
+                  {task.clarifyWaiting && (
+                    <span className="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded bg-blue-600 text-white text-xs font-bold">
+                      <AlertCircle className="w-3 h-3" />
+                      NEEDS ANSWER
                     </span>
                   )}
 
