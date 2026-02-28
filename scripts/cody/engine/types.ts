@@ -52,6 +52,12 @@ export interface StageDefinition {
   advisory?: boolean
   preExecute?: StagePreExecute
   /**
+   * Minimum complexity score (1-100) required for this stage to run.
+   * If the task's complexity is below this threshold, the stage is skipped.
+   * Stages with minComplexity=0 (or undefined) always run.
+   */
+  minComplexity?: number
+  /**
    * Called when agent exits 0 but doesn't produce the expected output file.
    * Returns the fallback content to write, or null to proceed with normal retry/fail.
    */

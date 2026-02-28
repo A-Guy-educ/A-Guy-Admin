@@ -53,13 +53,26 @@ export async function executePostAction(
     case 'resolve-profile': {
       const taskDef = readTask(ctx.taskDir)
       if (taskDef) {
+        // Apply --complexity override if provided (for testing/debugging)
+        if (ctx.input.complexityOverride !== undefined && taskDef.complexity === undefined) {
+          taskDef.complexity = ctx.input.complexityOverride
+          taskDef.complexity_reasoning = `Override via --complexity=${ctx.input.complexityOverride}`
+          console.log(`  ℹ️ Applied complexity override: ${ctx.input.complexityOverride}`)
+        }
         // Update ctx.taskDef so subsequent post-actions can access it
         ctx.taskDef = taskDef
-        const { resolvePipelineProfile } = await import('../pipeline-utils')
+        const { resolvePipelineProfile, getComplexityTier } = await import('../pipeline-utils')
         ctx.profile = resolvePipelineProfile(taskDef)
         // Signal engine to rebuild pipeline with new profile (two-phase construction)
         ctx.pipelineNeedsRebuild = true
-        console.log(`  ℹ️ Resolved profile: ${ctx.profile}`)
+        if (taskDef.complexity !== undefined) {
+          const tier = getComplexityTier(taskDef.complexity)
+          console.log(`  ℹ️ Complexity: ${taskDef.complexity} (${tier}) → profile: ${ctx.profile}`)
+        } else {
+          console.log(
+            `  ℹ️ Resolved profile: ${ctx.profile} (no complexity score, using legacy heuristic)`,
+          )
+        }
 
         // Create stub promoted files for stages in skip_stages
         // The skip condition checks file existence, so we must ensure the file exists

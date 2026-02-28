@@ -110,6 +110,7 @@ Options:
   --hard-stop            Hard stop on failure
   --local                Run in local mode (skip GitHub API)
   --clarify              Run clarify stage
+  --complexity <1-100>   Override complexity score (for testing)
 
 Examples:
   pnpm tsx scripts/cody/entry.ts --task-id 260225-my-task --mode full
@@ -363,6 +364,12 @@ async function runImplMode(ctx: PipelineContext): Promise<void> {
   }
   if (!taskDef) {
     throw new Error(`task.json not found. Run spec pipeline first.`)
+  }
+
+  // Apply --complexity override if provided
+  if (ctx.input.complexityOverride !== undefined && !taskDef.complexity) {
+    taskDef.complexity = ctx.input.complexityOverride
+    taskDef.complexity_reasoning = `Override via --complexity=${ctx.input.complexityOverride}`
   }
 
   // Check spec_only pipeline

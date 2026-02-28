@@ -52,6 +52,60 @@ export interface InputQuality {
   reasoning: string
 }
 
+// --- Complexity scoring: determines which pipeline stages run ---
+// Each stage has a minComplexity threshold. If a task's complexity score
+// is below the threshold, the stage is skipped.
+
+export const COMPLEXITY_MIN = 1
+export const COMPLEXITY_MAX = 100
+
+/**
+ * Minimum complexity score required for each pipeline stage.
+ * Stages with threshold 0 always run. Higher thresholds = only complex tasks.
+ *
+ * Tiers:
+ *   1-9:   "Trivial"      → taskify → build → commit → verify → pr
+ *   10-19: "Simple"        → + architect
+ *   20-34: "Moderate"      → + auditor, apply-audit
+ *   35-49: "Complex"       → + spec, gap
+ *   50+:   "Very Complex"  → + plan-gap, clarify
+ */
+export const STAGE_COMPLEXITY_THRESHOLDS: Record<string, number> = {
+  taskify: 0,
+  spec: 35,
+  gap: 40,
+  clarify: 60,
+  architect: 10,
+  'plan-gap': 50,
+  build: 0,
+  commit: 0,
+  verify: 0,
+  auditor: 20,
+  'apply-audit': 20,
+  pr: 0,
+}
+
+/** Named complexity tiers for display/logging */
+export type ComplexityTier = 'trivial' | 'simple' | 'moderate' | 'complex' | 'very_complex'
+
+export function getComplexityTier(score: number): ComplexityTier {
+  if (score < 10) return 'trivial'
+  if (score < 20) return 'simple'
+  if (score < 35) return 'moderate'
+  if (score < 50) return 'complex'
+  return 'very_complex'
+}
+
+/**
+ * Get stages that would run for a given complexity score.
+ * Useful for logging and debugging.
+ */
+export function getStagesForComplexity(score: number): string[] {
+  return Object.entries(STAGE_COMPLEXITY_THRESHOLDS)
+    .filter(([, threshold]) => score >= threshold)
+    .map(([stage]) => stage)
+}
+
 // --- Control mode: determines pipeline autonomy level ---
 export type ControlMode = 'auto' | 'risk-gated' | 'hard-stop'
 
@@ -75,6 +129,10 @@ export function resolveControlMode(taskDef: TaskDefinition, override?: ControlMo
 
 /**
  * Lightweight tasks: simple fixes that skip heavyweight stages (spec, gap, plan-gap, auditor, apply-audit)
+ *
+ * When complexity score is available, derives profile from it:
+ *   complexity < 35 → lightweight (no spec/gap needed)
+ *   complexity >= 35 → standard (full pipeline)
  */
 export function resolvePipelineProfile(taskDef: TaskDefinition): PipelineProfile {
   // Agent explicit override always wins
@@ -82,8 +140,13 @@ export function resolvePipelineProfile(taskDef: TaskDefinition): PipelineProfile
     return taskDef.pipeline_profile
   }
 
-  // Lightweight: low-risk bug fixes, refactors, and ops tasks
-  // These are simple changes that don't need the full pipeline
+  // When complexity score is available, derive profile from it
+  if (taskDef.complexity !== undefined) {
+    // Threshold 35 = where spec stage kicks in (the dividing line)
+    return taskDef.complexity < STAGE_COMPLEXITY_THRESHOLDS.spec ? 'lightweight' : 'standard'
+  }
+
+  // Fallback: legacy heuristic for tasks without complexity score
   if (taskDef.risk_level === 'low' && LIGHTWEIGHT_TASK_TYPES.includes(taskDef.task_type)) {
     return 'lightweight'
   }
@@ -112,6 +175,10 @@ export interface TaskDefinition {
   assumptions: string[]
   input_quality?: InputQuality
   pipeline_profile?: (typeof VALID_PIPELINE_PROFILES)[number]
+  /** Complexity score (1-100) — determines which pipeline stages run */
+  complexity?: number
+  /** Brief explanation of complexity scoring breakdown */
+  complexity_reasoning?: string
 }
 
 // Pipeline consistency: task_type → allowed pipeline values
@@ -213,7 +280,27 @@ export function normalizeTask(raw: Record<string, unknown>): Record<string, unkn
     data.assumptions = []
   }
 
-  // 6. Default input_quality if missing (for backward compatibility)
+  // 6. Normalize complexity score
+  if (data.complexity !== undefined) {
+    if (typeof data.complexity === 'string') {
+      const parsed = parseInt(data.complexity as string, 10)
+      if (!isNaN(parsed)) {
+        data.complexity = parsed
+      }
+    }
+    // Clamp to valid range
+    if (typeof data.complexity === 'number') {
+      data.complexity = Math.max(
+        COMPLEXITY_MIN,
+        Math.min(COMPLEXITY_MAX, Math.round(data.complexity)),
+      )
+    }
+  }
+  if (typeof data.complexity_reasoning !== 'string' && data.complexity_reasoning !== undefined) {
+    data.complexity_reasoning = String(data.complexity_reasoning)
+  }
+
+  // 7. Default input_quality if missing (for backward compatibility)
   if (!data.input_quality || typeof data.input_quality !== 'object') {
     data.input_quality = {
       level: 'raw_idea',
@@ -346,6 +433,21 @@ export function validateTask(raw: unknown): ValidationResult {
         errors.push(`Invalid input_quality.reasoning: must be a string`)
       }
     }
+  }
+
+  // Validate complexity if present
+  if (data.complexity !== undefined) {
+    if (typeof data.complexity !== 'number' || !Number.isInteger(data.complexity)) {
+      errors.push(`Invalid complexity: "${data.complexity}". Must be an integer`)
+    } else if (data.complexity < COMPLEXITY_MIN || data.complexity > COMPLEXITY_MAX) {
+      errors.push(
+        `Invalid complexity: ${data.complexity}. Must be between ${COMPLEXITY_MIN} and ${COMPLEXITY_MAX}`,
+      )
+    }
+  }
+
+  if (data.complexity_reasoning !== undefined && typeof data.complexity_reasoning !== 'string') {
+    errors.push(`Invalid complexity_reasoning: must be a string`)
   }
 
   // Pipeline consistency check

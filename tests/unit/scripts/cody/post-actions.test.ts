@@ -7,6 +7,27 @@ vi.mock('../../../../scripts/cody/pipeline-utils', () => ({
   resolvePipelineProfile: vi.fn(() => 'lightweight'),
   resolveControlMode: vi.fn(() => 'risk-gated'),
   stageOutputFile: vi.fn((taskDir: string, stage: string) => `${taskDir}/${stage}.json`),
+  getComplexityTier: vi.fn((score: number) => {
+    if (score < 10) return 'trivial'
+    if (score < 20) return 'simple'
+    if (score < 35) return 'moderate'
+    if (score < 50) return 'complex'
+    return 'very_complex'
+  }),
+  STAGE_COMPLEXITY_THRESHOLDS: {
+    taskify: 0,
+    spec: 35,
+    gap: 40,
+    clarify: 60,
+    architect: 10,
+    'plan-gap': 50,
+    build: 0,
+    commit: 0,
+    verify: 0,
+    auditor: 20,
+    'apply-audit': 20,
+    pr: 0,
+  },
 }))
 
 vi.mock('../../../../scripts/cody/clarify-workflow', () => ({

@@ -37,6 +37,8 @@ export interface CodyInput {
   controlMode?: 'auto' | 'risk-gated' | 'hard-stop'
   // Pipeline version: branch, tag, or commit to overlay (overrides CODY_DEFAULT_VERSION)
   version?: string
+  // Complexity score override (1-100) for testing/debugging
+  complexityOverride?: number
 }
 
 export interface CodyPipelineStatus {
@@ -538,6 +540,15 @@ export function parseCliArgs(argv: string[]): CodyInput {
     } else if (arg === '--clarify') {
       input.clarify = true
       cliSet.add('clarify')
+    } else if (arg === '--complexity' && normalized[i + 1]) {
+      const val = parseInt(normalized[i + 1], 10)
+      if (!isNaN(val) && val >= 1 && val <= 100) {
+        input.complexityOverride = val
+        cliSet.add('complexityOverride')
+      } else {
+        throw new Error(`Invalid --complexity value: ${normalized[i + 1]}. Must be 1-100`)
+      }
+      i++
     }
   }
 
@@ -575,6 +586,12 @@ export function parseCliArgs(argv: string[]): CodyInput {
   }
   if (!cliSet.has('version') && process.env.VERSION) {
     input.version = process.env.VERSION
+  }
+  if (!cliSet.has('complexityOverride') && process.env.COMPLEXITY) {
+    const val = parseInt(process.env.COMPLEXITY, 10)
+    if (!isNaN(val) && val >= 1 && val <= 100) {
+      input.complexityOverride = val
+    }
   }
   // Store raw comment body for gate approval detection (only for comment triggers)
   if (!input.commentBody && process.env.COMMENT_BODY && input.triggerType === 'comment') {
