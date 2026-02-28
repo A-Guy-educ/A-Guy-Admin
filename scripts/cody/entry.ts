@@ -367,7 +367,7 @@ async function runImplMode(ctx: PipelineContext): Promise<void> {
   }
 
   // Apply --complexity override if provided
-  if (ctx.input.complexityOverride !== undefined && !taskDef.complexity) {
+  if (ctx.input.complexityOverride !== undefined && taskDef.complexity === undefined) {
     taskDef.complexity = ctx.input.complexityOverride
     taskDef.complexity_reasoning = `Override via --complexity=${ctx.input.complexityOverride}`
   }

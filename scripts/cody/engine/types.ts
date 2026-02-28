@@ -52,9 +52,9 @@ export interface StageDefinition {
   advisory?: boolean
   preExecute?: StagePreExecute
   /**
-   * Minimum complexity score (1-100) required for this stage to run.
-   * If the task's complexity is below this threshold, the stage is skipped.
-   * Stages with minComplexity=0 (or undefined) always run.
+   * Minimum complexity score (1-100) for this stage to run.
+   * Informational only — actual routing uses STAGE_COMPLEXITY_THRESHOLDS
+   * in skip-conditions.ts. Keep in sync with STAGE_COMPLEXITY_THRESHOLDS.
    */
   minComplexity?: number
   /**

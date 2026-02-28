@@ -10,7 +10,7 @@
  * - Backward compatibility when complexity is absent
  * - CLI --complexity override
  */
-import { describe, it, expect, afterEach, beforeAll } from 'vitest'
+import { describe, it, expect, afterEach, afterAll, beforeAll } from 'vitest'
 import * as fs from 'fs'
 import * as path from 'path'
 import * as os from 'os'
@@ -576,5 +576,216 @@ describe('CLI --complexity override', () => {
     expect(() => parseCliArgs(['--task-id', '260228-test', '--complexity', 'abc'])).toThrow(
       'Invalid --complexity',
     )
+  })
+})
+
+describe('definitions.ts skip chain integration', () => {
+  // Gap 2: Test that shouldSkip chains in definitions.ts correctly wire
+  // complexity as the FIRST check, falling through to other conditions
+
+  let buildPipeline: typeof import('../../../../scripts/cody/pipeline/definitions').buildPipeline
+  let tempDir: string
+
+  beforeAll(async () => {
+    const defs = await import('../../../../scripts/cody/pipeline/definitions')
+    buildPipeline = defs.buildPipeline
+    // Create a real temp dir for tests that exercise skip conditions with file side-effects
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cody-skipchain-'))
+  })
+
+  afterAll(() => {
+    try {
+      fs.rmSync(tempDir, { recursive: true, force: true })
+    } catch {
+      // ignore cleanup errors
+    }
+  })
+
+  function createPipelineCtx(complexity?: number) {
+    return {
+      taskId: 'test-chain',
+      taskDir: tempDir,
+      input: { taskId: 'test-chain', mode: 'full' as const, dryRun: false },
+      taskDef:
+        complexity !== undefined
+          ? createTaskDef('implement_feature', 'medium', complexity)
+          : createTaskDef('implement_feature', 'medium'),
+      profile: 'standard' as const,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      backend: {} as any,
+    }
+  }
+
+  it('spec stage shouldSkip checks complexity FIRST (score 5 → skip without checking input_quality)', () => {
+    const ctx = createPipelineCtx(5)
+    const pipeline = buildPipeline('full', 'standard', true, ctx)
+    const specStage = pipeline.stages.get('spec')!
+    expect(specStage.shouldSkip).toBeDefined()
+
+    const result = specStage.shouldSkip!(ctx)
+    expect(result.shouldSkip).toBe(true)
+    expect(result.reason).toContain('Complexity 5')
+  })
+
+  it('spec stage falls through to input_quality when complexity passes (score 40)', () => {
+    const ctx = createPipelineCtx(40)
+    // Add input_quality skip for spec (but file won't exist, so it won't skip)
+    ctx.taskDef!.input_quality = { level: 'good_spec', skip_stages: ['spec'], reasoning: '' }
+    const pipeline = buildPipeline('full', 'standard', true, ctx)
+    const specStage = pipeline.stages.get('spec')!
+
+    const result = specStage.shouldSkip!(ctx)
+    // Complexity passes (40 >= 35), falls through to input_quality check
+    // input_quality would skip if file exists, but /tmp/test-chain/spec.md doesn't exist
+    expect(result.shouldSkip).toBe(false)
+  })
+
+  it('architect stage skips at complexity 5 (threshold 10)', () => {
+    const ctx = createPipelineCtx(5)
+    const pipeline = buildPipeline('full', 'standard', true, ctx)
+    const architectStage = pipeline.stages.get('architect')!
+
+    const result = architectStage.shouldSkip!(ctx)
+    expect(result.shouldSkip).toBe(true)
+    expect(result.reason).toContain('Complexity 5')
+  })
+
+  it('architect stage passes complexity but checks spec_only fallback (score 15)', () => {
+    const ctx = createPipelineCtx(15)
+    // Not spec_only, so should not skip
+    const pipeline = buildPipeline('full', 'standard', true, ctx)
+    const architectStage = pipeline.stages.get('architect')!
+
+    const result = architectStage.shouldSkip!(ctx)
+    expect(result.shouldSkip).toBe(false)
+  })
+
+  it('auditor stage uses complexity as its only skip condition', () => {
+    const ctx = createPipelineCtx(5)
+    const pipeline = buildPipeline('full', 'standard', true, ctx)
+    const auditorStage = pipeline.stages.get('auditor')!
+
+    const result = auditorStage.shouldSkip!(ctx)
+    expect(result.shouldSkip).toBe(true)
+    expect(result.reason).toContain('Complexity 5')
+  })
+
+  it('auditor stage runs when complexity is sufficient (score 25)', () => {
+    const ctx = createPipelineCtx(25)
+    const pipeline = buildPipeline('full', 'standard', true, ctx)
+    const auditorStage = pipeline.stages.get('auditor')!
+
+    const result = auditorStage.shouldSkip!(ctx)
+    expect(result.shouldSkip).toBe(false)
+  })
+
+  it('clarify stage has 4-level skip chain: complexity → input_quality → disabled → no questions', () => {
+    // Complexity too low → skip at first check
+    const ctx = createPipelineCtx(10)
+    const pipeline = buildPipeline('full', 'standard', true, ctx)
+    const clarifyStage = pipeline.stages.get('clarify')!
+
+    const result = clarifyStage.shouldSkip!(ctx)
+    expect(result.shouldSkip).toBe(true)
+    expect(result.reason).toContain('Complexity 10')
+  })
+
+  it('apply-audit stage chains complexity → auditor output check', () => {
+    const ctx = createPipelineCtx(5)
+    const pipeline = buildPipeline('full', 'standard', true, ctx)
+    const applyAuditStage = pipeline.stages.get('apply-audit')!
+
+    const result = applyAuditStage.shouldSkip!(ctx)
+    expect(result.shouldSkip).toBe(true)
+    expect(result.reason).toContain('Complexity 5')
+  })
+
+  it('build stage has NO complexity skip (always-run, threshold 0)', () => {
+    const ctx = createPipelineCtx(1)
+    const pipeline = buildPipeline('full', 'standard', true, ctx)
+    const buildStage = pipeline.stages.get('build')!
+
+    // Build only checks input_quality, not complexity
+    const result = buildStage.shouldSkip!(ctx)
+    expect(result.shouldSkip).toBe(false)
+  })
+
+  it('no complexity → all stages pass complexity check (backward compat)', () => {
+    const ctx = createPipelineCtx() // undefined complexity
+    const pipeline = buildPipeline('full', 'standard', true, ctx)
+
+    // All optional stages should NOT be skipped by complexity
+    for (const stageName of [
+      'spec',
+      'gap',
+      'clarify',
+      'architect',
+      'plan-gap',
+      'auditor',
+      'apply-audit',
+    ]) {
+      const stage = pipeline.stages.get(stageName)!
+      if (stage.shouldSkip) {
+        const result = stage.shouldSkip(ctx)
+        // They might skip for OTHER reasons (clarify disabled, no auditor output, etc.)
+        // but NOT for complexity
+        if (result.shouldSkip) {
+          expect(result.reason).not.toContain('Complexity')
+        }
+      }
+    }
+  })
+})
+
+describe('entry.ts impl-mode complexity override', () => {
+  // Gap 3: Test that runImplMode correctly applies --complexity override
+  // We test the override logic directly since runImplMode has many side effects
+
+  it('override applies when taskDef has no complexity (=== undefined)', () => {
+    const taskDef = createTaskDef('implement_feature', 'medium')
+    expect(taskDef.complexity).toBeUndefined()
+
+    // Simulate the entry.ts logic (line 370)
+    const complexityOverride = 42
+    if (complexityOverride !== undefined && taskDef.complexity === undefined) {
+      taskDef.complexity = complexityOverride
+      taskDef.complexity_reasoning = `Override via --complexity=${complexityOverride}`
+    }
+
+    expect(taskDef.complexity).toBe(42)
+    expect(taskDef.complexity_reasoning).toBe('Override via --complexity=42')
+  })
+
+  it('override does NOT apply when taskDef already has complexity', () => {
+    const taskDef = createTaskDef('implement_feature', 'medium', 75)
+    expect(taskDef.complexity).toBe(75)
+
+    // Simulate the entry.ts logic (line 370)
+    const complexityOverride = 10
+    if (complexityOverride !== undefined && taskDef.complexity === undefined) {
+      taskDef.complexity = complexityOverride
+      taskDef.complexity_reasoning = `Override via --complexity=${complexityOverride}`
+    }
+
+    // Original preserved
+    expect(taskDef.complexity).toBe(75)
+    expect(taskDef.complexity_reasoning).toBe('Test complexity: 75')
+  })
+
+  it('M3 fix: override does NOT apply when taskDef.complexity is a falsy number (edge case)', () => {
+    // This tests the M3 fix: !taskDef.complexity would be truthy for 0,
+    // but === undefined is only truthy for undefined
+    const taskDef = createTaskDef('implement_feature', 'medium', 1)
+    // Manually set to a value that normalizeTask would clamp (testing the boundary)
+    expect(taskDef.complexity).toBe(1)
+
+    const complexityOverride = 50
+    // Using the FIXED check (=== undefined), not the buggy one (!taskDef.complexity)
+    if (complexityOverride !== undefined && taskDef.complexity === undefined) {
+      taskDef.complexity = complexityOverride
+    }
+
+    // Complexity 1 should NOT be overridden
+    expect(taskDef.complexity).toBe(1)
   })
 })

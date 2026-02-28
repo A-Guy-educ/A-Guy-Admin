@@ -63,12 +63,14 @@ export const COMPLEXITY_MAX = 100
  * Minimum complexity score required for each pipeline stage.
  * Stages with threshold 0 always run. Higher thresholds = only complex tasks.
  *
- * Tiers:
- *   1-9:   "Trivial"      → taskify → build → commit → verify → pr
- *   10-19: "Simple"        → + architect
- *   20-34: "Moderate"      → + auditor, apply-audit
- *   35-49: "Complex"       → + spec, gap
- *   50+:   "Very Complex"  → + plan-gap, clarify
+ * Tiers (stages activate at their individual thresholds, not all at tier boundary):
+ *   1-9:   "Trivial"      → taskify, build, commit, verify, pr
+ *   10-19: "Simple"        → + architect (10)
+ *   20-34: "Moderate"      → + auditor (20), apply-audit (20)
+ *   35-39: "Complex"       → + spec (35)
+ *   40-49: "Complex"       → + gap (40)
+ *   50-59: "Very Complex"  → + plan-gap (50)
+ *   60+:   "Very Complex"  → + clarify (60)
  */
 export const STAGE_COMPLEXITY_THRESHOLDS: Record<string, number> = {
   taskify: 0,
