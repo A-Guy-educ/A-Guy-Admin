@@ -14,6 +14,7 @@ import {
   GitPullRequest,
   ExternalLink,
   Play,
+  Square,
   Bot,
   Loader2,
   CheckCircle2,
@@ -27,8 +28,11 @@ import {
 interface TaskListProps {
   tasks: CodyTask[]
   selectedTask?: CodyTask | null
+  executingTaskId?: string | null
+  mergingTaskId?: string | null
   onTaskSelect?: (task: CodyTask | null) => void
   onExecuteTask?: (taskId: string) => void
+  onStopTask?: (task: CodyTask) => void
   onApproveReview?: (task: CodyTask) => void
 }
 
@@ -88,8 +92,11 @@ const statusIndicator: Record<
 export function TaskList({
   tasks,
   selectedTask,
+  executingTaskId,
+  mergingTaskId,
   onTaskSelect,
   onExecuteTask,
+  onStopTask,
   onApproveReview,
 }: TaskListProps) {
   const handleTaskClick = useCallback(
@@ -117,6 +124,8 @@ export function TaskList({
           const isSelected = task.id === selectedTask?.id
           const isUnassigned = !task.assignees || task.assignees.length === 0
           const canExecute = isUnassigned && task.state === 'open' && onExecuteTask
+          const isExecuting = executingTaskId === task.id
+          const isMerging = mergingTaskId === task.id
           const hasPR = !!task.associatedPR
           const isHardStop = task.column === 'gate-waiting' && task.gateType === 'hard-stop'
 
@@ -152,12 +161,18 @@ export function TaskList({
               <div className="flex items-center gap-2 pl-2 sm:pl-9">
                 {/* Left side: Issue#, CODY, Status, Labels, Time */}
                 <div className="flex items-center gap-2 flex-wrap flex-1">
-                  <span className="text-sm font-mono font-medium text-zinc-500 shrink-0 w-10">
+                  <span
+                    title="Issue number"
+                    className="text-sm font-mono font-medium text-zinc-500 shrink-0 w-10"
+                  >
                     #{task.issueNumber}
                   </span>
 
                   {task.isCodyAssigned && (
-                    <span className="shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded bg-blue-600 text-white text-xs font-bold">
+                    <span
+                      title="Assigned to Cody AI"
+                      className="shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded bg-blue-600 text-white text-xs font-bold"
+                    >
                       <Bot className="w-3 h-3" />
                       CODY
                     </span>
@@ -204,6 +219,7 @@ export function TaskList({
                       href={task.associatedPR!.html_url}
                       target="_blank"
                       rel="noopener noreferrer"
+                      title="Open PR in GitHub"
                       onClick={(e) => e.stopPropagation()}
                       className="inline-flex items-center gap-1 text-sm text-purple-400 hover:text-purple-300"
                     >
@@ -227,29 +243,58 @@ export function TaskList({
                     <Button
                       variant="ghost"
                       size="sm"
+                      disabled={isMerging}
+                      title="Approve and merge PR"
                       onClick={(e) => {
                         e.stopPropagation()
                         onApproveReview(task)
                       }}
-                      className="h-7 text-sm px-2 gap-1 text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/30 hover:border-emerald-500/50 hover:shadow-lg cursor-pointer"
+                      className="h-7 text-sm px-2 gap-1 text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/30 hover:border-emerald-500/50 hover:shadow-lg cursor-pointer disabled:opacity-50"
                     >
-                      <GitPullRequest className="w-4 h-4" />
+                      {isMerging ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <GitPullRequest className="w-4 h-4" />
+                      )}
                     </Button>
                   )}
 
-                  {canExecute && (
+                  {/* Run/Stop toggle - only show stop if there's a running workflow */}
+                  {(task.column === 'building' &&
+                    task.workflowRun?.status === 'in_progress' &&
+                    onStopTask) ||
+                  (canExecute && onExecuteTask) ? (
                     <Button
                       variant="ghost"
                       size="sm"
+                      disabled={isExecuting}
+                      title={
+                        task.column === 'building' ? 'Stop running task' : 'Start running this task'
+                      }
                       onClick={(e) => {
                         e.stopPropagation()
-                        onExecuteTask(task.id)
+                        if (task.column === 'building') {
+                          onStopTask?.(task)
+                        } else if (canExecute) {
+                          onExecuteTask?.(task.id)
+                        }
                       }}
-                      className="h-7 text-sm px-2 gap-1 text-blue-400 bg-blue-500/10 hover:bg-blue-500/30 hover:border-blue-500/50 hover:shadow-lg cursor-pointer"
+                      className={cn(
+                        'h-7 text-sm px-2 gap-1 cursor-pointer disabled:opacity-50',
+                        task.column === 'building'
+                          ? 'text-red-400 bg-red-500/10 hover:bg-red-500/30 hover:border-red-500/50 hover:shadow-lg'
+                          : 'text-blue-400 bg-blue-500/10 hover:bg-blue-500/30 hover:border-blue-500/50 hover:shadow-lg',
+                      )}
                     >
-                      <Play className="w-4 h-4" />
+                      {isExecuting ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : task.column === 'building' ? (
+                        <Square className="w-4 h-4" />
+                      ) : (
+                        <Play className="w-4 h-4" />
+                      )}
                     </Button>
-                  )}
+                  ) : null}
                 </div>
               </div>
             </div>
