@@ -6,11 +6,13 @@
  */
 'use client'
 
+import { useState } from 'react'
 import { formatRelativeTime } from '../utils'
 import type { CodyTask, GitHubComment } from '../types'
 import { PipelineStatus } from './PipelineStatus'
 import { CommentEditor } from './CommentEditor'
 import { CommentList } from './CommentList'
+import { TaskPreviewTab } from './TaskPreviewTab'
 import { Button } from '@/ui/web/components/button'
 import { Badge } from '@/ui/web/components/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/ui/web/components/avatar'
@@ -50,6 +52,8 @@ export function TaskDetail({ task, onClose, onRefresh }: TaskDetailProps) {
     refetch,
     isLoading: isDetailsLoading,
   } = useTaskDetails(task?.issueNumber ?? null)
+
+  const [activeTab, setActiveTab] = useState<'comments' | 'changes' | 'docs'>('comments')
 
   const taskActions = useTaskActions({
     issueNumber: task?.issueNumber ?? 0,
@@ -248,18 +252,59 @@ export function TaskDetail({ task, onClose, onRefresh }: TaskDetailProps) {
           </div>
         )}
 
-        {/* Comments Section - chat-like */}
-        <div className="flex-1 flex flex-col min-h-[400px] mt-4">
-          <h3 className="text-xs font-semibold text-muted-foreground uppercase mb-2 shrink-0">
+        {/* Tab Navigation */}
+        <div className="flex border-b border-border mb-4 gap-4">
+          <button
+            onClick={() => setActiveTab('comments')}
+            className={`px-3 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'comments'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
             Comments
-          </h3>
-          <div className="flex-1 overflow-y-auto min-h-0">
-            <CommentList comments={fullDetails?.comments || []} loading={isDetailsLoading} />
-          </div>
-          <div className="shrink-0 mt-2">
-            <CommentEditor issueNumber={task.issueNumber} onCommentPosted={() => refetch()} />
-          </div>
+          </button>
+          <button
+            onClick={() => setActiveTab('changes')}
+            className={`px-3 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'changes'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Changes
+          </button>
+          <button
+            onClick={() => setActiveTab('docs')}
+            className={`px-3 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'docs'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Docs
+          </button>
         </div>
+
+        {activeTab === 'comments' && (
+          <div className="flex-1 flex flex-col min-h-[400px] mt-4">
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase mb-2 shrink-0">
+              Comments
+            </h3>
+            <div className="flex-1 overflow-y-auto min-h-0">
+              <CommentList comments={fullDetails?.comments || []} loading={isDetailsLoading} />
+            </div>
+            <div className="shrink-0 mt-2">
+              <CommentEditor issueNumber={task.issueNumber} onCommentPosted={() => refetch()} />
+            </div>
+          </div>
+        )}
+
+        {(activeTab === 'changes' || activeTab === 'docs') && (
+          <div className="flex-1 min-h-0">
+            <TaskPreviewTab task={task} activeTab={activeTab as 'changes' | 'docs'} />
+          </div>
+        )}
 
         {/* Action Panel */}
         <div className="p-3 border-t border-border bg-muted/20">
