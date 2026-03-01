@@ -9,6 +9,7 @@
 import { useCallback } from 'react'
 import { cn, formatRelativeTime } from '../utils'
 import { getGitHubIssueUrl } from '../constants'
+import { MergeButton } from './MergeButton'
 import type { CodyTask, ColumnId } from '../types'
 import { Button } from '@/ui/web/components/button'
 import {
@@ -281,25 +282,12 @@ export function TaskList({
                   )}
 
                   {task.column === 'review' && hasPR && onApproveReview && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      disabled={isMerging}
-                      title="Approve and merge PR"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onApproveReview(task)
-                      }}
-                      className="h-7 text-sm px-2 gap-1 text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/30 hover:border-emerald-500/50 hover:shadow-lg cursor-pointer disabled:opacity-50"
-                    >
-                      {isMerging ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <GitPullRequest className="w-4 h-4" />
-                      )}
-                    </Button>
+                    <MergeButton
+                      prNumber={task.associatedPR!.number}
+                      isMerging={isMerging}
+                      onMerge={() => onApproveReview(task)}
+                    />
                   )}
-
                   {/* Run/Stop toggle - only show stop if there's a running workflow */}
                   {(task.column === 'building' &&
                     task.workflowRun?.status === 'in_progress' &&

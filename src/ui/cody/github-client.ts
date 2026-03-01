@@ -1135,3 +1135,75 @@ export function getCacheStats(): { size: number; keys: string[] } {
     keys: Array.from(cache.keys()),
   }
 }
+
+// ============ PR CI Status ============
+
+/**
+ * Fetch the combined CI status for a PR's head commit.
+ * Uses the combined status API + check runs to determine overall state.
+ */
+export async function fetchPRCIStatus(
+  prNumber: number,
+): Promise<{ ciStatus: 'pending' | 'success' | 'failure' | 'running'; mergeable: boolean }> {
+  const cacheKey = `pr-ci-status:${prNumber}`
+  const cached = getCached<{
+    ciStatus: 'pending' | 'success' | 'failure' | 'running'
+    mergeable: boolean
+  }>(cacheKey)
+  if (cached) return cached
+
+  const octokit = getOctokit()
+
+  try {
+    // 1. Get the PR to find head SHA and mergeable state
+    const { data: pr } = await octokit.pulls.get({
+      owner: GITHUB_OWNER,
+      repo: GITHUB_REPO,
+      pull_number: prNumber,
+    })
+
+    const sha = pr.head.sha
+    const mergeable = pr.mergeable ?? false
+
+    // 2. Get check runs for the head SHA
+    const { data: checkRuns } = await octokit.checks.listForRef({
+      owner: GITHUB_OWNER,
+      repo: GITHUB_REPO,
+      ref: sha,
+    })
+
+    // 3. Determine overall CI status
+    let ciStatus: 'pending' | 'success' | 'failure' | 'running' = 'pending'
+
+    if (checkRuns.total_count === 0) {
+      ciStatus = 'pending'
+    } else {
+      const hasFailure = checkRuns.check_runs.some(
+        (run) => run.conclusion === 'failure' || run.conclusion === 'timed_out',
+      )
+      const hasRunning = checkRuns.check_runs.some(
+        (run) => run.status === 'in_progress' || run.status === 'queued',
+      )
+      const allSuccess = checkRuns.check_runs.every(
+        (run) => run.conclusion === 'success' || run.conclusion === 'skipped',
+      )
+
+      if (hasFailure) {
+        ciStatus = 'failure'
+      } else if (hasRunning) {
+        ciStatus = 'running'
+      } else if (allSuccess) {
+        ciStatus = 'success'
+      }
+    }
+
+    const result = { ciStatus, mergeable: mergeable && ciStatus === 'success' }
+
+    // Short cache — CI status changes frequently
+    setCache(cacheKey, 15_000, result) // 15 seconds
+    return result
+  } catch (error) {
+    console.error('[Cody] Error fetching PR CI status:', error)
+    return { ciStatus: 'pending', mergeable: false }
+  }
+}

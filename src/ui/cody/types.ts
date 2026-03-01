@@ -188,8 +188,9 @@ export interface GitHubPR {
   head: { ref: string; sha: string }
   merged_at: string | null
   html_url: string
+  ciStatus?: 'pending' | 'success' | 'failure' | 'running'
+  mergeable?: boolean
 }
-
 export interface CodyTask {
   id: string // taskId
   issueNumber: number

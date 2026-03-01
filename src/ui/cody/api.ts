@@ -225,8 +225,13 @@ export const prsApi = {
     const data = await handleResponse<{ files: FileChange[] }>(res)
     return data.files
   },
+  ciStatus: async (
+    prNumber: number,
+  ): Promise<{ ciStatus: 'pending' | 'success' | 'failure' | 'running'; mergeable: boolean }> => {
+    const res = await fetch(`${API_BASE}/prs/status?prNumber=${prNumber}`)
+    return handleResponse(res)
+  },
 }
-
 // ============ Task Documents API ============
 
 export const taskDocsApi = {
@@ -265,12 +270,10 @@ export const publishApi = {
     const res = await fetch(`${API_BASE}/publish`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ confirm: true }),
     })
     return handleResponse(res)
   },
 }
-
 // ============ Combined API ============
 
 export const codyApi = {

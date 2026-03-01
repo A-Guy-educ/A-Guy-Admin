@@ -77,9 +77,9 @@ export function EnvironmentToolbar() {
             <DialogHeader>
               <DialogTitle>Publish to Production?</DialogTitle>
               <DialogDescription>
-                This will create a PR from dev → main and auto-approve it. Once CI passes, it will
-                be merged and deployed to production.
-              </DialogDescription>
+                This will create a publish issue that triggers a PR from dev → main. Once CI passes,
+                use the Merge button to finalize the deployment.
+              </DialogDescription>{' '}
             </DialogHeader>
             <div className="flex justify-end gap-2 mt-4">
               <Button variant="outline" onClick={() => setShowConfirmDialog(false)}>

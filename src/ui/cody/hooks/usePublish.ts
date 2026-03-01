@@ -2,7 +2,7 @@
  * @fileType hook
  * @domain cody
  * @pattern usePublish
- * @ai-summary Hook for publishing dev to production (creates PR + approves)
+ * @ai-summary Hook for publishing dev to production (creates issue with publish label)
  */
 'use client'
 
@@ -14,16 +14,16 @@ export function usePublish() {
   return useMutation({
     mutationFn: () => publishApi.publish(),
     onSuccess: (data) => {
-      const response = data as { message?: string; prUrl?: string; prNumber?: number }
-      if (response.prUrl) {
-        toast.success(`PR #${response.prNumber} created and approved`, {
+      const response = data as { message?: string; issueUrl?: string; issueNumber?: number }
+      if (response.issueUrl) {
+        toast.success(response.message || `Publish issue #${response.issueNumber} created`, {
           action: {
-            label: 'View PR',
-            onClick: () => window.open(response.prUrl!, '_blank'),
+            label: 'View Issue',
+            onClick: () => window.open(response.issueUrl!, '_blank'),
           },
         })
       } else {
-        toast.success(response.message || 'Published to production')
+        toast.success(response.message || 'Publish initiated')
       }
     },
     onError: (error: Error) => {
