@@ -311,19 +311,26 @@ export async function runPrStage(
   outputFile: string,
   cwd: string = process.cwd(),
   issueNumber?: number,
+  options?: {
+    fresh?: boolean // Force create new PR (new branch)
+  },
 ): Promise<PrResult> {
   console.log('\n📝 Creating PR (scripted)...\n')
 
   const branch = getBranchName(cwd)
   const defaultBranch = getDefaultBranch(cwd)
 
-  // Step 1: Check for existing PR
-  const existingUrl = getExistingPr(branch, cwd)
-  if (existingUrl) {
+  // Step 1: Check for existing PR (unless --fresh is set)
+  const existingUrl = !options?.fresh ? getExistingPr(branch, cwd) : null
+  if (existingUrl && !options?.fresh) {
     console.log(`  PR already exists: ${existingUrl}`)
     const report = `# PR Stage\n\nExisting PR found: ${existingUrl}\n`
     fs.writeFileSync(outputFile, report)
     return { created: false, url: existingUrl, report }
+  }
+
+  if (options?.fresh && existingUrl) {
+    console.log(`  --fresh flag: creating new PR (ignoring existing: ${existingUrl})`)
   }
 
   // Step 2: Push branch (skip pre-push hooks to avoid blocking on unrelated checks)

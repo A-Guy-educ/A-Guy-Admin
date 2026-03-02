@@ -111,6 +111,8 @@ Options:
   --local                Run in local mode (skip GitHub API)
   --clarify              Run clarify stage
   --complexity <1-100>   Override complexity score (for testing)
+  --is-pull-request      Comment was on a PR (not issue)
+  --fresh                Force create new PR (new branch)
 
 Examples:
   pnpm tsx scripts/cody/entry.ts --task-id 260225-my-task --mode full

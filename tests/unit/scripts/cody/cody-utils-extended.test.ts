@@ -959,3 +959,60 @@ describe('isValidStage', () => {
     expect(isValidStage('BUILD')).toBe(false)
   })
 })
+
+// ---------------------------------------------------------------------------
+// --fresh and --is-pull-request flags
+// ---------------------------------------------------------------------------
+
+describe('--fresh and --is-pull-request CLI flags', () => {
+  it('should parse --fresh flag', () => {
+    const result = parseCliArgs(['--task-id', '260218-test', '--fresh'])
+    expect(result.fresh).toBe(true)
+  })
+
+  it('should parse --is-pull-request flag', () => {
+    const result = parseCliArgs(['--task-id', '260218-test', '--is-pull-request'])
+    expect(result.isPullRequest).toBe(true)
+  })
+
+  it('should combine --fresh with --from', () => {
+    const result = parseCliArgs(['--task-id', '260218-test', '--fresh', '--from', 'build'])
+    expect(result.fresh).toBe(true)
+    expect(result.fromStage).toBe('build')
+  })
+
+  it('should default fresh to undefined', () => {
+    const result = parseCliArgs(['--task-id', '260218-test'])
+    expect(result.fresh).toBeUndefined()
+  })
+
+  it('should default isPullRequest to undefined', () => {
+    const result = parseCliArgs(['--task-id', '260218-test'])
+    expect(result.isPullRequest).toBeUndefined()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// parseCommentBody --fresh flag
+// ---------------------------------------------------------------------------
+
+describe('parseCommentBody --fresh flag', () => {
+  it('should parse --fresh flag in rerun mode', () => {
+    const result = parseCommentBody('/cody rerun 260218-task --fresh')
+    expect(result.success).toBe(true)
+    expect(result.input?.fresh).toBe(true)
+  })
+
+  it('should parse --fresh flag with --from', () => {
+    const result = parseCommentBody('/cody rerun 260218-task --fresh --from build')
+    expect(result.success).toBe(true)
+    expect(result.input?.fresh).toBe(true)
+    expect(result.input?.fromStage).toBe('build')
+  })
+
+  it('should not set fresh when not provided', () => {
+    const result = parseCommentBody('/cody rerun 260218-task')
+    expect(result.success).toBe(true)
+    expect(result.input?.fresh).toBe(false)
+  })
+})

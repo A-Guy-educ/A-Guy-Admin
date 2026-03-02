@@ -39,6 +39,10 @@ export interface CodyInput {
   version?: string
   // Complexity score override (1-100) for testing/debugging
   complexityOverride?: number
+  // Whether the trigger was from a PR comment (vs issue comment)
+  isPullRequest?: boolean
+  // Force create new PR (new branch) - ignores existing PR
+  fresh?: boolean
 }
 
 export interface CodyPipelineStatus {
@@ -446,6 +450,10 @@ export function parseCliArgs(argv: string[]): CodyInput {
       input.version = normalized[i + 1]
       cliSet.add('version')
       i++
+    } else if (arg === '--is-pull-request') {
+      input.isPullRequest = true
+    } else if (arg === '--fresh') {
+      input.fresh = true
     } else if (arg.startsWith('--comment-body-env=')) {
       // For comment triggers: read the raw comment body from env var
       // This avoids shell injection when passing comment content through CI
@@ -772,6 +780,7 @@ export function parseCommentBody(body: string, issueNumber?: number): ParseComme
   let feedback: string | undefined
   let fromStage: string | undefined
   let controlMode: CodyInput['controlMode'] = undefined
+  let fresh = false
 
   let i = 0
   while (i < options.length) {
@@ -798,6 +807,9 @@ export function parseCommentBody(body: string, issueNumber?: number): ParseComme
       }
       feedback = feedbackParts.join(' ')
       i = j
+    } else if (opt === '--fresh') {
+      fresh = true
+      i++
     } else if (opt === '--from' && options[i + 1]) {
       fromStage = options[i + 1]
       // Validate from stage
@@ -828,6 +840,7 @@ export function parseCommentBody(body: string, issueNumber?: number): ParseComme
       fromStage,
       issueNumber,
       triggerType: 'comment',
+      fresh,
       controlMode,
     },
   }

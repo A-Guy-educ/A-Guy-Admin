@@ -16,6 +16,7 @@ interface ParseOutputs {
   from_stage: string
   feedback: string
   issue_number: string
+  is_pull_request: string
   trigger_type: string
   comment_body: string
   valid: string
@@ -89,6 +90,7 @@ export function parseDispatchInputs(): ParseOutputs {
     return {
       ...getDefaultOutputs(),
       issue_number: '',
+      is_pull_request: process.env.IS_PULL_REQUEST == 'true' ? 'true' : '',
       valid: 'false',
     }
   }
@@ -100,6 +102,7 @@ export function parseDispatchInputs(): ParseOutputs {
     return {
       ...getDefaultOutputs(),
       issue_number: '',
+      is_pull_request: process.env.IS_PULL_REQUEST == 'true' ? 'true' : '',
       valid: 'false',
     }
   }
@@ -112,6 +115,7 @@ export function parseDispatchInputs(): ParseOutputs {
     from_stage: process.env.DISPATCH_FROM_STAGE || '',
     feedback: process.env.DISPATCH_FEEDBACK || '',
     issue_number: '',
+    is_pull_request: process.env.IS_PULL_REQUEST == 'true' ? 'true' : '',
     trigger_type: 'dispatch',
     comment_body: '',
     valid: 'true',
@@ -233,6 +237,7 @@ export function getDefaultOutputs(): ParseOutputs {
     from_stage: '',
     feedback: '',
     issue_number: '',
+    is_pull_request: process.env.IS_PULL_REQUEST == 'true' ? 'true' : '',
     trigger_type: '',
     comment_body: '',
     valid: 'false',
@@ -260,6 +265,7 @@ function writeOutputs(outputs: ParseOutputs): void {
     `from_stage=${outputs.from_stage}`,
     `feedback=${outputs.feedback}`,
     `issue_number=${outputs.issue_number}`,
+    `is_pull_request=${outputs.is_pull_request}`,
     `trigger_type=${outputs.trigger_type}`,
     `comment_body=${outputs.comment_body}`,
     `valid=${outputs.valid}`,
