@@ -159,6 +159,58 @@ function getCommitSummary(defaultBranch: string, cwd: string): string {
   }
 }
 
+/**
+ * Create a fresh branch with incremented version suffix for --fresh flag.
+ * Lists remote branches matching pattern, finds highest -vN suffix, creates -v(N+1).
+ * Strips existing -vN suffix to prevent chains like branch-v2-v3.
+ */
+export function createFreshBranch(currentBranch: string, cwd: string = process.cwd()): string {
+  // Strip existing -vN suffix to prevent chains (e.g., feat/260225-task-v2 -> feat/260225-task)
+  const baseBranch = currentBranch.replace(/-v\d+$/, '')
+
+  // List remote branches matching the pattern
+  let maxVersion = 1
+  try {
+    const output = execFileSync('git', ['branch', '-r', '--list', `"${baseBranch}-v*"`], {
+      cwd,
+      encoding: 'utf-8',
+    }).trim()
+
+    if (output) {
+      // Extract version numbers from branch names
+      const versions = output.split('\n').map((b) => {
+        const match = b.trim().match(/-v(\d+)$/)
+        return match ? parseInt(match[1], 10) : 0
+      })
+      maxVersion = Math.max(...versions, 1)
+    }
+  } catch {
+    // No matching branches, start at v2
+    maxVersion = 1
+  }
+
+  const newBranch = `${baseBranch}-v${maxVersion + 1}`
+
+  // Create the new branch locally from current HEAD (carries all commits)
+  try {
+    execFileSync('git', ['checkout', '-b', newBranch], {
+      cwd,
+      encoding: 'utf-8',
+    })
+    console.log(`  Created fresh branch: ${newBranch}`)
+  } catch (error) {
+    // If branch already exists locally, checkout to it
+    if (String(error).includes('already exists')) {
+      execFileSync('git', ['checkout', newBranch], { cwd, encoding: 'utf-8' })
+      console.log(`  Checked out existing fresh branch: ${newBranch}`)
+    } else {
+      throw error
+    }
+  }
+
+  return newBranch
+}
+
 function buildPrTitle(
   taskDir: string,
   defaultBranch: string,
@@ -317,7 +369,7 @@ export async function runPrStage(
 ): Promise<PrResult> {
   console.log('\n📝 Creating PR (scripted)...\n')
 
-  const branch = getBranchName(cwd)
+  let branch = getBranchName(cwd)
   const defaultBranch = getDefaultBranch(cwd)
 
   // Step 1: Check for existing PR (unless --fresh is set)
@@ -331,6 +383,11 @@ export async function runPrStage(
 
   if (options?.fresh && existingUrl) {
     console.log(`  --fresh flag: creating new PR (ignoring existing: ${existingUrl})`)
+  }
+
+  // Step 1.5: Create fresh branch if --fresh is set
+  if (options?.fresh) {
+    branch = createFreshBranch(branch, cwd)
   }
 
   // Step 2: Push branch (skip pre-push hooks to avoid blocking on unrelated checks)
