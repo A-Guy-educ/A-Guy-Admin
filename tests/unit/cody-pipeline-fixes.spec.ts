@@ -429,3 +429,72 @@ This is valid promoted content from a previous successful run.
  *   - recoverPipelineState detects completed pipelines
  *   - recoverPipelineState detects failed non-advisory stages
  */
+
+// ============================================================================
+// Fix #11: Auditor runs AFTER verify (not in parallel)
+// ============================================================================
+
+describe('Auditor runs AFTER verify (Fix #11)', () => {
+  it('IMPL_ORDER_STANDARD should have auditor after verify', async () => {
+    const { IMPL_ORDER_STANDARD } = await import('../../scripts/cody/pipeline/definitions')
+
+    // Find verify and auditor positions
+    const verifyIdx = IMPL_ORDER_STANDARD.findIndex((s) => s === 'verify')
+    const auditorIdx = IMPL_ORDER_STANDARD.findIndex((s) => s === 'auditor')
+
+    expect(verifyIdx).toBeGreaterThanOrEqual(0)
+    expect(auditorIdx).toBeGreaterThanOrEqual(0)
+    expect(auditorIdx).toBeGreaterThan(verifyIdx)
+  })
+
+  it('IMPL_ORDER_LIGHTWEIGHT should have auditor after verify', async () => {
+    const { IMPL_ORDER_LIGHTWEIGHT } = await import('../../scripts/cody/pipeline/definitions')
+
+    // Find verify and auditor positions
+    const verifyIdx = IMPL_ORDER_LIGHTWEIGHT.findIndex((s) => s === 'verify')
+    const auditorIdx = IMPL_ORDER_LIGHTWEIGHT.findIndex((s) => s === 'auditor')
+
+    expect(verifyIdx).toBeGreaterThanOrEqual(0)
+    expect(auditorIdx).toBeGreaterThanOrEqual(0)
+    expect(auditorIdx).toBeGreaterThan(verifyIdx)
+  })
+
+  it('IMPL_ORDER_STANDARD should NOT have parallel verify/auditor', async () => {
+    const { IMPL_ORDER_STANDARD } = await import('../../scripts/cody/pipeline/definitions')
+
+    // Check there's no parallel with both verify and auditor
+    const hasParallelVerifyAuditor = IMPL_ORDER_STANDARD.some(
+      (step) =>
+        typeof step === 'object' &&
+        'parallel' in step &&
+        step.parallel.includes('verify') &&
+        step.parallel.includes('auditor'),
+    )
+
+    expect(hasParallelVerifyAuditor).toBe(false)
+  })
+})
+
+// ============================================================================
+// Fix #12: Supervisor shell wrapper script exists
+// ============================================================================
+
+describe('Supervisor shell wrapper script (Fix #12)', () => {
+  const scriptPath = path.join(process.cwd(), 'scripts/cody/parse-safety-supervisor.sh')
+
+  it('shell wrapper script should exist', () => {
+    expect(fs.existsSync(scriptPath)).toBe(true)
+  })
+
+  it('shell wrapper script should be executable', () => {
+    const stats = fs.statSync(scriptPath)
+    const isExecutable = (stats.mode & 0o111) !== 0
+    expect(isExecutable).toBe(true)
+  })
+
+  it('shell wrapper should call the tsx script', () => {
+    const content = fs.readFileSync(scriptPath, 'utf-8')
+    expect(content).toContain('parse-safety-supervisor.ts')
+    expect(content).toContain('tsx')
+  })
+})

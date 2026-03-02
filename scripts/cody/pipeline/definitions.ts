@@ -46,7 +46,8 @@ export const IMPL_ORDER_STANDARD: PipelineStep[] = [
   'plan-gap',
   'build',
   'commit',
-  { parallel: ['verify', 'auditor'] },
+  'verify',
+  'auditor',
   'apply-audit',
   'pr',
 ]
@@ -54,7 +55,8 @@ export const IMPL_ORDER_LIGHTWEIGHT: PipelineStep[] = [
   'architect',
   'build',
   'commit',
-  { parallel: ['verify', 'auditor'] },
+  'verify',
+  'auditor',
   'apply-audit',
   'pr',
 ]
