@@ -97,7 +97,10 @@
     "cody:test": "gh workflow run cody.yml -R A-Guy-educ/A-Guy -f task_id=TEST -f mode=status -f dry_run=true",
     "cody": "pnpm tsx scripts/cody/entry.ts",
     "cody:tag": "pnpm tsx scripts/cody/tag-version.ts",
-    "supervisor": "pnpm tsx scripts/supervisor/supervisor.ts"
+    "supervisor": "pnpm tsx scripts/supervisor/supervisor.ts",
+    "tunnel:ngrok": "bash scripts/tunnel-ngrok.sh",
+    "tunnel:cf": "bash scripts/tunnel-cf.sh",
+    "tunnel:ocode": "bash scripts/tunnel-opencode.sh"
   },
   "dependencies": {
     "@ai-sdk/google": "^3.0.30",
