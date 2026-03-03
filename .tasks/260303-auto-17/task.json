@@ -4,30 +4,30 @@
   "confidence": 0.85,
   "primary_domain": "frontend",
   "scope": [
-    "image upload in chat feature",
-    "צט chat component - image upload UI",
-    "file upload handling in AI chat"
+    "image upload in chat feature (צט)",
+    "file upload UI component",
+    "AI chat image handling"
   ],
   "missing_inputs": [],
   "assumptions": [
-    "The 'צט' feature is a chat/AI assistant where users can upload images for analysis",
-    "Image upload UI exists but is currently failing with 'Failed' error",
-    "The bug may be in frontend upload handling or backend API endpoint",
-    "File size or type validation may be causing the failure"
+    "The 'צט' feature is an AI chat where users can upload images for analysis",
+    "Image upload UI exists but returns 'Capture.JPG Failed' error",
+    "The bug could be in frontend upload handling, backend API, or AI service integration",
+    "File size, type validation, or API configuration may be causing the failure"
   ],
   "review_questions": [
     "Where exactly does image upload happen in the chat interface?",
     "What API endpoint handles the image upload?",
-    "Are there file size or type restrictions that might be causing the failure?",
-    "Is the AI service (e.g., Gemini) properly integrated for image analysis?"
+    "Are there file size or type restrictions causing the failure?",
+    "Is the AI service properly integrated for image analysis?"
   ],
   "complexity": 30,
-  "complexity_reasoning": "Scope: 10 (investigate UI component + API endpoint, 2-3 files). Risk: 10 (core feature issue in production). Novelty: 5 (investigating existing functionality). Cross-domain: 4 (frontend + backend API). Ambiguity: 3 (clear reproduction steps but unknown root cause). Dependency: 3 (may depend on upload services). Total: 35 → rounded to 30 for moderate complexity.",
+  "complexity_reasoning": "Scope: 8 (investigate UI component + API endpoint, 2-3 files). Risk: 8 (core feature issue in production). Novelty: 6 (investigating existing functionality). Cross-domain: 6 (frontend + backend). Ambiguity: 3 (clear reproduction steps). Dependency: 4 (depends on upload service + AI service). Total: ~35",
   "input_quality": {
     "level": "raw_idea",
     "skip_stages": [],
-    "reasoning": "Bug report with clear reproduction steps but no implementation details. Contains environment, preconditions, steps to reproduce, expected vs actual result. No structured requirements or implementation plan - standard bug report format."
+    "reasoning": "Bug report with clear reproduction steps (environment, preconditions, steps, expected vs actual result). No implementation details - standard bug report format."
   },
-  "pipeline_profile": "lightweight",
+  "pipeline_profile": "standard",
   "pipeline": "spec_execute_verify"
 }
