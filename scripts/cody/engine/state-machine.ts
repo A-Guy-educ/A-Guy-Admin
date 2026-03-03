@@ -25,6 +25,7 @@ import {
   recoverPipelineState,
 } from './status'
 import { getHandler } from '../handlers/handler'
+import { setLifecycleLabel } from '../github-api'
 import { executePostAction } from '../pipeline/post-actions'
 import { flattenPipelineOrder } from '../pipeline/definitions'
 
@@ -45,6 +46,12 @@ export async function runPipeline(
   let state = loadState(ctx.taskId)
   if (!state) {
     state = initState(ctx, ctx.input.mode)
+    // Set initial lifecycle label based on mode
+    if (ctx.input.issueNumber) {
+      const initialLabel =
+        ctx.input.mode === 'spec' || ctx.input.mode === 'full' ? 'cody:planning' : 'cody:building'
+      setLifecycleLabel(ctx.input.issueNumber, initialLabel)
+    }
   } else {
     // Recovery: handle stale state from previous interrupted runs
     // Step 1: Reset any stages stuck in "running" to "pending"
@@ -107,6 +114,10 @@ export async function runPipeline(
     if (ctx.pipelineNeedsRebuild && rebuildPipeline) {
       pipeline = rebuildPipeline(ctx)
       ctx.pipelineNeedsRebuild = false
+      // Transition from planning to building after spec stages complete
+      if (ctx.input.issueNumber) {
+        setLifecycleLabel(ctx.input.issueNumber, 'cody:building')
+      }
     }
 
     const nextStep = resolveNextStep(state, pipeline)
@@ -114,6 +125,10 @@ export async function runPipeline(
       // All stages completed - mark pipeline as completed
       state = completeState(state, 'completed')
       writeState(ctx.taskId, state)
+      // Set lifecycle label to done
+      if (ctx.input.issueNumber) {
+        setLifecycleLabel(ctx.input.issueNumber, 'cody:done')
+      }
       break
     }
 
@@ -257,6 +272,10 @@ async function executeSingleStep(
     })
     // For non-advisory stages, mark pipeline as failed to stop the loop
     if (!def.advisory) {
+      // Set lifecycle label to failed
+      if (ctx.input.issueNumber) {
+        setLifecycleLabel(ctx.input.issueNumber, 'cody:failed')
+      }
       return completeState(state, 'failed')
     }
     return state
@@ -456,6 +475,10 @@ async function executeParallelStep(
     const errors = criticalFailures.map((f) => f.reason).join('; ')
     const names = criticalFailures.map((f) => f.name)
     console.error(`  ❌ Parallel stages [${names.join(', ')}] failed: ${errors}`)
+    // Set lifecycle label to failed
+    if (ctx.input.issueNumber) {
+      setLifecycleLabel(ctx.input.issueNumber, 'cody:failed')
+    }
     return completeState(state, 'failed')
   }
 
@@ -496,6 +519,10 @@ async function handleStageResult(
 
     // If non-advisory stage failed, mark pipeline as failed
     if (!def.advisory) {
+      // Set lifecycle label to failed
+      if (ctx.input.issueNumber) {
+        setLifecycleLabel(ctx.input.issueNumber, 'cody:failed')
+      }
       return completeState(state, 'failed')
     }
   } else if (result.outcome === 'timed_out') {
@@ -504,6 +531,10 @@ async function handleStageResult(
       error: result.reason,
     })
     if (!def.advisory) {
+      // Set lifecycle label to failed
+      if (ctx.input.issueNumber) {
+        setLifecycleLabel(ctx.input.issueNumber, 'cody:failed')
+      }
       return completeState(state, 'failed')
     }
   }

@@ -181,6 +181,11 @@ export type ValidateTaskJsonAction = {
   type: 'validate-task-json'
 }
 
+// Set-classification-labels action
+export type SetClassificationLabelsAction = {
+  type: 'set-classification-labels'
+}
+
 // Resolve-profile action
 export type ResolveProfileAction = {
   type: 'resolve-profile'
@@ -255,6 +260,7 @@ export type ParallelPostAction = {
 // Post-action discriminated union
 export type PostAction =
   | ValidateTaskJsonAction
+  | SetClassificationLabelsAction
   | ResolveProfileAction
   | CheckGateAction
   | CommitTaskFilesAction

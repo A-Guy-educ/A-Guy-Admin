@@ -9,7 +9,7 @@ import { execFileSync, execSync } from 'child_process'
 import * as fs from 'fs'
 import * as path from 'path'
 import { getDefaultBranch, commitAndPush } from './git-utils'
-import { postComment } from './github-api'
+import { postComment, setLifecycleLabel } from './github-api'
 
 // ============================================================================
 // Verify Stage — run quality gates directly
@@ -447,6 +447,7 @@ export async function runPrStage(
         body,
         head: branch,
         base: defaultBranch,
+        draft: true,
       }),
     })
 
@@ -464,6 +465,11 @@ export async function runPrStage(
       const cleanUrl = prUrl.replace(/\n/g, '').trim()
       postComment(issueNumber, `🎉 PR created: ${cleanUrl}`)
       console.log(`  ✅ Commented on issue #${issueNumber}`)
+    }
+
+    // Set lifecycle label to review
+    if (issueNumber) {
+      setLifecycleLabel(issueNumber, 'cody:review')
     }
   } catch (error: unknown) {
     const err = error as { message?: string }

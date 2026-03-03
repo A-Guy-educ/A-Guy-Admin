@@ -20,6 +20,8 @@ import {
   addIssueLabel,
   removeIssueLabel,
   GATE_LABELS,
+  setClassificationLabels,
+  setProfileLabel,
 } from '../github-api'
 import { loadState, updateStage, completeState, writeState } from '../engine/status'
 import { classifyError, formatErrorsAsMarkdown } from './error-classifier'
@@ -50,6 +52,20 @@ export async function executePostAction(
       break
     }
 
+    case 'set-classification-labels': {
+      // Set classification labels from task.json (type, risk, complexity, domain)
+      const taskDef = readTask(ctx.taskDir)
+      if (ctx.input.issueNumber && taskDef) {
+        setClassificationLabels(ctx.input.issueNumber, {
+          task_type: taskDef.task_type,
+          risk_level: taskDef.risk_level,
+          complexity: taskDef.complexity,
+          primary_domain: taskDef.primary_domain,
+        })
+      }
+      break
+    }
+
     case 'resolve-profile': {
       const taskDef = readTask(ctx.taskDir)
       if (taskDef) {
@@ -63,6 +79,10 @@ export async function executePostAction(
         ctx.taskDef = taskDef
         const { resolvePipelineProfile, getComplexityTier } = await import('../pipeline-utils')
         ctx.profile = resolvePipelineProfile(taskDef)
+        // Set profile label on the issue
+        if (ctx.input.issueNumber) {
+          setProfileLabel(ctx.input.issueNumber, ctx.profile)
+        }
         // Signal engine to rebuild pipeline with new profile (two-phase construction)
         ctx.pipelineNeedsRebuild = true
         if (taskDef.complexity !== undefined) {
