@@ -1,31 +1,32 @@
 {
   "task_type": "fix_bug",
   "risk_level": "medium",
-  "confidence": 0.85,
+  "confidence": 0.7,
   "primary_domain": "backend",
   "scope": [
-    "image upload in צט (AI chat) feature",
-    "file upload API endpoint",
-    "AI service image handling"
+    "image-upload",
+    "ai-integration",
+    "api-endpoints"
   ],
   "missing_inputs": [],
   "assumptions": [
-    "The 'צט' feature is an AI chat where users can upload images for analysis",
-    "Image upload UI exists but returns 'Capture.JPG Failed' error",
-    "The bug could be in frontend upload handling, backend API, or AI service integration",
-    "File size, type validation, or API configuration may be causing the failure"
+    "Image upload is handled by a backend API endpoint",
+    "The AI service (likely Gemini) processes uploaded images for the Chetz tutoring feature",
+    "The error 'Capture.JPG Failed' originates from either the upload endpoint or the AI image processing service",
+    "Need to investigate the image upload flow and error handling"
   ],
   "review_questions": [
-    "Is the image upload endpoint properly configured for the file types students might use?",
-    "Are there appropriate error messages being returned to help diagnose the issue?",
-    "Should the frontend show more informative error messages to students?"
+    "Is this a frontend issue (upload button not working) or backend (upload succeeds but AI processing fails)?",
+    "Does the image upload work for other file types or just .JPG?",
+    "Is there a file size or format restriction that might be causing the failure?",
+    "Is the AI service (Gemini) properly configured for image processing?"
   ],
-  "complexity": 35,
-  "complexity_reasoning": "Scope: 8 (investigate UI component + API endpoint, 2-3 files). Risk: 8 (core feature issue in production). Novelty: 6 (investigating existing functionality). Cross-domain: 8 (frontend + backend + AI service). Ambiguity: 3 (clear reproduction steps). Dependency: 4 (depends on upload service + AI service). Total: ~37, rounded to 35",
+  "complexity": 43,
+  "complexity_reasoning": "Scope: 12 (4-6 files across upload and AI modules). Risk: 10 (production bug, core feature). Novelty: 5 (existing feature). Cross-domain: 5 (backend + AI services). Ambiguity: 5 (clear bug, unknown root cause). Dependencies: 6 (AI image processing service). Total: 43",
   "input_quality": {
     "level": "raw_idea",
     "skip_stages": [],
-    "reasoning": "Bug report with clear reproduction steps (environment, preconditions, steps, expected vs actual result). No implementation details - standard bug report format in Hebrew."
+    "reasoning": "Bug report with symptom description but no structured requirements or implementation details. Standard pipeline will investigate the codebase to find the image upload flow and identify the failure point."
   },
   "pipeline_profile": "standard",
   "pipeline": "spec_execute_verify"
