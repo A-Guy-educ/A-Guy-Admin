@@ -53,6 +53,13 @@ async function getMCPClient() {
   return mcpClientPromise
 }
 
+// Attachment from request
+interface Attachment {
+  name: string
+  mimeType: string
+  data: string // base64 data URL
+}
+
 // Custom tools for Cody pipeline-specific data (not available in GitHub MCP)
 const customTools = {
   // List Cody tasks (issues with special labels)
@@ -264,49 +271,6 @@ const customTools = {
   }),
 }
 
-// System prompt
-const _SYSTEM_PROMPT = `You are Cody, an AI assistant for the Cody Operations Dashboard.
-
-The dashboard manages software development tasks using an AI-powered pipeline (the "Cody" system). You help users understand:
-
-1. **Task Management**: List and explain tasks, their status, and details
-2. **Pipeline Status**: Show CI/CD stage progress for each task
-3. **Workflow Runs**: Display GitHub Actions workflow status
-4. **Pull Requests**: Show PRs associated with tasks
-5. **Repository Code**: Browse files, search code, view branches and commits
-
-You have two sets of tools:
-
-**GitHub MCP Tools** (for repository and GitHub API operations):
-- get_file_contents: Read file content from the repository
-- search_code: Search code across the codebase
-- list_commits: View commit history
-- list_pull_requests / get_pull_request: View PR details
-- list_issues / issue_read: View issue details
-- actions_list / actions_get: View GitHub Actions workflows and runs
-- get_me: Get authenticated user info
-
-**Custom Cody Tools** (for pipeline-specific operations):
-- listCodyTasks: List Cody pipeline tasks from the dashboard
-- getCodyTask: Get detailed task info with pipeline status
-- getPipelineStatus: Get stage-by-stage pipeline progress
-- getWorkflowRuns: Get GitHub Actions workflow runs
-- getTaskPR: Get PR associated with a task
-
-**Tool Selection Rules**:
-- For pipeline/task queries → use Custom Cody Tools (listCodyTasks, getCodyTask, etc.)
-- For repository browsing, code search, general GitHub API → use GitHub MCP Tools
-- If GitHub MCP tools are unavailable, explain that and use Custom Cody Tools as fallback
-
-Be helpful, concise, and technical when appropriate. Use markdown for formatting.
-
-The repository is "${GITHUB_OWNER}/${GITHUB_REPO}" - a Next.js 15 + Payload CMS application.
-The Cody pipeline has these stages:
-- Spec: taskify → spec → clarify
-- Impl: architect → plan-review → build → commit → verify → auditor → apply-audit → pr
-- Special: autofix (retry loop)
-`
-
 // ===========================================
 // TASK CONTEXT BUILDER
 // ===========================================
@@ -439,6 +403,69 @@ async function buildTaskContext(
 }
 
 // ===========================================
+// MESSAGE BUILDER WITH ATTACHMENTS
+// ===========================================
+
+/**
+ * Converts attachments to AI SDK message content format.
+ * For images, uses the proper vision model format.
+ * For other files, includes as text content.
+ */
+function processAttachments(attachments?: Attachment[]) {
+  if (!attachments || attachments.length === 0) return []
+
+  const contents: Array<{ type: string; [key: string]: unknown }> = []
+
+  for (const attachment of attachments) {
+    const { mimeType, data, name } = attachment
+
+    // Check if it's an image
+    if (mimeType.startsWith('image/')) {
+      // For images, use AI SDK's image part format
+      // The data URL format is: data:image/png;base64,xxxxx
+      contents.push({
+        type: 'image',
+        image: data, // Can be URL or base64 data URL
+      })
+    } else {
+      // For non-image files, try to extract text content
+      // Data URL format: data:text/plain;base64,xxxxx
+      try {
+        const isDataUrl = data.startsWith('data:')
+        let textContent = data
+
+        if (isDataUrl) {
+          // Extract base64 part and decode
+          const base64Match = data.match(/^data:[^;]+;base64,(.+)$/)
+          if (base64Match) {
+            textContent = Buffer.from(base64Match[1], 'base64').toString('utf-8')
+          }
+        }
+
+        // Truncate large text files
+        const truncatedText =
+          textContent.length > 5000
+            ? textContent.slice(0, 5000) + '\n\n[... file truncated ...]'
+            : textContent
+
+        contents.push({
+          type: 'text',
+          text: `File: ${name} (${mimeType})\n\n${truncatedText}`,
+        })
+      } catch {
+        // If we can't decode, just include the filename as a reference
+        contents.push({
+          type: 'text',
+          text: `[File attachment: ${name} (${mimeType}) - content not available]`,
+        })
+      }
+    }
+  }
+
+  return contents
+}
+
+// ===========================================
 // API HANDLERS
 // ===========================================
 
@@ -492,7 +519,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json()
-    const { messages = [], taskId, taskData, agentId } = body
+    const { messages = [], taskId, taskData, agentId, attachments } = body
 
     if (!messages || messages.length === 0) {
       return NextResponse.json({ error: 'Messages are required' }, { status: 400 })
@@ -501,7 +528,13 @@ export async function POST(req: NextRequest) {
     // Get the agent config (defaults to dashboard-manager)
     const agent = getAgent(agentId || 'dashboard-manager')
     logger.info(
-      { requestId, messageCount: messages.length, taskId, agentId: agent.id },
+      {
+        requestId,
+        messageCount: messages.length,
+        taskId,
+        agentId: agent.id,
+        attachmentCount: attachments?.length || 0,
+      },
       'Chat request received',
     )
 
@@ -552,11 +585,24 @@ export async function POST(req: NextRequest) {
       ...customTools,
     }
 
-    // Convert messages to AI SDK format
-    const aiMessages = messages.map((msg: { role: string; content: string }) => ({
-      role: msg.role as 'user' | 'assistant',
-      content: msg.content,
-    }))
+    // Convert messages to AI SDK format, handling attachments
+    const attachmentContents = processAttachments(attachments)
+    const aiMessages = messages.map((msg: { role: string; content: string }, index: number) => {
+      // For the last user message, include attachments
+      if (index === messages.length - 1 && msg.role === 'user' && attachmentContents.length > 0) {
+        return {
+          role: msg.role as 'user',
+          content: [{ type: 'text', text: msg.content }, ...attachmentContents] as Array<{
+            type: string
+            [key: string]: unknown
+          }>,
+        }
+      }
+      return {
+        role: msg.role as 'user' | 'assistant',
+        content: msg.content,
+      }
+    })
 
     // Create Google provider with explicit GEMINI_API_KEY
     const googleProvider = createGoogleGenerativeAI({
