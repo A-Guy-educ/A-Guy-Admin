@@ -101,6 +101,7 @@ export const tasksApi = {
     mode: string
     labels?: string[]
     assignees?: string[]
+    attachments?: Array<{ name: string; content: string }>
   }): Promise<CodyTask> => {
     const res = await fetch(`${API_BASE}/tasks`, {
       method: 'POST',

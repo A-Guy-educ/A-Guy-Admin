@@ -167,6 +167,7 @@ export function useCreateTask() {
       mode: string
       labels?: string[]
       assignees?: string[]
+      attachments?: Array<{ name: string; content: string }>
     }) => codyApi.tasks.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cody-tasks'] })

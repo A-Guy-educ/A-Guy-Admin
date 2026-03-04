@@ -6,7 +6,8 @@
  */
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import Image from 'next/image'
 import { Button } from '@/ui/web/components/button'
 import {
   Dialog,
@@ -39,12 +40,22 @@ import {
   Quote,
   Eye,
   Edit3,
+  Upload,
+  X,
 } from 'lucide-react'
+import { cn } from '@/infra/utils/ui'
 
 interface CreateTaskDialogProps {
   open: boolean
   onClose: () => void
   onCreated?: () => void
+}
+
+interface AttachmentFile {
+  name: string
+  content: string
+  preview?: string
+  type: string
 }
 
 export function CreateTaskDialog({ open, onClose, onCreated }: CreateTaskDialogProps) {
@@ -54,6 +65,8 @@ export function CreateTaskDialog({ open, onClose, onCreated }: CreateTaskDialogP
   const [mode, setMode] = useState('full')
   const [labels, setLabels] = useState<string[]>([])
   const [assignees, setAssignees] = useState<string[]>([])
+  const [attachments, setAttachments] = useState<AttachmentFile[]>([])
+  const [isDragging, setIsDragging] = useState(false)
 
   // Use hooks for data fetching
   const { data: collaborators = [] } = useCollaborators()
@@ -77,14 +90,99 @@ export function CreateTaskDialog({ open, onClose, onCreated }: CreateTaskDialogP
       setMode('full')
       setLabels([])
       setAssignees([])
+      setAttachments([])
     }
   }, [open])
+
+  // File handling functions
+  const processFile = useCallback((file: File): Promise<AttachmentFile> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => {
+        const result = reader.result as string
+        // For images, create a preview; for others, just store the base64 content
+        if (file.type.startsWith('image/')) {
+          resolve({
+            name: file.name,
+            content: result.split(',')[1], // Remove data URL prefix
+            preview: result,
+            type: file.type,
+          })
+        } else {
+          resolve({
+            name: file.name,
+            content: result.split(',')[1],
+            type: file.type,
+          })
+        }
+      }
+      reader.onerror = reject
+      reader.readAsDataURL(file)
+    })
+  }, [])
+
+  const handleFileSelect = useCallback(
+    async (files: FileList | null) => {
+      if (!files) return
+
+      const newAttachments: AttachmentFile[] = []
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i]
+        // Limit file size to 10MB
+        if (file.size > 10 * 1024 * 1024) {
+          console.error(`File ${file.name} is too large. Maximum size is 10MB.`)
+          continue
+        }
+        try {
+          const processed = await processFile(file)
+          newAttachments.push(processed)
+        } catch (error) {
+          console.error('Error processing file:', error)
+        }
+      }
+      setAttachments((prev) => [...prev, ...newAttachments])
+    },
+    [processFile],
+  )
+
+  const removeAttachment = useCallback((index: number) => {
+    setAttachments((prev) => prev.filter((_, i) => i !== index))
+  }, [])
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(true)
+  }, [])
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(false)
+  }, [])
+
+  const handleDrop = useCallback(
+    async (e: React.DragEvent) => {
+      e.preventDefault()
+      setIsDragging(false)
+      handleFileSelect(e.dataTransfer.files)
+    },
+    [handleFileSelect],
+  )
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     createTask.mutate(
-      { title, body, mode, labels, assignees },
+      {
+        title,
+        body,
+        mode,
+        labels,
+        assignees,
+        attachments:
+          attachments.length > 0
+            ? attachments.map((a) => ({ name: a.name, content: a.content }))
+            : undefined,
+      },
       {
         onSuccess: () => {
           onCreated?.()
@@ -347,6 +445,77 @@ export function CreateTaskDialog({ open, onClose, onCreated }: CreateTaskDialogP
                 ))
               )}
             </div>
+          </div>
+
+          {/* Attachments */}
+          <div className="grid gap-2">
+            <Label>Attachments</Label>
+
+            {/* Drag and drop zone */}
+            <div
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              className={cn(
+                'border-2 border-dashed rounded-lg p-4 transition-colors',
+                isDragging
+                  ? 'border-primary bg-primary/5'
+                  : 'border-border hover:border-muted-foreground',
+                attachments.length > 0 && 'pb-2',
+              )}
+            >
+              <input
+                type="file"
+                id="attachments"
+                multiple
+                accept="image/*,.pdf,.txt,.md,.json,.js,.ts,.tsx"
+                onChange={(e) => handleFileSelect(e.target.files)}
+                className="hidden"
+              />
+              <label
+                htmlFor="attachments"
+                className="flex flex-col items-center justify-center cursor-pointer py-2"
+              >
+                <Upload className="w-8 h-8 text-muted-foreground mb-2" />
+                <span className="text-sm text-muted-foreground">
+                  Drag & drop files or <span className="text-primary">browse</span>
+                </span>
+                <span className="text-xs text-muted-foreground mt-1">Max 10MB per file</span>
+              </label>
+            </div>
+
+            {/* Attachment previews */}
+            {attachments.length > 0 && (
+              <div className="grid grid-cols-2 gap-2 mt-2">
+                {attachments.map((file, index) => (
+                  <div key={index} className="relative group border rounded-md overflow-hidden">
+                    {file.preview ? (
+                      <Image
+                        src={file.preview}
+                        alt={file.name}
+                        className="w-full h-24 object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-24 bg-muted flex items-center justify-center">
+                        <span className="text-xs text-muted-foreground truncate px-2">
+                          {file.name}
+                        </span>
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => removeAttachment(index)}
+                      className="absolute top-1 right-1 bg-background/80 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                    <div className="absolute bottom-0 left-0 right-0 bg-background/80 px-1 py-0.5">
+                      <span className="text-xs truncate block">{file.name}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="flex gap-3 pt-2">

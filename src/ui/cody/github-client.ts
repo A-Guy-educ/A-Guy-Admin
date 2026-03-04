@@ -1063,6 +1063,34 @@ export async function createIssue(options: {
 }
 
 /**
+ * Upload an attachment to an issue (requires GitHub Enterprise)
+ */
+export async function uploadIssueAttachment(
+  issueNumber: number,
+  file: { name: string; content: string },
+): Promise<{ attachment_url: string; name: string }> {
+  const octokit = getOctokit() as any
+
+  const buffer = Buffer.from(file.content, 'base64')
+
+  const response = await octokit.request(
+    'POST /repos/{owner}/{repo}/issues/{issue_number}/attachments',
+    {
+      owner: GITHUB_OWNER,
+      repo: GITHUB_REPO,
+      issue_number: issueNumber,
+      name: file.name,
+      file: buffer,
+    },
+  )
+
+  return {
+    attachment_url: response.data.asset_url,
+    name: response.data.name,
+  }
+}
+
+/**
  * Update an issue (close, reopen, change title/body)
  */
 export async function updateIssue(
