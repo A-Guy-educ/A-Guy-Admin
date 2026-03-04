@@ -9,7 +9,7 @@
  * with overrideAccess:true (bypasses field-level access control, not hooks).
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import type { Payload } from 'payload'
 import { getPayload } from 'payload'
 import { startMongoContainer, stopMongoContainer } from '@/infra/utils/test/mongodb-container'
@@ -41,6 +41,35 @@ afterAll(async () => {
     delete process.env.DATABASE_URL
   }
 }, 120_000)
+
+/**
+ * Wipe all users and their settings before/after each test.
+ *
+ * In CI, USE_MONGO_SERVICE=true means all test files share a single MongoDB
+ * (mongodb://localhost:27017/test). Other test files (e.g., v3-extraction-log-gate)
+ * leave admin users behind after they finish. Those stale admins cause the
+ * admin-count check inside preventLastAdminDemotion to see >1 admin and skip
+ * the throw, making these tests appear to pass when they should fail.
+ *
+ * Cleaning before every test guarantees we always start with exactly the
+ * admins this test creates — no leakage from other files.
+ */
+async function wipeUsersAndSettings() {
+  const settings = await payload.find({
+    collection: 'user_settings',
+    limit: 1000,
+    overrideAccess: true,
+  })
+  for (const s of settings.docs)
+    await payload.delete({ collection: 'user_settings', id: s.id, overrideAccess: true })
+
+  const users = await payload.find({ collection: 'users', limit: 1000, overrideAccess: true })
+  for (const u of users.docs)
+    await payload.delete({ collection: 'users', id: u.id, overrideAccess: true })
+}
+
+beforeEach(wipeUsersAndSettings)
+afterEach(wipeUsersAndSettings)
 
 /** Two-step admin creation to bypass the ensureRoleOnSignup field hook. */
 async function createAdmin(label = '') {
