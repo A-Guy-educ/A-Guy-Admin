@@ -729,8 +729,12 @@ export function parseCliArgs(argv: string[]): CodyInput {
 
   // Auto-generate taskId if not provided
   if (!input.taskId) {
+    // Skip task-id discovery if --fresh flag is set (force new task)
+    if (input.fresh) {
+      logger.info('--fresh flag set: skipping task-id discovery, will generate new task')
+    }
     // Try to discover task-id from previous bot comments on the issue
-    if (input.issueNumber && input.triggerType === 'comment') {
+    else if (input.issueNumber && input.triggerType === 'comment') {
       const discovered = discoverTaskIdFromIssue(input.issueNumber)
       if (discovered) {
         input.taskId = discovered
