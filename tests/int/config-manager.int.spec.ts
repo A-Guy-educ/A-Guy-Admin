@@ -1,4 +1,3 @@
-// @vitest-environment node
 /**
  * Config Manager Integration Tests
  *

@@ -1,6 +1,7 @@
 import '@/infra/config/server-init'
 
 import { NextRequest, NextResponse } from 'next/server'
+// eslint-disable-next-line no-restricted-imports -- TODO: migrate to service layer
 import { queryChaptersByGrade } from '@/server/repos/queries/chapters'
 import { getPayload } from 'payload'
 import configPromise from '@payload-config'
@@ -99,7 +100,7 @@ export async function GET(request: NextRequest) {
       gatedWarningMs,
     })
   } catch (error) {
-    console.error('Error fetching chapters:', error)
-    return NextResponse.json({ error: 'Failed to fetch chapters' }, { status: 500 })
+    const { captureAndRespond } = await import('@/server/api/capture-and-respond')
+    return captureAndRespond(error, { route: '/api/chapters/by-grade' })
   }
 }

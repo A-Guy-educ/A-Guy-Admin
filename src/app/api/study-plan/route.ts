@@ -12,8 +12,10 @@ import { getPayload } from 'payload'
 import { z } from 'zod'
 
 import type { StudyPlanSnapshot, StudyPlanDay, TopicInput } from '@/server/services/study-plan'
+// eslint-disable-next-line no-restricted-imports -- TODO: migrate to service layer
 import { getDefaultTenantId } from '@/server/repos/tenant/get-default-tenant'
 import { generateStudyPlan } from '@/server/services/study-plan'
+// eslint-disable-next-line no-restricted-imports -- TODO: migrate to service layer
 import { queryUserProgressByGrade } from '@/server/repos/queries/userProgress'
 
 // Zod validation schemas
@@ -111,8 +113,8 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ success: true, data: plan })
   } catch (error) {
-    console.error('Error fetching study plan:', error)
-    return NextResponse.json({ error: 'Failed to fetch study plan' }, { status: 500 })
+    const { captureAndRespond } = await import('@/server/api/capture-and-respond')
+    return captureAndRespond(error, { route: '/api/study-plan GET' })
   }
 }
 
@@ -151,8 +153,8 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
   } catch (error) {
-    console.error('Error in study-plan API:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    const { captureAndRespond } = await import('@/server/api/capture-and-respond')
+    return captureAndRespond(error, { route: '/api/study-plan PUT' })
   }
 }
 

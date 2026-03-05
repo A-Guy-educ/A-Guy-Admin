@@ -68,12 +68,16 @@ const eslintConfig = [
       'no-restricted-imports': [
         'error',
         {
-          name: 'ui-no-server-services',
-          message: 'UI layer cannot import from Server Services (business logic)',
-        },
-        {
-          name: 'ui-no-server-repos',
-          message: 'UI layer cannot import from Server Repos (data access)',
+          patterns: [
+            {
+              group: ['@/server/services/*', '@/server/services/**'],
+              message: 'UI layer cannot import from Server Services (business logic)',
+            },
+            {
+              group: ['@/server/repos/*', '@/server/repos/**'],
+              message: 'UI layer cannot import from Server Repos (data access)',
+            },
+          ],
         },
       ],
     },
@@ -87,8 +91,12 @@ const eslintConfig = [
       'no-restricted-imports': [
         'error',
         {
-          name: 'client-no-server',
-          message: 'Client layer cannot import from Server layer',
+          patterns: [
+            {
+              group: ['@/server/*', '@/server/**'],
+              message: 'Client layer cannot import from Server layer',
+            },
+          ],
         },
       ],
     },
@@ -108,12 +116,16 @@ const eslintConfig = [
       'no-restricted-imports': [
         'error',
         {
-          name: 'server-no-client',
-          message: 'Server layer cannot import from Client layer',
-        },
-        {
-          name: 'server-no-ui',
-          message: 'Server layer cannot import from UI layer',
+          patterns: [
+            {
+              group: ['@/client/*', '@/client/**'],
+              message: 'Server layer cannot import from Client layer',
+            },
+            {
+              group: ['@/ui/*', '@/ui/**'],
+              message: 'Server layer cannot import from UI layer',
+            },
+          ],
         },
       ],
     },
@@ -127,20 +139,24 @@ const eslintConfig = [
       'no-restricted-imports': [
         'error',
         {
-          name: 'infra-no-client',
-          message: 'Infra layer cannot import from Client layer',
-        },
-        {
-          name: 'infra-no-ui',
-          message: 'Infra layer cannot import from UI layer',
-        },
-        {
-          name: 'infra-no-server-services',
-          message: 'Infra layer cannot import from Server Services',
-        },
-        {
-          name: 'infra-no-server-repos',
-          message: 'Infra layer cannot import from Server Repos',
+          patterns: [
+            {
+              group: ['@/client/*', '@/client/**'],
+              message: 'Infra layer cannot import from Client layer',
+            },
+            {
+              group: ['@/ui/*', '@/ui/**'],
+              message: 'Infra layer cannot import from UI layer',
+            },
+            {
+              group: ['@/server/services/*', '@/server/services/**'],
+              message: 'Infra layer cannot import from Server Services',
+            },
+            {
+              group: ['@/server/repos/*', '@/server/repos/**'],
+              message: 'Infra layer cannot import from Server Repos',
+            },
+          ],
         },
       ],
     },
@@ -157,26 +173,19 @@ const eslintConfig = [
       'no-restricted-imports': [
         'error',
         {
-          name: 'payload-import',
-          importNames: ['default', 'getPayload'],
-          message:
-            'Direct Payload access is forbidden in src/app/**. Use @/server/repos/queries/** or @/server/services/**',
-        },
-        {
-          name: 'server-payload-import',
-          message: 'Direct Payload access is forbidden in src/app/**',
-        },
-        {
-          name: 'collections-import',
-          message: 'Direct collection access is forbidden in src/app/**',
-        },
-        {
-          name: 'fields-import',
-          message: 'Direct field access is forbidden in src/app/**',
-        },
-        {
-          name: 'access-import',
-          message: 'Direct access control imports are forbidden in src/app/**',
+          paths: [
+            {
+              name: 'payload',
+              importNames: ['getPayload'],
+              message: 'Direct Payload access is forbidden in src/app/**. Use @/server/services/**',
+            },
+          ],
+          patterns: [
+            {
+              group: ['@/server/payload/*', '@/server/payload/**'],
+              message: 'Direct Payload internals are forbidden in src/app/**',
+            },
+          ],
         },
       ],
     },
@@ -190,23 +199,17 @@ const eslintConfig = [
       'no-restricted-imports': [
         'error',
         {
-          name: 'repos-in-routes',
-          message:
-            'Route handlers and server actions must call services only. Use @/server/services/**',
+          patterns: [
+            {
+              group: ['@/server/repos/*', '@/server/repos/**'],
+              message:
+                'Route handlers and server actions must call services only. Use @/server/services/**',
+            },
+          ],
         },
       ],
     },
   },
-
-  // =============================================================================
-  // Folder Structure Rules
-  // =============================================================================
-  // Only allow specific top-level folders under src/
-  // Allowed: app, client, infra, server, ui, i18n
-  //
-  // NOTE: This rule requires a custom ESLint plugin or script validation.
-  // The no-restricted-imports rule in flat config doesn't support regex patterns.
-  // Consider adding a pre-commit hook or build script to validate folder structure.
 ]
 
 export default eslintConfig
