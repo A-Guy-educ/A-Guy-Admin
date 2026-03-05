@@ -9,6 +9,7 @@ import { logger } from './logger'
 import * as fs from 'fs'
 import * as path from 'path'
 import { Command } from 'commander'
+import { randomInt } from 'crypto'
 
 import { ALL_STAGES } from './stage-prompts'
 import { discoverTaskIdFromIssue } from './github-api'
@@ -750,8 +751,8 @@ export function parseCliArgs(argv: string[]): CodyInput {
       } else {
         // Fallback: auto-generate from date
         const datePrefix = new Date().toISOString().slice(2, 10).replace(/-/g, '')
-        const counter = Math.floor(Math.random() * 99) + 1
-        input.taskId = `${datePrefix}-auto-${counter.toString().padStart(2, '0')}`
+        const counter = randomInt(100, 999)
+        input.taskId = `${datePrefix}-auto-${counter}`
       }
       logger.info(`Auto-generated task ID: ${input.taskId}`)
     }

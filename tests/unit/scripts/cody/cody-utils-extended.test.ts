@@ -326,17 +326,16 @@ describe('parseCliArgs', () => {
     expect(result.triggerType).toBe('comment')
   })
 
-  it('should auto-generate task-id when not provided (format YYMMDD-auto-XX)', () => {
+  it('should auto-generate task-id when not provided (format YYMMDD-auto-NNN)', () => {
     // Skip this test in CI since TASK_ID is provided via env
     if (process.env.TASK_ID) {
       return
     }
-    // Mock Math.random for deterministic counter
-    vi.spyOn(Math, 'random').mockReturnValue(0.5) // gives floor(0.5*99)+1 = 50
 
     const result = parseCliArgs(['--mode', 'full'])
     // The date prefix comes from new Date().toISOString() — we just verify the pattern
-    expect(result.taskId).toMatch(/^\d{6}-auto-50$/)
+    // Counter is now 3 digits (100-999) from crypto.randomInt
+    expect(result.taskId).toMatch(/^\d{6}-auto-\d{3}$/)
     expect(result.mode).toBe('full')
   })
 

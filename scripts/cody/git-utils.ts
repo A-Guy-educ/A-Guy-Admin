@@ -182,7 +182,13 @@ function mergeDefaultBranch(cwd: string): void {
   } catch (_error) {
     logger.error(`[branch] Merge conflict detected while merging ${defaultBranch}`)
     logger.info('[branch] Aborting merge')
-    execFileSync('git', ['merge', '--abort'], { cwd, stdio: 'inherit' })
+    try {
+      execFileSync('git', ['merge', '--abort'], { cwd, stdio: 'inherit' })
+    } catch {
+      // merge --abort can fail if merge state was corrupted; fall back to hard reset
+      logger.warn('[branch] merge --abort failed, falling back to git reset --hard HEAD')
+      execFileSync('git', ['reset', '--hard', 'HEAD'], { cwd, stdio: 'inherit' })
+    }
     throw new Error(
       `Merge conflict while merging ${defaultBranch} into feature branch. Please resolve conflicts manually.`,
     )
@@ -226,7 +232,7 @@ export function ensureFeatureBranch(
   logger.info(`[branch] Ensuring feature branch: ${branchName}`)
 
   // Fetch latest from origin
-  execFileSync('git', ['fetch', 'origin'], { cwd, stdio: 'inherit' })
+  execFileSync('git', ['fetch', 'origin'], { cwd, stdio: 'inherit', timeout: 120_000 })
 
   // Check if branch already exists on remote (original behavior)
   let remoteBranchExists = false
@@ -471,10 +477,20 @@ export function commitAndPush(
   const workDir = cwd || process.cwd()
 
   // Get current branch
-  const branch = execFileSync('git', ['branch', '--show-current'], {
+  let branch = execFileSync('git', ['branch', '--show-current'], {
     cwd: workDir,
     encoding: 'utf-8',
   }).trim()
+
+  // Handle detached HEAD state (empty branch name)
+  if (!branch) {
+    branch =
+      execFileSync('git', ['rev-parse', '--short', 'HEAD'], {
+        cwd: workDir,
+        encoding: 'utf-8',
+      }).trim() || 'detached'
+    logger.warn(`[commit] Detached HEAD detected, using ref: ${branch}`)
+  }
 
   // Read task.json for commit type
   const taskJsonPath = path.join(taskDir, 'task.json')

@@ -457,6 +457,11 @@ export async function executePostAction(
       }
 
       if (failures.length > 0) {
+        // Clean up orphaned build-errors.md before throwing
+        const errorsFile = path.join(ctx.taskDir, 'build-errors.md')
+        if (fs.existsSync(errorsFile)) {
+          fs.unlinkSync(errorsFile)
+        }
         const failedNames = failures.map((f) => f.name).join(', ')
         throw new Error(
           `Quality gates failed after ${action.maxFeedbackLoops} autofix attempts: ${failedNames}`,
@@ -472,7 +477,7 @@ export async function executePostAction(
       const results = await Promise.allSettled(
         parallelActions.map(async (a) => {
           // Recursively execute each action
-          await executePostAction(ctx, a, null as unknown as never)
+          await executePostAction(ctx, a, _state)
         }),
       )
 

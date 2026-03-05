@@ -133,8 +133,11 @@ Examples:
   let shuttingDown = false
   // G2: Signal handlers with null guard
   const cleanupOnSignal = async (signal: string) => {
-    // Prevent double execution
-    if (shuttingDown) return
+    // Prevent double execution (immediate exit on re-entry during async cleanup)
+    if (shuttingDown) {
+      process.exit(128 + (signal === 'SIGTERM' ? 15 : 2))
+      return // unreachable but satisfies TS
+    }
     shuttingDown = true
     logger.error(`\n⚠ Received ${signal} — CI runner shutting down`)
     try {
@@ -276,6 +279,9 @@ Examples:
     logger.error({ err: error }, `\n❌ Cody failed: ${errorMsg}`)
 
     if (input.issueNumber) {
+      // Set lifecycle label to failed for dashboard visibility
+      const { setLifecycleLabel } = await import('./github-api')
+      setLifecycleLabel(input.issueNumber, 'cody:failed')
       postComment(
         input.issueNumber,
         `❌ Pipeline failed for \`${input.taskId}\`: ${error instanceof Error ? error.message : 'Unknown error'}` +

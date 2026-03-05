@@ -1340,7 +1340,7 @@ describe('getDefaultBranch', () => {
   })
 
   it('should return "dev" when both methods fail', () => {
-    mockExecFileSync.mockImplementation(() => {
+    mockExecFileSync.mockImplementation((): string => {
       throw new Error('not a git repo')
     })
 

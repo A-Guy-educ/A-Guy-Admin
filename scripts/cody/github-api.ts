@@ -18,15 +18,31 @@ import { execFileSync } from 'child_process'
 export function postComment(issueNumber: number, body: string): void {
   if (!issueNumber) return
 
-  try {
-    // Use --body-file - to pipe body via stdin, preserving newlines and special characters
-    // Use execFileSync for defense against shell injection
-    execFileSync('gh', ['issue', 'comment', String(issueNumber), '--body-file', '-'], {
-      input: body,
-      stdio: ['pipe', 'inherit', 'inherit'],
-    })
-  } catch (error) {
-    logger.error({ err: error }, `Failed to post comment to issue ${issueNumber}:`)
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      execFileSync('gh', ['issue', 'comment', String(issueNumber), '--body-file', '-'], {
+        input: body,
+        stdio: ['pipe', 'inherit', 'inherit'],
+      })
+      return // Success
+    } catch (error) {
+      if (attempt === 0) {
+        logger.warn(
+          { err: error },
+          `postComment attempt 1 failed for issue ${issueNumber}, retrying...`,
+        )
+        // Brief synchronous delay before retry (2 seconds)
+        const waitUntil = Date.now() + 2000
+        while (Date.now() < waitUntil) {
+          /* busy wait */
+        }
+      } else {
+        logger.error(
+          { err: error },
+          `Failed to post comment to issue ${issueNumber} after 2 attempts`,
+        )
+      }
+    }
   }
 }
 
@@ -401,24 +417,38 @@ export function setLifecycleLabel(issueNumber: number, label: string): void {
   // Get all OTHER lifecycle labels to remove (mutual exclusion)
   const labelsToRemove = LIFECYCLE_LABELS.filter((l) => l !== label)
 
-  try {
-    // Remove all other lifecycle labels, add the new one
-    const args = [
-      'issue',
-      'edit',
-      String(issueNumber),
-      '--remove-label',
-      labelsToRemove.join(','),
-      '--add-label',
-      label,
-    ]
-    execFileSync('gh', args, { stdio: ['inherit', 'inherit', 'inherit'] })
-    logger.info(`  Set lifecycle label "${label}" on issue #${issueNumber}`)
-  } catch (error) {
-    logger.error(
-      { err: error },
-      `Failed to set lifecycle label "${label}" on issue ${issueNumber}:`,
-    )
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      // Remove all other lifecycle labels, add the new one
+      const args = [
+        'issue',
+        'edit',
+        String(issueNumber),
+        '--remove-label',
+        labelsToRemove.join(','),
+        '--add-label',
+        label,
+      ]
+      execFileSync('gh', args, { stdio: ['inherit', 'inherit', 'inherit'] })
+      logger.info(`  Set lifecycle label "${label}" on issue #${issueNumber}`)
+      return // Success
+    } catch (error) {
+      if (attempt === 0) {
+        logger.warn(
+          { err: error },
+          `setLifecycleLabel attempt 1 failed for issue ${issueNumber}, retrying...`,
+        )
+        const waitUntil = Date.now() + 2000
+        while (Date.now() < waitUntil) {
+          /* busy wait */
+        }
+      } else {
+        logger.error(
+          { err: error },
+          `Failed to set lifecycle label "${label}" on issue ${issueNumber} after 2 attempts`,
+        )
+      }
+    }
   }
 }
 

@@ -387,32 +387,6 @@ export async function runPrStage(
     logger.info(`  --fresh flag: creating new PR (ignoring existing: ${existingUrl})`)
   }
 
-  // Step 1.5: Reset branch if --fresh is set (delete old branch, recreate from default)
-  if (options?.fresh && branch !== defaultBranch) {
-    logger.info('  --fresh flag: resetting branch from scratch')
-    try {
-      // Delete remote branch
-      execFileSync('git', ['push', 'origin', '--delete', branch], { cwd, encoding: 'utf-8' })
-      logger.info('  Deleted remote branch')
-    } catch (_e) {
-      // Branch may not exist on remote
-    }
-    try {
-      // Delete local branch
-      execFileSync('git', ['branch', '-D', branch], { cwd, encoding: 'utf-8' })
-      logger.info('  Deleted local branch')
-    } catch (_e) {
-      // Branch may not exist locally
-    }
-    // Create fresh branch from default branch
-    execFileSync('git', ['checkout', '-b', branch, defaultBranch], { cwd, encoding: 'utf-8' })
-    logger.info('  Created fresh branch from ' + defaultBranch)
-  } else if (options?.fresh) {
-    // Already on default branch, just reset to it
-    execFileSync('git', ['reset', '--hard', defaultBranch], { cwd, encoding: 'utf-8' })
-    logger.info('  Reset branch to ' + defaultBranch)
-  }
-
   // Step 2: Push branch (skip pre-push hooks to avoid blocking on unrelated checks)
   logger.info('  Pushing branch ' + branch + '...')
   let pushSuccess = false
@@ -420,6 +394,7 @@ export async function runPrStage(
     execFileSync('git', ['push', '-u', 'origin', branch], {
       cwd,
       stdio: 'inherit',
+      timeout: 120_000,
       env: { ...process.env, HUSKY: '0', SKIP_HOOKS: '1' },
     })
     pushSuccess = true
@@ -430,12 +405,14 @@ export async function runPrStage(
       execFileSync('git', ['pull', '--rebase', 'origin', branch], {
         cwd,
         stdio: 'inherit',
+        timeout: 120_000,
         env: { ...process.env, HUSKY: '0', SKIP_HOOKS: '1' },
       })
       // Retry push after rebase
       execFileSync('git', ['push', '-u', 'origin', branch], {
         cwd,
         stdio: 'inherit',
+        timeout: 120_000,
         env: { ...process.env, HUSKY: '0', SKIP_HOOKS: '1' },
       })
       pushSuccess = true
@@ -457,6 +434,13 @@ export async function runPrStage(
   // Step 4: Create PR via GitHub REST API (more reliable than gh CLI in CI)
   // BUG-F fix: Use GH_PAT if non-empty, fall back to GH_TOKEN (don't use empty string)
   const ghToken = process.env.GH_PAT?.trim() || process.env.GH_TOKEN
+
+  if (!ghToken) {
+    logger.error('  ❌ No GitHub token found (GH_PAT or GH_TOKEN)')
+    const report = `# PR Stage\n\nFailed to create PR: No GitHub token found. Set GH_PAT or GH_TOKEN.\n`
+    fs.writeFileSync(outputFile, report)
+    return { created: false, url: '', report }
+  }
 
   // Extract owner and repo from git remote
   let owner = ''
@@ -511,11 +495,6 @@ export async function runPrStage(
       const cleanUrl = prUrl.replace(/\n/g, '').trim()
       postComment(issueNumber, `🎉 PR created: ${cleanUrl}`)
       logger.info(`  ✅ Commented on issue #${issueNumber}`)
-    }
-
-    // Set lifecycle label to review
-    if (issueNumber) {
-      setLifecycleLabel(issueNumber, 'cody:review')
     }
 
     // Set lifecycle label to review

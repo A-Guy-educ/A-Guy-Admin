@@ -49,7 +49,7 @@ describe('commander-based CLI parsing', () => {
     const result = parseCliArgs([])
     expect(result.mode).toBe('full')
     // Empty args triggers auto-generation of taskId
-    expect(result.taskId).toMatch(/^\d{6}-auto-\d{2}$/)
+    expect(result.taskId).toMatch(/^\d{6}-auto-\d{3}$/)
   })
 
   it('parses --file correctly', () => {
