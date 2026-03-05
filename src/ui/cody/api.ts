@@ -90,7 +90,13 @@ export const tasksApi = {
     return data.tasks
   },
 
-  get: async (issueNumber: number): Promise<{ task: CodyTask; comments: unknown[] }> => {
+  get: async (
+    issueNumber: number,
+  ): Promise<{
+    task: CodyTask
+    assignees: Array<{ login: string; avatar_url: string }>
+    comments: unknown[]
+  }> => {
     const res = await fetch(`${API_BASE}/tasks/issue-${issueNumber}`)
     return handleResponse(res)
   },

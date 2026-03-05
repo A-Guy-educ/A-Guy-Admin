@@ -378,7 +378,7 @@ export function TaskDetail({
     if (!details?.task || !task) return null
     return {
       ...task,
-      assignees: details.task.assignees || [],
+      assignees: details.assignees || [],
       comments: (details.comments as GitHubComment[]) || [],
     }
   })()
