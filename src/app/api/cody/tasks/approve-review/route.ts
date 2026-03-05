@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json()
-    const { prNumber } = body
+    const { prNumber, actorLogin } = body
 
     if (!prNumber) {
       return NextResponse.json({ error: 'Missing prNumber' }, { status: 400 })
@@ -36,12 +36,13 @@ export async function POST(req: NextRequest) {
 
     // 1. Approve the PR review
     try {
+      const actor = actorLogin ? ` by @${actorLogin}` : ''
       await octokit.pulls.createReview({
         owner: OWNER,
         repo: REPO,
         pull_number: Number(prNumber),
         event: 'APPROVE',
-        body: '✅ Approved via Cody dashboard.',
+        body: `✅ Approved${actor} via Cody dashboard.`,
       })
       results.push(`Approved PR #${prNumber}`)
     } catch (error: unknown) {

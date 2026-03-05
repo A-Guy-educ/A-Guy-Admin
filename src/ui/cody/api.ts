@@ -221,7 +221,7 @@ export const tasksApi = {
     return handleResponse(res)
   },
 
-  approveReview: async (task: CodyTask): Promise<ActionResponse> => {
+  approveReview: async (task: CodyTask, actorLogin?: string): Promise<ActionResponse> => {
     if (!task.associatedPR) {
       throw new Error('No PR associated with this task')
     }
@@ -230,6 +230,7 @@ export const tasksApi = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         prNumber: task.associatedPR.number,
+        ...(actorLogin && { actorLogin }),
       }),
     })
     return handleResponse(res)

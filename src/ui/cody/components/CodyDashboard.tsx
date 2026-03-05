@@ -39,6 +39,9 @@ import { RateLimitError, NoTokenError, tasksApi, codyApi } from '../api'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { EnvironmentToolbar } from './EnvironmentToolbar'
+import { GitHubUserPickerDialog } from './GitHubUserPickerDialog'
+import { useGitHubIdentity } from '../hooks/useGitHubIdentity'
+import { Avatar, AvatarFallback, AvatarImage } from '@/ui/web/components/avatar'
 import { SITE_URLS } from '../constants'
 
 export function CodyDashboard() {
@@ -73,8 +76,16 @@ export function CodyDashboard() {
 
   const queryClient = useQueryClient()
 
-  // Fetch collaborators for assignee picker
-  const { data: collaborators = [] } = useQuery({
+  // GitHub identity (localStorage — forced on first visit)
+  const {
+    githubUser,
+    isLoaded: identityLoaded,
+    setGitHubUser,
+    clearGitHubUser,
+  } = useGitHubIdentity()
+
+  // Fetch collaborators for assignee picker + identity picker
+  const { data: collaborators = [], isLoading: collaboratorsLoading } = useQuery({
     queryKey: ['cody-collaborators'],
     queryFn: () => codyApi.collaborators.list(),
     staleTime: 10 * 60 * 1000, // 10 minutes
@@ -209,7 +220,7 @@ export function CodyDashboard() {
 
     setMergingTaskId(task.id)
     try {
-      await tasksApi.approveReview(task)
+      await tasksApi.approveReview(task, githubUser?.login)
       refetch()
       toast.success('PR merged')
     } catch (err) {
@@ -280,6 +291,9 @@ export function CodyDashboard() {
     </>
   )
 
+  // Show identity picker if no GitHub user is selected yet
+  const showIdentityPicker = identityLoaded && !githubUser
+
   // Rate limit error display
   if (isRateLimited) {
     return (
@@ -331,6 +345,13 @@ export function CodyDashboard() {
 
   return (
     <div className="flex h-screen bg-background">
+      {/* GitHub identity picker — forced on first visit */}
+      <GitHubUserPickerDialog
+        open={showIdentityPicker}
+        collaborators={collaborators}
+        isLoading={collaboratorsLoading}
+        onSelect={setGitHubUser}
+      />
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* When a task is selected, TaskDetail takes over the entire left column */}
@@ -350,6 +371,22 @@ export function CodyDashboard() {
 
               {/* Desktop controls */}
               <div className="hidden md:flex items-center gap-3">
+                {/* GitHub identity badge */}
+                {githubUser && (
+                  <button
+                    type="button"
+                    onClick={clearGitHubUser}
+                    title={`Logged in as @${githubUser.login} — click to switch`}
+                    className="flex items-center gap-1.5 px-2 py-1 rounded-md hover:bg-accent transition-colors"
+                  >
+                    <Avatar className="h-5 w-5">
+                      <AvatarImage src={githubUser.avatar_url} alt={githubUser.login} />
+                      <AvatarFallback>{githubUser.login[0]?.toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                    <span className="text-xs text-muted-foreground">@{githubUser.login}</span>
+                  </button>
+                )}
+
                 {/* Notification status */}
                 {notificationsSupported && (
                   <Button
@@ -470,6 +507,27 @@ export function CodyDashboard() {
             <SheetDescription className="sr-only">Dashboard controls and filters</SheetDescription>
           </SheetHeader>
           <div className="flex flex-col gap-3 px-4 pb-4">
+            {/* GitHub identity */}
+            {githubUser && (
+              <button
+                type="button"
+                onClick={() => {
+                  clearGitHubUser()
+                  setShowMobileMenu(false)
+                }}
+                className="flex items-center gap-2 px-2 py-2 rounded-md hover:bg-accent transition-colors border border-border"
+              >
+                <Avatar className="h-6 w-6">
+                  <AvatarImage src={githubUser.avatar_url} alt={githubUser.login} />
+                  <AvatarFallback>{githubUser.login[0]?.toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <div className="flex flex-col items-start">
+                  <span className="text-sm font-medium">@{githubUser.login}</span>
+                  <span className="text-xs text-muted-foreground">Tap to switch</span>
+                </div>
+              </button>
+            )}
+
             {/* Chat */}
             <Button
               variant="outline"
