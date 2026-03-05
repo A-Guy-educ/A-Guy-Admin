@@ -53,8 +53,9 @@ function getColumnForIssue(
   if (labelNames.includes('cody:planning') || labelNames.includes('cody:building'))
     return 'building'
   if (labelNames.includes('cody:failed')) return 'failed'
-  if (labelNames.includes('cody:done')) return 'done'
-  if (labelNames.includes('cody:review')) return 'review'
+  // cody:done = pipeline finished, PR created → task goes to review (not done)
+  // Task is only truly "done" when the PR is merged and the issue is closed
+  if (labelNames.includes('cody:done') || labelNames.includes('cody:review')) return 'review'
 
   // 2. Active workflow run takes priority over gate labels
   // This ensures the dashboard shows "Building" even if risk-gated/hard-stop labels
@@ -114,9 +115,9 @@ describe('getColumnForIssue', () => {
       expect(getColumnForIssue(issue)).toBe('failed')
     })
 
-    it('should return done for cody:done label', () => {
+    it('should return review for cody:done label (pipeline finished, PR ready)', () => {
       const issue = { ...baseIssue, labels: [{ name: 'cody:done', color: 'green' }] }
-      expect(getColumnForIssue(issue)).toBe('done')
+      expect(getColumnForIssue(issue)).toBe('review')
     })
 
     it('cody:building should override risk-gated label', () => {
