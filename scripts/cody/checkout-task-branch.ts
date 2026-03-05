@@ -6,6 +6,7 @@
 
 import { logger } from './logger'
 import { execSync } from 'child_process'
+import { closeLinkedPR } from './github-api'
 
 // Git branch prefixes to try
 const BRANCH_PREFIXES = ['feat', 'fix', 'refactor', 'docs', 'chore', 'security', 'test']
@@ -95,15 +96,31 @@ function mergeDefaultBranch(defaultBranch: string): boolean {
   }
 }
 /**
- * Reset branch if --fresh flag is set
+ * Reset branch if --fresh flag is set.
+ * Closes any existing PR for the issue (which also deletes its branch via --delete-branch).
+ * Falls back to manual branch deletion if no PR exists.
  */
-function resetBranchIfFresh(branch: string | null, _defaultBranch: string): string | null {
+export function resetBranchIfFresh(
+  branch: string | null,
+  _defaultBranch: string,
+  issueNumber?: string,
+): string | null {
   const fresh = process.env.FRESH === 'true'
   if (!fresh) return branch
 
   logger.info('  --fresh flag detected: will reset branch from scratch')
 
-  // If branch exists, delete it
+  // Close existing PR (also deletes the branch via gh pr close --delete-branch)
+  if (issueNumber) {
+    logger.info('    Closing existing PR for issue #' + issueNumber)
+    const prClosed = closeLinkedPR(parseInt(issueNumber, 10))
+    if (prClosed) {
+      // closeLinkedPR already deleted the branch via --delete-branch
+      return null
+    }
+  }
+
+  // Fallback: manually delete branch if no PR was found (branch may exist without a PR)
   if (branch) {
     logger.info('    Deleting existing branch: ' + branch)
     try {
@@ -254,7 +271,7 @@ function main(): void {
   }
 
   // Reset branch if --fresh flag is set (deletes old branch)
-  branch = resetBranchIfFresh(branch, defaultBranch)
+  branch = resetBranchIfFresh(branch, defaultBranch, issueNumber)
 
   if (branch) {
     logger.info(`=== Found feature branch: ${branch} ===`)
