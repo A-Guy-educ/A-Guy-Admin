@@ -514,10 +514,12 @@ export function parseCliArgs(argv: string[]): CodyInput {
 
   if (commanderOpts.isPullRequest !== undefined) {
     input.isPullRequest = true
+    cliSet.add('isPullRequest')
   }
 
   if (commanderOpts.fresh !== undefined) {
     input.fresh = true
+    cliSet.add('fresh')
   }
 
   // Handle --comment-body-env=<var> (Commander may not parse this with --key=value pattern)

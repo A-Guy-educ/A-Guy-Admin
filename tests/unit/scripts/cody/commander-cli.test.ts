@@ -24,13 +24,17 @@ describe('commander-based CLI parsing', () => {
     expect(result.issueNumber).toBe(42)
   })
 
-  it('parses control mode flags', () => {
+  it('parses --auto control mode flag', () => {
     const autoResult = parseCliArgs(['--auto'])
     expect(autoResult.controlMode).toBe('auto')
+  })
 
+  it('parses --gate control mode flag', () => {
     const gateResult = parseCliArgs(['--gate'])
     expect(gateResult.controlMode).toBe('risk-gated')
+  })
 
+  it('parses --hard-stop control mode flag', () => {
     const hardResult = parseCliArgs(['--hard-stop'])
     expect(hardResult.controlMode).toBe('hard-stop')
   })

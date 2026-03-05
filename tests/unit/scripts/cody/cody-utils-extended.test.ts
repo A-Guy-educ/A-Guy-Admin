@@ -989,6 +989,17 @@ describe('isValidStage', () => {
 // ---------------------------------------------------------------------------
 
 describe('--fresh and --is-pull-request CLI flags', () => {
+  const savedFresh = process.env.FRESH
+
+  afterEach(() => {
+    // Restore FRESH env var to prevent CI env leak between tests
+    if (savedFresh !== undefined) {
+      process.env.FRESH = savedFresh
+    } else {
+      delete process.env.FRESH
+    }
+  })
+
   it('should parse --fresh flag', () => {
     const result = parseCliArgs(['--task-id', '260218-test', '--fresh'])
     expect(result.fresh).toBe(true)
@@ -1005,7 +1016,8 @@ describe('--fresh and --is-pull-request CLI flags', () => {
     expect(result.fromStage).toBe('build')
   })
 
-  it('should default fresh to undefined', () => {
+  it('should default fresh to undefined when FRESH env var is not set', () => {
+    delete process.env.FRESH
     const result = parseCliArgs(['--task-id', '260218-test'])
     expect(result.fresh).toBeUndefined()
   })
