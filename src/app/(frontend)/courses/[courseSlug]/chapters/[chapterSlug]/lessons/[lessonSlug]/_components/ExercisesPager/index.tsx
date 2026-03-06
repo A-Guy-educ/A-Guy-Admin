@@ -241,7 +241,8 @@ export function ExercisesPager({
                 {introDescription && (
                   <SafeHtml
                     html={introDescription}
-                    className="prose prose-lg dark:prose-invert max-w-md mx-auto mb-8 text-muted-foreground leading-relaxed text-start [&_ul]:list-inside [&_ol]:list-inside"
+                    enableProse
+                    className="prose-lg max-w-md mx-auto mb-8 text-muted-foreground leading-relaxed text-start [&_ul]:list-inside [&_ol]:list-inside"
                   />
                 )}
 
