@@ -4,14 +4,16 @@
  * @pattern pipeline-api
  * @ai-summary API route to fetch pipeline status for a task
  */
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from 'next/server'
 
+import { handleCodyApiError } from '@/lib/cody/github-error-handler'
+import { pipelineParamsSchema } from '@/lib/cody/schemas'
+import { apiValidationError } from '@/server/api/responses'
 import { requireAuth } from '@/ui/cody/auth'
 import {
   findTaskBranch,
-  getStatusFromBranch,
   getStatusFromArtifact,
+  getStatusFromBranch,
   fetchWorkflowRuns,
 } from '@/ui/cody/github-client'
 
@@ -20,9 +22,15 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ task
   const authError = await requireAuth(req)
   if (authError) return authError
 
-  try {
-    const { taskId } = await params
+  // Validate path params
+  const { taskId: rawTaskId } = await params
+  const parsed = pipelineParamsSchema.safeParse({ taskId: rawTaskId })
+  if (!parsed.success) {
+    return apiValidationError(parsed.error)
+  }
+  const { taskId } = parsed.data
 
+  try {
     // Try branch status first (for running tasks)
     const branch = await findTaskBranch(taskId)
     if (branch) {
@@ -54,16 +62,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ task
       status: null,
       source: null,
     })
-  } catch (error: any) {
-    console.error('[Cody] Error fetching pipeline:', error)
-
-    if (error.status === 401) {
-      return NextResponse.json({ error: 'GitHub token expired' }, { status: 502 })
-    }
-    if (error.status === 403) {
-      return NextResponse.json({ error: 'GitHub rate limit' }, { status: 429 })
-    }
-
-    return NextResponse.json({ error: 'Internal error' }, { status: 500 })
+  } catch (error: unknown) {
+    return handleCodyApiError(error, 'pipeline')
   }
 }
