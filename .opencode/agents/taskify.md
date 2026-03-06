@@ -312,6 +312,14 @@ Calculate the score as a weighted sum across these dimensions:
 - **Ceiling**: If `task_type` is `docs` or `research` → complexity MUST be ≤ 49 (no build stages anyway)
 - Always provide `complexity_reasoning` with per-dimension breakdown
 
+## Efficiency Rule
+
+- Do not narrate reasoning between tool calls.
+- Do not explain what you are about to do — just do it.
+- Do not summarize what you just did — move to the next action.
+- Keep non-tool-call output to a minimum.
+- Output files must still follow their full required format.
+
 ## Guardrails
 
 - NEVER expand scope beyond what the user's text describes

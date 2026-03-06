@@ -8,6 +8,7 @@
 
 import { useState, useEffect } from 'react'
 import { cn, formatRelativeTime } from '../utils'
+import { stageLabels, formatElapsed } from '../pipeline-utils'
 import type { CodyTask } from '../types'
 import { ALL_STAGES, getGitHubIssueUrl } from '../constants'
 import { Loader2 } from 'lucide-react'
@@ -57,31 +58,6 @@ function deriveCodyState(tasks: CodyTask[]): CodyState {
   }
 
   return { status: 'idle', taskCount: tasks.length }
-}
-
-function formatElapsed(since: Date): string {
-  const ms = Date.now() - since.getTime()
-  const seconds = Math.floor(ms / 1000)
-  if (seconds < 60) return `${seconds}s`
-  const minutes = Math.floor(seconds / 60)
-  if (minutes < 60) return `${minutes}m ${seconds % 60}s`
-  const hours = Math.floor(minutes / 60)
-  return `${hours}h ${minutes % 60}m`
-}
-
-const stageLabels: Record<string, string> = {
-  taskify: 'Analyzing',
-  spec: 'Writing Spec',
-  clarify: 'Clarifying',
-  architect: 'Architecting',
-  'plan-review': 'Reviewing Plan',
-  build: 'Building',
-  commit: 'Committing',
-  verify: 'Verifying',
-  auditor: 'Auditing',
-  'apply-audit': 'Applying Audit',
-  pr: 'Creating PR',
-  autofix: 'Auto-fixing',
 }
 
 /** Subtle refresh indicator — shows spinner when fetching, "Updated Xs ago" otherwise */

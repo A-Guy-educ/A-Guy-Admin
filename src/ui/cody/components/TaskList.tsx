@@ -7,9 +7,10 @@
 'use client'
 
 import { useCallback } from 'react'
-import { cn, formatRelativeTime, formatDuration } from '../utils'
+import { cn, formatRelativeTime } from '../utils'
 import { getGitHubIssueUrl } from '../constants'
 import { MergeButton } from './MergeButton'
+import { MiniPipelineProgress } from './MiniPipelineProgress'
 import type { CodyTask, ColumnId } from '../types'
 import { Button } from '@/ui/web/components/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/ui/web/components/avatar'
@@ -161,37 +162,13 @@ export function TaskList({
                 isHardStop && 'ring-2 ring-red-500/40 ring-inset',
               )}
             >
-              {/* Left color bar - shows progress when running */}
+              {/* Left color bar */}
               <div
                 className={cn(
                   'absolute left-0 top-0 bottom-0 w-[3px] rounded-r',
                   isHardStop ? 'bg-red-500 animate-pulse' : indicator.barColor,
                 )}
-              >
-                {/* Progress bar overlay when running */}
-                {task.pipeline &&
-                  task.pipeline.state === 'running' &&
-                  task.pipeline.currentStage &&
-                  task.pipeline.stages?.[task.pipeline.currentStage]?.elapsed &&
-                  (() => {
-                    const currentStage = task.pipeline.currentStage
-                    const stageElapsed = (task.pipeline.stages[currentStage]?.elapsed || 0) * 1000
-                    const stageMaxMs: Record<string, number> = {
-                      taskify: 10 * 60 * 1000,
-                      spec: 15 * 60 * 1000,
-                      architect: 30 * 60 * 1000,
-                      build: 45 * 60 * 1000,
-                    }
-                    const maxMs = stageMaxMs[currentStage] || 20 * 60 * 1000
-                    const pct = Math.min(100, (stageElapsed / maxMs) * 100)
-                    return (
-                      <div
-                        className="absolute left-0 top-0 bottom-0 bg-blue-400/30 rounded-r transition-all duration-1000"
-                        style={{ width: `${pct}%` }}
-                      />
-                    )
-                  })()}
-              </div>
+              />
 
               {/* Top row: Status icon + Title */}
               <div className="flex items-center gap-2 pl-2 sm:pl-5">
@@ -256,96 +233,8 @@ export function TaskList({
                     </span>
                   )}
 
-                  {/* Rich pipeline progress */}
-                  {task.pipeline && (
-                    <span className="shrink-0 inline-flex items-center gap-1.5 text-xs">
-                      {task.pipeline.state === 'running' && task.pipeline.currentStage && (
-                        <>
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-600 text-white font-medium">
-                            <Loader2 className="w-3 h-3 animate-spin" />
-                            {task.pipeline.currentStage}
-                          </span>
-                          {/* Show estimated progress based on typical stage durations */}
-                          {task.pipeline.stages?.[task.pipeline.currentStage]?.elapsed &&
-                            (() => {
-                              const stageElapsed =
-                                (task.pipeline.stages[task.pipeline.currentStage].elapsed || 0) *
-                                1000
-                              // Typical max durations in minutes
-                              const stageMaxMs: Record<string, number> = {
-                                taskify: 10 * 60 * 1000,
-                                spec: 15 * 60 * 1000,
-                                gap: 10 * 60 * 1000,
-                                clarify: 10 * 60 * 1000,
-                                architect: 30 * 60 * 1000,
-                                'plan-gap': 10 * 60 * 1000,
-                                build: 45 * 60 * 1000,
-                                commit: 5 * 60 * 1000,
-                                verify: 15 * 60 * 1000,
-                                auditor: 15 * 60 * 1000,
-                                pr: 5 * 60 * 1000,
-                              }
-                              const maxMs = stageMaxMs[task.pipeline.currentStage] || 20 * 60 * 1000
-                              const pct = Math.min(99, Math.round((stageElapsed / maxMs) * 100))
-                              return (
-                                <span className="inline-flex items-center gap-1">
-                                  <div className="w-14 h-1.5 bg-zinc-700 rounded-full overflow-hidden">
-                                    <div
-                                      className="h-full bg-blue-400 rounded-full animate-pulse"
-                                      style={{ width: `${pct}%` }}
-                                    />
-                                  </div>
-                                  <span className="text-blue-300 font-mono text-[10px]">
-                                    {pct}%
-                                  </span>
-                                </span>
-                              )
-                            })()}
-                          {/* Fallback: show total elapsed if no stage time */}
-                          {!task.pipeline.stages?.[task.pipeline.currentStage]?.elapsed &&
-                            task.pipeline.totalElapsed && (
-                              <span className="text-blue-400 font-mono">
-                                {formatDuration(task.pipeline.totalElapsed * 1000)}
-                              </span>
-                            )}
-                        </>
-                      )}
-                      {task.pipeline.state !== 'running' &&
-                        Object.keys(task.pipeline.stages || {}).length > 0 && (
-                          <>
-                            {/* Progress bar */}
-                            {(() => {
-                              const stages = task.pipeline.stages || {}
-                              const total = Object.keys(stages).length
-                              const completed = Object.values(stages).filter(
-                                (s) => s.state === 'completed',
-                              ).length
-                              const pct = Math.round((completed / total) * 100)
-                              return (
-                                <span className="inline-flex items-center gap-1">
-                                  <div className="w-12 h-1.5 bg-zinc-700 rounded-full overflow-hidden">
-                                    <div
-                                      className={`h-full rounded-full ${task.pipeline.state === 'failed' ? 'bg-red-500' : 'bg-emerald-500'}`}
-                                      style={{ width: `${pct}%` }}
-                                    />
-                                  </div>
-                                  <span className="text-zinc-400">
-                                    {completed}/{total}
-                                  </span>
-                                </span>
-                              )
-                            })()}
-                            <span
-                              className={`font-medium ${task.pipeline.state === 'completed' ? 'text-emerald-400' : task.pipeline.state === 'failed' ? 'text-red-400' : 'text-zinc-400'}`}
-                            >
-                              {task.pipeline.state === 'completed' && '✓ done'}
-                              {task.pipeline.state === 'failed' && '✗ failed'}
-                              {task.pipeline.state === 'timeout' && '⏰ timeout'}
-                            </span>
-                          </>
-                        )}
-                    </span>
-                  )}
+                  {/* Pipeline progress — shows for building/retrying tasks */}
+                  <MiniPipelineProgress task={task} />
 
                   {/* Sub-status badges - show important states */}
                   {task.isTimeout && (
