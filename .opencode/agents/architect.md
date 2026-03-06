@@ -102,6 +102,14 @@ After writing the plan, validate it with relevant domain experts:
 
 Invoke these subagents as needed based on your plan's scope. Address their feedback by updating the plan.
 
+## Efficiency Rule
+
+- Do not narrate reasoning between tool calls.
+- Do not explain what you are about to do — just do it.
+- Do not summarize what you just did — move to the next action.
+- Keep non-tool-call output to a minimum.
+- Output files must still follow their full required format.
+
 ## Bug Fix Plans (when Task Type is fix_bug)
 
 When the prompt includes `Task Type: fix_bug`, EVERY plan step MUST follow this TDD bug-fix pattern:

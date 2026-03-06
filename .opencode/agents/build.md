@@ -275,6 +275,14 @@ Runs: tsc --noEmit, lint, format:check, test:unit
 Use the Skill tool to load 'tdd-workflow' skill
 ```
 
+## Efficiency Rule
+
+- Do not narrate reasoning between tool calls.
+- Do not explain what you are about to do — just do it.
+- Do not summarize what you just did — move to the next action.
+- Keep non-tool-call output to a minimum.
+- Output files must still follow their full required format.
+
 ## Rules
 
 - Do NOT create branches — the pipeline already did that

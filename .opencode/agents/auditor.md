@@ -176,6 +176,14 @@ _This section is kept for backward compatibility. Use Primary Improvement instea
 
 ⚠️ **CRITICAL: Your response in chat does NOT count. You MUST use the Write tool to create the file before exiting.**
 
+## Efficiency Rule
+
+- Do not narrate reasoning between tool calls.
+- Do not explain what you are about to do — just do it.
+- Do not summarize what you just did — move to the next action.
+- Keep non-tool-call output to a minimum.
+- Output files must still follow their full required format.
+
 ## Hard Rules
 
 - EXACTLY one improvement in Primary Improvement (auto-apply)
