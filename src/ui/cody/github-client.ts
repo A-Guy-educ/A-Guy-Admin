@@ -1380,19 +1380,29 @@ export async function fetchPRCIStatus(
       ref: sha,
     })
 
-    // 3. Determine overall CI status
+    // 3. Determine overall CI status — only from actual CI check runs,
+    //    ignoring Cody pipeline runs (parse, orchestrate, create-pr, etc.)
+    const CI_CHECK_NAMES = new Set([
+      'Fast Gate',
+      'Integration Tests',
+      'Build',
+      'Comment on PR with Preview URL',
+      'Validate Preview Deployment',
+    ])
+    const relevantRuns = checkRuns.check_runs.filter((run) => CI_CHECK_NAMES.has(run.name))
+
     let ciStatus: 'pending' | 'success' | 'failure' | 'running' = 'pending'
 
-    if (checkRuns.total_count === 0) {
+    if (relevantRuns.length === 0) {
       ciStatus = 'pending'
     } else {
-      const hasFailure = checkRuns.check_runs.some(
+      const hasFailure = relevantRuns.some(
         (run) => run.conclusion === 'failure' || run.conclusion === 'timed_out',
       )
-      const hasRunning = checkRuns.check_runs.some(
+      const hasRunning = relevantRuns.some(
         (run) => run.status === 'in_progress' || run.status === 'queued',
       )
-      const allSuccess = checkRuns.check_runs.every(
+      const allSuccess = relevantRuns.every(
         (run) =>
           run.conclusion === 'success' ||
           run.conclusion === 'skipped' ||
