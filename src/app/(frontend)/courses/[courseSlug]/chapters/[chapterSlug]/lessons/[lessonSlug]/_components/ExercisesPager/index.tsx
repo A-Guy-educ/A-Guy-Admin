@@ -64,7 +64,7 @@ export function ExercisesPager({
   if (pageState.type === 'exercise' && currentExercise) {
     return (
       <ExerciseWorkspace
-        exerciseTitle={currentExercise.title || ''}
+        exerciseTitle={currentExercise.title ?? ''}
         backUrl={backUrl}
         primaryContent={
           <div className="h-full flex flex-col">
@@ -140,7 +140,7 @@ export function ExercisesPager({
             exerciseId={currentExercise.id}
             currentExercise={{
               id: currentExercise.id,
-              title: currentExercise.title || '',
+              title: currentExercise.title ?? '',
               content: {
                 blocks: (currentExercise.content as unknown as ExerciseContentData).blocks.map(
                   (block) => {
