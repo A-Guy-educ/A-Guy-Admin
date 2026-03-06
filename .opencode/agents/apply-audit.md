@@ -33,7 +33,7 @@ The following paths are **safe to edit**:
 | `.opencode/agents/*.md` | Agent prompts and definitions                                         |
 | `.agents/skills/**`     | Claude Code skills                                                    |
 | `.agents/commands/**`   | Claude Code commands                                                  |
-| `.ai-docs/**`           | AI documentation indexes and schemas                                  |
+| `.ai-docs/quick-reference/**` | AI quick-reference docs (NOT auto-generated indexes)                  |
 | `AGENTS.md`             | Main agent patterns documentation                                     |
 | `DESIGN_SYSTEM.md`      | UI/UX design system                                                   |
 | `.claude/agents/*.md`   | Claude agent definitions                                              |
