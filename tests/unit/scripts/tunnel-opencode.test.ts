@@ -1,7 +1,7 @@
 /**
  * Unit tests for tunnel-opencode script
  *
- * Validates the migration from ngrok to localtunnel
+ * Validates the migration from ngrok to localtunnel with basic auth proxy
  */
 import fs from 'fs'
 import path from 'path'
@@ -45,11 +45,6 @@ describe('tunnel-opencode migration to localtunnel', () => {
       expect(content).not.toContain('NGROK_DOMAIN')
     })
 
-    it('should not reference NGROK_USERNAME or NGROK_PASSWORD', () => {
-      expect(content).not.toContain('NGROK_USERNAME')
-      expect(content).not.toContain('NGROK_PASSWORD')
-    })
-
     it('should export isPortInUse for testability', () => {
       expect(content).toMatch(/export\s+function\s+isPortInUse/)
     })
@@ -57,6 +52,13 @@ describe('tunnel-opencode migration to localtunnel', () => {
     it('should handle SIGINT for graceful shutdown', () => {
       expect(content).toContain('SIGINT')
       expect(content).toContain('SIGTERM')
+    })
+
+    it('should include basic auth proxy', () => {
+      expect(content).toContain('WWW-Authenticate')
+      expect(content).toContain('Basic')
+      expect(content).toContain('TUNNEL_USERNAME')
+      expect(content).toContain('TUNNEL_PASSWORD')
     })
   })
 
