@@ -8,7 +8,6 @@ import { redirect } from 'next/navigation'
 import type { Metadata } from 'next'
 import { CodyDashboard } from '@/ui/cody/components/CodyDashboard'
 import { getMeUser } from '@/infra/utils/getMeUser'
-
 import { AccountRole } from '@/infra/auth/roles'
 
 export const metadata: Metadata = {
