@@ -36,6 +36,20 @@ describe('Runtime Config Integration (Tenant-Scoped Secrets)', () => {
       })
       testTenantId = created.id
     }
+
+    // Clean up stale entries from previous runs (shared CI database)
+    try {
+      await payload.delete({
+        collection: 'config_secrets',
+        where: {
+          and: [{ key: { like: 'test_runtime_' } }, { tenant: { equals: testTenantId } }],
+        },
+        overrideAccess: true,
+      })
+    } catch {
+      // Ignore if nothing to delete
+    }
+    clearConfigCache()
   })
 
   afterAll(async () => {

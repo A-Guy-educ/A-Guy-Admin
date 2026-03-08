@@ -83,8 +83,20 @@ describe('SystemParams Integration (ConfigValues-based)', () => {
   })
 
   test('should load custom values from config_values', async () => {
+    // Clean up any stale entries first (shared CI database)
+    try {
+      await payload.delete({
+        collection: 'config_values',
+        where: {
+          and: [{ domain: { equals: 'global' } }, { tenant: { equals: testTenantId } }],
+        },
+        overrideAccess: true,
+      })
+    } catch {
+      // Ignore if nothing to delete
+    }
+
     // Create a test config value in the global domain
-    // Keys must match what SystemParams reads (e.g., pdf_conversion_max_segment_pages)
     const created = await payload.create({
       collection: 'config_values',
       draft: false,
@@ -112,6 +124,11 @@ describe('SystemParams Integration (ConfigValues-based)', () => {
   })
 
   test('should override tenant-specific values', async () => {
+    // Skip if previous test didn't set globalConfigId
+    if (!globalConfigId) {
+      throw new Error('globalConfigId not set — previous test must have failed')
+    }
+
     // Update the existing global config entry (tenant+domain must be unique)
     await payload.update({
       collection: 'config_values',
