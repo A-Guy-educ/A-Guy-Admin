@@ -922,7 +922,7 @@ export interface ConfigSecret {
   /**
    * Secret value (write-only after save)
    */
-  value: string;
+  value?: string | null;
   /**
    * Enable or disable this secret
    */

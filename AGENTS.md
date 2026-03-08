@@ -31,19 +31,21 @@ src/
 │   ├── payload/
 │   │   ├── collections/         # Collection configs
 │   │   ├── globals/             # Global configs
-│   │   ├── hooks/               # Hook functions
-│   │   ├── access/              # Access control functions
-│   │   ├── endpoints/           # Custom endpoints
-│   │   └── jobs/                # Background jobs
+│   │   ├── hooks/              # Hook functions
+│   │   ├── access/             # Access control functions
+│   │   ├── endpoints/          # Custom endpoints
+│   │   └── jobs/               # Background jobs
 │   └── services/                # Business logic services
 ├── ui/                          # React components
 │   ├── admin/                   # Payload admin UI components
+│   ├── cody/                    # Cody pipeline components
 │   └── web/                     # Frontend/consumer UI components
 ├── i18n/                        # Internationalization
 ├── types/                       # Type declarations
-├── lib/                         # Shared utilities
 └── payload.config.ts            # Main config
 ```
+
+> **Note**: Do NOT create a `lib/` folder under `src/`. Place shared utilities in appropriate domain-specific directories (e.g., `src/ui/cody/`, `src/server/services/`, `src/infra/`).
 
 ## Configuration
 
