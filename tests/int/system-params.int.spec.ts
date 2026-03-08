@@ -17,6 +17,7 @@ const TEST_TENANT_SLUG = 'system-params-test-tenant'
 describe('SystemParams Integration (ConfigValues-based)', () => {
   let payload: Awaited<ReturnType<typeof getPayload>>
   let testTenantId: string
+  let globalConfigId: string
 
   beforeAll(async () => {
     payload = await getPayload({ config })
@@ -35,6 +36,19 @@ describe('SystemParams Integration (ConfigValues-based)', () => {
         overrideAccess: true,
       })
       testTenantId = created.id
+    }
+
+    // Clean up any leftover config_values from previous test runs
+    try {
+      await payload.delete({
+        collection: 'config_values',
+        where: {
+          and: [{ domain: { equals: 'global' } }, { tenant: { equals: testTenantId } }],
+        },
+        overrideAccess: true,
+      })
+    } catch {
+      // Ignore if nothing to delete
     }
   })
 
@@ -70,36 +84,48 @@ describe('SystemParams Integration (ConfigValues-based)', () => {
 
   test('should load custom values from config_values', async () => {
     // Create a test config value in the global domain
-    await payload.create({
+    // Keys must match what SystemParams reads (e.g., pdf_conversion_max_segment_pages)
+    const created = await payload.create({
       collection: 'config_values',
       draft: false,
       data: {
         domain: 'global',
-        config: { maxPages: 10, maxExercisesPerSegment: 500, maxPromptSizeBytes: 102400 },
+        config: {
+          pdf_conversion_max_segment_pages: 10,
+          pdf_conversion_max_exercises_per_segment: 500,
+          pdf_conversion_max_prompt_size_bytes: 102400,
+        },
         tenant: testTenantId,
       },
       overrideAccess: true,
     })
 
+    // Clear cache to force reload with new values
+    clearConfigValuesCache()
     await loadConfigValues(payload, testTenantId)
 
     // Verify it loads via SystemParams
     expect(await SystemParams.getPdfConversionMaxSegmentPages(testTenantId)).toBe(10)
+
+    // Store ID for update in next test
+    globalConfigId = created.id
   })
 
   test('should override tenant-specific values', async () => {
-    // Create tenant-specific config value
-    await payload.create({
+    // Update the existing global config entry (tenant+domain must be unique)
+    await payload.update({
       collection: 'config_values',
-      draft: false,
+      id: globalConfigId,
       data: {
-        domain: 'global',
-        config: { maxExercisesPerSegment: 750 },
-        tenant: testTenantId,
+        config: {
+          pdf_conversion_max_exercises_per_segment: 750,
+        },
       },
       overrideAccess: true,
     })
 
+    // Clear cache to force reload with updated values
+    clearConfigValuesCache()
     await loadConfigValues(payload, testTenantId)
 
     // Should use tenant-specific value
