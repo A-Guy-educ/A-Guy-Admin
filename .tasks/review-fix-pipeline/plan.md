@@ -13,11 +13,11 @@ architect → plan-gap → build → commit → verify → pr
 
 ### After
 ```
-architect → plan-gap → build → commit → review → fix → commit → verify → pr
-                                                        ↑
-                                                        │
-                                              [VERIFY FAIL]
-                                              (loops back to fix)
+architect → plan-gap → build → commit → review → fix → commit-fix → verify → pr
+                                                              ↑
+                                                              │
+                                                    [VERIFY FAIL]
+                                                    (loops back to fix)
 ```
 
 ---
@@ -57,6 +57,7 @@ export const ALL_STAGES = [
   'commit',
   'review',    // NEW
   'fix',       // NEW
+  'commit-fix', // NEW: commit after fix stage
   'verify',
   'autofix',
   'pr',
@@ -70,7 +71,17 @@ export type Stage = (typeof ALL_STAGES)[number]
 export const STAGE_CONTEXT_FILES: Record<Stage, string[]> = {
   // ... existing entries ...
   review: ['review.md', 'build.md', 'plan.md', 'spec.md', 'clarified.md'],
-  fix: ['fix-summary.md', 'verify-failures.md', 'review.md', 'rerun-feedback.md'],
+  fix: [
+    'verify-failures.md',  // Errors from verify stage
+    'review.md',           // Issues from architect review
+    'rerun-feedback.md',   // Human feedback via @cody fix
+    'fix-summary.md',     // Previous fix attempts
+    'build.md',           // What was built (for context)
+    'plan.md',            // Implementation plan
+    'spec.md',            // Original specification
+    'clarified.md',       // Design decisions
+  ],
+  'commit-fix': ['fix-summary.md', 'verify-failures.md'], // Files to include in fix commit
 }
 ```
 
@@ -144,22 +155,57 @@ stages.set('fix', {
   timeout: STAGE_TIMEOUTS.fix ?? ms('10m'),  // 10 min timeout
   maxRetries: 2,  // Allow up to 2 fix attempts
   shouldSkip: (ctx) => {
+    // NOTE: shouldSkip is synchronous - use sync import from definitions.ts scope
     // Skip if coming from verify failure but max attempts reached
-    const { loadState } = await import('../engine/status')
+    // loadState is already imported at top of definitions.ts
     const state = loadState(ctx.taskId)
     const fixStage = state?.stages?.fix
     if (fixStage?.fixAttempt !== undefined && fixStage.fixAttempt >= 2) {
       return { shouldSkip: true, reason: 'Max fix attempts reached' }
     }
+    // Skip if review found no issues AND no verify failures exist
+    const reviewStage = state?.stages?.review
+    if (!reviewStage?.issuesFound) {
+      const verifyFailuresPath = path.join(ctx.taskDir, 'verify-failures.md')
+      if (!fs.existsSync(verifyFailuresPath)) {
+        return { shouldSkip: true, reason: 'No issues to fix' }
+      }
+    }
     return { shouldSkip: false }
   },
   postActions: [
     { type: 'commit-task-files', stagingStrategy: 'tracked+task', push: true },
+    { type: 'clear-verify-failures' }, // Clear failures after fix attempt
   ],
 })
 ```
 
 **Complexity**: Medium
+**Files Modified**: 1
+
+---
+
+## Step 3b: Define commit-fix Stage in Pipeline
+
+**File**: `scripts/cody/pipeline/definitions.ts`
+**Location**: After fix stage definition
+
+**Add**:
+```typescript
+// Commit-fix stage - commits the fix changes before verify
+stages.set('commit-fix', {
+  name: 'commit-fix',
+  type: 'git',
+  timeout: STAGE_TIMEOUTS['commit-fix'] ?? ms('2m'),
+  maxRetries: 0,
+  postActions: [
+    // Reuse the same commit logic as build's commit stage
+    { type: 'commit-task-files', stagingStrategy: 'tracked+task', push: true },
+  ],
+})
+```
+
+**Complexity**: Low
 **Files Modified**: 1
 
 ---
@@ -190,9 +236,30 @@ export const IMPL_ORDER_STANDARD: PipelineStep[] = [
   'commit',
   'review',    // NEW
   'fix',       // NEW
-  'commit',    // NEW: commit fixes before verify
+  'commit-fix', // NEW: commit fix changes before verify
   'verify',
   'pr',
+]
+
+// Also update IMPL_ORDER_LIGHTWEIGHT:
+export const IMPL_ORDER_LIGHTWEIGHT: PipelineStep[] = [
+  'architect',
+  'build',
+  'commit',
+  'review',    // NEW
+  'fix',       // NEW
+  'commit-fix', // NEW
+  'verify',
+  'pr',
+]
+
+// NEW: Fix-only pipeline order for @cody fix mode
+export const FIX_ORDER: PipelineStep[] = [
+  'review',    // Run review first to identify issues
+  'fix',       // Apply fixes
+  'commit-fix', // Commit the fixes
+  'verify',    // Verify the fixes
+  'pr',        // Create PR if verify passes
 ]
 ```
 
@@ -488,97 +555,120 @@ case 'clear-verify-failures': {
 ## Step 10: Add Verify Loop Logic to State Machine
 
 **File**: `scripts/cody/engine/state-machine.ts`
-**Location**: In runPipeline function, after verify stage completes
+**Location**: In `handleStageResult` function (around line 553-566)
 
-**Find where stage results are handled** (around line 450-550)
+**Approach**: Intercept verify failures in `handleStageResult`, BEFORE calling `completeState(state, 'failed')`. The existing main `while(true)` loop will naturally continue after we return the modified state.
 
-**Add after verify stage completes**:
+**Find where verify stage fails** (around line 553 in `handleStageResult`):
+
 ```typescript
-// Check for verify stage failure and trigger loop
-if (stageName === 'verify') {
-  if (stageResult.state === 'failed') {
-    // Get current fix attempt count
-    const fixStageState = state.stages.get('fix')
-    const currentAttempt = fixStageState?.fixAttempt || 0
-    const maxAttempts = pipeline.stages.get('fix')?.maxRetries || 2
+} else if (result.outcome === 'failed') {
+  state = updateStage(state, stageName, {
+    state: 'failed',
+    error: result.reason,
+  })
+
+  // If non-advisory stage failed, mark pipeline as failed
+  if (!def.advisory) {
+    // Set lifecycle label to failed
+    if (ctx.input.issueNumber) {
+      setLifecycleLabel(ctx.input.issueNumber, 'cody:failed')
+    }
+    return completeState(state, 'failed')  // <-- INTERCEPT HERE
+  }
+}
+```
+
+**Replace the failure handling block with**:
+
+```typescript
+} else if (result.outcome === 'failed') {
+  // VERIFY LOOP: Check if verify failed and we should retry with fix
+  if (stageName === 'verify' && !def.advisory) {
+    const fixStageDef = pipeline.stages.get('fix')
+    const maxAttempts = fixStageDef?.maxRetries ?? 2
+    
+    // Get current fix attempt from state
+    const currentAttempt = state.stages['fix']?.fixAttempt ?? 0
     
     if (currentAttempt < maxAttempts) {
-      // Loop to fix stage
-      logger.info(`Verify failed, looping to fix (attempt ${currentAttempt + 1}/${maxAttempts})`)
-      
       // Capture verify failures for fix stage
       const verifyFailuresPath = path.join(ctx.taskDir, 'verify-failures.md')
-      const errorOutput = stageResult.error || 'Verify failed - check logs'
-      fs.writeFileSync(verifyFailuresPath, `# Verify Failures\n\n${errorOutput}\n`)
+      const errorOutput = result.reason || 'Verify failed - check logs'
       
-      // Increment fix attempt counter
+      // Try to capture more detailed output from verify scripts
+      let detailedOutput = errorOutput
+      try {
+        const tscOutput = fs.readFileSync(path.join(ctx.taskDir, 'tsc-output.txt'), 'utf-8').slice(0, 5000)
+        const lintOutput = fs.readFileSync(path.join(ctx.taskDir, 'lint-output.txt'), 'utf-8').slice(0, 5000)
+        detailedOutput = `# Verify Failures\n\n${errorOutput}\n\n## TypeScript Errors\n\`\`\`\n${tscOutput}\n\`\`\`\n\n## Lint Errors\n\`\`\`\n${lintOutput}\n\`\`\``
+      } catch {
+        // Files don't exist, use basic error
+      }
+      
+      fs.writeFileSync(verifyFailuresPath, detailedOutput)
+      
+      // Increment fix attempt
       const newFixAttempt = currentAttempt + 1
+      
+      // Reset fix, commit-fix, and verify to pending
       state = updateStage(state, 'fix', {
-        state: 'running',
+        state: 'pending',
         fixAttempt: newFixAttempt,
         maxFixAttempts: maxAttempts,
-        startedAt: new Date().toISOString(),
       })
-      writeState(ctx.taskId, state)
-      
-      // Reset verify stage to pending for retry
+      state = updateStage(state, 'commit-fix', { state: 'pending' })
       state = updateStage(state, 'verify', { state: 'pending' })
+      
+      // Update the failed verify stage with attempt info
+      state = updateStage(state, 'verify', {
+        state: 'failed',
+        error: result.reason,
+        retries: currentAttempt, // Track which attempt failed
+      })
+      
       writeState(ctx.taskId, state)
       
-      // Find index of fix stage in pipeline
-      const stageOrder = flattenPipelineOrder(pipeline.order)
-      const fixIndex = stageOrder.indexOf('fix')
+      logger.info(`🔄 Verify failed, looping to fix (attempt ${newFixAttempt}/${maxAttempts})`)
       
-      // Continue from fix stage
-      return runPipelineFromStage(ctx, pipeline, hooks, rebuildPipeline, fixIndex, state)
+      // IMPORTANT: Return state WITHOUT calling completeState('failed')
+      // The main while(true) loop will continue and resolveNextStep will find 'fix' as next pending stage
+      return state
     } else {
       logger.error(`Max fix attempts (${maxAttempts}) reached, pipeline failing`)
-      // Continue to fail the pipeline normally
+      // Fall through to normal failure handling
     }
   }
-}
-```
+  
+  // Normal failure handling
+  state = updateStage(state, stageName, {
+    state: 'failed',
+    error: result.reason,
+  })
 
-**Need to add helper function** `runPipelineFromStage`:
-```typescript
-async function runPipelineFromStage(
-  ctx: PipelineContext,
-  pipeline: PipelineDefinition,
-  hooks?: LifecycleHooks,
-  rebuildPipeline?: (ctx: PipelineContext) => PipelineDefinition,
-  startIndex?: number,
-  initialState?: PipelineStateV2,
-): Promise<PipelineStateV2> {
-  // Same as runPipeline but accepts startIndex
-  // ... implementation similar to runPipeline ...
-}
-```
-
-**Alternative simpler approach**: Modify the stage completion logic to check if we should loop:
-```typescript
-// After any stage completes with 'failed' state
-if (stageResult.state === 'failed' && stageName === 'verify') {
-  // Check fix attempt count and loop
-  const shouldLoop = checkAndIncrementFixAttempt(ctx.taskId)
-  if (shouldLoop) {
-    // Write verify failures to file
-    writeVerifyFailuresFile(ctx.taskDir, stageResult.error)
-    // Reset to fix stage in state
-    const { loadState, writeState, updateStage } = await import('./status')
-    const s = loadState(ctx.taskId)
-    const newState = updateStage(s, 'fix', { 
-      state: 'running',
-      fixAttempt: (s.stages.fix?.fixAttempt || 0) + 1 
-    })
-    writeState(ctx.taskId, newState)
-    // Return early with indication to continue from fix
-    return runPipeline(ctx, pipeline, hooks, rebuildPipeline)
+  // If non-advisory stage failed, mark pipeline as failed
+  if (!def.advisory) {
+    // Set lifecycle label to failed
+    if (ctx.input.issueNumber) {
+      setLifecycleLabel(ctx.input.issueNumber, 'cody:failed')
+    }
+    return completeState(state, 'failed')
   }
+}
+```
+
+**Also need to ensure StageStateV2 can store fixAttempt**. Add to types.ts StageStateV2:
+```typescript
+export interface StageStateV2 {
+  // ... existing fields
+  fixAttempt?: number
+  maxFixAttempts?: number
+  issuesFound?: boolean
 }
 ```
 
 **Complexity**: High
-**Files Modified**: 1
+**Files Modified**: 2 (`state-machine.ts`, `types.ts`)
 
 ---
 
@@ -635,8 +725,26 @@ export function isValidMode(mode: string): mode is (typeof VALID_MODES)[number] 
 }
 ```
 
+**IMPORTANT: Also fix implicit feedback capture for fix mode**:
+In the same file, find the `parseCommentBody` function (around line 870):
+
+The current code only captures implicit feedback for `rerun` mode:
+```typescript
+// Line 871 - current code:
+if (mode === 'rerun') {
+```
+
+**Change to**:
+```typescript
+// Allow implicit feedback for both rerun and fix modes
+// This handles "@cody fix the button isn't showing" → feedback = "the button isn't showing"
+if (mode === 'rerun' || mode === 'fix') {
+```
+
+**Why**: When users write `@cody fix the button isn't showing`, the text after "fix" should be captured as feedback for the fix agent to use. Currently only rerun mode captures this, so fix mode would lose the user's description.
+
 **Complexity**: Low
-**Files Modified**: 1
+**Files Modified**: 1 (`scripts/cody/cody-utils.ts`)
 
 ---
 
@@ -654,6 +762,8 @@ case 'fix':
 
 **Add function** (after runRerunMode function, around line 618):
 ```typescript
+import { FIX_ORDER } from './pipeline/definitions'
+
 /**
  * Fix mode - applies targeted fixes without regenerating entire codebase
  */
@@ -686,29 +796,61 @@ async function runFixMode(ctx: PipelineContext): Promise<void> {
     ctx.profile = resolvePipelineProfile(taskDef)
   }
 
-  // Resolve pipeline (reuse rerun definition but start from fix)
-  const pipeline = resolvePipelineForMode('rerun', ctx.profile, false, ctx)
+  // Import necessary functions
+  const { loadState, writeState, updateStage, initState, createState } = await import('./engine/status')
+  const { buildPipeline } = await import('./pipeline/definitions')
   
-  // Load state to get fix attempt count
-  const { loadState, writeState, updateStage } = await import('./engine/status')
+  // Load existing state or create new one
   let state = loadState(input.taskId)
   
-  // Initialize fix attempt if not set
-  if (!state?.stages?.fix?.fixAttempt) {
-    state = updateStage(state || initState(ctx, 'fix'), 'fix', {
-      state: 'pending',
-      fixAttempt: 0,
-      maxFixAttempts: 2,
+  // If no existing state, create fresh state with FIX_ORDER stages
+  if (!state) {
+    // Create new state for fix mode
+    state = createState({
+      taskId: input.taskId,
+      mode: 'fix',
+      pipeline: ctx.profile,
     })
-    writeState(input.taskId, state)
+    
+    // Initialize all FIX_ORDER stages to pending
+    for (const stageName of FIX_ORDER) {
+      state = updateStage(state, stageName, { state: 'pending', retries: 0 })
+    }
   }
-
-  // Run from fix stage (skip build)
+  
+  // Set fix stage to pending and initialize fix attempt if not set
+  const existingFixAttempt = state.stages['fix']?.fixAttempt ?? 0
+  state = updateStage(state, 'fix', {
+    state: 'pending',
+    fixAttempt: existingFixAttempt,
+    maxFixAttempts: 2,
+  })
+  
+  // Also ensure commit-fix and verify are pending
+  state = updateStage(state, 'commit-fix', { state: 'pending' })
+  state = updateStage(state, 'verify', { state: 'pending' })
+  state = updateStage(state, 'review', { state: 'pending' })
+  
+  // Set initial cursor
+  state = { ...state, cursor: 'review', state: 'running' }
+  writeState(input.taskId, state)
+  
+  // Build pipeline for fix mode (stages only, order from FIX_ORDER)
+  const pipeline = buildPipeline('fix', ctx.profile, false, ctx)
+  
+  // Run pipeline - it will find the first pending stage (review) and continue
   await runPipeline(ctx, pipeline)
 
   logger.info('\n✅ Fix complete!')
 }
 ```
+
+**Key fixes from original**:
+1. Uses `FIX_ORDER` (from Step 4) instead of reusing rerun pipeline
+2. Creates new state if none exists, initializes all FIX_ORDER stages to pending
+3. Properly imports `initState` or uses `createState` (whichever exists)
+4. Sets both `fix`, `commit-fix`, `verify`, and `review` stages to pending so they all run
+5. Sets `cursor` and `state: 'running'` to ensure pipeline continues
 
 **Complexity**: Medium
 **Files Modified**: 1
@@ -722,6 +864,8 @@ async function runFixMode(ctx: PipelineContext): Promise<void> {
 
 **Update function signature and switch**:
 ```typescript
+import { FIX_ORDER, IMPL_ORDER_STANDARD, IMPL_ORDER_LIGHTWEIGHT } from '../pipeline/definitions'
+
 export function resolvePipelineForMode(
   mode: 'spec' | 'impl' | 'full' | 'rerun' | 'fix' | 'status',
   profile: 'standard' | 'lightweight',
@@ -735,8 +879,13 @@ export function resolvePipelineForMode(
     case 'impl':
       return buildPipeline('impl', profile, clarify, ctx)
     case 'rerun':
-    case 'fix':  // Both rerun and fix use rerun pipeline definition
-      return buildPipeline('rerun', profile, clarify, ctx)
+      // Rerun uses standard impl order
+      const rerunOrder = profile === 'lightweight' ? IMPL_ORDER_LIGHTWEIGHT : IMPL_ORDER_STANDARD
+      return { stages: buildPipeline('full', profile, clarify, ctx).stages, order: rerunOrder }
+    case 'fix':
+      // Fix mode uses FIX_ORDER (review → fix → commit-fix → verify → pr)
+      const fixPipeline = buildPipeline('full', profile, clarify, ctx)
+      return { stages: fixPipeline.stages, order: FIX_ORDER }
     case 'status':
       return { stages: new Map(), order: [] }
     default:
@@ -744,6 +893,8 @@ export function resolvePipelineForMode(
   }
 }
 ```
+
+**Note**: The fix mode uses the same stage definitions from buildPipeline but with a different order (FIX_ORDER). This ensures all the stage logic (timeouts, postActions, etc.) is preserved while only changing execution order.
 
 **Complexity**: Low
 **Files Modified**: 1
@@ -800,47 +951,23 @@ export interface FixStageResult {
 
 **No changes needed** - review and fix stages use type 'agent', which defaults to AgentHandler.
 
-**But** need to ensure stageInstructions are returned for these stages. The agent handler uses buildStagePrompt from stage-prompts.ts, which already handles our new stages.
+The agent handler uses `buildStagePrompt` from `stage-prompts.ts`, which already supports our new stages via the `stageInstructions` added in Step 1. The generic prompt path includes:
+- File listings for the stage (from STAGE_CONTEXT_FILES)
+- Feedback injection (from rerun-feedback.md if exists)
+- Task context files
+- Stage-specific instructions from `stageInstructions['review']` and `stageInstructions['fix']`
 
 **Complexity**: None
 **Files Modified**: 0
 
 ---
 
-## Step 17: Add Stage-Specific Prompts to buildStagePrompt
+## Step 17: Add Review/Fix Thresholds to STAGE_COMPLEXITY_THRESHOLDS
 
-**File**: `scripts/cody/stage-prompts.ts`
-**Location**: In buildStagePrompt function (around line 170)
+**File**: `scripts/cody/pipeline-utils.ts`
+**Location**: Find STAGE_COMPLEXITY_THRESHOLDS
 
-**Update function to handle review and fix stages**:
-```typescript
-export function buildStagePrompt(input: CodyInput, stage: string, feedback?: string): string {
-  const { taskId } = input
-  const taskDir = path.join(process.cwd(), '.tasks', taskId)
-
-  // Special handling for review and fix stages
-  if (stage === 'review') {
-    return buildReviewPrompt(taskId, taskDir)
-  }
-  if (stage === 'fix') {
-    return buildFixPrompt(taskId, taskDir)
-  }
-
-  // ... existing logic for other stages
-}
-```
-
-**Complexity**: Low
-**Files Modified**: 1
-
----
-
-## Step 18: Add Skip Condition for Review Stage
-
-**File**: `scripts/cody/pipeline/skip-conditions.ts`
-**Location**: In skipIfBelowComplexity function
-
-**Add review threshold**:
+**Add review and fix thresholds**:
 ```typescript
 export const STAGE_COMPLEXITY_THRESHOLDS: Record<string, number> = {
   taskify: 0,
@@ -850,11 +977,47 @@ export const STAGE_COMPLEXITY_THRESHOLDS: Record<string, number> = {
   architect: 30,
   'plan-gap': 40,
   build: 50,
-  review: 30,    // NEW - skip review for low complexity tasks
-  fix: 0,       // NEW - never skip fix
-  // ...
+  review: 30,      // NEW - skip review for low complexity tasks
+  fix: 0,          // NEW - never skip fix
+  'commit-fix': 0, // NEW - always run
+  // ... existing
 }
 ```
+
+**Note**: The review stage will be skipped for low-complexity tasks, but the fix stage will always run (even if skipped via its own shouldSkip logic for "no issues found").
+
+**Complexity**: Low
+**Files Modified**: 1
+}
+```
+
+**Complexity**: Low
+**Files Modified**: 1
+
+---
+
+## Step 18: Add review and fix Agents to opencode.json
+
+**File**: `opencode.json`
+**Location**: In the `agent` object
+
+The pipeline runner spawns `opencode run --agent <stage>`, which loads the agent configuration from `opencode.json`. We need to add entries for `review` and `fix`:
+
+**Add to the agent object**:
+```json
+"review": {
+  "model": "anthropic/claude-opus-4-6",
+  "description": "Architect-level code review of generated code for quality, security, and correctness"
+},
+"fix": {
+  "model": "minimax-coding-plan/MiniMax-M2.5",
+  "description": "Targeted fixes for issues found by review or verify stages"
+}
+```
+
+**Model selection rationale**:
+- `review` → `claude-opus-4-6`: Code review requires deep architectural reasoning, security analysis, and understanding of complex code patterns. This is the same model used by the architect agent.
+- `fix` → `MiniMax-M2.5`: Targeted code fixes are implementation work, same domain as the build agent. Fast and good at precise code changes.
 
 **Complexity**: Low
 **Files Modified**: 1
@@ -865,26 +1028,27 @@ export const STAGE_COMPLEXITY_THRESHOLDS: Record<string, number> = {
 
 | Step | File | Change | Complexity |
 |------|------|--------|------------|
-| 1 | stage-prompts.ts | Add review/fix to ALL_STAGES + context files + instructions | Low |
+| 1 | stage-prompts.ts | Add review/fix/commit-fix to ALL_STAGES + context files + instructions | Low |
 | 2 | definitions.ts | Define review stage | Medium |
-| 3 | definitions.ts | Define fix stage | Medium |
-| 4 | definitions.ts | Update IMPL_ORDER | Low |
-| 5 | agent-runner.ts | Add timeout constants | Low |
-| 6 | stage-prompts.ts | Create buildReviewPrompt | Low |
-| 7 | stage-prompts.ts | Create buildFixPrompt | Low |
-| 8 | types.ts | Add AnalyzeReviewFindings, ClearVerifyFailures types | Low |
+| 3 | definitions.ts | Define fix stage + clear-verify-failures postAction | Medium |
+| 3b | definitions.ts | Define commit-fix stage | Low |
+| 4 | definitions.ts | Update IMPL_ORDER + add FIX_ORDER | Low |
+| 5 | agent-runner.ts | Add timeout constants for review, fix, commit-fix | Low |
+| 6 | stage-prompts.ts | Create buildReviewPrompt (optional, used by generic path) | Low |
+| 7 | stage-prompts.ts | Create buildFixPrompt (optional, used by generic path) | Low |
+| 8 | types.ts | Add AnalyzeReviewFindings, ClearVerifyFailures types + StageStateV2 extensions | Low |
 | 9 | post-actions.ts | Implement analyze-review-findings, clear-verify-failures | Medium |
-| 10 | state-machine.ts | Add verify→fix loop logic | High |
+| 10 | state-machine.ts | Add verify→fix loop logic in handleStageResult | High |
 | 11 | parse-inputs.ts | Add fix to VALID_MODES | Low |
-| 12 | cody-utils.ts | Add fix to CodyInput.mode | Low |
-| 13 | entry.ts | Add runFixMode handler | Medium |
-| 14 | pipeline-resolver.ts | Handle fix mode | Low |
-| 15 | types.ts | Add StageStatus extensions | Low |
+| 12 | cody-utils.ts | Add fix to CodyInput.mode + fix implicit feedback for fix mode | Low |
+| 13 | entry.ts | Add runFixMode handler with FIX_ORDER | Medium |
+| 14 | pipeline-resolver.ts | Handle fix mode with FIX_ORDER | Low |
+| 15 | types.ts | Ensure StageStateV2 has fixAttempt, maxFixAttempts, issuesFound | Low |
 | 16 | handler.ts | No changes needed | - |
-| 17 | stage-prompts.ts | Update buildStagePrompt | Low |
-| 18 | skip-conditions.ts | Add review threshold | Low |
+| 17 | pipeline-utils.ts | Add review/fix/commit-fix to STAGE_COMPLEXITY_THRESHOLDS | Low |
+| 18 | opencode.json | Add review (opus) and fix (MiniMax) agent definitions | Low |
 
-**Total Files Modified**: ~15
+**Total Files Modified**: ~13
 **Total Complexity**: Medium-High
 
 ---
