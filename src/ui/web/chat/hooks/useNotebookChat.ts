@@ -5,7 +5,6 @@ import { formatExerciseContextMessage } from '@/infra/llm/exercise-context'
 import { SYSTEM_EVENTS, systemEventBus } from '@/infra/system-events'
 
 import { logger } from '@/infra/utils/logger'
-
 import { apiService } from '@/server/services/api/api-service'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'

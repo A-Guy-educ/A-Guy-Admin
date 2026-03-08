@@ -21,7 +21,6 @@ import { RouteLoadingIndicator } from '@/infra/loading/components/RouteLoadingIn
 import { defaultLocale, getDirection } from '@/i18n/config'
 import { getSystemLocale } from '@/i18n/server-locale'
 import { I18nProvider } from '@/ui/web/providers/I18n'
-
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import './globals.css'

@@ -20,7 +20,6 @@
  */
 
 import type { ConfigSecret } from '@/payload-types'
-
 import { getDefaultTenantId } from '@/server/repos/tenant/get-default-tenant'
 import type { Payload, Where } from 'payload'
 import { decryptSecret } from '../config-crypto'

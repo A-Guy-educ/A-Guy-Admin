@@ -14,7 +14,6 @@ import {
   CHAT_ASSET_TOKEN_VALID_MINUTES,
 } from '@/server/chat-assets/constants'
 import { buildChatAssetPathname } from '@/server/chat-assets/pathname'
-
 import { getDefaultTenantId } from '@/server/repos/tenant/get-default-tenant'
 
 const clientPayloadSchema = z.object({

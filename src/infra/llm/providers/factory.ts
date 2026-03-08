@@ -15,7 +15,6 @@ import {
   loadConfigValues,
 } from '@/infra/config/runtime/config-values'
 import { logger } from '@/infra/utils/logger'
-
 import { getDefaultTenantId } from '@/server/repos/tenant/get-default-tenant'
 import type { Payload } from 'payload'
 import { LLMProviderType } from './types'

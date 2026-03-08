@@ -4,7 +4,6 @@ import { PayloadRedirects } from '@/ui/web/PayloadRedirects'
 import { draftMode } from 'next/headers'
 
 import { generateMeta } from '@/infra/utils/generateMeta'
-
 import { RenderBlocks } from '@/server/payload/blocks/RenderBlocks'
 import { queryAllPageSlugs, queryPageBySlug } from '@/server/repos/queries/pages'
 import { LivePreviewListener } from '@/ui/web/LivePreviewListener'
