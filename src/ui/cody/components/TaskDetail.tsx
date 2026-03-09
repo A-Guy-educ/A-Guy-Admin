@@ -73,56 +73,63 @@ interface FullTaskDetails extends CodyTask {
 
 const columnColors: Record<
   ColumnId,
-  { bg: string; text: string; bar: string; pill: string; wash: string }
+  { bg: string; text: string; bar: string; pill: string; wash: string; glow: string }
 > = {
   open: {
     bg: 'bg-zinc-500/10',
     text: 'text-zinc-400',
-    bar: 'bg-zinc-400',
-    pill: 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300',
-    wash: 'from-zinc-500/5',
+    bar: 'bg-gradient-to-r from-zinc-500 to-zinc-400',
+    pill: 'bg-zinc-500/10 text-zinc-400 ring-1 ring-zinc-500/20',
+    wash: 'from-zinc-500/[0.03]',
+    glow: '',
   },
   building: {
     bg: 'bg-blue-500/10',
     text: 'text-blue-400',
-    bar: 'bg-blue-500',
-    pill: 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300',
-    wash: 'from-blue-500/5',
+    bar: 'bg-gradient-to-r from-blue-600 to-blue-400',
+    pill: 'bg-blue-500/10 text-blue-400 ring-1 ring-blue-500/20',
+    wash: 'from-blue-500/[0.04]',
+    glow: 'shadow-[0_0_15px_rgba(59,130,246,0.12)]',
   },
   review: {
     bg: 'bg-purple-500/10',
     text: 'text-purple-400',
-    bar: 'bg-purple-500',
-    pill: 'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300',
-    wash: 'from-purple-500/5',
+    bar: 'bg-gradient-to-r from-purple-600 to-purple-400',
+    pill: 'bg-purple-500/10 text-purple-400 ring-1 ring-purple-500/20',
+    wash: 'from-purple-500/[0.04]',
+    glow: 'shadow-[0_0_15px_rgba(168,85,247,0.12)]',
   },
   failed: {
     bg: 'bg-red-500/10',
     text: 'text-red-400',
-    bar: 'bg-red-500',
-    pill: 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300',
-    wash: 'from-red-500/5',
+    bar: 'bg-gradient-to-r from-red-600 to-red-400',
+    pill: 'bg-red-500/10 text-red-400 ring-1 ring-red-500/20',
+    wash: 'from-red-500/[0.04]',
+    glow: 'shadow-[0_0_15px_rgba(239,68,68,0.12)]',
   },
   'gate-waiting': {
-    bg: 'bg-yellow-500/10',
-    text: 'text-yellow-400',
-    bar: 'bg-yellow-500',
-    pill: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/50 dark:text-yellow-300',
-    wash: 'from-yellow-500/5',
+    bg: 'bg-amber-500/10',
+    text: 'text-amber-400',
+    bar: 'bg-gradient-to-r from-amber-600 to-amber-400',
+    pill: 'bg-amber-500/10 text-amber-400 ring-1 ring-amber-500/20',
+    wash: 'from-amber-500/[0.04]',
+    glow: 'shadow-[0_0_15px_rgba(245,158,11,0.12)]',
   },
   retrying: {
     bg: 'bg-orange-500/10',
     text: 'text-orange-400',
-    bar: 'bg-orange-500',
-    pill: 'bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300',
-    wash: 'from-orange-500/5',
+    bar: 'bg-gradient-to-r from-orange-600 to-orange-400',
+    pill: 'bg-orange-500/10 text-orange-400 ring-1 ring-orange-500/20',
+    wash: 'from-orange-500/[0.04]',
+    glow: 'shadow-[0_0_15px_rgba(249,115,22,0.12)]',
   },
   done: {
     bg: 'bg-emerald-500/10',
     text: 'text-emerald-400',
-    bar: 'bg-emerald-500',
-    pill: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300',
-    wash: 'from-emerald-500/5',
+    bar: 'bg-gradient-to-r from-emerald-600 to-emerald-400',
+    pill: 'bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-500/20',
+    wash: 'from-emerald-500/[0.04]',
+    glow: 'shadow-[0_0_15px_rgba(16,185,129,0.12)]',
   },
 }
 
@@ -155,18 +162,26 @@ function TabButton({
   return (
     <button
       onClick={onClick}
-      className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-        active
-          ? 'border-primary text-primary'
-          : 'border-transparent text-muted-foreground hover:text-foreground'
-      }`}
+      className={cn(
+        'relative flex items-center gap-1.5 px-3.5 py-2.5 text-[13px] font-medium transition-all duration-200',
+        active ? 'text-foreground' : 'text-muted-foreground/70 hover:text-muted-foreground',
+      )}
     >
-      <Icon className="w-4 h-4" />
+      <Icon className={cn('w-3.5 h-3.5', active && 'text-primary')} />
       {label}
       {count !== undefined && count > 0 && (
-        <span className="ml-0.5 px-1.5 py-0.5 text-xs font-medium bg-muted rounded-full">
+        <span
+          className={cn(
+            'ml-0.5 px-1.5 py-0.5 text-[10px] font-semibold rounded-full tabular-nums',
+            active ? 'bg-primary/10 text-primary' : 'bg-muted/80 text-muted-foreground',
+          )}
+        >
           {count}
         </span>
+      )}
+      {/* Active indicator line */}
+      {active && (
+        <span className="absolute bottom-0 left-3 right-3 h-[2px] bg-primary rounded-full" />
       )}
     </button>
   )
@@ -179,7 +194,11 @@ function StatusBadge({ column, pipelineState }: { column: ColumnId; pipelineStat
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-sm font-medium ${colors.pill}`}
+      className={cn(
+        'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold tracking-wide uppercase',
+        colors.pill,
+        colors.glow,
+      )}
     >
       {isRunning && <Loader2 className="w-3 h-3 animate-spin" />}
       {pipelineState === 'completed' && <CheckCircle className="w-3 h-3" />}
@@ -385,7 +404,7 @@ function OverflowMenu({
           <div className="fixed inset-0 z-[100]" onClick={() => setOpen(false)} />
           {/* Menu — fixed positioning to escape overflow:hidden parents */}
           <div
-            className="fixed z-[101] w-56 bg-popover border border-border rounded-lg shadow-lg py-1"
+            className="fixed z-[101] w-52 bg-popover/95 backdrop-blur-xl border border-white/[0.06] rounded-xl shadow-2xl shadow-black/30 py-1.5"
             style={
               menuPos
                 ? direction === 'up'
@@ -412,10 +431,10 @@ function OverflowMenu({
                   onClick={handleClick}
                   disabled={isPending}
                   className={cn(
-                    'w-full flex items-center gap-2.5 px-4 py-3 text-sm transition-colors',
+                    'w-full flex items-center gap-2.5 px-3.5 py-2.5 text-[13px] transition-colors rounded-lg mx-1 w-[calc(100%-8px)]',
                     action.destructive
                       ? 'text-red-400 hover:bg-red-500/10'
-                      : 'text-foreground hover:bg-muted',
+                      : 'text-muted-foreground hover:text-foreground hover:bg-white/[0.04]',
                     isPending && 'opacity-50 cursor-not-allowed',
                   )}
                 >
@@ -442,7 +461,7 @@ function InlinePipelineTimeline({ pipeline }: { pipeline: CodyPipelineStatus }) 
   const isPaused = pipeline.state === 'paused'
 
   return (
-    <div className="flex items-center gap-3 px-5 py-3 border-b border-border bg-muted/10">
+    <div className="flex items-center gap-3 px-5 py-2.5 border-b border-white/[0.04] bg-muted/5">
       {/* Stage dots */}
       <div className="flex items-center gap-1">
         {ALL_STAGES.map((stage, i) => {
@@ -608,10 +627,10 @@ export function TaskDetail({
     return (
       <div className="h-full flex items-center justify-center text-muted-foreground">
         <div className="text-center">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted/50 flex items-center justify-center">
-            <Info className="w-8 h-8 text-muted-foreground/50" />
+          <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-white/[0.03] ring-1 ring-white/[0.06] flex items-center justify-center">
+            <Info className="w-6 h-6 text-muted-foreground/30" />
           </div>
-          <p className="text-base">Select a task to view details</p>
+          <p className="text-sm text-muted-foreground/50">Select a task to view details</p>
         </div>
       </div>
     )
@@ -806,7 +825,7 @@ export function TaskDetail({
 
   // --- Tab Bar ---
   const tabBar = (
-    <div className="flex border-b border-border shrink-0 overflow-x-auto">
+    <div className="flex border-b border-white/[0.04] shrink-0 overflow-x-auto">
       {tabs.map(({ key, label, icon, count }) => (
         <TabButton
           key={key}
@@ -837,7 +856,7 @@ export function TaskDetail({
           <div className="flex-1 overflow-y-auto p-4">
             <CommentList comments={fullDetails?.comments || []} loading={isDetailsFetching} />
           </div>
-          <div className="shrink-0 border-t border-border p-3 bg-muted/10">
+          <div className="shrink-0 border-t border-white/[0.04] p-3 bg-white/[0.01]">
             <CommentEditor issueNumber={task.issueNumber} onCommentPosted={() => refetch()} />
           </div>
           {retryWithContextBlock}
@@ -866,10 +885,12 @@ export function TaskDetail({
 
   // Primary action button colors
   const primaryVariantStyles = {
-    blue: 'bg-blue-500/15 text-blue-400 border-blue-500/30 hover:bg-blue-500/25',
-    yellow: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30 hover:bg-yellow-500/25',
-    red: 'bg-red-500/15 text-red-400 border-red-500/30 hover:bg-red-500/25',
-    green: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/25',
+    blue: 'bg-blue-500/10 text-blue-400 border-blue-500/20 hover:bg-blue-500/20 shadow-[0_0_10px_rgba(59,130,246,0.08)]',
+    yellow:
+      'bg-amber-500/10 text-amber-400 border-amber-500/20 hover:bg-amber-500/20 shadow-[0_0_10px_rgba(245,158,11,0.08)]',
+    red: 'bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20 shadow-[0_0_10px_rgba(239,68,68,0.08)]',
+    green:
+      'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.08)]',
   }
 
   // --- Quick links shared between mobile (expandable) and desktop (header row 3) ---
@@ -880,7 +901,7 @@ export function TaskDetail({
         target="_blank"
         rel="noopener noreferrer"
         onClick={(e) => e.stopPropagation()}
-        className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-md bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors shrink-0"
+        className="inline-flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-lg bg-white/[0.04] text-muted-foreground/70 hover:bg-white/[0.07] hover:text-muted-foreground transition-all duration-150 shrink-0 ring-1 ring-white/[0.04]"
       >
         <Github className="w-3 h-3" />#{task.issueNumber}
       </a>
@@ -890,7 +911,7 @@ export function TaskDetail({
           target="_blank"
           rel="noopener noreferrer"
           onClick={(e) => e.stopPropagation()}
-          className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-md bg-purple-500/10 text-purple-400 hover:bg-purple-500/20 transition-colors shrink-0"
+          className="inline-flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-lg bg-purple-500/[0.08] text-purple-400/80 hover:bg-purple-500/[0.14] hover:text-purple-400 transition-all duration-150 shrink-0 ring-1 ring-purple-500/10"
         >
           <GitPullRequest className="w-3 h-3" />
           PR #{task.associatedPR.number}
@@ -902,7 +923,7 @@ export function TaskDetail({
           target="_blank"
           rel="noopener noreferrer"
           onClick={(e) => e.stopPropagation()}
-          className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-md bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors shrink-0"
+          className="inline-flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-lg bg-white/[0.04] text-muted-foreground/70 hover:bg-white/[0.07] hover:text-muted-foreground transition-all duration-150 shrink-0 ring-1 ring-white/[0.04]"
         >
           <Play className="w-3 h-3" />
           Workflow
@@ -925,7 +946,7 @@ export function TaskDetail({
             target="_blank"
             rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}
-            className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-md bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-colors shrink-0"
+            className="inline-flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-lg bg-emerald-500/[0.08] text-emerald-400/80 hover:bg-emerald-500/[0.14] hover:text-emerald-400 transition-all duration-150 shrink-0 ring-1 ring-emerald-500/10"
           >
             <ExternalLink className="w-3 h-3" />
             Preview
@@ -980,50 +1001,54 @@ export function TaskDetail({
   // --- Mobile Header: app-style with back button ---
   const mobileHeader = (
     <div className="md:hidden shrink-0">
-      {/* Accent bar */}
-      <div className={`h-1.5 ${columnColors[task.column].bar}`} />
+      {/* Thin accent line */}
+      <div className={cn('h-[2px]', columnColors[task.column].bar)} />
 
       {/* Header area */}
       <div
-        className={`px-3 pt-2 pb-3 border-b border-border bg-gradient-to-b ${columnColors[task.column].wash} to-transparent`}
+        className={cn(
+          'px-3 pt-2.5 pb-3 border-b border-white/[0.04] bg-gradient-to-b to-transparent',
+          columnColors[task.column].wash,
+        )}
       >
         {/* Row 1: ← Back | Status pill | time | Refresh */}
-        <div className="flex items-center gap-2 mb-2.5">
-          <SimpleTooltip content="Back to list" side="bottom">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onClose}
-              className="h-10 w-10 p-0 -ml-1 shrink-0"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-          </SimpleTooltip>
+        <div className="flex items-center gap-2 mb-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onClose}
+            className="h-9 w-9 p-0 -ml-1 shrink-0 text-muted-foreground/60"
+          >
+            <ArrowLeft className="w-4.5 h-4.5" />
+          </Button>
 
           <StatusBadge column={task.column} pipelineState={task.pipeline?.state} />
 
-          <span className="text-xs text-muted-foreground flex items-center gap-1 ml-auto">
+          <span className="text-xs text-muted-foreground/50 flex items-center gap-1 ml-auto">
             <Clock className="w-3 h-3" />
             {formatRelativeTime(task.updatedAt)}
           </span>
 
-          <SimpleTooltip content="Refresh" side="bottom">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-              className="h-10 w-10 p-0 shrink-0"
-            >
-              <RefreshCw
-                className={`w-4.5 h-4.5 transition-transform ${isRefreshing ? 'animate-spin text-blue-400' : ''}`}
-              />
-            </Button>
-          </SimpleTooltip>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="h-9 w-9 p-0 shrink-0 text-muted-foreground/50"
+          >
+            <RefreshCw
+              className={cn(
+                'w-4 h-4 transition-transform',
+                isRefreshing && 'animate-spin text-blue-400',
+              )}
+            />
+          </Button>
         </div>
 
         {/* Row 2: Title */}
-        <h2 className="text-lg font-semibold text-foreground leading-snug pl-1">{task.title}</h2>
+        <h2 className="text-base font-semibold text-foreground leading-snug tracking-tight pl-1">
+          {task.title}
+        </h2>
 
         {/* Sub-status badges */}
         {subStatusBadges && <div className="pl-1 mt-1.5">{subStatusBadges}</div>}
@@ -1034,52 +1059,26 @@ export function TaskDetail({
   // --- Desktop Header: full multi-row layout ---
   const desktopHeader = (
     <div className="hidden md:block shrink-0">
-      {/* Accent bar */}
-      <div className={`h-2 ${columnColors[task.column].bar}`} />
+      {/* Thin accent line */}
+      <div className={cn('h-[2px]', columnColors[task.column].bar)} />
 
-      {/* Header content */}
+      {/* Header content — clean and spacious */}
       <div
-        className={`px-5 pt-4 pb-3 border-b border-border bg-gradient-to-b ${columnColors[task.column].wash} to-transparent`}
+        className={cn(
+          'px-6 pt-5 pb-4 border-b border-white/[0.04] bg-gradient-to-b to-transparent',
+          columnColors[task.column].wash,
+        )}
       >
-        {/* Row 1: Status + Timestamp | Refresh + Close */}
-        <div className="flex items-center justify-between gap-2 mb-2">
-          <div className="flex items-center gap-2">
+        {/* Row 1: Status pill + time (left) | Actions (right) */}
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <div className="flex items-center gap-3">
             <StatusBadge column={task.column} pipelineState={task.pipeline?.state} />
-            <span className="text-sm text-muted-foreground flex items-center gap-1">
+            <span className="text-xs text-muted-foreground/60 flex items-center gap-1">
               <Clock className="w-3 h-3" />
               {formatRelativeTime(task.updatedAt)}
             </span>
           </div>
           <div className="flex items-center gap-1 shrink-0">
-            <SimpleTooltip content="Refresh" side="bottom">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleRefresh}
-                disabled={isRefreshing}
-                className="h-8 w-8 p-0"
-              >
-                <RefreshCw
-                  className={`w-4 h-4 transition-transform ${isRefreshing ? 'animate-spin text-blue-400' : ''}`}
-                />
-              </Button>
-            </SimpleTooltip>
-            <Button variant="ghost" size="sm" onClick={onClose} className="h-8 w-8 p-0">
-              <XCircle className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
-
-        {/* Row 2: Title */}
-        <h2 className="text-xl font-semibold text-foreground leading-snug pr-8 mb-3">
-          {task.title}
-        </h2>
-
-        {/* Row 3: Quick link pills (left) | Actions (right) */}
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-1.5 flex-wrap">{quickLinks}</div>
-
-          <div className="flex items-center gap-1.5 shrink-0">
             {/* Merge button (in review) */}
             {task.column === 'review' && task.associatedPR && onApproveReview && (
               <MergeButton
@@ -1097,16 +1096,16 @@ export function TaskDetail({
                 variant="outline"
                 size="sm"
                 className={cn(
-                  'h-8 gap-1.5 text-sm font-medium',
+                  'h-7 gap-1.5 text-xs font-medium rounded-lg',
                   primaryVariantStyles[primaryAction.variant],
                 )}
                 onClick={primaryAction.onClick}
                 disabled={taskActions.isPending}
               >
                 {taskActions.pendingAction === primaryAction.pendingKey ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <Loader2 className="w-3 h-3 animate-spin" />
                 ) : (
-                  <primaryAction.icon className="w-3.5 h-3.5" />
+                  <primaryAction.icon className="w-3 h-3" />
                 )}
                 <span>
                   {taskActions.pendingAction === primaryAction.pendingKey
@@ -1122,8 +1121,43 @@ export function TaskDetail({
               isPending={taskActions.isPending}
               pendingAction={taskActions.pendingAction}
             />
+
+            <span className="w-px h-5 bg-white/[0.06] mx-0.5" />
+
+            <SimpleTooltip content="Refresh" side="bottom">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                className="h-7 w-7 p-0 text-muted-foreground/50 hover:text-muted-foreground"
+              >
+                <RefreshCw
+                  className={cn(
+                    'w-3.5 h-3.5 transition-transform',
+                    isRefreshing && 'animate-spin text-blue-400',
+                  )}
+                />
+              </Button>
+            </SimpleTooltip>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onClose}
+              className="h-7 w-7 p-0 text-muted-foreground/50 hover:text-muted-foreground"
+            >
+              <XCircle className="w-3.5 h-3.5" />
+            </Button>
           </div>
         </div>
+
+        {/* Row 2: Title — prominent */}
+        <h2 className="text-lg font-semibold text-foreground leading-snug tracking-tight mb-3">
+          {task.title}
+        </h2>
+
+        {/* Row 3: Quick link pills */}
+        <div className="flex items-center gap-1.5 flex-wrap">{quickLinks}</div>
 
         {/* Sub-status badges */}
         {subStatusBadges}
@@ -1142,44 +1176,49 @@ export function TaskDetail({
   // --- Desktop Layout: sidebar with card styling ---
   const desktopLayout = (
     <div className="hidden md:flex flex-1 min-h-0 overflow-hidden">
-      {/* Left sidebar — with card styling */}
-      <div className="w-56 shrink-0 border-r border-border overflow-y-auto bg-muted/5">
-        <div className="p-4 space-y-4">
-          {/* Card: People & Labels — merged into one section */}
-          <div className="space-y-3">
-            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              People & Labels
+      {/* Left sidebar — refined, integrated */}
+      <div className="w-52 shrink-0 border-r border-white/[0.04] overflow-y-auto">
+        <div className="p-3.5 space-y-4">
+          {/* Assignees section */}
+          <div className="space-y-2">
+            <h4 className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-widest px-0.5">
+              Assignees
             </h4>
-            <div className="bg-muted/30 rounded-lg p-3 border border-border/50 space-y-3">
-              {/* Assignees */}
+            <div className="rounded-lg p-2.5 bg-white/[0.02] ring-1 ring-white/[0.04]">
               <AssigneePicker
                 issueNumber={task.issueNumber}
                 currentAssignees={fullDetails?.assignees || []}
                 onChange={handleAssigneeChange}
               />
-
-              {/* Labels - below assignees with separator */}
-              {task.labels.length > 0 && (
-                <div className="pt-2 border-t border-border/30">
-                  <div className="flex flex-wrap gap-1">
-                    {task.labels.map((label) => (
-                      <Badge key={label} variant="outline" className="text-xs font-normal">
-                        {label}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           </div>
 
-          {/* Pipeline — as separate card, only if exists */}
+          {/* Labels */}
+          {task.labels.length > 0 && (
+            <div className="space-y-2">
+              <h4 className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-widest px-0.5">
+                Labels
+              </h4>
+              <div className="flex flex-wrap gap-1 px-0.5">
+                {task.labels.map((label) => (
+                  <span
+                    key={label}
+                    className="inline-flex px-2 py-0.5 text-[11px] font-medium rounded-md bg-white/[0.04] text-muted-foreground ring-1 ring-white/[0.06]"
+                  >
+                    {label}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Pipeline — refined card */}
           {task.pipeline && (
             <div className="space-y-2">
-              <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              <h4 className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-widest px-0.5">
                 Pipeline
               </h4>
-              <div className="bg-muted/30 rounded-lg p-3 border border-border/50">
+              <div className="rounded-lg p-2.5 bg-white/[0.02] ring-1 ring-white/[0.04]">
                 <PipelineStatus status={task.pipeline} />
               </div>
             </div>
@@ -1189,7 +1228,7 @@ export function TaskDetail({
 
       {/* Right content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Improvement #7: Inline pipeline timeline above tabs */}
+        {/* Inline pipeline timeline above tabs */}
         {showPipelineTimeline && <InlinePipelineTimeline pipeline={task.pipeline!} />}
         {tabBar}
         <div className="flex-1 min-h-0 overflow-hidden">{tabContent}</div>
@@ -1201,7 +1240,7 @@ export function TaskDetail({
   const mobileLayout = (
     <div className="md:hidden flex-1 flex flex-col min-h-0 overflow-hidden">
       {/* Mobile details panel — expandable */}
-      <div className="shrink-0 border-b border-border">
+      <div className="shrink-0 border-b border-white/[0.04]">
         <button
           onClick={() => setShowMobileExtra(!showMobileExtra)}
           className="flex items-center justify-between w-full px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors active:bg-muted/50"
@@ -1271,7 +1310,7 @@ export function TaskDetail({
       <div className="flex-1 min-h-0 overflow-hidden">{tabContent}</div>
 
       {/* Bottom toolbar — single row, always visible */}
-      <div className="shrink-0 border-t border-border bg-card px-3 py-2 flex items-center gap-1.5 overflow-x-auto">
+      <div className="shrink-0 border-t border-white/[0.04] bg-card/95 backdrop-blur-sm px-3 py-2 flex items-center gap-1.5 overflow-x-auto">
         {/* Merge button */}
         {task.column === 'review' && task.associatedPR && onApproveReview && (
           <MergeButton
@@ -1368,7 +1407,7 @@ export function TaskDetail({
   )
 
   return (
-    <div className="h-full flex flex-col bg-card rounded-lg overflow-hidden border border-border shadow-sm">
+    <div className="h-full flex flex-col bg-card rounded-xl overflow-hidden border border-white/[0.06] shadow-xl shadow-black/20">
       {header}
       {desktopLayout}
       {mobileLayout}

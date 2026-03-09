@@ -57,13 +57,13 @@ interface TaskListProps {
 
 // ── Status bar colors ──
 const barColor: Record<ColumnId, string> = {
-  open: 'bg-zinc-400',
-  building: 'bg-blue-500',
-  review: 'bg-purple-500',
-  failed: 'bg-red-500',
-  'gate-waiting': 'bg-yellow-500',
-  retrying: 'bg-orange-500',
-  done: 'bg-emerald-500',
+  open: 'bg-zinc-500/60',
+  building: 'bg-gradient-to-b from-blue-400 to-blue-600',
+  review: 'bg-gradient-to-b from-purple-400 to-purple-600',
+  failed: 'bg-gradient-to-b from-red-400 to-red-600',
+  'gate-waiting': 'bg-gradient-to-b from-amber-400 to-amber-600',
+  retrying: 'bg-gradient-to-b from-orange-400 to-orange-600',
+  done: 'bg-gradient-to-b from-emerald-400 to-emerald-600',
 }
 
 // ── Status icon for the left bar area ──
@@ -102,18 +102,18 @@ const issueNumberColor: Record<ColumnId, string> = {
 // ── Row tint by status ──
 const rowTint: Record<ColumnId, string> = {
   open: '',
-  building: 'bg-blue-500/[0.03]',
-  review: 'bg-purple-500/[0.03]',
-  failed: 'bg-red-500/[0.04]',
-  'gate-waiting': 'bg-yellow-500/[0.03]',
-  retrying: 'bg-orange-500/[0.03]',
-  done: 'bg-emerald-500/[0.03]',
+  building: 'bg-blue-500/[0.02]',
+  review: 'bg-purple-500/[0.02]',
+  failed: 'bg-red-500/[0.025]',
+  'gate-waiting': 'bg-amber-500/[0.02]',
+  retrying: 'bg-orange-500/[0.02]',
+  done: 'bg-emerald-500/[0.02]',
 }
 
 /** Dot separator between inline metadata items */
 function Dot() {
   return (
-    <span className="text-zinc-600 text-xs select-none" aria-hidden>
+    <span className="text-white/10 text-xs select-none" aria-hidden>
       ·
     </span>
   )
@@ -152,7 +152,7 @@ export function TaskList({
 
   return (
     <div>
-      <div className="divide-y divide-border/50">
+      <div className="divide-y divide-white/[0.04]">
         {tasks.map((task) => {
           const isSelected = task.id === selectedTask?.id
           const canExecute = task.state === 'open' && onExecuteTask
@@ -168,20 +168,20 @@ export function TaskList({
               onClick={() => handleTaskClick(task)}
               onMouseEnter={() => onTaskHover?.(task)}
               className={cn(
-                'relative cursor-pointer transition-all duration-150',
-                'dark:hover:bg-zinc-800/50 hover:bg-zinc-100',
+                'relative cursor-pointer transition-all duration-200',
+                'hover:bg-white/[0.03]',
                 rowTint[task.column],
-                isSelected && 'dark:bg-zinc-800 bg-white',
-                isHardStop && 'ring-2 ring-red-500/40 ring-inset',
+                isSelected && 'bg-white/[0.04] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]',
+                isHardStop && 'ring-1 ring-red-500/30 ring-inset',
               )}
             >
               {/* ═══ Layout: stacked on mobile, inline on desktop ═══ */}
               <div className="flex">
                 {/* ── Zone 1: Color bar + status icon ── */}
-                <div className="flex items-start shrink-0 pl-0 pt-2 sm:pt-3">
+                <div className="flex items-start shrink-0 pl-0 pt-2.5 sm:pt-3.5">
                   <div
                     className={cn(
-                      'w-[3px] self-stretch rounded-r',
+                      'w-[2px] self-stretch rounded-r',
                       isHardStop ? 'bg-red-500 animate-pulse' : barColor[task.column],
                     )}
                   />
@@ -194,7 +194,7 @@ export function TaskList({
                   <div className="flex-1 min-w-0 py-2 sm:py-3.5 pr-2">
                     {/* Title line: title + assignee avatars */}
                     <div className="flex items-center gap-2">
-                      <h3 className="text-sm sm:text-base font-medium dark:text-zinc-100 text-zinc-900 truncate flex-1">
+                      <h3 className="text-sm sm:text-[15px] font-medium text-foreground/90 truncate flex-1 tracking-tight">
                         {task.title}
                       </h3>
 
@@ -208,7 +208,7 @@ export function TaskList({
                               side="bottom"
                             >
                               <span className="inline-block">
-                                <Avatar className="h-6 w-6 ring-2 ring-zinc-900">
+                                <Avatar className="h-5 w-5 ring-1 ring-white/[0.08]">
                                   <AvatarImage src={assignee.avatar_url} alt={assignee.login} />
                                   <AvatarFallback className="text-[8px]">
                                     {assignee.login[0]?.toUpperCase()}
@@ -231,7 +231,7 @@ export function TaskList({
                           rel="noopener noreferrer"
                           onClick={(e) => e.stopPropagation()}
                           className={cn(
-                            'text-sm font-mono font-semibold hover:underline shrink-0',
+                            'text-xs font-mono font-semibold hover:underline shrink-0 opacity-80 hover:opacity-100 transition-opacity',
                             issueNumberColor[task.column],
                           )}
                         >
@@ -350,7 +350,7 @@ export function TaskList({
 
                       {/* Time */}
                       <Dot />
-                      <span className="text-xs text-zinc-500 shrink-0">
+                      <span className="text-[11px] text-muted-foreground/40 shrink-0">
                         {formatRelativeTime(task.updatedAt)}
                       </span>
 
@@ -358,7 +358,7 @@ export function TaskList({
                       {task.labels.length > 0 && (
                         <span className="hidden sm:contents">
                           <Dot />
-                          <span className="text-xs px-1.5 py-0 rounded dark:bg-zinc-700/50 dark:text-zinc-400 bg-zinc-200 text-zinc-600 truncate max-w-20">
+                          <span className="text-[10px] px-1.5 py-0 rounded-md bg-white/[0.04] text-muted-foreground/60 ring-1 ring-white/[0.04] truncate max-w-20">
                             {task.labels[0]}
                           </span>
                         </span>
@@ -523,7 +523,7 @@ export function TaskList({
                 task.pipeline &&
                 (task.pipeline.currentStage ||
                   Object.keys(task.pipeline.stages || {}).length > 0) && (
-                  <div className="hidden sm:block pb-2 pl-10 sm:pl-12 pr-3">
+                  <div className="hidden sm:block pb-2.5 pl-10 sm:pl-12 pr-3">
                     <MiniPipelineProgress task={task} variant="bar" />
                   </div>
                 )}
