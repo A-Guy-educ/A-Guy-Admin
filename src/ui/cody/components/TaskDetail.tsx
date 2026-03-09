@@ -879,8 +879,7 @@ export function TaskDetail({
       setAssigneeOverride(current.filter((a) => a.login !== event.login))
     }
     queryClient.invalidateQueries({ queryKey: queryKeys.taskDetails(task.issueNumber) })
-    queryClient.invalidateQueries({ queryKey: ['cody-tasks'] })
-    onRefresh?.()
+    // Task list refreshes via polling — no need to invalidate here
   }
 
   // Primary action button colors

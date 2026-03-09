@@ -58,9 +58,9 @@ export const COLUMN_DEFS: Record<ColumnId, ColumnDef> = {
 // ============ Polling Intervals ============
 
 export const POLLING_INTERVALS = {
-  idle: 60000, // 30s - no running tasks
-  board: 30000, // 10s - has running tasks
-  active: 15000, // 5s - selected task is running
+  idle: 60_000, // 60s - no running tasks
+  board: 30_000, // 30s - has running tasks
+  active: 15_000, // 15s - selected task is running
 } as const
 
 // ============ Branch Prefixes ============

@@ -110,7 +110,7 @@ export function CodyDashboard({ initialIssueNumber }: CodyDashboardProps) {
     mutationFn: ({ issueNumber, assignees }: { issueNumber: number; assignees: string[] }) =>
       codyApi.tasks.assign(issueNumber, assignees, githubUser?.login),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['cody-tasks'] })
+      toast.success('Assigned')
     },
   })
 
@@ -118,7 +118,7 @@ export function CodyDashboard({ initialIssueNumber }: CodyDashboardProps) {
     mutationFn: ({ issueNumber, assignees }: { issueNumber: number; assignees: string[] }) =>
       codyApi.tasks.unassign(issueNumber, assignees, githubUser?.login),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['cody-tasks'] })
+      toast.success('Unassigned')
     },
   })
 
@@ -142,9 +142,7 @@ export function CodyDashboard({ initialIssueNumber }: CodyDashboardProps) {
     },
     onSuccess: () => {
       toast.success('Task started')
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['cody-tasks'] })
+      // Let polling handle the refresh — don't force an immediate refetch
     },
   })
 
@@ -167,9 +165,6 @@ export function CodyDashboard({ initialIssueNumber }: CodyDashboardProps) {
     onSuccess: () => {
       toast.success('Task stopped')
     },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['cody-tasks'] })
-    },
   })
 
   const mergeMutation = useMutation({
@@ -190,9 +185,6 @@ export function CodyDashboard({ initialIssueNumber }: CodyDashboardProps) {
     },
     onSuccess: () => {
       toast.success('PR merged')
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['cody-tasks'] })
     },
   })
 
@@ -237,7 +229,7 @@ export function CodyDashboard({ initialIssueNumber }: CodyDashboardProps) {
       queryClient.prefetchQuery({
         queryKey: queryKeys.taskDetails(task.issueNumber),
         queryFn: () => codyApi.tasks.get(task.issueNumber),
-        staleTime: 10_000,
+        staleTime: 60_000, // 60s — don't re-prefetch on rapid hovers
       })
     },
     [queryClient],
