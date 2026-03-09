@@ -346,7 +346,11 @@ export async function executePostAction(
           try {
             logger.info(`   Running ${gate.name}...`)
             const { program, args } = parseCommand(gate.command)
-            execFileSync(program, args, { stdio: 'pipe' })
+            execFileSync(program, args, {
+              stdio: 'pipe',
+              timeout: 5 * 60 * 1000, // 5 minutes per gate
+              maxBuffer: 10 * 1024 * 1024, // 10MB buffer
+            })
             logger.info(`   ✓ ${gate.name} passed`)
             return { ...gate, passed: true }
           } catch (error) {
@@ -405,15 +409,24 @@ export async function executePostAction(
           fs.unlinkSync(autofixOutput)
         }
         const autofixTimeout = STAGE_TIMEOUTS.autofix ?? DEFAULT_TIMEOUT
-        const autofixResult = await runAgentWithFileWatch(
-          ctx.input,
-          'autofix',
-          autofixOutput,
-          autofixTimeout,
-          { backend: ctx.backend },
-        )
+        let autofixResult: { succeeded: boolean } | undefined
+        try {
+          autofixResult = await runAgentWithFileWatch(
+            ctx.input,
+            'autofix',
+            autofixOutput,
+            autofixTimeout,
+            { backend: ctx.backend },
+          )
+        } catch (agentError) {
+          logger.error(
+            { err: agentError },
+            `  ❌ Autofix agent threw exception (attempt ${attempt}/${action.maxFeedbackLoops})`,
+          )
+          continue // Treat as failed attempt, not pipeline crash
+        }
 
-        if (!autofixResult.succeeded) {
+        if (!autofixResult?.succeeded) {
           logger.error(`  ❌ Autofix agent failed (attempt ${attempt})`)
           continue
         }
@@ -463,8 +476,100 @@ export async function executePostAction(
       break
     }
 
+    case 'analyze-review-findings': {
+      const reviewPath = path.join(ctx.taskDir, 'review.md')
+
+      let fixNeeded = false
+      const reviewSummary = { critical: 0, major: 0, minor: 0 }
+
+      if (fs.existsSync(reviewPath)) {
+        const reviewContent = fs.readFileSync(reviewPath, 'utf-8')
+        const contentLower = reviewContent.toLowerCase()
+
+        // Parse review findings with multiple robust patterns
+        // Pattern 1: "Critical: N" or "Critical Issues: N" or "**Critical**: N"
+        const criticalPatterns = [/critical[^:]*:\s*(\d+)/i, /(\d+)[ \t]+critical/i]
+        // Pattern 2: "Major: N" or "Major Issues: N" or "**Major**: N"
+        const majorPatterns = [/major[^:]*:\s*(\d+)/i, /(\d+)[ \t]+major/i]
+        // Pattern 3: "Minor: N"
+        const minorPatterns = [/minor[^:]*:\s*(\d+)/i, /(\d+)[ \t]+minor/i]
+
+        for (const pat of criticalPatterns) {
+          const match = reviewContent.match(pat)
+          if (match) {
+            reviewSummary.critical = Math.max(reviewSummary.critical, parseInt(match[1]))
+          }
+        }
+        for (const pat of majorPatterns) {
+          const match = reviewContent.match(pat)
+          if (match) {
+            reviewSummary.major = Math.max(reviewSummary.major, parseInt(match[1]))
+          }
+        }
+        for (const pat of minorPatterns) {
+          const match = reviewContent.match(pat)
+          if (match) {
+            reviewSummary.minor = Math.max(reviewSummary.minor, parseInt(match[1]))
+          }
+        }
+
+        // Check for explicit fix-required indicators
+        const fixRequiredMatch =
+          reviewContent.match(/fix\s*required[^\n]*\[\s*x\s*\]/i) ||
+          reviewContent.match(/\[\s*x\s*\][^\n]*fix\s*required/i) ||
+          reviewContent.match(/fix\s*required[^\n]*yes/i)
+
+        // Also check for issue-indicating keywords as fallback
+        const hasIssueKeywords =
+          contentLower.includes('must fix') ||
+          contentLower.includes('needs fix') ||
+          contentLower.includes('should fix') ||
+          contentLower.includes('bug found') ||
+          contentLower.includes('security issue') ||
+          contentLower.includes('vulnerability')
+
+        fixNeeded =
+          reviewSummary.critical > 0 ||
+          reviewSummary.major > 0 ||
+          fixRequiredMatch !== null ||
+          hasIssueKeywords
+      }
+
+      // In fix mode, always set fixNeeded to true — user explicitly asked for fixes
+      if (ctx.input.mode === 'fix') {
+        fixNeeded = true
+      }
+
+      // Update state to track findings
+      const state = _state
+      if (state) {
+        const updatedState = updateStage(state, 'review', {
+          issuesFound: fixNeeded,
+          reviewSummary,
+        })
+        writeState(ctx.taskId, updatedState)
+      }
+
+      logger.info(
+        `  Review findings: ${reviewSummary.critical} critical, ${reviewSummary.major} major, fixNeeded=${fixNeeded}`,
+      )
+      break
+    }
+
+    case 'clear-verify-failures': {
+      const verifyFailuresPath = path.join(ctx.taskDir, 'verify-failures.md')
+      if (fs.existsSync(verifyFailuresPath)) {
+        fs.unlinkSync(verifyFailuresPath)
+        logger.info('  Cleared verify-failures.md')
+      }
+      break
+    }
+
     case 'parallel': {
-      const parallelActions = (action as unknown as { actions: PostAction[] }).actions
+      if (!('actions' in action) || !Array.isArray((action as { actions?: unknown }).actions)) {
+        throw new Error(`'parallel' post-action missing required 'actions' array`)
+      }
+      const parallelActions = (action as { actions: PostAction[] }).actions
       logger.info(`   Running ${parallelActions.length} actions in parallel...`)
 
       const results = await Promise.allSettled(
@@ -473,6 +578,15 @@ export async function executePostAction(
           await executePostAction(ctx, a, _state)
         }),
       )
+
+      // Check for PipelinePausedError first — re-throw it directly to preserve the type
+      const pauseResult = results.find(
+        (r): r is PromiseRejectedResult =>
+          r.status === 'rejected' && r.reason instanceof PipelinePausedError,
+      )
+      if (pauseResult) {
+        throw pauseResult.reason // Preserve PipelinePausedError type for caller
+      }
 
       const failures = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected')
       if (failures.length > 0) {

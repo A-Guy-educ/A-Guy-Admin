@@ -680,9 +680,9 @@ export interface Prompt {
    */
   tenant: string | Tenant;
   /**
-   * Purpose of this prompt: chat conversation, PDF extraction, or PDF verification
+   * Purpose of this prompt: chat conversation, PDF extraction, PDF verification, or context extraction for AI tutor
    */
-  usage?: ('chat' | 'extractor' | 'verifier') | null;
+  usage?: ('chat' | 'extractor' | 'verifier' | 'context_extractor') | null;
   updatedAt: string;
   createdAt: string;
 }
