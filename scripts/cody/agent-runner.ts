@@ -48,7 +48,7 @@ export const STAGE_TIMEOUTS: Record<string, number> = {
   'plan-gap': ms('15m'),
   verify: ms('10m'),
   pr: ms('5m'),
-  autofix: ms('5m'),
+  autofix: ms('15m'),
 }
 
 /** LLM-specific timeout - max time to wait for LLM API response (3 minutes) */

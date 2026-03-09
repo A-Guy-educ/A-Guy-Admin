@@ -388,6 +388,7 @@ async function executeParallelStep(
   // Process results - distinguish critical vs advisory failures (R7)
   const criticalFailures: { name: string; reason: string }[] = []
   const advisoryFailures: { name: string; reason: string }[] = []
+  let pausedStage: string | null = null
 
   for (const result of results) {
     if (result.status === 'rejected') {
@@ -397,11 +398,13 @@ async function executeParallelStep(
         rejectedErr instanceof PipelinePausedError ||
         (rejectedErr instanceof StageError && rejectedErr.cause instanceof PipelinePausedError)
       if (isPaused) {
-        // Mark the stage as paused and return paused state
+        // Mark the stage as paused and collect — don't return early
+        // This allows other parallel stages to complete their post-actions
         const pausedStageName =
           rejectedErr instanceof StageError ? rejectedErr.stageName : 'unknown'
         state = updateStage(state, pausedStageName, { state: 'paused' })
-        return completeState(state, 'paused')
+        pausedStage = pausedStageName
+        continue
       }
 
       const reason = (result as PromiseRejectedResult).reason
@@ -427,12 +430,11 @@ async function executeParallelStep(
     const { stageName, result: stageResult } = result.value
     if (!stageResult) continue
 
-    // Handle PipelinePausedError specially (G30)
+    // Handle PipelinePausedError specially (G30) — collect pauses instead of returning early
     if (stageResult.outcome === 'paused') {
       state = updateStage(state, stageName, { state: 'paused' })
-      writeState(ctx.taskId, state) // Persist paused state to disk
-      // Return early with paused state
-      return completeState(state, 'paused')
+      pausedStage = stageName
+      continue
     }
 
     // Update state based on outcome
@@ -453,10 +455,11 @@ async function executeParallelStep(
           }
         } catch (postError) {
           // Handle post-action errors - mirroring executeSingleStep pattern
+          // Collect pauses instead of returning early — allows other stages to complete
           if (postError instanceof PipelinePausedError) {
             state = updateStage(state, stageName, { state: 'paused' })
-            writeState(ctx.taskId, state) // Persist paused state to disk
-            return completeState(state, 'paused')
+            pausedStage = stageName
+            continue
           }
           // FIX #3: Don't immediately fail - collect failures and process at end
           // This allows other successful parallel stages to complete
@@ -510,6 +513,12 @@ async function executeParallelStep(
       setLifecycleLabel(ctx.input.issueNumber, 'cody:failed')
     }
     return completeState(state, 'failed')
+  }
+
+  // Return paused state if any stage paused — after all other stages processed
+  if (pausedStage) {
+    writeState(ctx.taskId, state)
+    return completeState(state, 'paused')
   }
 
   return state

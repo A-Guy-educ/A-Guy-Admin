@@ -278,7 +278,8 @@ Examples:
     const errorMsg = error instanceof Error ? error.message : String(error)
     logger.error({ err: error }, `\n❌ Cody failed: ${errorMsg}`)
 
-    if (input.issueNumber) {
+    // Skip GitHub API calls in local mode
+    if (input.issueNumber && !input.local) {
       // Set lifecycle label to failed for dashboard visibility
       const { setLifecycleLabel } = await import('./github-api')
       setLifecycleLabel(input.issueNumber, 'cody:failed')
@@ -435,9 +436,11 @@ async function runFullMode(ctx: PipelineContext): Promise<void> {
   }
   ctx.profile = profile
 
-  // Run full pipeline - all stages are now included upfront (no rebuild needed)
+  // Run full pipeline - pass rebuild callback for two-phase construction
+  // This ensures profile changes after taskify are reflected in later stages
   const pipeline = resolvePipelineForMode('full', profile, ctx.input.clarify ?? false, ctx)
-  const finalState = await runPipeline(ctx, pipeline)
+  const rebuild = createRebuildCallback('full', ctx.input.clarify ?? false)
+  const finalState = await runPipeline(ctx, pipeline, undefined, rebuild)
 
   // Handle paused state (gate approval required)
   if (finalState.state === 'paused') {
@@ -485,19 +488,11 @@ async function runRerunMode(ctx: PipelineContext): Promise<void> {
           logger.info(`Gate ${pausedStage} approved — resuming pipeline`)
           gateApprovedStage = pausedStage
 
-          // Write approved file to cache approval for future runs
-          const approvedPath = path.join(taskDir, `gate-${pausedStage}-approved.md`)
-          try {
-            fs.writeFileSync(
-              approvedPath,
-              `# Gate Approved\n\nApproved at ${pausedStage} gate.\nApproved via @cody approve command.\n`,
-            )
-          } catch (writeErr) {
-            logger.error({ err: writeErr }, `Failed to write gate approval file: ${approvedPath}`)
-            throw writeErr
-          }
+          // Note: handleGateApproval already wrote gate-{stage}-approved.md and clarified.md
+          // No need to overwrite here - that would lose the context about how approval was detected
 
-          // Commit and push the approval file so subsequent runs can find it
+          // Commit and push the approval files so subsequent runs can find them
+          // This includes both gate-{stage}-approved.md and clarified.md
           const { commitPipelineFiles } = await import('./git-utils')
           await commitPipelineFiles({
             taskDir,

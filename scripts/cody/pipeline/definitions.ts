@@ -18,7 +18,7 @@ import { STAGE_TIMEOUTS, DEFAULT_TIMEOUT } from '../agent-runner'
 import { ensureFeatureBranch } from '../git-utils'
 import { readTask } from '../pipeline-utils'
 import { setBranchName, loadState } from '../engine/status'
-import { execSync } from 'child_process'
+import { execFileSync } from 'child_process'
 import {
   createSpecValidator,
   createGapValidator,
@@ -211,30 +211,44 @@ No critical gaps identified. Plan was refined in-place.
     shouldSkip: (ctx) => skipIfInputQuality(ctx, 'build'),
     preExecute: async (ctx) => {
       if (!ctx.input.dryRun) {
-        const td = readTask(ctx.taskDir)
-        if (td) {
-          ensureFeatureBranch(ctx.taskId, td.task_type, undefined, ctx.taskDir)
+        try {
+          const td = readTask(ctx.taskDir)
+          if (td) {
+            ensureFeatureBranch(ctx.taskId, td.task_type, undefined, ctx.taskDir)
 
-          // Capture the branch name and persist to status.json for dashboard lookups
-          try {
-            const currentBranch = execSync('git branch --show-current', {
-              encoding: 'utf-8',
-            }).trim()
-            if (currentBranch) {
-              const state = loadState(ctx.taskId)
-              if (state) {
-                setBranchName(ctx.taskId, state, currentBranch)
+            // Capture the branch name and persist to status.json for dashboard lookups
+            try {
+              const currentBranch = execFileSync('git', ['branch', '--show-current'], {
+                encoding: 'utf-8',
+                timeout: 10000, // 10 seconds
+              }).trim()
+              if (currentBranch) {
+                const state = loadState(ctx.taskId)
+                if (state) {
+                  setBranchName(ctx.taskId, state, currentBranch)
+                }
               }
+            } catch {
+              // Non-critical — branch name is a convenience field
             }
-          } catch {
-            // Non-critical — branch name is a convenience field
           }
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : String(error)
+          throw new Error(`Build stage preExecute failed: ${msg}`)
         }
       }
     },
     postActions: [
       { type: 'validate-src-changes' },
       { type: 'validate-build-content' },
+      // Commit code BEFORE quality gates so work is preserved even if gates fail.
+      // Without this, a gate failure means all build agent work is lost.
+      {
+        type: 'commit-task-files',
+        stagingStrategy: 'tracked+task',
+        push: true,
+        ensureBranch: true,
+      },
       {
         type: 'run-quality-with-autofix',
         gates: [

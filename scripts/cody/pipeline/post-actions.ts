@@ -346,7 +346,11 @@ export async function executePostAction(
           try {
             logger.info(`   Running ${gate.name}...`)
             const { program, args } = parseCommand(gate.command)
-            execFileSync(program, args, { stdio: 'pipe' })
+            execFileSync(program, args, {
+              stdio: 'pipe',
+              timeout: 5 * 60 * 1000, // 5 minutes per gate
+              maxBuffer: 10 * 1024 * 1024, // 10MB buffer
+            })
             logger.info(`   ✓ ${gate.name} passed`)
             return { ...gate, passed: true }
           } catch (error) {
@@ -405,15 +409,24 @@ export async function executePostAction(
           fs.unlinkSync(autofixOutput)
         }
         const autofixTimeout = STAGE_TIMEOUTS.autofix ?? DEFAULT_TIMEOUT
-        const autofixResult = await runAgentWithFileWatch(
-          ctx.input,
-          'autofix',
-          autofixOutput,
-          autofixTimeout,
-          { backend: ctx.backend },
-        )
+        let autofixResult: { succeeded: boolean } | undefined
+        try {
+          autofixResult = await runAgentWithFileWatch(
+            ctx.input,
+            'autofix',
+            autofixOutput,
+            autofixTimeout,
+            { backend: ctx.backend },
+          )
+        } catch (agentError) {
+          logger.error(
+            { err: agentError },
+            `  ❌ Autofix agent threw exception (attempt ${attempt}/${action.maxFeedbackLoops})`,
+          )
+          continue // Treat as failed attempt, not pipeline crash
+        }
 
-        if (!autofixResult.succeeded) {
+        if (!autofixResult?.succeeded) {
           logger.error(`  ❌ Autofix agent failed (attempt ${attempt})`)
           continue
         }
@@ -464,7 +477,10 @@ export async function executePostAction(
     }
 
     case 'parallel': {
-      const parallelActions = (action as unknown as { actions: PostAction[] }).actions
+      if (!('actions' in action) || !Array.isArray((action as { actions?: unknown }).actions)) {
+        throw new Error(`'parallel' post-action missing required 'actions' array`)
+      }
+      const parallelActions = (action as { actions: PostAction[] }).actions
       logger.info(`   Running ${parallelActions.length} actions in parallel...`)
 
       const results = await Promise.allSettled(
@@ -473,6 +489,15 @@ export async function executePostAction(
           await executePostAction(ctx, a, _state)
         }),
       )
+
+      // Check for PipelinePausedError first — re-throw it directly to preserve the type
+      const pauseResult = results.find(
+        (r): r is PromiseRejectedResult =>
+          r.status === 'rejected' && r.reason instanceof PipelinePausedError,
+      )
+      if (pauseResult) {
+        throw pauseResult.reason // Preserve PipelinePausedError type for caller
+      }
 
       const failures = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected')
       if (failures.length > 0) {
