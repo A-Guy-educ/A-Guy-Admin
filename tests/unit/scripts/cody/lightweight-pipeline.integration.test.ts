@@ -109,8 +109,8 @@ describe('lightweight pipeline integration', () => {
 
       const pipeline = getImplPipeline('lightweight')
 
-      // Should be: architect, build, commit, verify, pr (5 stages)
-      expect(pipeline).toHaveLength(5)
+      // Should be: architect, build, commit, review, fix, commit-fix, verify, pr (8 stages)
+      expect(pipeline).toHaveLength(8)
     })
 
     it('returns stages in correct order', async () => {
@@ -120,7 +120,16 @@ describe('lightweight pipeline integration', () => {
       const pipeline = getImplPipeline('lightweight')
       const flatNames = flattenPipeline(pipeline)
 
-      expect(flatNames).toEqual(['architect', 'build', 'commit', 'verify', 'pr'])
+      expect(flatNames).toEqual([
+        'gsd-plan',
+        'gsd-execute',
+        'commit',
+        'review',
+        'fix',
+        'commit-fix',
+        'verify',
+        'pr',
+      ])
     })
 
     it('does not include plan-gap', async () => {
@@ -130,7 +139,7 @@ describe('lightweight pipeline integration', () => {
       const pipeline = getImplPipeline('lightweight')
       const flatNames = flattenPipeline(pipeline)
 
-      expect(flatNames).not.toContain('plan-gap')
+      expect(flatNames).not.toContain('gsd-research')
     })
 
     it('does not include autofix as separate stage (it is sub-stage of verify)', async () => {
@@ -151,18 +160,21 @@ describe('lightweight pipeline integration', () => {
 
       const flatNames = flattenPipeline(LIGHTWEIGHT_IMPL_PIPELINE)
 
-      expect(flatNames).toHaveLength(5)
+      expect(flatNames).toHaveLength(8)
     })
 
-    it('contains architect, build, commit, verify, pr', async () => {
+    it('contains architect, build, commit, review, fix, commit-fix, verify, pr', async () => {
       const { LIGHTWEIGHT_IMPL_PIPELINE, flattenPipeline } =
         await import('../../../../scripts/cody/pipeline-utils')
 
       const flatNames = flattenPipeline(LIGHTWEIGHT_IMPL_PIPELINE)
 
-      expect(flatNames).toContain('architect')
-      expect(flatNames).toContain('build')
+      expect(flatNames).toContain('gsd-plan')
+      expect(flatNames).toContain('gsd-execute')
       expect(flatNames).toContain('commit')
+      expect(flatNames).toContain('review')
+      expect(flatNames).toContain('fix')
+      expect(flatNames).toContain('commit-fix')
       expect(flatNames).toContain('verify')
       expect(flatNames).toContain('pr')
     })
@@ -173,7 +185,7 @@ describe('lightweight pipeline integration', () => {
 
       const flatNames = flattenPipeline(LIGHTWEIGHT_IMPL_PIPELINE)
 
-      expect(flatNames).not.toContain('plan-gap')
+      expect(flatNames).not.toContain('gsd-research')
       expect(flatNames).not.toContain('autofix')
     })
   })
@@ -232,7 +244,7 @@ describe('standard pipeline integration', () => {
       const pipeline = getImplPipeline('standard')
       const flatNames = flattenPipeline(pipeline)
 
-      expect(flatNames).toContain('plan-gap')
+      expect(flatNames).toContain('gsd-research')
     })
 
     it('does not include autofix as separate stage (it is sub-stage of verify)', async () => {
@@ -266,8 +278,8 @@ describe('standard pipeline integration', () => {
 
       const flatNames = flattenPipeline(IMPL_PIPELINE)
 
-      // Should be: architect, plan-gap, build, commit, verify, pr (6 stages)
-      expect(flatNames).toHaveLength(6)
+      // Should be: architect, plan-gap, build, commit, review, fix, commit-fix, verify, pr (9 stages)
+      expect(flatNames).toHaveLength(9)
     })
 
     it('contains all heavyweight stages', async () => {
@@ -276,7 +288,7 @@ describe('standard pipeline integration', () => {
 
       const flatNames = flattenPipeline(IMPL_PIPELINE)
 
-      expect(flatNames).toContain('plan-gap')
+      expect(flatNames).toContain('gsd-research')
       expect(flatNames).not.toContain('autofix')
     })
   })
@@ -301,11 +313,20 @@ describe('end-to-end pipeline selection', () => {
     const implPipeline = getImplPipeline(profile)
     const implStages = flattenPipeline(implPipeline)
 
-    // Should be: architect, build, commit, verify, pr
-    expect(implStages).toEqual(['architect', 'build', 'commit', 'verify', 'pr'])
+    // Should be: architect, build, commit, review, fix, commit-fix, verify, pr
+    expect(implStages).toEqual([
+      'gsd-plan',
+      'gsd-execute',
+      'commit',
+      'review',
+      'fix',
+      'commit-fix',
+      'verify',
+      'pr',
+    ])
 
     // Only plan-gap is skipped in lightweight
-    expect(implStages).not.toContain('plan-gap')
+    expect(implStages).not.toContain('gsd-research')
   })
 
   it('implement_feature gets standard pipeline with all stages', async () => {
@@ -327,7 +348,7 @@ describe('end-to-end pipeline selection', () => {
     const implStages = flattenPipeline(implPipeline)
 
     // Should contain heavyweight stages
-    expect(implStages).toContain('plan-gap')
+    expect(implStages).toContain('gsd-research')
     expect(implStages).not.toContain('autofix')
   })
 
@@ -354,13 +375,13 @@ describe('end-to-end pipeline selection', () => {
     const standardImplStages = flattenPipeline(getImplPipeline('standard'))
 
     // Lightweight should NOT have plan-gap (planning overhead)
-    expect(lightweightImplStages).not.toContain('plan-gap')
+    expect(lightweightImplStages).not.toContain('gsd-research')
 
     // Autofix is a sub-stage of verify, not a separate pipeline stage
     expect(lightweightImplStages).not.toContain('autofix')
 
     // Standard should have all stages including plan-gap
-    expect(standardImplStages).toContain('plan-gap')
+    expect(standardImplStages).toContain('gsd-research')
     expect(standardImplStages).not.toContain('autofix')
   })
 })
@@ -402,8 +423,8 @@ describe('rebuildPipelineAfterTaskify', () => {
     expect(flatOrder).toContain('gap')
 
     // Should also contain impl stages (to run after taskify)
-    expect(flatOrder).toContain('architect')
-    expect(flatOrder).toContain('build')
+    expect(flatOrder).toContain('gsd-plan')
+    expect(flatOrder).toContain('gsd-execute')
     expect(flatOrder).toContain('commit')
     expect(flatOrder).toContain('pr')
   })
@@ -438,7 +459,7 @@ describe('rebuildPipelineAfterTaskify', () => {
     const flatOrder = flattenPipelineOrder(result.order)
 
     // Standard profile should include heavyweight stages
-    expect(flatOrder).toContain('plan-gap')
+    expect(flatOrder).toContain('gsd-research')
   })
 
   it('should use lightweight profile when specified', async () => {
@@ -471,11 +492,11 @@ describe('rebuildPipelineAfterTaskify', () => {
     const flatOrder = flattenPipelineOrder(result.order)
 
     // Lightweight should NOT include plan-gap
-    expect(flatOrder).not.toContain('plan-gap')
+    expect(flatOrder).not.toContain('gsd-research')
 
     // But should still include both spec and impl stages
     expect(flatOrder).toContain('taskify')
-    expect(flatOrder).toContain('build')
+    expect(flatOrder).toContain('gsd-execute')
     expect(flatOrder).toContain('pr')
   })
 })

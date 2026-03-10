@@ -18,13 +18,8 @@ import { STAGE_TIMEOUTS, DEFAULT_TIMEOUT } from '../agent-runner'
 import { ensureFeatureBranch } from '../git-utils'
 import { readTask } from '../pipeline-utils'
 import { setBranchName, loadState } from '../engine/status'
-import { execSync } from 'child_process'
-import {
-  createSpecValidator,
-  createGapValidator,
-  createPlanGapValidator,
-  createBuildValidator,
-} from './validators'
+import { execFileSync } from 'child_process'
+import { createSpecValidator, createGapValidator, createBuildValidator } from './validators'
 import {
   skipIfInputQuality,
   skipIfClarifyDisabled,
@@ -33,6 +28,8 @@ import {
   skipIfBelowComplexity,
 } from './skip-conditions'
 import { STAGE_COMPLEXITY_THRESHOLDS } from '../pipeline-utils'
+import { prepareGsdEnvironment } from '../gsd-bridge'
+import { logger } from '../logger'
 
 // ============================================================================
 // Pipeline Orders
@@ -41,20 +38,29 @@ import { STAGE_COMPLEXITY_THRESHOLDS } from '../pipeline-utils'
 export const SPEC_ORDER_STANDARD: string[] = ['taskify', 'spec', 'gap', 'clarify']
 export const SPEC_ORDER_LIGHTWEIGHT: string[] = ['taskify', 'clarify']
 export const IMPL_ORDER_STANDARD: PipelineStep[] = [
-  'architect',
-  'plan-gap',
-  'build',
+  'gsd-research',
+  'gsd-plan',
+  'gsd-execute',
   'commit',
+  'review',
+  'fix',
+  'commit-fix',
   'verify',
   'pr',
 ]
 export const IMPL_ORDER_LIGHTWEIGHT: PipelineStep[] = [
-  'architect',
-  'build',
+  'gsd-plan',
+  'gsd-execute',
   'commit',
+  'review',
+  'fix',
+  'commit-fix',
   'verify',
   'pr',
 ]
+
+// Fix-only pipeline order for @cody fix mode
+export const FIX_ORDER: PipelineStep[] = ['review', 'fix', 'commit-fix', 'verify', 'pr']
 
 // ============================================================================
 // Stage Definitions
@@ -144,17 +150,58 @@ function createStageDefinitions(ctx: PipelineContext): Map<string, StageDefiniti
     },
   })
 
-  // architect stage
-  stages.set('architect', {
-    name: 'architect',
+  // gsd-research stage — GSD research phase (replaces part of old architect)
+  stages.set('gsd-research', {
+    name: 'gsd-research',
     type: 'agent',
-    timeout: STAGE_TIMEOUTS.architect ?? DEFAULT_TIMEOUT,
+    timeout: STAGE_TIMEOUTS['gsd-research'] ?? DEFAULT_TIMEOUT,
     maxRetries: 1,
-    minComplexity: STAGE_COMPLEXITY_THRESHOLDS.architect,
+    minComplexity: STAGE_COMPLEXITY_THRESHOLDS['gsd-research'],
     shouldSkip: (ctx) => {
-      const complexitySkip = skipIfBelowComplexity(ctx, 'architect')
+      const complexitySkip = skipIfBelowComplexity(ctx, 'gsd-research')
       if (complexitySkip.shouldSkip) return complexitySkip
       return skipIfSpecOnly(ctx)
+    },
+    preExecute: async (ctx) => {
+      // Prepare GSD environment — clean previous state, write config.json
+      const complexity = ctx.taskDef?.complexity ?? 35
+      try {
+        prepareGsdEnvironment(process.cwd(), complexity)
+        logger.info(`  GSD environment prepared (complexity=${complexity})`)
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error)
+        throw new Error(`GSD research preExecute failed: ${msg}`)
+      }
+    },
+  })
+
+  // gsd-plan stage — GSD planning phase (replaces architect)
+  stages.set('gsd-plan', {
+    name: 'gsd-plan',
+    type: 'agent',
+    timeout: STAGE_TIMEOUTS['gsd-plan'] ?? DEFAULT_TIMEOUT,
+    maxRetries: 1,
+    minComplexity: STAGE_COMPLEXITY_THRESHOLDS['gsd-plan'],
+    shouldSkip: (ctx) => {
+      const complexitySkip = skipIfBelowComplexity(ctx, 'gsd-plan')
+      if (complexitySkip.shouldSkip) return complexitySkip
+      return skipIfSpecOnly(ctx)
+    },
+    preExecute: async (ctx) => {
+      // If gsd-research was skipped, prepare GSD environment here
+      const configPath = path.join(process.cwd(), '.planning', 'config.json')
+      if (!fs.existsSync(configPath)) {
+        const complexity = ctx.taskDef?.complexity ?? 10
+        try {
+          prepareGsdEnvironment(process.cwd(), complexity)
+          logger.info(
+            `  GSD environment prepared in gsd-plan (research was skipped, complexity=${complexity})`,
+          )
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : String(error)
+          throw new Error(`GSD plan preExecute failed: ${msg}`)
+        }
+      }
     },
     postActions: [
       { type: 'archive-rerun-feedback' },
@@ -162,79 +209,54 @@ function createStageDefinitions(ctx: PipelineContext): Map<string, StageDefiniti
     ],
   })
 
-  // plan-gap stage
-  stages.set('plan-gap', {
-    name: 'plan-gap',
+  // gsd-execute stage — GSD execution phase (replaces build)
+  // Has preExecute for ensureFeatureBranch (same as old build stage)
+  stages.set('gsd-execute', {
+    name: 'gsd-execute',
     type: 'agent',
-    timeout: STAGE_TIMEOUTS['plan-gap'] ?? DEFAULT_TIMEOUT,
+    timeout: STAGE_TIMEOUTS['gsd-execute'] ?? DEFAULT_TIMEOUT,
     maxRetries: 1,
-    minComplexity: STAGE_COMPLEXITY_THRESHOLDS['plan-gap'],
-    shouldSkip: (ctx) => {
-      const complexitySkip = skipIfBelowComplexity(ctx, 'plan-gap')
-      if (complexitySkip.shouldSkip) return complexitySkip
-      return skipIfInputQuality(ctx, 'plan-gap')
-    },
-    postActions: [{ type: 'validate-plan-exists' }],
-    validator: createPlanGapValidator(ctx),
-    fallbackOnMissingOutput: (ctx) => {
-      // If agent edited plan.md but forgot to write plan-gap.md, create a fallback
-      const planFile = path.join(ctx.taskDir, 'plan.md')
-      if (fs.existsSync(planFile)) {
-        return `# Plan Gap Analysis: ${ctx.taskId}
-
-## Summary
-
-- Gaps Found: 0
-- Plan Revised: Yes (agent edited plan.md directly)
-
-## Changes Made to Plan
-
-Agent revised plan.md but did not produce a separate gap report.
-See plan.md for the revised plan.
-
-## No Gaps Found
-
-No critical gaps identified. Plan was refined in-place.
-`
-      }
-      return null
-    },
-  })
-
-  // build stage - has preExecute for ensureFeatureBranch (G20)
-  stages.set('build', {
-    name: 'build',
-    type: 'agent',
-    timeout: STAGE_TIMEOUTS.build ?? DEFAULT_TIMEOUT,
-    maxRetries: 1,
-    minComplexity: STAGE_COMPLEXITY_THRESHOLDS.build,
-    shouldSkip: (ctx) => skipIfInputQuality(ctx, 'build'),
+    minComplexity: STAGE_COMPLEXITY_THRESHOLDS['gsd-execute'],
+    shouldSkip: (ctx) => skipIfInputQuality(ctx, 'gsd-execute'),
     preExecute: async (ctx) => {
       if (!ctx.input.dryRun) {
-        const td = readTask(ctx.taskDir)
-        if (td) {
-          ensureFeatureBranch(ctx.taskId, td.task_type, undefined, ctx.taskDir)
+        try {
+          const td = readTask(ctx.taskDir)
+          if (td) {
+            ensureFeatureBranch(ctx.taskId, td.task_type, undefined, ctx.taskDir)
 
-          // Capture the branch name and persist to status.json for dashboard lookups
-          try {
-            const currentBranch = execSync('git branch --show-current', {
-              encoding: 'utf-8',
-            }).trim()
-            if (currentBranch) {
-              const state = loadState(ctx.taskId)
-              if (state) {
-                setBranchName(ctx.taskId, state, currentBranch)
+            // Capture the branch name and persist to status.json for dashboard lookups
+            try {
+              const currentBranch = execFileSync('git', ['branch', '--show-current'], {
+                encoding: 'utf-8',
+                timeout: 10000, // 10 seconds
+              }).trim()
+              if (currentBranch) {
+                const state = loadState(ctx.taskId)
+                if (state) {
+                  setBranchName(ctx.taskId, state, currentBranch)
+                }
               }
+            } catch {
+              // Non-critical — branch name is a convenience field
             }
-          } catch {
-            // Non-critical — branch name is a convenience field
           }
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : String(error)
+          throw new Error(`gsd-execute preExecute failed: ${msg}`)
         }
       }
     },
     postActions: [
       { type: 'validate-src-changes' },
       { type: 'validate-build-content' },
+      // Commit code BEFORE quality gates so work is preserved even if gates fail.
+      {
+        type: 'commit-task-files',
+        stagingStrategy: 'tracked+task',
+        push: true,
+        ensureBranch: true,
+      },
       {
         type: 'run-quality-with-autofix',
         gates: [
@@ -245,6 +267,78 @@ No critical gaps identified. Plan was refined in-place.
       },
     ],
     validator: createBuildValidator(),
+  })
+
+  // review stage - architect agent reviews generated code
+  stages.set('review', {
+    name: 'review',
+    type: 'agent',
+    timeout: STAGE_TIMEOUTS.review ?? DEFAULT_TIMEOUT,
+    maxRetries: 0,
+    minComplexity: STAGE_COMPLEXITY_THRESHOLDS.review,
+    shouldSkip: (ctx) => {
+      const complexitySkip = skipIfBelowComplexity(ctx, 'review')
+      if (complexitySkip.shouldSkip) return complexitySkip
+      return { shouldSkip: false }
+    },
+    postActions: [
+      { type: 'analyze-review-findings' },
+      { type: 'commit-task-files', stagingStrategy: 'task-only', push: true, ensureBranch: false },
+    ],
+  })
+
+  // fix stage - targeted fixes based on review or verify failures
+  stages.set('fix', {
+    name: 'fix',
+    type: 'agent',
+    timeout: STAGE_TIMEOUTS.fix ?? DEFAULT_TIMEOUT,
+    maxRetries: 2,
+    shouldSkip: (ctx) => {
+      // In fix mode, never skip — user explicitly requested fixes
+      if (ctx.input.mode === 'fix') {
+        return { shouldSkip: false }
+      }
+      const state = loadState(ctx.taskId)
+      const fixStage = state?.stages?.fix
+      if (
+        fixStage?.fixAttempt !== undefined &&
+        fixStage.fixAttempt >= (fixStage.maxFixAttempts ?? 2)
+      ) {
+        return { shouldSkip: true, reason: 'Max fix attempts reached' }
+      }
+      const reviewStage = state?.stages?.review
+      if (!reviewStage?.issuesFound) {
+        const verifyFailuresPath = path.join(ctx.taskDir, 'verify-failures.md')
+        if (!fs.existsSync(verifyFailuresPath)) {
+          return { shouldSkip: true, reason: 'No issues to fix' }
+        }
+      }
+      return { shouldSkip: false }
+    },
+    postActions: [
+      {
+        type: 'commit-task-files',
+        stagingStrategy: 'tracked+task',
+        push: true,
+        ensureBranch: false,
+      },
+      { type: 'clear-verify-failures' },
+    ],
+  })
+
+  // commit-fix stage - commits the fix changes before verify
+  stages.set('commit-fix', {
+    name: 'commit-fix',
+    type: 'git',
+    timeout: STAGE_TIMEOUTS['commit-fix'] ?? DEFAULT_TIMEOUT,
+    maxRetries: 0,
+    shouldSkip: (ctx) => {
+      const state = loadState(ctx.taskId)
+      if (state?.stages?.fix?.state === 'skipped') {
+        return { shouldSkip: true, reason: 'Fix was skipped, nothing to commit' }
+      }
+      return { shouldSkip: false }
+    },
   })
 
   // commit stage

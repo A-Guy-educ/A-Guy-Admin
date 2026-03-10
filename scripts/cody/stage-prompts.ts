@@ -31,10 +31,13 @@ export const ALL_STAGES = [
   'spec',
   'gap',
   'clarify',
-  'architect',
-  'plan-gap',
-  'build',
+  'gsd-research',
+  'gsd-plan',
+  'gsd-execute',
   'commit',
+  'review',
+  'fix',
+  'commit-fix',
   'verify',
   'autofix',
   'pr',
@@ -46,7 +49,7 @@ export type Stage = (typeof ALL_STAGES)[number]
  * Scripted stages that run directly without an LLM agent.
  * Their prompts in stageInstructions are unused but kept for documentation.
  */
-export const SCRIPTED_STAGES = ['verify', 'commit', 'pr'] as const
+export const SCRIPTED_STAGES = ['verify', 'commit', 'commit-fix', 'pr'] as const
 
 // ============================================================================
 // Stage Context — which files each stage needs to read
@@ -68,10 +71,22 @@ export const STAGE_CONTEXT_FILES: Record<Stage, string[]> = {
   spec: ['task.md', 'task.json'],
   gap: ['spec.md', 'task.json'],
   clarify: ['task.md', 'spec.md'],
-  architect: ['spec.md', 'clarified.md', 'rerun-feedback.md'],
-  'plan-gap': ['spec.md', 'plan.md', 'task.json'],
-  build: ['spec.md', 'clarified.md', 'plan.md', 'plan-gap.md', 'rerun-feedback.md'],
+  'gsd-research': ['spec.md', 'clarified.md', 'task.json'],
+  'gsd-plan': ['spec.md', 'clarified.md', 'task.json', 'rerun-feedback.md'],
+  'gsd-execute': ['spec.md', 'clarified.md', 'plan.md', 'task.json', 'rerun-feedback.md'],
   commit: ['task.json'],
+  review: ['review.md', 'build.md', 'plan.md', 'spec.md', 'clarified.md'],
+  fix: [
+    'verify-failures.md',
+    'review.md',
+    'rerun-feedback.md',
+    'fix-summary.md',
+    'build.md',
+    'plan.md',
+    'spec.md',
+    'clarified.md',
+  ],
+  'commit-fix': ['fix-summary.md', 'verify-failures.md'],
   verify: [], // scripted — no LLM prompt needed
   autofix: ['verify.md', 'build-errors.md'],
   pr: [], // scripted — no LLM prompt needed
@@ -111,11 +126,11 @@ export const stageInstructions: Record<Stage, (taskId: string) => string> = {
     return specOnlyInstructionTemplate(taskDir)
   },
 
-  architect: () => ``,
+  'gsd-research': () => ``,
 
-  'plan-gap': () => ``,
+  'gsd-plan': () => ``,
 
-  build: () => `CRITICAL: IMPLEMENTATION STAGE - NOT DOCUMENTATION
+  'gsd-execute': () => `CRITICAL: IMPLEMENTATION STAGE - NOT DOCUMENTATION
 
 You must ACTUALLY IMPLEMENT the code changes, not just document them.
 
@@ -129,6 +144,29 @@ The build.md file should be a SUMMARY of what you implemented, not the implement
 DO NOT just write build.md - that will fail the pipeline! The pipeline validates that you modified actual source files.`,
 
   commit: () => ``,
+
+  review: () => `CRITICAL: CODE REVIEW STAGE
+
+You are reviewing already-generated code. DO NOT modify code files.
+Your job is to analyze and produce a review.md with findings.
+
+Read the generated source files and identify issues by severity:
+- Critical: Security vulnerabilities, data loss risks, runtime crashes
+- Major: TypeScript type errors, missing functionality, logic errors
+- Minor: Code style, missing error handling, performance concerns
+
+Write review.md with your findings including file:line references.`,
+
+  fix: () => `CRITICAL: TARGETED FIX STAGE
+
+You are applying MINIMAL fixes to resolve identified issues.
+DO NOT regenerate entire codebase.
+DO NOT refactor or rewrite working code.
+Only fix the specific issues identified in verify-failures.md, review.md, or rerun-feedback.md.
+
+Write fix-summary.md summarizing what you changed.`,
+
+  'commit-fix': () => ``,
 
   // Scripted stages — these prompts are never sent to an LLM
   verify: () => ``,
@@ -186,7 +224,7 @@ export function buildStagePrompt(input: CodyInput, stage: string, feedback?: str
 
   // Add task_type for stages that need it (architect, build)
   const taskTypeSection =
-    stage === 'architect' || stage === 'build' ? `\nTask Type: ${taskType}` : ''
+    stage === 'gsd-plan' || stage === 'gsd-execute' ? `\nTask Type: ${taskType}` : ''
 
   const outputFile = stageOutputFile(taskDir, stage)
 
