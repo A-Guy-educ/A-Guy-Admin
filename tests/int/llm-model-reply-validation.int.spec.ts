@@ -315,7 +315,7 @@ describe('LLM Model API Validation (Manual Test)', () => {
       'should validate EXERCISE_CHAT model configuration for Gemini API',
       async () => {
         const modelConfig = getProviderModelConfig(LLMProviderType.GEMINI, 'EXERCISE_CHAT')
-        expect(modelConfig.name).toBe('gemini-2.0-flash-001')
+        expect(modelConfig.name).toBe('gemini-3.1-pro')
         expect(modelConfig.temperature).toBe(0.7)
         expect(modelConfig.maxOutputTokens).toBe(2048)
         // Actual API call would go here in a full integration test
@@ -327,7 +327,7 @@ describe('LLM Model API Validation (Manual Test)', () => {
       'should validate IMAGE_TO_EXERCISE model configuration for Gemini API',
       async () => {
         const modelConfig = getProviderModelConfig(LLMProviderType.GEMINI, 'IMAGE_TO_EXERCISE')
-        expect(modelConfig.name).toBe('gemini-2.0-flash-001')
+        expect(modelConfig.name).toBe('gemini-3.1-pro')
         expect(modelConfig.temperature).toBe(0.2)
         expect(modelConfig.maxOutputTokens).toBe(8192)
         // Actual API call would go here in a full integration test
@@ -339,7 +339,7 @@ describe('LLM Model API Validation (Manual Test)', () => {
       'should validate PDF_TO_EXERCISE model configuration for Gemini API',
       async () => {
         const modelConfig = getProviderModelConfig(LLMProviderType.GEMINI, 'PDF_TO_EXERCISE')
-        expect(modelConfig.name).toBe('gemini-2.0-flash-001')
+        expect(modelConfig.name).toBe('gemini-3.1-pro')
         expect(modelConfig.temperature).toBe(0.1)
         expect(modelConfig.maxOutputTokens).toBe(8192)
         // Actual API call would go here in a full integration test
