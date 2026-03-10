@@ -54,7 +54,7 @@ export async function generateSupport(
       { rawLength: result.text.length, raw: result.text.slice(0, 500) },
       '[Support Generation] Raw LLM response',
     )
-    const parsed = parseLLMResponse(result.text, input.targetFields)
+    const parsed = parseLLMResponse(result.text)
     logger.info(
       {
         hasHints: !!parsed.hints?.length,
@@ -63,6 +63,35 @@ export async function generateSupport(
       },
       '[Support Generation] Parsed fields',
     )
+
+    // If LLM omitted fields, retry once with explicit reminder
+    if (!parsed.hints?.length || !parsed.solution || !parsed.fullSolution) {
+      logger.info('[Support Generation] Missing fields, retrying with reminder')
+      const retryResult = await adapter.generateChatCompletion(
+        {
+          system: SUPPORT_GENERATION_PROMPT,
+          messages: [
+            { role: 'user', content: userPrompt },
+            { role: 'assistant', content: result.text },
+            {
+              role: 'user',
+              content:
+                'Your response is missing required fields. Return the COMPLETE JSON with ALL three keys: "hints" (array of 2-3 strings), "solution" (string), "fullSolution" (string). All in Hebrew.',
+            },
+          ],
+          model: modelConfig,
+          acknowledgment: 'Retrying support generation',
+        },
+        payload,
+      )
+      logger.info({ raw: retryResult.text.slice(0, 500) }, '[Support Generation] Retry response')
+      const retryParsed = parseLLMResponse(retryResult.text)
+      return {
+        success: true,
+        data: mergeResults(parsed, retryParsed),
+      }
+    }
+
     return { success: true, data: parsed }
   } catch (error) {
     logger.error({ err: error }, '[Support Generation] LLM call failed')
@@ -73,10 +102,7 @@ export async function generateSupport(
   }
 }
 
-function parseLLMResponse(
-  text: string,
-  targetFields: ('hints' | 'solution' | 'fullSolution')[],
-): GeneratedSupport {
+function parseLLMResponse(text: string): GeneratedSupport {
   const cleaned = text
     .replace(/^```json\s*/i, '')
     .replace(/^```\s*/, '')
@@ -84,19 +110,19 @@ function parseLLMResponse(
     .trim()
 
   const parsed = JSON.parse(cleaned)
-  const result: GeneratedSupport = {}
+  return {
+    hints: Array.isArray(parsed.hints) ? parsed.hints.map(String) : [],
+    solution: parsed.solution ? String(parsed.solution) : '',
+    fullSolution: parsed.fullSolution ? String(parsed.fullSolution) : '',
+  }
+}
 
-  if (targetFields.includes('hints')) {
-    result.hints = Array.isArray(parsed.hints) ? parsed.hints.map(String) : []
+function mergeResults(first: GeneratedSupport, second: GeneratedSupport): GeneratedSupport {
+  return {
+    hints: first.hints?.length ? first.hints : second.hints,
+    solution: first.solution || second.solution,
+    fullSolution: first.fullSolution || second.fullSolution,
   }
-  if (targetFields.includes('solution')) {
-    result.solution = parsed.solution ? String(parsed.solution) : ''
-  }
-  if (targetFields.includes('fullSolution')) {
-    result.fullSolution = parsed.fullSolution ? String(parsed.fullSolution) : ''
-  }
-
-  return result
 }
 
 function resolveModelConfig(modelKey: AIModelKey): AIModel {
