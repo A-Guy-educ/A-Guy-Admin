@@ -1,17 +1,17 @@
 'use client'
 
-import { BarChart3, GraduationCap, Sparkles } from 'lucide-react'
-import { useState } from 'react'
+import { useExamCountdown } from '@/client/hooks/useExamCountdown'
 import type { Chapter, Course, Lesson } from '@/payload-types'
 import { useTranslations } from '@/ui/web/providers/I18n'
-import { useExamCountdown } from '@/client/hooks/useExamCountdown'
+import { BarChart3, GraduationCap, Sparkles } from 'lucide-react'
+import { useState } from 'react'
+import { AskTab } from '../AskTab'
 import { CourseAnalytics } from '../CourseAnalytics'
 import { CourseTabs, type CourseTab } from '../CourseTabs'
 import { ExamReminderBubble } from '../ExamReminderBubble'
+import { ExamsTab } from '../ExamsTab'
 import { LearnTab } from '../LearnTab'
 import { PracticeTab } from '../PracticeTab'
-import { AskTab } from '../AskTab'
-import { ExamsTab } from '../ExamsTab'
 
 interface CoursePageContentProps {
   course: Course
@@ -35,14 +35,13 @@ export function CoursePageContent({
       <CourseAnalytics courseId={course.id} courseTitle={course.title} />
       <CourseTabs activeTab={activeTab} onTabChange={setActiveTab} />
 
-      {/* Centered title area - gradient background */}
-      <div className="w-full py-6 px-6 bg-gradient-to-b from-background to-muted/30">
+      {/* Centered title area - clean background */}
+      <div className="w-full py-6 px-6">
         <div className="max-w-5xl mx-auto text-center">
           {hasUpcomingExam && daysUntil !== null && <ExamReminderBubble daysUntil={daysUntil} />}
-          <h1 className="text-3xl md:text-4xl font-black text-foreground mt-4">{course.title}</h1>
-          <p className="text-sm md:text-base font-extrabold text-primary mt-2 uppercase tracking-[0.3em]">
-            {t('grade')} {course.courseLabel}
-          </p>
+          <h1 className="text-3xl md:text-4xl font-black text-foreground mt-4 text-center">
+            {course.title}
+          </h1>
         </div>
       </div>
 
@@ -64,7 +63,7 @@ export function CoursePageContent({
               <BarChart3 className="w-4 h-4" />
               {t('statsAndPerformance')}
             </button>
-            <button className="flex items-center justify-center gap-2 text-sm font-bold text-primary-foreground bg-primary px-6 py-3 rounded-full shadow-lg hover:opacity-90 transition-all">
+            <button className="flex items-center justify-center gap-2 text-sm font-bold text-white bg-[#7C1D2A] px-6 py-3 rounded-full shadow-lg hover:opacity-90 transition-all">
               <GraduationCap className="w-4 h-4" />
               {t('upcomingExam')}
             </button>

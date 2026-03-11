@@ -17,7 +17,7 @@ export function CourseTabs({ activeTab, onTabChange }: CourseTabsProps) {
 
   return (
     <div className="py-4">
-      <div className="max-w-lg mx-auto px-4 flex items-center justify-center gap-2">
+      <div className="bg-muted/50 p-1 rounded-full flex items-center justify-center gap-0 max-w-md mx-auto">
         {TABS.map((tab) => {
           const isActive = activeTab === tab
           return (
@@ -25,10 +25,10 @@ export function CourseTabs({ activeTab, onTabChange }: CourseTabsProps) {
               key={tab}
               onClick={() => onTabChange(tab)}
               className={cn(
-                'px-6 py-2 text-sm rounded-full transition-all border',
+                'flex-1 px-6 py-2 text-sm rounded-full transition-all',
                 isActive
-                  ? 'border-border bg-card text-primary font-bold shadow-sm'
-                  : 'border-transparent text-muted-foreground hover:text-foreground',
+                  ? 'bg-card text-primary font-bold shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground',
               )}
             >
               {t(tab)}
