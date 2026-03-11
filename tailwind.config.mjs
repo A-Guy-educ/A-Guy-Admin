@@ -26,15 +26,6 @@ const config = {
     'bg-success/30',
     'border-warning',
     'bg-warning/30',
-    // Tab-based color theming
-    'text-blue-600',
-    'text-red-700',
-    'text-purple-600',
-    'text-emerald-600',
-    'border-blue-500/40',
-    'border-red-600/40',
-    'border-purple-500/40',
-    'border-emerald-500/40',
   ],
   theme: {
     container: {

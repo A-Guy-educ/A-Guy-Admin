@@ -8,7 +8,7 @@ interface LearnTabProps {
   lessons: Lesson[]
   chapters: Chapter[]
   courseSlug: string
-  tabColor?: { border: string; stroke: string }
+  tabColor?: { text: string; stroke: string }
 }
 
 export function LearnTab({ lessons, chapters, courseSlug, tabColor }: LearnTabProps) {
