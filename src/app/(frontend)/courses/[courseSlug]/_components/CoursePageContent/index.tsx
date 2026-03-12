@@ -3,6 +3,7 @@
 import { useExamCountdown } from '@/client/hooks/useExamCountdown'
 import type { Chapter, Course, Lesson } from '@/payload-types'
 import { useTranslations } from '@/ui/web/providers/I18n'
+import { SystemLink } from '@/infra/loading/components/SystemLink'
 import { BarChart3, GraduationCap, Sparkles } from 'lucide-react'
 import { useState } from 'react'
 import { AskTab } from '../AskTab'
@@ -77,10 +78,13 @@ export function CoursePageContent({
               <BarChart3 className="w-4 h-4" />
               {t('statsAndPerformance')}
             </button>
-            <button className="flex items-center justify-center gap-2 text-sm font-bold text-white bg-[#7C1D2A] px-6 py-3 rounded-full shadow-lg hover:opacity-90 transition-all">
+            <SystemLink
+              href="/study-plan"
+              className="flex items-center justify-center gap-2 text-sm font-bold text-white bg-[#7C1D2A] px-6 py-3 rounded-full shadow-lg hover:opacity-90 transition-all"
+            >
               <GraduationCap className="w-4 h-4" />
               {t('upcomingExam')}
-            </button>
+            </SystemLink>
             <button className="flex items-center justify-center gap-2 text-sm font-bold text-foreground bg-card border border-border px-6 py-3 rounded-full hover:bg-muted/50 transition-all">
               <Sparkles className="w-4 h-4" />
               {t('bagrutTransition')}
