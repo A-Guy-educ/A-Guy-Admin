@@ -78,6 +78,10 @@
     "reflect": {
       "model": "minimax-coding-plan/MiniMax-M2.5",
       "description": "Post-task reflection - extracts patterns, updates knowledge base, creates skills when patterns repeat"
+    },
+    "e2e-test-writer": {
+      "model": "minimax-coding-plan/MiniMax-M2.5",
+      "description": "Writes Playwright E2E tests for UI changes. Tests committed but NOT run in pipeline — CI runs them on PR."
     }
   },
   "mcp": {

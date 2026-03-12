@@ -273,6 +273,12 @@ Invoke these subagents when working in their specific domains:
 **When:** After implementing any code, before quality checks
 **What to ask:** "Review for TypeScript compliance, import aliases, and general code quality."
 
+### @e2e-test-writer
+
+**When:** After implementing UI changes to components in `src/ui/web/`, `src/app/(frontend)/`, or pages/routes
+**What to ask:** "Write a Playwright E2E test for the UI change I just implemented. The component/page is at <path>, visible at route <url>. Test that <user-facing behavior>."
+**Note:** The E2E test is committed but NOT run in the pipeline. CI runs it on PR. Only invoke for user-visible UI changes, not internal refactors.
+
 ### @cody-expert
 
 **When:** Working on the Cody pipeline itself (`scripts/cody/**`, `.opencode/agents/**`, `.github/workflows/cody.yml`)
