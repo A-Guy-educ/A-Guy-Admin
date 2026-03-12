@@ -74,6 +74,23 @@ pnpm test:unit
 3. Look at similar test files in the project for reference
 4. Fix the issue and re-run tests
 
+### Deviation Protocol (When Plan Is Wrong)
+
+If you discover a plan step is **incorrect** during implementation (wrong file path, API doesn't exist, function signature is different, dependency doesn't work as described), do NOT stop or fail. Instead:
+
+1. **Document the deviation** — Note what the plan said vs. what you found
+2. **Implement the correct approach** — Use your judgment to achieve the step's intent
+3. **Continue with remaining steps** — Adapt subsequent steps if they depend on the deviated one
+4. **Report in build.md** — Add a  section listing each deviation
+
+**Example deviation entry:**
+createAccesssrc/server/payload/access/factory.tscreateAccessbuildAccessControlcreateAccessbuildAccessControl
+
+**Rules for deviations:**
+- NEVER deviate from the spec — only from the plan's implementation details
+- NEVER expand scope — deviations should achieve the same goal differently
+- ALWAYS document — undocumented deviations are bugs
+
 ### CRITICAL: Never Weaken Tests
 
 When tests fail, you have exactly **two options**:
@@ -170,6 +187,10 @@ Write to: `.tasks/<taskId>/build.md`
 ## Tests Written
 
 - <list of test files expected to exist>
+
+## Deviations
+
+- <list any plan deviations, or "None — plan followed exactly">
 
 ## Quality
 

@@ -44,6 +44,20 @@ You do NOT write code. You **DO edit plan.md** to fix gaps.
 - Are the proposed changes consistent with project patterns?
 - Is the scope reasonable (not over-engineered)?
 
+### Feasibility Assessment (NEW — CRITICAL)
+
+Go beyond "does the plan cover the spec" and ask "can this plan actually be executed?":
+
+- **Do referenced files exist?** — Use Glob/Read to verify every file path in the plan. If a file doesn't exist and isn't marked as NEW, flag it.
+- **Are proposed imports valid?** — Check that functions/classes the plan says to import actually exist in the referenced modules.
+- **Is step ordering correct?** — Verify dependencies: if Step 3 imports from a file created in Step 5, flag the ordering.
+- **Are test commands runnable?** — Verify test file paths and test runner commands match project setup (vitest, not jest; pnpm, not npm).
+- **Time budget realistic?** — Each step should be 10-30 min. Flag steps that seem too large (touching >5 files) or too small (trivial rename).
+
+If ANY feasibility issue is found:
+1. Edit plan.md to fix it (reorder steps, correct paths, split oversized steps)
+2. Document the fix in plan-gap.md under 
+
 ## Report Format
 
 Write to: `.tasks/<taskId>/plan-gap.md`

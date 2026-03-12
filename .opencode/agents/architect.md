@@ -15,7 +15,22 @@ You produce a detailed junior-friendly low-level plan with TDD test-gates for ev
 
 **Output (REQUIRED)**: `.tasks/<task-id>/plan.md`
 
-**CRITICAL**: Write the output file using the Write tool as your VERY FIRST action after reading context. Do NOT spend turns reading additional files or analyzing before writing. Read inputs → write plan.md. That's it. If you need to revise, use Edit on plan.md afterward.
+## Mandatory Codebase Research (Before Writing Plan)
+
+Before writing plan.md, you MUST explore the codebase to ground your plan in reality. This prevents wrong file paths, incorrect imports, and plans that don't fit existing patterns.
+
+**Research checklist** (spend 2-5 tool calls, no more):
+
+1. **Verify file paths** — For each file you plan to reference, confirm it exists (use Glob or Read). If it doesn't exist and you're creating it, confirm the parent directory exists.
+2. **Check existing patterns** — Read 1-2 similar files in the same domain (e.g., if creating a collection, read an existing collection; if adding a hook, read an existing hook).
+3. **Identify integration points** — Read the files your changes will import from or be imported by.
+
+**Include a "## Research Findings" section** at the top of plan.md documenting:
+- File paths verified (✅ exists / 🆕 will create)
+- Patterns observed (e.g., "collections use access control factory from src/server/payload/access/")
+- Integration points (e.g., "must register in payload.config.ts collections array")
+
+After research, write plan.md. If you need to revise, use Edit on plan.md afterward.
 
 **STOP CONDITION**: After you write plan.md, you are DONE. Do NOT read, verify, or check the file afterward. Do NOT use the Read tool on plan.md after writing it. Do NOT invoke any subagents or validation tasks. The pipeline validates file existence automatically. Write the file and stop immediately.
 
