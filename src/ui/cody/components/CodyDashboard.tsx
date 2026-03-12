@@ -78,7 +78,7 @@ export function CodyDashboard({ initialIssueNumber }: CodyDashboardProps) {
     error,
     refetch,
     dataUpdatedAt,
-  } = useCodyTasks({ days })
+  } = useCodyTasks({ days, viewMode })
 
   const queryClient = useQueryClient()
 
