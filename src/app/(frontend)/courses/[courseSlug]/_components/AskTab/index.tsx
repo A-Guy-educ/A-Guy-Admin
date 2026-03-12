@@ -32,9 +32,8 @@ export function AskTab({ courseId, accentColor }: AskTabProps) {
 
   const loadConversations = useCallback(async () => {
     try {
-      const contextKey = `courses:${courseId}`
       const res = await fetch(
-        `/api/conversations/by-context?contextKey=${encodeURIComponent(contextKey)}&limit=100`,
+        `/api/conversations/by-context?contextKeyPrefix=ask:${encodeURIComponent(courseId)}&limit=100`,
       )
       if (res.ok) {
         const data = await res.json()
