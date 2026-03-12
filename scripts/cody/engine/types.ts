@@ -92,7 +92,7 @@ export interface PipelineContext {
   taskDir: string
   input: CodyInput
   taskDef: TaskDefinition | null
-  profile: 'standard' | 'lightweight'
+  profile: 'standard' | 'lightweight' | 'turbo'
   backend: RunnerBackend
   // Set by resolve-profile post-action to signal engine to rebuild pipeline
   pipelineNeedsRebuild?: boolean

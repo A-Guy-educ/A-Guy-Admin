@@ -50,8 +50,7 @@ export const IMPL_ORDER_STANDARD: PipelineStep[] = [
   'fix',
   'commit',
   'verify',
-  'docs',
-  'reflect',
+  { parallel: ['docs', 'reflect'] },
   'pr',
 ]
 export const IMPL_ORDER_LIGHTWEIGHT: PipelineStep[] = [
@@ -62,8 +61,7 @@ export const IMPL_ORDER_LIGHTWEIGHT: PipelineStep[] = [
   'fix',
   'commit',
   'verify',
-  'docs',
-  'reflect',
+  { parallel: ['docs', 'reflect'] },
   'pr',
 ]
 
@@ -73,8 +71,7 @@ export const FIX_ORDER: PipelineStep[] = [
   'fix',
   'commit',
   'verify',
-  'docs',
-  'reflect',
+  { parallel: ['docs', 'reflect'] },
   'pr',
 ]
 
@@ -442,7 +439,7 @@ export function rebuildPipelineAfterTaskify(
  */
 export function buildPipeline(
   mode: 'spec' | 'impl' | 'full' | 'rerun',
-  profile: 'standard' | 'lightweight',
+  profile: 'standard' | 'lightweight' | 'turbo',
   clarify: boolean,
   ctx: PipelineContext,
 ): PipelineDefinition {

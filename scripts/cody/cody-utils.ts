@@ -46,6 +46,8 @@ export interface CodyInput {
   isPullRequest?: boolean
   // Force create new PR (new branch) - ignores existing PR
   fresh?: boolean
+  // Turbo mode: forces minimal pipeline (build→commit→verify→pr), CLI-only flag
+  turbo?: boolean
 }
 
 export interface CodyPipelineStatus {

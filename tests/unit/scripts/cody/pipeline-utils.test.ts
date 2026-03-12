@@ -514,9 +514,9 @@ describe('pipeline stage definitions', () => {
     expect(ALL_IMPL_STAGE_NAMES).toContain('commit')
   })
 
-  it('should have exactly 10 impl stages', async () => {
+  it('should have exactly 11 impl stages', async () => {
     const { ALL_IMPL_STAGE_NAMES } = await import('../../../../scripts/cody/pipeline-utils')
-    expect(ALL_IMPL_STAGE_NAMES).toHaveLength(10)
+    expect(ALL_IMPL_STAGE_NAMES).toHaveLength(11)
   })
 
   it('should have correct stage order', async () => {
@@ -1025,7 +1025,7 @@ describe('getImplPipeline', () => {
     const { getImplPipeline, flattenPipeline } =
       await import('../../../../scripts/cody/pipeline-utils')
     const pipeline = getImplPipeline('lightweight')
-    // Lightweight should have 9 entries (with reflect)
+    // Lightweight should have 9 entries (parallel group counts as 1)
     expect(pipeline).toHaveLength(9)
     const flatNames = flattenPipeline(pipeline)
     expect(flatNames).toEqual([
@@ -1036,6 +1036,7 @@ describe('getImplPipeline', () => {
       'fix',
       'commit',
       'verify',
+      'docs',
       'reflect',
       'pr',
     ])
@@ -1073,6 +1074,7 @@ describe('getAllImplStageNames', () => {
       'fix',
       'commit',
       'verify',
+      'docs',
       'reflect',
       'pr',
     ])

@@ -17,7 +17,7 @@ import {
  */
 export function resolvePipelineForMode(
   mode: 'spec' | 'impl' | 'full' | 'rerun' | 'fix' | 'status',
-  profile: 'standard' | 'lightweight',
+  profile: 'standard' | 'lightweight' | 'turbo',
   clarify: boolean,
   ctx: PipelineContext,
 ): PipelineDefinition {

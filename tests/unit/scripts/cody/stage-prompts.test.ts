@@ -156,6 +156,7 @@ describe('stage-prompts', () => {
         'fix',
         'commit',
         'verify',
+        'docs',
         'reflect',
         'pr',
       ])
@@ -170,6 +171,7 @@ describe('stage-prompts', () => {
         'fix',
         'commit',
         'verify',
+        'docs',
         'reflect',
         'pr',
       ])
@@ -185,6 +187,7 @@ describe('stage-prompts', () => {
         'fix',
         'commit',
         'verify',
+        'docs',
         'reflect',
         'pr',
       ])

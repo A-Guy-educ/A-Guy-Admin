@@ -882,7 +882,7 @@ export const IMPL_PIPELINE: PipelineStage[] = [
   'fix',
   'commit',
   'verify',
-  'reflect',
+  { parallel: ['docs', 'reflect'] },
   'pr',
 ]
 
@@ -909,7 +909,7 @@ export const LIGHTWEIGHT_IMPL_PIPELINE: PipelineStage[] = [
   'fix',
   'commit',
   'verify',
-  'reflect',
+  { parallel: ['docs', 'reflect'] },
   'pr',
 ]
 
