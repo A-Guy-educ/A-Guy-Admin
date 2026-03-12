@@ -9,9 +9,9 @@
 
 export const SPEC_STAGES = ['taskify', 'spec', 'clarify'] as const
 export const IMPL_STAGES = [
-  'gsd-research',
-  'gsd-plan',
-  'gsd-execute',
+  'architect',
+  'plan-gap',
+  'build',
   'commit',
   'review',
   'fix',
