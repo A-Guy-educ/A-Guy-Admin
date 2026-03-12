@@ -50,7 +50,7 @@ async function getMCPClient() {
       type: 'http',
       url: 'https://api.githubcopilot.com/mcp/',
       headers: {
-        Authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
+        Authorization: `Bearer ${process.env.GH_PAT || process.env.GITHUB_TOKEN}`,
       },
     },
   })
