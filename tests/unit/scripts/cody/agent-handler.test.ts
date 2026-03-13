@@ -168,7 +168,7 @@ describe('AgentHandler', () => {
       )
     })
 
-    it('should pass serverUrl and sessionId to agent runner', async () => {
+    it('should pass serverUrl, sessionId, and dataDir to agent runner', async () => {
       mockCtx.serverUrl = 'http://127.0.0.1:4097'
       mockCtx.lastSessionId = 'sess-prev-123'
 
@@ -182,6 +182,7 @@ describe('AgentHandler', () => {
         expect.objectContaining({
           serverUrl: 'http://127.0.0.1:4097',
           sessionId: 'sess-prev-123',
+          dataDir: '/test/.tasks/test-task-123/opencode-data',
         }),
       )
     })
@@ -217,7 +218,7 @@ describe('AgentHandler', () => {
       )
     })
 
-    it('should pass undefined serverUrl and sessionId when ctx has none set', async () => {
+    it('should pass undefined serverUrl, sessionId, and dataDir when ctx has none set', async () => {
       // ctx has no serverUrl or lastSessionId (default state, no server mode)
       expect(mockCtx.serverUrl).toBeUndefined()
       expect(mockCtx.lastSessionId).toBeUndefined()
@@ -232,6 +233,7 @@ describe('AgentHandler', () => {
         expect.objectContaining({
           serverUrl: undefined,
           sessionId: undefined,
+          dataDir: undefined,
         }),
       )
     })

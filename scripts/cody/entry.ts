@@ -5,6 +5,12 @@
  * @ai-summary New CLI entry point for Cody pipeline state machine
  */
 
+// Load .env before anything else so GH_PAT, API keys, etc. are available.
+// In CI, environment variables are injected by the workflow — this is a no-op
+// if .env doesn't exist (dotenv silently skips missing files).
+import { config as loadEnv } from 'dotenv'
+loadEnv({ path: '.env' })
+
 import * as fs from 'fs'
 import ms from 'ms'
 import * as path from 'path'

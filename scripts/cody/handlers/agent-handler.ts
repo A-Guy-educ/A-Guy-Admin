@@ -7,6 +7,7 @@
 
 import { logger } from '../logger'
 import * as fs from 'fs'
+import * as path from 'path'
 
 import type { PipelineContext, StageDefinition, StageResult } from '../engine/types'
 import { runAgentWithFileWatch } from '../agent-runner'
@@ -29,6 +30,8 @@ export class AgentHandler implements StageHandler {
       maxRetries: def.maxRetries,
       serverUrl: ctx.serverUrl,
       sessionId: ctx.lastSessionId,
+      // XDG_DATA_HOME must match the server's data dir for instance lookup
+      dataDir: ctx.serverUrl ? path.join(ctx.taskDir, 'opencode-data') : undefined,
     })
 
     // Map result to StageResult

@@ -95,6 +95,8 @@ export interface AgentRunnerOptions {
   serverUrl?: string
   /** Session ID to fork from (for session continuation) */
   sessionId?: string
+  /** XDG_DATA_HOME directory for OpenCode server mode (must match server's data dir) */
+  dataDir?: string
 }
 
 export interface AgentRunResult {
@@ -308,6 +310,7 @@ export function runAgentWithFileWatch(
     validateOutput,
     serverUrl,
     sessionId,
+    dataDir,
   } = options
 
   // Resolve timeout
@@ -355,6 +358,7 @@ export function runAgentWithFileWatch(
       currentChild = backend.spawn(stage, prompt, agentEnv, cwd, {
         serverUrl,
         sessionId,
+        dataDir,
       })
 
       // Explicitly close stdin to prevent opencode from waiting for input

@@ -32,6 +32,29 @@ const HEALTH_CHECK_INTERVAL_MS = 500
 const SHUTDOWN_GRACE_MS = 5_000
 
 // ============================================================================
+// Binary Resolution
+// ============================================================================
+
+/**
+ * Resolve the path to the real opencode binary (v1.2.x installed via curl).
+ *
+ * When running inside `pnpm tsx`, `node_modules/.bin/opencode` shadows the
+ * real binary because pnpm prepends `./node_modules/.bin` to PATH. The npm
+ * package (opencode-ai@0.0.0-dev) doesn't support --agent + --attach properly.
+ *
+ * Resolution order:
+ * 1. ~/.opencode/bin/opencode (standard curl install location)
+ * 2. 'opencode' (fall back to PATH — works in CI where npm shadow doesn't exist)
+ */
+export function resolveOpenCodeBinary(): string {
+  const installDir = path.join(os.homedir(), '.opencode', 'bin', 'opencode')
+  if (fs.existsSync(installDir)) {
+    return installDir
+  }
+  return 'opencode'
+}
+
+// ============================================================================
 // Server Lifecycle
 // ============================================================================
 
@@ -78,8 +101,9 @@ export async function startServer(
   logger.info(`  🚀 Starting OpenCode server on port ${port}...`)
 
   try {
+    const binary = resolveOpenCodeBinary()
     const child = spawn(
-      'opencode',
+      binary,
       ['serve', '--port', String(port), '--print-logs', '--log-level', 'WARN'],
       {
         env: {
