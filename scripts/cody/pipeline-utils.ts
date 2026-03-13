@@ -60,7 +60,7 @@ export const COMPLEXITY_MAX = 100
  *   10-19: "Simple"        → + architect (10)
  *   30+:   "Moderate+"     → + review (30)
  *   35-39: "Complex"       → + gap (35) — gap now writes spec.md + gap.md
- *   40-49: "Complex"       → + plan-gap (40)
+ *   50+:   "Very Complex"  → + plan-gap (50) — architect self-reviews for simpler tasks
  *   60+:   "Very Complex"  → + clarify (60)
  */
 export const STAGE_COMPLEXITY_THRESHOLDS: Record<string, number> = {
@@ -68,7 +68,7 @@ export const STAGE_COMPLEXITY_THRESHOLDS: Record<string, number> = {
   gap: 35,
   clarify: 60,
   architect: 10,
-  'plan-gap': 40,
+  'plan-gap': 50, // Raised: architect now self-reviews; plan-gap only runs on very complex tasks
   build: 0,
   commit: 0,
   review: 30,

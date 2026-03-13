@@ -86,6 +86,7 @@ describe('stage-prompts', () => {
         'clarified.md',
         'plan.md',
         'plan-gap.md',
+        'context.md',
         'rerun-feedback.md',
       ])
       expect(STAGE_CONTEXT_FILES.commit).toEqual(['task.json'])
@@ -96,6 +97,7 @@ describe('stage-prompts', () => {
         'review.md',
         'build.md',
         'plan.md',
+        'context.md',
         'spec.md',
         'clarified.md',
       ])
@@ -106,6 +108,7 @@ describe('stage-prompts', () => {
         'fix-summary.md',
         'build.md',
         'plan.md',
+        'context.md',
         'spec.md',
         'clarified.md',
       ])

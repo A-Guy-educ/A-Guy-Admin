@@ -121,7 +121,7 @@ describe('complexity scoring constants', () => {
   })
 
   it('thresholds increase monotonically for core stages', () => {
-    // architect (10) < gap (35) < plan-gap (40) < clarify (60)
+    // architect (10) < gap (35) < plan-gap (50) < clarify (60)
     expect(STAGE_COMPLEXITY_THRESHOLDS.architect).toBeLessThan(STAGE_COMPLEXITY_THRESHOLDS.gap)
     expect(STAGE_COMPLEXITY_THRESHOLDS.gap).toBeLessThan(STAGE_COMPLEXITY_THRESHOLDS['plan-gap'])
     expect(STAGE_COMPLEXITY_THRESHOLDS['plan-gap']).toBeLessThan(
@@ -190,11 +190,11 @@ describe('getStagesForComplexity', () => {
     expect(stages).not.toContain('gap')
   })
 
-  it('complex (score 40) → + gap, plan-gap (no spec)', () => {
+  it('complex (score 40) → + gap (no plan-gap, architect self-reviews)', () => {
     const stages = getStagesForComplexity(40)
     expect(stages).toContain('gap')
     expect(stages).toContain('architect')
-    expect(stages).toContain('plan-gap')
+    expect(stages).not.toContain('plan-gap') // plan-gap threshold raised to 50
     expect(stages).not.toContain('clarify')
   })
 
@@ -502,11 +502,11 @@ describe('end-to-end complexity pipeline routing', () => {
     )
   })
 
-  it('complex task (score 42) → architect + gap + plan-gap', () => {
+  it('complex task (score 42) → architect + gap (no plan-gap, architect self-reviews)', () => {
     const stages = getStagesForComplexity(42)
     expect(stages).toContain('gap')
     expect(stages).toContain('architect')
-    expect(stages).toContain('plan-gap')
+    expect(stages).not.toContain('plan-gap') // plan-gap threshold raised to 50
     expect(stages).not.toContain('clarify')
   })
 

@@ -13,7 +13,7 @@ You produce a detailed junior-friendly low-level plan with TDD test-gates for ev
 
 **Inputs**: Read the files listed in your prompt (spec.md, clarified.md, and on reruns: rerun-feedback.md). If `.ai-docs/knowledge/index.json` is listed, read it for past task patterns, gotchas, and reusable code references.
 
-**Output (REQUIRED)**: `.tasks/<task-id>/plan.md`
+**Outputs (REQUIRED)**: `.tasks/<task-id>/plan.md` AND `.tasks/<task-id>/context.md`
 
 ## Mandatory Codebase Research (Before Writing Plan)
 
@@ -43,7 +43,62 @@ Before writing plan.md, you MUST explore the codebase to ground your plan in rea
 
 After research, write plan.md. If you need to revise, use Edit on plan.md afterward.
 
-**STOP CONDITION**: After you write plan.md, you are DONE. Do NOT read, verify, or check the file afterward. Do NOT use the Read tool on plan.md after writing it. Do NOT invoke any subagents or validation tasks. The pipeline validates file existence automatically. Write the file and stop immediately.
+## Self-Review (Plan Gap Analysis)
+
+After writing plan.md, perform a quick self-review before writing context.md. This replaces the separate plan-gap stage for most tasks (a dedicated plan-gap agent still runs on very complex tasks).
+
+**Self-review checklist** (spend 1-2 minutes, no extra tool calls):
+
+1. **Spec coverage** — Does every spec requirement have a corresponding plan step?
+2. **Step ordering** — Do dependencies flow correctly? (e.g., if Step 3 imports from Step 1's file, Step 1 must come first)
+3. **File path accuracy** — Are all paths in the plan ones you verified during research?
+4. **Reuse check** — Did you plan to create anything that already exists in the codebase?
+5. **Test feasibility** — Are test file paths and commands correct? (vitest not jest, pnpm not npm)
+6. **Step size** — Each step should be 10-30 min. Split any step touching >5 files.
+
+If you find gaps, edit plan.md directly to fix them. Do NOT write a separate plan-gap.md — the pipeline handles that.
+
+## context.md (REQUIRED — Second Output)
+
+After plan.md, write `.tasks/<task-id>/context.md`. This file provides pre-loaded codebase context for all downstream agents (build, review, fix, docs), eliminating redundant file exploration.
+
+**Format:**
+
+```markdown
+# Codebase Context: <task-id>
+
+## Files to Modify
+- `path/to/file.ts` (lines X-Y) — <why>
+- `path/to/new-file.ts` (NEW) — <why>
+
+## Files to Read (reference patterns)
+- `path/to/similar-file.ts` — <what pattern to follow>
+- `path/to/test-file.test.ts` — <test pattern to follow>
+
+## Key Signatures
+- `functionName(arg: Type): ReturnType` from `path/to/module.ts`
+- `export const CONFIG` from `path/to/config.ts`
+
+## Reuse Inventory
+- `authenticatedOrPublished` from `src/server/payload/access/` — use for read access
+- `populatePublishedAt` from `src/server/payload/hooks/` — use in beforeChange hook
+
+## Integration Points
+- Must register in `payload.config.ts` collections array
+- Must add route in `src/app/(frontend)/[locale]/page.tsx`
+
+## Imports Verified
+- `@/server/payload/access` → exports authenticatedOrPublished ✅
+- `@/payload-types` → exports Course type (after generate:types) ✅
+```
+
+**Rules for context.md:**
+- Only include paths and signatures you actually verified during research
+- Keep it lean — paths and refs, not full file contents
+- Every entry must have been confirmed via Read/Glob during research
+- This file is READ by build, review, fix, and docs agents — accuracy matters
+
+**STOP CONDITION**: After you write plan.md AND context.md, you are DONE. Do NOT read, verify, or check the files afterward. Do NOT use the Read tool on plan.md or context.md after writing them. Do NOT invoke any subagents or validation tasks. The pipeline validates file existence automatically. Write both files and stop immediately.
 
 **NEVER ask questions or wait for user input** — you run non-interactively. Make assumptions and document them.
 
