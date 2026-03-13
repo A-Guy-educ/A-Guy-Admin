@@ -27,6 +27,8 @@ export class AgentHandler implements StageHandler {
       backend: ctx.backend,
       validateOutput: def.validator,
       maxRetries: def.maxRetries,
+      serverUrl: ctx.serverUrl,
+      sessionId: ctx.lastSessionId,
     })
 
     // Map result to StageResult
@@ -50,6 +52,7 @@ export class AgentHandler implements StageHandler {
             outputFile: `${def.name}.md`,
             tokenUsage: result.tokenUsage,
             cost: result.cost,
+            sessionId: result.sessionId,
           }
         }
       }
@@ -64,11 +67,14 @@ export class AgentHandler implements StageHandler {
     // Success - try to save chat history
     if (result.sessionId) {
       try {
-        await appendSession(ctx.taskDir, def.name, result.sessionId)
+        await appendSession(ctx.taskDir, def.name, result.sessionId, ctx.serverUrl)
       } catch (err) {
         // Non-fatal — don't fail the stage if chat export fails
         logger.warn({ err, stage: def.name }, 'Failed to save chat history')
       }
+
+      // Propagate sessionId for downstream stage forking
+      ctx.lastSessionId = result.sessionId
     }
 
     return {
@@ -77,6 +83,7 @@ export class AgentHandler implements StageHandler {
       outputFile: `${def.name}.md`,
       tokenUsage: result.tokenUsage,
       cost: result.cost,
+      sessionId: result.sessionId,
     }
   }
 }

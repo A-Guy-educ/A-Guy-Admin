@@ -91,6 +91,10 @@ export interface AgentRunnerOptions {
   /** Content validation function to run after output file is detected.
    *  On validation failure, the output file is deleted and the agent is retried with the error in the prompt. */
   validateOutput?: (outputFile: string) => ValidationResult
+  /** URL of running OpenCode server (for --attach mode) */
+  serverUrl?: string
+  /** Session ID to fork from (for session continuation) */
+  sessionId?: string
 }
 
 export interface AgentRunResult {
@@ -302,6 +306,8 @@ export function runAgentWithFileWatch(
     cwd = process.cwd(),
     backend = createRunner(),
     validateOutput,
+    serverUrl,
+    sessionId,
   } = options
 
   // Resolve timeout
@@ -346,7 +352,10 @@ export function runAgentWithFileWatch(
       const prompt = buildStagePrompt(input, stage, feedback)
 
       // Spawn using the configured backend (local or GitHub)
-      currentChild = backend.spawn(stage, prompt, agentEnv, cwd)
+      currentChild = backend.spawn(stage, prompt, agentEnv, cwd, {
+        serverUrl,
+        sessionId,
+      })
 
       // Explicitly close stdin to prevent opencode from waiting for input
       if (currentChild.stdin) {

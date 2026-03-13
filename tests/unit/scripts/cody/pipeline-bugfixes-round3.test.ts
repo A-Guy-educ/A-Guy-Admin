@@ -108,7 +108,11 @@ describe('CRITICAL 5: chat-history uses execFileSync', () => {
       path.join(process.cwd(), 'scripts/cody/chat-history.ts'),
       'utf-8',
     )
-    expect(source).toContain("execFileSync('pnpm', ['exec', 'opencode', 'export', sessionId]")
+    // Dynamic args are built and passed to execFileSync — verify the pattern
+    // --attach is inserted after 'export' (not before the subcommand)
+    expect(source).toContain("execFileSync('pnpm', args,")
+    expect(source).toContain("['exec', 'opencode', 'export']")
+    expect(source).toContain('args.push(sessionId)')
     expect(source).not.toMatch(/\bexecSync\(/)
   })
 

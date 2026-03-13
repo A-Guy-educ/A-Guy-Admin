@@ -679,8 +679,23 @@ export type StagingStrategy = 'task-only' | 'tracked+task' | 'all'
 
 /**
  * Files that are always excluded from task-only commits (internal state markers).
+ * NOTE: OpenCode runtime file patterns here must be kept in sync with
+ * the .gitignore entries under "OpenCode runtime files (per-task isolated data dirs)".
  */
-const TASK_FILES_ALWAYS_EXCLUDE = ['gate-*.md', 'rerun-feedback.consumed.md']
+const TASK_FILES_ALWAYS_EXCLUDE = [
+  'gate-*.md',
+  'rerun-feedback.consumed.md',
+  // OpenCode runtime files (only opencode.db is committed for session reuse)
+  'opencode-data/opencode/opencode.db-wal',
+  'opencode-data/opencode/opencode.db-shm',
+  'opencode-data/opencode/snapshot/',
+  'opencode-data/opencode/logs/',
+  'opencode-data/opencode/auth.json',
+  'opencode-data/opencode/bin/',
+  'opencode-data/opencode/tool-output/',
+  'opencode-data/opencode/storage/',
+  'opencode-data/opencode/worktree/',
+]
 
 /**
  * Debug artifacts — only committed when the pipeline fails (black box data).

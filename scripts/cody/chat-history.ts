@@ -182,6 +182,7 @@ export async function appendSession(
   taskDir: string,
   stage: string,
   sessionId: string,
+  serverUrl?: string,
 ): Promise<void> {
   if (!sessionId) {
     logger.debug('No sessionId, skipping chat export')
@@ -191,8 +192,14 @@ export async function appendSession(
   logger.info(`  📝 Exporting chat session ${sessionId} for stage ${stage}...`)
 
   try {
-    // Export session as JSON
-    const output = execFileSync('pnpm', ['exec', 'opencode', 'export', sessionId], {
+    // Export session as JSON (use --attach to connect to running server if available)
+    // --attach is an export-subcommand flag, so it goes after 'export', before sessionId
+    const args = ['exec', 'opencode', 'export']
+    if (serverUrl) {
+      args.push('--attach', serverUrl)
+    }
+    args.push(sessionId)
+    const output = execFileSync('pnpm', args, {
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'pipe'],
       cwd: process.cwd(),

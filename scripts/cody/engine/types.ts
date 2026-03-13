@@ -24,6 +24,8 @@ export interface StageResult {
   tokenUsage?: { input: number; output: number; cacheRead: number }
   /** Cost in USD for this stage */
   cost?: number
+  /** OpenCode session ID for this stage */
+  sessionId?: string
 }
 
 // ============================================================================
@@ -96,6 +98,10 @@ export interface PipelineContext {
   backend: RunnerBackend
   // Set by resolve-profile post-action to signal engine to rebuild pipeline
   pipelineNeedsRebuild?: boolean
+  /** URL of the running OpenCode server (e.g., 'http://localhost:4097') */
+  serverUrl?: string
+  /** Most recent agent stage's sessionID — downstream stages fork from this */
+  lastSessionId?: string
 }
 
 // Note: NO controlMode field — each gate resolves it dynamically via
@@ -132,6 +138,8 @@ export interface StageStateV2 {
   tokenUsage?: { input: number; output: number; cacheRead: number }
   /** Cost in USD */
   cost?: number
+  /** OpenCode session ID for rerun recovery */
+  sessionId?: string
 }
 
 export interface PipelineStateV2 {
@@ -200,6 +208,7 @@ export const PipelineStateV2Schema: z.ZodType<PipelineStateV2> = z.object({
         })
         .optional(),
       cost: z.number().optional(),
+      sessionId: z.string().optional(),
     }),
   ),
 })

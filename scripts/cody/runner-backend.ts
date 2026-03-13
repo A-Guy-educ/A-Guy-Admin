@@ -13,9 +13,23 @@ import { getEnv } from './env'
 // Types
 // ============================================================================
 
+/** Options passed to runner.spawn() for server mode */
+export interface RunnerSpawnOptions {
+  /** URL of running OpenCode server to attach to */
+  serverUrl?: string
+  /** Session ID to fork from (requires serverUrl) */
+  sessionId?: string
+}
+
 export interface RunnerBackend {
   name: string
-  spawn(stage: string, prompt: string, env: NodeJS.ProcessEnv, cwd: string): ChildProcess
+  spawn(
+    stage: string,
+    prompt: string,
+    env: NodeJS.ProcessEnv,
+    cwd: string,
+    options?: RunnerSpawnOptions,
+  ): ChildProcess
 }
 
 // ============================================================================
@@ -25,22 +39,24 @@ export interface RunnerBackend {
 export class GitHubRunner implements RunnerBackend {
   name = 'opencode-github'
 
-  spawn(stage: string, prompt: string, env: NodeJS.ProcessEnv, cwd: string): ChildProcess {
-    // Use opencode run --agent instead of opencode github run
-    // opencode github run does NOT support --agent flag and ignores AGENT env var
-    // opencode run supports --agent which loads correct agent from opencode.json
-    // OIDC auth still works in CI (reads ACTIONS_ID_TOKEN_REQUEST_TOKEN from env)
-    // Use --format json to get sessionID in output for chat history capture
-    return spawn(
-      'pnpm',
-      ['exec', 'opencode', 'run', '--agent', stage, '--format', 'json', prompt],
-      {
-        cwd,
-        // Pipe stdout for JSON parsing (sessionID extraction), pipe stderr for capture
-        stdio: ['ignore', 'pipe', 'pipe'], // stdin=ignore prevents opencode blocking on stdin read
-        env,
-      },
-    )
+  spawn(
+    stage: string,
+    prompt: string,
+    env: NodeJS.ProcessEnv,
+    cwd: string,
+    options?: RunnerSpawnOptions,
+  ): ChildProcess {
+    // Build args dynamically to support --attach (server mode) and --session --fork (continuation)
+    const args = ['exec', 'opencode', 'run', '--agent', stage, '--format', 'json']
+    if (options?.serverUrl) args.push('--attach', options.serverUrl)
+    if (options?.sessionId) args.push('--session', options.sessionId, '--fork')
+    args.push(prompt)
+    return spawn('pnpm', args, {
+      cwd,
+      // Pipe stdout for JSON parsing (sessionID extraction), pipe stderr for capture
+      stdio: ['ignore', 'pipe', 'pipe'], // stdin=ignore prevents opencode blocking on stdin read
+      env,
+    })
   }
 }
 
@@ -51,11 +67,19 @@ export class GitHubRunner implements RunnerBackend {
 export class LocalRunner implements RunnerBackend {
   name = 'opencode-local'
 
-  spawn(stage: string, prompt: string, env: NodeJS.ProcessEnv, cwd: string): ChildProcess {
-    // Local runner uses pnpm ocode run --agent <stage> [prompt]
-    // Prompt is passed as positional arg (same as GitHubRunner)
-    // Use --format json to get sessionID in output for chat history capture
-    return spawn('pnpm', ['ocode', 'run', '--agent', stage, '--format', 'json', prompt], {
+  spawn(
+    stage: string,
+    prompt: string,
+    env: NodeJS.ProcessEnv,
+    cwd: string,
+    options?: RunnerSpawnOptions,
+  ): ChildProcess {
+    // Build args dynamically to support --attach (server mode) and --session --fork (continuation)
+    const args = ['ocode', 'run', '--agent', stage, '--format', 'json']
+    if (options?.serverUrl) args.push('--attach', options.serverUrl)
+    if (options?.sessionId) args.push('--session', options.sessionId, '--fork')
+    args.push(prompt)
+    return spawn('pnpm', args, {
       cwd,
       // Pipe stdout for JSON parsing (sessionID extraction), pipe stderr for capture
       stdio: ['ignore', 'pipe', 'pipe'], // stdin=ignore prevents opencode blocking on stdin read

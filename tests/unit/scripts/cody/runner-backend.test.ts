@@ -66,6 +66,48 @@ describe('GitHubRunner', () => {
       MODEL: 'gpt-4',
     })
   })
+
+  it('should add --attach flag when serverUrl is provided', () => {
+    const runner = new GitHubRunner()
+    const env = {} as NodeJS.ProcessEnv
+
+    runner.spawn('build', 'Build it', env, '/cwd', { serverUrl: 'http://127.0.0.1:4097' })
+
+    const args = vi.mocked(spawn).mock.calls[0][1] as string[]
+    expect(args).toContain('--attach')
+    expect(args).toContain('http://127.0.0.1:4097')
+    // --attach should come before prompt
+    const attachIdx = args.indexOf('--attach')
+    const promptIdx = args.indexOf('Build it')
+    expect(attachIdx).toBeLessThan(promptIdx)
+  })
+
+  it('should add --session and --fork flags when sessionId is provided', () => {
+    const runner = new GitHubRunner()
+    const env = {} as NodeJS.ProcessEnv
+
+    runner.spawn('review', 'Review code', env, '/cwd', {
+      serverUrl: 'http://127.0.0.1:4097',
+      sessionId: 'sess-abc-123',
+    })
+
+    const args = vi.mocked(spawn).mock.calls[0][1] as string[]
+    expect(args).toContain('--session')
+    expect(args).toContain('sess-abc-123')
+    expect(args).toContain('--fork')
+  })
+
+  it('should not add server flags when options are empty', () => {
+    const runner = new GitHubRunner()
+    const env = {} as NodeJS.ProcessEnv
+
+    runner.spawn('spec', 'Write spec', env, '/cwd', {})
+
+    const args = vi.mocked(spawn).mock.calls[0][1] as string[]
+    expect(args).not.toContain('--attach')
+    expect(args).not.toContain('--session')
+    expect(args).not.toContain('--fork')
+  })
 })
 
 describe('LocalRunner', () => {
@@ -127,6 +169,32 @@ describe('LocalRunner', () => {
       expect.any(Array),
       expect.objectContaining({ cwd: '/workspace/repo' }),
     )
+  })
+
+  it('should add --attach flag when serverUrl is provided', () => {
+    const runner = new LocalRunner()
+    const env = {} as NodeJS.ProcessEnv
+
+    runner.spawn('build', 'Build it', env, '/cwd', { serverUrl: 'http://127.0.0.1:4097' })
+
+    const args = vi.mocked(spawn).mock.calls[0][1] as string[]
+    expect(args).toContain('--attach')
+    expect(args).toContain('http://127.0.0.1:4097')
+  })
+
+  it('should add --session and --fork flags when sessionId is provided', () => {
+    const runner = new LocalRunner()
+    const env = {} as NodeJS.ProcessEnv
+
+    runner.spawn('review', 'Review code', env, '/cwd', {
+      serverUrl: 'http://127.0.0.1:4097',
+      sessionId: 'sess-abc-123',
+    })
+
+    const args = vi.mocked(spawn).mock.calls[0][1] as string[]
+    expect(args).toContain('--session')
+    expect(args).toContain('sess-abc-123')
+    expect(args).toContain('--fork')
   })
 })
 

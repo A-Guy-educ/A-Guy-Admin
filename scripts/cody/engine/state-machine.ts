@@ -446,7 +446,16 @@ async function executeParallelStep(
         completedAt: new Date().toISOString(),
         retries: stageResult.retries,
         outputFile: stageResult.outputFile,
+        sessionId: stageResult.sessionId,
       })
+
+      // Propagate sessionId for downstream stage forking.
+      // Note: with parallel stages, the last one to complete "wins" — non-deterministic.
+      // This is acceptable because parallel stages are currently advisory (docs/reflect)
+      // and sequential stages have a stable last-writer guarantee.
+      if (stageResult.sessionId) {
+        ctx.lastSessionId = stageResult.sessionId
+      }
 
       // R8: Run post-actions for completed parallel stages
       const def = pipeline.stages.get(stageName)
@@ -544,7 +553,13 @@ async function handleStageResult(
       outputFile: result.outputFile,
       tokenUsage: result.tokenUsage,
       cost: result.cost,
+      sessionId: result.sessionId,
     })
+
+    // Propagate sessionId for downstream stage forking
+    if (result.sessionId) {
+      ctx.lastSessionId = result.sessionId
+    }
 
     // Run post-actions if defined
     if (def.postActions) {

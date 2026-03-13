@@ -30,8 +30,34 @@ import { flattenPipelineOrder } from './pipeline/definitions'
 import { stateToV1 } from './engine/status'
 import { PipelinePausedError } from './engine/types'
 import { resolveRerunFromStage, resolveFromStageAfterGateApproval } from './rerun-utils'
+import { startServer, stopServer, checkpointDb, findLastSessionId } from './opencode-server'
+import type { OpenCodeServer } from './opencode-server'
 import { ensureTaskMarkerComment, postComment } from './github-api'
 import { formatStatusComment } from './cody-utils'
+
+// ============================================================================
+// OpenCode Server Lifecycle
+// ============================================================================
+
+/** Module-level reference to the OpenCode server for cleanup in signal handlers */
+let openCodeServer: OpenCodeServer | null = null
+
+/**
+ * Gracefully shut down the OpenCode server, checkpoint the DB, and clear the reference.
+ * Safe to call multiple times (idempotent).
+ */
+async function shutdownOpenCodeServer(taskDir?: string): Promise<void> {
+  if (!openCodeServer) return
+  const server = openCodeServer
+  openCodeServer = null
+
+  await stopServer(server)
+
+  // Checkpoint WAL into main DB so it's self-contained for git commits
+  if (taskDir) {
+    checkpointDb(taskDir)
+  }
+}
 
 // ============================================================================
 // Shared Helpers
@@ -195,6 +221,15 @@ Examples:
     } catch (err) {
       logger.error({ err }, `  Failed to update status`)
     }
+    // Kill OpenCode server before exiting (sync-safe: just send SIGTERM).
+    // We cannot await stopServer() or checkpointDb() here — the signal context
+    // limits async work. The WAL checkpoint is skipped on forced shutdown;
+    // SQLite will recover the WAL automatically on the next open.
+    if (openCodeServer?.process && !openCodeServer.process.killed) {
+      openCodeServer.process.kill('SIGTERM')
+      openCodeServer = null
+    }
+
     process.exit(128 + (signal === 'SIGTERM' ? 15 : 2))
   }
 
@@ -239,6 +274,33 @@ Examples:
     backend,
   }
 
+  // Start OpenCode server for persistent sessions across stages
+  // Graceful degradation: if startup fails, pipeline runs without server (cold-boot each stage)
+  if (input.mode !== 'status') {
+    const server = await startServer(taskDir)
+    if (server) {
+      openCodeServer = server
+      ctx.serverUrl = server.url
+      logger.info(`  OpenCode server available at ${server.url}`)
+
+      // On rerun: recover lastSessionId from previous pipeline state
+      if (input.mode === 'rerun') {
+        const { loadState } = await import('./engine/status')
+        const existingState = loadState(input.taskId)
+        if (existingState) {
+          const pipelineOrder = flattenPipelineOrder(
+            resolvePipelineForMode('full', ctx.profile, false, ctx).order,
+          )
+          const lastSid = findLastSessionId(existingState.stages, pipelineOrder)
+          if (lastSid) {
+            ctx.lastSessionId = lastSid
+            logger.info(`  Recovered session ${lastSid} from previous run`)
+          }
+        }
+      }
+    }
+  }
+
   try {
     switch (input.mode) {
       case 'spec':
@@ -264,7 +326,8 @@ Examples:
     }
   } catch (error) {
     if (error instanceof PipelinePausedError) {
-      // Pipeline paused - handled internally
+      // Pipeline paused — still need to shut down server and checkpoint DB
+      await shutdownOpenCodeServer(taskDir)
       return
     }
 
@@ -280,6 +343,9 @@ Examples:
 
     const errorMsg = error instanceof Error ? error.message : String(error)
     logger.error({ err: error }, `\n❌ Cody failed: ${errorMsg}`)
+
+    // Shutdown OpenCode server before committing (ensures DB is checkpointed)
+    await shutdownOpenCodeServer(taskDir)
 
     // Commit task files on failure — includes debug artifacts (*-events.jsonl, *-stderr.log)
     // for post-mortem diagnosis. On success these are excluded to keep PRs clean.
@@ -312,6 +378,9 @@ Examples:
     }
     process.exit(1)
   }
+
+  // Success path: shutdown OpenCode server and checkpoint DB
+  await shutdownOpenCodeServer(taskDir)
 }
 
 /**
