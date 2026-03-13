@@ -284,6 +284,23 @@ export function formatJsonEvent(line: string): {
 }
 
 /**
+ * Format a timestamp as HH:MM:SS for log prefixing.
+ */
+function formatTimestamp(): string {
+  const now = new Date()
+  return [now.getHours(), now.getMinutes(), now.getSeconds()]
+    .map((n) => String(n).padStart(2, '0'))
+    .join(':')
+}
+
+/**
+ * Prefix a display line with [stage HH:MM:SS] for log context.
+ */
+function prefixLogLine(stage: string, display: string): string {
+  return `[${stage} ${formatTimestamp()}] ${display.trimStart()}`
+}
+
+/**
  * Run an OpenCode agent with file watching, timeouts, and optional retry logic.
  *
  * This function spawns the `opencode github run` command and monitors for the
@@ -458,7 +475,7 @@ export function runAgentWithFileWatch(
 
             // Display formatted output
             if (result.display) {
-              process.stderr.write(result.display + '\n')
+              process.stderr.write(prefixLogLine(stage, result.display) + '\n')
             }
           }
 
@@ -522,7 +539,7 @@ export function runAgentWithFileWatch(
             extractedSessionId = lastResult.sessionId
           }
           if (lastResult.display) {
-            process.stderr.write(lastResult.display + '\n')
+            process.stderr.write(prefixLogLine(stage, lastResult.display) + '\n')
           }
         }
 

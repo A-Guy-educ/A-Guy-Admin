@@ -275,7 +275,7 @@
         "Gate System",
         "Rerun & Recovery",
         "Complexity-Based Stage Routing",
-        "Quality Gates (gsd-execute post-action)",
+        "Quality Gates (build post-action)",
         "File Map",
         "Task Files",
         "State Machine",
@@ -288,7 +288,7 @@
       ],
       "relativeUrl": "scripts/cody/README.md",
       "category": "scripts",
-      "wordCount": 2112
+      "wordCount": 2104
     },
     {
       "path": "scripts/README.md",
@@ -564,7 +564,7 @@
     }
   ],
   "metadata": {
-    "generatedAt": "2026-03-12T20:53:55.918Z",
+    "generatedAt": "2026-03-13T14:12:00.043Z",
     "totalReadmes": 33,
     "categories": {
       ".claude": 1,

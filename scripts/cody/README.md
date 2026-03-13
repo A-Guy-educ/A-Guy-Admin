@@ -62,13 +62,13 @@ Output:
 
 ## Pipeline Modes
 
-| Mode    | Stages                                                                      |
-| ------- | --------------------------------------------------------------------------- |
-| `spec`  | taskify → gap → clarify                                                     |
-| `impl`  | architect → plan-gap → build → commit → review → fix → verify → pr           |
-| `full`  | spec + impl (two-phase, with pipeline rebuild after taskify)                |
-| `rerun` | Resume from last failure/pause point                                        |
-| `fix`   | review → fix → commit → verify → pr (targeted fix mode)                     |
+| Mode    | Stages                                                             |
+| ------- | ------------------------------------------------------------------ |
+| `spec`  | taskify → gap → clarify                                            |
+| `impl`  | architect → plan-gap → build → commit → review → fix → verify → pr |
+| `full`  | spec + impl (two-phase, with pipeline rebuild after taskify)       |
+| `rerun` | Resume from last failure/pause point                               |
+| `fix`   | review → fix → commit → verify → pr (targeted fix mode)            |
 
 ## Two-Phase Execution (Full Mode)
 
@@ -102,21 +102,21 @@ Profile resolved in `resolve-profile` post-action based on:
 
 ### Stage Inputs/Outputs
 
-| Stage        | Type     | Input             | Output       | Post-Actions                                                        |
-| ------------ | -------- | ----------------- | ------------ | ------------------------------------------------------------------- |
-| taskify      | agent    | issue body        | task.json    | validate-task-json, set-labels, check-gate, commit, resolve-profile |
-| spec         | agent    | task.json         | spec.md      | —                                                                   |
-| gap          | agent    | spec.md           | gap.md       | —                                                                   |
-| clarify      | agent    | spec.md           | clarified.md | —                                                                   |
-| architect    | agent    | spec+gap+clarified | plan.md      | archive-rerun-feedback, check-gate                                  |
-| plan-gap     | agent    | plan.md+spec+gap   | plan-gap.md  | validate-plan-exists                                                |
-| build        | agent    | plan.md            | code changes | validate-src, validate-build, commit, quality-autofix               |
-| commit       | git      | staged files      | commit hash  | —                                                                   |
-| review       | agent    | code diff         | review.md    | analyze-review-findings, commit                                     |
-| fix          | agent    | review.md         | code fixes   | commit, clear-verify-failures                                       |
-| commit       | git      | fix changes       | commit hash  | —                                                                   |
-| verify       | scripted | code              | test results | commit (local only)                                                 |
-| pr           | git      | all               | PR URL       | —                                                                   |
+| Stage     | Type     | Input              | Output       | Post-Actions                                                        |
+| --------- | -------- | ------------------ | ------------ | ------------------------------------------------------------------- |
+| taskify   | agent    | issue body         | task.json    | validate-task-json, set-labels, check-gate, commit, resolve-profile |
+| spec      | agent    | task.json          | spec.md      | —                                                                   |
+| gap       | agent    | spec.md            | gap.md       | —                                                                   |
+| clarify   | agent    | spec.md            | clarified.md | —                                                                   |
+| architect | agent    | spec+gap+clarified | plan.md      | archive-rerun-feedback, check-gate                                  |
+| plan-gap  | agent    | plan.md+spec+gap   | plan-gap.md  | validate-plan-exists                                                |
+| build     | agent    | plan.md            | code changes | validate-src, validate-build, commit, quality-autofix               |
+| commit    | git      | staged files       | commit hash  | —                                                                   |
+| review    | agent    | code diff          | review.md    | analyze-review-findings, commit                                     |
+| fix       | agent    | review.md          | code fixes   | commit, clear-verify-failures                                       |
+| commit    | git      | fix changes        | commit hash  | —                                                                   |
+| verify    | scripted | code               | test results | commit (local only)                                                 |
+| pr        | git      | all                | PR URL       | —                                                                   |
 
 ### Stage Execution Flow (per stage)
 
@@ -142,19 +142,19 @@ shouldSkip(ctx)?
 
 Post-actions run after a stage completes. Defined per-stage in `definitions.ts`.
 
-| Action                      | Purpose                                                      |
-| --------------------------- | ------------------------------------------------------------ |
-| `validate-task-json`        | Parse task.json, delete if invalid so retry recreates it     |
-| `set-classification-labels` | Set risk:_, type:_, complexity:_, domain:_ labels on issue   |
-| `resolve-profile`           | Determine standard/lightweight profile, trigger rebuild      |
-| `check-gate`                | Post gate comment, pause if awaiting approval                |
-| `commit-task-files`         | Commit + push task files or tracked files to remote          |
+| Action                      | Purpose                                                       |
+| --------------------------- | ------------------------------------------------------------- |
+| `validate-task-json`        | Parse task.json, delete if invalid so retry recreates it      |
+| `set-classification-labels` | Set risk:_, type:_, complexity:_, domain:_ labels on issue    |
+| `resolve-profile`           | Determine standard/lightweight profile, trigger rebuild       |
+| `check-gate`                | Post gate comment, pause if awaiting approval                 |
+| `commit-task-files`         | Commit + push task files or tracked files to remote           |
 | `archive-rerun-feedback`    | Move rerun-feedback.md to archive after architect consumes it |
-| `validate-src-changes`      | Ensure build agent actually modified source files            |
-| `validate-build-content`    | Validate build output quality                                |
-| `run-quality-with-autofix`  | Run tsc + tests, retry with autofix agent if they fail       |
-| `analyze-review-findings`   | Parse review.md to determine if fix stage is needed          |
-| `clear-verify-failures`     | Remove verify-failures.md for clean retry                    |
+| `validate-src-changes`      | Ensure build agent actually modified source files             |
+| `validate-build-content`    | Validate build output quality                                 |
+| `run-quality-with-autofix`  | Run tsc + tests, retry with autofix agent if they fail        |
+| `analyze-review-findings`   | Parse review.md to determine if fix stage is needed           |
+| `clear-verify-failures`     | Remove verify-failures.md for clean retry                     |
 
 ## Gate System
 
@@ -169,10 +169,10 @@ Gates pause the pipeline for human approval:
 
 ### Control Modes
 
-| Mode         | Behavior                               |
-| ------------ | -------------------------------------- |
-| `auto`       | Skip gates, run to completion          |
-| `supervised` | Gate only on medium/high risk          |
+| Mode         | Behavior                                |
+| ------------ | --------------------------------------- |
+| `auto`       | Skip gates, run to completion           |
+| `supervised` | Gate only on medium/high risk           |
 | `gated`      | Always gate after taskify and architect |
 
 Control mode resolved dynamically per gate via `resolveControlMode(taskDef, inputControlMode)`.
@@ -208,13 +208,13 @@ The current pipeline uses `architect`, `plan-gap`, and `build` directly. No stag
 
 The taskify agent assigns a complexity score (1-100). Stages have minimum complexity thresholds:
 
-| Complexity | Tier         | Stages that run                      |
-| ---------- | ------------ | ------------------------------------ |
-| 1-9        | trivial      | architect → build → commit → pr      |
-| 10-19      | simple       | architect → build → commit → pr      |
-| 20-34      | moderate     | + gap, plan-gap, review              |
-| 35-49      | complex      | + clarify                            |
-| 50+        | very complex | All stages + quality model profile   |
+| Complexity | Tier         | Stages that run                    |
+| ---------- | ------------ | ---------------------------------- |
+| 1-9        | trivial      | architect → build → commit → pr    |
+| 10-19      | simple       | architect → build → commit → pr    |
+| 20-34      | moderate     | + gap, plan-gap, review            |
+| 35-49      | complex      | + clarify                          |
+| 50+        | very complex | All stages + quality model profile |
 
 ## Quality Gates (build post-action)
 
@@ -316,7 +316,7 @@ Generated in `.tasks/<task-id>/`:
 | `chat.json`          | After agent stages | Trimmed chat history                |
 | `gate-taskify.md`    | At taskify gate    | Gate pause marker                   |
 | `gate-architect.md`  | At architect gate  | Gate pause marker                   |
-| `rerun-feedback.md`  | On rerun           | Operator feedback for plan revision  |
+| `rerun-feedback.md`  | On rerun           | Operator feedback for plan revision |
 | `verify-failures.md` | On verify failure  | Formatted test/lint failures        |
 
 ## State Machine
