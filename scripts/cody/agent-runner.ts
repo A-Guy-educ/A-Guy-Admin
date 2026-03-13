@@ -58,9 +58,6 @@ export const STAGE_TIMEOUTS: Record<string, number> = {
 /** LLM-specific timeout - max time to wait for LLM API response (3 minutes) */
 export const LLM_TIMEOUT = ms('3m')
 
-/** Progress heartbeat interval - log progress every 30 seconds */
-export const HEARTBEAT_INTERVAL = ms('30s')
-
 // ============================================================================
 // Types
 // ============================================================================
@@ -378,7 +375,6 @@ export function runAgentWithFileWatch(
       let resolved = false
       let timeoutTimer: NodeJS.Timeout | null = null
       let stdoutBuffer = ''
-      let heartbeatTimer: NodeJS.Timeout | null = null
       let extractedSessionId: string | undefined
       const accumulatedTokens = { input: 0, output: 0, cacheRead: 0 }
       let accumulatedCost = 0
@@ -514,8 +510,6 @@ export function runAgentWithFileWatch(
         if (resolved) return
         resolved = true
 
-        // Clear heartbeat timer
-        if (heartbeatTimer) clearInterval(heartbeatTimer)
         if (timeoutTimer) clearTimeout(timeoutTimer)
 
         // Flush remaining stdout buffer
@@ -579,16 +573,6 @@ export function runAgentWithFileWatch(
       const outputExt = path.extname(outputFile)
       const expectedBase = path.basename(outputFile, outputExt)
       const taskDirForPoll = path.dirname(outputFile)
-
-      // Progress heartbeat - log progress every 30s to detect hangs
-      const heartbeatStartTime = Date.now()
-      heartbeatTimer = setInterval(() => {
-        const elapsed = Date.now() - heartbeatStartTime
-        const stageLabel = stage || 'unknown'
-        logger.info(
-          `  💓 Still working on stage '${stageLabel}' (${elapsed / 1000 / 60} min elapsed)...`,
-        )
-      }, HEARTBEAT_INTERVAL)
 
       // Timeout (uses remaining time to prevent accumulation across retries)
       timeoutTimer = setTimeout(() => {
