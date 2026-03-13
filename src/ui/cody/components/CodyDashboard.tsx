@@ -838,7 +838,7 @@ export function CodyDashboard({ initialIssueNumber, initialModal }: CodyDashboar
 
         {/* Desktop: Chat Panel (right side, always visible) */}
         <div className="hidden md:block w-[400px] border-l border-border">
-          <CodyChat selectedTask={selectedTask} />
+          <CodyChat selectedTask={selectedTask} actorLogin={githubUser?.login} />
         </div>
 
         {/* Mobile Menu Sheet */}
@@ -977,7 +977,7 @@ export function CodyDashboard({ initialIssueNumber, initialModal }: CodyDashboar
                 <SheetTitle>Chat with Cody</SheetTitle>
                 <SheetDescription>AI assistant chat</SheetDescription>
               </SheetHeader>
-              <CodyChat selectedTask={selectedTask} />
+              <CodyChat selectedTask={selectedTask} actorLogin={githubUser?.login} />
             </SheetContent>
           </Sheet>
         )}
