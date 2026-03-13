@@ -4,7 +4,7 @@
   "mode": "full",
   "pipeline": "spec_execute_verify",
   "startedAt": "2026-03-13T18:11:04.627Z",
-  "updatedAt": "2026-03-13T18:26:11.492Z",
+  "updatedAt": "2026-03-13T18:52:57.081Z",
   "state": "running",
   "cursor": "gap",
   "stages": {
@@ -52,8 +52,26 @@
       "state": "skipped",
       "retries": 0,
       "skipped": "Complexity 43 (complex) below threshold 50 for plan-gap"
+    },
+    "test": {
+      "state": "completed",
+      "retries": 0,
+      "completedAt": "2026-03-13T18:51:04.632Z",
+      "outputFile": "test.md",
+      "sessionId": "ses_3178d0cc3ffes57u9JH9VCfs8F"
+    },
+    "build": {
+      "state": "completed",
+      "retries": 0,
+      "completedAt": "2026-03-13T18:51:04.632Z",
+      "outputFile": "build.md",
+      "sessionId": "ses_3178d0b45ffeJZObB2CLuXfYgx"
+    },
+    "commit": {
+      "state": "running",
+      "retries": 0,
+      "startedAt": "2026-03-13T18:52:57.081Z"
     }
   },
-  "issueNumber": 779,
-  "branchName": "feat/260313-auto-779-control-layout-of-graph-and-accomp"
+  "issueNumber": 779
 }
