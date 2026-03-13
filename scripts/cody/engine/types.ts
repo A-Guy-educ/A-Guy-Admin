@@ -68,6 +68,11 @@ export interface StageDefinition {
    * Returns the fallback content to write, or null to proceed with normal retry/fail.
    */
   fallbackOnMissingOutput?: (ctx: PipelineContext) => string | null
+  /**
+   * Override the agent name used by opencode. Defaults to stage name.
+   * Used when a stage should run a different agent (e.g., fix stage runs build agent).
+   */
+  agentName?: string
 }
 
 // ============================================================================

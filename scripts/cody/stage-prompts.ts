@@ -73,7 +73,16 @@ export const STAGE_CONTEXT_FILES: Record<Stage, string[]> = {
   architect: ['spec.md', 'clarified.md', 'rerun-feedback.md'],
   'plan-gap': ['spec.md', 'plan.md', 'task.json'],
   test: ['spec.md', 'clarified.md', 'plan.md', 'task.json'],
-  build: ['spec.md', 'clarified.md', 'plan.md', 'plan-gap.md', 'context.md', 'rerun-feedback.md'],
+  build: [
+    'spec.md',
+    'clarified.md',
+    'plan.md',
+    'plan-gap.md',
+    'context.md',
+    'rerun-feedback.md',
+    'build-errors.md',
+    'review.md',
+  ],
   commit: ['task.json'],
   review: ['review.md', 'build.md', 'plan.md', 'context.md', 'spec.md', 'clarified.md'],
   fix: [
@@ -236,7 +245,7 @@ export function buildStagePrompt(input: CodyInput, stage: string, feedback?: str
 
   // Add task_type for stages that need it (architect, build)
   const taskTypeSection =
-    stage === 'architect' || stage === 'build' ? `\nTask Type: ${taskType}` : ''
+    stage === 'architect' || stage === 'build' || stage === 'fix' ? `\nTask Type: ${taskType}` : ''
 
   const outputFile = stageOutputFile(taskDir, stage)
 

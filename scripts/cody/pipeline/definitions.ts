@@ -284,10 +284,12 @@ No critical gaps identified. Plan was refined in-place.
     ],
   })
 
-  // fix stage - targeted fixes based on review or verify failures
+  // fix stage — re-invokes build agent to fix review findings
+  // The build agent has full context (spec, plan, code intent) and wrote the code.
   stages.set('fix', {
     name: 'fix',
     type: 'agent',
+    agentName: 'build', // Build agent fixes its own code based on review.md
     timeout: STAGE_TIMEOUTS.fix ?? DEFAULT_TIMEOUT,
     maxRetries: 2,
     shouldSkip: (ctx) => {
