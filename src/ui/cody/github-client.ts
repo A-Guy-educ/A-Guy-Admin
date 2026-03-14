@@ -643,6 +643,7 @@ export async function fetchOpenPRs(): Promise<GitHubPR[]> {
     },
     merged_at: pr.merged_at,
     html_url: pr.html_url,
+    labels: pr.labels?.map((l) => l.name ?? '').filter(Boolean) ?? [],
   }))
 
   setCache(cacheKey, CACHE_TTL.prs, prs)
