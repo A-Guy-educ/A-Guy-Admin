@@ -173,6 +173,7 @@ export function PreviewActions({
             branchName={pr.head.ref}
             isMerging={isMerging}
             onMerge={onMerge}
+            labels={task.labels}
           />
           <span className="text-xs text-zinc-500 hidden sm:inline">Merge</span>
         </div>

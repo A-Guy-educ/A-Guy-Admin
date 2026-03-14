@@ -332,6 +332,8 @@ ${comment}`,
             console.warn('[Cody] PR approval note:', msg)
           }
         }
+        // Add pr-approved label for merge button to check
+        await addLabels(issueNumber, ['pr-approved'])
         await postComment(issueNumber, withActor('✅ PR approved', actor))
         clearCache()
         return NextResponse.json({ success: true, message: 'PR approved' })

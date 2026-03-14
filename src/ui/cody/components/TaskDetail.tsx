@@ -1123,6 +1123,7 @@ export function TaskDetail({
                 branchName={task.associatedPR.head.ref}
                 isMerging={externalIsMerging ?? false}
                 onMerge={() => onApproveReview(task)}
+                labels={task.labels}
               />
             )}
 
@@ -1468,6 +1469,7 @@ export function TaskDetail({
             branchName={task.associatedPR.head.ref}
             isMerging={externalIsMerging ?? false}
             onMerge={() => onApproveReview(task)}
+            labels={task.labels}
           />
         )}
 
