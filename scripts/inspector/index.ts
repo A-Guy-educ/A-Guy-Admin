@@ -32,7 +32,9 @@ async function main(): Promise<void> {
   const dryRun = process.env.DRY_RUN === 'true'
 
   // Parse optional config
-  const watchdogIssue = process.env.WATCHDOG_ISSUE ? Number(process.env.WATCHDOG_ISSUE) : undefined
+  const digestIssue = process.env.INSPECTOR_DIGEST_ISSUE
+    ? Number(process.env.INSPECTOR_DIGEST_ISSUE)
+    : undefined
 
   // Validate required env vars
   if (!repo) {
@@ -48,8 +50,8 @@ async function main(): Promise<void> {
   logger.info({ repo, dryRun }, 'Starting Inspector')
 
   // Warn about missing optional config
-  if (!watchdogIssue) {
-    logger.warn('WATCHDOG_ISSUE not set — digest reports will be skipped')
+  if (!digestIssue) {
+    logger.warn('INSPECTOR_DIGEST_ISSUE not set — digest reports will be skipped')
   }
   if (!process.env.MINIMAX_API_KEY) {
     logger.warn('MINIMAX_API_KEY not set — failure analysis will use fallback mode')
@@ -75,7 +77,7 @@ async function main(): Promise<void> {
     dryRun,
     stateFile: `${process.cwd()}/.inspector/state.json`,
     plugins: registry.getAll(),
-    watchdogIssue,
+    digestIssue,
   }
 
   // Run Inspector
