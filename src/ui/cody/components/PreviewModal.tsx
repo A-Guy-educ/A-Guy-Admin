@@ -60,8 +60,14 @@ export function PreviewModal({ task, onClose, onMerge, isMerging }: PreviewModal
   const [selectedDoc, setSelectedDoc] = useState<TaskDocument | null>(null)
   const [commentCount, setCommentCount] = useState<number | null>(null)
   const [previewView, setPreviewView] = useState<'web' | 'admin'>('web')
+  const [commentsKey, setCommentsKey] = useState(0) // Used to force-refresh comment list
 
   const pr = task.associatedPR
+
+  // Callback to refresh comment list after adding a comment
+  const handleCommentAdded = () => {
+    setCommentsKey((k) => k + 1)
+  }
 
   // Get preview URL based on current view (web or admin)
   const getPreviewUrl = () => {
@@ -491,13 +497,19 @@ export function PreviewModal({ task, onClose, onMerge, isMerging }: PreviewModal
             aria-labelledby="preview-tab-comments"
             className="p-4"
           >
-            <PRCommentList prNumber={pr.number} onCountChange={setCommentCount} />
+            <PRCommentList key={commentsKey} prNumber={pr.number} onCountChange={setCommentCount} />
           </div>
         )}
       </div>
 
       {/* Action bar */}
-      <PreviewActions task={task} onMerge={onMerge} isMerging={isMerging} onCancelPR={onClose} />
+      <PreviewActions
+        task={task}
+        onMerge={onMerge}
+        isMerging={isMerging}
+        onCancelPR={onClose}
+        onCommentAdded={handleCommentAdded}
+      />
     </div>
   )
 }

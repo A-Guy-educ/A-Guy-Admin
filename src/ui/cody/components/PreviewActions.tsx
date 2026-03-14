@@ -11,6 +11,7 @@ import type { CodyTask } from '../types'
 import { Button } from '@/ui/web/components/button'
 import { MergeButton } from './MergeButton'
 import { FixRequestDialog } from './FixRequestDialog'
+import { AddCommentDialog } from './AddCommentDialog'
 import { ConfirmDialog } from './ConfirmDialog'
 import {
   XCircle,
@@ -19,8 +20,9 @@ import {
   CheckCircle,
   GitPullRequest,
   SquareSplitHorizontal,
+  MessageSquare,
 } from 'lucide-react'
-import { tasksApi } from '../api'
+import { tasksApi, prsApi } from '../api'
 import { useGitHubIdentity } from '../hooks/useGitHubIdentity'
 import { toast } from 'sonner'
 import { cn } from '../utils'
@@ -30,6 +32,7 @@ interface PreviewActionsProps {
   onMerge: () => Promise<void>
   isMerging: boolean
   onCancelPR: () => void
+  onCommentAdded?: () => void
   className?: string
 }
 
@@ -38,9 +41,11 @@ export function PreviewActions({
   onMerge,
   isMerging,
   onCancelPR,
+  onCommentAdded,
   className,
 }: PreviewActionsProps) {
   const [showFixDialog, setShowFixDialog] = useState(false)
+  const [showCommentDialog, setShowCommentDialog] = useState(false)
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
   const [isCancelling, setIsCancelling] = useState(false)
   const { githubUser } = useGitHubIdentity()
@@ -94,6 +99,17 @@ export function PreviewActions({
     }
   }
 
+  const handleCommentSubmit = async (body: string) => {
+    try {
+      await prsApi.postComment(pr.number, body, actorLogin)
+      toast.success('Comment added')
+      onCommentAdded?.()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to add comment')
+      throw err // re-throw so dialog keeps open
+    }
+  }
+
   const handleSplitView = () => {
     if (!task.previewUrl) {
       toast.error('No preview URL available')
@@ -137,7 +153,7 @@ export function PreviewActions({
             className="gap-1.5 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10"
           >
             <CheckCircle className="w-3.5 h-3.5" />
-            Approve UI
+            <span className="hidden sm:inline">Approve UI</span>
           </Button>
         )}
 
@@ -149,7 +165,7 @@ export function PreviewActions({
           className="gap-1.5 text-purple-400 border-purple-500/30 hover:bg-purple-500/10"
         >
           <GitPullRequest className="w-3.5 h-3.5" />
-          Approve PR
+          <span className="hidden sm:inline">Approve PR</span>
         </Button>
 
         {/* Split View */}
@@ -161,7 +177,7 @@ export function PreviewActions({
             className="gap-1.5 text-blue-400 border-blue-500/30 hover:bg-blue-500/10"
           >
             <SquareSplitHorizontal className="w-3.5 h-3.5" />
-            Split View
+            <span className="hidden sm:inline">Split View</span>
           </Button>
         )}
 
@@ -186,7 +202,18 @@ export function PreviewActions({
           className="gap-1.5 text-orange-400 border-orange-500/30 hover:bg-orange-500/10"
         >
           <Wrench className="w-3.5 h-3.5" />
-          Fix
+          <span className="hidden sm:inline">Fix</span>
+        </Button>
+
+        {/* Comment */}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setShowCommentDialog(true)}
+          className="gap-1.5 text-blue-400 border-blue-500/30 hover:bg-blue-500/10"
+        >
+          <MessageSquare className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">Comment</span>
         </Button>
 
         {/* Cancel PR */}
@@ -202,7 +229,7 @@ export function PreviewActions({
           ) : (
             <XCircle className="w-3.5 h-3.5" />
           )}
-          Cancel PR
+          <span className="hidden sm:inline">Cancel PR</span>
         </Button>
       </div>
 
@@ -210,6 +237,13 @@ export function PreviewActions({
         isOpen={showFixDialog}
         onClose={() => setShowFixDialog(false)}
         onSubmit={handleFixSubmit}
+        prNumber={pr.number}
+      />
+
+      <AddCommentDialog
+        isOpen={showCommentDialog}
+        onClose={() => setShowCommentDialog(false)}
+        onSubmit={handleCommentSubmit}
         prNumber={pr.number}
       />
 

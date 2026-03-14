@@ -187,6 +187,7 @@
         "src/ui/admin/shared/AdvancedJsonPanel.tsx",
         "src/ui/admin/shared/CollapsibleSection.tsx",
         "src/ui/admin/shared/ErrorDisplay.tsx",
+        "src/ui/cody/components/AddCommentDialog.tsx",
         "src/ui/cody/components/AssigneePicker.tsx",
         "src/ui/cody/components/BugReportDialog.tsx",
         "src/ui/cody/components/CIStatusBadge.tsx",
@@ -1448,6 +1449,11 @@
       "pattern": "chat-persistence",
       "description": "No description available",
       "files": ["src/ui/cody/chat-types.ts"]
+    },
+    "add-comment-dialog": {
+      "pattern": "add-comment-dialog",
+      "description": "No description available",
+      "files": ["src/ui/cody/components/AddCommentDialog.tsx"]
     },
     "assignee-picker": {
       "pattern": "assignee-picker",
@@ -4676,6 +4682,14 @@
       "aiSummary": "Shared types for chat persistence across dashboard and pipeline",
       "dependencies": []
     },
+    "src/ui/cody/components/AddCommentDialog.tsx": {
+      "path": "src/ui/cody/components/AddCommentDialog.tsx",
+      "type": "component",
+      "domain": "cody",
+      "patterns": ["add-comment-dialog", "client-component"],
+      "aiSummary": "Dialog with markdown editor to add a simple comment on a PR (without @cody action)",
+      "dependencies": ["react", "lucide-react", "react-markdown", "remark-gfm"]
+    },
     "src/ui/cody/components/AssigneePicker.tsx": {
       "path": "src/ui/cody/components/AssigneePicker.tsx",
       "type": "component",
@@ -5995,8 +6009,8 @@
     }
   },
   "metadata": {
-    "generatedAt": "2026-03-14T16:05:07.834Z",
-    "totalFiles": 531,
-    "totalPatterns": 179
+    "generatedAt": "2026-03-14T18:12:55.484Z",
+    "totalFiles": 532,
+    "totalPatterns": 180
   }
 }
