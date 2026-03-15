@@ -19,9 +19,13 @@ interface KeyboardShortcutHandlers {
   onOpenPreview?: () => void
   onFocusSearch?: () => void
   onShowHelp?: () => void
+  /** If true, skip shortcuts that open modals/dialogs */
+  isModalOpen?: boolean
 }
 
 export function useKeyboardShortcuts(handlers: KeyboardShortcutHandlers) {
+  const { isModalOpen = false, ...restHandlers } = handlers
+
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
       // Skip if user is typing in an input/textarea
@@ -40,43 +44,51 @@ export function useKeyboardShortcuts(handlers: KeyboardShortcutHandlers) {
         return
       }
 
+      // Skip shortcuts that open modals when a modal is already open
+      if (isModalOpen) {
+        // Allow Escape to close modals
+        if (event.key !== 'Escape') {
+          return
+        }
+      }
+
       switch (event.key) {
         case 'j':
-          handlers.onNavigateDown?.()
+          restHandlers.onNavigateDown?.()
           break
         case 'k':
-          handlers.onNavigateUp?.()
+          restHandlers.onNavigateUp?.()
           break
         case 'Enter':
           event.preventDefault()
-          handlers.onOpenSelected?.()
+          restHandlers.onOpenSelected?.()
           break
         case 'Escape':
-          handlers.onCloseDetail?.()
+          restHandlers.onCloseDetail?.()
           break
         case 'r':
           // Only trigger refresh if not in an input
-          handlers.onRefresh?.()
+          restHandlers.onRefresh?.()
           break
         case 'n':
-          handlers.onNewTask?.()
+          restHandlers.onNewTask?.()
           break
         case 'e':
-          handlers.onEdit?.()
+          restHandlers.onEdit?.()
           break
         case 'p':
-          handlers.onOpenPreview?.()
+          restHandlers.onOpenPreview?.()
           break
         case '/':
           event.preventDefault()
-          handlers.onFocusSearch?.()
+          restHandlers.onFocusSearch?.()
           break
         case '?':
-          handlers.onShowHelp?.()
+          restHandlers.onShowHelp?.()
           break
       }
     },
-    [handlers],
+    [isModalOpen, restHandlers],
   )
 
   useEffect(() => {

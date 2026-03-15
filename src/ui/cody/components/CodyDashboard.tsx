@@ -398,6 +398,16 @@ export function CodyDashboard({ initialIssueNumber, initialModal }: CodyDashboar
 
   // Keyboard shortcuts (after sortedTasks is defined)
   useKeyboardShortcuts({
+    isModalOpen:
+      showCreateDialog ||
+      !!editingTask ||
+      showBugDialog ||
+      showBranchCleanup ||
+      showPreview ||
+      showShortcutsHelp ||
+      showMobileMenu ||
+      showMobileDetail ||
+      showMobileChat,
     onNavigateDown: () => setFocusedIndex((i) => Math.min(i + 1, sortedTasks.length - 1)),
     onNavigateUp: () => setFocusedIndex((i) => Math.max(i - 1, 0)),
     onOpenSelected: () => {
