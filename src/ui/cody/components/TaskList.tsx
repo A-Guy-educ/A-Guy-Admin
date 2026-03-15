@@ -40,6 +40,7 @@ import {
   Inbox,
   Pencil,
   Copy,
+  ListPlus,
 } from 'lucide-react'
 
 interface TaskListProps {
@@ -60,6 +61,7 @@ interface TaskListProps {
   onCreateTask?: () => void
   onEditTask?: (task: CodyTask) => void
   onDuplicate?: (task: CodyTask) => void
+  onToggleQueue?: (task: CodyTask) => void
 }
 
 // ── Status colors — single source of truth ──
@@ -142,6 +144,7 @@ export function TaskList({
   onCreateTask,
   onEditTask,
   onDuplicate,
+  onToggleQueue,
   collaborators = [],
 }: TaskListProps) {
   const handleTaskClick = useCallback(
@@ -543,6 +546,48 @@ export function TaskList({
                     </Button>
                   </SimpleTooltip>
                 )}
+
+                {/* Queue toggle */}
+                {onToggleQueue &&
+                  (() => {
+                    const isQueued = task.labels.includes('cody:queued')
+                    const isQueueActive = task.labels.includes('cody:queue-active')
+                    const isQueueFailed = task.labels.includes('cody:queue-failed')
+                    // Hide if task is actively being processed or already failed in queue
+                    if (isQueueActive) return null
+                    return (
+                      <SimpleTooltip
+                        content={
+                          isQueued
+                            ? 'Remove from queue'
+                            : isQueueFailed
+                              ? 'Re-add to queue'
+                              : 'Add to queue'
+                        }
+                        side="bottom"
+                      >
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            onToggleQueue(task)
+                          }}
+                          aria-label={isQueued ? 'Remove from queue' : 'Add to queue'}
+                          className={cn(
+                            'h-7 w-7 p-0 transition-colors',
+                            isQueued
+                              ? 'text-purple-400 bg-purple-500/15 hover:bg-purple-500/25'
+                              : isQueueFailed
+                                ? 'text-red-400/60 hover:text-purple-400 hover:bg-purple-500/15'
+                                : 'text-muted-foreground/50 hover:text-purple-400 hover:bg-purple-500/15',
+                          )}
+                        >
+                          <ListPlus className="w-3.5 h-3.5" />
+                        </Button>
+                      </SimpleTooltip>
+                    )
+                  })()}
               </div>
             </div>
 

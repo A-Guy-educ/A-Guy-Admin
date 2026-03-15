@@ -955,6 +955,16 @@ export function CodyDashboard({ initialIssueNumber, initialModal }: CodyDashboar
                     onCreateTask={handleOpenCreate}
                     onEditTask={setEditingTask}
                     onDuplicate={handleDuplicateTask}
+                    onToggleQueue={(task) => {
+                      const isQueued = task.labels.includes('cody:queued')
+                      const action = isQueued
+                        ? tasksApi.removeFromQueue(task.issueNumber, githubUser?.login)
+                        : tasksApi.addToQueue(task.issueNumber, githubUser?.login)
+                      action.then(() => {
+                        toast.success(isQueued ? 'Removed from queue' : 'Added to queue')
+                        refetch()
+                      })
+                    }}
                   />
                 )}
               </div>
