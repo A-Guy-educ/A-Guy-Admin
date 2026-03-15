@@ -600,6 +600,43 @@ async function runRerunMode(ctx: PipelineContext): Promise<void> {
   if (pausedStage) {
     logger.info(`Detected paused stage: ${pausedStage}`)
 
+    // Helper to approve a gate — writes approval file, commits, and updates state
+    const approveGate = async (
+      ctx: PipelineContext,
+      stage: string,
+      reason: string,
+    ): Promise<void> => {
+      logger.info(`Gate ${stage} ${reason} — resuming pipeline`)
+
+      // Write gate-{stage}-approved.md with the approval reason
+      const approvedPath = path.join(ctx.taskDir, `gate-${stage}-approved.md`)
+      fs.writeFileSync(
+        approvedPath,
+        `# Gate Approved\n\nApproved at ${stage} gate.\nApproved by: ${reason}\nApproved at: ${new Date().toISOString()}\n`,
+      )
+
+      // Commit and push the approval files so subsequent runs can find them
+      const { commitPipelineFiles } = await import('./git-utils')
+      await commitPipelineFiles({
+        taskDir: ctx.taskDir,
+        taskId: ctx.input.taskId,
+        message: `ci(cody): gate ${stage} ${reason} for ${ctx.input.taskId}`,
+        ensureBranch: true,
+        stagingStrategy: 'task-only',
+        push: true,
+        isCI: !ctx.input.local,
+        dryRun: ctx.input.dryRun,
+      })
+
+      // Mark the paused stage as completed in status (immutable update)
+      const { loadState, writeState, resumeFromGate } = await import('./engine/status')
+      const state = loadState(ctx.input.taskId)
+      if (state) {
+        const resumedState = resumeFromGate(state, stage)
+        writeState(ctx.input.taskId, resumedState)
+      }
+    }
+
     // Try to approve the gate directly
     try {
       const taskDef = readTask(taskDir)
@@ -608,39 +645,18 @@ async function runRerunMode(ctx: PipelineContext): Promise<void> {
         const gateResult = handleGateApproval(input, taskDir, pausedStage, taskDef)
 
         if (gateResult === 'approved') {
-          logger.info(`Gate ${pausedStage} approved — resuming pipeline`)
+          // Explicit approval via @cody approve — use the helper
+          await approveGate(ctx, pausedStage, 'approved by user')
           gateApprovedStage = pausedStage
-
-          // Note: handleGateApproval already wrote gate-{stage}-approved.md and clarified.md
-          // No need to overwrite here - that would lose the context about how approval was detected
-
-          // Commit and push the approval files so subsequent runs can find them
-          // This includes both gate-{stage}-approved.md and clarified.md
-          const { commitPipelineFiles } = await import('./git-utils')
-          await commitPipelineFiles({
-            taskDir,
-            taskId: input.taskId,
-            message: `ci(cody): gate ${pausedStage} approved for ${input.taskId}`,
-            ensureBranch: true,
-            stagingStrategy: 'task-only',
-            push: true,
-            isCI: !input.local,
-            dryRun: input.dryRun,
-          })
-
-          // Mark the paused stage as completed in status (immutable update)
-          const { loadState, writeState, resumeFromGate } = await import('./engine/status')
-          const state = loadState(input.taskId)
-          if (state) {
-            const resumedState = resumeFromGate(state, pausedStage)
-            writeState(input.taskId, resumedState)
-          }
 
           // After approving a spec-phase gate, continue with the rerun pipeline
           // The rerun pipeline already includes both spec and impl stages
           // No mode switch needed - just continue running
         } else if (gateResult === 'waiting') {
-          logger.info(`Gate ${pausedStage} still waiting for approval`)
+          // Implicit approval: @cody rerun is a clear signal the user wants to proceed
+          // No need to separately approve a gate they've already seen
+          await approveGate(ctx, pausedStage, 'implicitly approved via @cody rerun')
+          gateApprovedStage = pausedStage
         }
       }
     } catch (err) {
