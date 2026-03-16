@@ -308,6 +308,7 @@ export function CodyDashboard({ initialIssueNumber, initialModal }: CodyDashboar
     checkTaskChanges,
     permission: notificationPermission,
     isSupported: notificationsSupported,
+    requestPermission,
   } = useBrowserNotifications()
 
   // Check for task changes when tasks update
@@ -800,7 +801,7 @@ export function CodyDashboard({ initialIssueNumber, initialModal }: CodyDashboar
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => Notification.requestPermission()}
+                        onClick={requestPermission}
                         aria-label={
                           notificationPermission === 'granted'
                             ? 'Notifications enabled'

@@ -51,29 +51,14 @@ export function useBrowserNotifications({
     }
   }, [])
 
-  // Request permission on mount (only if supported)
+  // Request permission on mount (only if supported) - but don't auto-request
+  // Let user click the bell button to request permission
   useEffect(() => {
     if (!isSupported) return
 
-    const requestPermission = async () => {
-      if (Notification.permission === 'default') {
-        const perm = await Notification.requestPermission()
-        setPermission(perm)
-
-        if (perm === 'denied') {
-          onPermissionDenied?.()
-        }
-      } else {
-        setPermission(Notification.permission)
-
-        if (Notification.permission === 'denied') {
-          onPermissionDenied?.()
-        }
-      }
-    }
-
-    requestPermission()
-  }, [isSupported, onPermissionDenied])
+    // Just check current permission status, don't auto-request
+    setPermission(Notification.permission)
+  }, [isSupported])
 
   // Send a notification
   const sendNotification = useCallback(
@@ -99,6 +84,26 @@ export function useBrowserNotifications({
     },
     [isSupported, permission],
   )
+
+  // Request permission when user clicks the button
+  const requestPermission = useCallback(async () => {
+    if (!isSupported) return
+
+    if (Notification.permission === 'default') {
+      const perm = await Notification.requestPermission()
+      setPermission(perm)
+
+      if (perm === 'denied') {
+        onPermissionDenied?.()
+      }
+    } else {
+      setPermission(Notification.permission)
+
+      if (Notification.permission === 'denied') {
+        onPermissionDenied?.()
+      }
+    }
+  }, [isSupported, onPermissionDenied])
 
   // Check for task state changes and send notifications
   const checkTaskChanges = useCallback(
@@ -170,6 +175,7 @@ export function useBrowserNotifications({
   return {
     permission,
     sendNotification,
+    requestPermission,
     checkTaskChanges,
     isSupported,
   }
