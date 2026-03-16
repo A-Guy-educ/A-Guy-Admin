@@ -60,6 +60,35 @@ function checkOrphanedWorkflow(taskId: string, ctx: InspectorContext): boolean {
 }
 
 /**
+ * Extract failure details from pipeline failure comments on an issue.
+ * The pipeline posts structured comments with **Failed stage:** and **Error:** fields.
+ */
+function parseFailureFromComments(
+  ctx: InspectorContext,
+  issueNumber: number,
+): { failedStage: string; failedError: string } {
+  try {
+    const comments = ctx.github.getIssueComments(issueNumber)
+    // Search newest-to-oldest for the failure comment
+    for (let i = comments.length - 1; i >= 0; i--) {
+      const body = comments[i].body
+      if (!body.includes('\u274c Pipeline failed')) continue
+
+      const stageMatch = body.match(/\*\*Failed stage:\*\*\s*`([^`]+)`/)
+      const errorMatch = body.match(/\*\*Error:\*\*\s*(.+)/)
+
+      return {
+        failedStage: stageMatch?.[1] || 'unknown',
+        failedError: errorMatch?.[1]?.trim() || 'Unknown error (parsed from comment)',
+      }
+    }
+  } catch {
+    // Ignore errors — fallback below
+  }
+  return { failedStage: 'unknown', failedError: 'Unknown error (no failure comment found)' }
+}
+
+/**
  * Evaluate the health of a single task.
  */
 function evaluateHealth(task: TaskSnapshot, ctx: InspectorContext): EvaluatedTask {
@@ -69,8 +98,20 @@ function evaluateHealth(task: TaskSnapshot, ctx: InspectorContext): EvaluatedTas
     stages?: Record<string, { state?: string; error?: string; startedAt?: string }>
   }
 
-  // No status = unknown
+  // No status.json — check if labels indicate failure
   if (!status) {
+    if (task.labels.includes('cody:failed')) {
+      // status.json is on the feature branch, not accessible from default branch.
+      // Extract error details from the failure comment posted by the pipeline.
+      const { failedStage, failedError } = parseFailureFromComments(ctx, task.issueNumber)
+      return {
+        ...task,
+        health: 'failed',
+        healthDetail: 'Pipeline failed (status.json on feature branch)',
+        failedStage,
+        failedError,
+      }
+    }
     return {
       ...task,
       health: 'unknown',
@@ -296,9 +337,9 @@ export function createDigestAction(
  * - Evaluate health (healthy, stalled, failed, gated, orphaned)
  * - Create nudge actions for gated tasks
  * - Create digest action for visibility
- * - Share evaluated tasks via state for failure-analysis plugin
+ * - Share evaluated tasks via state for pipeline-fixer plugin
  *
- * NOTE: Failed task retries are delegated to the failure-analysis plugin.
+ * NOTE: Failed task retries are delegated to the pipeline-fixer plugin.
  * This plugin only detects failures and shares them via ctx.state.
  */
 export const healthCheckPlugin: InspectorPlugin = {
@@ -316,10 +357,10 @@ export const healthCheckPlugin: InspectorPlugin = {
     // Evaluate health
     const evaluated = tasks.map((task) => evaluateHealth(task, ctx))
 
-    // Share evaluated tasks with failure-analysis plugin via state
+    // Share evaluated tasks with pipeline-fixer plugin via state
     ctx.state.set('cody:evaluatedTasks', evaluated)
 
-    // Generate actions (nudge + digest only — retries handled by failure-analysis)
+    // Generate actions (nudge + digest only — retries handled by pipeline-fixer)
     const actions: ActionRequest[] = []
 
     for (const task of evaluated) {
