@@ -12,12 +12,11 @@ import { describe, expect, it, vi, beforeEach } from 'vitest'
 // Mock the github-client module
 vi.mock('@/ui/cody/github-client', () => ({
   findTaskBranch: vi.fn(),
-  findBranchByIssueNumber: vi.fn(),
   getOctokit: vi.fn(),
 }))
 
 vi.mock('@/ui/cody/auth', () => ({
-  requireAuth: vi.fn(() => null), // Skip auth for tests
+  requireCodyAuth: vi.fn(() => null), // Skip auth for tests
 }))
 
 vi.mock('@/ui/cody/constants', () => ({
@@ -28,7 +27,7 @@ vi.mock('@/ui/cody/constants', () => ({
 
 // Import after mocks
 import { NextRequest } from 'next/server'
-import { findTaskBranch, findBranchByIssueNumber, getOctokit } from '@/ui/cody/github-client'
+import { findTaskBranch, getOctokit } from '@/ui/cody/github-client'
 
 describe('POST /api/cody/chat/save - Chat Save Route', () => {
   let mockOctokit: {
