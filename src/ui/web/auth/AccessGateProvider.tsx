@@ -146,6 +146,8 @@ function PaidContentModal({
   const [code, setCode] = useState('')
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showSuccess, setShowSuccess] = useState(false)
+  const [isDismissed, setIsDismissed] = useState(false)
 
   const handleRedeem = async () => {
     const trimmed = code.trim()
@@ -164,7 +166,10 @@ function PaidContentModal({
       const data = await res.json()
 
       if (data.success) {
-        router.refresh()
+        setShowSuccess(true)
+        setTimeout(() => {
+          router.refresh()
+        }, 3000)
         return
       }
 
@@ -184,9 +189,24 @@ function PaidContentModal({
     }
   }
 
+  if (isDismissed) return null
+
+  if (showSuccess) {
+    return (
+      <Dialog open={true}>
+        <DialogContent allowDismiss={false} className="sm:max-w-md">
+          <DialogHeader className="text-center sm:text-center">
+            <DialogTitle className="text-xl">{t('codeSuccessTitle')}</DialogTitle>
+            <DialogDescription className="mt-2">{t('codeSuccessMessage')}</DialogDescription>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
+    )
+  }
+
   return (
-    <Dialog open={true}>
-      <DialogContent allowDismiss={false} className="sm:max-w-md">
+    <Dialog open={true} onOpenChange={(open) => !open && setIsDismissed(true)}>
+      <DialogContent allowDismiss={true} className="sm:max-w-md">
         <DialogHeader className="text-center sm:text-center">
           <DialogTitle className="text-xl">{t('paidTitle')}</DialogTitle>
           <DialogDescription className="mt-2">

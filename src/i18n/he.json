@@ -331,7 +331,9 @@
     "codeExpired": "פג תוקף הקוד.",
     "codeExhausted": "קוד זה הגיע למגבלת השימוש שלו.",
     "codeAlreadyUsed": "כבר יש לך גישה לקורס זה.",
-    "codeError": "משהו השתבש. נסה שוב."
+    "codeError": "משהו השתבש. נסה שוב.",
+    "codeSuccessTitle": "איזה כיף שנרשמת!",
+    "codeSuccessMessage": "חודש מתנה עלינו!"
   },
   "study": {
     "loading": "טוען...",

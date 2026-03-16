@@ -331,7 +331,9 @@
     "codeExpired": "This code has expired.",
     "codeExhausted": "This code has reached its usage limit.",
     "codeAlreadyUsed": "You already have access to this course.",
-    "codeError": "Something went wrong. Please try again."
+    "codeError": "Something went wrong. Please try again.",
+    "codeSuccessTitle": "Welcome aboard!",
+    "codeSuccessMessage": "How exciting that you signed up! A free month on us."
   },
   "study": {
     "loading": "Loading...",

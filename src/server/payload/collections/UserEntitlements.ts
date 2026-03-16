@@ -28,6 +28,7 @@ export const UserEntitlements: CollectionConfig = {
       'createdAt',
     ],
     group: 'Access Control',
+    hidden: true,
     description: 'Manage user access to paid courses and lessons',
   },
   access: {
