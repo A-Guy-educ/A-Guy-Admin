@@ -118,12 +118,7 @@ export function AccessGateProvider({
 
       {/* Paid content modal */}
       {showPaidModal && (
-        <PaidContentModal
-          isAuthenticated={isAuthenticated}
-          pathname={pathname}
-          courseSlug={courseSlug}
-          t={t}
-        />
+        <PaidContentModal isAuthenticated={isAuthenticated} pathname={pathname} t={t} />
       )}
 
       {isBlocked ? (
@@ -145,12 +140,10 @@ export function AccessGateProvider({
 function PaidContentModal({
   isAuthenticated,
   pathname,
-  courseSlug,
   t,
 }: {
   isAuthenticated?: boolean
   pathname: string
-  courseSlug: string
   t: (key: string) => string
 }) {
   const router = useRouter()
@@ -160,8 +153,8 @@ function PaidContentModal({
   const [showSuccess, setShowSuccess] = useState(false)
 
   const handleDismiss = () => {
-    // Navigate back to the course page
-    router.push(`/courses/${courseSlug}`)
+    // Navigate to the course catalogue
+    router.push('/courses')
   }
 
   const handleRedeem = async () => {
