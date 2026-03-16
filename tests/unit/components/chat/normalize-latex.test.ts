@@ -26,26 +26,26 @@ describe('normalizeLatexDelimiters', () => {
     })
   })
 
-  describe('inline math \\(...\\) converted to block', () => {
-    it('converts \\( to $$ with newlines', () => {
-      expect(normalizeLatexDelimiters('\\(')).toBe('\n$$\n')
+  describe('inline math \\(...\\) preserved as inline', () => {
+    it('converts \\( to $', () => {
+      expect(normalizeLatexDelimiters('\\(')).toBe('$')
     })
 
-    it('converts \\) to $$ with newlines', () => {
-      expect(normalizeLatexDelimiters('\\)')).toBe('\n$$\n')
+    it('converts \\) to $', () => {
+      expect(normalizeLatexDelimiters('\\)')).toBe('$')
     })
 
-    it('converts full inline math expression to block math', () => {
+    it('converts full inline math expression to inline $...$', () => {
       const input = 'The value is \\(x^2\\) here'
-      const expected = 'The value is \n$$\nx^2\n$$\n here'
+      const expected = 'The value is $x^2$ here'
       expect(normalizeLatexDelimiters(input)).toBe(expected)
     })
   })
 
   describe('mixed content', () => {
-    it('converts both inline and block in same content (all as block math)', () => {
+    it('converts inline as $ and block as $$', () => {
       const input = 'Inline \\(a+b\\) and block:\n\\[ x^2 \\]'
-      const expected = 'Inline \n$$\na+b\n$$\n and block:\n\n$$\n x^2 \n$$\n'
+      const expected = 'Inline $a+b$ and block:\n\n$$\n x^2 \n$$\n'
       expect(normalizeLatexDelimiters(input)).toBe(expected)
     })
 
@@ -89,17 +89,17 @@ describe('normalizeLatexDelimiters', () => {
       expect(normalizeLatexDelimiters(input)).toBe(expected)
     })
 
-    it('converts JSON-escaped \\( to $$ with newlines', () => {
-      expect(normalizeLatexDelimiters('\\\\(')).toBe('\n$$\n')
+    it('converts JSON-escaped \\( to $', () => {
+      expect(normalizeLatexDelimiters('\\\\(')).toBe('$')
     })
 
-    it('converts JSON-escaped \\) to $$ with newlines', () => {
-      expect(normalizeLatexDelimiters('\\\\)')).toBe('\n$$\n')
+    it('converts JSON-escaped \\) to $', () => {
+      expect(normalizeLatexDelimiters('\\\\)')).toBe('$')
     })
 
-    it('converts full JSON-escaped inline math expression to block math', () => {
+    it('converts full JSON-escaped inline math expression to inline $', () => {
       const input = 'The value is \\\\(x^2\\\\) here'
-      const expected = 'The value is \n$$\nx^2\n$$\n here'
+      const expected = 'The value is $x^2$ here'
       expect(normalizeLatexDelimiters(input)).toBe(expected)
     })
   })
@@ -113,9 +113,9 @@ describe('normalizeLatexDelimiters', () => {
       expect(normalizeLatexDelimiters('\\\\\\]')).toBe('\n$$\n')
     })
 
-    it('converts triple-escaped inline delimiters to block math', () => {
-      expect(normalizeLatexDelimiters('\\\\\\(')).toBe('\n$$\n')
-      expect(normalizeLatexDelimiters('\\\\\\)')).toBe('\n$$\n')
+    it('converts triple-escaped inline delimiters to inline $', () => {
+      expect(normalizeLatexDelimiters('\\\\\\(')).toBe('$')
+      expect(normalizeLatexDelimiters('\\\\\\)')).toBe('$')
     })
 
     it('normalizes over-escaped LaTeX commands (\\\\frac → \\frac)', () => {

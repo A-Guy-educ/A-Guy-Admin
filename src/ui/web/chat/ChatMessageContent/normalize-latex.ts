@@ -4,9 +4,6 @@
  * remark-math only recognizes $...$ and $$...$$ delimiters.
  * LLMs often output \[...\] and \(...\) with various escape levels.
  *
- * All math expressions are converted to block/display math ($$...$$) to ensure
- * they appear on their own line, separate from text.
- *
  * Handles:
  * - Single/double/triple backslash delimiters: \[, \\[, \\\[ → $$
  * - Bare brackets with LaTeX: [ \frac{a}{b} ] → $$...$$ (detected by LaTeX command presence)
@@ -15,7 +12,7 @@
  *
  * Conversions:
  * - \[...\], \\[...\\], \\\[...\\\] → $$...$$ (block/display math)
- * - \(...\), \\(...\\), \\\(...\\\) → $$...$$ (converted to block math)
+ * - \(...\), \\(...\\), \\\(...\\\) → $...$ (inline math, preserves sentence flow)
  * - \\frac, \\sigma, etc. → \frac, \sigma (normalize commands)
  */
 export function normalizeLatexDelimiters(content: string): string {
@@ -33,9 +30,9 @@ export function normalizeLatexDelimiters(content: string): string {
       // Convert block math delimiters: \\\[, \\[, \[ → $$ (with newline for remark-math)
       .replace(/\\{1,3}\[/g, () => '\n$$\n')
       .replace(/\\{1,3}\]/g, () => '\n$$\n')
-      // Convert inline math delimiters to block math: \\\(, \\(, \( → $$ (all math on own line)
-      .replace(/\\{1,3}\(/g, () => '\n$$\n')
-      .replace(/\\{1,3}\)/g, () => '\n$$\n')
+      // Convert inline math delimiters: \\\(, \\(, \( → $ (preserves inline flow)
+      .replace(/\\{1,3}\(/g, () => '$')
+      .replace(/\\{1,3}\)/g, () => '$')
       // Normalize over-escaped LaTeX commands: \\frac → \frac, \\sigma → \sigma
       .replace(/\\\\([a-zA-Z])/g, '\\$1')
       // Remove escaped equals: \= → =
