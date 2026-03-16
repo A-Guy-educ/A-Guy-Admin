@@ -7,16 +7,18 @@
  * - Dedup: skip commit when content is unchanged
  * - Commit when content is different
  */
+/* eslint-disable @typescript-eslint/no-explicit-any -- Test mocks use any for Octokit */
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 
 // Mock the github-client module
 vi.mock('@/ui/cody/github-client', () => ({
   findTaskBranch: vi.fn(),
+  findBranchByIssueNumber: vi.fn(),
   getOctokit: vi.fn(),
 }))
 
 vi.mock('@/ui/cody/auth', () => ({
-  requireCodyAuth: vi.fn(() => null), // Skip auth for tests
+  requireCodyAuth: vi.fn(() => null), // null = auth success
 }))
 
 vi.mock('@/ui/cody/constants', () => ({
