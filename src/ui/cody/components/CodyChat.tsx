@@ -122,6 +122,7 @@ export function CodyChat({ selectedTask, actorLogin }: CodyChatProps) {
   const [showAgentDropdown, setShowAgentDropdown] = useState(false)
   const [showClearConfirm, setShowClearConfirm] = useState(false)
   const [voiceMuted, setVoiceMuted] = useState(false)
+  const [voiceOverlayOpen, setVoiceOverlayOpen] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -269,7 +270,11 @@ export function CodyChat({ selectedTask, actorLogin }: CodyChatProps) {
       setLoading(false)
     }
 
-    if (isVoiceActive) voiceChat.stopConversation()
+    if (voiceOverlayOpen) {
+      voiceChat.stopConversation()
+      setVoiceOverlayOpen(false)
+      setVoiceMuted(false)
+    }
     setSelectedAgent(agentId)
     setShowAgentDropdown(false)
     setToolCalls([])
@@ -566,8 +571,6 @@ export function CodyChat({ selectedTask, actorLogin }: CodyChatProps) {
     voiceChatRef.current = voiceChat
   }, [voiceChat])
 
-  const isVoiceActive = voiceChat.state !== 'idle'
-
   const handleVoiceToggleMute = useCallback(() => {
     setVoiceMuted((prev) => {
       const next = !prev
@@ -607,7 +610,7 @@ export function CodyChat({ selectedTask, actorLogin }: CodyChatProps) {
   return (
     <div className="relative flex flex-col h-full border-l bg-background">
       {/* Voice Chat Overlay */}
-      {isVoiceActive && (
+      {voiceOverlayOpen && (
         <VoiceChatOverlay
           state={voiceChat.state}
           currentTranscript={voiceChat.currentTranscript}
@@ -615,7 +618,11 @@ export function CodyChat({ selectedTask, actorLogin }: CodyChatProps) {
           error={voiceChat.error}
           messages={messages}
           agentName={currentAgent.name}
-          onStop={voiceChat.stopConversation}
+          onStop={() => {
+            voiceChat.stopConversation()
+            setVoiceOverlayOpen(false)
+            setVoiceMuted(false)
+          }}
           onToggleMute={handleVoiceToggleMute}
           isMuted={voiceMuted}
         />
@@ -841,15 +848,22 @@ export function CodyChat({ selectedTask, actorLogin }: CodyChatProps) {
 
           {/* Voice button */}
           <VoiceButton
-            isActive={isVoiceActive}
+            isActive={voiceOverlayOpen}
             isSupported={voiceChat.isSupported}
             onTap={() => {
-              if (isVoiceActive) {
+              if (voiceOverlayOpen) {
                 voiceChat.stopConversation()
+                setVoiceOverlayOpen(false)
                 setVoiceMuted(false)
-              } else voiceChat.startConversation()
+              } else {
+                voiceChat.startConversation()
+                setVoiceOverlayOpen(true)
+              }
             }}
-            onLongPressStart={() => voiceChat.startConversation()}
+            onLongPressStart={() => {
+              voiceChat.startConversation()
+              setVoiceOverlayOpen(true)
+            }}
             onLongPressEnd={() => {
               /* let conversation handle it */
             }}
