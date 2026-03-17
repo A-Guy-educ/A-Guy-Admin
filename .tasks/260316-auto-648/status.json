@@ -4,9 +4,9 @@
   "mode": "full",
   "pipeline": "spec_execute_verify",
   "startedAt": "2026-03-16T17:17:56.064Z",
-  "updatedAt": "2026-03-16T18:48:51.513Z",
-  "state": "failed",
-  "cursor": "gap",
+  "updatedAt": "2026-03-17T09:44:27.628Z",
+  "state": "paused",
+  "cursor": "architect",
   "stages": {
     "taskify": {
       "state": "completed",
@@ -37,41 +37,27 @@
       "sessionId": "ses_30829f29bffeuzF5OYJ2yXw5E5"
     },
     "architect": {
-      "state": "completed",
+      "state": "paused",
       "retries": 0,
-      "startedAt": "2026-03-16T18:14:34.562Z",
-      "completedAt": "2026-03-16T18:21:00.752Z",
-      "elapsed": 386,
+      "startedAt": "2026-03-17T09:39:01.985Z",
+      "completedAt": "2026-03-17T09:44:24.990Z",
+      "elapsed": 323,
       "outputFile": "architect.md",
       "tokenUsage": {
-        "input": 27,
-        "output": 19213,
-        "cacheRead": 2728101
+        "input": 29,
+        "output": 11527,
+        "cacheRead": 5172283
       },
-      "cost": 2.677398,
-      "sessionId": "ses_308249b1effeb8P0VC762VlCok"
+      "cost": 4.2512177499999995,
+      "sessionId": "ses_304d63a66ffeus1PH5lVCAzIyi"
     },
     "plan-gap": {
-      "state": "completed",
-      "retries": 0,
-      "startedAt": "2026-03-16T18:21:03.369Z",
-      "completedAt": "2026-03-16T18:24:42.719Z",
-      "elapsed": 219,
-      "outputFile": "plan-gap.md",
-      "tokenUsage": {
-        "input": 33,
-        "output": 8013,
-        "cacheRead": 4809787
-      },
-      "cost": 3.6648835000000006,
-      "sessionId": "ses_3081eaec2ffeIU7zup0Sq1rsRV"
+      "state": "pending",
+      "retries": 0
     },
     "build": {
-      "state": "failed",
-      "retries": 0,
-      "startedAt": "2026-03-16T18:24:42.722Z",
-      "elapsed": 1447,
-      "error": "Agent \"build\" failed. Artifacts: build-stderr.log, build-events.jsonl"
+      "state": "pending",
+      "retries": 0
     }
   },
   "issueNumber": 822,
@@ -84,6 +70,6 @@
       "timestamp": "2026-03-16T17:17:56.064Z"
     }
   ],
-  "completedAt": "2026-03-16T18:48:51.513Z",
-  "totalCost": 6.3422815
+  "completedAt": "2026-03-17T09:44:27.628Z",
+  "totalCost": 4.2512177499999995
 }
