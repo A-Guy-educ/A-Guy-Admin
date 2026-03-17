@@ -84,9 +84,14 @@ async function main() {
   }
   if (result.error) console.log(`\nError: ${result.error}`)
 
-  // Write result JSON
+  // Write result JSON to consistent location
   const fs = await import('fs')
-  const resultFile = `./system-test-result-${scenarioName}.json`
+  const resultsDir = './system-test-results'
+  if (!fs.existsSync(resultsDir)) {
+    fs.mkdirSync(resultsDir, { recursive: true })
+  }
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+  const resultFile = `${resultsDir}/${scenarioName}-${timestamp}.json`
   fs.writeFileSync(resultFile, JSON.stringify(result, null, 2))
   console.log(`\nResult written to ${resultFile}`)
 

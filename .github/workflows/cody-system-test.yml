@@ -83,10 +83,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
         run: |
-          if ls system-test-result-*.json 1>/dev/null 2>&1; then
-            mkdir -p results
-            mv system-test-result-*.json results/
-            pnpm tsx scripts/system-test/report-results.ts --results-dir results || true
+          if ls system-test-results/*.json 1>/dev/null 2>&1; then
+            pnpm tsx scripts/system-test/report-results.ts --results-dir system-test-results || true
           else
             echo "## 🧪 Cody System Test" >> $GITHUB_STEP_SUMMARY
             echo "No scenario results found" >> $GITHUB_STEP_SUMMARY
@@ -107,6 +105,5 @@ jobs:
         with:
           name: system-test-results-${{ github.run_id }}
           path: |
-            results/
-            system-test-state-*.json
+            system-test-results/
           retention-days: 14
