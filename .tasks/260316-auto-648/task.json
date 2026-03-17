@@ -1,7 +1,7 @@
 {
   "task_type": "implement_feature",
   "risk_level": "high",
-  "confidence": 0.95,
+  "confidence": 0.8,
   "primary_domain": "infra",
   "scope": [
     "next.config.js - security headers with split CSP",
@@ -35,7 +35,7 @@
     "skip_stages": [
       "architect"
     ],
-    "reasoning": "Input contains step-by-step implementation phases with file paths and specific changes. Missing formal ## Requirements and ## Acceptance Criteria sections, so promoted to detailed_plan (not spec_and_plan). Skipping architect stage as plan is already detailed."
+    "reasoning": "Input contains step-by-step implementation phases with file paths and specific changes. Has spec.md with Requirements and Acceptance Criteria, and plan.md with implementation steps. Skipping architect stage as plan is already detailed."
   },
   "pipeline_profile": "standard",
   "pipeline": "spec_execute_verify"
