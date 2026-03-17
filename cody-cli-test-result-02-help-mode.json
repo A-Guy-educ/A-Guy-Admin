@@ -1,0 +1,23 @@
+{
+  "name": "02-help-mode",
+  "passed": true,
+  "duration": 1191,
+  "assertions": [
+    {
+      "name": "CLI ok",
+      "passed": true
+    },
+    {
+      "name": "Has Usage",
+      "passed": true
+    },
+    {
+      "name": "Has --mode",
+      "passed": true
+    },
+    {
+      "name": "Has --task-id",
+      "passed": true
+    }
+  ]
+}
