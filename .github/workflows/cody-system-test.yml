@@ -19,10 +19,7 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  issues: write
-  pull-requests: write
   contents: write
-  actions: write
 
 jobs:
   setup:
@@ -31,10 +28,24 @@ jobs:
     outputs:
       run_id: ${{ steps.setup.outputs.run_id }}
       version_branch: ${{ steps.setup.outputs.version_branch }}
+      token: ${{ steps.app-token.outputs.token }}
     steps:
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: 3116827
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          permission-contents: write
+          permission-issues: write
+          permission-pull-requests: write
+          permission-actions: write
+
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
+          token: ${{ steps.app-token.outputs.token }}
           fetch-depth: 0
 
       - name: Setup pnpm
@@ -51,6 +62,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Configure git
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+
       - name: Generate run ID
         id: setup
         run: |
@@ -59,11 +75,14 @@ jobs:
           echo "Branch will be: systest/$RUN_ID"
 
       - name: Create version branch with cheap models
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
         run: |
           RUN_ID=${{ steps.setup.outputs.run_id }}
           BRANCH="systest/$RUN_ID"
 
-          # Create branch
+          # Create branch locally
           git checkout -b "$BRANCH"
 
           # Use jq to modify opencode.json - minimax for most, opus for critical stages
@@ -77,10 +96,14 @@ jobs:
               .agent["plan-gap"].model = "anthropic/claude-opus-4-6"' opencode.json > tmp.json
           mv tmp.json opencode.json
 
-          # Commit
+          # Commit (skip hooks - this is a temp branch)
           git add opencode.json
-          git commit -m "chore: system test model override" || true
-          git push -u origin "$BRANCH" --force
+          git commit --no-verify -m "chore(system-test): Model override for system test run $RUN_ID
+
+          Temporary branch with cheap models for automated testing." || true
+
+          # Push using GitHub API URL with token
+          git push -u "https://x-access-token:$GH_TOKEN@github.com/$REPO.git" "$BRANCH" --force
 
           echo "version_branch=$BRANCH" >> $GITHUB_OUTPUT
 
@@ -90,9 +113,17 @@ jobs:
     needs: setup
     continue-on-error: true
     steps:
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: 3116827
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
+          token: ${{ steps.app-token.outputs.token }}
           fetch-depth: 0
 
       - name: Setup pnpm
@@ -116,8 +147,8 @@ jobs:
 
       - name: Run scenario
         env:
-          GH_TOKEN: ${{ github.token }}
-          GH_PAT: ${{ secrets.GH_PAT }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GH_PAT: ${{ steps.app-token.outputs.token }}
           REPO: ${{ github.repository }}
         run: |
           pnpm tsx scripts/system-test/run-scenario.ts \
@@ -127,6 +158,7 @@ jobs:
             --version-branch "${{ needs.setup.outputs.version_branch }}"
 
       - name: Upload result artifact
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: scenario-result-02
@@ -139,22 +171,38 @@ jobs:
     needs: [setup, scenario-02]
     if: always()
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
           pattern: scenario-result-*
           path: results
+          merge-multiple: true
 
       - name: Generate report
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-          GITHUB_STEP_SUMMARY: ${{ env.GITHUB_STEP_SUMMARY }}
         run: |
           # Check if results exist
-          if [ ! -d results ] || [ -z "$(ls -A results)" ]; then
-            echo "No results found" >> $GITHUB_STEP_SUMMARY
+          if [ ! -d results ] || [ -z "$(ls -A results 2>/dev/null)" ]; then
             echo "## 🧪 Cody System Test" >> $GITHUB_STEP_SUMMARY
             echo "No scenario results found" >> $GITHUB_STEP_SUMMARY
             exit 0
@@ -164,15 +212,9 @@ jobs:
           pnpm tsx scripts/system-test/report-results.ts --results-dir results || true
 
           # Check for failures
-          FAILED=$(grep -l "false" results/*.json 2>/dev/null | wc -l || echo "0")
-          if [ "$FAILED" -gt "0" ]; then
+          if grep -q '"passed":false' results/*.json 2>/dev/null; then
             echo ""
-            echo "⚠️ $FAILED scenario(s) failed"
-            # Send Slack notification if webhook is configured
-            if [ -n "$SLACK_WEBHOOK_URL" ]; then
-              echo "Sending Slack notification..."
-              # Slack notification would go here
-            fi
+            echo "⚠️ Some scenarios failed"
             exit 1
           fi
 
@@ -180,22 +222,51 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: [setup, scenario-02]
-    if: always() && (needs.scenario-02.outputs.cleanup != 'false')
+    if: always()
     steps:
-      - name: Cleanup
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: 3116827
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Cleanup test artifacts
         env:
-          GH_TOKEN: ${{ github.token }}
-          GH_PAT: ${{ secrets.GH_PAT }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GH_PAT: ${{ steps.app-token.outputs.token }}
           REPO: ${{ github.repository }}
         run: |
-          # Run cleanup
           pnpm tsx scripts/system-test/cleanup-all.ts \
             --repo "$REPO" \
             --run-id "${{ needs.setup.outputs.run_id }}" || true
 
-          # Delete version branch
+      - name: Delete version branch
+        env:
+          # Use GITHUB_TOKEN for delete (has contents:write from workflow permissions)
+          GH_TOKEN: ${{ github.token }}
+        run: |
           BRANCH="${{ needs.setup.outputs.version_branch }}"
           if [ -n "$BRANCH" ]; then
             echo "Deleting branch $BRANCH"
-            git push -u origin --delete "$BRANCH" || true
+            gh api -X DELETE "repos/${{ github.repository }}/git/refs/heads/$BRANCH" || true
           fi
