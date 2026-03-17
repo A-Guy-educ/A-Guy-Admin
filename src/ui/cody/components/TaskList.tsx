@@ -10,6 +10,7 @@ import { useCallback } from 'react'
 import { cn, formatRelativeTime } from '../utils'
 import { getGitHubIssueUrl, parsePriorityLabel, PRIORITY_META } from '../constants'
 import { MiniPipelineProgress } from './MiniPipelineProgress'
+import { AnimatedStatusBar } from './v2/AnimatedStatusBar'
 import { SimpleTooltip } from './SimpleTooltip'
 import { StatusTooltipContent, SubStatusTooltipContent } from './tooltip-content'
 import type { CodyTask, ColumnId } from '../types'
@@ -596,12 +597,17 @@ export function TaskList({
               </div>
             </div>
 
-            {/* Pipeline progress row — shown for building, retrying, and gate-waiting tasks.
-                Gate-waiting tasks show paused state (yellow dots) so the user can see
-                exactly where in the pipeline approval was requested. */}
+            {/* Animated status bar — shows pipeline progress with smooth animations */}
             {isActive && (
               <div className="pb-3 px-4 pl-[52px] sm:block hidden">
-                <MiniPipelineProgress task={task} variant="bar" />
+                <AnimatedStatusBar task={task} />
+              </div>
+            )}
+
+            {/* Non-active states: show compact animated bar for visual status at a glance */}
+            {!isActive && task.column !== 'open' && (
+              <div className="pb-2 px-4 pl-[52px]">
+                <AnimatedStatusBar task={task} />
               </div>
             )}
           </div>
