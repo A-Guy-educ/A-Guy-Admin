@@ -248,8 +248,8 @@ describe('AxisSpecV1Schema', () => {
       expect(() => AxisSpecV1Schema.parse(invalidSpec)).toThrow()
     })
 
-    it('rejects tickPosition with missing x value', () => {
-      const invalidSpec = {
+    it('defaults missing x in tickPosition to default', () => {
+      const spec = {
         kind: 'cartesian',
         units: 1,
         grid: { enabled: true },
@@ -266,11 +266,13 @@ describe('AxisSpecV1Schema', () => {
           graphs: [],
         },
       }
-      expect(() => AxisSpecV1Schema.parse(invalidSpec)).toThrow()
+      const result = AxisSpecV1Schema.parse(spec)
+      expect(result.axes.tickPosition?.x).toBe('default')
+      expect(result.axes.tickPosition?.y).toBe('inverted')
     })
 
-    it('rejects tickPosition with missing y value', () => {
-      const invalidSpec = {
+    it('defaults missing y in tickPosition to default', () => {
+      const spec = {
         kind: 'cartesian',
         units: 1,
         grid: { enabled: true },
@@ -287,7 +289,9 @@ describe('AxisSpecV1Schema', () => {
           graphs: [],
         },
       }
-      expect(() => AxisSpecV1Schema.parse(invalidSpec)).toThrow()
+      const result = AxisSpecV1Schema.parse(spec)
+      expect(result.axes.tickPosition?.x).toBe('inverted')
+      expect(result.axes.tickPosition?.y).toBe('default')
     })
   })
 
