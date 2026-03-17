@@ -19,6 +19,7 @@ const finalizeSchema = z
   .object({
     uploadSessionId: z.string().min(1).optional(),
     blobUrl: z.string().url().optional(),
+    originalFilename: z.string().optional(),
   })
   .refine((data) => data.uploadSessionId || data.blobUrl, {
     message: 'Either uploadSessionId or blobUrl is required',
@@ -48,7 +49,7 @@ export async function POST(request: Request): Promise<Response> {
       )
     }
 
-    const { uploadSessionId, blobUrl } = validated.data
+    const { uploadSessionId, blobUrl, originalFilename } = validated.data
 
     let session
     if (uploadSessionId) {
@@ -59,7 +60,7 @@ export async function POST(request: Request): Promise<Response> {
         overrideAccess: true,
       })
     } else if (blobUrl) {
-      // First try by blobUrl (set by onUploadCompleted callback)
+      // Strategy 1: by blobUrl (set by onUploadCompleted callback)
       const byUrl = await payload.find({
         collection: 'upload-sessions',
         where: { blobUrl: { equals: blobUrl } },
@@ -69,7 +70,7 @@ export async function POST(request: Request): Promise<Response> {
       })
       session = byUrl.docs[0] || null
 
-      // If not found, try by pathname (onUploadCompleted may not have fired)
+      // Strategy 2: by pathname extracted from blobUrl
       if (!session) {
         try {
           const url = new URL(blobUrl)
@@ -90,6 +91,23 @@ export async function POST(request: Request): Promise<Response> {
         } catch {
           // Invalid URL, skip pathname lookup
         }
+      }
+
+      // Strategy 3: most recent unfinalized session for this user
+      if (!session) {
+        const byUser = await payload.find({
+          collection: 'upload-sessions',
+          where: {
+            createdBy: { equals: userId },
+            status: { in: ['initiated', 'uploaded'] },
+            ...(originalFilename ? { originalFilename: { equals: originalFilename } } : {}),
+          },
+          sort: '-createdAt',
+          limit: 1,
+          depth: 0,
+          overrideAccess: true,
+        })
+        session = byUser.docs[0] || null
       }
     }
 

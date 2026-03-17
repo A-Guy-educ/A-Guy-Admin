@@ -185,7 +185,7 @@ export function useDirectChatAssetUpload(): UseDirectChatAssetUploadReturn {
       const finalizeResponse = await fetch('/api/chat-assets/finalize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ blobUrl: blobResult.url }),
+        body: JSON.stringify({ blobUrl: blobResult.url, originalFilename: file.name }),
       })
 
       if (!finalizeResponse.ok) {
