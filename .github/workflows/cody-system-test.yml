@@ -82,6 +82,9 @@ jobs:
           RUN_ID=${{ steps.setup.outputs.run_id }}
           BRANCH="systest/$RUN_ID"
 
+          # Create branch locally
+          git checkout -b "$BRANCH"
+
           # Use jq to modify opencode.json - minimax for most, opus for critical stages
           # First, set all to minimax
           jq '.agent |= with_entries(.value.model = "minimax-coding-plan/MiniMax-M2.5")' opencode.json > tmp.json
@@ -99,7 +102,7 @@ jobs:
 
           Temporary branch with cheap models for automated testing." || true
 
-          # Push using GitHub API instead of git push (more reliable)
+          # Push using GitHub API URL with token
           git push -u "https://x-access-token:$GH_TOKEN@github.com/$REPO.git" "$BRANCH" --force
 
           echo "version_branch=$BRANCH" >> $GITHUB_OUTPUT
