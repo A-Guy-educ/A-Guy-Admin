@@ -8,7 +8,7 @@
 
 import { useCallback } from 'react'
 import { cn, formatRelativeTime } from '../utils'
-import { getGitHubIssueUrl } from '../constants'
+import { getGitHubIssueUrl, parsePriorityLabel, PRIORITY_META } from '../constants'
 import { MiniPipelineProgress } from './MiniPipelineProgress'
 import { SimpleTooltip } from './SimpleTooltip'
 import { StatusTooltipContent, SubStatusTooltipContent } from './tooltip-content'
@@ -38,6 +38,9 @@ import {
   RefreshCw,
   Eye,
   Inbox,
+  Pencil,
+  Copy,
+  ListPlus,
 } from 'lucide-react'
 
 interface TaskListProps {
@@ -45,6 +48,7 @@ interface TaskListProps {
   selectedTask?: CodyTask | null
   executingTaskId?: string | null
   mergingTaskId?: string | null
+  focusedIndex?: number
   onTaskSelect?: (task: CodyTask | null) => void
   onExecuteTask?: (taskId: string) => void
   onStopTask?: (task: CodyTask) => void
@@ -55,6 +59,9 @@ interface TaskListProps {
   collaborators?: { login: string; avatar_url: string }[]
   onOpenPreview?: (task: CodyTask) => void
   onCreateTask?: () => void
+  onEditTask?: (task: CodyTask) => void
+  onDuplicate?: (task: CodyTask) => void
+  onToggleQueue?: (task: CodyTask) => void
 }
 
 // ── Status colors — single source of truth ──
@@ -115,7 +122,7 @@ const statusLabel: Record<ColumnId, string> = {
   building: 'Building',
   review: 'In Review',
   failed: 'Failed',
-  'gate-waiting': 'Gate',
+  'gate-waiting': 'Needs Approval',
   retrying: 'Retrying',
   done: 'Done',
 }
@@ -132,8 +139,12 @@ export function TaskList({
   onTaskHover,
   onAssign,
   onUnassign: _onUnassign,
+  focusedIndex,
   onOpenPreview,
   onCreateTask,
+  onEditTask,
+  onDuplicate,
+  onToggleQueue,
   collaborators = [],
 }: TaskListProps) {
   const handleTaskClick = useCallback(
@@ -167,14 +178,17 @@ export function TaskList({
   }
 
   return (
-    <div className="divide-y divide-white/[0.06]">
-      {tasks.map((task) => {
+    <div className="divide-y divide-white/[0.06]" role="listbox" aria-label="Tasks">
+      {tasks.map((task, index) => {
         const isSelected = task.id === selectedTask?.id
+        const isFocused = index === focusedIndex
         const canExecute = task.state === 'open' && onExecuteTask
         const isExecuting = executingTaskId === task.id
         const hasPR = !!task.associatedPR
         const isHardStop = task.column === 'gate-waiting' && task.gateType === 'hard-stop'
-        const isActive = task.column === 'building' || task.column === 'retrying'
+        // gate-waiting tasks also show pipeline progress (they're paused mid-pipeline)
+        const isActive =
+          task.column === 'building' || task.column === 'retrying' || task.column === 'gate-waiting'
         const colors = statusColors[task.column]
         const gateLabel =
           task.column === 'gate-waiting' && task.gateType === 'hard-stop'
@@ -186,13 +200,23 @@ export function TaskList({
         return (
           <div
             key={task.id}
+            role="option"
+            aria-selected={isSelected}
+            tabIndex={0}
             onClick={() => handleTaskClick(task)}
             onMouseEnter={() => onTaskHover?.(task)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                handleTaskClick(task)
+              }
+            }}
             className={cn(
               'group relative cursor-pointer transition-colors duration-100 border-l-2 border-l-transparent',
               'hover:bg-white/[0.04]',
               colors.bg,
               isSelected && cn('bg-white/[0.06] border-l-2', colors.border),
+              isFocused && 'ring-1 ring-blue-500/40 bg-blue-500/5',
               isHardStop && 'ring-1 ring-red-500/30 ring-inset',
             )}
           >
@@ -216,11 +240,15 @@ export function TaskList({
                     {task.title}
                   </h3>
 
-                  {/* Assignee avatars */}
-                  {task.assignees && task.assignees.length > 0 && (
-                    <div className="hidden sm:flex items-center -space-x-1.5 shrink-0">
-                      {task.assignees.map((assignee) => (
-                        <SimpleTooltip key={assignee.login} content={assignee.login} side="bottom">
+                  {/* Assignee avatars + triggered-by actor */}
+                  <div className="hidden sm:flex items-center -space-x-1.5 shrink-0">
+                    {task.assignees &&
+                      task.assignees.map((assignee) => (
+                        <SimpleTooltip
+                          key={assignee.login}
+                          content={`Assignee: @${assignee.login}`}
+                          side="bottom"
+                        >
                           <span className="inline-block">
                             <Avatar className="h-5 w-5 ring-2 ring-[#0d1117]">
                               <AvatarImage src={assignee.avatar_url} alt={assignee.login} />
@@ -231,8 +259,45 @@ export function TaskList({
                           </span>
                         </SimpleTooltip>
                       ))}
-                    </div>
-                  )}
+                    {task.pipeline?.triggeredByLogin &&
+                      !task.assignees?.some((a) => a.login === task.pipeline?.triggeredByLogin) && (
+                        <SimpleTooltip
+                          content={`Triggered by @${task.pipeline.triggeredByLogin}`}
+                          side="bottom"
+                        >
+                          <span className="inline-block">
+                            <Avatar className="h-5 w-5 ring-2 ring-[#0d1117] opacity-60">
+                              <AvatarImage
+                                src={`https://github.com/${task.pipeline.triggeredByLogin}.png?size=40`}
+                                alt={task.pipeline.triggeredByLogin}
+                              />
+                              <AvatarFallback className="text-[8px] bg-zinc-700 text-zinc-400">
+                                {task.pipeline.triggeredByLogin[0]?.toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                          </span>
+                        </SimpleTooltip>
+                      )}
+                    {task.pipeline?.issueCreator &&
+                      task.pipeline.issueCreator !== task.pipeline?.triggeredByLogin && (
+                        <SimpleTooltip
+                          content={`Issue owner @${task.pipeline.issueCreator}`}
+                          side="bottom"
+                        >
+                          <span className="inline-block">
+                            <Avatar className="h-5 w-5 ring-2 ring-[#0d1117] opacity-80">
+                              <AvatarImage
+                                src={`https://github.com/${task.pipeline.issueCreator}.png?size=40`}
+                                alt={task.pipeline.issueCreator}
+                              />
+                              <AvatarFallback className="text-[8px] bg-blue-900 text-blue-200">
+                                {task.pipeline.issueCreator[0]?.toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                          </span>
+                        </SimpleTooltip>
+                      )}
+                  </div>
                 </div>
 
                 {/* Meta row */}
@@ -267,9 +332,31 @@ export function TaskList({
                     </SimpleTooltip>
                   )}
 
+                  {/* Priority badge */}
+                  {task.labels
+                    .filter((l) => l.startsWith('priority:'))
+                    .map((label) => {
+                      const level = parsePriorityLabel(label)
+                      if (!level) return null
+                      const meta = PRIORITY_META[level]
+                      return (
+                        <span
+                          key={label}
+                          className={cn(
+                            'inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold border',
+                            meta.colorClass,
+                          )}
+                        >
+                          {level}
+                        </span>
+                      )
+                    })}
+
+                  {/* Active pipeline progress — inline dots + stage label */}
                   {isActive && <MiniPipelineProgress task={task} variant="inline" />}
 
-                  {task.isTimeout && (
+                  {/* Non-pipeline sub-statuses (only shown when NOT active pipeline) */}
+                  {!isActive && task.isTimeout && (
                     <SimpleTooltip
                       content={<SubStatusTooltipContent type="timeout" />}
                       side="bottom"
@@ -280,7 +367,7 @@ export function TaskList({
                       </span>
                     </SimpleTooltip>
                   )}
-                  {task.isExhausted && (
+                  {!isActive && task.isExhausted && (
                     <SimpleTooltip
                       content={<SubStatusTooltipContent type="exhausted" />}
                       side="bottom"
@@ -291,7 +378,7 @@ export function TaskList({
                       </span>
                     </SimpleTooltip>
                   )}
-                  {task.isSupervisorError && (
+                  {!isActive && task.isSupervisorError && (
                     <SimpleTooltip content={<SubStatusTooltipContent type="error" />} side="bottom">
                       <span className="inline-flex items-center gap-0.5 font-semibold text-red-400 cursor-default">
                         <AlertCircle className="w-3 h-3" />
@@ -428,18 +515,95 @@ export function TaskList({
                     </Select>
                   </div>
                 )}
+
+                {/* Edit button — only for backlog items */}
+                {onEditTask && task.column === 'open' && (
+                  <SimpleTooltip content="Edit task" side="bottom">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onEditTask(task)
+                      }}
+                      aria-label="Edit task"
+                      className="h-7 w-7 p-0 text-muted-foreground/50 hover:text-foreground hover:bg-white/[0.06]"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </Button>
+                  </SimpleTooltip>
+                )}
+
+                {/* Duplicate button */}
+                {onDuplicate && (
+                  <SimpleTooltip content="Duplicate task" side="bottom">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onDuplicate(task)
+                      }}
+                      aria-label="Duplicate task"
+                      className="h-7 w-7 p-0 text-muted-foreground/50 hover:text-foreground hover:bg-white/[0.06]"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                    </Button>
+                  </SimpleTooltip>
+                )}
+
+                {/* Queue toggle */}
+                {onToggleQueue &&
+                  (() => {
+                    const isQueued = task.labels.includes('cody:queued')
+                    const isQueueActive = task.labels.includes('cody:queue-active')
+                    const isQueueFailed = task.labels.includes('cody:queue-failed')
+                    // Hide if task is actively being processed or already failed in queue
+                    if (isQueueActive) return null
+                    return (
+                      <SimpleTooltip
+                        content={
+                          isQueued
+                            ? 'Remove from queue'
+                            : isQueueFailed
+                              ? 'Re-add to queue'
+                              : 'Add to queue'
+                        }
+                        side="bottom"
+                      >
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            onToggleQueue(task)
+                          }}
+                          aria-label={isQueued ? 'Remove from queue' : 'Add to queue'}
+                          className={cn(
+                            'h-7 w-7 p-0 transition-colors',
+                            isQueued
+                              ? 'text-purple-400 bg-purple-500/15 hover:bg-purple-500/25'
+                              : isQueueFailed
+                                ? 'text-red-400/60 hover:text-purple-400 hover:bg-purple-500/15'
+                                : 'text-muted-foreground/50 hover:text-purple-400 hover:bg-purple-500/15',
+                          )}
+                        >
+                          <ListPlus className="w-3.5 h-3.5" />
+                        </Button>
+                      </SimpleTooltip>
+                    )
+                  })()}
               </div>
             </div>
 
-            {/* Pipeline progress row */}
-            {isActive &&
-              task.pipeline &&
-              (task.pipeline.currentStage ||
-                Object.keys(task.pipeline.stages || {}).length > 0) && (
-                <div className="pb-3 px-4 pl-[52px] sm:block hidden">
-                  <MiniPipelineProgress task={task} variant="bar" />
-                </div>
-              )}
+            {/* Pipeline progress row — shown for building, retrying, and gate-waiting tasks.
+                Gate-waiting tasks show paused state (yellow dots) so the user can see
+                exactly where in the pipeline approval was requested. */}
+            {isActive && (
+              <div className="pb-3 px-4 pl-[52px] sm:block hidden">
+                <MiniPipelineProgress task={task} variant="bar" />
+              </div>
+            )}
           </div>
         )
       })}
