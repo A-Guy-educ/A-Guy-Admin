@@ -1,0 +1,11 @@
+{
+  "name": "03-error-handling",
+  "passed": true,
+  "duration": 3840,
+  "assertions": [
+    {
+      "name": "CLI runs",
+      "passed": true
+    }
+  ]
+}

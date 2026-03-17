@@ -1,0 +1,25 @@
+{
+  "name": "04-full-pipeline",
+  "passed": true,
+  "duration": 270424,
+  "assertions": [
+    {
+      "name": "Created spec",
+      "passed": true
+    },
+    {
+      "name": "Task dir exists",
+      "passed": true,
+      "detail": "/Users/aguy/projects/A-Guy/.tasks/260317-full-test"
+    },
+    {
+      "name": "Pipeline progress",
+      "passed": true,
+      "detail": "6 stages"
+    },
+    {
+      "name": "No fatal errors",
+      "passed": true
+    }
+  ]
+}
