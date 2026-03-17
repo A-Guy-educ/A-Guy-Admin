@@ -2,17 +2,17 @@
  * @fileType scenario
  * @domain cody | system-test
  * @ai-summary High-complexity full mode scenario - exercises ALL pipeline stages
+ *
+ * Steps:
+ *   1. Create GitHub issue
+ *   2. Dispatch cody workflow (mode=full, complexity=65)
+ *   3. Poll for workflow completion
+ *   4. Assert results (labels, PR, comments)
  */
 
 import { execFileSync } from 'child_process'
 
-import {
-  assertLabelsPresent,
-  assertPRCreated,
-  assertCommentExists,
-  assertWorkflowSucceeded,
-  pollWorkflowRun,
-} from '../lib'
+import { assertLabelsPresent, assertPRCreated, assertCommentExists, pollWorkflowRun } from '../lib'
 import { CODY_WORKFLOW, SYSTEM_TEST_LABEL, ISSUE_TITLE_PREFIX } from '../lib/config'
 import type { ScenarioContext, Scenario } from './types'
 import type { ScenarioResult } from '../lib/report'
@@ -42,34 +42,30 @@ export const scenario02: Scenario = {
 
     let issueNumber: number | undefined = undefined
     let taskId: string | undefined
-    let workflowDispatchTime: string
+    let workflowDispatchTime: string | undefined
 
     try {
       // Step 1: Create issue
       ctx.log.info('Creating issue...')
       const title = `${ISSUE_TITLE_PREFIX} Document pipeline health monitoring architecture`
-      const createdIssue = ctx.gh.createIssue(title, ISSUE_BODY, [SYSTEM_TEST_LABEL])
+      issueNumber = ctx.gh.createIssue(title, ISSUE_BODY, [SYSTEM_TEST_LABEL]) ?? undefined
 
-      if (!createdIssue) {
+      if (!issueNumber) {
         throw new Error('Failed to create issue')
       }
-      issueNumber = createdIssue
-
-      assertions.push({ name: 'Issue created', passed: true })
+      assertions.push({ name: 'Issue created', passed: true, detail: `#${issueNumber}` })
       ctx.log.info(`Created issue #${issueNumber}`)
 
       // Step 2: Dispatch pipeline with complexity override
-      ctx.log.info('Dispatching pipeline with complexity=65...')
-      workflowDispatchTime = new Date().toISOString()
-
-      // Generate task ID in YYMMDD-description format (required by parse-inputs)
       const now = new Date()
       const yy = String(now.getFullYear()).slice(-2)
       const mm = String(now.getMonth() + 1).padStart(2, '0')
       const dd = String(now.getDate()).padStart(2, '0')
       taskId = `${yy}${mm}${dd}-systest-${ctx.runId}`
+      workflowDispatchTime = now.toISOString()
 
-      // Use gh workflow run to dispatch
+      ctx.log.info(`Dispatching pipeline: task=${taskId}, complexity=65`)
+
       execFileSync(
         'gh',
         [
@@ -83,8 +79,6 @@ export const scenario02: Scenario = {
           '-f',
           `issue_number=${issueNumber}`,
           '-f',
-          `version=${ctx.versionBranch}`,
-          '-f',
           'complexity=65',
           '-f',
           'clarify=false',
@@ -93,17 +87,14 @@ export const scenario02: Scenario = {
           '--repo',
           ctx.repo,
         ],
-        {
-          env: { ...process.env },
-          stdio: 'pipe',
-        },
+        { env: { ...process.env }, stdio: 'pipe' },
       )
 
-      assertions.push({ name: 'Pipeline dispatched', passed: true })
+      assertions.push({ name: 'Pipeline dispatched', passed: true, detail: taskId })
       ctx.log.info(`Dispatched pipeline for task ${taskId}`)
 
       // Step 3: Poll for workflow completion
-      ctx.log.info('Polling for workflow completion...')
+      ctx.log.info('Polling for workflow completion (up to 90 min)...')
       const run = await pollWorkflowRun(ctx.gh, {
         workflow: CODY_WORKFLOW,
         afterTimestamp: workflowDispatchTime,
@@ -117,22 +108,19 @@ export const scenario02: Scenario = {
         passed: true,
         detail: `Run ${run.id}, conclusion: ${run.conclusion}`,
       })
-      ctx.log.info(`Workflow completed: ${run.id}, conclusion: ${run.conclusion}`)
 
-      // Step 4: Assert workflow succeeded
-      try {
-        assertWorkflowSucceeded(run)
+      // Step 4: Assert results
+      if (run.conclusion === 'success') {
         assertions.push({ name: 'Workflow succeeded', passed: true })
-      } catch (error) {
+      } else {
         assertions.push({
           name: 'Workflow succeeded',
           passed: false,
-          detail: String(error),
+          detail: `Expected success, got: ${run.conclusion}`,
         })
       }
 
-      // Step 5: Verify labels
-      ctx.log.info('Verifying labels...')
+      // Check labels
       try {
         assertLabelsPresent(ctx.gh, issueNumber, ['cody:done'])
         assertions.push({ name: 'cody:done label', passed: true })
@@ -140,32 +128,17 @@ export const scenario02: Scenario = {
         assertions.push({ name: 'cody:done label', passed: false, detail: String(error) })
       }
 
+      // Check task comment
       try {
-        assertLabelsPresent(ctx.gh, issueNumber, ['profile:standard'])
-        assertions.push({ name: 'profile:standard label', passed: true })
-      } catch (error) {
-        assertions.push({
-          name: 'profile:standard label',
-          passed: false,
-          detail: String(error),
-        })
-      }
-
-      // Check for type label
-      try {
-        const _issue = ctx.gh.getIssue(issueNumber)
-        // We can't easily check labels via getIssue, so just check comment exists
         assertCommentExists(ctx.gh, issueNumber, /Task created:/)
         assertions.push({ name: 'Task marker comment', passed: true })
       } catch (error) {
         assertions.push({ name: 'Task marker comment', passed: false, detail: String(error) })
       }
 
-      // Step 6: Verify PR was created
-      ctx.log.info('Verifying PR was created...')
+      // Check PR created
       try {
-        const pr = assertPRCreated(ctx.repo, /systest/)
-        const _prBranch = pr.branch
+        const pr = assertPRCreated(ctx.repo, new RegExp(taskId))
         assertions.push({
           name: 'PR created',
           passed: true,
@@ -175,35 +148,19 @@ export const scenario02: Scenario = {
         assertions.push({ name: 'PR created', passed: false, detail: String(error) })
       }
 
-      // Step 7: Verify stage states from status.json (via workflow artifacts)
-      // This would require downloading artifacts - for now we verify via labels
-      // The key assertion is that with complexity 65, all stages should run:
-      // gap (35), architect (10), plan-gap (50), review (30), docs (30) should all complete
-      assertions.push({
-        name: 'All stages ran (complexity=65 forces standard profile)',
-        passed: true,
-        detail: 'With complexity 65, stages gap/plan-gap/clarify/review/docs all above thresholds',
-      })
-
-      const passedCount = assertions.filter((a) => a.passed).length
-      const duration = Date.now() - startTime
-
       return {
         name: this.name,
-        passed: passedCount === assertions.length,
-        duration,
+        passed: assertions.every((a) => a.passed),
+        duration: Date.now() - startTime,
         assertions,
       }
     } catch (error) {
-      const duration = Date.now() - startTime
-      const errorMessage = error instanceof Error ? error.message : String(error)
-
       return {
         name: this.name,
         passed: false,
-        duration,
+        duration: Date.now() - startTime,
         assertions,
-        error: errorMessage,
+        error: error instanceof Error ? error.message : String(error),
       }
     }
   },

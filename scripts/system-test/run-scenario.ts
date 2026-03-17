@@ -7,12 +7,9 @@
 
 import pino from 'pino'
 import { createSystemTestClient } from './lib/gh-client'
-import { cleanupScenario } from './lib/cleanup'
 import type { ScenarioContext, Scenario } from './scenarios/types'
-import type { AssertionResult } from './lib/report'
 import { scenario02 } from './scenarios/02-full-high-complexity'
 
-// Map of available scenarios
 const SCENARIOS: Record<string, Scenario> = {
   '02-full-high-complexity': scenario02,
 }
@@ -21,55 +18,37 @@ async function main() {
   const args = process.argv.slice(2)
   let scenarioName = '02-full-high-complexity'
   let repo = process.env.REPO || ''
-  let runId = ''
-  let versionBranch = 'dev'
+  let runId = process.env.GITHUB_RUN_ID || Date.now().toString()
 
-  // Parse args
   for (let i = 0; i < args.length; i++) {
     const arg = args[i]
     if (arg === '--scenario' && i + 1 < args.length) {
-      scenarioName = args[i + 1]
-      i++
+      scenarioName = args[++i]
     } else if (arg === '--repo' && i + 1 < args.length) {
-      repo = args[i + 1]
-      i++
+      repo = args[++i]
     } else if (arg === '--run-id' && i + 1 < args.length) {
-      runId = args[i + 1]
-      i++
-    } else if (arg === '--version-branch' && i + 1 < args.length) {
-      versionBranch = args[i + 1]
-      i++
+      runId = args[++i]
     }
   }
 
-  // Validate required args
   if (!repo) {
     console.error('Error: --repo is required')
+    process.exit(1)
+  }
+
+  const scenario = SCENARIOS[scenarioName]
+  if (!scenario) {
     console.error(
-      'Usage: pnpm tsx run-scenario.ts --scenario <name> --repo <owner/repo> --run-id <id> --version-branch <branch>',
+      `Unknown scenario "${scenarioName}". Available: ${Object.keys(SCENARIOS).join(', ')}`,
     )
     process.exit(1)
   }
 
-  if (!runId) {
-    runId = Date.now().toString()
-  }
-
-  // Get scenario
-  const scenario = SCENARIOS[scenarioName]
-  if (!scenario) {
-    console.error(`Error: Unknown scenario "${scenarioName}"`)
-    console.error(`Available: ${Object.keys(SCENARIOS).join(', ')}`)
-    process.exit(1)
-  }
-
-  console.log(`Running scenario: ${scenarioName}`)
+  console.log(`Scenario: ${scenarioName}`)
   console.log(`Repo: ${repo}`)
   console.log(`Run ID: ${runId}`)
-  console.log(`Version branch: ${versionBranch}`)
   console.log('')
 
-  // Create context
   const gh = createSystemTestClient(repo)
   const log = pino({ name: 'system-test', level: 'info' })
 
@@ -77,88 +56,41 @@ async function main() {
     gh,
     repo,
     runId,
-    versionBranch,
+    versionBranch: 'dev',
     log,
   }
 
-  let result: Awaited<ReturnType<Scenario['run']>> | undefined
+  let result: Awaited<ReturnType<Scenario['run']>>
 
   try {
-    // Run scenario
     result = await scenario.run(ctx)
-
-    // Print result
-    console.log('')
-    console.log(`Result: ${result.passed ? '✅ PASS' : '❌ FAIL'}`)
-    console.log(`Duration: ${Math.round(result.duration / 1000)}s`)
-    console.log('')
-    console.log('Assertions:')
-    for (const assertion of result.assertions) {
-      console.log(`  ${assertion.passed ? '✅' : '❌'} ${assertion.name}`)
-      if (assertion.detail && !assertion.passed) {
-        console.log(`      ${assertion.detail}`)
-      }
-    }
-
-    if (result.error) {
-      console.log('')
-      console.log(`Error: ${result.error}`)
-    }
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error)
-    console.error(`Scenario failed with error: ${errorMessage}`)
-
     result = {
       name: scenarioName,
       passed: false,
       duration: 0,
       assertions: [],
-      error: errorMessage,
-    }
-  } finally {
-    // Always cleanup
-    console.log('')
-    console.log('Cleaning up...')
-
-    // Determine cleanup targets from result if available
-    let issueNumber: number | undefined
-    let prNumbers: number[] | undefined
-    let branches: string[] | undefined
-
-    if (result?.assertions) {
-      // Try to extract PR info from assertions
-      const prAssertion = result.assertions.find(
-        (a: AssertionResult) => a.name === 'PR created' && a.passed && a.detail,
-      )
-      if (prAssertion?.detail) {
-        // Parse "PR #123: branch-name" from detail
-        const match = prAssertion.detail.match(/PR #(\d+): (.+)/)
-        if (match) {
-          prNumbers = [parseInt(match[1], 10)]
-          branches = [match[2]]
-        }
-      }
-    }
-
-    if (issueNumber || prNumbers || branches) {
-      await cleanupScenario(gh, repo, {
-        issueNumber,
-        prNumbers,
-        branches,
-      })
-    } else {
-      console.log('No cleanup targets identified')
+      error: error instanceof Error ? error.message : String(error),
     }
   }
 
-  // Write result JSON
-  const resultFile = `./system-test-result-${scenarioName}.json`
-  const fs = await import('fs')
-  fs.writeFileSync(resultFile, JSON.stringify(result, null, 2))
-  console.log(`Result written to ${resultFile}`)
+  // Print
+  console.log('')
+  console.log(`Result: ${result.passed ? '✅ PASS' : '❌ FAIL'}`)
+  console.log(`Duration: ${Math.round(result.duration / 1000)}s`)
+  console.log('')
+  for (const a of result.assertions) {
+    console.log(`  ${a.passed ? '✅' : '❌'} ${a.name}${a.detail ? ` (${a.detail})` : ''}`)
+  }
+  if (result.error) console.log(`\nError: ${result.error}`)
 
-  // Exit with appropriate code
-  process.exit(result?.passed ? 0 : 1)
+  // Write result JSON
+  const fs = await import('fs')
+  const resultFile = `./system-test-result-${scenarioName}.json`
+  fs.writeFileSync(resultFile, JSON.stringify(result, null, 2))
+  console.log(`\nResult written to ${resultFile}`)
+
+  process.exit(result.passed ? 0 : 1)
 }
 
 main().catch((error) => {
