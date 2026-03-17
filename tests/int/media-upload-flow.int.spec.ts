@@ -14,8 +14,12 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 let originalDatabaseUrl: string | undefined
 
 const TEST_BLOB_TOKEN = process.env.BLOB_READ_WRITE_TOKEN
+// Valid tokens start with 'vercel_blob_rw_'
 const isSkipped =
-  !TEST_BLOB_TOKEN || TEST_BLOB_TOKEN === '' || TEST_BLOB_TOKEN === 'mock-token-for-testing'
+  !TEST_BLOB_TOKEN ||
+  TEST_BLOB_TOKEN === '' ||
+  TEST_BLOB_TOKEN === 'mock-token-for-testing' ||
+  !TEST_BLOB_TOKEN.startsWith('vercel_blob_rw_')
 
 // Generate unique test prefix
 const testPrefix = `int-test-${Date.now()}`

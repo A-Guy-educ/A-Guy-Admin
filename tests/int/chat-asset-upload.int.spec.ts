@@ -444,6 +444,22 @@ describe('Pathname Builder', () => {
 })
 
 describe('Media Upload with File', () => {
+  // Skip tests if no valid BLOB token is available
+  // Valid tokens start with 'vercel_blob_rw_'
+  const blobToken = process.env.BLOB_READ_WRITE_TOKEN
+  const isBlobSkipped =
+    !blobToken ||
+    blobToken === '' ||
+    blobToken === 'mock-token-for-testing' ||
+    !blobToken.startsWith('vercel_blob_rw_')
+
+  if (isBlobSkipped) {
+    it.skip('requires BLOB_READ_WRITE_TOKEN', () => {
+      expect(process.env.BLOB_READ_WRITE_TOKEN).toBeDefined()
+    })
+    return
+  }
+
   /**
    * Create a minimal valid JPEG buffer for testing
    */
