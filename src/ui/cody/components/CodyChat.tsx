@@ -623,6 +623,9 @@ export function CodyChat({ selectedTask, actorLogin }: CodyChatProps) {
             setVoiceOverlayOpen(false)
             setVoiceMuted(false)
           }}
+          onInterrupt={() => {
+            voiceChat.interruptConversation()
+          }}
           onToggleMute={handleVoiceToggleMute}
           isMuted={voiceMuted}
         />
@@ -851,11 +854,22 @@ export function CodyChat({ selectedTask, actorLogin }: CodyChatProps) {
             isActive={voiceOverlayOpen}
             isSupported={voiceChat.isSupported}
             onTap={() => {
-              if (voiceOverlayOpen) {
+              // Handle tap based on current voice state:
+              // - If AI is speaking: interrupt and start listening (voice interrupt)
+              // - If listening/processing: stop conversation
+              // - If idle: start conversation
+              if (voiceChat.state === 'speaking') {
+                // Voice interrupt: cancel AI speech and start listening
+                voiceChat.interruptConversation()
+                setVoiceOverlayOpen(true)
+                setVoiceMuted(false)
+              } else if (voiceOverlayOpen) {
+                // Already in voice mode - stop it
                 voiceChat.stopConversation()
                 setVoiceOverlayOpen(false)
                 setVoiceMuted(false)
               } else {
+                // Not in voice mode - start it
                 voiceChat.startConversation()
                 setVoiceOverlayOpen(true)
               }

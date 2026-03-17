@@ -8,7 +8,7 @@
 
 import { useCallback } from 'react'
 import { cn, formatRelativeTime } from '../utils'
-import { getGitHubIssueUrl } from '../constants'
+import { getGitHubIssueUrl, parsePriorityLabel, PRIORITY_META } from '../constants'
 import { MiniPipelineProgress } from './MiniPipelineProgress'
 import { SimpleTooltip } from './SimpleTooltip'
 import { StatusTooltipContent, SubStatusTooltipContent } from './tooltip-content'
@@ -335,23 +335,19 @@ export function TaskList({
                   {/* Priority badge */}
                   {task.labels
                     .filter((l) => l.startsWith('priority:'))
-                    .map((priorityLabel) => {
-                      const priority = priorityLabel.replace('priority:', '')
-                      const colors: Record<string, string> = {
-                        P0: 'bg-red-500/20 text-red-400 border-red-500/30',
-                        P1: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
-                        P2: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-                        P3: 'bg-zinc-500/20 text-zinc-400 border-zinc-500/30',
-                      }
+                    .map((label) => {
+                      const level = parsePriorityLabel(label)
+                      if (!level) return null
+                      const meta = PRIORITY_META[level]
                       return (
                         <span
-                          key={priorityLabel}
+                          key={label}
                           className={cn(
                             'inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold border',
-                            colors[priority] || 'bg-zinc-500/20 text-zinc-400 border-zinc-500/30',
+                            meta.colorClass,
                           )}
                         >
-                          {priority}
+                          {level}
                         </span>
                       )
                     })}

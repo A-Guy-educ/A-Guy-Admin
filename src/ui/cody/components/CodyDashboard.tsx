@@ -42,7 +42,6 @@ import {
   Bug,
   Menu,
   RefreshCw,
-  Bell,
   Globe,
   AlertCircle,
   X as XIcon,
@@ -53,6 +52,8 @@ import {
 import { useCodyTasks, queryKeys } from '../hooks'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import { useBrowserNotifications } from '../hooks/useBrowserNotifications'
+import { useNotificationStore } from '../notifications/useNotificationStore'
+import { NotificationCenter } from '../notifications/NotificationCenter'
 import { useMediaQuery } from '@/server/payload/hooks/useMediaQuery'
 import { RateLimitError, NoTokenError, SessionExpiredError, tasksApi, codyApi } from '../api'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -63,7 +64,7 @@ import { useGitHubIdentity } from '../hooks/useGitHubIdentity'
 import { useTheme } from '@/ui/web/providers/Theme'
 import { Avatar, AvatarFallback, AvatarImage } from '@/ui/web/components/avatar'
 import { SimpleTooltip } from './SimpleTooltip'
-import { SITE_URLS } from '../constants'
+import { SITE_URLS, PRIORITY_LEVELS, PRIORITY_META } from '../constants'
 
 interface CodyDashboardProps {
   initialIssueNumber?: number
@@ -88,6 +89,10 @@ export function CodyDashboard({ initialIssueNumber, initialModal }: CodyDashboar
   const [labelFilter, setLabelFilter] = useState<string>(() => {
     if (typeof window === 'undefined') return 'all'
     return new URLSearchParams(window.location.search).get('label') ?? 'all'
+  })
+  const [priorityFilter, setPriorityFilter] = useState<string>(() => {
+    if (typeof window === 'undefined') return 'all'
+    return new URLSearchParams(window.location.search).get('priority') ?? 'all'
   })
   const [statusFilter, setStatusFilter] = useState<string>(() => {
     if (typeof window === 'undefined') return 'all'
@@ -303,13 +308,15 @@ export function CodyDashboard({ initialIssueNumber, initialModal }: CodyDashboar
     [queryClient],
   )
 
-  // Browser notifications
+  // Notification system
+  const notificationStore = useNotificationStore()
+
   const {
     checkTaskChanges,
     permission: notificationPermission,
     isSupported: notificationsSupported,
     requestPermission,
-  } = useBrowserNotifications()
+  } = useBrowserNotifications({ store: notificationStore })
 
   // Check for task changes when tasks update
   useEffect(() => {
@@ -328,6 +335,8 @@ export function CodyDashboard({ initialIssueNumber, initialModal }: CodyDashboar
     else params.delete('status')
     if (labelFilter !== 'all') params.set('label', labelFilter)
     else params.delete('label')
+    if (priorityFilter !== 'all') params.set('priority', priorityFilter)
+    else params.delete('priority')
     if (viewMode !== 'running') params.set('view', viewMode)
     else params.delete('view')
     if (debouncedSearch) params.set('q', debouncedSearch)
@@ -335,7 +344,7 @@ export function CodyDashboard({ initialIssueNumber, initialModal }: CodyDashboar
     const search = params.toString()
     const newUrl = window.location.pathname + (search ? `?${search}` : '')
     window.history.replaceState(null, '', newUrl)
-  }, [dateFilter, statusFilter, labelFilter, viewMode, debouncedSearch])
+  }, [dateFilter, statusFilter, labelFilter, priorityFilter, viewMode, debouncedSearch])
 
   // Get unique labels from tasks (excluding internal/system labels)
   const availableLabels = Array.from(new Set(tasks.flatMap((task) => task.labels)))
@@ -382,7 +391,12 @@ export function CodyDashboard({ initialIssueNumber, initialModal }: CodyDashboar
   const { runningCount, backlogCount, queueCount } = getViewModeCounts(tasks)
 
   // Filter tasks by view mode, then by status and label (combined with AND logic)
-  const baseFilteredTasks = filterTasksByView(tasks, { viewMode, statusFilter, labelFilter })
+  const baseFilteredTasks = filterTasksByView(tasks, {
+    viewMode,
+    statusFilter,
+    labelFilter,
+    priorityFilter,
+  })
   const searchedTasks = useMemo(() => {
     if (!debouncedSearch.trim()) return baseFilteredTasks
     const q = debouncedSearch.toLowerCase()
@@ -438,7 +452,7 @@ export function CodyDashboard({ initialIssueNumber, initialModal }: CodyDashboar
   // Reset focused index when task list changes
   useEffect(() => {
     setFocusedIndex(0)
-  }, [sortedTasks.length, viewMode, statusFilter, labelFilter, debouncedSearch])
+  }, [sortedTasks.length, viewMode, statusFilter, labelFilter, priorityFilter, debouncedSearch])
 
   // Check for specific errors
   const isRateLimited = error instanceof RateLimitError
@@ -673,6 +687,20 @@ export function CodyDashboard({ initialIssueNumber, initialModal }: CodyDashboar
           ))}
         </SelectContent>
       </Select>
+      {/* Priority filter */}
+      <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+        <SelectTrigger className="w-full">
+          <SelectValue placeholder="Filter by priority" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">All priorities</SelectItem>
+          {PRIORITY_LEVELS.map((level) => (
+            <SelectItem key={level} value={level}>
+              {PRIORITY_META[level].badge} {level} — {PRIORITY_META[level].label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </>
   )
 
@@ -788,39 +816,13 @@ export function CodyDashboard({ initialIssueNumber, initialModal }: CodyDashboar
                     </div>
                   )}
 
-                  {/* Notification status */}
-                  {notificationsSupported && (
-                    <SimpleTooltip
-                      content={
-                        notificationPermission === 'granted'
-                          ? `Notifications enabled (${notificationPermission})`
-                          : notificationPermission === 'denied'
-                            ? `Notifications blocked (${notificationPermission}) - check browser settings`
-                            : `Enable notifications (${notificationPermission})`
-                      }
-                      side="bottom"
-                    >
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={requestPermission}
-                        aria-label={
-                          notificationPermission === 'granted'
-                            ? 'Notifications enabled'
-                            : 'Enable notifications'
-                        }
-                        className={
-                          notificationPermission === 'granted'
-                            ? 'text-green-500'
-                            : notificationPermission === 'denied'
-                              ? 'text-red-500'
-                              : 'text-muted-foreground'
-                        }
-                      >
-                        <Bell className="w-4 h-4" />
-                      </Button>
-                    </SimpleTooltip>
-                  )}
+                  {/* Notification center */}
+                  <NotificationCenter
+                    store={notificationStore}
+                    browserPermission={notificationPermission}
+                    isSupported={notificationsSupported}
+                    onRequestPermission={requestPermission}
+                  />
 
                   {/* Theme toggle */}
                   <SimpleTooltip
@@ -902,6 +904,8 @@ export function CodyDashboard({ initialIssueNumber, initialModal }: CodyDashboar
                   onStatusFilterChange={setStatusFilter}
                   labelFilter={labelFilter}
                   onLabelFilterChange={setLabelFilter}
+                  priorityFilter={priorityFilter}
+                  onPriorityFilterChange={setPriorityFilter}
                   availableLabels={availableLabels}
                   labelCounts={labelCounts}
                   statusCounts={statusCounts}

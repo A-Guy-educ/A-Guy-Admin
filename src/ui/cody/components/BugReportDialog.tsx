@@ -31,6 +31,7 @@ import { useCollaborators } from '../hooks'
 import { useGitHubIdentity } from '../hooks/useGitHubIdentity'
 import { X, Upload } from 'lucide-react'
 import { cn } from '@/infra/utils/ui'
+import { PRIORITY_LEVELS, PRIORITY_META, type PriorityLevel } from '../constants'
 
 interface BugReportDialogProps {
   open: boolean
@@ -68,6 +69,9 @@ export function BugReportDialog({ open, onClose, onCreated }: BugReportDialogPro
 
   // Reproducibility
   const [reproducibility, setReproducibility] = useState('always')
+
+  // Priority
+  const [priority, setPriority] = useState<PriorityLevel>('P2')
 
   // Assignees
   const [assignees, setAssignees] = useState<string[]>([])
@@ -117,6 +121,7 @@ export function BugReportDialog({ open, onClose, onCreated }: BugReportDialogPro
       setExpectedResult('')
       setActualResult('')
       setReproducibility('always')
+      setPriority('P2')
       setAssignees([])
       setAttachments([])
     }
@@ -198,7 +203,7 @@ export function BugReportDialog({ open, onClose, onCreated }: BugReportDialogPro
         title,
         body,
         mode: 'bug',
-        labels: ['bug'],
+        labels: ['bug', `priority:${priority}`],
         assignees,
         attachments: attachments.map((a) => ({ name: a.name, content: a.content })),
         actorLogin: githubUser?.login,
@@ -256,7 +261,10 @@ export function BugReportDialog({ open, onClose, onCreated }: BugReportDialogPro
     }
     report += '\n'
 
-    report += '## 7. Reproducibility\n'
+    report += '## 7. Priority\n'
+    report += `${PRIORITY_META[priority].badge} ${priority} — ${PRIORITY_META[priority].label}\n\n`
+
+    report += '## 8. Reproducibility\n'
     report += `${reproducibility}\n`
 
     return report
@@ -416,6 +424,23 @@ export function BugReportDialog({ open, onClose, onCreated }: BugReportDialogPro
                   <SelectItem value="Guest">Guest (unauthenticated)</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="bug-priority">Priority</Label>
+              <Select value={priority} onValueChange={(v) => setPriority(v as PriorityLevel)}>
+                <SelectTrigger id="bug-priority">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PRIORITY_LEVELS.map((level) => (
+                    <SelectItem key={level} value={level}>
+                      {PRIORITY_META[level].badge} {level} — {PRIORITY_META[level].label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">{PRIORITY_META[priority].description}</p>
             </div>
           </div>
 
