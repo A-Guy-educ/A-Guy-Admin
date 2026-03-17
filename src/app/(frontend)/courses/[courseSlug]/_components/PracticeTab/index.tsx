@@ -14,7 +14,13 @@ interface PracticeTabProps {
   lessonProgressMap?: Record<string, LessonProgress>
 }
 
-export function PracticeTab({ lessons, chapters, courseSlug, tabColor, lessonProgressMap = {} }: PracticeTabProps) {
+export function PracticeTab({
+  lessons,
+  chapters,
+  courseSlug,
+  tabColor,
+  lessonProgressMap = {},
+}: PracticeTabProps) {
   const t = useTranslations('coursePage')
   const practiceLessons = lessons.filter((l) => getEffectiveLessonType(l.type) === 'practice')
 
@@ -22,7 +28,9 @@ export function PracticeTab({ lessons, chapters, courseSlug, tabColor, lessonPro
     return null
   }
 
-  const completedCount = practiceLessons.filter((l) => (lessonProgressMap[l.id]?.percent ?? 0) >= 100).length
+  const completedCount = practiceLessons.filter(
+    (l) => (lessonProgressMap[l.id]?.percent ?? 0) >= 100,
+  ).length
   const inProgressCount = practiceLessons.filter((l) => {
     const p = lessonProgressMap[l.id]?.percent ?? 0
     return p > 0 && p < 100

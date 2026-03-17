@@ -14,7 +14,13 @@ interface LearnTabProps {
   lessonProgressMap?: Record<string, LessonProgress>
 }
 
-export function LearnTab({ lessons, chapters, courseSlug, tabColor, lessonProgressMap = {} }: LearnTabProps) {
+export function LearnTab({
+  lessons,
+  chapters,
+  courseSlug,
+  tabColor,
+  lessonProgressMap = {},
+}: LearnTabProps) {
   const t = useTranslations('coursePage')
   const learningLessons = lessons.filter((l) => getEffectiveLessonType(l.type) === 'learning')
 
@@ -23,7 +29,9 @@ export function LearnTab({ lessons, chapters, courseSlug, tabColor, lessonProgre
   }
 
   // Calculate counts from real progress data
-  const completedCount = learningLessons.filter((l) => (lessonProgressMap[l.id]?.percent ?? 0) >= 100).length
+  const completedCount = learningLessons.filter(
+    (l) => (lessonProgressMap[l.id]?.percent ?? 0) >= 100,
+  ).length
   const inProgressCount = learningLessons.filter((l) => {
     const p = lessonProgressMap[l.id]?.percent ?? 0
     return p > 0 && p < 100

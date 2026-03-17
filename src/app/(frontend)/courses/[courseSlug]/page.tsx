@@ -139,7 +139,9 @@ async function buildLessonProgressMap(
 
   for (const exercise of exercisesResult.docs) {
     const lessonId =
-      typeof exercise.lesson === 'string' ? exercise.lesson : (exercise.lesson as { id: string })?.id
+      typeof exercise.lesson === 'string'
+        ? exercise.lesson
+        : (exercise.lesson as { id: string })?.id
     if (lessonId) {
       lessonExerciseCounts.set(lessonId, (lessonExerciseCounts.get(lessonId) || 0) + 1)
       exerciseIds.add(exercise.id)

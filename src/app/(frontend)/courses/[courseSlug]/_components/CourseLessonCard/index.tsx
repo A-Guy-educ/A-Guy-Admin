@@ -35,11 +35,7 @@ export function CourseLessonCard({
   const isSoon = lesson.contentStatus === 'soon'
 
   const progressText =
-    progress >= 100
-      ? t('lessonCompleted')
-      : progress > 0
-        ? t('statusInProgress')
-        : t('notStarted')
+    progress >= 100 ? t('lessonCompleted') : progress > 0 ? t('statusInProgress') : t('notStarted')
 
   const accentColor = tabColor?.stroke ?? 'hsl(var(--primary))'
 
