@@ -4,9 +4,9 @@
   "mode": "full",
   "pipeline": "spec_execute_verify",
   "startedAt": "2026-03-17T20:33:21.677Z",
-  "updatedAt": "2026-03-17T20:53:18.132Z",
+  "updatedAt": "2026-03-17T21:08:44.768Z",
   "state": "failed",
-  "cursor": "gap",
+  "cursor": "architect",
   "stages": {
     "taskify": {
       "state": "completed",
@@ -39,8 +39,8 @@
     "architect": {
       "state": "failed",
       "retries": 0,
-      "startedAt": "2026-03-17T20:50:12.939Z",
-      "elapsed": 184,
+      "startedAt": "2026-03-17T21:04:36.259Z",
+      "elapsed": 247,
       "error": "Agent \"architect\" failed. Artifacts: architect-stderr.log, architect-events.jsonl"
     }
   },
@@ -54,5 +54,5 @@
       "timestamp": "2026-03-17T20:33:21.677Z"
     }
   ],
-  "completedAt": "2026-03-17T20:53:18.132Z"
+  "completedAt": "2026-03-17T21:08:44.768Z"
 }

@@ -1,5 +1,5 @@
-# Rerun Feedback - 2026-03-17T20:46:47.238Z
+# Rerun Feedback - 2026-03-17T21:04:34.825Z
 
 ## Issues Found
 
-Rerun requested via /cody rerun
+Pipeline failed at stage: architect (failed): Agent "architect" failed. Artifacts: architect-stderr.log, architect-events.jsonl
