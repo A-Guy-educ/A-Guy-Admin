@@ -6,6 +6,7 @@
  */
 
 import type { ChildProcess } from 'child_process'
+import { execFileSync } from 'child_process'
 import * as fs from 'fs'
 import ms from 'ms'
 import * as path from 'path'
@@ -15,6 +16,7 @@ import { buildStagePrompt } from './stage-prompts'
 import { createRunner, type RunnerBackend } from './runner-backend'
 import { logger } from './logger'
 import { STDERR_TAIL_LINES } from './config/constants'
+import { resolveOpenCodeBinary } from './opencode-server'
 
 // ============================================================================
 // Model Resolution
@@ -210,6 +212,33 @@ function findOutputFile(taskDir: string, expectedBase: string, outputExt: string
   const files = fs.readdirSync(taskDir)
   const prefixMatch = files.find((f) => f.startsWith(expectedBase + '-') && f.endsWith(outputExt))
   return prefixMatch ? path.join(taskDir, prefixMatch) : null
+}
+
+/**
+ * Recover the latest session ID from OpenCode's database when JSON events
+ * didn't include sessionID (e.g., some model providers omit it).
+ * Uses `opencode session list` to query the local SQLite DB.
+ */
+function recoverSessionId(dataDir?: string): string | undefined {
+  if (!dataDir) return undefined
+
+  try {
+    const binary = resolveOpenCodeBinary()
+    const output = execFileSync(binary, ['session', 'list', '--format', 'json', '-n', '1'], {
+      encoding: 'utf-8',
+      timeout: 10_000,
+      env: { ...process.env, XDG_DATA_HOME: dataDir },
+    })
+
+    const sessions = JSON.parse(output)
+    if (Array.isArray(sessions) && sessions.length > 0 && sessions[0].id) {
+      logger.info(`  🔍 Recovered session ID from DB: ${sessions[0].id.slice(0, 16)}...`)
+      return sessions[0].id
+    }
+  } catch (err) {
+    logger.debug({ err }, 'Failed to recover session ID from OpenCode DB')
+  }
+  return undefined
 }
 
 /**
@@ -740,6 +769,11 @@ export function runAgentWithFileWatch(
           // Nudge: If agent exited cleanly (code 0) and we have a live session,
           // try a lightweight continuation before burning a full retry.
           // The agent still has all context — it just forgot to write the file.
+          // If extractedSessionId is missing (some models don't emit sessionID in events),
+          // try to recover it from the OpenCode DB before giving up on nudge.
+          if (code === 0 && serverUrl && !extractedSessionId) {
+            extractedSessionId = recoverSessionId(dataDir)
+          }
           if (code === 0 && serverUrl && extractedSessionId) {
             // R2-FIX #12: Skip nudge if insufficient time remaining (need at least 30s)
             const nudgeElapsed = Date.now() - startTime

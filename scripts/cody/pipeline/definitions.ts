@@ -284,6 +284,56 @@ No critical gaps identified. Plan was refined in-place.
       },
     ],
     validator: createBuildValidator(),
+    fallbackOnMissingOutput: (ctx) => {
+      // Fallback: generate build.md from git changes when agent forgets to write it
+      // This happens when agent exits 0 but doesn't produce the required output file
+      const buildFile = path.join(ctx.taskDir, 'build.md')
+      if (fs.existsSync(buildFile)) return null // File exists, no fallback needed
+
+      // Get git changes to generate the summary
+      let diff = ''
+      let untracked = ''
+      try {
+        diff = execFileSync('git', ['diff', '--name-only'], { encoding: 'utf-8' }).trim()
+      } catch {
+        // git diff failed, return null to let the stage fail normally
+        return null
+      }
+      try {
+        untracked = execFileSync('git', ['ls-files', '--others', '--exclude-standard'], {
+          encoding: 'utf-8',
+        }).trim()
+      } catch {
+        return null
+      }
+
+      const allChanged = [...diff.split('\n'), ...untracked.split('\n')]
+        .filter(Boolean)
+        .filter((f) => !f.startsWith('.tasks/'))
+
+      if (allChanged.length === 0) {
+        // No source changes, can't generate meaningful summary
+        return null
+      }
+
+      // Generate build.md from changes
+      const filesList = allChanged.map((f) => `- ${f}`).join('\n')
+      return `# Build Agent Report: ${ctx.taskId}
+
+## Changes
+
+${filesList}
+
+## Summary
+
+Build agent completed but did not write build.md. This report was auto-generated from git changes.
+
+## Quality
+
+- TypeScript: Unknown (build.md not produced)
+- Lint: Unknown (build.md not produced)
+`
+    },
   })
 
   // review stage - architect agent reviews generated code
