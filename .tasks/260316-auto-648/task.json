@@ -1,39 +1,35 @@
 {
-  "task_type": "implement_feature",
-  "risk_level": "high",
+  "task_type": "spec_only",
+  "risk_level": "medium",
   "confidence": 0.95,
   "primary_domain": "infra",
   "scope": [
-    "Security headers in next.config.js",
-    "Frontend error boundary",
-    "Environment variable validation",
-    "E2E test cherry-pick",
-    "Sentry error capture in API routes",
-    "Zod validation for API routes",
-    "CI coverage enforcement",
-    "Web Vitals tracking"
+    "Security Headers (next.config.js)",
+    "Frontend Error Boundary (error.tsx)",
+    "Env Variable Validation",
+    "E2E Tests (cherry-pick)",
+    "Sentry Integration (30+ API routes)",
+    "Zod Validation (8+ API routes)",
+    "CI Coverage Enforcement",
+    "Web Vitals Tracking"
   ],
   "missing_inputs": [],
   "assumptions": [
-    "next.config.js exists and has configuration structure",
-    "instrumentation.ts exists and can import env-validation",
-    "Sentry is already installed and configured",
-    "Zod is already installed for validation",
-    "CI workflow exists at .github/workflows/ci.yml",
-    "vitest.config.unit.mts exists for coverage config"
+    "QA audit was completed as stated with 15 areas identified",
+    "Previous pipeline stages created spec.md and plan.md",
+    "Cherry-pick commit 9631fe7b exists on specified branch",
+    "Sentry and Zod infrastructure exists to extend"
   ],
-  "review_questions": [
-    "Should all 3 phases be implemented together or split into separate commits?",
-    "Is the split CSP strategy (strict for frontend, permissive for /admin/*) the right approach?",
-    "Should coverage thresholds be enforced immediately or remain permissive for visibility?"
-  ],
-  "complexity": 60,
-  "complexity_reasoning": "Scope: 20+ files across 3 phases (20 pts). Risk: Security headers, env validation, infrastructure changes (15 pts). Novelty: Following established patterns (5 pts). Cross-domain: Frontend + backend + infra + CI (13 pts). Ambiguity: Well-specified with file paths (2 pts). Dependencies: Multi-phase implementation with some dependencies (8 pts). Total: 63 → rounded to 60",
+  "review_questions": [],
+  "complexity": 62,
+  "complexity_reasoning": "Scope: 20 (20+ files across security, frontend, infra, API routes, CI/CD), Risk: 15 (security headers, CI changes, production monitoring), Novelty: 8 (extending existing patterns), Cross-domain: 13 (backend + frontend + infra + security), Ambiguity: 1 (very clear with detailed steps), Deps: 5 (depends on existing Sentry, API routes, CI). Total: 62",
   "input_quality": {
-    "level": "detailed_plan",
-    "skip_stages": [],
-    "reasoning": "Input contains detailed Phase 1/2/3 sections with specific file paths, implementation steps, and verification commands. Promoted spec.md and plan.md."
+    "level": "spec_and_plan",
+    "skip_stages": [
+      "architect"
+    ],
+    "reasoning": "Task contains detailed ## Requirements (8 items with 8 acceptance criteria) and comprehensive implementation plan (118 lines with file paths and step-by-step instructions). Both spec.md and plan.md already exist, promoted from task.md."
   },
   "pipeline_profile": "standard",
-  "pipeline": "spec_execute_verify"
+  "pipeline": "spec_only"
 }
