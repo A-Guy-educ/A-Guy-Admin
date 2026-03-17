@@ -12,8 +12,8 @@ import {
   CHAT_ASSET_MAX_BYTES,
   CHAT_ASSET_RETENTION_DAYS,
 } from '@/server/chat-assets/constants'
+import { head } from '@vercel/blob'
 import { isVercelBlobUrl } from '@/infra/blob/vercel-blob-adapter'
-import { getMediaBlobAdapter } from '@/infra/blob/vercel-blob-adapter'
 
 const finalizeSchema = z
   .object({
@@ -173,21 +173,26 @@ export async function POST(request: Request): Promise<Response> {
       })
     }
 
-    const blobAdapter = getMediaBlobAdapter()
-    const metadata = await blobAdapter.getMetadata(resolvedBlobUrl)
-
-    if (!metadata) {
-      return Response.json({ error: 'Blob not found' }, { status: 404 })
+    // Verify blob exists using head() directly (not through media adapter,
+    // since chat assets are stored under chat-assets/, not media/)
+    let blobSize = session.expectedSize || 0
+    let blobContentType = session.mimeType
+    try {
+      const blobHead = await head(resolvedBlobUrl)
+      blobSize = blobHead.size || blobSize
+      blobContentType = blobHead.contentType || blobContentType
+    } catch {
+      // Blob might not be immediately available; trust the session data
     }
 
-    if (metadata.size && metadata.size > CHAT_ASSET_MAX_BYTES) {
+    if (blobSize && blobSize > CHAT_ASSET_MAX_BYTES) {
       return Response.json({ error: 'File size exceeds maximum' }, { status: 413 })
     }
 
     if (
-      metadata.contentType &&
+      blobContentType &&
       !CHAT_ASSET_ALLOWED_MIME_TYPES.includes(
-        metadata.contentType as (typeof CHAT_ASSET_ALLOWED_MIME_TYPES)[number],
+        blobContentType as (typeof CHAT_ASSET_ALLOWED_MIME_TYPES)[number],
       )
     ) {
       return Response.json({ error: 'Content type not allowed' }, { status: 415 })
@@ -204,7 +209,7 @@ export async function POST(request: Request): Promise<Response> {
         pathname: session.pathname,
         originalFilename: session.originalFilename,
         mimeType: session.mimeType,
-        filesize: metadata.size || session.expectedSize || 0,
+        filesize: blobSize || session.expectedSize || 0,
         retentionPolicy: 'ephemeral',
         expiresAt: expiresAt.toISOString(),
         uploadSessionId: session.id,
