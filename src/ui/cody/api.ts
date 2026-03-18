@@ -63,6 +63,16 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Redirect to GitHub OAuth login when session expires.
+ * Call this in mutation onError handlers to handle expired credentials.
+ * @param returnTo - Optional path to return to after login (defaults to /cody)
+ */
+export function redirectToLogin(returnTo = '/cody'): void {
+  const encoded = encodeURIComponent(returnTo)
+  window.location.href = `/api/oauth/github?returnTo=${encoded}`
+}
+
 // ============ Helpers ============
 
 export async function handleResponse<T>(res: Response): Promise<T> {

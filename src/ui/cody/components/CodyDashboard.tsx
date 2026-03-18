@@ -55,7 +55,14 @@ import { useBrowserNotifications } from '../hooks/useBrowserNotifications'
 import { useNotificationStore } from '../notifications/useNotificationStore'
 import { NotificationCenter } from '../notifications/NotificationCenter'
 import { useMediaQuery } from '@/server/payload/hooks/useMediaQuery'
-import { RateLimitError, NoTokenError, SessionExpiredError, tasksApi, codyApi } from '../api'
+import {
+  RateLimitError,
+  NoTokenError,
+  SessionExpiredError,
+  tasksApi,
+  codyApi,
+  redirectToLogin,
+} from '../api'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { EnvironmentToolbar } from './EnvironmentToolbar'
@@ -156,6 +163,15 @@ export function CodyDashboard({ initialIssueNumber, initialModal }: CodyDashboar
 
   const queryClient = useQueryClient()
 
+  // Helper to handle auth errors — redirects to login if session expired
+  const handleAuthError = (error: Error) => {
+    if (error instanceof SessionExpiredError) {
+      redirectToLogin()
+      return true
+    }
+    return false
+  }
+
   // #1: Derive selectedTask from query data — always fresh
   const selectedTask = useMemo(
     () =>
@@ -185,6 +201,11 @@ export function CodyDashboard({ initialIssueNumber, initialModal }: CodyDashboar
     onSuccess: () => {
       toast.success('Assigned')
     },
+    onError: (error) => {
+      if (!handleAuthError(error)) {
+        toast.error('Failed to assign')
+      }
+    },
   })
 
   const unassignMutation = useMutation({
@@ -192,6 +213,11 @@ export function CodyDashboard({ initialIssueNumber, initialModal }: CodyDashboar
       codyApi.tasks.unassign(issueNumber, assignees, githubUser?.login),
     onSuccess: () => {
       toast.success('Unassigned')
+    },
+    onError: (error) => {
+      if (!handleAuthError(error)) {
+        toast.error('Failed to unassign')
+      }
     },
   })
 
@@ -207,7 +233,8 @@ export function CodyDashboard({ initialIssueNumber, initialModal }: CodyDashboar
       )
       return { previous }
     },
-    onError: (_err, _task, context) => {
+    onError: (error, _task, context) => {
+      if (handleAuthError(error)) return
       if (context?.previous) {
         queryClient.setQueryData(queryKeys.tasks(days), context.previous)
       }
@@ -229,7 +256,8 @@ export function CodyDashboard({ initialIssueNumber, initialModal }: CodyDashboar
       )
       return { previous }
     },
-    onError: (_err, _task, context) => {
+    onError: (error, _task, context) => {
+      if (handleAuthError(error)) return
       if (context?.previous) {
         queryClient.setQueryData(queryKeys.tasks(days), context.previous)
       }
@@ -250,7 +278,8 @@ export function CodyDashboard({ initialIssueNumber, initialModal }: CodyDashboar
       )
       return { previous }
     },
-    onError: (_err, _task, context) => {
+    onError: (error, _task, context) => {
+      if (handleAuthError(error)) return
       if (context?.previous) {
         queryClient.setQueryData(queryKeys.tasks(days), context.previous)
       }

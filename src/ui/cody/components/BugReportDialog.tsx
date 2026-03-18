@@ -26,7 +26,7 @@ import {
   SelectValue,
 } from '@/ui/web/components/select'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { codyApi } from '../api'
+import { codyApi, redirectToLogin, SessionExpiredError } from '../api'
 import { useCollaborators } from '../hooks'
 import { useGitHubIdentity } from '../hooks/useGitHubIdentity'
 import { X, Upload } from 'lucide-react'
@@ -106,6 +106,11 @@ export function BugReportDialog({ open, onClose, onCreated }: BugReportDialogPro
     }) => codyApi.tasks.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cody-tasks'] })
+    },
+    onError: (error) => {
+      if (error instanceof SessionExpiredError) {
+        redirectToLogin('/cody/bug')
+      }
     },
   })
 

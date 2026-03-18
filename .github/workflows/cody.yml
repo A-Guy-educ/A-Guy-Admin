@@ -58,6 +58,11 @@ on:
         required: false
         type: string
         default: ''
+      use_test_config:
+        description: 'Use opencode.test.json (cheap models) instead of opencode.json'
+        required: false
+        type: boolean
+        default: false
 
   push:
     branches:
@@ -349,6 +354,8 @@ jobs:
           app-id: 3116827
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
+          permission-contents: write
+          permission-pull-requests: write
 
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -389,6 +396,11 @@ jobs:
           # Verify it's installed and print version for diagnostics
           $HOME/.opencode/bin/opencode --version || echo "Warning: opencode install may have failed"
 
+      # Use test config (cheap models) if requested
+      - name: Use test config
+        if: github.event.inputs.use_test_config == 'true' || github.event.inputs.use_test_config == true
+        run: cp opencode.test.json opencode.json
+
       - name: Checkout feature branch if exists
         if: needs.parse.outputs.task_id != '' || needs.parse.outputs.fresh == 'true'
         env:
@@ -403,8 +415,8 @@ jobs:
         run: |
           git config --global user.email "${GIT_USER_EMAIL:-242132053+aguyaharonyair@users.noreply.github.com}"
           git config --global user.name "${GIT_USER_NAME:-aguyaharonyair}"
-          # Use GITHUB_TOKEN for all GitHub HTTPS operations (including push)
-          git config --global url."https://x-access-token:${{ github.token }}@github.com/".insteadOf "https://github.com/"
+          # Use App token for all GitHub HTTPS operations (including push)
+          git config --global url."https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/".insteadOf "https://github.com/"
 
       # Overlay pipeline version (if specified)
       - name: Overlay pipeline version
@@ -433,6 +445,7 @@ jobs:
           echo "GOOGLE_GENERATIVE_AI_API_KEY=${{ secrets.GEMINI_API_KEY }}" >> $GITHUB_ENV
           echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" >> $GITHUB_ENV
           echo "ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}" >> $GITHUB_ENV
+          echo "GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}" >> $GITHUB_ENV
 
       - name: Run Cody
         env:

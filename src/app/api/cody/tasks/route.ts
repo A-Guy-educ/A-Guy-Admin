@@ -14,7 +14,7 @@ import {
   fetchWorkflowRuns,
   fetchOpenPRs,
   fetchDeploymentPreviews,
-  findBranchByIssueNumber,
+  findBranchesByIssueNumbers,
   getStatusFromBranch,
   findStatusOnBranch,
   createIssue,
@@ -191,6 +191,31 @@ export async function GET(req: NextRequest) {
       // for older deployments that fall outside the bulk fetch window.
     }
 
+    // First pass: identify all issue numbers that need branch lookup
+    // (those with active workflows or pipeline labels)
+    const activeIssueNumbers: number[] = []
+    for (const issue of issues) {
+      const taskIdMatch = issue.title.match(/\[[^\]]+\]/)
+      const taskId = taskIdMatch ? taskIdMatch[0].replace(/[\[\]]/g, '') : ''
+      const workflowRun = matchWorkflowRunToTask(workflowRuns, issue.title, issue.number, taskId)
+      const labelNames = issue.labels.map((l) => l.name.toLowerCase())
+      const isLikelyActive =
+        workflowRun?.status === 'in_progress' ||
+        workflowRun?.status === 'queued' ||
+        labelNames.includes('cody:building') ||
+        labelNames.includes('cody:planning') ||
+        labelNames.includes('cody:failed') ||
+        labelNames.includes('hard-stop') ||
+        labelNames.includes('risk-gated')
+
+      if (isLikelyActive && issue.number) {
+        activeIssueNumbers.push(issue.number)
+      }
+    }
+
+    // Batch fetch branches for all active issues (5 GitHub API calls max, not 5*N)
+    const branchByIssueNumber = await findBranchesByIssueNumbers(activeIssueNumbers)
+
     // Parse issues into tasks with additional metadata
     const tasks: CodyTask[] = await Promise.all(
       issues.map(async (issue) => {
@@ -205,8 +230,7 @@ export async function GET(req: NextRequest) {
         const pr = prsByIssueTitle.get(issue.title) ?? prsByIssueNumber.get(issue.number) ?? null
 
         // Fetch pipeline status for tasks with active workflows or pipeline labels.
-        // Only attempts branch discovery for tasks likely to have pipeline data
-        // (has an active workflow run or cody:building/cody:planning labels).
+        // Uses pre-fetched branch map (batch call above) instead of per-task API calls.
         let pipelineStatus = undefined
         const labelNames = issue.labels.map((l) => l.name.toLowerCase())
         const isLikelyActive =
@@ -219,7 +243,7 @@ export async function GET(req: NextRequest) {
           labelNames.includes('risk-gated')
 
         if (isLikelyActive && issue.number) {
-          const branch = await findBranchByIssueNumber(issue.number)
+          const branch = branchByIssueNumber.get(issue.number)
           if (branch) {
             // First try with known taskId from title brackets (fast, exact path)
             let status: Awaited<ReturnType<typeof getStatusFromBranch>> = null
