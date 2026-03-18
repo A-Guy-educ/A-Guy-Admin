@@ -9,6 +9,7 @@ import type { Logger } from 'pino'
 
 import type { ContentLocale } from '@/server/payload/fields/contentLocale'
 import { formatSlug } from '@/server/payload/fields/formatSlug'
+import { translateText } from '@/infra/llm/services/content-translation-service'
 import { handleLessonTranslation } from './handle-lesson-translation'
 
 interface CourseTranslationInput {
@@ -46,8 +47,12 @@ export async function handleCourseTranslation(
     )
   }
 
-  const titlePrefix = targetLocale === 'en' ? '[EN]' : '[HE]'
-  const translatedTitle = `${titlePrefix} ${source.title}`
+  const [translatedTitle] = await translateText(
+    [source.title],
+    sourceLocale,
+    targetLocale,
+    payload,
+  )
 
   const newCourse = await payload.create({
     collection: 'courses',
@@ -101,7 +106,7 @@ export async function handleCourseTranslation(
         tenant: typeof chapter.tenant === 'string' ? chapter.tenant : chapter.tenant.id,
         course: newCourse.id,
         chapterLabel: chapter.chapterLabel ?? undefined,
-        title: `${titlePrefix} ${chapter.title}`,
+        title: (await translateText([chapter.title], sourceLocale, targetLocale, payload))[0],
         description: chapter.description ?? undefined,
         order: chapter.order,
         status: 'published',

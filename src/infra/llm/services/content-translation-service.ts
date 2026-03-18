@@ -166,6 +166,58 @@ async function retryTranslation(
   return { success: true, data: parsed }
 }
 
+/**
+ * Translate plain text strings (titles, descriptions).
+ * Returns the original text on failure.
+ */
+export async function translateText(
+  texts: string[],
+  sourceLocale: ContentLocale,
+  targetLocale: ContentLocale,
+  payload: Payload,
+): Promise<string[]> {
+  if (texts.length === 0) return []
+
+  try {
+    const { createGenkitUnifiedAdapter } = await import('../genkit/adapters/unified-adapter')
+    const adapter = await createGenkitUnifiedAdapter(payload)
+    const modelConfig = resolveModelConfig('CONTENT_TRANSLATION')
+
+    const prompt = [
+      `Translate from ${LOCALE_LABELS[sourceLocale]} to ${LOCALE_LABELS[targetLocale]}.`,
+      'Return a JSON array of translated strings in the same order.',
+      'Keep mathematical terms accurate. Return ONLY the JSON array, no explanation.',
+      '',
+      'Input:',
+      JSON.stringify(texts),
+    ].join('\n')
+
+    const result = await adapter.generateChatCompletion(
+      {
+        system: 'You are a translator. Return only a JSON array of translated strings.',
+        messages: [{ role: 'user', content: prompt }],
+        model: modelConfig,
+        acknowledgment: `Translating ${texts.length} text strings`,
+      },
+      payload,
+    )
+
+    const cleaned = result.text
+      .replace(/^```json\s*/i, '')
+      .replace(/^```\s*/, '')
+      .replace(/```\s*$/, '')
+      .trim()
+
+    const parsed = JSON.parse(cleaned)
+    if (Array.isArray(parsed) && parsed.length === texts.length) {
+      return parsed.map(String)
+    }
+    return texts
+  } catch {
+    return texts
+  }
+}
+
 function resolveModelConfig(modelKey: AIModelKey): AIModel {
   const entry = getModelRegistryEntry(modelKey)
   return {

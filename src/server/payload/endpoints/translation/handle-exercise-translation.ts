@@ -8,7 +8,7 @@ import type { PayloadRequest } from 'payload'
 import type { Logger } from 'pino'
 
 import type { ContentLocale } from '@/server/payload/fields/contentLocale'
-import { translateContentBlocks } from '@/infra/llm/services/content-translation-service'
+import { translateContentBlocks, translateText } from '@/infra/llm/services/content-translation-service'
 
 interface ExerciseTranslationInput {
   exerciseId: string
@@ -66,10 +66,9 @@ export async function handleExerciseTranslation(
       )
     }
 
-    const titlePrefix = targetLocale === 'en' ? '[EN]' : '[HE]'
-    const translatedTitle = source.title
-      ? `${titlePrefix} ${source.title}`
-      : `${titlePrefix} Exercise`
+    const [translatedTitle] = source.title
+      ? await translateText([source.title], sourceLocale, targetLocale, payload)
+      : ['Exercise']
 
     const newExercise = await payload.create({
       collection: 'exercises',

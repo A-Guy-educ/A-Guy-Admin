@@ -8,6 +8,7 @@ import type { PayloadRequest } from 'payload'
 import type { Logger } from 'pino'
 
 import type { ContentLocale } from '@/server/payload/fields/contentLocale'
+import { translateText } from '@/infra/llm/services/content-translation-service'
 import { handleExerciseTranslation } from './handle-exercise-translation'
 
 interface LessonTranslationInput {
@@ -53,7 +54,12 @@ export async function handleLessonTranslation(
     )
   }
 
-  const titlePrefix = targetLocale === 'en' ? '[EN]' : '[HE]'
+  const [translatedTitle] = await translateText(
+    [source.title],
+    sourceLocale,
+    targetLocale,
+    payload,
+  )
   const timestamp = Date.now().toString().slice(-6)
   const slug = source.slug ? `${source.slug}-${targetLocale}-${timestamp}` : undefined
 
@@ -64,7 +70,7 @@ export async function handleLessonTranslation(
       tenant: typeof source.tenant === 'string' ? source.tenant : source.tenant.id,
       chapter: targetChapterId,
       type: source.type,
-      title: `${titlePrefix} ${source.title}`,
+      title: translatedTitle,
       description: source.description ?? undefined,
       order: source.order,
       status: 'published',
@@ -135,7 +141,7 @@ export async function handleLessonTranslation(
     success: true,
     data: {
       lessonId: newLesson.id,
-      title: `${titlePrefix} ${source.title}`,
+      title: translatedTitle,
       exercises: translatedExercises,
     },
   })
