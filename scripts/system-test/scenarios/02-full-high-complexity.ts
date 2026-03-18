@@ -53,21 +53,30 @@ export const scenario02: Scenario = {
     let taskId: string | undefined
     let workflowDispatchTime: string | undefined
 
-    // Step 0: Create test version branch with cheap opencode.json
-    ctx.log.info(`Creating test version branch: ${TEST_VERSION_BRANCH}`)
+    // Step 0: Create test version branch with opencode config
+    // Use mock config if MOCK_MODE is set, otherwise use test (cheap) config
+    const useMock = process.env.MOCK_MODE === 'record' || process.env.MOCK_MODE === 'replay'
+    const configFile = useMock ? 'opencode.mock.json' : 'opencode.test.json'
+    const configLabel = useMock ? 'mock' : 'cheap'
+
+    ctx.log.info(`Creating test version branch: ${TEST_VERSION_BRANCH} with ${configLabel} config`)
     try {
       // Backup current opencode.json
       const currentOpencode = fs.readFileSync('./opencode.json', 'utf-8')
 
-      // Replace with cheap version
-      fs.copyFileSync('./opencode.test.json', './opencode.json')
+      // Replace with test or mock version
+      fs.copyFileSync(`./${configFile}`, './opencode.json')
 
       // Create branch and push
       execFileSync('git', ['checkout', '-b', TEST_VERSION_BRANCH], { stdio: 'pipe' })
       execFileSync('git', ['add', 'opencode.json'], { stdio: 'pipe' })
-      execFileSync('git', ['commit', '-m', 'test: cheap models for system test', '--no-verify'], {
-        stdio: 'pipe',
-      })
+      execFileSync(
+        'git',
+        ['commit', `-m`, `test: ${configLabel} models for system test`, '--no-verify'],
+        {
+          stdio: 'pipe',
+        },
+      )
       execFileSync('git', ['push', '-u', 'origin', TEST_VERSION_BRANCH], { stdio: 'pipe' })
 
       // Switch back to original branch
