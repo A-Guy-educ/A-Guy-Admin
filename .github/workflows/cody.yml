@@ -58,6 +58,11 @@ on:
         required: false
         type: string
         default: ''
+      use_test_config:
+        description: 'Use opencode.test.json (cheap models) instead of opencode.json'
+        required: false
+        type: boolean
+        default: false
 
   push:
     branches:
@@ -391,6 +396,11 @@ jobs:
           echo "$HOME/.opencode/bin" >> $GITHUB_PATH
           # Verify it's installed and print version for diagnostics
           $HOME/.opencode/bin/opencode --version || echo "Warning: opencode install may have failed"
+
+      # Use test config (cheap models) if requested
+      - name: Use test config
+        if: github.event.inputs.use_test_config == 'true' || github.event.inputs.use_test_config == true
+        run: cp opencode.test.json opencode.json
 
       - name: Checkout feature branch if exists
         if: needs.parse.outputs.task_id != '' || needs.parse.outputs.fresh == 'true'
