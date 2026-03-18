@@ -353,7 +353,8 @@ jobs:
         with:
           app-id: 3126173
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
-          owner: ${{ github.repository_owner }}
+          repositories: A-Guy
+          owner: A-Guy-educ
           permission-contents: write
           permission-pull-requests: write
 
