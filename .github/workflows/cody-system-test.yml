@@ -118,6 +118,7 @@ jobs:
           REPO: ${{ github.repository }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           SCENARIOS: ${{ inputs.scenarios }}
+          MOCK_MODE: ${{ inputs.mock_mode }}
         run: |
           pnpm tsx scripts/system-test/run-scenario.ts \
             --scenario 02-full-high-complexity \
