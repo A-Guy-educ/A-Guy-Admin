@@ -100,7 +100,13 @@ export function createRecorder(options: RecorderOptions): Recorder {
           },
           response: {
             status: upstreamResponse.status,
-            headers: sanitizeHeaders(Object.fromEntries(upstreamResponse.headers.entries())),
+            headers: (() => {
+              const headers: Record<string, string> = {}
+              upstreamResponse.headers.forEach((value, key) => {
+                headers[key] = value
+              })
+              return sanitizeHeaders(headers)
+            })(),
             body: responseBody,
           },
         }
