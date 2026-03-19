@@ -1304,7 +1304,7 @@ export interface Lesson {
   /**
    * Block-based content for the intro page. Supports rich text, HTML/SVG, and media.
    */
-  introContent?: (ContentBlock | HtmlBlock | MediaBlock)[] | null;
+  introContent?: (ContentBlock | HtmlBlock | MediaBlock | TableBlock | GeometryBlock | GraphBlock)[] | null;
   /**
    * Image, SVG, or video displayed on the intro page
    */
@@ -1353,6 +1353,84 @@ export interface MediaBlock {
   id?: string | null;
   blockName?: string | null;
   blockType: 'mediaBlock';
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TableBlock".
+ */
+export interface TableBlock {
+  /**
+   * Array of header strings, e.g. ["Name", "Value", "Unit"]
+   */
+  headers:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Array of row arrays, e.g. [["Mass", "5", "kg"], ["Length", "10", "m"]]
+   */
+  rows:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  showBorders?: boolean | null;
+  showHeader?: boolean | null;
+  id?: string | null;
+  blockName?: string | null;
+  blockType: 'tableBlock';
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "GeometryBlock".
+ */
+export interface GeometryBlock {
+  /**
+   * GeometrySpecV1 JSON. Must have kind:"euclidean", canvas:{width,height}, and elements:{points,lines,circles,angles}.
+   */
+  spec:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  id?: string | null;
+  blockName?: string | null;
+  blockType: 'geometryBlock';
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "GraphBlock".
+ */
+export interface GraphBlock {
+  /**
+   * AxisSpecV1 JSON. Must have kind:"cartesian", units, grid, axes, and elements:{points,graphs}.
+   */
+  spec:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  displaySize?: ('small' | 'medium' | 'large' | 'full') | null;
+  id?: string | null;
+  blockName?: string | null;
+  blockType: 'graphBlock';
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -2898,6 +2976,9 @@ export interface LessonsSelect<T extends boolean = true> {
         content?: T | ContentBlockSelect<T>;
         html?: T | HtmlBlockSelect<T>;
         mediaBlock?: T | MediaBlockSelect<T>;
+        tableBlock?: T | TableBlockSelect<T>;
+        geometryBlock?: T | GeometryBlockSelect<T>;
+        graphBlock?: T | GraphBlockSelect<T>;
       };
   introMedia?: T;
   contentFiles?: T;
@@ -2917,6 +2998,37 @@ export interface LessonsSelect<T extends boolean = true> {
  */
 export interface MediaBlockSelect<T extends boolean = true> {
   media?: T;
+  id?: T;
+  blockName?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TableBlock_select".
+ */
+export interface TableBlockSelect<T extends boolean = true> {
+  headers?: T;
+  rows?: T;
+  showBorders?: T;
+  showHeader?: T;
+  id?: T;
+  blockName?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "GeometryBlock_select".
+ */
+export interface GeometryBlockSelect<T extends boolean = true> {
+  spec?: T;
+  id?: T;
+  blockName?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "GraphBlock_select".
+ */
+export interface GraphBlockSelect<T extends boolean = true> {
+  spec?: T;
+  displaySize?: T;
   id?: T;
   blockName?: T;
 }

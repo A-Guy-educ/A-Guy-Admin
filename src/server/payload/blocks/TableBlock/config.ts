@@ -1,0 +1,38 @@
+import type { Block } from 'payload'
+
+export const TableBlock: Block = {
+  slug: 'tableBlock',
+  interfaceName: 'TableBlock',
+  labels: {
+    plural: 'Table Blocks',
+    singular: 'Table Block',
+  },
+  fields: [
+    {
+      name: 'headers',
+      type: 'json',
+      required: true,
+      admin: {
+        description: 'Array of header strings, e.g. ["Name", "Value", "Unit"]',
+      },
+    },
+    {
+      name: 'rows',
+      type: 'json',
+      required: true,
+      admin: {
+        description: 'Array of row arrays, e.g. [["Mass", "5", "kg"], ["Length", "10", "m"]]',
+      },
+    },
+    {
+      name: 'showBorders',
+      type: 'checkbox',
+      defaultValue: true,
+    },
+    {
+      name: 'showHeader',
+      type: 'checkbox',
+      defaultValue: true,
+    },
+  ],
+}

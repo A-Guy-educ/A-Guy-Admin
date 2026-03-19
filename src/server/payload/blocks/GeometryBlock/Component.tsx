@@ -1,0 +1,22 @@
+'use client'
+
+import React from 'react'
+import { GeometryRenderer } from '@/ui/web/exerciserenderer/blocks/GeometryRenderer'
+
+import type { GeometryBlock as GeometryBlockType } from '@/payload-types'
+import type { GeometrySpecV1 } from '@/infra/contracts/graphics/geometry.v1'
+
+type Props = GeometryBlockType & {
+  className?: string
+  disableInnerContainer?: boolean
+}
+
+export const GeometryBlock: React.FC<Props> = ({ id, spec }) => {
+  if (!spec || typeof spec !== 'object') return null
+
+  return (
+    <div className="flex justify-center">
+      <GeometryRenderer blockId={id ?? 'geometry'} spec={spec as GeometrySpecV1} />
+    </div>
+  )
+}
