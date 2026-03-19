@@ -3,7 +3,12 @@
     {
       "path": ".claude/rules/README.md",
       "title": "Rules",
-      "sections": ["Structure", "Installation", "Rules vs Skills", "Adding a New Language"],
+      "sections": [
+        "Structure",
+        "Installation",
+        "Rules vs Skills",
+        "Adding a New Language"
+      ],
       "relativeUrl": ".claude/rules/README.md",
       "category": ".claude",
       "wordCount": 184
@@ -11,7 +16,9 @@
     {
       "path": "docs/a-guy/README.md",
       "title": "A-Guy Documentation",
-      "sections": ["Files"],
+      "sections": [
+        "Files"
+      ],
       "relativeUrl": "a-guy/README.md",
       "category": "a-guy",
       "wordCount": 35
@@ -253,9 +260,33 @@
       "wordCount": 592
     },
     {
+      "path": "scripts/brain-server/README.md",
+      "title": "Brain Server Setup Guide",
+      "sections": [
+        "What You'll Get",
+        "Prerequisites (Accounts to Create)",
+        "Setup Steps",
+        "Management Commands",
+        "GitHub Webhook (Optional)",
+        "Troubleshooting",
+        "Architecture",
+        "Cost"
+      ],
+      "relativeUrl": "scripts/brain-server/README.md",
+      "category": "scripts",
+      "wordCount": 678
+    },
+    {
       "path": "scripts/browser-agent/README.md",
       "title": "A-Guy Browser Agent",
-      "sections": ["Architecture", "Setup", "Usage", "Files", "Capabilities", "Troubleshooting"],
+      "sections": [
+        "Architecture",
+        "Setup",
+        "Usage",
+        "Files",
+        "Capabilities",
+        "Troubleshooting"
+      ],
       "relativeUrl": "scripts/browser-agent/README.md",
       "category": "scripts",
       "wordCount": 365
@@ -359,7 +390,13 @@
     {
       "path": "src/app/README.md",
       "title": "Application Routes",
-      "sections": ["Structure", "Patterns", "Key Files", "Common Tasks", "Related"],
+      "sections": [
+        "Structure",
+        "Patterns",
+        "Key Files",
+        "Common Tasks",
+        "Related"
+      ],
       "relativeUrl": "src/app/README.md",
       "category": "src/app",
       "wordCount": 172
@@ -367,7 +404,13 @@
     {
       "path": "src/client/README.md",
       "title": "Client-Side Utilities",
-      "sections": ["Structure", "Patterns", "Key Files", "Common Tasks", "Related"],
+      "sections": [
+        "Structure",
+        "Patterns",
+        "Key Files",
+        "Common Tasks",
+        "Related"
+      ],
       "relativeUrl": "src/client/README.md",
       "category": "src/client",
       "wordCount": 169
@@ -524,7 +567,11 @@
     {
       "path": "src/ui/admin/exercise/README.md",
       "title": "Exercise Components",
-      "sections": ["Directory Structure", "Migration Status", "Guidelines"],
+      "sections": [
+        "Directory Structure",
+        "Migration Status",
+        "Guidelines"
+      ],
       "relativeUrl": "src/ui/admin/exercise/README.md",
       "category": "src/ui",
       "wordCount": 112
@@ -567,7 +614,10 @@
     {
       "path": "src/ui/web/shared/README.md",
       "title": "Shared Components",
-      "sections": ["Directory Structure", "Guidelines"],
+      "sections": [
+        "Directory Structure",
+        "Guidelines"
+      ],
       "relativeUrl": "src/ui/web/shared/README.md",
       "category": "src/ui",
       "wordCount": 87
@@ -615,8 +665,8 @@
     }
   ],
   "metadata": {
-    "generatedAt": "2026-03-18T13:35:32.298Z",
-    "totalReadmes": 36,
+    "generatedAt": "2026-03-19T07:15:53.253Z",
+    "totalReadmes": 37,
     "categories": {
       ".claude": 1,
       "root": 1,
@@ -634,7 +684,7 @@
       "self-growing-pipeline": 1,
       "system-test": 1,
       "eslint-plugin-aguy": 1,
-      "scripts": 5,
+      "scripts": 6,
       "src/app": 1,
       "src/client": 1,
       "src/infra": 3,
