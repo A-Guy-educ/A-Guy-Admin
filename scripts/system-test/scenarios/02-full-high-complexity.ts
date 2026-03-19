@@ -54,10 +54,13 @@ export const scenario02: Scenario = {
     let _workflowDispatchTime: string | undefined
 
     // Step 0: Create test version branch with opencode config
-    // Use mock config if MOCK_MODE is set, otherwise use test (cheap) config
-    const useMock = process.env.MOCK_MODE === 'record' || process.env.MOCK_MODE === 'replay'
-    const configFile = useMock ? 'opencode.mock.json' : 'opencode.test.json'
-    const configLabel = useMock ? 'mock' : 'cheap'
+    // In replay mode: use mock config (cody uses recordings)
+    // In record mode: use real config (cody uses real API, we capture calls separately)
+    // Otherwise: use test (cheap) config
+    const isReplayMode = process.env.MOCK_MODE === 'replay'
+    const isRecordMode = process.env.MOCK_MODE === 'record'
+    const configFile = isReplayMode ? 'opencode.mock.json' : 'opencode.test.json'
+    const configLabel = isReplayMode ? 'mock' : 'cheap'
 
     ctx.log.info(`Creating test version branch: ${TEST_VERSION_BRANCH} with ${configLabel} config`)
     try {
@@ -155,7 +158,7 @@ export const scenario02: Scenario = {
           '-f',
           `version=${TEST_VERSION_BRANCH}`,
           '-f',
-          `use_mock=${useMock}`,
+          `use_mock=${isReplayMode}`,
           '--repo',
           ctx.repo,
         ],
