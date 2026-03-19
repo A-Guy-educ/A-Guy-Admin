@@ -4,11 +4,14 @@ import { useState, useCallback } from 'react'
 
 export type TranslationStatus = 'idle' | 'loading' | 'success' | 'error'
 
-interface TranslationResult {
+export interface TranslationResult {
   id?: string
   title?: string
+  courseId?: string
+  lessonId?: string
   exercises?: Array<{ sourceId: string; newId: string; title: string }>
   chapters?: unknown[]
+  [key: string]: unknown
 }
 
 export function useTranslation() {

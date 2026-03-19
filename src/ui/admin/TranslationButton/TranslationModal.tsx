@@ -20,7 +20,12 @@ interface TranslationModalProps {
   isTranslating: boolean
   translationError?: string | null
   translationSuccess?: boolean
-  translationResult?: Record<string, unknown> | null
+  translationResult?: {
+    courseId?: string
+    lessonId?: string
+    id?: string
+    [key: string]: unknown
+  } | null
 }
 
 const LABEL_STYLE = {
