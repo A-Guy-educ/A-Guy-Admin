@@ -154,6 +154,8 @@ export const scenario02: Scenario = {
           'dry_run=false',
           '-f',
           `version=${TEST_VERSION_BRANCH}`,
+          '-f',
+          `use_mock=${useMock}`,
           '--repo',
           ctx.repo,
         ],
@@ -178,7 +180,18 @@ export const scenario02: Scenario = {
 
       while (Date.now() - pollStart < maxWaitMs) {
         const labelsOutput = execFileSync(
-          'gh', ['issue', 'view', String(issueNumber), '--repo', ctx.repo, '--json', 'labels', '--jq', '[.labels[].name]'],
+          'gh',
+          [
+            'issue',
+            'view',
+            String(issueNumber),
+            '--repo',
+            ctx.repo,
+            '--json',
+            'labels',
+            '--jq',
+            '[.labels[].name]',
+          ],
           { encoding: 'utf-8', stdio: 'pipe' },
         ).trim()
         const labels: string[] = labelsOutput ? JSON.parse(labelsOutput) : []
@@ -193,7 +206,15 @@ export const scenario02: Scenario = {
           try {
             execFileSync(
               'gh',
-              ['issue', 'comment', String(issueNumber), '--repo', ctx.repo, '--body', '@cody approve'],
+              [
+                'issue',
+                'comment',
+                String(issueNumber),
+                '--repo',
+                ctx.repo,
+                '--body',
+                '@cody approve',
+              ],
               { env: { ...process.env }, stdio: 'pipe' },
             )
             gateApproved = true
