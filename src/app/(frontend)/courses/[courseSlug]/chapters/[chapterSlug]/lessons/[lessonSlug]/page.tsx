@@ -141,7 +141,7 @@ export default async function LessonPage({ params }: LessonPageProps) {
             chapterSlug={chapterSlug}
             lessonSlug={lessonSlug}
             lessonId={lesson.id}
-            introDescription={lesson.introEnabled ? lesson.introDescription : null}
+            introContent={lesson.introEnabled ? (lesson.introContent ?? []) : []}
             introMedia={lesson.introEnabled ? lesson.introMedia : null}
             mediaMap={mediaMap}
           />

@@ -4,7 +4,7 @@
   "mode": "full",
   "pipeline": "spec_execute_verify",
   "startedAt": "2026-03-19T08:28:03.366Z",
-  "updatedAt": "2026-03-19T08:30:17.842Z",
+  "updatedAt": "2026-03-19T08:33:12.723Z",
   "state": "running",
   "cursor": null,
   "stages": {
@@ -21,6 +21,56 @@
         "cacheRead": 307087
       },
       "sessionId": "ses_2faca7a2bffe2wTbm3892VUpCW"
+    },
+    "gap": {
+      "state": "skipped",
+      "retries": 0,
+      "skipped": "Complexity 22 (moderate) below threshold 35 for gap"
+    },
+    "architect": {
+      "state": "completed",
+      "retries": 0,
+      "startedAt": "2026-03-19T08:30:23.870Z",
+      "completedAt": "2026-03-19T08:33:11.132Z",
+      "elapsed": 167,
+      "outputFile": "architect.md",
+      "tokenUsage": {
+        "input": 19,
+        "output": 7714,
+        "cacheRead": 1123278
+      },
+      "cost": 1.2854152500000002,
+      "sessionId": "ses_2fac859afffeteck3BuarQ6Hy2"
+    },
+    "plan-gap": {
+      "state": "skipped",
+      "retries": 0,
+      "skipped": "Complexity 22 (moderate) below threshold 50 for plan-gap"
+    },
+    "build": {
+      "state": "running",
+      "retries": 0,
+      "startedAt": "2026-03-19T08:33:12.707Z"
+    },
+    "commit": {
+      "state": "pending",
+      "retries": 0
+    },
+    "review": {
+      "state": "pending",
+      "retries": 0
+    },
+    "fix": {
+      "state": "pending",
+      "retries": 0
+    },
+    "verify": {
+      "state": "pending",
+      "retries": 0
+    },
+    "pr": {
+      "state": "pending",
+      "retries": 0
     }
   },
   "issueNumber": 889,
@@ -31,12 +81,7 @@
       "action": "pipeline-triggered",
       "actor": "yaeliavni",
       "timestamp": "2026-03-19T08:28:03.366Z"
-    },
-    {
-      "action": "gate-approved",
-      "actor": "yaeliavni",
-      "timestamp": "2026-03-19T08:30:17.842Z",
-      "stage": "taskify"
     }
-  ]
+  ],
+  "branchName": "fix/260318-auto-889-lesson-introduction-page-is-not-ed"
 }

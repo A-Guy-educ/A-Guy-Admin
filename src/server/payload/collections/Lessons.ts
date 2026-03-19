@@ -2,6 +2,9 @@ import type { CollectionConfig } from 'payload'
 
 import { DEFAULT_LESSON_ACCESS_TYPE } from '@/server/constants/access-types'
 import { tenantField } from '@/server/payload/fields/tenant'
+import { Content } from '../blocks/Content/config'
+import { HtmlBlock } from '../blocks/HtmlBlock/config'
+import { MediaBlock } from '../blocks/MediaBlock/config'
 import { adminOnly } from '../access/adminOnly'
 import { publishedAndActive } from '../access/publishedAndActive'
 import { createdByField } from '../fields/createdBy'
@@ -183,14 +186,14 @@ export const Lessons: CollectionConfig = {
       },
     },
     {
-      name: 'introDescription',
-      type: 'textarea',
+      name: 'introContent',
+      type: 'blocks',
+      blocks: [Content, HtmlBlock, MediaBlock],
       admin: {
-        description: 'HTML content for the intro page. Supports raw HTML (bold, lists, etc).',
+        description:
+          'Block-based content for the intro page. Supports rich text, HTML/SVG, and media.',
         condition: (data) => Boolean(data?.introEnabled),
-        components: {
-          Field: '@/ui/admin/QuillField#QuillField',
-        },
+        initCollapsed: true,
       },
     },
     {

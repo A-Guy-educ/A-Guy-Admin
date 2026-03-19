@@ -1302,9 +1302,9 @@ export interface Lesson {
    */
   introEnabled?: boolean | null;
   /**
-   * HTML content for the intro page. Supports raw HTML (bold, lists, etc).
+   * Block-based content for the intro page. Supports rich text, HTML/SVG, and media.
    */
-  introDescription?: string | null;
+  introContent?: (ContentBlock | HtmlBlock | MediaBlock)[] | null;
   /**
    * Image, SVG, or video displayed on the intro page
    */
@@ -1343,6 +1343,16 @@ export interface Lesson {
   createdBy?: (string | null) | User;
   updatedAt: string;
   createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "MediaBlock".
+ */
+export interface MediaBlock {
+  media: string | Media;
+  id?: string | null;
+  blockName?: string | null;
+  blockType: 'mediaBlock';
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -2882,7 +2892,13 @@ export interface LessonsSelect<T extends boolean = true> {
   isActive?: T;
   accessType?: T;
   introEnabled?: T;
-  introDescription?: T;
+  introContent?:
+    | T
+    | {
+        content?: T | ContentBlockSelect<T>;
+        html?: T | HtmlBlockSelect<T>;
+        mediaBlock?: T | MediaBlockSelect<T>;
+      };
   introMedia?: T;
   contentFiles?: T;
   lessonContextText?: T;
@@ -2894,6 +2910,15 @@ export interface LessonsSelect<T extends boolean = true> {
   createdBy?: T;
   updatedAt?: T;
   createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "MediaBlock_select".
+ */
+export interface MediaBlockSelect<T extends boolean = true> {
+  media?: T;
+  id?: T;
+  blockName?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -3754,16 +3779,6 @@ export interface CodeBlock {
   id?: string | null;
   blockName?: string | null;
   blockType: 'code';
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "MediaBlock".
- */
-export interface MediaBlock {
-  media: string | Media;
-  id?: string | null;
-  blockName?: string | null;
-  blockType: 'mediaBlock';
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
