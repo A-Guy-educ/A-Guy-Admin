@@ -61,6 +61,20 @@ export const scenario02: Scenario = {
 
     ctx.log.info(`Creating test version branch: ${TEST_VERSION_BRANCH} with ${configLabel} config`)
     try {
+      // Clean up any stale remote/local branch from previous runs
+      try {
+        execFileSync('git', ['push', 'origin', '--delete', TEST_VERSION_BRANCH], { stdio: 'pipe' })
+        ctx.log.info(`Deleted stale remote branch: ${TEST_VERSION_BRANCH}`)
+      } catch {
+        // Branch doesn't exist remotely — that's fine
+      }
+      try {
+        execFileSync('git', ['branch', '-D', TEST_VERSION_BRANCH], { stdio: 'pipe' })
+        ctx.log.info(`Deleted stale local branch: ${TEST_VERSION_BRANCH}`)
+      } catch {
+        // Branch doesn't exist locally — that's fine
+      }
+
       // Backup current opencode.json
       const currentOpencode = fs.readFileSync('./opencode.json', 'utf-8')
 
