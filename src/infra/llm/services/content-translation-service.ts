@@ -82,7 +82,15 @@ export async function translateContentBlocks(
         },
         '[Content Translation] Block count mismatch, retrying',
       )
-      return retryTranslation(adapter, modelConfig, userPrompt, result.text, blocks.length, payload, systemPrompt)
+      return retryTranslation(
+        adapter,
+        modelConfig,
+        userPrompt,
+        result.text,
+        blocks.length,
+        payload,
+        systemPrompt,
+      )
     }
 
     return { success: true, data: parsed }

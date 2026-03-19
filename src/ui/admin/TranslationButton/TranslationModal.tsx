@@ -15,6 +15,8 @@ interface TranslationModalProps {
   targetLocale: string
   scope: string
   isTranslating: boolean
+  translationError?: string | null
+  translationSuccess?: boolean
 }
 
 export function TranslationModal({
@@ -24,18 +26,20 @@ export function TranslationModal({
   targetLocale,
   scope,
   isTranslating,
+  translationError,
+  translationSuccess,
 }: TranslationModalProps) {
   const [prompts, setPrompts] = useState<PromptOption[]>([])
   const [selectedPromptId, setSelectedPromptId] = useState<string>('')
   const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!isOpen) return
 
     async function loadPrompts() {
       setIsLoading(true)
-      setError(null)
+      setLoadError(null)
 
       try {
         const response = await fetch(
@@ -56,7 +60,7 @@ export function TranslationModal({
           })),
         )
       } catch {
-        setError('Failed to load prompts')
+        setLoadError('Failed to load prompts')
       } finally {
         setIsLoading(false)
       }
@@ -68,13 +72,14 @@ export function TranslationModal({
   useEffect(() => {
     if (!isOpen) {
       setSelectedPromptId('')
-      setError(null)
+      setLoadError(null)
     }
   }, [isOpen])
 
   if (!isOpen) return null
 
   const targetLabel = targetLocale === 'en' ? 'English' : 'Hebrew'
+  const error = loadError || translationError
 
   return (
     <div
@@ -127,7 +132,7 @@ export function TranslationModal({
           </div>
         )}
 
-        {!isLoading && (
+        {!isLoading && !translationSuccess && (
           <div style={{ marginBottom: 16 }}>
             <label
               style={{
@@ -182,42 +187,77 @@ export function TranslationModal({
           </div>
         )}
 
+        {translationSuccess && (
+          <div
+            style={{
+              fontSize: 12,
+              color: 'var(--theme-success)',
+              padding: '8px 12px',
+              backgroundColor: 'var(--theme-success-100)',
+              borderRadius: 4,
+              marginBottom: 16,
+            }}
+          >
+            Translation complete!
+          </div>
+        )}
+
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <button
-            onClick={onClose}
-            disabled={isTranslating}
-            style={{
-              padding: '8px 16px',
-              fontSize: 13,
-              fontWeight: 500,
-              border: '1px solid var(--theme-elevation-200)',
-              borderRadius: 4,
-              backgroundColor: 'var(--theme-elevation-0)',
-              color: 'var(--theme-elevation-700)',
-              cursor: isTranslating ? 'not-allowed' : 'pointer',
-            }}
-          >
-            Cancel
-          </button>
-          <button
-            onClick={() => onConfirm(selectedPromptId || undefined)}
-            disabled={isTranslating || isLoading}
-            style={{
-              padding: '8px 16px',
-              fontSize: 13,
-              fontWeight: 500,
-              border: 'none',
-              borderRadius: 4,
-              backgroundColor: isTranslating
-                ? 'var(--theme-elevation-400)'
-                : 'var(--theme-primary)',
-              color: 'var(--theme-elevation-0)',
-              cursor: isTranslating ? 'not-allowed' : 'pointer',
-              opacity: isTranslating ? 0.6 : 1,
-            }}
-          >
-            {isTranslating ? 'Translating...' : 'Translate'}
-          </button>
+          {translationSuccess ? (
+            <button
+              onClick={onClose}
+              style={{
+                padding: '8px 16px',
+                fontSize: 13,
+                fontWeight: 500,
+                border: 'none',
+                borderRadius: 4,
+                backgroundColor: 'var(--theme-success)',
+                color: 'var(--theme-elevation-0)',
+                cursor: 'pointer',
+              }}
+            >
+              OK
+            </button>
+          ) : (
+            <>
+              <button
+                onClick={onClose}
+                disabled={isTranslating}
+                style={{
+                  padding: '8px 16px',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  border: '1px solid var(--theme-elevation-200)',
+                  borderRadius: 4,
+                  backgroundColor: 'var(--theme-elevation-0)',
+                  color: 'var(--theme-elevation-700)',
+                  cursor: isTranslating ? 'not-allowed' : 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => onConfirm(selectedPromptId || undefined)}
+                disabled={isTranslating || isLoading}
+                style={{
+                  padding: '8px 16px',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  border: 'none',
+                  borderRadius: 4,
+                  backgroundColor: isTranslating
+                    ? 'var(--theme-elevation-400)'
+                    : 'var(--theme-primary)',
+                  color: 'var(--theme-elevation-0)',
+                  cursor: isTranslating ? 'not-allowed' : 'pointer',
+                  opacity: isTranslating ? 0.6 : 1,
+                }}
+              >
+                {isTranslating ? 'Translating...' : 'Translate'}
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>

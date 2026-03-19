@@ -34,7 +34,6 @@ export const TranslateExerciseButton: React.FC = () => {
       targetLessonId: targetLessonId.trim(),
       promptId,
     })
-    setShowModal(false)
   }
 
   return (
@@ -94,6 +93,8 @@ export const TranslateExerciseButton: React.FC = () => {
         targetLocale={targetLocale}
         scope="Exercise"
         isTranslating={status === 'loading'}
+        translationError={error}
+        translationSuccess={status === 'success'}
       />
 
       <TranslationStatusBanner

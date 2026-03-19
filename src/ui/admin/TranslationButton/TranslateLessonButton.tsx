@@ -36,7 +36,6 @@ export const TranslateLessonButton: React.FC = () => {
       includeExercises,
       promptId,
     })
-    setShowModal(false)
   }
 
   const newLessonId = result?.id ?? (result as unknown as { lessonId?: string })?.lessonId
@@ -107,6 +106,8 @@ export const TranslateLessonButton: React.FC = () => {
         targetLocale={targetLocale}
         scope="Lesson"
         isTranslating={status === 'loading'}
+        translationError={error}
+        translationSuccess={status === 'success'}
       />
 
       <TranslationStatusBanner
