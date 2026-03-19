@@ -19,7 +19,8 @@ import { AccessGateProvider } from '@/ui/web/auth/AccessGateProvider'
 import { useLocale, useTranslations } from '@/ui/web/providers/I18n'
 import { ProgressCircle } from '@/ui/web/shared/ProgressCircle'
 import { BarChart3, Clock, GraduationCap, Sparkles } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useProgressMap } from '@/client/hooks/useProgressMap'
 
 interface ChapterWithLessons extends Chapter {
   lessons: Lesson[]
@@ -110,6 +111,20 @@ export function StudyContent({ lessonType = DEFAULT_LESSON_TYPE }: StudyContentP
     loadData()
   }, [locale])
 
+  const filteredLessons = useMemo(
+    () =>
+      chapters.flatMap((chapter) => {
+        const chapterSlug = chapter.slug || ''
+        return (chapter.lessons ?? [])
+          .filter((lesson) => getEffectiveLessonType(lesson.type) === lessonType)
+          .map((lesson) => ({ ...lesson, _chapterSlug: chapterSlug }))
+      }),
+    [chapters, lessonType],
+  )
+
+  const lessonIds = useMemo(() => filteredLessons.map((l) => l.id), [filteredLessons])
+  const { progressMap } = useProgressMap({ recordType: 'lesson', recordIds: lessonIds })
+
   if (isLoading) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -117,13 +132,6 @@ export function StudyContent({ lessonType = DEFAULT_LESSON_TYPE }: StudyContentP
       </div>
     )
   }
-
-  const filteredLessons = chapters.flatMap((chapter) => {
-    const chapterSlug = chapter.slug || ''
-    return (chapter.lessons ?? [])
-      .filter((lesson) => getEffectiveLessonType(lesson.type) === lessonType)
-      .map((lesson) => ({ ...lesson, _chapterSlug: chapterSlug }))
-  })
 
   const sectionTitle = courseInfo?.courseTitle || ts('studyTopics')
 
@@ -162,6 +170,7 @@ export function StudyContent({ lessonType = DEFAULT_LESSON_TYPE }: StudyContentP
                 courseSlug={courseInfo?.courseSlug ?? ''}
                 chapterSlug={lesson._chapterSlug}
                 tabColor={tabColor}
+                progress={progressMap[lesson.id] ?? 0}
               />
             ))}
           </div>
@@ -227,12 +236,14 @@ function LessonGridCard({
   courseSlug,
   chapterSlug,
   tabColor,
+  progress: progressProp,
 }: {
   lesson: Lesson
   index: number
   courseSlug: string
   chapterSlug: string
   tabColor?: { text: string; stroke: string }
+  progress?: number
 }) {
   const t = useTranslations('coursePage')
   const tc = useTranslations('courses')
@@ -240,8 +251,7 @@ function LessonGridCard({
   if (!lesson.slug) return null
 
   const href = `/courses/${courseSlug}/chapters/${chapterSlug}/lessons/${lesson.slug}`
-  // Placeholder progress — will be wired to UserProgress later
-  const progress = 0
+  const progress = progressProp ?? 0
   const progressText =
     progress >= 100
       ? t('lessonCompleted')
