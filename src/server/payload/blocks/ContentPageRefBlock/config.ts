@@ -13,8 +13,14 @@ export const ContentPageRefBlock: Block = {
       type: 'relationship',
       relationTo: 'content-pages',
       required: true,
+      filterOptions: () => {
+        return {
+          status: { equals: 'published' },
+          isActive: { equals: true },
+        }
+      },
       admin: {
-        description: 'Reference to a content page',
+        description: 'Reference to a published content page',
       },
     },
   ],
