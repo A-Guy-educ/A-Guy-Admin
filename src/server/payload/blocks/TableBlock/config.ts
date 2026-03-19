@@ -10,19 +10,17 @@ export const TableBlock: Block = {
   fields: [
     {
       name: 'headers',
-      type: 'code',
+      type: 'textarea',
       required: true,
       admin: {
-        language: 'json',
         description: 'JSON array of header strings, e.g. ["Name", "Value", "Unit"]',
       },
     },
     {
       name: 'rows',
-      type: 'code',
+      type: 'textarea',
       required: true,
       admin: {
-        language: 'json',
         description: 'JSON array of row arrays, e.g. [["Mass", "5", "kg"], ["Length", "10", "m"]]',
       },
     },
