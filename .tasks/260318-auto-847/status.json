@@ -4,7 +4,7 @@
   "mode": "full",
   "pipeline": "spec_execute_verify",
   "startedAt": "2026-03-19T18:39:59.579Z",
-  "updatedAt": "2026-03-19T18:43:44.736Z",
+  "updatedAt": "2026-03-19T18:48:28.789Z",
   "state": "running",
   "cursor": null,
   "stages": {
@@ -38,13 +38,23 @@
       "sessionId": "ses_2f898d214ffe2g5kfNR7H99mhR"
     },
     "build": {
-      "state": "running",
+      "state": "completed",
       "retries": 0,
-      "startedAt": "2026-03-19T18:43:44.692Z"
+      "startedAt": "2026-03-19T18:43:44.692Z",
+      "completedAt": "2026-03-19T18:48:14.164Z",
+      "elapsed": 269,
+      "outputFile": "build.md",
+      "tokenUsage": {
+        "input": 10926,
+        "output": 2518,
+        "cacheRead": 649839
+      },
+      "sessionId": "ses_2f896d348ffeJmXciCrVR95wOi"
     },
     "commit": {
-      "state": "pending",
-      "retries": 0
+      "state": "running",
+      "retries": 0,
+      "startedAt": "2026-03-19T18:48:28.789Z"
     },
     "review": {
       "state": "pending",
@@ -71,6 +81,5 @@
       "actor": "aguyaharonyair",
       "timestamp": "2026-03-19T18:39:59.579Z"
     }
-  ],
-  "branchName": "fix/260318-auto-907-ncrease-font-size-of-answer-option"
+  ]
 }
