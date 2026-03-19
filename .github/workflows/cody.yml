@@ -63,6 +63,11 @@ on:
         required: false
         type: boolean
         default: false
+      use_mock:
+        description: 'Use mock LLM server with recorded responses'
+        required: false
+        type: boolean
+        default: false
 
   push:
     branches:
@@ -396,6 +401,33 @@ jobs:
           echo "$HOME/.opencode/bin" >> $GITHUB_PATH
           # Verify it's installed and print version for diagnostics
           $HOME/.opencode/bin/opencode --version || echo "Warning: opencode install may have failed"
+
+      # Use mock LLM server if requested
+      - name: Start mock LLM server
+        if: github.event.inputs.use_mock == 'true' || github.event.inputs.use_mock == true
+        run: |
+          # Check if recordings exist
+          if [ -d "scripts/system-test/recordings/scenario-02" ]; then
+            echo "Found recordings, starting mock in replay mode..."
+            pnpm tsx scripts/system-test/mock-llm/cli.ts \
+              --mode replay \
+              --port 8080 \
+              --recordings-dir scripts/system-test/recordings/scenario-02 &
+            
+            # Wait for server to start
+            sleep 5
+            
+            # Verify server is running
+            curl -s http://localhost:8080/health || echo "Warning: mock server not ready"
+          else
+            echo "No recordings found, cannot use mock mode"
+            exit 1
+          fi
+
+      # Use mock config
+      - name: Use mock config
+        if: github.event.inputs.use_mock == 'true' || github.event.inputs.use_mock == true
+        run: cp opencode.mock.json opencode.json
 
       # Use test config (cheap models) if requested
       - name: Use test config

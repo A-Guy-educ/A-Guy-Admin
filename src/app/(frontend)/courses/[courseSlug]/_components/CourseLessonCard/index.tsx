@@ -24,23 +24,18 @@ export function CourseLessonCard({
   courseSlug,
   chapterSlug,
   tabColor,
-  progress: progressProp,
+  progress = 0,
 }: CourseLessonCardProps) {
   const t = useTranslations('coursePage')
   const tc = useTranslations('courses')
 
   const href = `/courses/${courseSlug}/chapters/${chapterSlug}/lessons/${lesson.slug}`
-  const progress = progressProp ?? 0
 
   // Determine if lesson is "soon" (locked)
   const isSoon = lesson.contentStatus === 'soon'
 
   const progressText =
-    progress >= 100
-      ? t('lessonCompleted')
-      : progress > 0
-        ? t('lessonsRemaining').replace('{count}', String(3))
-        : t('notStarted')
+    progress >= 100 ? t('lessonCompleted') : progress > 0 ? t('statusInProgress') : t('notStarted')
 
   const accentColor = tabColor?.stroke ?? 'hsl(var(--primary))'
 

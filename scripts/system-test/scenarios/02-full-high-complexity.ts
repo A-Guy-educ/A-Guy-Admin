@@ -154,6 +154,8 @@ export const scenario02: Scenario = {
           'dry_run=false',
           '-f',
           `version=${TEST_VERSION_BRANCH}`,
+          '-f',
+          `use_mock=${useMock}`,
           '--repo',
           ctx.repo,
         ],

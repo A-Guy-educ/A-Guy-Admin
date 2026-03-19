@@ -6,15 +6,23 @@ import { getEffectiveLessonType } from '@/server/constants/lesson-types'
 import { useTranslations } from '@/ui/web/providers/I18n'
 import { useProgressMap } from '@/client/hooks/useProgressMap'
 import { CourseLessonCard } from '../CourseLessonCard'
+import type { LessonProgress } from '../CoursePageContent'
 
 interface LearnTabProps {
   lessons: Lesson[]
   chapters: Chapter[]
   courseSlug: string
   tabColor?: { text: string; stroke: string }
+  lessonProgressMap?: Record<string, LessonProgress>
 }
 
-export function LearnTab({ lessons, chapters, courseSlug, tabColor }: LearnTabProps) {
+export function LearnTab({
+  lessons,
+  chapters,
+  courseSlug,
+  tabColor,
+  lessonProgressMap = {},
+}: LearnTabProps) {
   const t = useTranslations('coursePage')
   const learningLessons = lessons.filter((l) => getEffectiveLessonType(l.type) === 'learning')
 
@@ -25,8 +33,18 @@ export function LearnTab({ lessons, chapters, courseSlug, tabColor }: LearnTabPr
     return null
   }
 
-  const completedCount = Object.values(statusMap).filter((s) => s === 'completed').length
-  const inProgressCount = Object.values(statusMap).filter((s) => s === 'in_progress').length
+  // Use parent lessonProgressMap if available, fall back to DB-fetched progressMap
+  const hasParentProgress = Object.keys(lessonProgressMap).length > 0
+
+  const completedCount = hasParentProgress
+    ? learningLessons.filter((l) => (lessonProgressMap[l.id]?.percent ?? 0) >= 100).length
+    : Object.values(statusMap).filter((s) => s === 'completed').length
+  const inProgressCount = hasParentProgress
+    ? learningLessons.filter((l) => {
+        const p = lessonProgressMap[l.id]?.percent ?? 0
+        return p > 0 && p < 100
+      }).length
+    : Object.values(statusMap).filter((s) => s === 'in_progress').length
   const notStartedCount = learningLessons.length - completedCount - inProgressCount
 
   return (
@@ -60,7 +78,7 @@ export function LearnTab({ lessons, chapters, courseSlug, tabColor }: LearnTabPr
               courseSlug={courseSlug}
               chapterSlug={chapterSlug}
               tabColor={tabColor}
-              progress={progressMap[lesson.id] ?? 0}
+              progress={lessonProgressMap[lesson.id]?.percent ?? progressMap[lesson.id] ?? 0}
             />
           )
         })}
