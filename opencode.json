@@ -119,6 +119,10 @@
         "--console-level=info",
         "--viewport-size=1280x720"
       ]
+    },
+    "contextplus": {
+      "type": "sse",
+      "url": "${BRAIN_SERVER_URL:-http://100.66.248.120:4097/sse}"
     }
   }
 }
