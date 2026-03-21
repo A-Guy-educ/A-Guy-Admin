@@ -89,46 +89,21 @@ export function CodyDashboard({ initialIssueNumber, initialModal }: CodyDashboar
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false)
   const [duplicateSource, setDuplicateSource] = useState<CodyTask | null>(null)
   const [showBranchCleanup, setShowBranchCleanup] = useState(false)
-  const [dateFilter, setDateFilter] = useState<string>(() => {
-    if (typeof window === 'undefined') return '30d'
-    return new URLSearchParams(window.location.search).get('date') ?? '30d'
-  })
-  const [labelFilter, setLabelFilter] = useState<string>(() => {
-    if (typeof window === 'undefined') return 'all'
-    return new URLSearchParams(window.location.search).get('label') ?? 'all'
-  })
-  const [priorityFilter, setPriorityFilter] = useState<string>(() => {
-    if (typeof window === 'undefined') return 'all'
-    return new URLSearchParams(window.location.search).get('priority') ?? 'all'
-  })
-  const [statusFilter, setStatusFilter] = useState<string>(() => {
-    if (typeof window === 'undefined') return 'all'
-    return new URLSearchParams(window.location.search).get('status') ?? 'all'
-  })
-  const [viewMode, setViewMode] = useState<ViewMode>(() => {
-    if (typeof window === 'undefined') return 'running'
-    const v = new URLSearchParams(window.location.search).get('view')
-    return (['backlog', 'queue'].includes(v ?? '') ? v : 'running') as ViewMode
-  })
+  const [dateFilter, setDateFilter] = useState<string>('30d')
+  const [labelFilter, setLabelFilter] = useState<string>('all')
+  const [priorityFilter, setPriorityFilter] = useState<string>('all')
+  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [viewMode, setViewMode] = useState<ViewMode>('running')
   const [showMobileMenu, setShowMobileMenu] = useState(false)
   const [showUserDropdown, setShowUserDropdown] = useState(false)
   const [showMobileDetail, setShowMobileDetail] = useState(false)
   const [showMobileChat, setShowMobileChat] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
   const [errorDismissed, setErrorDismissed] = useState(false)
-  const [searchQuery, setSearchQuery] = useState<string>(() => {
-    if (typeof window === 'undefined') return ''
-    return new URLSearchParams(window.location.search).get('q') ?? ''
-  })
-  const [debouncedSearch, setDebouncedSearch] = useState(searchQuery)
-  const [sortField, setSortField] = useState<string>(() => {
-    if (typeof window === 'undefined') return 'updatedAt'
-    return new URLSearchParams(window.location.search).get('sort') ?? 'updatedAt'
-  })
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>(() => {
-    if (typeof window === 'undefined') return 'desc'
-    return (new URLSearchParams(window.location.search).get('dir') as 'asc' | 'desc') ?? 'desc'
-  })
+  const [searchQuery, setSearchQuery] = useState<string>('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [sortField, setSortField] = useState<string>('updatedAt')
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const filterBarRef = useRef<{ focusSearch: () => void } | null>(null)
 
@@ -160,6 +135,30 @@ export function CodyDashboard({ initialIssueNumber, initialModal }: CodyDashboar
     refetch,
     dataUpdatedAt,
   } = useCodyTasks({ days, viewMode: viewMode === 'queue' ? 'running' : viewMode })
+
+  // Initialize filters from URL params after hydration (prevents server/client mismatch)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const date = params.get('date')
+    if (date && DATE_FILTERS.some((f) => f.value === date)) setDateFilter(date)
+    const label = params.get('label')
+    if (label) setLabelFilter(label)
+    const priority = params.get('priority')
+    if (priority) setPriorityFilter(priority)
+    const status = params.get('status')
+    if (status) setStatusFilter(status)
+    const view = params.get('view')
+    if (view && ['backlog', 'queue', 'running'].includes(view)) setViewMode(view as ViewMode)
+    const q = params.get('q')
+    if (q) {
+      setSearchQuery(q)
+      setDebouncedSearch(q)
+    }
+    const sort = params.get('sort')
+    if (sort) setSortField(sort)
+    const dir = params.get('dir')
+    if (dir === 'asc' || dir === 'desc') setSortDirection(dir)
+  }, [])
 
   const queryClient = useQueryClient()
 
