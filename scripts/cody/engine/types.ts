@@ -277,6 +277,50 @@ export function isPipelineStateV2(obj: unknown): obj is PipelineStateV2 {
 // Post-Action Types
 // ============================================================================
 
+/**
+ * Enum-like union of all post-action type strings.
+ * Used for classification (blocking vs advisory) and switch statements.
+ */
+export type PostActionType =
+  | 'validate-task-json'
+  | 'set-classification-labels'
+  | 'resolve-profile'
+  | 'check-gate'
+  | 'commit-task-files'
+  | 'archive-rerun-feedback'
+  | 'validate-plan-exists'
+  | 'validate-build-content'
+  | 'validate-src-changes'
+  | 'run-tsc'
+  | 'run-unit-tests'
+  | 'run-quality-with-autofix'
+  | 'analyze-review-findings'
+  | 'clear-verify-failures'
+  | 'run-mechanical-autofix'
+  | 'parallel'
+
+/**
+ * Post-actions that block pipeline progression on failure.
+ * These failures cause the pipeline to stop and require user intervention.
+ */
+export const BLOCKING_POST_ACTIONS: PostActionType[] = [
+  'validate-task-json',
+  'resolve-profile',
+  'check-gate',
+  'commit-task-files',
+  'validate-plan-exists',
+  'validate-build-content',
+  'validate-src-changes',
+]
+
+/**
+ * Returns true if the given post-action is blocking (fails the pipeline).
+ * Advisory actions log warnings but don't stop the pipeline.
+ */
+export function isBlockingPostAction(action: PostAction): boolean {
+  return BLOCKING_POST_ACTIONS.includes(action.type as PostActionType)
+}
+
 // Validate-task-json action
 export type ValidateTaskJsonAction = {
   type: 'validate-task-json'
@@ -362,6 +406,11 @@ export type RunMechanicalAutofixAction = {
   type: 'run-mechanical-autofix'
 }
 
+// Update-knowledge-base action — updates cross-task knowledge base after completion
+export type UpdateKnowledgeBaseAction = {
+  type: 'update-knowledge-base'
+}
+
 // Parallel-post-action - runs multiple actions concurrently
 export type ParallelPostAction = {
   type: 'parallel'
@@ -385,6 +434,7 @@ export type PostAction =
   | AnalyzeReviewFindingsAction
   | ClearVerifyFailuresAction
   | RunMechanicalAutofixAction
+  | UpdateKnowledgeBaseAction
   | ParallelPostAction
 
 // ============================================================================

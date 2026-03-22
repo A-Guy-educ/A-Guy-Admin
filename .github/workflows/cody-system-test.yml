@@ -14,6 +14,14 @@ on:
         description: 'Only run cleanup (skip test)'
         type: boolean
         default: false
+      mock_mode:
+        description: 'Mock mode: record, replay, or none'
+        type: choice
+        options:
+          - none
+          - record
+          - replay
+        default: 'none'
 
 # Only one system test at a time
 concurrency:
@@ -35,9 +43,10 @@ jobs:
         id: app-token
         uses: actions/create-github-app-token@v1
         with:
-          app-id: 3116827
+          app-id: 3126173
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
-          owner: ${{ github.repository_owner }}
+          repositories: A-Guy
+          owner: A-Guy-educ
 
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -67,6 +76,45 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global url."https://x-access-token:${APP_TOKEN}@github.com/".insteadOf "https://github.com/"
 
+      - name: Start Mock LLM Server
+        if: inputs.mock_mode != 'none'
+        run: |
+          if [ "${{ inputs.mock_mode }}" = "record" ]; then
+            echo "Starting mock in RECORD mode..."
+            pnpm tsx scripts/system-test/mock-llm/cli.ts \
+              --mode record \
+              --port 8080 \
+              --recordings-dir scripts/system-test/recordings/scenario-02 \
+              --upstream https://api.minimax.io/v1 \
+              --api-key "${{ secrets.MINIMAX_API_KEY }}" &
+
+            # Wait for server to start
+            sleep 5
+
+            # Check if server is running
+            curl -s http://localhost:8080/health || echo "Mock server not ready yet"
+          else
+            echo "Starting mock in REPLAY mode..."
+            pnpm tsx scripts/system-test/mock-llm/cli.ts \
+              --mode replay \
+              --port 8080 \
+              --recordings-dir scripts/system-test/recordings/scenario-02 &
+
+            # Wait for server to start
+            sleep 5
+
+            # Check if server is running
+            curl -s http://localhost:8080/health || echo "Mock server not ready yet"
+          fi
+
+          echo "Mock server started in background"
+
+      - name: Configure OpenCode for Mock
+        if: inputs.mock_mode != 'none'
+        run: |
+          cp opencode.test.json opencode.json
+          echo "Using minimax test configuration"
+
       - name: Run system test
         if: inputs.cleanup_only != true
         env:
@@ -75,10 +123,20 @@ jobs:
           REPO: ${{ github.repository }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           SCENARIOS: ${{ inputs.scenarios }}
+          MOCK_MODE: ${{ inputs.mock_mode }}
         run: |
           pnpm tsx scripts/system-test/run-scenario.ts \
-            --scenario 02-full-high-complexity \
+            --scenario ${{ inputs.scenarios }} \
             --repo "$REPO"
+
+      - name: Upload recordings
+        if: always() && inputs.mock_mode == 'record'
+        uses: actions/upload-artifact@v4
+        with:
+          name: llm-recordings
+          path: |
+            scripts/system-test/recordings/
+          retention-days: 30
 
       - name: Generate report
         if: always()

@@ -27,7 +27,7 @@ import { startServer, stopServer, checkpointDb, findLastSessionId } from './open
 import {
   runSpecMode,
   runImplMode,
-  runFullMode,
+  runBrainFullMode,
   runRerunMode,
   runFixMode,
   runStatusMode,
@@ -341,7 +341,8 @@ Examples:
         await runImplMode(ctx)
         break
       case 'full':
-        await runFullMode(ctx)
+        // Brain-aware: uses remote brain for architect + review when BRAIN_SERVER_URL is set
+        await runBrainFullMode(ctx)
         break
       case 'rerun':
         await runRerunMode(ctx)

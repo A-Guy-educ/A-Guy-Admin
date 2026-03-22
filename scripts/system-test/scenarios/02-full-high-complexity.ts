@@ -15,21 +15,21 @@
 import { execFileSync } from 'child_process'
 import * as fs from 'fs'
 
-import { assertLabelsPresent, assertPRCreated, assertCommentExists, pollWorkflowRun } from '../lib'
+import { assertPRCreated, assertCommentExists } from '../lib'
 import { CODY_WORKFLOW, SYSTEM_TEST_LABEL, ISSUE_TITLE_PREFIX } from '../lib/config'
 import type { ScenarioContext, Scenario } from './types'
 import type { ScenarioResult } from '../lib/report'
 
-const ISSUE_BODY = `Create a new documentation file \`docs/system-test/pipeline-health.md\` that documents the Cody pipeline health monitoring architecture. Include:
+const ISSUE_BODY = `Create a new utility module at \`src/infra/utils/pipeline-health.ts\` that exports a \`PipelineHealthReport\` class for monitoring Cody pipeline health. The module should:
 
-1. An overview section describing the inspector plugin framework
-2. A section on each health-check plugin and what it monitors
-3. A section on the pipeline-fixer retry strategy
-4. A section on deferred test and docs stages
-5. A troubleshooting guide for common failure modes
-6. Architecture diagrams in mermaid syntax
+1. Export a \`PipelineHealthReport\` class with methods: \`checkStageHealth(stage: string): HealthStatus\`, \`generateReport(): Report\`, and \`getRetryRecommendation(failedStage: string): RetryStrategy\`
+2. Define TypeScript interfaces: \`HealthStatus\`, \`Report\`, \`RetryStrategy\`
+3. Implement a \`getStageTimeout(stage: string): number\` helper that returns default timeouts per stage
+4. Add JSDoc comments on all exported members
+5. Include input validation using Zod schemas for all public method parameters
+6. Write a companion integration test at \`tests/unit/infra/utils/pipeline-health.test.ts\` covering all public methods
 
-This documentation should be comprehensive (2000+ words) and reference actual file paths in the codebase.
+This is a medium-complexity feature that requires creating new TypeScript source files, defining types, implementing business logic, and writing tests.
 
 **This is a SYSTEM TEST. The PR should NOT be merged.**`
 
@@ -51,23 +51,49 @@ export const scenario02: Scenario = {
 
     let issueNumber: number | undefined = undefined
     let taskId: string | undefined
-    let workflowDispatchTime: string | undefined
+    let _workflowDispatchTime: string | undefined
 
-    // Step 0: Create test version branch with cheap opencode.json
-    ctx.log.info(`Creating test version branch: ${TEST_VERSION_BRANCH}`)
+    // Step 0: Create test version branch with opencode config
+    // In replay mode: use mock config (cody uses recordings)
+    // In record mode: use real config (cody uses real API, we capture calls separately)
+    // Otherwise: use test (cheap) config
+    const isReplayMode = process.env.MOCK_MODE === 'replay'
+    const isRecordMode = process.env.MOCK_MODE === 'record'
+    const configFile = isReplayMode ? 'opencode.mock.json' : 'opencode.test.json'
+    const configLabel = isReplayMode ? 'mock' : 'cheap'
+
+    ctx.log.info(`Creating test version branch: ${TEST_VERSION_BRANCH} with ${configLabel} config`)
     try {
+      // Clean up any stale remote/local branch from previous runs
+      try {
+        execFileSync('git', ['push', 'origin', '--delete', TEST_VERSION_BRANCH], { stdio: 'pipe' })
+        ctx.log.info(`Deleted stale remote branch: ${TEST_VERSION_BRANCH}`)
+      } catch {
+        // Branch doesn't exist remotely — that's fine
+      }
+      try {
+        execFileSync('git', ['branch', '-D', TEST_VERSION_BRANCH], { stdio: 'pipe' })
+        ctx.log.info(`Deleted stale local branch: ${TEST_VERSION_BRANCH}`)
+      } catch {
+        // Branch doesn't exist locally — that's fine
+      }
+
       // Backup current opencode.json
       const currentOpencode = fs.readFileSync('./opencode.json', 'utf-8')
 
-      // Replace with cheap version
-      fs.copyFileSync('./opencode.test.json', './opencode.json')
+      // Replace with test or mock version
+      fs.copyFileSync(`./${configFile}`, './opencode.json')
 
       // Create branch and push
       execFileSync('git', ['checkout', '-b', TEST_VERSION_BRANCH], { stdio: 'pipe' })
       execFileSync('git', ['add', 'opencode.json'], { stdio: 'pipe' })
-      execFileSync('git', ['commit', '-m', 'test: cheap models for system test', '--no-verify'], {
-        stdio: 'pipe',
-      })
+      execFileSync(
+        'git',
+        ['commit', `-m`, `test: ${configLabel} models for system test`, '--no-verify'],
+        {
+          stdio: 'pipe',
+        },
+      )
       execFileSync('git', ['push', '-u', 'origin', TEST_VERSION_BRANCH], { stdio: 'pipe' })
 
       // Switch back to original branch
@@ -90,7 +116,7 @@ export const scenario02: Scenario = {
     try {
       // Step 1: Create issue
       ctx.log.info('Creating issue...')
-      const title = `${ISSUE_TITLE_PREFIX} Document pipeline health monitoring architecture`
+      const title = `${ISSUE_TITLE_PREFIX} Add pipeline health monitoring utility module`
       issueNumber = ctx.gh.createIssue(title, ISSUE_BODY, [SYSTEM_TEST_LABEL]) ?? undefined
 
       if (!issueNumber) {
@@ -105,7 +131,7 @@ export const scenario02: Scenario = {
       const mm = String(now.getMonth() + 1).padStart(2, '0')
       const dd = String(now.getDate()).padStart(2, '0')
       taskId = `${yy}${mm}${dd}-systest-${ctx.runId}`
-      workflowDispatchTime = now.toISOString()
+      _workflowDispatchTime = now.toISOString()
 
       ctx.log.info(
         `Dispatching pipeline: task=${taskId}, complexity=65, version=${TEST_VERSION_BRANCH}`,
@@ -131,6 +157,8 @@ export const scenario02: Scenario = {
           'dry_run=false',
           '-f',
           `version=${TEST_VERSION_BRANCH}`,
+          '-f',
+          `use_mock=${isReplayMode}`,
           '--repo',
           ctx.repo,
         ],
@@ -140,39 +168,87 @@ export const scenario02: Scenario = {
       assertions.push({ name: 'Pipeline dispatched', passed: true, detail: taskId })
       ctx.log.info(`Dispatched pipeline for task ${taskId}`)
 
-      // Step 3: Poll for workflow completion
-      ctx.log.info('Polling for workflow completion (up to 90 min)...')
-      const run = await pollWorkflowRun(ctx.gh, {
-        workflow: CODY_WORKFLOW,
-        afterTimestamp: workflowDispatchTime,
-        matchBranch: new RegExp(taskId),
-        maxWaitMs: 90 * 60 * 1000,
-        intervalMs: 30 * 1000,
-      })
+      // Step 3: Poll for pipeline completion via issue labels.
+      // The cody pipeline can span multiple workflow runs (initial dispatch,
+      // gate approval reruns, pipeline-fixer retries), so polling for a single
+      // workflow run is unreliable. Instead, poll the issue labels for the
+      // terminal state: cody:done or cody:failed.
+      ctx.log.info('Polling for pipeline completion via issue labels (up to 90 min)...')
+      const terminalLabels = ['cody:done', 'cody:failed']
+      const pollStart = Date.now()
+      const maxWaitMs = 90 * 60 * 1000
+      const pollIntervalMs = 30 * 1000
+      let finalLabel: string | undefined
+      let gateApproved = false
+
+      while (Date.now() - pollStart < maxWaitMs) {
+        const labelsOutput = execFileSync(
+          'gh',
+          [
+            'issue',
+            'view',
+            String(issueNumber),
+            '--repo',
+            ctx.repo,
+            '--json',
+            'labels',
+            '--jq',
+            '[.labels[].name]',
+          ],
+          { encoding: 'utf-8', stdio: 'pipe' },
+        ).trim()
+        const labels: string[] = labelsOutput ? JSON.parse(labelsOutput) : []
+        const terminal = labels.find((l: string) => terminalLabels.includes(l))
+        if (terminal) {
+          finalLabel = terminal
+          break
+        }
+        // Auto-approve risk gate when detected
+        if (labels.includes('risk-gated') && !gateApproved) {
+          ctx.log.info('  Risk gate detected — posting @cody approve...')
+          try {
+            execFileSync(
+              'gh',
+              [
+                'issue',
+                'comment',
+                String(issueNumber),
+                '--repo',
+                ctx.repo,
+                '--body',
+                '@cody approve',
+              ],
+              { env: { ...process.env }, stdio: 'pipe' },
+            )
+            gateApproved = true
+            ctx.log.info('  Auto-approved risk gate')
+          } catch (error) {
+            ctx.log.warn({ error }, 'Failed to auto-approve risk gate')
+          }
+        }
+        ctx.log.info(`  Labels: [${labels.join(', ')}] — waiting...`)
+        await new Promise((r) => setTimeout(r, pollIntervalMs))
+      }
+
+      if (!finalLabel) {
+        throw new Error(`Pipeline did not reach terminal state within ${maxWaitMs}ms`)
+      }
 
       assertions.push({
-        name: 'Workflow completed',
+        name: 'Pipeline completed',
         passed: true,
-        detail: `Run ${run.id}, conclusion: ${run.conclusion}`,
+        detail: `Terminal label: ${finalLabel}`,
       })
 
       // Step 4: Assert results
-      if (run.conclusion === 'success') {
-        assertions.push({ name: 'Workflow succeeded', passed: true })
+      if (finalLabel === 'cody:done') {
+        assertions.push({ name: 'Pipeline succeeded (cody:done)', passed: true })
       } else {
         assertions.push({
-          name: 'Workflow succeeded',
+          name: 'Pipeline succeeded (cody:done)',
           passed: false,
-          detail: `Expected success, got: ${run.conclusion}`,
+          detail: `Expected cody:done, got: ${finalLabel}`,
         })
-      }
-
-      // Check labels
-      try {
-        assertLabelsPresent(ctx.gh, issueNumber, ['cody:done'])
-        assertions.push({ name: 'cody:done label', passed: true })
-      } catch (error) {
-        assertions.push({ name: 'cody:done label', passed: false, detail: String(error) })
       }
 
       // Check task comment
@@ -183,9 +259,10 @@ export const scenario02: Scenario = {
         assertions.push({ name: 'Task marker comment', passed: false, detail: String(error) })
       }
 
-      // Check PR created
+      // Check PR created — match by issue number since the branch name
+      // contains the issue number (e.g. feat/260319-systest-934-...), not the run ID
       try {
-        const pr = assertPRCreated(ctx.repo, new RegExp(taskId))
+        const pr = assertPRCreated(ctx.repo, new RegExp(String(issueNumber)))
         assertions.push({
           name: 'PR created',
           passed: true,

@@ -223,6 +223,9 @@ function createStageDefinitions(ctx: PipelineContext): Map<StageName, StageDefin
       // This happens when agent does extensive research but runs out of output capacity
       const contextFile = path.join(ctx.taskDir, 'context.md')
       if (fs.existsSync(contextFile)) {
+        logger.warn(
+          `  ⚠️ Architect fallback: using context.md as plan substitute for ${ctx.taskId}`,
+        )
         const contextContent = fs.readFileSync(contextFile, 'utf-8')
         return `# Plan: ${ctx.taskId}
 
@@ -250,6 +253,9 @@ The implementation should proceed using the file list in context.md.
     maxRetries: 1,
     minComplexity: getStageComplexityThreshold('plan-gap'),
     shouldSkip: (ctx) => {
+      // Skip plan-gap when pipeline is spec_only (no plan.md exists to gap-check)
+      const specOnlySkip = skipIfSpecOnly(ctx)
+      if (specOnlySkip.shouldSkip) return specOnlySkip
       const complexitySkip = skipIfBelowComplexity(ctx, 'plan-gap')
       if (complexitySkip.shouldSkip) return complexitySkip
       return skipIfInputQuality(ctx, 'plan-gap')
@@ -260,6 +266,9 @@ The implementation should proceed using the file list in context.md.
       // If agent edited plan.md but forgot to write plan-gap.md, create a fallback
       const planFile = path.join(ctx.taskDir, 'plan.md')
       if (fs.existsSync(planFile)) {
+        logger.warn(
+          `  ⚠️ Plan-gap fallback: agent edited plan.md directly without writing plan-gap.md for ${ctx.taskId}`,
+        )
         return `# Plan Gap Analysis: ${ctx.taskId}
 
 ## Summary
@@ -371,62 +380,16 @@ No critical gaps identified. Plan was refined in-place.
         type: 'run-quality-with-autofix',
         gates: [
           { name: 'TypeScript', command: 'pnpm -s tsc --noEmit', source: 'tsc' as const },
-          // Unit Tests gate removed — tests are deferred to inspector plugin (cody-deferred-tests)
+          // No unit test gate — test stage handles test validation
         ],
         maxFeedbackLoops: 2,
       },
     ],
     validator: createBuildValidator(),
-    fallbackOnMissingOutput: (ctx) => {
-      // Fallback: generate build.md from git changes when agent forgets to write it
-      // This happens when agent exits 0 but doesn't produce the required output file
-      const buildFile = path.join(ctx.taskDir, 'build.md')
-      if (fs.existsSync(buildFile)) return null // File exists, no fallback needed
-
-      // Get git changes to generate the summary
-      let diff = ''
-      let untracked = ''
-      try {
-        diff = execFileSync('git', ['diff', '--name-only'], { encoding: 'utf-8' }).trim()
-      } catch {
-        // git diff failed, return null to let the stage fail normally
-        return null
-      }
-      try {
-        untracked = execFileSync('git', ['ls-files', '--others', '--exclude-standard'], {
-          encoding: 'utf-8',
-        }).trim()
-      } catch {
-        return null
-      }
-
-      const allChanged = [...diff.split('\n'), ...untracked.split('\n')]
-        .filter(Boolean)
-        .filter((f) => !f.startsWith('.tasks/'))
-
-      if (allChanged.length === 0) {
-        // No source changes, can't generate meaningful summary
-        return null
-      }
-
-      // Generate build.md from changes
-      const filesList = allChanged.map((f) => `- ${f}`).join('\n')
-      return `# Build Agent Report: ${ctx.taskId}
-
-## Changes
-
-${filesList}
-
-## Summary
-
-Build agent completed but did not write build.md. This report was auto-generated from git changes.
-
-## Quality
-
-- TypeScript: Unknown (build.md not produced)
-- Lint: Unknown (build.md not produced)
-`
-    },
+    // No fallback for build stage — a missing build.md is a real failure.
+    // The agent handler will retry or fail the stage explicitly.
+    // Previously generated a degraded substitute from `git diff --name-only`,
+    // which masked failures and gave downstream stages (review, verify) incomplete input.
   })
 
   // review stage - architect agent reviews generated code
@@ -527,6 +490,9 @@ Build agent completed but did not write build.md. This report was auto-generated
         ensureBranch: false,
         localOnly: true,
       },
+      // Update knowledge base with patterns learned from this task
+      // Non-blocking: executeUpdateKnowledgeBase handles errors gracefully
+      { type: 'update-knowledge-base' },
     ],
   })
 
@@ -582,6 +548,14 @@ export function rebuildPipelineAfterTaskify(
   // Build spec stages based on profile
   const specOrder = ctx.profile === 'standard' ? SPEC_ORDER_STANDARD : SPEC_ORDER_LIGHTWEIGHT
   const filteredSpecOrder = ctx.input.clarify ? specOrder : specOrder.filter((s) => s !== 'clarify')
+
+  // For spec_only pipelines, don't include impl stages — there's no plan.md to build from
+  if (ctx.taskDef?.pipeline === 'spec_only') {
+    return {
+      stages: createStageDefinitions(ctx),
+      order: [...filteredSpecOrder],
+    }
+  }
 
   // Build impl stages based on profile
   const implOrder = ctx.profile === 'standard' ? IMPL_ORDER_STANDARD : IMPL_ORDER_LIGHTWEIGHT

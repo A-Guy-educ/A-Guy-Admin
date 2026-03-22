@@ -11,6 +11,8 @@ export interface PollWorkflowOptions {
   workflow: string
   afterTimestamp: string
   matchBranch?: RegExp
+  /** Only match runs triggered by this event type (e.g. 'workflow_dispatch') */
+  matchEvent?: string
   maxWaitMs: number
   intervalMs: number
 }
@@ -35,10 +37,11 @@ export async function pollWorkflowRun(
   while (Date.now() - startTime < opts.maxWaitMs) {
     const runs = gh.listWorkflowRuns(opts.workflow, { per_page: 30, status: 'completed' })
 
-    // Filter by timestamp and optionally by branch
+    // Filter by timestamp, optionally by branch, and optionally by event type
     const matchingRuns = runs
       .filter((run) => new Date(run.createdAt).getTime() >= new Date(opts.afterTimestamp).getTime())
       .filter((run) => !opts.matchBranch || opts.matchBranch.test(run.headBranch))
+      .filter((run) => !opts.matchEvent || (run as any).event === opts.matchEvent)
 
     if (matchingRuns.length > 0) {
       // Return the most recent one

@@ -19,6 +19,16 @@ import { logger, ciGroup, ciGroupEnd } from '../logger'
 import { MAX_PIPELINE_LOOP_ITERATIONS, RECOVERY_CHECK_INTERVAL } from '../config/constants'
 import { PipelinePausedError } from './types'
 import {
+  logStageStart,
+  logStageComplete,
+  logStageSkip,
+  logStageFail,
+  logStageRetry,
+  logPipelineStart,
+  logPipelineComplete,
+  logRecovery,
+} from '../pipeline-events'
+import {
   loadState,
   writeState,
   initState,
@@ -62,6 +72,7 @@ export async function runPipeline(
   rebuildPipeline?: (ctx: PipelineContext) => PipelineDefinition,
 ): Promise<PipelineStateV2> {
   // Load or init state
+  logPipelineStart(ctx.taskId, ctx.input.mode, ctx.profile)
   let state = loadState(ctx.taskId)
   if (!state) {
     state = initState(ctx, ctx.input.mode)
@@ -174,6 +185,7 @@ export async function runPipeline(
         const recoveredState = recoverStaleStages(currentState)
         if (recoveredState !== currentState) {
           logger.info('⚠️ Periodic recovery: reset stale running stages')
+          logRecovery('stale-stage-recovery', ctx.taskId, 'Reset stale running stages')
           state = recoveredState
           writeState(ctx.taskId, state)
         }
@@ -211,6 +223,7 @@ export async function runPipeline(
       if (ctx.input.issueNumber) {
         setLifecycleLabel(ctx.input.issueNumber, 'cody:done')
       }
+      logPipelineComplete(ctx.taskId, state.totalElapsed)
       break
     }
 
@@ -306,6 +319,7 @@ async function executeSingleStep(
     const skipResult = def.shouldSkip(ctx)
     if (skipResult.shouldSkip) {
       logger.info(`  ${stageName} skipped — ${skipResult.reason}`)
+      logStageSkip(stageName, ctx.taskId, skipResult.reason)
       return updateStage(state, stageName, {
         state: 'skipped',
         skipped: skipResult.reason,
@@ -323,6 +337,7 @@ async function executeSingleStep(
   // Mark as running
   state = updateStage(state, stageName, { state: 'running', startedAt: new Date().toISOString() })
   writeState(ctx.taskId, state)
+  logStageStart(stageName, ctx.taskId)
 
   // Dry-run: mark completed without running
   if (ctx.input.dryRun) {
@@ -357,10 +372,12 @@ async function executeSingleStep(
       return completeState(state, 'paused')
     }
     // Handle failure - mark stage as failed
+    const errorMessage = error instanceof Error ? error.message : String(error)
     logger.error({ err: error }, `  ❌ ${stageName} failed:`)
+    logStageFail(stageName, ctx.taskId, errorMessage)
     state = updateStage(state, stageName, {
       state: 'failed',
-      error: error instanceof Error ? error.message : String(error),
+      error: errorMessage,
     })
     // For non-advisory stages, mark pipeline as failed to stop the loop
     if (!def.advisory) {
@@ -621,7 +638,7 @@ async function handleStageResult(
   ctx: PipelineContext,
   pipeline: PipelineDefinition,
   state: PipelineStateV2,
-  stageName: string,
+  stageName: StageName,
   result: StageResult,
   def: StageDefinition,
 ): Promise<PipelineStateV2> {
@@ -642,6 +659,7 @@ async function handleStageResult(
       cost: result.cost,
       sessionId: result.sessionId,
     })
+    logStageComplete(stageName, ctx.taskId, 'completed', elapsed ? elapsed * 1000 : undefined)
 
     // Propagate sessionId for downstream stage forking
     if (result.sessionId) {
@@ -677,6 +695,7 @@ async function handleStageResult(
         state = updateStage(state, stageName, { state: 'pending' })
         writeState(ctx.taskId, state)
 
+        logStageRetry(stageName, ctx.taskId, newAttempt, maxAttempts)
         logger.info(
           `🔄 ${stageName} failed, looping to ${retryStage} (attempt ${newAttempt}/${maxAttempts})`,
         )
