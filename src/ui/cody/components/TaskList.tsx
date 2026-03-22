@@ -70,6 +70,7 @@ interface TaskListProps {
   onCreateTask?: () => void
   onEditTask?: (task: CodyTask) => void
   onDuplicate?: (task: CodyTask) => void
+  onRerun?: (task: CodyTask) => void
   onToggleQueue?: (task: CodyTask) => void
 }
 
@@ -153,6 +154,7 @@ export function TaskList({
   onCreateTask,
   onEditTask,
   onDuplicate,
+  onRerun,
   onToggleQueue,
   collaborators = [],
 }: TaskListProps) {
@@ -563,6 +565,18 @@ export function TaskList({
                       >
                         <Copy className="w-4 h-4 mr-2" />
                         Duplicate task
+                      </DropdownMenuItem>
+                    )}
+
+                    {/* Rerun */}
+                    {onRerun && (
+                      <DropdownMenuItem
+                        onClick={() => {
+                          onRerun(task)
+                        }}
+                      >
+                        <RotateCcw className="w-4 h-4 mr-2" />
+                        Rerun
                       </DropdownMenuItem>
                     )}
 

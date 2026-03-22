@@ -16,7 +16,11 @@ import { parseSSEChunk, consumeSSEStream, type ParseSSECallbacks } from '@/ui/co
 // Helpers
 // ============================================================================
 
-function createCallbacks(): ParseSSECallbacks & { deltas: string[]; tools: string[]; errors: string[] } {
+function createCallbacks(): ParseSSECallbacks & {
+  deltas: string[]
+  tools: string[]
+  errors: string[]
+} {
   const deltas: string[] = []
   const tools: string[] = []
   const errors: string[] = []
@@ -210,8 +214,7 @@ describe('parseSSEChunk', () => {
 
     it('would detect tool calls if they used the expected format', () => {
       const cb = createCallbacks()
-      const customToolStream =
-        'data: {"type":"tool-input-start","toolName":"listCodyTasks"}\n\n'
+      const customToolStream = 'data: {"type":"tool-input-start","toolName":"listCodyTasks"}\n\n'
       parseSSEChunk(customToolStream, cb)
 
       expect(cb.tools).toEqual(['listCodyTasks'])
@@ -366,7 +369,9 @@ describe('integration test mock accuracy', () => {
 
     // Both produce text deltas, but only because the parser ignores unknown types.
     // The real stream has 8 events, mock has 4.
-    const mockEventCount = MOCK_STREAM_FORMAT.split('\n').filter((l) => l.startsWith('data: ')).length
+    const mockEventCount = MOCK_STREAM_FORMAT.split('\n').filter((l) =>
+      l.startsWith('data: '),
+    ).length
     const realEventCount = AI_SDK_V6_STREAM.split('\n').filter((l) => l.startsWith('data: ')).length
 
     expect(mockEventCount).toBe(4) // 3 text-delta + DONE

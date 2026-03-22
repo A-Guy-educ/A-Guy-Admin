@@ -299,6 +299,16 @@ export function CodyDashboard({ initialIssueNumber, initialModal }: CodyDashboar
     },
   })
 
+  const rerunMutation = useMutation({
+    mutationFn: (task: CodyTask) => tasksApi.rerun(task.issueNumber, githubUser?.login),
+    onSuccess: () => {
+      toast.success('Task rerun')
+    },
+    onError: () => {
+      toast.error('Failed to rerun task')
+    },
+  })
+
   // Derive per-task pending state from mutations
   const executingTaskId = executeMutation.isPending
     ? ((executeMutation.variables as CodyTask | undefined)?.id ?? null)
@@ -1051,6 +1061,7 @@ export function CodyDashboard({ initialIssueNumber, initialModal }: CodyDashboar
                     onCreateTask={handleOpenCreate}
                     onEditTask={setEditingTask}
                     onDuplicate={handleDuplicateTask}
+                    onRerun={(task) => rerunMutation.mutate(task)}
                     onToggleQueue={(task) => {
                       const isQueued = task.labels.includes('cody:queued')
                       const action = isQueued

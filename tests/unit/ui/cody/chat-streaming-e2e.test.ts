@@ -203,10 +203,10 @@ describe('route failure scenarios causing no response', () => {
     // an error JSON, not a stream. The frontend may not surface this properly.
     delete process.env.GEMINI_API_KEY
 
-    const response = new Response(
-      JSON.stringify({ error: 'GEMINI_API_KEY is not configured' }),
-      { status: 503, headers: { 'Content-Type': 'application/json' } },
-    )
+    const response = new Response(JSON.stringify({ error: 'GEMINI_API_KEY is not configured' }), {
+      status: 503,
+      headers: { 'Content-Type': 'application/json' },
+    })
 
     expect(response.status).toBe(503)
     expect(response.headers.get('Content-Type')).toContain('application/json')
@@ -216,10 +216,10 @@ describe('route failure scenarios causing no response', () => {
 
   it('frontend error handling when API returns non-200', async () => {
     // Simulate what CodyChat.tsx does when response.ok is false
-    const response = new Response(
-      JSON.stringify({ error: 'Session expired' }),
-      { status: 401, headers: { 'Content-Type': 'application/json' } },
-    )
+    const response = new Response(JSON.stringify({ error: 'Session expired' }), {
+      status: 401,
+      headers: { 'Content-Type': 'application/json' },
+    })
 
     if (!response.ok) {
       const errorData = await response.json()
@@ -309,9 +309,7 @@ describe('stream interruption scenarios', () => {
     const stream = new ReadableStream<Uint8Array>({
       start(controller) {
         // Only send start event, then close
-        controller.enqueue(
-          encoder.encode('data: {"type":"start","messageId":"msg-cut"}\n\n'),
-        )
+        controller.enqueue(encoder.encode('data: {"type":"start","messageId":"msg-cut"}\n\n'))
         controller.close()
       },
     })
@@ -330,9 +328,7 @@ describe('stream interruption scenarios', () => {
     const stream = new ReadableStream<Uint8Array>({
       start(controller) {
         controller.enqueue(
-          encoder.encode(
-            'data: {"type":"text-delta","id":"t0","delta":"Partial"}\n\n',
-          ),
+          encoder.encode('data: {"type":"text-delta","id":"t0","delta":"Partial"}\n\n'),
         )
         controller.error(new Error('Connection lost'))
       },

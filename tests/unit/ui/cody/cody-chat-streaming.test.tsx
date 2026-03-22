@@ -178,9 +178,7 @@ async function typeAndSend(textarea: HTMLElement, text: string) {
     textarea.dispatchEvent(new Event('change', { bubbles: true }))
   })
   await act(async () => {
-    textarea.dispatchEvent(
-      new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }),
-    )
+    textarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
   })
 }
 
@@ -203,9 +201,9 @@ describe('CodyChat streaming UI', () => {
   })
 
   it('renders streamed text in the DOM after stream completes', async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue(
-      createStreamResponse(textResponseParts('Hello from Gemini')),
-    )
+    globalThis.fetch = vi
+      .fn()
+      .mockResolvedValue(createStreamResponse(textResponseParts('Hello from Gemini')))
 
     const { CodyChat } = await import('@/ui/cody/components/CodyChat')
     render(React.createElement(ChatWrapper, { CodyChat }))
@@ -237,9 +235,7 @@ describe('CodyChat streaming UI', () => {
   })
 
   it('renders text around tool calls (tool-call events are silently skipped)', async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue(
-      createStreamResponse(toolCallResponseParts()),
-    )
+    globalThis.fetch = vi.fn().mockResolvedValue(createStreamResponse(toolCallResponseParts()))
 
     const { CodyChat } = await import('@/ui/cody/components/CodyChat')
     render(React.createElement(ChatWrapper, { CodyChat }))
@@ -264,10 +260,10 @@ describe('CodyChat streaming UI', () => {
 
   it('shows error message when API returns 503', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({ error: 'GEMINI_API_KEY is not configured' }),
-        { status: 503, headers: { 'Content-Type': 'application/json' } },
-      ),
+      new Response(JSON.stringify({ error: 'GEMINI_API_KEY is not configured' }), {
+        status: 503,
+        headers: { 'Content-Type': 'application/json' },
+      }),
     )
 
     const { CodyChat } = await import('@/ui/cody/components/CodyChat')
@@ -321,15 +317,14 @@ describe('CodyChat streaming UI', () => {
 
   it('shows user message in DOM before stream starts', async () => {
     // Use a stream that takes a while so we can check the user message first
-    globalThis.fetch = vi.fn().mockImplementation(
-      () =>
-        new Promise((resolve) =>
-          setTimeout(
-            () => resolve(createStreamResponse(textResponseParts('response'))),
-            100,
+    globalThis.fetch = vi
+      .fn()
+      .mockImplementation(
+        () =>
+          new Promise((resolve) =>
+            setTimeout(() => resolve(createStreamResponse(textResponseParts('response'))), 100),
           ),
-        ),
-    )
+      )
 
     const { CodyChat } = await import('@/ui/cody/components/CodyChat')
     render(React.createElement(ChatWrapper, { CodyChat }))
