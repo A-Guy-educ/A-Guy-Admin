@@ -81,6 +81,21 @@ const nextConfig = {
   redirects,
   async headers() {
     return [
+      // PDF.js viewer - allow same-origin iframe embedding
+      {
+        source: '/api/pdfjs-viewer',
+        headers: [
+          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+          {
+            key: 'Content-Security-Policy',
+            value:
+              "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://96hg0ck1hvrndmxp.public.blob.vercel-storage.com; style-src 'self' 'unsafe-inline'; img-src 'self' *.blob.vercel-storage.com data: blob:; font-src 'self' data:; connect-src 'self' *.blob.vercel-storage.com; frame-src 'none'; object-src 'none'; base-uri 'self'",
+          },
+          { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains' },
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+        ],
+      },
       // General routes - CSP optimized for Next.js
       {
         source: '/:path*',
