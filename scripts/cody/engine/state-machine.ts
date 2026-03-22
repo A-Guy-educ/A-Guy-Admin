@@ -402,11 +402,16 @@ async function executeParallelStep(
 ): Promise<PipelineStateV2> {
   logger.info(`  Running parallel: [${stageNames.join(', ')}]...`)
 
-  // Filter out already completed stages (for resume)
+  // Filter out already completed/terminal stages (for resume)
   const stagesToRun = stageNames.filter((stageName) => {
     const stageState = state.stages[stageName]
-    if (stageState?.state === 'completed' || stageState?.state === 'skipped') {
-      logger.info(`  ${stageName} already completed/skipped, skipping`)
+    if (
+      stageState?.state === 'completed' ||
+      stageState?.state === 'skipped' ||
+      stageState?.state === 'timeout' ||
+      stageState?.state === 'failed'
+    ) {
+      logger.info(`  ${stageName} already ${stageState.state}, skipping`)
       return false
     }
     return true
@@ -589,6 +594,16 @@ async function executeParallelStep(
         state: 'skipped',
         skipped: stageResult.reason,
       })
+    } else if (stageResult.outcome === 'timed_out') {
+      // Handle timeout in parallel stages — previously missing, causing infinite retry loops
+      const isAdvisory = pipeline.stages.get(stageName)?.advisory === true
+      state = updateStage(state, stageName, {
+        state: 'timeout',
+        error: stageResult.reason || 'timed out',
+      })
+      if (!isAdvisory) {
+        criticalFailures.push({ name: stageName, reason: stageResult.reason || 'timed out' })
+      }
     } else if (stageResult.outcome === 'failed') {
       // R7: Use dynamic advisory lookup from pipeline definition
       const isAdvisory = pipeline.stages.get(stageName)?.advisory === true
