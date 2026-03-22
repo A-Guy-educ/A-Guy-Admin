@@ -5,8 +5,8 @@
  * @ai-summary Unit tests for executeUpdateKnowledgeBase post-action
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest'
 import * as fs from 'fs'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // Mock fs before importing the module
 vi.mock('fs')
@@ -40,11 +40,11 @@ vi.mock('../../../../../scripts/cody/pipeline-utils', () => ({
   readTask: vi.fn(),
 }))
 
-import { executeUpdateKnowledgeBase } from '../../../../../scripts/cody/pipeline/post-actions/knowledge-base'
-import type { PipelineContext, PipelineStateV2 } from '../../../../../scripts/cody/engine/types'
-import type { TaskDefinition } from '../../../../../scripts/cody/pipeline/task-schema'
-import { readTask } from '../../../../../scripts/cody/pipeline-utils'
 import { loadState } from '../../../../../scripts/cody/engine/status'
+import type { PipelineContext, PipelineStateV2 } from '../../../../../scripts/cody/engine/types'
+import { readTask } from '../../../../../scripts/cody/pipeline-utils'
+import { executeUpdateKnowledgeBase } from '../../../../../scripts/cody/pipeline/post-actions/knowledge-base'
+import type { TaskDefinition } from '../../../../../scripts/cody/pipeline/task-schema'
 
 // ============================================================================
 // Helpers
