@@ -128,6 +128,7 @@ export function ExerciseRenderer({
   lessonId = '',
   exerciseId = '',
   onResultsChange,
+  formulaSheet,
 }: ExerciseRendererProps) {
   const t = useTranslations('courses')
   const locale = useLocale()
@@ -600,6 +601,7 @@ export function ExerciseRenderer({
                   hintLabel={t('helpHint')}
                   guidingLabel={t('helpGuidingQuestion')}
                   solutionLabel={t('helpSolution')}
+                  formulaSheet={formulaSheet}
                 />
               )
 

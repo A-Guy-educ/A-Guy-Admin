@@ -211,4 +211,6 @@ export interface ExerciseRendererProps {
     checkedCount: number
     correctCount: number
   }) => void
+  /** Formula sheet data for the help system buttons */
+  formulaSheet?: import('@/payload-types').FormulaSheet | null
 }
