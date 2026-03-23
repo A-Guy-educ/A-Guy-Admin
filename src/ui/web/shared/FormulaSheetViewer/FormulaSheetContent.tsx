@@ -4,13 +4,13 @@
  * @fileType component
  * @domain formula-sheets
  * @pattern content-renderer
- * @ai-summary Server-side renderer for formula sheet content (PDF, RichText, or Blocks)
+ * @ai-summary Client-side renderer for formula sheet content (PDF or HTML blocks)
  */
 
-import type { FormulaSheet } from '@/payload-types'
-import { RenderBlocks } from '@/server/payload/blocks/RenderBlocks'
-import RichText from '@/ui/web/RichText'
+'use client'
 
+import type { FormulaSheet } from '@/payload-types'
+import { useTranslations } from '@/ui/web/providers/I18n'
 import { PDFEmbed } from '../../courses/PDFViewer/PDFEmbed'
 
 export interface FormulaSheetContentProps {
@@ -21,40 +21,70 @@ export interface FormulaSheetContentProps {
 /**
  * Render the content of a formula sheet based on its content type.
  *
- * This is a SERVER component — it must be pre-rendered in a server context
- * (e.g., page.tsx) and passed as a ReactNode to client components.
- * RenderBlocks and RichText transitively import payload.config.ts which
- * includes Node.js-only binary modules that cannot be bundled for the browser.
+ * This is a CLIENT component that avoids importing RenderBlocks or RichText
+ * (which transitively pull in payload.config.ts → Node.js binary modules).
+ * Instead, it renders HTML blocks directly via dangerouslySetInnerHTML.
  */
 export function FormulaSheetContent({ sheet }: FormulaSheetContentProps) {
-  const { contentType, pdfFile, richTextContent, bodyBlocks } = sheet
+  const { contentType, pdfFile, bodyBlocks } = sheet
+  const t = useTranslations('courses')
 
   switch (contentType) {
     case 'pdf':
       if (!pdfFile || typeof pdfFile === 'string') {
-        return null
+        return <p className="text-muted-foreground">{t('formulaSheetEmpty')}</p>
       }
       return <PDFEmbed pdfUrl={pdfFile.url || `/media/${pdfFile.filename}`} title={sheet.title} />
 
     case 'richText':
-      if (!richTextContent) {
-        return null
-      }
-      return (
-        <div className="prose prose-slate dark:prose-invert max-w-none">
-          <RichText data={richTextContent} enableProse={false} enableGutter={false} />
-        </div>
-      )
-
     case 'blocks':
-    default:
+    default: {
+      // For blocks, extract HTML content and render directly
       if (!bodyBlocks || !Array.isArray(bodyBlocks) || bodyBlocks.length === 0) {
-        return null
+        return <p className="text-muted-foreground">{t('formulaSheetEmpty')}</p>
       }
+
       return (
-        <div className="formula-sheet-blocks">
-          <RenderBlocks blocks={bodyBlocks} />
+        <div className="formula-sheet-blocks space-y-4">
+          {bodyBlocks.map((block, index) => {
+            if (block.blockType === 'html' && 'html' in block) {
+              return (
+                <div
+                  key={block.id ?? index}
+                  className="rich-text-content"
+                  dangerouslySetInnerHTML={{ __html: block.html }}
+                />
+              )
+            }
+            if (block.blockType === 'mediaBlock' && 'media' in block) {
+              const media = typeof block.media === 'string' ? null : block.media
+              if (media?.url) {
+                return (
+                  <div key={block.id ?? index} className="rounded-lg overflow-hidden">
+                    {media.mimeType?.startsWith('image/') ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={media.url} alt={media.alt || ''} className="w-full h-auto" />
+                    ) : (
+                      <a href={media.url} className="text-primary underline">
+                        {media.filename || 'Download'}
+                      </a>
+                    )}
+                  </div>
+                )
+              }
+            }
+            // For content blocks, try to extract rich text
+            if (block.blockType === 'content' && 'columns' in block) {
+              return (
+                <div key={block.id ?? index} className="prose dark:prose-invert max-w-none">
+                  {/* Content blocks have complex structure - skip for now */}
+                </div>
+              )
+            }
+            return null
+          })}
         </div>
       )
+    }
   }
 }

@@ -80,9 +80,8 @@ interface ChatInterfaceProps {
   showResetButton?: boolean
   showMathTools?: boolean
 
-  // Formula Sheet (pre-rendered server-side)
-  formulaSheetTitle?: string | null
-  formulaSheetContent?: React.ReactNode | null
+  // Formula Sheet
+  formulaSheet?: import('@/payload-types').FormulaSheet | null
 
   // Override computed contextKey (e.g. for Ask page per-session conversations)
   contextKeyOverride?: string
@@ -115,8 +114,7 @@ export function ChatInterface({
   showQuickActions = false,
   showResetButton = false,
   showMathTools = false,
-  formulaSheetTitle,
-  formulaSheetContent,
+  formulaSheet,
   contextKeyOverride,
   onConversationCreated,
   displayMode = 'full',
@@ -496,10 +494,7 @@ export function ChatInterface({
       {showQuickActions && (
         <div className="flex gap-content-gap-xs p-3 border-t border-border">
           {/* Formula Sheet Button */}
-          <FormulaSheetButton
-            title={formulaSheetTitle ?? null}
-            content={formulaSheetContent ?? null}
-          />
+          <FormulaSheetButton sheet={formulaSheet ?? null} />
           <button
             className="flex-1 flex items-center justify-center gap-content-gap-xs py-2 px-3 rounded-lg bg-muted hover:bg-muted/80 text-body-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             onClick={() => handleQuickAction('hint')}

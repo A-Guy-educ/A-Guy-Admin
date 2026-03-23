@@ -4,27 +4,25 @@
  * @fileType component
  * @domain formula-sheets
  * @pattern action-button
- * @ai-summary Button component to open formula sheet viewer with pre-rendered content
+ * @ai-summary Button component to open formula sheet viewer
  */
 
 'use client'
 
-import type React from 'react'
 import { useState } from 'react'
 
 import { BookOpen } from 'lucide-react'
 
+import type { FormulaSheet } from '@/payload-types'
 import { useMediaQuery } from '@/server/payload/hooks/useMediaQuery'
 import { Button } from '@/ui/web/components/button'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/ui/web/components/sheet'
 import { useTranslations } from '@/ui/web/providers/I18n'
+import { FormulaSheetContent } from './FormulaSheetContent'
 
 export interface FormulaSheetButtonProps {
-  /** Title of the formula sheet */
-  title: string | null
-
-  /** Pre-rendered formula sheet content (rendered server-side to avoid client bundling server modules) */
-  content: React.ReactNode | null
+  /** The formula sheet data (null = button is hidden) */
+  sheet: FormulaSheet | null
 
   /** Additional className for the button */
   className?: string
@@ -33,19 +31,15 @@ export interface FormulaSheetButtonProps {
 /**
  * FormulaSheetButton - Opens formula sheet viewer when clicked
  *
- * Only renders if content is provided. Shows a book icon button
+ * Only renders if a sheet is provided. Shows a book icon button
  * that opens the sheet content in a sliding panel (desktop) or bottom drawer (mobile).
- *
- * Content must be pre-rendered server-side because RenderBlocks/RichText
- * transitively import payload.config.ts which includes Node.js-only modules.
  */
-export function FormulaSheetButton({ title, content, className }: FormulaSheetButtonProps) {
+export function FormulaSheetButton({ sheet, className }: FormulaSheetButtonProps) {
   const [open, setOpen] = useState(false)
   const t = useTranslations('courses')
   const isDesktop = useMediaQuery('(min-width: 640px)')
 
-  // Only render if we have content
-  if (!title || !content) {
+  if (!sheet) {
     return null
   }
 
@@ -71,11 +65,13 @@ export function FormulaSheetButton({ title, content, className }: FormulaSheetBu
         }
       >
         <SheetHeader className="mb-4">
-          <SheetTitle className="text-heading-xl font-semibold">{title}</SheetTitle>
-          <p className="text-body-sm text-muted-foreground">{t('formulaSheetTitle')}</p>
+          <SheetTitle className="text-xl font-semibold">{sheet.title}</SheetTitle>
+          <p className="text-sm text-muted-foreground">{t('formulaSheetTitle')}</p>
         </SheetHeader>
 
-        <div className={isDesktop ? 'pr-8' : ''}>{content}</div>
+        <div className={isDesktop ? 'pr-8' : ''}>
+          <FormulaSheetContent sheet={sheet} />
+        </div>
       </SheetContent>
     </Sheet>
   )

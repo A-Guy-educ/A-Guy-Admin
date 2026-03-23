@@ -1,6 +1,5 @@
 import '@/infra/config/server-init'
 
-import type React from 'react'
 import { getSystemLocale } from '@/i18n/server-locale'
 import { SystemParams } from '@/infra/config/system-params'
 import type { Media } from '@/payload-types'
@@ -10,7 +9,7 @@ import { isValidContentLocale } from '@/server/payload/fields/contentLocale'
 import { queryCourseBySlug } from '@/server/repos/queries/courses'
 import { queryExercisesByLesson } from '@/server/repos/queries/exercises'
 import { resolveFormulaSheet } from '@/server/repos/queries/formula-sheets'
-import { FormulaSheetContent } from '@/ui/web/shared/FormulaSheetViewer/FormulaSheetContent'
+import type { FormulaSheet } from '@/payload-types'
 import { queryLessonBlocks } from '@/server/repos/queries/lesson-blocks'
 import { queryLessonBySlug } from '@/server/repos/queries/lessons'
 import { queryMediaByIds } from '@/server/repos/queries/media'
@@ -51,23 +50,16 @@ export default async function LessonPage({ params }: LessonPageProps) {
   }
 
   // Resolve formula sheet for this lesson (with course fallback)
-  // Wrapped in try-catch so a bad formula sheet never crashes the lesson page
-  let formulaSheetTitle: string | null = null
-  let formulaSheetContent: React.ReactNode | null = null
+  let formulaSheet: FormulaSheet | null = null
   try {
-    const formulaSheetResult = contentLocale
+    const result = contentLocale
       ? await resolveFormulaSheet({
           lessonId: lesson.id,
           courseId: course.id,
           locale: contentLocale,
         })
       : null
-
-    if (formulaSheetResult) {
-      formulaSheetTitle = formulaSheetResult.sheet.title
-      // Pre-render server-side (RenderBlocks/RichText import server-only modules)
-      formulaSheetContent = <FormulaSheetContent sheet={formulaSheetResult.sheet} />
-    }
+    formulaSheet = result?.sheet ?? null
   } catch {
     // Formula sheet resolution failed — continue without it
   }
@@ -171,8 +163,7 @@ export default async function LessonPage({ params }: LessonPageProps) {
           lessonId={lesson.id}
           mediaMap={mediaMap}
           contentPageBodies={contentPageBodies}
-          formulaSheetTitle={formulaSheetTitle}
-          formulaSheetContent={formulaSheetContent}
+          formulaSheet={formulaSheet}
         />
       </AccessGateProvider>
     )
@@ -221,8 +212,7 @@ export default async function LessonPage({ params }: LessonPageProps) {
             lessonSlug={lessonSlug}
             lessonId={lesson.id}
             mediaMap={mediaMap}
-            formulaSheetTitle={formulaSheetTitle}
-            formulaSheetContent={formulaSheetContent}
+            formulaSheet={formulaSheet}
           />
         ) : (
           // Empty lesson: show ExerciseWorkspace with DynamicLesson as primaryContent
@@ -237,8 +227,7 @@ export default async function LessonPage({ params }: LessonPageProps) {
                   lessonId={chatLessonId}
                   translationNamespace="courses"
                   showMathTools={true}
-                  formulaSheetTitle={formulaSheetTitle}
-                  formulaSheetContent={formulaSheetContent}
+                  formulaSheet={formulaSheet}
                 />
               }
             />
@@ -281,8 +270,7 @@ export default async function LessonPage({ params }: LessonPageProps) {
             lessonId={chatLessonId}
             translationNamespace="courses"
             showMathTools={true}
-            formulaSheetTitle={formulaSheetTitle}
-            formulaSheetContent={formulaSheetContent}
+            formulaSheet={formulaSheet}
           />
         }
       />

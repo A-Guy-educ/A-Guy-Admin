@@ -33,10 +33,8 @@ interface LessonPagerProps {
   mediaMap?: Record<string, MediaType>
   /** Pre-rendered content page bodies (keyed by content page ID) */
   contentPageBodies?: Record<string, React.ReactNode>
-  /** Title of the formula sheet (passed to ChatInterface) */
-  formulaSheetTitle?: string | null
-  /** Pre-rendered formula sheet content (passed to ChatInterface) */
-  formulaSheetContent?: React.ReactNode | null
+  /** Formula sheet data (passed to ChatInterface) */
+  formulaSheet?: import('@/payload-types').FormulaSheet | null
 }
 
 export function LessonPager({
@@ -49,8 +47,7 @@ export function LessonPager({
   lessonId,
   mediaMap,
   contentPageBodies,
-  formulaSheetTitle,
-  formulaSheetContent,
+  formulaSheet,
 }: LessonPagerProps) {
   const t = useTranslations('courses')
   const {
@@ -171,8 +168,7 @@ export function LessonPager({
             }
             translationNamespace="courses"
             showMathTools={true}
-            formulaSheetTitle={formulaSheetTitle}
-            formulaSheetContent={formulaSheetContent}
+            formulaSheet={formulaSheet}
           />
         }
       />
