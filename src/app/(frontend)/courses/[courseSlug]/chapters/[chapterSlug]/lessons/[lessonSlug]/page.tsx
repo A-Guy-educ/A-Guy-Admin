@@ -1,5 +1,6 @@
 import '@/infra/config/server-init'
 
+import type React from 'react'
 import { getSystemLocale } from '@/i18n/server-locale'
 import { SystemParams } from '@/infra/config/system-params'
 import type { Media } from '@/payload-types'
@@ -50,20 +51,26 @@ export default async function LessonPage({ params }: LessonPageProps) {
   }
 
   // Resolve formula sheet for this lesson (with course fallback)
-  const formulaSheetResult = contentLocale
-    ? await resolveFormulaSheet({
-        lessonId: lesson.id,
-        courseId: course.id,
-        locale: contentLocale,
-      })
-    : null
+  // Wrapped in try-catch so a bad formula sheet never crashes the lesson page
+  let formulaSheetTitle: string | null = null
+  let formulaSheetContent: React.ReactNode | null = null
+  try {
+    const formulaSheetResult = contentLocale
+      ? await resolveFormulaSheet({
+          lessonId: lesson.id,
+          courseId: course.id,
+          locale: contentLocale,
+        })
+      : null
 
-  // Pre-render formula sheet content server-side (RenderBlocks/RichText
-  // transitively import server-only modules that can't be bundled for the browser)
-  const formulaSheetTitle = formulaSheetResult?.sheet.title ?? null
-  const formulaSheetContent = formulaSheetResult ? (
-    <FormulaSheetContent sheet={formulaSheetResult.sheet} />
-  ) : null
+    if (formulaSheetResult) {
+      formulaSheetTitle = formulaSheetResult.sheet.title
+      // Pre-render server-side (RenderBlocks/RichText import server-only modules)
+      formulaSheetContent = <FormulaSheetContent sheet={formulaSheetResult.sheet} />
+    }
+  } catch {
+    // Formula sheet resolution failed — continue without it
+  }
 
   const lessonChapter = typeof lesson.chapter === 'string' ? null : lesson.chapter
   const lessonCourseId = lessonChapter

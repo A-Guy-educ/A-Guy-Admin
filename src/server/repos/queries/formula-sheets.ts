@@ -49,7 +49,7 @@ async function fetchFormulaSheet({
     collection: 'formula-sheets',
     id,
     depth: 2,
-    overrideAccess: false,
+    overrideAccess: true,
     disableErrors: true,
   })
 
