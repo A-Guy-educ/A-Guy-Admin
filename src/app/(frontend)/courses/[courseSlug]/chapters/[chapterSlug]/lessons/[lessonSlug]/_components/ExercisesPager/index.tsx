@@ -175,7 +175,6 @@ export function ExercisesPager({
                     lessonId={lessonId}
                     exerciseId={currentExercise.id}
                     onResultsChange={handleExerciseResultsChange}
-                    formulaSheet={formulaSheet}
                   />
                 </div>
               </div>

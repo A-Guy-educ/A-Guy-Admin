@@ -8,7 +8,6 @@
 'use client'
 
 import React from 'react'
-import type { FormulaSheet } from '@/payload-types'
 import type { HelpUsageState, QuestionBlock } from '../../types'
 import { HelpSystemButtons } from './HelpSystemButtons'
 import { HelpSystemContent } from './HelpSystemContent'
@@ -23,8 +22,6 @@ interface HelpSystemProps {
   hintLabel: string
   guidingLabel: string
   solutionLabel: string
-  /** Formula sheet data (optional) */
-  formulaSheet?: FormulaSheet | null
 }
 
 export function HelpSystem({
@@ -37,7 +34,6 @@ export function HelpSystem({
   hintLabel,
   guidingLabel,
   solutionLabel,
-  formulaSheet,
 }: HelpSystemProps) {
   // Determine which content to show inline (hint only when backend content exists)
   const inlineContent = activeHelp === 'hint' && question.hint?.value ? question.hint.value : null
@@ -53,7 +49,6 @@ export function HelpSystem({
         hintLabel={hintLabel}
         guidingLabel={guidingLabel}
         solutionLabel={solutionLabel}
-        formulaSheet={formulaSheet}
       />
 
       {inlineContent && (

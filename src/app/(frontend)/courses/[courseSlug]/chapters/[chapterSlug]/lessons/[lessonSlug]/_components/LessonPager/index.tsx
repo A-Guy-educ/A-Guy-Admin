@@ -107,7 +107,6 @@ export function LessonPager({
                     mediaMap={mediaMap}
                     lessonId={lessonId}
                     exerciseId={exercise.id}
-                    formulaSheet={formulaSheet}
                   />
                 </div>
               </div>

@@ -11,8 +11,6 @@ import React from 'react'
 import { cn } from '@/infra/utils/ui'
 import { Lightbulb, HelpCircle, CheckCircle2 } from 'lucide-react'
 import type { HelpUsageState } from '../../types'
-import { FormulaSheetButton } from '@/ui/web/shared/FormulaSheetViewer/FormulaSheetButton'
-import type { FormulaSheet } from '@/payload-types'
 
 interface HelpSystemButtonsProps {
   helpUsage: HelpUsageState
@@ -23,8 +21,6 @@ interface HelpSystemButtonsProps {
   hintLabel: string
   guidingLabel: string
   solutionLabel: string
-  /** Formula sheet data (optional) */
-  formulaSheet?: FormulaSheet | null
 }
 
 export function HelpSystemButtons({
@@ -36,13 +32,9 @@ export function HelpSystemButtons({
   hintLabel,
   guidingLabel,
   solutionLabel,
-  formulaSheet,
 }: HelpSystemButtonsProps) {
   return (
     <div className="flex flex-wrap gap-content-gap-xs">
-      {/* Formula Sheet Button */}
-      <FormulaSheetButton sheet={formulaSheet ?? null} />
-
       {/* Hint Button - always visible, AI fallback when no backend content */}
       <button
         type="button"
