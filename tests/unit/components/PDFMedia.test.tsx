@@ -126,9 +126,9 @@ describe('PDF Desktop Layout Fix', () => {
       // The primaryContent wrapper should have min-h-0
       expect(source).toContain('flex flex-col min-h-0')
 
-      // File wrappers should use flex-1 min-h-0 (not h-full flex-shrink-0)
-      // This ensures proper height allocation in flex contexts
-      expect(source).toContain('w-full flex-1 min-h-0')
+      // File wrappers should use a concrete viewport-relative height
+      // so the PDF iframe gets a real height (not h-full which resolves to 0 in scroll containers)
+      expect(source).toContain('calc(100vh - 120px)')
       // Should NOT have the old problematic pattern
       expect(source).not.toContain('w-full h-full flex-shrink-0')
     })
@@ -159,7 +159,7 @@ describe('Flexbox height propagation requirements', () => {
     const results = {
       'PDFMedia wrapper': pdfMediaSource.includes("cn('w-full h-full min-h-0'"),
       'PdfLessonPager primaryContent wrapper': pagerSource.includes('flex flex-col min-h-0'),
-      'PdfLessonPager file wrapper': pagerSource.includes('w-full flex-1 min-h-0'),
+      'PdfLessonPager file wrapper': pagerSource.includes('calc(100vh - 120px)'),
       // This is the one that should fail until fixed
       'SplitPaneLayout desktop wrapper': /h-full overflow-hidden.*min-h-0/.test(splitPaneSource),
     }
