@@ -4,9 +4,9 @@ import { DEFAULT_LESSON_ACCESS_TYPE } from '@/server/constants/access-types'
 import { tenantField } from '@/server/payload/fields/tenant'
 import { adminOnly } from '../access/adminOnly'
 import { publishedAndActive } from '../access/publishedAndActive'
+import { contentStatusFields } from '../fields/contentStatus'
 import { createdByField } from '../fields/createdBy'
 import { formatSlug } from '../fields/formatSlug'
-import { contentStatusFields } from '../fields/contentStatus'
 
 export const Lessons: CollectionConfig = {
   slug: 'lessons',
@@ -237,6 +237,18 @@ export const Lessons: CollectionConfig = {
 
     // Content Status
     ...contentStatusFields,
+
+    // Formula Sheet (optional)
+    {
+      name: 'formulaSheet',
+      type: 'relationship',
+      relationTo: 'formula-sheets',
+      index: true,
+      admin: {
+        position: 'sidebar',
+        description: 'Lesson-specific formula sheet (overrides course default)',
+      },
+    },
 
     // Created By
     createdByField,

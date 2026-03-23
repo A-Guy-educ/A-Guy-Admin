@@ -1,16 +1,17 @@
 'use client'
 
 import { isRTL } from '@/i18n/config'
+import { SystemLink } from '@/infra/loading/components/SystemLink'
+import { useRouterWithLoading } from '@/infra/loading/hooks/useRouterWithLoading'
 import { cn } from '@/infra/utils/ui'
-import type { User } from '@/payload-types'
+import type { FormulaSheet, User } from '@/payload-types'
 import { TelescopeLogo } from '@/ui/web/TelescopeLogo'
 import { UserDropdown } from '@/ui/web/UserDropdown'
 import { Button } from '@/ui/web/components/button'
-import { usePasswordLogin } from '@/ui/web/providers/PasswordLoginProvider'
 import { useLocale, useTranslations } from '@/ui/web/providers/I18n'
+import { usePasswordLogin } from '@/ui/web/providers/PasswordLoginProvider'
+import { FormulaSheetButton } from '@/ui/web/shared/FormulaSheetViewer/FormulaSheetButton'
 import { ArrowLeft, ArrowRight, Menu } from 'lucide-react'
-import { SystemLink } from '@/infra/loading/components/SystemLink'
-import { useRouterWithLoading } from '@/infra/loading/hooks/useRouterWithLoading'
 
 interface ExerciseHeaderProps {
   exerciseTitle: string
@@ -19,6 +20,10 @@ interface ExerciseHeaderProps {
   user?: User | null
   isAuthLoading?: boolean
   currentUrl?: string
+  /** Formula sheet to display in the header */
+  formulaSheet?: FormulaSheet | null
+  /** Source of the formula sheet (lesson or course) */
+  formulaSheetSource?: 'lesson' | 'course' | null
 }
 
 export function ExerciseHeader({
@@ -28,6 +33,8 @@ export function ExerciseHeader({
   user,
   isAuthLoading,
   currentUrl,
+  formulaSheet,
+  formulaSheetSource,
 }: ExerciseHeaderProps) {
   const t = useTranslations('courses')
   const tCommon = useTranslations('common.header')
@@ -63,20 +70,25 @@ export function ExerciseHeader({
       </button>
 
       {/* Center: Exercise Title */}
-      <h1 className="absolute left-1/2 -translate-x-1/2 text-primary text-lg font-extrabold tracking-tight cursor-move max-w-[40%] text-center truncate">
+      <h1 className="absolute left-1/2 -translate-x-1/2 text-primary text-body-lg font-extrabold tracking-tight cursor-move max-w-[40%] text-center truncate">
         {exerciseTitle}
       </h1>
 
       {/* Right side in LTR / Left side in RTL - Fixed positioning to viewport edge */}
       <div
         className={cn(
-          'flex items-center gap-2 flex-shrink-0 fixed top-[10px] z-[101]',
+          'flex items-center gap-content-gap-xs flex-shrink-0 fixed top-[10px] z-[101]',
           rtl ? 'flex-row-reverse' : 'flex-row',
         )}
         style={{
           [rtl ? 'left' : 'right']: '20px',
         }}
       >
+        {/* Formula Sheet Button */}
+        {formulaSheet && (
+          <FormulaSheetButton sheet={formulaSheet} source={formulaSheetSource ?? null} />
+        )}
+
         {/* Logo - Hidden on mobile, shown on desktop */}
         <TelescopeLogo className="h-8 w-auto hidden lg:flex" />
 
@@ -92,13 +104,16 @@ export function ExerciseHeader({
         )}
 
         {/* Desktop Auth Section */}
-        <div className="hidden lg:flex items-center gap-2" data-testid="exercise-header-auth">
+        <div
+          className="hidden lg:flex items-center gap-content-gap-xs"
+          data-testid="exercise-header-auth"
+        >
           {isAuthLoading ? (
             <div className="w-20 h-8 animate-pulse bg-muted rounded" aria-hidden="true" />
           ) : user ? (
             <UserDropdown user={user} />
           ) : (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-content-gap-xs">
               <Button size="sm" asChild>
                 <SystemLink href={`/login${returnToParam}`}>{tCommon('login')}</SystemLink>
               </Button>
