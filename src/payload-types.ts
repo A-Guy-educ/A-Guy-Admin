@@ -723,7 +723,7 @@ export interface Prompt {
   /**
    * Purpose of this prompt: chat conversation, PDF extraction, PDF verification, or context extraction for AI tutor
    */
-  usage?: ('chat' | 'extractor' | 'verifier' | 'context_extractor') | null;
+  usage?: ('chat' | 'extractor' | 'verifier' | 'context_extractor' | 'translator') | null;
   updatedAt: string;
   createdAt: string;
 }
