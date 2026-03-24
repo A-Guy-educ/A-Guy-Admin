@@ -53,14 +53,10 @@ export function PdfLessonPager({
 
   if (pageState.type === 'pdf') {
     const primaryContent = (
-      <div className="w-full h-full flex flex-col min-h-0">
-        {validFiles.map((file, index) => (
-          <div key={file.id} className="w-full flex-1 min-h-0">
-            {index > 0 && (
-              <div className="h-0.5 my-8 flex-shrink-0 bg-gradient-to-r from-transparent via-border to-transparent" />
-            )}
+      <div className="w-full flex flex-col gap-content-gap">
+        {validFiles.map((file) => (
+          <div key={file.id} className="w-full" style={{ height: 'calc(100vh - 120px)' }}>
             <div className="border rounded-lg overflow-hidden bg-card shadow-card h-full">
-              {/* Using dynamic import to avoid SSR issues with MediaComponent */}
               <MediaComponent resource={file} className="w-full h-full" htmlElement={null} />
             </div>
           </div>
