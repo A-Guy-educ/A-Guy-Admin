@@ -121,6 +121,9 @@ export function useNotebookChat({
   // Track last injected exercise ID to avoid duplicate context injection
   const lastInjectedExerciseId = useRef<string | null>(null)
 
+  // Guard to prevent concurrent context injections
+  const isInjectingRef = useRef(false)
+
   // Compute contextKey based on available context
   // For admin mode: use users:{userId} (user-scoped conversation)
   // Priority for regular mode: Lesson > Exercise (fallback) > Chapter > Course > Category
@@ -678,19 +681,25 @@ export function useNotebookChat({
       >,
     ) => {
       if (isLoadingRef.current || isLoadingHistoryRef.current) return
+      if (isInjectingRef.current) return
       if (lastInjectedExerciseId.current === exercise.id) return
 
+      isInjectingRef.current = true
       lastInjectedExerciseId.current = exercise.id
 
-      const formatted = formatExerciseContextMessage(
-        exercise.title,
-        exercise.content.blocks,
-        mediaMap,
-      )
-      const prompt = `The student is now viewing the following exercise. Use this context to help them if they ask questions.\n\n${formatted}`
+      try {
+        const formatted = formatExerciseContextMessage(
+          exercise.title,
+          exercise.content.blocks,
+          mediaMap,
+        )
+        const prompt = `The student is now viewing the following exercise. Use this context to help them if they ask questions.\n\n${formatted}`
 
-      const context = { exerciseId, lessonId, chapterId, courseId, categoryId }
-      await streamMessage(prompt, acknowledgment, context, { hidden: true })
+        const context = { exerciseId, lessonId, chapterId, courseId, categoryId }
+        await streamMessage(prompt, acknowledgment, context, { hidden: true })
+      } finally {
+        isInjectingRef.current = false
+      }
     },
     [streamMessage, acknowledgment, exerciseId, lessonId, chapterId, courseId, categoryId],
   )
