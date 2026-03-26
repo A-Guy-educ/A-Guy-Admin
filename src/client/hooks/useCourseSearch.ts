@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useDebounce } from '@/client/hooks/useDebounce'
-import { getUserProfile } from '@/client/state/localStorage/userProfile'
 
 interface SearchResultLesson {
   id: string
@@ -53,60 +52,12 @@ export function extractCourseSlugFromPath(pathname: string): string | null {
   return match?.[1] ?? null
 }
 
-interface UseCourseSlugReturn {
-  courseSlug: string | null
-  /** True while resolving the slug from the user's grade profile */
-  isResolving: boolean
-}
-
 /**
- * Resolves the courseSlug from the URL path or the user's grade profile.
- * If the URL contains /courses/[slug], that slug is used directly.
- * Otherwise, the user's grade level from localStorage is used to look up
- * their course via the API. This means the search works from ANY page
- * as long as the user has completed onboarding.
+ * Returns the courseSlug only if the URL is inside a specific course
+ * (e.g. /courses/[slug]/...). Otherwise returns null for global search.
  */
-export function useCourseSlug(pathname: string): UseCourseSlugReturn {
-  const [slugFromProfile, setSlugFromProfile] = useState<string | null>(null)
-  const [isResolving, setIsResolving] = useState(true)
-
-  const slugFromPath = extractCourseSlugFromPath(pathname)
-
-  useEffect(() => {
-    // If we already have a slug from the URL, no need to resolve
-    if (slugFromPath) {
-      setIsResolving(false)
-      return
-    }
-
-    const profile = getUserProfile()
-    if (!profile?.gradeLevel) {
-      setSlugFromProfile(null)
-      setIsResolving(false)
-      return
-    }
-
-    setIsResolving(true)
-
-    fetch(`/api/chapters/by-grade?grade=${profile.gradeLevel}`)
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (data?.courseSlug) {
-          setSlugFromProfile(data.courseSlug)
-        }
-      })
-      .catch(() => {
-        setSlugFromProfile(null)
-      })
-      .finally(() => {
-        setIsResolving(false)
-      })
-  }, [slugFromPath, pathname])
-
-  return {
-    courseSlug: slugFromPath ?? slugFromProfile,
-    isResolving: isResolving && !slugFromPath,
-  }
+export function useCourseSlug(pathname: string): string | null {
+  return extractCourseSlugFromPath(pathname)
 }
 
 export function useCourseSearch(query: string, courseSlug: string | null): UseCourseSearchReturn {

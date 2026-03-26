@@ -14,7 +14,7 @@ interface CourseSearchProps {
 
 export const CourseSearch: React.FC<CourseSearchProps> = ({ variant, onNavigate }) => {
   const pathname = usePathname()
-  const { courseSlug } = useCourseSlug(pathname)
+  const courseSlug = useCourseSlug(pathname)
   const t = useTranslations('common.courseSearch')
 
   const [isExpanded, setIsExpanded] = useState(false)
