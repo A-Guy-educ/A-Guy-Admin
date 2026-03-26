@@ -28,6 +28,17 @@
       "resources": "משאבים",
       "search": "חיפוש",
       "language": "שפה"
+    },
+    "courseSearch": {
+      "placeholder": "חיפוש בקורס...",
+      "noResults": "לא נמצאו תוצאות",
+      "enrollRequired": "תחילה יש להירשם",
+      "lessons": "שיעורים",
+      "exercises": "תרגילים",
+      "questions": "שאלות",
+      "minChars": "הקלד/י לפחות 2 תווים",
+      "searching": "מחפש...",
+      "error": "החיפוש נכשל. אנא נסה שוב."
     }
   },
   "auth": {
