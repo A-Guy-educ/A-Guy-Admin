@@ -32,7 +32,7 @@ export async function translateHebrewForSlug(title: string): Promise<string | nu
   try {
     const client = getGeminiClient()
     const model = client.getGenerativeModel({
-      model: 'gemini-2.0-flash-lite',
+      model: 'gemini-2.5-flash-lite',
       generationConfig: {
         temperature: 0,
         maxOutputTokens: 100,
