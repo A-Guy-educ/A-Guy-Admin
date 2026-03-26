@@ -98,7 +98,6 @@ export interface Config {
     'pricing-plans': PricingPlan;
     'access-codes': AccessCode;
     'mcp-audit-logs': McpAuditLog;
-    'translation-glossary': TranslationGlossary;
     redirects: Redirect;
     forms: Form;
     'form-submissions': FormSubmission;
@@ -142,7 +141,6 @@ export interface Config {
     'pricing-plans': PricingPlansSelect<false> | PricingPlansSelect<true>;
     'access-codes': AccessCodesSelect<false> | AccessCodesSelect<true>;
     'mcp-audit-logs': McpAuditLogsSelect<false> | McpAuditLogsSelect<true>;
-    'translation-glossary': TranslationGlossarySelect<false> | TranslationGlossarySelect<true>;
     redirects: RedirectsSelect<false> | RedirectsSelect<true>;
     forms: FormsSelect<false> | FormsSelect<true>;
     'form-submissions': FormSubmissionsSelect<false> | FormSubmissionsSelect<true>;
@@ -2349,39 +2347,6 @@ export interface McpAuditLog {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "translation-glossary".
- */
-export interface TranslationGlossary {
-  id: string;
-  /**
-   * Tenant scope for this document
-   */
-  tenant: string | Tenant;
-  /**
-   * Term in Hebrew (e.g., "יתר")
-   */
-  hebrewTerm: string;
-  /**
-   * Term in English (e.g., "hypotenuse")
-   */
-  englishTerm: string;
-  /**
-   * Subject area for this term
-   */
-  subject?: ('math' | 'science' | 'general') | null;
-  /**
-   * Usage notes or context for translators
-   */
-  notes?: string | null;
-  /**
-   * User who created this document
-   */
-  createdBy?: (string | null) | User;
-  updatedAt: string;
-  createdAt: string;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "redirects".
  */
 export interface Redirect {
@@ -2756,10 +2721,6 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'mcp-audit-logs';
         value: string | McpAuditLog;
-      } | null)
-    | ({
-        relationTo: 'translation-glossary';
-        value: string | TranslationGlossary;
       } | null)
     | ({
         relationTo: 'redirects';
@@ -3684,20 +3645,6 @@ export interface McpAuditLogsSelect<T extends boolean = true> {
   timestamp?: T;
   requestId?: T;
   durationMs?: T;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "translation-glossary_select".
- */
-export interface TranslationGlossarySelect<T extends boolean = true> {
-  tenant?: T;
-  hebrewTerm?: T;
-  englishTerm?: T;
-  subject?: T;
-  notes?: T;
-  createdBy?: T;
-  updatedAt?: T;
-  createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
