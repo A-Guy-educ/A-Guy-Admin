@@ -46,31 +46,40 @@ export function extractCourseSlugFromPath(pathname: string): string | null {
   return match?.[1] ?? null
 }
 
-/** Pages where course content is displayed (resolved via grade profile) */
-const COURSE_CONTEXT_PAGES = ['/study', '/practice', '/ask']
+interface UseCourseSlugReturn {
+  courseSlug: string | null
+  /** True while resolving the slug from the user's grade profile */
+  isResolving: boolean
+}
 
 /**
  * Resolves the courseSlug from the URL path or the user's grade profile.
- * On /study, /practice, /ask pages the course is determined by the user's
- * selected grade level stored in localStorage.
+ * If the URL contains /courses/[slug], that slug is used directly.
+ * Otherwise, the user's grade level from localStorage is used to look up
+ * their course via the API. This means the search works from ANY page
+ * as long as the user has completed onboarding.
  */
-export function useCourseSlug(pathname: string): string | null {
+export function useCourseSlug(pathname: string): UseCourseSlugReturn {
   const [slugFromProfile, setSlugFromProfile] = useState<string | null>(null)
+  const [isResolving, setIsResolving] = useState(true)
 
   const slugFromPath = extractCourseSlugFromPath(pathname)
-  const isCoursePage = COURSE_CONTEXT_PAGES.some((p) => pathname.startsWith(p))
 
   useEffect(() => {
-    if (slugFromPath || !isCoursePage) {
-      setSlugFromProfile(null)
+    // If we already have a slug from the URL, no need to resolve
+    if (slugFromPath) {
+      setIsResolving(false)
       return
     }
 
     const profile = getUserProfile()
     if (!profile?.gradeLevel) {
       setSlugFromProfile(null)
+      setIsResolving(false)
       return
     }
+
+    setIsResolving(true)
 
     fetch(`/api/chapters/by-grade?grade=${profile.gradeLevel}`)
       .then((res) => (res.ok ? res.json() : null))
@@ -82,9 +91,15 @@ export function useCourseSlug(pathname: string): string | null {
       .catch(() => {
         setSlugFromProfile(null)
       })
-  }, [slugFromPath, isCoursePage, pathname])
+      .finally(() => {
+        setIsResolving(false)
+      })
+  }, [slugFromPath, pathname])
 
-  return slugFromPath ?? slugFromProfile
+  return {
+    courseSlug: slugFromPath ?? slugFromProfile,
+    isResolving: isResolving && !slugFromPath,
+  }
 }
 
 export function useCourseSearch(query: string, courseSlug: string | null): UseCourseSearchReturn {

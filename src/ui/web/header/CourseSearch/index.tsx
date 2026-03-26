@@ -14,7 +14,7 @@ interface CourseSearchProps {
 
 export const CourseSearch: React.FC<CourseSearchProps> = ({ variant, onNavigate }) => {
   const pathname = usePathname()
-  const courseSlug = useCourseSlug(pathname)
+  const { courseSlug, isResolving } = useCourseSlug(pathname)
   const t = useTranslations('common.courseSearch')
 
   const [isExpanded, setIsExpanded] = useState(false)
@@ -78,18 +78,21 @@ export const CourseSearch: React.FC<CourseSearchProps> = ({ variant, onNavigate 
     onNavigate?.()
   }, [onNavigate])
 
-  // If not on a course page, show simple search link
-  if (!courseSlug) {
+  // Only fall back to /search link when we're sure there's no course context
+  // (not on a course page AND not still resolving the slug)
+  if (!courseSlug && !isResolving) {
     if (variant === 'mobile') {
       return (
-        <SystemLink
-          href="/search"
-          onClick={onNavigate}
-          className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-muted transition-colors"
-        >
-          <SearchIcon className="w-5 h-5 text-primary" />
-          <span className="text-body-md">{t('placeholder')}</span>
-        </SystemLink>
+        <div className="px-6 py-section-xs border-b border-border">
+          <SystemLink
+            href="/search"
+            onClick={onNavigate}
+            className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-muted transition-colors"
+          >
+            <SearchIcon className="w-5 h-5 text-primary" />
+            <span className="text-body-md">{t('placeholder')}</span>
+          </SystemLink>
+        </div>
       )
     }
 
