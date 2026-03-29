@@ -10,6 +10,7 @@
 import { useCallback, useEffect, useState } from 'react'
 
 import { motion } from 'framer-motion'
+import { PageTransition } from '@/ui/web/components/page-transition'
 import { Skeleton, SkeletonCard, SkeletonText } from '@/ui/web/components/skeleton'
 import { useTranslations } from '@/ui/web/providers/I18n'
 import { SummaryCards } from './SummaryCards'
@@ -121,6 +122,7 @@ export function StatsDashboard({
   }, [fetchData])
 
   return (
+    <PageTransition>
     <div className="space-y-content-gap">
       <h1 className="text-display-sm font-bold">{t('title')}</h1>
 
@@ -210,5 +212,6 @@ export function StatsDashboard({
         <div className="text-center py-12 text-muted-foreground">{t('errorLoading')}</div>
       )}
     </div>
+    </PageTransition>
   )
 }

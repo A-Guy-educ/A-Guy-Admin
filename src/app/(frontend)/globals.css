@@ -206,6 +206,7 @@
       BlinkMacSystemFont,
       'Segoe UI',
       sans-serif;
+    overscroll-behavior-y: contain;
   }
 }
 
@@ -547,6 +548,13 @@ math-field:focus-within {
 body.landing-page header,
 body.landing-page footer {
   display: none !important;
+}
+
+/* Mobile safe area insets for notch/home indicator */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
 }
 
 /* Document Mode Print Styles */

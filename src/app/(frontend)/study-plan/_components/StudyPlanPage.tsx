@@ -1,6 +1,7 @@
 'use client'
 
 import { cn } from '@/infra/utils/ui'
+import { PageTransition } from '@/ui/web/components/page-transition'
 import { useTranslations } from '@/ui/web/providers/I18n'
 import { Calendar, Plus, Trash2, Zap } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -151,6 +152,7 @@ export function StudyPlanPage() {
   }
 
   return (
+    <PageTransition>
     <div className="min-h-screen bg-background py-section-sm px-4">
       <div className="max-w-5xl mx-auto">
         {/* Header */}
@@ -261,5 +263,6 @@ export function StudyPlanPage() {
         </div>
       </div>
     </div>
+    </PageTransition>
   )
 }

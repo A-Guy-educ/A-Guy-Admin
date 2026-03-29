@@ -20,6 +20,7 @@ import { ProgressCircle } from '@/ui/web/shared/ProgressCircle'
 import { AccessGateProvider } from '@/ui/web/auth/AccessGateProvider'
 import { useLocale, useTranslations } from '@/ui/web/providers/I18n'
 import { ContentStatusBadge } from '@/ui/web/shared/ContentStatusBadge'
+import { PageTransition } from '@/ui/web/components/page-transition'
 import { BarChart3, BookOpen, FileText, GraduationCap, PlayCircle, Sparkles, Target, Trophy } from 'lucide-react'
 import { Button } from '@/ui/web/components/button'
 import { Progress } from '@/ui/web/components/progress'
@@ -277,6 +278,7 @@ export function StudyContent({
   const hasMultipleChapters = chapterGroups.length > 1
 
   return (
+    <PageTransition>
     <AccessGateProvider
       accessType={
         courseInfo?.coursePageAccessType === 'paid' || courseInfo?.courseAccessType === 'paid'
@@ -413,19 +415,19 @@ export function StudyContent({
           <div className="flex items-center justify-center gap-3 flex-wrap">
             <SystemLink
               href="/stats"
-              className="group inline-flex items-center gap-2 rounded-lg border border-border/40 px-4 py-2.5 text-body-sm font-medium text-muted-foreground hover:text-foreground hover:border-border/60 transition-all"
+              className="group inline-flex items-center gap-2 rounded-lg border border-border/40 px-4 py-2.5 min-h-[44px] text-body-sm font-medium text-muted-foreground hover:text-foreground hover:border-border/60 active:opacity-70 transition-all"
             >
               <BarChart3 className="w-4 h-4" />
               {t('statsAndPerformance')}
             </SystemLink>
             <SystemLink
               href="/study-plan"
-              className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-body-sm font-medium text-primary-foreground transition-all hover:opacity-90"
+              className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 min-h-[44px] text-body-sm font-medium text-primary-foreground transition-all hover:opacity-90 active:opacity-70"
             >
               <GraduationCap className="w-4 h-4" />
               {t('upcomingExam')}
             </SystemLink>
-            <button className="group inline-flex items-center gap-2 rounded-lg border border-border/40 px-4 py-2.5 text-body-sm font-medium text-muted-foreground hover:text-foreground hover:border-border/60 transition-all">
+            <button className="group inline-flex items-center gap-2 rounded-lg border border-border/40 px-4 py-2.5 min-h-[44px] text-body-sm font-medium text-muted-foreground hover:text-foreground hover:border-border/60 active:opacity-70 transition-all">
               <Sparkles className="w-4 h-4" />
               {t('bagrutTransition')}
             </button>
@@ -433,6 +435,7 @@ export function StudyContent({
         </div>
       </main>
     </AccessGateProvider>
+    </PageTransition>
   )
 }
 

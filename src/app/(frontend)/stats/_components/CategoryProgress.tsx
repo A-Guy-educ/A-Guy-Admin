@@ -68,8 +68,8 @@ export function CategoryProgress({ data }: CategoryProgressProps) {
         return (
           <Card
             key={category.key}
-            className="bg-card border shadow-elevation-1 rounded-xl p-card-padding border-l-4 hover:shadow-card-hover transition-all duration-normal"
-            style={{ borderLeftColor: category.color }}
+            className="bg-card border shadow-elevation-1 rounded-xl p-card-padding hover:border-border/50 active:scale-[0.98] will-change-transform transition-all duration-normal"
+            style={{ borderInlineStartWidth: '3px', borderInlineStartColor: category.color }}
           >
             <CardHeader className="pb-2">
               <CardTitle
