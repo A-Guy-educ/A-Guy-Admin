@@ -35,7 +35,6 @@ export function ConvertContextModal({
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [warnings, setWarnings] = useState<string[]>([])
-  const [progress, setProgress] = useState<string | null>(null)
 
   // Get the lessonContextText field for updating using useField pattern
   const { setValue: setContextText } = useField<string>({ path: 'lessonContextText' })
@@ -80,7 +79,6 @@ export function ConvertContextModal({
       setError(null)
       setSuccess(null)
       setWarnings([])
-      setProgress(null)
     }
   }, [isOpen])
 
@@ -94,7 +92,6 @@ export function ConvertContextModal({
     setError(null)
     setSuccess(null)
     setWarnings([])
-    setProgress('Starting extraction...')
 
     try {
       const response = await fetch('/api/lessons/convert-context', {
@@ -122,31 +119,15 @@ export function ConvertContextModal({
       }
 
       const charCount = data.data?.extractedChunkLength || 0
-      const segmentsTotal = data.data?.segmentsTotal || 1
-      const segmentsProcessed = data.data?.segmentsProcessed || 1
-      const segmentsFailed = data.data?.segmentsFailed || 0
+      setSuccess(`Extracted ${charCount} characters. Context text updated.`)
 
-      let successMsg = `Extracted ${charCount} characters`
-      if (segmentsTotal > 1) {
-        successMsg += ` from ${segmentsProcessed}/${segmentsTotal} segments`
-      }
-      successMsg += '. Context text updated.'
-      setSuccess(successMsg)
-
-      if (segmentsFailed > 0) {
-        setWarnings((prev) => [
-          ...prev,
-          `${segmentsFailed} segment(s) failed. Partial extraction stored.`,
-        ])
-      }
       if (data.data?.warnings) {
-        setWarnings((prev) => [...prev, ...data.data.warnings])
+        setWarnings(data.data.warnings)
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Conversion failed')
     } finally {
       setIsConverting(false)
-      setProgress(null)
     }
   }
 
@@ -288,20 +269,6 @@ export function ConvertContextModal({
                 Append
               </label>
             </div>
-          </div>
-        )}
-
-        {/* Progress */}
-        {progress && (
-          <div
-            style={{
-              fontSize: 12,
-              color: 'var(--theme-elevation-500)',
-              padding: '8px 12px',
-              marginBottom: 16,
-            }}
-          >
-            {progress}
           </div>
         )}
 

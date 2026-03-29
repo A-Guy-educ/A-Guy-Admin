@@ -43,9 +43,6 @@ export const POST = withApiHandler<ConvertContextBody, unknown>(
     return apiSuccess({
       updatedContextText: result.updatedContextText,
       extractedChunkLength: result.extractedChunkLength,
-      segmentsTotal: result.segmentsTotal,
-      segmentsProcessed: result.segmentsProcessed,
-      segmentsFailed: result.segmentsFailed,
       warnings: result.warnings,
     })
   },
