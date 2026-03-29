@@ -24,87 +24,12 @@ function resolveCookieDomain(host: string): string | undefined {
   return `.${apex}`
 }
 
-/**
- * Extensions that must stay proxied through the API (same-origin requirement).
- * PDF.js viewer requires same-origin URLs to render documents.
- */
-const PROXY_ONLY_EXTENSIONS = new Set(['.pdf'])
-
-/**
- * Extract the Vercel Blob public base URL from the BLOB_READ_WRITE_TOKEN.
- * Token format: vercel_blob_rw_{storeId}_{random}
- * Public URL:   https://{storeId}.public.blob.vercel-storage.com
- */
-function getBlobBaseUrl(): string | null {
-  // Prefer explicit base URL if set (avoids token parsing edge cases)
-  const explicitUrl = process.env.BLOB_PUBLIC_BASE_URL
-  if (explicitUrl) return explicitUrl.replace(/\/$/, '')
-
-  // Otherwise extract storeId from token
-  // Token format: vercel_blob_rw_{storeId}_{rest...}
-  const token = process.env.BLOB_READ_WRITE_TOKEN
-  if (!token) return null
-  const match = token.match(/^vercel_blob_rw_([a-z\d]+)_/i)
-  if (!match) return null
-  return `https://${match[1].toLowerCase()}.public.blob.vercel-storage.com`
-}
-
-/**
- * Map of collection slug to Blob storage prefix.
- * Must match the prefixes used by @payloadcms/storage-vercel-blob.
- * The plugin defaults to the collection slug as prefix.
- */
-const COLLECTION_PREFIX: Record<string, string> = {
-  media: 'media',
-  'exercise-assets': 'exercise-assets',
-}
-
-/**
- * Redirect media file requests directly to Vercel Blob CDN instead of
- * proxying through a serverless function. This eliminates the main
- * bottleneck causing multi-second (or minute-long) media load times.
- *
- * Handles two URL patterns:
- *   /api/media/file/{filename}           → collection "media"
- *   /api/exercise-assets/file/{filename}  → collection "exercise-assets"
- */
-function handleMediaRedirect(request: NextRequest): NextResponse | null {
-  const { pathname } = request.nextUrl
-
-  // Match /api/{collection}/file/{filename}
-  let collectionSlug: string | null = null
-  let filename: string | null = null
-
-  if (pathname.startsWith('/api/media/file/')) {
-    collectionSlug = 'media'
-    filename = pathname.slice('/api/media/file/'.length)
-  } else if (pathname.startsWith('/api/exercise-assets/file/')) {
-    collectionSlug = 'exercise-assets'
-    filename = pathname.slice('/api/exercise-assets/file/'.length)
-  }
-
-  if (!collectionSlug || !filename) return null
-
-  const ext = filename.slice(filename.lastIndexOf('.')).toLowerCase()
-  if (PROXY_ONLY_EXTENSIONS.has(ext)) return null
-
-  const blobBaseUrl = getBlobBaseUrl()
-  if (!blobBaseUrl) return null
-
-  // Build the Blob URL with the collection prefix, matching the plugin's storage path:
-  //   {baseUrl}/{prefix}/{encodedFilename}
-  const prefix = COLLECTION_PREFIX[collectionSlug] || collectionSlug
-  const encodedFilename = encodeURIComponent(decodeURIComponent(filename))
-  return NextResponse.redirect(`${blobBaseUrl}/${prefix}/${encodedFilename}`, { status: 302 })
-}
+// Media CDN redirects are handled by next.config.js redirects (baked in at build time).
+// This avoids Edge middleware env var availability issues.
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   const host = request.headers.get('host') || ''
-
-  // Redirect media files to Vercel Blob CDN (skip serverless proxy)
-  const mediaRedirect = handleMediaRedirect(request)
-  if (mediaRedirect) return mediaRedirect
 
   // Exclude paths from locale handling (double safety, even though matcher already excludes many)
   const shouldExclude =
@@ -172,10 +97,7 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Media files — redirect to Blob CDN (must run before the general exclude)
-    '/api/media/file/:path*',
-    '/api/exercise-assets/file/:path*',
-    // Locale handling — exclude admin, other api routes, static assets
+    // Locale handling — exclude admin, api routes, static assets
     '/((?!api|admin|_next|_static|.*\\..*).*)',
   ],
 }
