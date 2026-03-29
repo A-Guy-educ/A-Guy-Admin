@@ -2,20 +2,26 @@
  * Lesson Context Extraction Service
  *
  * Extracts context text from lesson content files (PDF/images) using AI prompts.
- * The extracted text is appended to the lesson's lessonContextText field.
+ * PDFs are segmented into page ranges and processed independently for reliability.
+ * The extracted text is stored in the lesson's lessonContextText field.
  *
  * All Payload Local API calls use overrideAccess: false + user context for security.
  */
 import { isVercelBlobUrl } from '@/infra/blob/vercel-blob-adapter'
+import { getPdfConversionMaxSegmentPages } from '@/infra/config/system-params'
 import { fetchBuffer } from '@/infra/utils/http'
 import type { Lesson, Media, Prompt } from '@/payload-types'
 import { getPdfBufferFromBlob, normalizeToAbsoluteUrl } from '@/server/services/pdf-fetcher'
 import type { Payload, User } from 'payload'
 
+import { extractPdfPages, segmentPdf } from './segment-pdf'
+import { validateExtractedLatex } from './validate-latex'
+
 export interface ExtractContextInput {
   lessonId: string
   promptId: string
   mediaId: string
+  mode?: 'replace' | 'append'
 }
 
 export interface ExtractContextResult {
@@ -23,10 +29,19 @@ export interface ExtractContextResult {
   updatedContextText?: string
   extractedChunkLength?: number
   error?: string
+  segmentsTotal?: number
+  segmentsProcessed?: number
+  segmentsFailed?: number
+  warnings?: string[]
 }
 
 /**
- * Extract context text from a lesson content file and append to lessonContextText
+ * Extract context text from a lesson content file and store in lessonContextText.
+ *
+ * For PDFs: splits into page-range segments, extracts each independently,
+ * validates LaTeX output, and merges results. Partial success is preserved.
+ *
+ * For images: single extraction call (no segmentation needed).
  *
  * @param payload - Payload instance
  * @param user - Authenticated user for access control
@@ -38,7 +53,7 @@ export async function extractLessonContext(
   user: User,
   input: ExtractContextInput,
 ): Promise<ExtractContextResult> {
-  const { lessonId, promptId, mediaId } = input
+  const { lessonId, promptId, mediaId, mode = 'replace' } = input
 
   try {
     // ========== Step 1: Fetch lesson and validate tenant ==========
@@ -87,17 +102,14 @@ export async function extractLessonContext(
 
     const promptTyped = prompt as unknown as Prompt
 
-    // Validate prompt usage
     if (promptTyped.usage !== 'context_extractor') {
       return { success: false, error: 'Prompt is not a context_extractor' }
     }
 
-    // Validate prompt status
     if (promptTyped.status !== 'published') {
       return { success: false, error: 'Prompt is not published' }
     }
 
-    // Validate tenant match
     const promptTenant =
       typeof promptTyped.tenant === 'object' ? promptTyped.tenant?.id : promptTyped.tenant
 
@@ -135,15 +147,12 @@ export async function extractLessonContext(
     if (isPdf) {
       fileBuffer = await getPdfBufferFromBlob(mediaId, payload)
     } else {
-      // For images, fetch using the URL
       let fetchUrl = mediaTyped.url
 
-      // Normalize relative URLs to absolute
       if (!fetchUrl.startsWith('http://') && !fetchUrl.startsWith('https://')) {
         fetchUrl = await normalizeToAbsoluteUrl(fetchUrl)
       }
 
-      // Handle Vercel Blob URLs
       if (isVercelBlobUrl(fetchUrl)) {
         const { getPdfBufferFromUrl } = await import('@/infra/blob/vercel-blob-adapter')
         fileBuffer = await getPdfBufferFromUrl(fetchUrl)
@@ -156,22 +165,17 @@ export async function extractLessonContext(
       return { success: false, error: 'Failed to download media file' }
     }
 
-    // ========== Step 5: Build prompt with lesson metadata ==========
+    // ========== Step 5: Build base prompt with lesson metadata ==========
     const lessonTitle = lessonTyped.title || 'Untitled Lesson'
     const lessonDescription = lessonTyped.description || ''
-
-    // Simple text description for context
     const metadataText = `Lesson: ${lessonTitle}\nDescription: ${lessonDescription}`
+    const basePrompt = `${promptTyped.template}\n\n${metadataText}`
 
-    // Build the full prompt
-    const fullPrompt = `${promptTyped.template}\n\n${metadataText}`
-
-    // ========== Step 6: Call LLM via adapter ==========
+    // ========== Step 6: Initialize LLM adapter ==========
     const { createGenkitUnifiedAdapter } =
       await import('@/infra/llm/genkit/adapters/unified-adapter')
     const adapter = await createGenkitUnifiedAdapter(payload)
 
-    // Use PDF_TO_EXERCISE model (established pattern for document processing)
     const { getModelRegistryEntry, getProviderModelName } = await import('@/infra/llm/models')
     const { LLMProviderType } = await import('@/infra/llm/providers/types')
     const modelEntry = getModelRegistryEntry('PDF_TO_EXERCISE')
@@ -180,37 +184,148 @@ export async function extractLessonContext(
       ...modelEntry,
     }
 
-    // Prepare multimodal content
-    const mimeType = isPdf ? 'application/pdf' : mediaTyped.mimeType || 'image/png'
-    const base64Data = fileBuffer.toString('base64')
+    // ========== Step 7: Extract — segmented for PDFs, single call for images ==========
+    let extractedText: string
+    let segmentsTotal = 1
+    let segmentsProcessed = 0
+    let segmentsFailed = 0
+    const warnings: string[] = []
 
-    const response = await adapter.generateMultimodalCompletion(
-      {
-        prompt: fullPrompt,
-        model: modelConfig,
-        attachments: [
-          {
-            data: base64Data,
-            mimeType,
-          },
-        ],
-      },
-      payload,
-    )
+    if (isPdf) {
+      // Segmented PDF extraction
+      const maxPages = await getPdfConversionMaxSegmentPages(lessonTenant)
+      const segments = await segmentPdf(fileBuffer, maxPages)
+      segmentsTotal = segments.length
 
-    // ========== Step 7: Validate non-empty response ==========
-    const extractedText = response.text?.trim()
+      const segmentResults: string[] = []
 
-    if (!extractedText) {
-      return { success: false, error: 'AI returned empty response' }
+      for (const segment of segments) {
+        const segmentPrompt = `${basePrompt}\n\nExtract ALL mathematical content, exercises, and explanations from pages ${segment.pageStart}-${segment.pageEnd} as LaTeX. Maintain the exact order and structure from the source.`
+
+        let segmentText: string | null = null
+
+        // Try extraction with one retry on failure
+        for (let attempt = 0; attempt < 2; attempt++) {
+          try {
+            const subPdfBuffer = await extractPdfPages(
+              fileBuffer,
+              segment.pageStart,
+              segment.pageEnd,
+            )
+            const base64Data = subPdfBuffer.toString('base64')
+
+            const response = await adapter.generateMultimodalCompletion(
+              {
+                prompt: segmentPrompt,
+                model: modelConfig,
+                attachments: [{ data: base64Data, mimeType: 'application/pdf' }],
+              },
+              payload,
+            )
+
+            const responseText = response.text?.trim()
+            if (!responseText) {
+              if (attempt === 0) continue
+              break
+            }
+
+            // Validate the extracted LaTeX
+            const validation = validateExtractedLatex(responseText)
+
+            if (!validation.valid) {
+              if (attempt === 0) continue
+              // On second attempt, still use the text but log warnings
+              warnings.push(
+                `Pages ${segment.pageStart}-${segment.pageEnd}: validation errors: ${validation.errors.join('; ')}`,
+              )
+            }
+
+            if (validation.isTruncated) {
+              warnings.push(
+                `Pages ${segment.pageStart}-${segment.pageEnd}: output appears truncated`,
+              )
+            }
+
+            if (validation.warnings.length > 0) {
+              for (const w of validation.warnings) {
+                warnings.push(`Pages ${segment.pageStart}-${segment.pageEnd}: ${w}`)
+              }
+            }
+
+            segmentText = validation.sanitizedText
+            break
+          } catch (error) {
+            if (attempt === 1) {
+              const msg = error instanceof Error ? error.message : 'Unknown error'
+              warnings.push(
+                `Pages ${segment.pageStart}-${segment.pageEnd}: extraction failed: ${msg}`,
+              )
+            }
+          }
+        }
+
+        if (segmentText) {
+          segmentResults.push(
+            `% --- Pages ${segment.pageStart}-${segment.pageEnd} ---\n${segmentText}`,
+          )
+          segmentsProcessed++
+        } else {
+          segmentsFailed++
+        }
+      }
+
+      if (segmentResults.length === 0) {
+        return {
+          success: false,
+          error: 'All segments failed to extract',
+          segmentsTotal,
+          segmentsProcessed,
+          segmentsFailed,
+          warnings,
+        }
+      }
+
+      extractedText = segmentResults.join('\n\n')
+    } else {
+      // Single call for images (no segmentation)
+      const mimeType = mediaTyped.mimeType || 'image/png'
+      const base64Data = fileBuffer.toString('base64')
+
+      const response = await adapter.generateMultimodalCompletion(
+        {
+          prompt: basePrompt,
+          model: modelConfig,
+          attachments: [{ data: base64Data, mimeType }],
+        },
+        payload,
+      )
+
+      const responseText = response.text?.trim()
+      if (!responseText) {
+        return { success: false, error: 'AI returned empty response' }
+      }
+
+      const validation = validateExtractedLatex(responseText)
+      if (validation.warnings.length > 0) {
+        warnings.push(...validation.warnings)
+      }
+
+      extractedText = validation.sanitizedText
+      segmentsProcessed = 1
     }
 
-    // ========== Step 8: Append to existing lessonContextText ==========
-    const existingContext = lessonTyped.lessonContextText || ''
-    const delimiter = '\n\n---\n\n'
-    const updatedContextText = existingContext
-      ? `${existingContext}${delimiter}${extractedText}`
-      : extractedText
+    // ========== Step 8: Store result based on mode ==========
+    let updatedContextText: string
+
+    if (mode === 'append') {
+      const existingContext = lessonTyped.lessonContextText || ''
+      const delimiter = '\n\n---\n\n'
+      updatedContextText = existingContext
+        ? `${existingContext}${delimiter}${extractedText}`
+        : extractedText
+    } else {
+      updatedContextText = extractedText
+    }
 
     // ========== Step 9: Update lesson ==========
     await payload.update({
@@ -227,6 +342,10 @@ export async function extractLessonContext(
       success: true,
       updatedContextText,
       extractedChunkLength: extractedText.length,
+      segmentsTotal,
+      segmentsProcessed,
+      segmentsFailed,
+      warnings: warnings.length > 0 ? warnings : undefined,
     }
   } catch (error) {
     console.error('[extractLessonContext] Error:', error)

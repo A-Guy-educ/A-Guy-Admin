@@ -29,10 +29,13 @@ export function ConvertContextModal({
 }: ConvertContextModalProps) {
   const [prompts, setPrompts] = useState<PromptOption[]>([])
   const [selectedPromptId, setSelectedPromptId] = useState<string>('')
+  const [mode, setMode] = useState<'replace' | 'append'>('replace')
   const [isLoading, setIsLoading] = useState(true)
   const [isConverting, setIsConverting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const [warnings, setWarnings] = useState<string[]>([])
+  const [progress, setProgress] = useState<string | null>(null)
 
   // Get the lessonContextText field for updating using useField pattern
   const { setValue: setContextText } = useField<string>({ path: 'lessonContextText' })
@@ -76,6 +79,8 @@ export function ConvertContextModal({
       setSelectedPromptId('')
       setError(null)
       setSuccess(null)
+      setWarnings([])
+      setProgress(null)
     }
   }, [isOpen])
 
@@ -88,6 +93,8 @@ export function ConvertContextModal({
     setIsConverting(true)
     setError(null)
     setSuccess(null)
+    setWarnings([])
+    setProgress('Starting extraction...')
 
     try {
       const response = await fetch('/api/lessons/convert-context', {
@@ -97,6 +104,7 @@ export function ConvertContextModal({
           lessonId,
           mediaId,
           promptId: selectedPromptId,
+          mode,
         }),
         credentials: 'include',
       })
@@ -114,11 +122,31 @@ export function ConvertContextModal({
       }
 
       const charCount = data.data?.extractedChunkLength || 0
-      setSuccess(`Extracted ${charCount} characters! Context text updated.`)
+      const segmentsTotal = data.data?.segmentsTotal || 1
+      const segmentsProcessed = data.data?.segmentsProcessed || 1
+      const segmentsFailed = data.data?.segmentsFailed || 0
+
+      let successMsg = `Extracted ${charCount} characters`
+      if (segmentsTotal > 1) {
+        successMsg += ` from ${segmentsProcessed}/${segmentsTotal} segments`
+      }
+      successMsg += '. Context text updated.'
+      setSuccess(successMsg)
+
+      if (segmentsFailed > 0) {
+        setWarnings((prev) => [
+          ...prev,
+          `${segmentsFailed} segment(s) failed. Partial extraction stored.`,
+        ])
+      }
+      if (data.data?.warnings) {
+        setWarnings((prev) => [...prev, ...data.data.warnings])
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Conversion failed')
     } finally {
       setIsConverting(false)
+      setProgress(null)
     }
   }
 
@@ -222,6 +250,61 @@ export function ConvertContextModal({
           </div>
         )}
 
+        {/* Mode toggle */}
+        {!isLoading && prompts.length > 0 && (
+          <div style={{ marginBottom: 16 }}>
+            <label
+              style={{
+                display: 'block',
+                fontSize: 12,
+                fontWeight: 500,
+                marginBottom: 6,
+                color: 'var(--theme-elevation-700)',
+              }}
+            >
+              Mode
+            </label>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13 }}>
+                <input
+                  type="radio"
+                  name="mode"
+                  value="replace"
+                  checked={mode === 'replace'}
+                  onChange={() => setMode('replace')}
+                  disabled={isConverting}
+                />
+                Replace
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13 }}>
+                <input
+                  type="radio"
+                  name="mode"
+                  value="append"
+                  checked={mode === 'append'}
+                  onChange={() => setMode('append')}
+                  disabled={isConverting}
+                />
+                Append
+              </label>
+            </div>
+          </div>
+        )}
+
+        {/* Progress */}
+        {progress && (
+          <div
+            style={{
+              fontSize: 12,
+              color: 'var(--theme-elevation-500)',
+              padding: '8px 12px',
+              marginBottom: 16,
+            }}
+          >
+            {progress}
+          </div>
+        )}
+
         {/* Error state */}
         {error && (
           <div
@@ -251,6 +334,27 @@ export function ConvertContextModal({
             }}
           >
             {success}
+          </div>
+        )}
+
+        {/* Warnings */}
+        {warnings.length > 0 && (
+          <div
+            style={{
+              fontSize: 12,
+              color: 'var(--theme-elevation-800)',
+              padding: '8px 12px',
+              backgroundColor: 'var(--theme-elevation-100)',
+              borderRadius: 4,
+              borderLeft: '3px solid orange',
+              marginBottom: 16,
+            }}
+          >
+            {warnings.map((w, i) => (
+              <div key={i} style={{ marginBottom: i < warnings.length - 1 ? 4 : 0 }}>
+                {w}
+              </div>
+            ))}
           </div>
         )}
 

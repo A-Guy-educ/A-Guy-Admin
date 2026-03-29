@@ -87,7 +87,7 @@ export const MODEL_REGISTRY: Record<AIModelKey, Omit<AIModel, 'name'>> = {
   },
   PDF_TO_EXERCISE: {
     temperature: 0.1,
-    maxOutputTokens: 8192,
+    maxOutputTokens: 16384,
     capabilities: ['document', 'extraction'],
   },
   ANSWER_VALIDATION: {
