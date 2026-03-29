@@ -45,12 +45,12 @@ const redirects = async () => {
     redirects.push(
       {
         source: '/api/media/file/:filename(.*\\.(?!pdf$)[^.]+$)',
-        destination: `${blobBaseUrl}/media/:filename`,
+        destination: `${blobBaseUrl}/:filename`,
         permanent: false,
       },
       {
         source: '/api/exercise-assets/file/:filename(.*\\.(?!pdf$)[^.]+$)',
-        destination: `${blobBaseUrl}/exercise-assets/:filename`,
+        destination: `${blobBaseUrl}/:filename`,
         permanent: false,
       },
     )
