@@ -8,6 +8,7 @@ import { Progress } from '@/ui/web/components/progress'
 import { Sparkles, Trophy } from 'lucide-react'
 import { getUserProfile } from '@/client/state/localStorage/userProfile'
 import { motion } from 'framer-motion'
+import { Confetti } from '@/ui/web/components/confetti'
 
 interface CompleteContentProps {
   backUrl: string
@@ -42,6 +43,7 @@ export function CompleteContent({ backUrl, lessonId }: CompleteContentProps) {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      <Confetti active={true} />
       <Progress value={100} className="h-0.5 rounded-none" />
 
       <main className="flex-1 overflow-y-auto">

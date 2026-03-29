@@ -25,15 +25,20 @@ export function CourseTabs({ activeTab, onTabChange }: CourseTabsProps) {
 
   return (
     <div className="py-4">
-      <div className="bg-muted/50 p-1 rounded-full flex items-center justify-center gap-0 max-w-md mx-auto">
+      <div
+        role="tablist"
+        className="bg-muted/50 p-1 rounded-full flex items-center justify-center gap-0 max-w-md mx-auto"
+      >
         {TABS.map((tab) => {
           const isActive = activeTab === tab
           return (
             <button
               key={tab}
+              role="tab"
+              aria-selected={isActive}
               onClick={() => onTabChange(tab)}
               className={cn(
-                'relative flex-1 px-6 py-2 text-body-sm rounded-full transition-colors duration-fast font-semibold',
+                'relative flex-1 px-6 py-2 min-h-[44px] text-body-sm rounded-full transition-colors duration-fast font-semibold',
                 !isActive && 'hover:opacity-hover',
               )}
               style={{ color: TAB_COLORS[tab].text }}

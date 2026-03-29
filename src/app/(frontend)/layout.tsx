@@ -84,6 +84,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <Providers>
             <ActiveTimeProvider>
               <PasswordLoginProvider enabled={passwordLoginEnabled}>
+                <a
+                  href="#main-content"
+                  className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:start-4 focus:z-[9999] focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-md focus:shadow-elevation-3"
+                >
+                  Skip to content
+                </a>
                 <RouteLoadingIndicator />
                 <LayoutClient />
                 <AdminBar
@@ -92,7 +98,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   }}
                 />
                 <Header />
-                {children}
+                <div id="main-content">{children}</div>
                 <Footer />
                 <Toaster />
               </PasswordLoginProvider>

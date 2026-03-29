@@ -75,7 +75,7 @@ export const MobileMenu: React.FC<MobileMenuProps> = ({
           <h2 className="text-body-lg font-semibold">{tMenu('title')}</h2>
           <button
             onClick={onClose}
-            className="p-2 rounded-lg hover:bg-muted transition-all duration-normal"
+            className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg hover:bg-muted transition-all duration-normal"
             aria-label="Close menu"
           >
             <X className="w-5 h-5" />
@@ -101,7 +101,7 @@ export const MobileMenu: React.FC<MobileMenuProps> = ({
                     <CMSLink
                       {...link}
                       appearance="link"
-                      className="block py-2 px-3 rounded-lg hover:bg-muted transition-all duration-normal text-body-md"
+                      className="block py-3 px-3 min-h-[44px] rounded-lg hover:bg-muted transition-all duration-normal text-body-md"
                     />
                   </div>
                 ))}
@@ -120,7 +120,7 @@ export const MobileMenu: React.FC<MobileMenuProps> = ({
                     <CMSLink
                       {...link}
                       appearance="link"
-                      className="block py-2 px-3 rounded-lg hover:bg-muted transition-all duration-normal text-body-md"
+                      className="block py-3 px-3 min-h-[44px] rounded-lg hover:bg-muted transition-all duration-normal text-body-md"
                     />
                   </div>
                 ))}
@@ -157,7 +157,7 @@ export const MobileMenuButton: React.FC<{ onClick: () => void }> = ({ onClick })
   return (
     <button
       onClick={onClick}
-      className="p-2 rounded-lg hover:bg-muted transition-all duration-normal lg:hidden text-foreground"
+      className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg hover:bg-muted transition-all duration-normal lg:hidden text-foreground"
       aria-label="Open menu"
     >
       <Menu className="w-6 h-6 text-foreground" />

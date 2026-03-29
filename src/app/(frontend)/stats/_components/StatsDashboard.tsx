@@ -10,6 +10,7 @@
 import { useCallback, useEffect, useState } from 'react'
 
 import { motion } from 'framer-motion'
+import { Skeleton, SkeletonCard, SkeletonText } from '@/ui/web/components/skeleton'
 import { useTranslations } from '@/ui/web/providers/I18n'
 import { SummaryCards } from './SummaryCards'
 import { CategoryProgress } from './CategoryProgress'
@@ -132,8 +133,48 @@ export function StatsDashboard({
       />
 
       {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-content-gap">
+          {/* Summary cards skeleton — full width */}
+          <div className="lg:col-span-2">
+            <div className="rounded-lg border bg-card p-card-padding">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="space-y-2">
+                    <Skeleton className="h-4 w-20" />
+                    <Skeleton className="h-8 w-16" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Category progress skeleton — full width */}
+          <div className="lg:col-span-2">
+            <div className="rounded-lg border bg-card p-card-padding space-y-4">
+              <Skeleton className="h-5 w-40" />
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="space-y-3">
+                    <Skeleton className="h-4 w-16" />
+                    <Skeleton className="h-2 w-full rounded-full" />
+                    <Skeleton className="h-3 w-12" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Practiced items skeleton — side by side */}
+          <SkeletonCard />
+          <SkeletonCard />
+
+          {/* Activity timeline skeleton — full width */}
+          <div className="lg:col-span-2">
+            <div className="rounded-lg border bg-card p-card-padding space-y-4">
+              <Skeleton className="h-5 w-36" />
+              <SkeletonText lines={5} />
+            </div>
+          </div>
         </div>
       ) : data ? (
         <motion.div

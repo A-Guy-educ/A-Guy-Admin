@@ -23,9 +23,10 @@ import { useLessonPager } from './useLessonPager'
 import { ExerciseWorkspace } from '@/app/(frontend)/courses/[courseSlug]/chapters/[chapterSlug]/lessons/[lessonSlug]/exercises/[exerciseSlug]/_components/ExerciseWorkspace'
 import { ChatInterface } from '@/ui/web/chat'
 import { Media as MediaComponent } from '@/ui/web/media'
-import type React from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/infra/utils/ui'
+import { Confetti } from '@/ui/web/components/confetti'
 
 const pageTransition = {
   initial: { opacity: 0, x: 20 },
@@ -87,6 +88,47 @@ export function LessonPager({
     hasPdfFiles: (validFiles?.length ?? 0) > 0,
   })
 
+  const [showConfetti, setShowConfetti] = useState(false)
+
+  useEffect(() => {
+    if (pageState.type === 'outro') {
+      setShowConfetti(true)
+    }
+  }, [pageState.type])
+
+  // Swipe gesture state
+  const [touchStart, setTouchStart] = useState<number | null>(null)
+  const [touchEnd, setTouchEnd] = useState<number | null>(null)
+  const minSwipeDistance = 50
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null)
+    setTouchStart(e.targetTouches[0].clientX)
+  }
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX)
+  }
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return
+    const distance = touchStart - touchEnd
+    const isLeftSwipe = distance > minSwipeDistance
+    const isRightSwipe = distance < -minSwipeDistance
+    if (isLeftSwipe && canGoNext) handleNext()
+    if (isRightSwipe && canGoPrev) handlePrev()
+  }
+
+  // Focus management ref
+  const contentRef = useRef<HTMLDivElement>(null)
+
+  // Focus content area on page change
+  useEffect(() => {
+    if (pageState.type === 'block' && contentRef.current) {
+      contentRef.current.focus()
+    }
+  }, [pageState.type, pageState.blockIndex])
+
   const currentBlock =
     pageState.type === 'block' && pageState.blockIndex !== undefined
       ? blocks[pageState.blockIndex]
@@ -109,7 +151,14 @@ export function LessonPager({
             {/* Top progress line */}
             <Progress value={progressPercent} className="h-0.5 rounded-none" />
 
-            <div className="flex-1 overflow-y-auto min-h-0 pb-20">
+            <div
+              ref={contentRef}
+              tabIndex={-1}
+              className="flex-1 overflow-y-auto min-h-0 pb-20 outline-none"
+              onTouchStart={onTouchStart}
+              onTouchMove={onTouchMove}
+              onTouchEnd={onTouchEnd}
+            >
               <div className="w-full p-card-padding-sm md:p-card-padding space-y-4">
                 {/* Breadcrumb step indicator */}
                 <div className="flex items-center gap-2 text-body-sm text-muted-foreground pt-3">
@@ -157,14 +206,15 @@ export function LessonPager({
             </div>
 
             {/* Fixed bottom navigation bar */}
-            <div className="fixed bottom-0 inset-x-0 z-30 bg-card/80 backdrop-blur-xl border-t border-border/50 px-6 py-4">
+            <div className="fixed bottom-0 inset-x-0 z-30 bg-card/80 backdrop-blur-xl border-t border-border/50 px-6 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
               <div className="max-w-3xl mx-auto flex items-center justify-between">
                 <Button
                   variant="ghost"
                   onClick={handlePrev}
                   disabled={!canGoPrev || isNavigating}
+                  aria-label="Previous page"
                   className={cn(
-                    'text-body-sm gap-2 cursor-pointer transition-all duration-normal',
+                    'text-body-sm gap-2 min-h-[44px] cursor-pointer transition-all duration-normal',
                     !canGoPrev || isNavigating
                       ? 'text-muted-foreground/40'
                       : 'text-muted-foreground hover:text-foreground',
@@ -181,7 +231,8 @@ export function LessonPager({
                 <Button
                   onClick={handleNext}
                   disabled={!canGoNext || isNavigating}
-                  className="px-6 py-2 rounded-xl text-body-sm cursor-pointer gap-2"
+                  aria-label="Next page"
+                  className="px-6 py-2 min-h-[44px] rounded-xl text-body-sm cursor-pointer gap-2"
                 >
                   {isNavigating ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -239,7 +290,14 @@ export function LessonPager({
         {/* Top progress line */}
         <Progress value={progressPercent} className="h-0.5 rounded-none" />
 
-        <main className="flex-1 overflow-y-auto pb-24">
+        <main
+          ref={contentRef}
+          tabIndex={-1}
+          className="flex-1 overflow-y-auto pb-24 outline-none"
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
+        >
           <div className="container mx-auto px-4 sm:px-6 py-section-md md:py-section-lg max-w-3xl">
             <AnimatePresence mode="wait">
               <motion.div key={pageState.blockIndex} {...pageTransition} className="space-y-8">
@@ -278,14 +336,15 @@ export function LessonPager({
         </main>
 
         {/* Fixed bottom navigation bar */}
-        <div className="fixed bottom-0 inset-x-0 z-30 bg-card/80 backdrop-blur-xl border-t border-border/50 px-6 py-4">
+        <div className="fixed bottom-0 inset-x-0 z-30 bg-card/80 backdrop-blur-xl border-t border-border/50 px-6 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
           <div className="max-w-3xl mx-auto flex items-center justify-between">
             <Button
               variant="ghost"
               onClick={handlePrev}
               disabled={!canGoPrev || isNavigating}
+              aria-label="Previous page"
               className={cn(
-                'text-body-sm gap-2 cursor-pointer transition-all duration-normal',
+                'text-body-sm gap-2 min-h-[44px] cursor-pointer transition-all duration-normal',
                 !canGoPrev || isNavigating
                   ? 'text-muted-foreground/40'
                   : 'text-muted-foreground hover:text-foreground',
@@ -300,7 +359,8 @@ export function LessonPager({
             <Button
               onClick={handleNext}
               disabled={!canGoNext || isNavigating}
-              className="px-6 py-2 rounded-xl text-body-sm cursor-pointer gap-2"
+              aria-label="Next page"
+              className="px-6 py-2 min-h-[44px] rounded-xl text-body-sm cursor-pointer gap-2"
             >
               {isNavigating ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
               {t('exercisesPagerNext')}
@@ -343,14 +403,15 @@ export function LessonPager({
             </div>
 
             {/* Fixed bottom navigation bar */}
-            <div className="fixed bottom-0 inset-x-0 z-30 bg-card/80 backdrop-blur-xl border-t border-border/50 px-6 py-4">
+            <div className="fixed bottom-0 inset-x-0 z-30 bg-card/80 backdrop-blur-xl border-t border-border/50 px-6 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
               <div className="max-w-3xl mx-auto flex items-center justify-between">
                 <Button
                   variant="ghost"
                   onClick={handlePrev}
                   disabled={!canGoPrev || isNavigating}
+                  aria-label="Previous page"
                   className={cn(
-                    'text-body-sm gap-2 cursor-pointer transition-all duration-normal',
+                    'text-body-sm gap-2 min-h-[44px] cursor-pointer transition-all duration-normal',
                     !canGoPrev || isNavigating
                       ? 'text-muted-foreground/40'
                       : 'text-muted-foreground hover:text-foreground',
@@ -365,7 +426,8 @@ export function LessonPager({
                 <Button
                   onClick={handleNext}
                   disabled={!canGoNext || isNavigating}
-                  className="px-6 py-2 rounded-xl text-body-sm cursor-pointer gap-2"
+                  aria-label="Next page"
+                  className="px-6 py-2 min-h-[44px] rounded-xl text-body-sm cursor-pointer gap-2"
                 >
                   {isNavigating ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                   {t('exercisesPagerNext')}
@@ -390,6 +452,7 @@ export function LessonPager({
   // Intro and outro pages
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      <Confetti active={showConfetti} />
       <Progress value={progressPercent} className="h-0.5 rounded-none" />
       <main className="flex-1 overflow-y-auto">
         <div className="container mx-auto px-4 sm:px-6 py-section-md md:py-section-lg max-w-3xl">
@@ -542,7 +605,8 @@ export function LessonPager({
                   variant="ghost"
                   onClick={handlePrev}
                   disabled={isNavigating}
-                  className="text-muted-foreground text-body-sm hover:text-foreground transition-colors duration-slow gap-2 cursor-pointer"
+                  aria-label="Previous page"
+                  className="text-muted-foreground text-body-sm min-h-[44px] hover:text-foreground transition-colors duration-slow gap-2 cursor-pointer"
                 >
                   <ArrowRight className="w-4 h-4 rtl:rotate-0 ltr:rotate-180" />
                   {t('exercisesPagerPrev')}

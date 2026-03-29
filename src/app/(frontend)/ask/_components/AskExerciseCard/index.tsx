@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { cn } from '@/infra/utils/ui'
 import { useTranslations } from '@/ui/web/providers/I18n'
 import { Award, Edit3, Lightbulb } from 'lucide-react'
@@ -35,8 +36,7 @@ export function AskExerciseCard({ file }: AskExerciseCardProps) {
   return (
     <div className="rounded-3xl overflow-hidden mb-6 shadow-elevation-1 border border-border bg-card transition-shadow duration-normal hover:shadow-elevation-2">
       <div className="aspect-video relative overflow-hidden bg-muted">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={file.url} alt={file.title} className="w-full h-full object-contain" />
+        <Image src={file.url} alt={file.title} fill className="object-contain" sizes="(max-width: 768px) 100vw, 50vw" />
       </div>
 
       <div className="p-card-padding">

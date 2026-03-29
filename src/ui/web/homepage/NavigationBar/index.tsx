@@ -6,6 +6,7 @@ import { useTranslations } from '@/ui/web/providers/I18n'
 import { cn } from '@/infra/utils/ui'
 import { motion } from 'framer-motion'
 import { BookOpen, Target, MessageCircle, ClipboardCheck, type LucideIcon } from 'lucide-react'
+import { OnboardingTip } from '@/ui/web/components/onboarding-tip'
 
 interface NavItem {
   key: string
@@ -33,12 +34,12 @@ export function NavigationBar() {
             const isActive = pathname === item.href
             const Icon = item.icon
 
-            return (
+            const link = (
               <SystemLink
                 key={item.key}
                 href={item.href}
                 className={cn(
-                  'relative flex-1 flex items-center justify-center gap-1.5 py-2.5 px-2 md:px-4 text-body-xs md:text-body-sm rounded-xl transition-colors',
+                  'relative flex-1 flex items-center justify-center gap-1.5 py-2.5 px-2 md:px-4 min-h-[44px] text-body-xs md:text-body-sm rounded-xl transition-colors',
                   isActive ? 'font-bold' : 'font-medium text-muted-foreground hover:text-foreground',
                 )}
               >
@@ -67,6 +68,22 @@ export function NavigationBar() {
                 )}
               </SystemLink>
             )
+
+            if (item.key === 'ask') {
+              return (
+                <OnboardingTip
+                  key={item.key}
+                  id="nav-ask"
+                  tip={t('askTip')}
+                  position="bottom"
+                  className="flex-1"
+                >
+                  {link}
+                </OnboardingTip>
+              )
+            }
+
+            return link
           })}
         </div>
       </div>

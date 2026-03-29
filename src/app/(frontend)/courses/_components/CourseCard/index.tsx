@@ -114,7 +114,7 @@ export function CourseCard({ course, isOwned = false }: CourseCardProps) {
         style={{ backgroundColor: courseColor.accent }}
       />
 
-      <div className="p-card-padding pt-5 flex flex-col flex-1">
+      <div className="p-4 md:p-card-padding pt-5 flex flex-col flex-1">
         {isOwned && (
           <span className="absolute -top-3 start-6 bg-success text-white px-4 py-1 rounded-full shadow-elevation-3 uppercase tracking-wider text-[9px] font-black z-10">
             {t('yourCourse') ?? '\u05D4\u05E7\u05D5\u05E8\u05E1 \u05E9\u05DC\u05DA'}
@@ -140,7 +140,7 @@ export function CourseCard({ course, isOwned = false }: CourseCardProps) {
         )}
 
         {/* Title - large and bold */}
-        <h4 className="text-heading-xl font-bold text-card-foreground text-start mb-2">
+        <h4 className="text-heading-lg md:text-heading-xl font-bold text-card-foreground text-start mb-2 break-words">
           {course.title}
         </h4>
 
@@ -148,7 +148,7 @@ export function CourseCard({ course, isOwned = false }: CourseCardProps) {
         {course.description && (
           <SafeHtml
             html={course.description}
-            className="text-body-sm text-muted-foreground line-clamp-2 text-start [&_p]:m-0"
+            className="text-body-xs md:text-body-sm text-muted-foreground line-clamp-2 text-start [&_p]:m-0 break-words"
           />
         )}
 
@@ -191,7 +191,7 @@ export function CourseCard({ course, isOwned = false }: CourseCardProps) {
             onClick={handleCourseSelect}
             disabled={isLoading || isSoon}
             className={cn(
-              'w-full',
+              'w-full min-h-[44px]',
               isOwned
                 ? 'bg-success/10 text-success hover:bg-success/20'
                 : isSoon

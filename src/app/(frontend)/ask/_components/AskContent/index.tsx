@@ -5,7 +5,7 @@ import { getUserProfile } from '@/client/state/localStorage/userProfile'
 import { ChatInterface } from '@/ui/web/chat'
 import { logger } from '@/infra/utils/logger'
 import { cn } from '@/infra/utils/ui'
-import { Loader2 } from 'lucide-react'
+import { Skeleton, SkeletonText } from '@/ui/web/components/skeleton'
 import { useLocale, useTranslations } from '@/ui/web/providers/I18n'
 import { ExerciseWorkspace } from '@/app/(frontend)/courses/[courseSlug]/chapters/[chapterSlug]/lessons/[lessonSlug]/exercises/[exerciseSlug]/_components/ExerciseWorkspace'
 import { AskPrimaryContent } from '../AskPrimaryContent'
@@ -60,9 +60,25 @@ export function AskContent({ conversationContextKey }: AskContentProps) {
 
   if (isLoading) {
     return (
-      <div className={cn('flex items-center justify-center h-screen')}>
-        <Loader2 className={cn('w-icon-lg h-icon-lg animate-spin me-2 text-muted-foreground')} />
-        <span className={cn('text-body-sm text-muted-foreground')}>{t('loading')}</span>
+      <div className="min-h-screen flex flex-col">
+        {/* Top bar skeleton */}
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
+          <Skeleton className="h-8 w-8 rounded-md" />
+          <Skeleton className="h-6 w-48" />
+        </div>
+
+        {/* Content area skeleton */}
+        <div className="flex-1 flex flex-col lg:flex-row">
+          <div className="flex-1 p-6 space-y-4">
+            <Skeleton className="h-8 w-64" />
+            <SkeletonText lines={4} />
+          </div>
+          <div className="hidden lg:block w-[400px] border-s border-border p-4 space-y-4">
+            <Skeleton className="h-6 w-32" />
+            <SkeletonText lines={3} />
+            <Skeleton className="h-10 w-full rounded-md" />
+          </div>
+        </div>
       </div>
     )
   }

@@ -11,6 +11,7 @@
 import { useTranslations } from '@/ui/web/providers/I18n'
 import { Card, CardContent, CardHeader, CardTitle } from '@/ui/web/components/card'
 import { Flame, Clock } from 'lucide-react'
+import { AnimatedCounter } from '@/ui/web/components/animated-counter'
 
 interface SummaryData {
   timeSpent: number
@@ -53,7 +54,15 @@ export function SummaryCards({ summary, categoryProgress }: SummaryCardsProps) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-display-sm font-bold">{formatTime(summary.timeSpent)}</div>
+          <div className="text-display-sm font-bold">
+            {Math.floor(summary.timeSpent / 3600) > 0 && (
+              <>
+                <AnimatedCounter value={Math.floor(summary.timeSpent / 3600)} suffix="h" />
+                {' '}
+              </>
+            )}
+            <AnimatedCounter value={Math.floor((summary.timeSpent % 3600) / 60)} suffix="m" />
+          </div>
           <div className="text-body-sm text-muted-foreground mt-2">
             {t('categoryLearn')}: {categoryProgress.learn.count} {t('lessonsCompleted')}
           </div>
@@ -70,7 +79,7 @@ export function SummaryCards({ summary, categoryProgress }: SummaryCardsProps) {
         </CardHeader>
         <CardContent>
           <div className="text-display-sm font-bold flex items-center gap-2">
-            {summary.dailyStreak}
+            <AnimatedCounter value={summary.dailyStreak} />
             <span className="text-body-sm font-normal text-muted-foreground">{t('days')}</span>
           </div>
           <div className="text-body-sm text-muted-foreground mt-2">

@@ -15,11 +15,15 @@ import {
   getEffectiveLessonType,
   type LessonType,
 } from '@/server/constants/lesson-types'
+import { Skeleton, SkeletonCard } from '@/ui/web/components/skeleton'
 import { AccessGateProvider } from '@/ui/web/auth/AccessGateProvider'
 import { useLocale, useTranslations } from '@/ui/web/providers/I18n'
 import { ContentStatusBadge } from '@/ui/web/shared/ContentStatusBadge'
 import { ProgressCircle } from '@/ui/web/shared/ProgressCircle'
-import { BarChart3, Clock, GraduationCap, Sparkles } from 'lucide-react'
+import { BarChart3, Clock, GraduationCap, PlayCircle, Sparkles } from 'lucide-react'
+import { Button } from '@/ui/web/components/button'
+import { Progress } from '@/ui/web/components/progress'
+import { OnboardingTip } from '@/ui/web/components/onboarding-tip'
 import { motion } from 'framer-motion'
 import { toast } from 'sonner'
 import { useEffect, useMemo, useState } from 'react'
@@ -232,10 +236,40 @@ export function StudyContent({
     return Math.round(totalProgress / filteredLessons.length)
   }, [filteredLessons, progressMap])
 
+  /** Find the in-progress lesson with the highest progress for "continue" card */
+  const continueLesson = useMemo(() => {
+    let best: { title: string; progress: number; href: string } | null = null
+    for (const lesson of filteredLessons) {
+      const p = progressMap[lesson.id] ?? 0
+      if (p > 0 && p < 100) {
+        if (!best || p > best.progress) {
+          const href = `/courses/${courseInfo?.courseSlug ?? ''}/chapters/${lesson._chapterSlug}/lessons/${lesson.slug}`
+          best = { title: lesson.title, progress: Math.round(p), href }
+        }
+      }
+    }
+    return best
+  }, [filteredLessons, progressMap, courseInfo?.courseSlug])
+
   if (isLoading) {
     return (
-      <div className="container mx-auto px-4 py-section-md">
-        <div className="text-center text-muted-foreground">{ts('loading')}</div>
+      <div className="container mx-auto px-6 py-section-sm max-w-5xl">
+        <div className="max-w-5xl mx-auto text-center mb-8">
+          <Skeleton className="h-7 w-24 rounded-full mx-auto mb-3" />
+          <Skeleton className="h-10 w-72 mx-auto mb-4" />
+          <div className="max-w-sm mx-auto space-y-2">
+            <div className="flex justify-between">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-4 w-10" />
+            </div>
+            <Skeleton className="h-2 w-full rounded-full" />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-content-gap-lg">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <SkeletonCard key={i} />
+          ))}
+        </div>
       </div>
     )
   }
@@ -316,6 +350,33 @@ export function StudyContent({
 
       {/* Main Content */}
       <main className="container mx-auto px-6 py-section-sm max-w-5xl">
+        {continueLesson && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-content-gap-lg"
+          >
+            <div className="bg-gradient-to-r from-primary/10 via-card to-accent/5 border border-primary/20 rounded-2xl p-card-padding flex items-center gap-content-gap">
+              <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                <PlayCircle className="w-7 h-7 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-body-xs text-muted-foreground font-medium uppercase tracking-wider mb-1">
+                  {ts('continueLearning')}
+                </p>
+                <h3 className="text-heading-md font-bold truncate">{continueLesson.title}</h3>
+                <div className="flex items-center gap-2 mt-1">
+                  <Progress value={continueLesson.progress} className="h-1.5 flex-1 max-w-32" />
+                  <span className="text-body-xs text-muted-foreground">{continueLesson.progress}%</span>
+                </div>
+              </div>
+              <Button asChild>
+                <SystemLink href={continueLesson.href}>{ts('continue')}</SystemLink>
+              </Button>
+            </div>
+          </motion.div>
+        )}
+
         {filteredLessons.length > 0 ? (
           <div className="space-y-10">
             {chapterGroups.map((group, groupIdx) => {
@@ -385,17 +446,24 @@ export function StudyContent({
         {/* Footer actions as styled cards */}
         <div className="mt-16 pt-8 border-t border-border">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-content-gap">
-            <SystemLink
-              href="/stats"
-              className="group flex flex-col items-center gap-2 bg-card border border-border rounded-2xl p-6 hover:border-primary/30 hover:shadow-elevation-2 transition-all"
+            <OnboardingTip
+              id="study-stats"
+              tip={t('statsTip')}
+              position="top"
+              className="flex"
             >
-              <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center group-hover:bg-primary/10 transition-colors">
-                <BarChart3 className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
-              </div>
-              <span className="text-body-sm font-bold text-foreground">
-                {t('statsAndPerformance')}
-              </span>
-            </SystemLink>
+              <SystemLink
+                href="/stats"
+                className="group flex flex-1 flex-col items-center gap-2 bg-card border border-border rounded-2xl p-6 hover:border-primary/30 hover:shadow-elevation-2 transition-all"
+              >
+                <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center group-hover:bg-primary/10 transition-colors">
+                  <BarChart3 className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                </div>
+                <span className="text-body-sm font-bold text-foreground">
+                  {t('statsAndPerformance')}
+                </span>
+              </SystemLink>
+            </OnboardingTip>
             <SystemLink
               href="/study-plan"
               className="group flex flex-col items-center gap-2 bg-primary text-primary-foreground rounded-2xl p-6 shadow-elevation-2 hover:opacity-90 transition-all"
