@@ -6,7 +6,7 @@ import type { Lesson } from '@/payload-types'
 import { useTranslations } from '@/ui/web/providers/I18n'
 import { ContentStatusBadge } from '@/ui/web/shared/ContentStatusBadge'
 import { ProgressCircle } from '@/ui/web/shared/ProgressCircle'
-import { Clock } from 'lucide-react'
+import { BookOpen, FileText, Target, Trophy } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface CourseLessonCardProps {
@@ -26,34 +26,28 @@ export function CourseLessonCard({
   tabColor,
   progress = 0,
 }: CourseLessonCardProps) {
-  const t = useTranslations('coursePage')
   const tc = useTranslations('courses')
 
   const href = `/courses/${courseSlug}/chapters/${chapterSlug}/lessons/${lesson.slug}`
-
-  // Determine if lesson is "soon" (locked)
   const isSoon = lesson.contentStatus === 'soon'
-
-  const progressText =
-    progress >= 100 ? t('lessonCompleted') : progress > 0 ? t('statusInProgress') : t('notStarted')
-
   const accentColor = isSoon ? 'var(--border)' : (tabColor?.stroke ?? 'hsl(var(--primary))')
 
   const handleLessonClick = (e: React.MouseEvent) => {
-    // If lesson is "Soon", show locked message and prevent navigation
     if (isSoon) {
       e.preventDefault()
       toast.info(tc('contentLocked'))
     }
   }
 
+  const TypeIcon = lesson.type === 'practice' ? Target : lesson.type === 'exam' ? Trophy : BookOpen
+  const hasFiles = (lesson.contentFiles?.length ?? 0) > 0
+
   return (
     <div
       className={cn(
-        'group relative rounded-2xl bg-card border border-border/40 shadow-elevation-1',
-        'transition-all duration-normal overflow-hidden will-change-transform',
+        'relative group rounded-xl bg-card border border-border/30 transition-all duration-normal will-change-transform',
         !isSoon && 'hover:border-border/50 active:scale-[0.98]',
-        isSoon && 'opacity-60',
+        isSoon && 'opacity-50',
       )}
       style={{
         borderInlineStartWidth: '3px',
@@ -64,51 +58,60 @@ export function CourseLessonCard({
         contentStatus={lesson.contentStatus}
         contentStatusExpiresAt={lesson.contentStatusExpiresAt ?? undefined}
         contentStatusLabel={lesson.contentStatusLabel ?? undefined}
-        className="absolute -top-3 right-4 z-10"
+        className="absolute -top-2.5 end-3 z-10"
       />
       <SystemLink
         href={isSoon ? '#' : href}
         onClick={handleLessonClick}
         className={cn(
-          'p-5',
-          'flex items-center justify-between gap-4',
-          'transition-colors duration-normal',
-          !isSoon && 'group-hover:bg-muted/30',
+          'p-5 flex items-center gap-4',
           isSoon ? 'cursor-not-allowed' : 'cursor-pointer',
         )}
       >
-        <div className="flex flex-col text-start gap-1.5">
-          <span
-            className="text-label font-bold uppercase tracking-wide"
-            style={{ color: accentColor }}
-          >
-            {tc('lesson')} {index}
-          </span>
-          <h3 className="text-heading-md font-bold text-card-foreground leading-snug">
-            {lesson.title}
-          </h3>
-          <p className="text-body-sm text-muted-foreground flex items-center justify-start gap-1.5">
-            {progress === 0 && <Clock className="w-3.5 h-3.5" />}
-            {progressText}
-          </p>
+        {/* Lesson icon */}
+        <div
+          className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
+          style={{ backgroundColor: `${accentColor.replace(')', ' / 0.15)')}` }}
+        >
+          <TypeIcon className="w-5 h-5" style={{ color: accentColor }} />
         </div>
 
-        <div className="relative shrink-0 w-10 h-10">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-0.5">
+            <span className="text-body-xs font-medium text-muted-foreground">
+              {tc('lesson')} {index}
+            </span>
+            {hasFiles && (
+              <FileText className="w-3 h-3 text-muted-foreground/50" />
+            )}
+          </div>
+          <h3 className="text-body-lg font-semibold text-card-foreground truncate">{lesson.title}</h3>
+          {lesson.description && (
+            <p className="text-body-xs text-muted-foreground mt-1 line-clamp-1 [&_p]:inline">
+              {lesson.description.replace(/<[^>]*>/g, '')}
+            </p>
+          )}
+        </div>
+
+        {/* Progress */}
+        <div className="shrink-0">
           <ProgressCircle
             percentage={progress}
             size={40}
             strokeWidth={3}
-            strokeColor={tabColor?.stroke}
+            strokeColor={accentColor}
           >
-            <text
-              x="50%"
-              y="50%"
-              textAnchor="middle"
-              dy=".3em"
-              className="text-[10px] font-bold fill-foreground"
-            >
-              {Math.round(progress)}%
-            </text>
+            {progress > 0 ? (
+              <text
+                x="50%"
+                y="50%"
+                textAnchor="middle"
+                dy=".3em"
+                className="text-[10px] font-bold fill-foreground"
+              >
+                {Math.round(progress)}%
+              </text>
+            ) : null}
           </ProgressCircle>
         </div>
       </SystemLink>

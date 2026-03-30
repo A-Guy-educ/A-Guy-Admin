@@ -45,7 +45,7 @@ export function ExamsTab({ courseId, accentColor }: ExamsTabProps) {
       </div>
 
       {upcomingExams.length > 0 && (
-        <StaggerGrid className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <StaggerGrid className="flex flex-col gap-3 max-w-3xl mx-auto">
           {upcomingExams.map((exam) => {
             const days = Math.ceil(
               (new Date(exam.date).getTime() - new Date().setHours(0, 0, 0, 0)) /
@@ -70,7 +70,7 @@ export function ExamsTab({ courseId, accentColor }: ExamsTabProps) {
       {pastExams.length > 0 && (
         <div>
           <h4 className="text-body-sm font-bold text-muted-foreground mb-3">{t('pastExams')}</h4>
-          <StaggerGrid className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 opacity-60">
+          <StaggerGrid className="flex flex-col gap-3 max-w-3xl mx-auto opacity-60">
             {pastExams.map((exam) => (
               <StaggerItem key={exam.id}>
                 <ExamCard
@@ -109,8 +109,8 @@ function ExamCard({
 }) {
   return (
     <div
-      className="rounded-2xl overflow-hidden border border-border/40 shadow-elevation-1 transition-all duration-normal"
-      style={{ borderTopWidth: 3, borderTopColor: accentColor ?? 'hsl(var(--primary))' }}
+      className="rounded-xl border border-border/30 transition-all duration-normal will-change-transform hover:border-border/50 active:scale-[0.98]"
+      style={{ borderInlineStartWidth: '3px', borderInlineStartColor: accentColor ?? 'hsl(var(--primary))' }}
     >
       <div className="bg-card p-5 flex flex-col gap-2">
         <div className="flex items-start justify-between">

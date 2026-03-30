@@ -38,14 +38,10 @@ export const CourseSearch: React.FC<CourseSearchProps> = ({ variant, onNavigate 
       {variant === 'desktop' ? (
         <button
           onClick={open}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border/40 bg-muted/30 hover:bg-muted/60 text-muted-foreground hover:text-foreground transition-all duration-normal"
+          className="p-2 rounded-lg hover:bg-muted/60 text-muted-foreground hover:text-foreground transition-all duration-normal"
           aria-label="Search"
         >
-          <SearchIcon className="w-4 h-4" />
-          <span className="text-body-xs hidden sm:inline">{/* placeholder kept short */}Search...</span>
-          <kbd className="hidden xl:inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded border border-border bg-muted text-[10px] text-muted-foreground font-mono">
-            ⌘K
-          </kbd>
+          <SearchIcon className="w-5 h-5" />
         </button>
       ) : (
         <button
