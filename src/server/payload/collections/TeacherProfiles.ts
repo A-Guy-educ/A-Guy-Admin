@@ -20,8 +20,8 @@ export const TeacherProfiles: CollectionConfig = {
     delete: adminOnly,
   },
   admin: {
-    useAsTitle: 'label',
-    defaultColumns: ['label', 'slug', 'systemPrompt', 'isEnabled', 'createdAt'],
+    useAsTitle: 'label_en',
+    defaultColumns: ['label_en', 'label_he', 'slug', 'systemPrompt', 'isEnabled', 'createdAt'],
     group: 'AI',
   },
   fields: [
@@ -37,18 +37,34 @@ export const TeacherProfiles: CollectionConfig = {
       },
     },
     {
-      name: 'label',
+      name: 'label_en',
       type: 'text',
       required: true,
       admin: {
-        description: 'Human-readable name displayed in UI',
+        description: 'Human-readable name displayed in UI (English)',
       },
     },
     {
-      name: 'description',
+      name: 'label_he',
+      type: 'text',
+      required: true,
+      admin: {
+        description: 'Human-readable name displayed in UI (Hebrew)',
+      },
+    },
+    {
+      name: 'description_en',
       type: 'textarea',
       admin: {
-        description: 'Short explanation shown in profile selection UI (1-2 sentences)',
+        description: 'Short explanation shown in profile selection UI — English (1-2 sentences)',
+        rows: 2,
+      },
+    },
+    {
+      name: 'description_he',
+      type: 'textarea',
+      admin: {
+        description: 'Short explanation shown in profile selection UI — Hebrew (1-2 sentences)',
         rows: 2,
       },
     },

@@ -50,8 +50,10 @@ export interface ResolvedTeacherProfile {
  */
 interface PopulatedTeacherProfile {
   slug: string
-  label: string
-  description: string | null
+  label_en: string
+  label_he: string
+  description_en: string | null
+  description_he: string | null
   isEnabled: boolean
   systemPrompt: {
     template: string
@@ -141,8 +143,8 @@ async function resolveTier1UserSettings(
 
       return {
         profileSlug: profile.slug,
-        profileLabel: profile.label,
-        profileDescription: profile.description || '',
+        profileLabel: profile.label_en,
+        profileDescription: profile.description_en || '',
         promptTemplate: profile.systemPrompt.template,
         resolvedFrom: 'user-settings',
       }
@@ -185,8 +187,8 @@ async function resolveTier2DefaultProfile(
 
       return {
         profileSlug: profile.slug,
-        profileLabel: profile.label,
-        profileDescription: profile.description || '',
+        profileLabel: profile.label_en,
+        profileDescription: profile.description_en || '',
         promptTemplate: profile.systemPrompt.template,
         resolvedFrom: 'default-config',
       }
@@ -226,8 +228,8 @@ async function resolveTier3FirstActive(payload: Payload): Promise<ResolvedTeache
 
       return {
         profileSlug: profile.slug,
-        profileLabel: profile.label,
-        profileDescription: profile.description || '',
+        profileLabel: profile.label_en,
+        profileDescription: profile.description_en || '',
         promptTemplate: profile.systemPrompt.template,
         resolvedFrom: 'first-active',
       }

@@ -12,6 +12,14 @@ import { getPayload } from 'payload'
 import { z } from 'zod'
 
 import config from '@payload-config'
+import { cookieName, defaultLocale, type Locale, locales } from '@/i18n/config'
+
+function getLocaleFromRequest(req: Request): Locale {
+  const cookieHeader = req.headers.get('cookie') ?? ''
+  const match = cookieHeader.match(new RegExp(`(?:^|;\\s*)${cookieName}=([^;]+)`))
+  const value = match?.[1] as Locale | undefined
+  return value && locales.includes(value) ? value : defaultLocale
+}
 
 const patchSchema = z.object({
   teacherProfileSlug: z.string(),
@@ -27,6 +35,7 @@ export async function GET(req: Request) {
   }
 
   const userId = authResult.user.id
+  const locale = getLocaleFromRequest(req)
 
   // Fetch user settings with populated teacher profile
   const settings = await payload.find({
@@ -51,13 +60,24 @@ export async function GET(req: Request) {
 
   const userSettings = settings.docs[0]
 
-  // Map to safe response (no systemPrompt/template)
+  // Map to safe response (no systemPrompt/template), resolving locale fields
+  type PopulatedTeacherProfile = {
+    slug?: string
+    label_en?: string
+    label_he?: string
+    description_en?: string
+    description_he?: string
+  }
+
   const teacherProfile = userSettings.teacherProfile
-    ? {
-        slug: (userSettings.teacherProfile as { slug?: string }).slug,
-        label: (userSettings.teacherProfile as { label?: string }).label,
-        description: (userSettings.teacherProfile as { description?: string }).description,
-      }
+    ? (() => {
+        const p = userSettings.teacherProfile as PopulatedTeacherProfile
+        return {
+          slug: p.slug,
+          label: locale === 'he' ? (p.label_he ?? p.label_en) : (p.label_en ?? p.label_he),
+          description: locale === 'he' ? (p.description_he ?? p.description_en) : (p.description_en ?? p.description_he),
+        }
+      })()
     : null
 
   return Response.json({

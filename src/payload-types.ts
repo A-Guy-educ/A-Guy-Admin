@@ -1905,13 +1905,21 @@ export interface TeacherProfile {
    */
   slug: string;
   /**
-   * Human-readable name displayed in UI
+   * Human-readable name displayed in UI (English)
    */
-  label: string;
+  label_en: string;
   /**
-   * Short explanation shown in profile selection UI (1-2 sentences)
+   * Human-readable name displayed in UI (Hebrew)
    */
-  description?: string | null;
+  label_he: string;
+  /**
+   * Short explanation shown in profile selection UI — English (1-2 sentences)
+   */
+  description_en?: string | null;
+  /**
+   * Short explanation shown in profile selection UI — Hebrew (1-2 sentences)
+   */
+  description_he?: string | null;
   /**
    * The prompt template that defines this teacher's behavior
    */
@@ -3404,8 +3412,10 @@ export interface PromptsSelect<T extends boolean = true> {
  */
 export interface TeacherProfilesSelect<T extends boolean = true> {
   slug?: T;
-  label?: T;
-  description?: T;
+  label_en?: T;
+  label_he?: T;
+  description_en?: T;
+  description_he?: T;
   systemPrompt?: T;
   isEnabled?: T;
   updatedAt?: T;

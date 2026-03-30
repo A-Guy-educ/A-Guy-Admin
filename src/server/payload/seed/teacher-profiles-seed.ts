@@ -16,8 +16,10 @@ import type { Payload } from 'payload'
 const TEACHER_PROFILES = [
   {
     slug: 'teacher_strict',
-    label: 'Strict Teacher',
-    description: 'Maintains high standards and expects precise, accurate responses.',
+    label_en: 'Strict Teacher',
+    label_he: 'מורה קפדן',
+    description_en: 'Maintains high standards and expects precise, accurate responses.',
+    description_he: 'שומר על סטנדרטים גבוהים ומצפה לתשובות מדויקות.',
     promptKey: 'teacher-strict-v1',
     promptTitle: 'Strict Teacher v1',
     promptTemplate: `You are a strict but fair teacher who maintains high academic standards.
@@ -29,8 +31,10 @@ const TEACHER_PROFILES = [
   },
   {
     slug: 'teacher_thorough',
-    label: 'Thorough Teacher',
-    description: 'Provides comprehensive explanations with extensive detail.',
+    label_en: 'Thorough Teacher',
+    label_he: 'מורה יסודי',
+    description_en: 'Provides comprehensive explanations with extensive detail.',
+    description_he: 'מספק הסברים מקיפים עם פרוט נרחב.',
     promptKey: 'teacher-thorough-v1',
     promptTitle: 'Thorough Teacher v1',
     promptTemplate: `You are a thorough teacher who provides comprehensive, detailed explanations.
@@ -42,8 +46,10 @@ const TEACHER_PROFILES = [
   },
   {
     slug: 'teacher_patient',
-    label: 'Patient Teacher',
-    description: 'Approaches learning with patience and encouragement.',
+    label_en: 'Patient Teacher',
+    label_he: 'מורה סבלני',
+    description_en: 'Approaches learning with patience and encouragement.',
+    description_he: 'ניגש ללמידה עם סבלנות ועידוד.',
     promptKey: 'teacher-patient-v1',
     promptTitle: 'Patient Teacher v1',
     promptTemplate: `You are a patient, supportive teacher who prioritizes student confidence.
@@ -55,8 +61,10 @@ const TEACHER_PROFILES = [
   },
   {
     slug: 'teacher_focused',
-    label: 'Focused Teacher',
-    description: 'Keeps lessons on track with clear objectives and efficient delivery.',
+    label_en: 'Focused Teacher',
+    label_he: 'מורה ממוקד',
+    description_en: 'Keeps lessons on track with clear objectives and efficient delivery.',
+    description_he: 'שומר על השיעורים ממוקדים עם יעדים ברורים.',
     promptKey: 'teacher-focused-v1',
     promptTitle: 'Focused Teacher v1',
     promptTemplate: `You are a focused teacher who keeps lessons efficient and goal-oriented.
@@ -68,8 +76,10 @@ const TEACHER_PROFILES = [
   },
   {
     slug: 'teacher_challenging',
-    label: 'Challenging Teacher',
-    description: 'Pushes students with thought-provoking questions and advanced material.',
+    label_en: 'Challenging Teacher',
+    label_he: 'מורה מאתגר',
+    description_en: 'Pushes students with thought-provoking questions and advanced material.',
+    description_he: 'מאתגר תלמידים עם שאלות מעוררות מחשבה וחומר מתקדם.',
     promptKey: 'teacher-challenging-v1',
     promptTitle: 'Challenging Teacher v1',
     promptTemplate: `You are a challenging teacher who pushes students to reach their full potential.
@@ -155,8 +165,20 @@ export async function seedTeacherProfiles(payload: Payload): Promise<void> {
     })
 
     if (existingProfile.docs.length > 0) {
+      // Update existing profile with localized fields (idempotent)
+      await payload.update({
+        collection: 'teacher_profiles',
+        id: existingProfile.docs[0].id,
+        data: {
+          label_en: profile.label_en,
+          label_he: profile.label_he,
+          description_en: profile.description_en,
+          description_he: profile.description_he,
+        },
+        overrideAccess: true,
+      })
       payload.logger.info(
-        `[TeacherProfilesSeed] Teacher profile ${profile.slug} already exists, skipping`,
+        `[TeacherProfilesSeed] Updated teacher profile ${profile.slug} with localized fields`,
       )
     } else {
       // Create teacher profile
@@ -164,8 +186,10 @@ export async function seedTeacherProfiles(payload: Payload): Promise<void> {
         collection: 'teacher_profiles',
         data: {
           slug: profile.slug,
-          label: profile.label,
-          description: profile.description,
+          label_en: profile.label_en,
+          label_he: profile.label_he,
+          description_en: profile.description_en,
+          description_he: profile.description_he,
           systemPrompt: promptId,
           isEnabled: true,
         },
