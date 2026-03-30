@@ -95,9 +95,11 @@ export const Lessons: CollectionConfig = {
     ],
     afterRead: [
       // Lazy backfill: populate course on existing records that don't have it yet
+      // Skip during build/seed to avoid cascading DB writes that slow down static generation
       async ({ doc, req }) => {
         if (!doc?.chapter) return doc
         if (doc.course) return doc // Already populated
+        if (!req.user) return doc // Skip for unauthenticated/build-time reads
 
         try {
           const chapterId = typeof doc.chapter === 'string' ? doc.chapter : doc.chapter?.id
