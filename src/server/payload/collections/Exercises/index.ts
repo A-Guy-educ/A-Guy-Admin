@@ -91,9 +91,6 @@ export const Exercises: CollectionConfig = {
         return data
       },
     ],
-  },
-
-  hooks: {
     afterChange: [
       async ({ doc, previousDoc, req }) => {
         if (req.context?._skipBlockSync) return doc
