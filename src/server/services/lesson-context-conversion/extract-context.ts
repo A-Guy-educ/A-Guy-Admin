@@ -213,7 +213,7 @@ export async function extractLessonContext(
     )
 
     // ========== Step 8: Validate response ==========
-    const responseText = response.text?.trim()
+    let responseText = response.text?.trim()
 
     if (!responseText) {
       return {
@@ -221,6 +221,55 @@ export async function extractLessonContext(
         error:
           'AI returned empty response. The PDF may be unreadable or contain only images without text.',
         warnings: warnings.length > 0 ? warnings : undefined,
+      }
+    }
+
+    // ========== Step 8a: Exercise count validation with retry ==========
+    // Estimate expected exercise count from PDF page count and validate extraction
+    let pdfPageCount = 0
+    if (isPdf) {
+      try {
+        pdfPageCount = await getPageCount(fileBuffer)
+      } catch {
+        // Non-fatal
+      }
+    }
+
+    const countExercises = (text: string) => (text.match(/\\textbf\{תרגיל \d+\}/g) || []).length
+
+    const extractedCount = countExercises(responseText)
+    // Bagrut exams: ~1 exercise per page (excluding cover/answer pages)
+    // Use a conservative minimum: at least half the content pages should yield exercises
+    const minExpectedExercises =
+      pdfPageCount > 2 ? Math.max(3, Math.floor((pdfPageCount - 2) * 0.5)) : 0
+
+    if (minExpectedExercises > 0 && extractedCount < minExpectedExercises) {
+      warnings.push(
+        `First extraction found only ${extractedCount} exercises (expected ≥${minExpectedExercises} from ${pdfPageCount}-page PDF). Retrying...`,
+      )
+
+      const retryResponse = await adapter.generateMultimodalCompletion(
+        {
+          prompt: fullPrompt,
+          model: modelConfig,
+          attachments: [{ data: base64Data, mimeType }],
+        },
+        payload,
+      )
+
+      const retryText = retryResponse.text?.trim()
+      if (retryText) {
+        const retryCount = countExercises(retryText)
+        if (retryCount > extractedCount) {
+          responseText = retryText
+          warnings.push(
+            `Retry extracted ${retryCount} exercises (vs ${extractedCount} initially). Using retry result.`,
+          )
+        } else {
+          warnings.push(
+            `Retry extracted ${retryCount} exercises (no improvement). Keeping original.`,
+          )
+        }
       }
     }
 
