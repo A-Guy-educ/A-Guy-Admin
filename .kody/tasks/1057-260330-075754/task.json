@@ -1,3 +1,4 @@
+```json
 {
   "task_type": "feature",
   "title": "Localize teacher profile selection UI and content (Hebrew/English)",
@@ -19,3 +20,4 @@
     "Should the Payload admin CMS display separate edit fields for Hebrew and English labels/descriptions, or manage them through a single interface?"
   ]
 }
+```
