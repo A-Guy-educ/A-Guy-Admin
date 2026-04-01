@@ -32,14 +32,17 @@ The migration file legitimately references old field names (`label_he`, `label_e
   ...(truncated)
 
 ### review-fix (2026-03-31T12:52:17)
+
 All Major issues fixed. Summary:
 
 **Major Issue 1 - `src/server/services/teacher-profile-resolver.ts`:**
-- Added optional `locale` parameter to `resolveTeacherProfile()` 
+
+- Added optional `locale` parameter to `resolveTeacherProfile()`
 - Added optional `locale` parameter to `resolveTier2DefaultProfile()` and `resolveTier3FirstActive()`
 - Both Tier 2 and Tier 3 queries now filter by locale when provided
 
 **Major Issue 2 - `src/app/api/user-settings/route.ts`:**
+
 - Added locale extraction in PATCH handler via `getLocaleFromRequest(req)`
 - Profile validation quer
-...(truncated)
+  ...(truncated)
