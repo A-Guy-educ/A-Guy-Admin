@@ -14,12 +14,18 @@
     "owner": "A-Guy-educ",
     "repo": "A-Guy"
   },
+  "paths": {
+    "taskDir": ".kody/tasks"
+  },
   "agent": {
-    "provider": "minimax",
     "modelMap": {
       "cheap": "MiniMax-M2.7-highspeed",
       "mid": "MiniMax-M2.7-highspeed",
       "strong": "MiniMax-M2.7-highspeed"
+    },
+    "default": {
+      "provider": "minimax",
+      "model": "MiniMax-M2.7-highspeed"
     }
   },
   "mcp": {
