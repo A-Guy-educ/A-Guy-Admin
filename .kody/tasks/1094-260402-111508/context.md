@@ -37,3 +37,27 @@ All 6 tests pass. The implementation is complete and verified:
 
 - **Duplicate entitlements (TOCTOU #2)**: Replaced the `alreadyHas` check + array spread with an atomic `updateOne` using `'courseEntitlements.course': { $ne: courseObjectId }` as a guard. If the 
 ...(truncated)
+
+### review (2026-04-02T11:30:20)
+## Verdict: PASS
+
+## Summary
+
+Replaces the TOCTOU-vulnerable read-check-write pattern in the access code redemption endpoint with atomic MongoDB `updateOne` operations using `$inc`/`$lt` for usage limits and `$ne`/`$push` for entitlement deduplication. Includes compensating rollback and integration tests.
+
+## Findings
+
+### Critical
+
+None.
+
+### Major
+
+1. `src/app/api/entitlements/redeem/route.ts:99-100` — When the atomic increment filter fails (`modifiedCount === 0`), the error is always `code_ex
+...(truncated)
+
+### review-fix (2026-04-02T11:31:36)
+All 6 tests still pass.
+
+**Fix applied**: Changed the error code from `code_exhausted` to `code_unavailable` at line 99-100, with a comment explaining the trade-off. This prevents the misleading error when the atomic update fails due to `isActive`/`expiresAt` changes rather than usage exhaustion.
+

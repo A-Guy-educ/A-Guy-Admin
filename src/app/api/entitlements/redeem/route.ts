@@ -97,7 +97,12 @@ export async function POST(request: NextRequest) {
     })
 
     if (incrementResult.modifiedCount === 0) {
-      return NextResponse.json({ success: false, error: 'code_exhausted' }, { status: 409 })
+      // The atomic filter includes isActive, expiresAt, and currentUses < maxUses.
+      // We cannot distinguish which condition caused the failure without a non-atomic re-read,
+      // so we return a generic error. The early validation above already handles the obvious
+      // inactive/expired cases; reaching here most likely means the code was exhausted or
+      // an admin changed the code state concurrently.
+      return NextResponse.json({ success: false, error: 'code_unavailable' }, { status: 409 })
     }
 
     // --- Atomic Step 2: Add entitlement only if user doesn't already have it ---
