@@ -183,7 +183,7 @@ jobs:
 
       - name: Warm up Next.js build cache
         continue-on-error: true
-        run: npx next build
+        run: npx cross-env NODE_OPTIONS='--max-old-space-size=4096' next build
         timeout-minutes: 15
 
       - name: Run Kody pipeline
