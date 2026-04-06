@@ -190,7 +190,7 @@ export function useDirectChatAssetUpload(): UseDirectChatAssetUploadReturn {
       setUploadingFiles((prev) =>
         prev.map((f) =>
           f.localId === localId
-            ? { ...f, status: 'failed' as const, error: 'File size exceeds maximum' }
+            ? { ...f, status: 'failed' as const, error: 'File is too large. Maximum size is 20 MB — please reduce the file size or compress the image and try again.' }
             : f,
         ),
       )
@@ -205,7 +205,7 @@ export function useDirectChatAssetUpload(): UseDirectChatAssetUploadReturn {
       setUploadingFiles((prev) =>
         prev.map((f) =>
           f.localId === localId
-            ? { ...f, status: 'failed' as const, error: 'File type not allowed' }
+            ? { ...f, status: 'failed' as const, error: 'File type not supported. Please upload a JPEG, PNG, WebP image or a PDF file.' }
             : f,
         ),
       )
