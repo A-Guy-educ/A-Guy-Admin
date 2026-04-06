@@ -46,3 +46,6 @@ See [design-system.md](./design-system.md) for complete rules. Key points:
 
 ## Learned 2026-04-05 (task: 1117-260405-101944)
 - Active directories: src/infra/blob, src/infra/llm/providers/shared, src/infra/pdfjs
+
+## Learned 2026-04-06 (task: 1144-260406-100413)
+- Active directories: src/infra/analytics/components, src/infra/analytics/utils, src/infra/analytics/adapters/mixpanel, src/infra/analytics
