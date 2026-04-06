@@ -37,8 +37,16 @@ describe('fetchBuffer', () => {
       arrayBuffer: vi.fn().mockResolvedValue(mockData.buffer),
     }
     vi.mocked(fetch)
-      .mockResolvedValueOnce({ ok: false, status: 503, statusText: 'Service Unavailable' } as Response)
-      .mockResolvedValueOnce({ ok: false, status: 503, statusText: 'Service Unavailable' } as Response)
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 503,
+        statusText: 'Service Unavailable',
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 503,
+        statusText: 'Service Unavailable',
+      } as Response)
       .mockResolvedValueOnce(mockResponse as unknown as Response)
 
     const result = await fetchBuffer('https://example.com/file.pdf')
@@ -54,7 +62,9 @@ describe('fetchBuffer', () => {
       statusText: 'Not Found',
     } as Response)
 
-    await expect(fetchBuffer('https://example.com/missing.pdf')).rejects.toThrow('HTTP 404 Not Found')
+    await expect(fetchBuffer('https://example.com/missing.pdf')).rejects.toThrow(
+      'HTTP 404 Not Found',
+    )
     expect(fetch).toHaveBeenCalledTimes(1)
   })
 
@@ -65,7 +75,9 @@ describe('fetchBuffer', () => {
       statusText: 'Internal Server Error',
     } as Response)
 
-    await expect(fetchBuffer('https://example.com/error.pdf')).rejects.toThrow('HTTP 500 Internal Server Error')
+    await expect(fetchBuffer('https://example.com/error.pdf')).rejects.toThrow(
+      'HTTP 500 Internal Server Error',
+    )
     expect(fetch).toHaveBeenCalledTimes(4) // Initial + 3 retries
   })
 

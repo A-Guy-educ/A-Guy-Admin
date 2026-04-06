@@ -100,7 +100,9 @@ export const PDFMedia: React.FC<MediaProps> = (props) => {
       {hasError ? (
         <div className="flex flex-col items-center justify-center h-full gap-content-gap text-center">
           <div className="flex flex-col gap-content-gap-xs">
-            <p className="text-body-md text-text-secondary">{errorMessage || 'Failed to load PDF.'}</p>
+            <p className="text-body-md text-text-secondary">
+              {errorMessage || 'Failed to load PDF.'}
+            </p>
             <button
               onClick={handleRetry}
               className="mx-auto px-4 py-2 bg-primary text-white rounded-button transition-all duration-normal hover:bg-primary/90"
