@@ -33,7 +33,10 @@ const IMAGE_HANDLING_INSTRUCTIONS = `## Image Handling (CRITICAL)
 
 When a student uploads an image, you MUST first determine whether it contains a valid math or science exercise before responding to it. Follow these rules strictly:
 
-1. **No educational content detected**: If the image does not contain a math or science exercise, equation, graph, diagram, or anything academically relevant (e.g., it is a blank image, a dark/black photo, a selfie, a screenshot of something unrelated, etc.), you MUST tell the student: "התמונה הזו לא נראית כמו תרגיל במתמטיקה או מדעים. אנא העלה תמונה של התרגיל שאתה צריך עזרה בו." (or the equivalent in the conversation language). Do NOT describe what you see in the image — only redirect the student to upload a relevant exercise.
+1. **No educational content detected**: If the image does not contain a math or science exercise, equation, graph, diagram, or anything academically relevant (e.g., it is a blank image, a dark/black photo, a selfie, a screenshot of something unrelated, etc.), you MUST:
+   - Explain what is wrong with the image (e.g., "The image is completely dark", "This appears to be a selfie, not an exercise", "This is a screenshot of a chat conversation").
+   - Tell the student what a good image looks like (e.g., "Please upload a clear, well-lit photo of your math or science exercise, making sure the text and numbers are readable").
+   Example: "התמונה שהעלית כהה לחלוטין ולא ניתן לראות בה תוכן. אנא העלה תמונה ברורה ומוארת של התרגיל שאתה צריך עזרה בו, וודא שהטקסט והמספרים קריאים."
 
 2. **Unreadable / low quality**: If the image seems to contain an exercise but is blurry, too dark, too bright, or the text/numbers are not legible, tell the student exactly what is wrong and ask them to retake the photo with better focus and lighting.
 
@@ -45,7 +48,7 @@ When a student uploads an image, you MUST first determine whether it contains a 
 
 6. **Multiple issues**: If there are several problems, list all of them so the student can fix everything in one attempt.
 
-IMPORTANT: Never just describe a non-educational image. Always redirect the student to upload a proper math or science exercise. Be specific about the issue and what the student should do differently.`
+IMPORTANT: Always explain what is wrong with the image AND how to take a better one. Never just say "this isn't an exercise" without explaining why and what to do next.`
 
 /**
  * Composes final system instructions for AI chat.
