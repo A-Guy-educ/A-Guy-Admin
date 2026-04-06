@@ -9,6 +9,7 @@ import type { SystemEventEnvelope, SystemEventName, Unsubscribe } from '@/infra/
 import { SYSTEM_EVENTS, systemEventBus } from '@/infra/system-events'
 import { PRODUCT_EVENTS } from './contracts/events'
 import { analytics } from './core/tracker'
+import { getOrCreateAnonymousId } from './utils/anonymous-id'
 
 let initialized = false
 let cleanupFns: Unsubscribe[] = []
@@ -229,7 +230,7 @@ export function initAnalyticsSubscriber(): () => void {
       // Alias anonymous user to registered user, THEN identify
       if (payload.user_id) {
         // CRITICAL: Call alias BEFORE identify to merge anonymous history
-        analytics.alias(payload.user_id)
+        analytics.alias(payload.user_id, getOrCreateAnonymousId())
         analytics.identify(payload.user_id, {
           registration_method: payload.registration_method,
         })
