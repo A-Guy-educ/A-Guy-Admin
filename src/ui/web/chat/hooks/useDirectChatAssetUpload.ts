@@ -192,14 +192,14 @@ export function useDirectChatAssetUpload(): UseDirectChatAssetUploadReturn {
     const { file, localId } = fileRecord
 
     if (file.size > CHAT_ASSET_MAX_BYTES) {
+      const maxSizeMB = CHAT_ASSET_MAX_BYTES / (1024 * 1024)
       setUploadingFiles((prev) =>
         prev.map((f) =>
           f.localId === localId
             ? {
                 ...f,
                 status: 'failed' as const,
-                error:
-                  'File is too large. Maximum size is 20 MB — please reduce the file size or compress the image and try again.',
+                error: `File is too large. Maximum size is ${maxSizeMB} MB — please reduce the file size or compress the image and try again.`,
               }
             : f,
         ),
