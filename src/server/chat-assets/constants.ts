@@ -23,3 +23,9 @@ export const CHAT_ASSET_TOKEN_VALID_MINUTES = 10
 // Image dimension constraints for chat assets (in pixels)
 export const CHAT_ASSET_MIN_IMAGE_WIDTH = 100
 export const CHAT_ASSET_MIN_IMAGE_HEIGHT = 100
+
+/**
+ * Tag the AI appends when rejecting an uploaded image.
+ * Used client-side to auto-clear the rejected image so the student can re-upload.
+ */
+export const IMAGE_REJECTED_TAG = '[IMAGE_REJECTED]'
