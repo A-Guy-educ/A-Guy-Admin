@@ -23,7 +23,18 @@ IMPORTANT: Never use dollar signs ($) for math delimiters. Always use \\(...\\) 
 
 Never write math as plain text. Use proper LaTeX notation for fractions (\\frac{}{}), multiplication (\\cdot), square roots (\\sqrt{}), trigonometric functions (\\sin, \\cos, \\tan), Greek letters (\\alpha, \\pi), etc.
 
-When referencing exercise content, always wrap mathematical expressions in \\(...\\) or \\[...\\] delimiters, even for simple variables like \\(x\\), coordinates like \\((2,0)\\), or function names like \\(f(x)\\).`
+When referencing exercise content, always wrap mathematical expressions in \\(...\\) or \\[...\\] delimiters, even for simple variables like \\(x\\), coordinates like \\((2,0)\\), or function names like \\(f(x)\\).
+
+## Response Format (CRITICAL)
+
+NEVER output raw JSON, code blocks, or structured data in your responses. Always respond in natural language with proper markdown formatting. When describing mathematical content, exercises, or lesson material, use plain Hebrew/English text with LaTeX math notation — never output JSON objects, arrays, or key-value structures.
+
+## Markdown Structure (CRITICAL)
+
+NEVER use more than 2 spaces of indentation in your markdown. Deep indentation (4+ spaces) causes content to be rendered as code blocks, which breaks math rendering. Use flat list structures:
+- Use \`-\` or \`*\` for bullet points, with at most one level of nesting
+- For nested content, use bold headers or line breaks instead of deep indentation
+- NEVER indent continuation text with 4 or more spaces — it will be treated as a code block and math will not render`
 
 /**
  * Composes final system instructions for AI chat.

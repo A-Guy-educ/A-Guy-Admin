@@ -8,16 +8,16 @@ on:
         type: string
       mode:
         type: string
-        default: 'full'
+        default: "full"
       from_stage:
         type: string
-        default: ''
+        default: ""
       issue_number:
         type: string
-        default: ''
+        default: ""
       feedback:
         type: string
-        default: ''
+        default: ""
       dry_run:
         type: boolean
         default: false
@@ -32,12 +32,12 @@ on:
     types: [submitted]
 
   workflow_run:
-    workflows: ['CI']
+    workflows: ["CI"]
     types: [completed]
 
   push:
     branches: [main, dev]
-    paths: ['src/**', 'kody.config.json', 'package.json']
+    paths: ["src/**", "kody.config.json", "package.json"]
 
 concurrency:
   group: kody-${{ github.event.inputs.task_id || github.event.issue.number || github.event.pull_request.number || github.event.workflow_run.id || github.sha }}
@@ -71,6 +71,7 @@ jobs:
       finalize: ${{ steps.parse.outputs.finalize }}
       no_publish: ${{ steps.parse.outputs.no_publish }}
       no_notify: ${{ steps.parse.outputs.no_notify }}
+      revert_target: ${{ steps.parse.outputs.revert_target }}
       valid: ${{ steps.parse.outputs.valid }}
     steps:
       - uses: actions/setup-node@v4
@@ -197,7 +198,7 @@ jobs:
 
       - name: Run Kody pipeline
         env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.PROJECT_TOKEN || steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
           TASK_ID: ${{ github.event.inputs.task_id || needs.parse.outputs.task_id }}
           MODE: ${{ github.event.inputs.mode || needs.parse.outputs.mode || 'full' }}
           FROM_STAGE: ${{ github.event.inputs.from_stage || needs.parse.outputs.from_stage }}
@@ -213,6 +214,7 @@ jobs:
           FINALIZE: ${{ needs.parse.outputs.finalize }}
           NO_PUBLISH: ${{ needs.parse.outputs.no_publish }}
           NO_NOTIFY: ${{ needs.parse.outputs.no_notify }}
+          REVERT_TARGET: ${{ needs.parse.outputs.revert_target }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           if [ "$MODE" = "release" ]; then
@@ -223,7 +225,15 @@ jobs:
             [ "$NO_PUBLISH" = "true" ] && ARGS="$ARGS --no-publish"
             [ "$NO_NOTIFY" = "true" ] && ARGS="$ARGS --no-notify"
             [ "$DRY_RUN" = "true" ] && ARGS="$ARGS --dry-run"
+            [ -n "$ISSUE_NUMBER" ] && ARGS="$ARGS --issue-number $ISSUE_NUMBER"
             kody-engine release $ARGS
+          elif [ "$MODE" = "revert" ]; then
+            echo "Running revert..."
+            ARGS=""
+            [ -n "$REVERT_TARGET" ] && ARGS="$ARGS --target $REVERT_TARGET"
+            [ -n "$ISSUE_NUMBER" ] && ARGS="$ARGS --issue-number $ISSUE_NUMBER"
+            [ "$DRY_RUN" = "true" ] && ARGS="$ARGS --dry-run"
+            kody-engine revert $ARGS
           elif [ "$MODE" = "bootstrap" ]; then
             echo "Running bootstrap..."
             kody-engine bootstrap
@@ -243,6 +253,7 @@ jobs:
             [ "$MODE" = "review" ] && CMD="review"
             [ "$MODE" = "resolve" ] && CMD="resolve"
             [ "$MODE" = "status" ] && CMD="status"
+            [ "$MODE" = "hotfix" ] && CMD="hotfix"
             ARGS="--issue-number $ISSUE_NUMBER"
             [ -n "$TASK_ID" ] && ARGS="$ARGS --task-id $TASK_ID"
             [ -n "$PR_NUMBER" ] && ARGS="$ARGS --pr-number $PR_NUMBER"
@@ -459,12 +470,12 @@ jobs:
       - name: Typecheck
         run: pnpm tsc --noEmit
       - name: CLI loads
-        run: pnpm exec kody-engine --help
+        run: kody-engine --help
       - name: Dry run
         run: |
           mkdir -p .kody/tasks/smoke-test
           echo "Smoke test task" > .kody/tasks/smoke-test/task.md
-          pnpm exec kody-engine run --task-id smoke-test --dry-run || true
+          kody-engine run --task-id smoke-test --dry-run || true
           if [ -f ".kody/tasks/smoke-test/status.json" ]; then
             echo "✓ status.json created"
             cat .kody/tasks/smoke-test/status.json
