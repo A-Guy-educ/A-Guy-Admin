@@ -28,6 +28,7 @@ export interface ExtractContextInput {
   lessonId: string
   promptId: string
   mediaId: string
+  mode?: 'replace' | 'append'
 }
 
 export interface ExtractContextResult {
@@ -51,7 +52,7 @@ export async function extractLessonContext(
   user: User,
   input: ExtractContextInput,
 ): Promise<ExtractContextResult> {
-  const { lessonId, promptId, mediaId } = input
+  const { lessonId, promptId, mediaId, mode = 'append' } = input
   const warnings: string[] = []
 
   try {
@@ -211,12 +212,7 @@ export async function extractLessonContext(
         const batch = pages.slice(i, i + PAGE_CONCURRENCY)
         const batchResults = await Promise.allSettled(
           batch.map((pageBuffer, _batchIdx) =>
-            extractSinglePage(
-              adapter,
-              modelConfig,
-              fullPrompt,
-              pageBuffer,
-            ),
+            extractSinglePage(adapter, modelConfig, fullPrompt, pageBuffer, payload),
           ),
         )
 
@@ -228,7 +224,8 @@ export async function extractLessonContext(
           if (result.status === 'fulfilled') {
             results.push({ pageIndex, latex: result.value.latex, warning: result.value.warning })
           } else {
-            const errorMsg = result.reason instanceof Error ? result.reason.message : 'Unknown error'
+            const errorMsg =
+              result.reason instanceof Error ? result.reason.message : 'Unknown error'
             warnings.push(
               `Page ${pageIndex + 1}/${totalPages}: extraction failed — ${errorMsg}. Skipped.`,
             )
@@ -273,7 +270,9 @@ export async function extractLessonContext(
       // Add per-page success messages
       for (const r of results) {
         if (r.latex !== null) {
-          warnings.push(`Page ${r.pageIndex + 1}/${totalPages}: extracted successfully (${r.latex.length} chars)`)
+          warnings.push(
+            `Page ${r.pageIndex + 1}/${totalPages}: extracted successfully (${r.latex.length} chars)`,
+          )
         }
         if (r.warning) {
           warnings.push(`Page ${r.pageIndex + 1}/${totalPages}: ${r.warning}`)
@@ -306,12 +305,18 @@ export async function extractLessonContext(
       }
     }
 
-    // ========== Step 7: Append to existing lessonContextText ==========
-    const existingContext = lessonTyped.lessonContextText || ''
-    const delimiter = '\n\n---\n\n'
-    const updatedContextText = existingContext
-      ? `${existingContext}${delimiter}${extractedText}`
-      : extractedText
+    // ========== Step 7: Update lessonContextText based on mode ==========
+    let updatedContextText: string
+    if (mode === 'append') {
+      const existingContext = lessonTyped.lessonContextText || ''
+      const delimiter = '\n\n---\n\n'
+      updatedContextText = existingContext
+        ? `${existingContext}${delimiter}${extractedText}`
+        : extractedText
+    } else {
+      // replace mode
+      updatedContextText = extractedText
+    }
 
     // ========== Step 8: Update lesson ==========
     await payload.update({
@@ -346,6 +351,7 @@ async function extractSinglePage(
   modelConfig: AIModel,
   prompt: string,
   pageBuffer: Buffer,
+  payload: Payload,
 ): Promise<{ latex: string; warning?: string }> {
   const base64Data = pageBuffer.toString('base64')
 
@@ -360,9 +366,7 @@ async function extractSinglePage(
         },
       ],
     },
-    // Pass a minimal payload instance - the adapter uses it for config resolution
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    {} as any,
+    payload,
   )
 
   const extractedText = response.text?.trim()
@@ -371,11 +375,22 @@ async function extractSinglePage(
     throw new Error('AI returned empty response')
   }
 
-  // Basic LaTeX validation - check for balanced braces
-  const openBraces = (extractedText.match(/\\{/g) || []).length
-  const closeBraces = (extractedText.match(/\\}/g) || []).length
-  if (openBraces !== closeBraces) {
-    const warning = 'LaTeX validation warning — unbalanced braces'
+  // LaTeX validation - check for balanced braces (ignoring escaped braces like \{ \})
+  let braceBalance = 0
+  for (let i = 0; i < extractedText.length; i++) {
+    if (extractedText[i] === '\\') {
+      i++ // skip escaped character
+      continue
+    }
+    if (extractedText[i] === '{') braceBalance++
+    if (extractedText[i] === '}') braceBalance--
+  }
+
+  if (braceBalance !== 0) {
+    const warning =
+      braceBalance > 0
+        ? `LaTeX validation warning — ${braceBalance} unclosed {`
+        : `LaTeX validation warning — ${Math.abs(braceBalance)} extra }`
     // Still return the text, but include a warning
     return { latex: extractedText, warning }
   }
@@ -387,7 +402,7 @@ async function extractSinglePage(
  * Stitch multiple LaTeX page results into a single valid LaTeX document.
  *
  * - Keeps the preamble (\documentclass through \begin{document}) from the first page only
- * - Strips preamble from subsequent pages
+ * - Extracts content from BETWEEN \begin{document} and \end{document} for all pages
  * - Joins content in page order
  * - Ensures one \end{document} at the end
  */
@@ -395,56 +410,44 @@ function stitchLatexPages(pages: string[]): string {
   if (pages.length === 0) return ''
   if (pages.length === 1) return pages[0]
 
-  // Extract parts from first page
-  const firstPage = pages[0]
-  const preambleEnd = firstPage.indexOf('\\begin{document}')
-  const firstDocumentEnd = firstPage.indexOf('\\end{document}')
+  /**
+   * Extract content between \begin{document} and \end{document}.
+   * Returns the content INSIDE the document environment, or the whole page if no environment found.
+   */
+  function extractContent(page: string): string {
+    const beginDoc = page.indexOf('\\begin{document}')
+    const endDoc = page.indexOf('\\end{document}')
 
-  let preamble: string
-  let firstContent: string
-
-  if (preambleEnd !== -1 && firstDocumentEnd !== -1 && preambleEnd < firstDocumentEnd) {
-    // Extract complete preamble including \begin{document}
-    preamble = firstPage.slice(0, firstDocumentEnd + '\\end{document}'.length)
-    firstContent = firstPage.slice(firstDocumentEnd + '\\end{document}'.length)
-  } else {
-    // Fallback: treat entire first page as content (no standard preamble found)
-    preamble = ''
-    firstContent = firstPage
-  }
-
-  // Strip preamble and \end{document} from subsequent pages
-  const subsequentContent = pages.slice(1).map((page) => {
-    // Find and strip everything before and including \begin{document}
-    const docStart = page.indexOf('\\begin{document}')
-    // Find and strip \end{document}
-    const docEnd = page.indexOf('\\end{document}')
-
-    if (docStart !== -1 && docEnd !== -1 && docStart < docEnd) {
+    if (beginDoc !== -1 && endDoc !== -1 && beginDoc < endDoc) {
       // Extract content between \begin{document} and \end{document}
-      return page.slice(docEnd + '\\end{document}'.length).trim()
+      return page.slice(beginDoc + '\\begin{document}'.length, endDoc).trim()
     }
 
-    // If no standard structure found, look for outline comments to strip
-    let content = page
-    // Strip lines starting with % outline markers at the beginning
-    content = content.replace(/^%.*\n/gm, '')
-    return content.trim()
-  })
+    // Fallback: return the whole page (no standard preamble found)
+    return page.trim()
+  }
 
-  // Combine: preamble (if any), first page content, subsequent pages content
-  const allContent = [firstContent.trim(), ...subsequentContent]
+  /**
+   * Extract the preamble (everything up to and including \begin{document}).
+   */
+  function extractPreamble(page: string): string {
+    const beginDoc = page.indexOf('\\begin{document}')
+
+    if (beginDoc !== -1) {
+      return page.slice(0, beginDoc + '\\begin{document}'.length)
+    }
+
+    return ''
+  }
+
+  const preamble = extractPreamble(pages[0])
+  const allContent = pages
+    .map(extractContent)
     .filter((c) => c.length > 0)
     .join('\n\n')
 
   if (preamble) {
-    // Insert content before \end{document}
-    const lastBrace = preamble.lastIndexOf('}')
-    if (lastBrace !== -1) {
-      return preamble.slice(0, lastBrace) + '\n\n' + allContent + '\n' + '\\end{document}'
-    }
-    // Fallback: append content before \end{document}
-    return preamble.replace('\\end{document}', '\n\n' + allContent + '\n\\end{document}')
+    return `${preamble}\n\n${allContent}\n\n\\end{document}`
   }
 
   // No preamble found - just join content
