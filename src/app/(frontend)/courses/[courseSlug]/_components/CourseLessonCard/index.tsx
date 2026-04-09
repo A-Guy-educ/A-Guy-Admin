@@ -61,8 +61,8 @@ export function CourseLessonCard({
   return (
     <div
       className={cn(
-        'relative group rounded-xl bg-card border border-border/30 transition-all duration-normal will-change-transform',
-        !isSoon && 'hover:border-border/50 active:scale-[0.98]',
+        'relative group rounded-xl bg-card border border-border/60 shadow-card transition-all duration-normal will-change-transform',
+        !isSoon && 'hover:border-border/80 hover:shadow-card-hover active:scale-[0.98]',
         isSoon && 'opacity-50',
       )}
       style={{

@@ -106,9 +106,9 @@ export function CourseCard({ course, isOwned = false }: CourseCardProps) {
   return (
     <div
       className={cn(
-        'group relative rounded-xl bg-card border border-border/30',
+        'group relative rounded-xl bg-card border border-border/60 shadow-card overflow-hidden',
         'transition-all duration-normal will-change-transform',
-        'hover:border-border/50 active:scale-[0.98]',
+        'hover:border-border/80 hover:shadow-card-hover active:scale-[0.98]',
         'flex flex-col',
         isSoon && 'opacity-50',
       )}
@@ -117,6 +117,13 @@ export function CourseCard({ course, isOwned = false }: CourseCardProps) {
         borderInlineStartColor: courseColor.accent,
       }}
     >
+      {/* Subtle gradient overlay at top for visual richness */}
+      <div
+        className="absolute inset-0 pointer-events-none opacity-50"
+        style={{
+          background: `linear-gradient(135deg, ${courseColor.accent.replace(')', '/ 0.05)')} 0%, transparent 60%)`,
+        }}
+      />
       <div className="p-5 flex flex-col flex-1">
         {isOwned && (
           <span className="absolute -top-3 start-6 bg-success text-white px-4 py-1 rounded-full shadow-elevation-3 uppercase tracking-wider text-[9px] font-black z-10">

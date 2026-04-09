@@ -7,46 +7,47 @@ import { useTranslations } from '@/ui/web/providers/I18n'
 import { useProgressMap } from '@/client/hooks/useProgressMap'
 import { StaggerGrid, StaggerItem } from '@/ui/web/components/motion'
 import { CourseLessonCard } from '../CourseLessonCard'
-import type { LessonProgress } from '../CoursePageContent'
+import type { LessonProgress } from '../types'
 
-interface LearnTabProps {
+interface LessonListTabProps {
   lessons: Lesson[]
   chapters: Chapter[]
   courseSlug: string
   tabColor?: { text: string; stroke: string }
   lessonProgressMap?: Record<string, LessonProgress>
+  lessonType: 'learning' | 'practice'
 }
 
-export function LearnTab({
+export function LessonListTab({
   lessons,
   chapters,
   courseSlug,
   tabColor,
   lessonProgressMap = {},
-}: LearnTabProps) {
+  lessonType,
+}: LessonListTabProps) {
   const t = useTranslations('coursePage')
-  const learningLessons = lessons.filter((l) => getEffectiveLessonType(l.type) === 'learning')
+  const filteredLessons = lessons.filter((l) => getEffectiveLessonType(l.type) === lessonType)
 
-  const lessonIds = useMemo(() => learningLessons.map((l) => l.id), [learningLessons])
+  const lessonIds = useMemo(() => filteredLessons.map((l) => l.id), [filteredLessons])
   const { progressMap, statusMap } = useProgressMap({ recordType: 'lesson', recordIds: lessonIds })
 
-  if (learningLessons.length === 0) {
+  if (filteredLessons.length === 0) {
     return null
   }
 
-  // Use parent lessonProgressMap if available, fall back to DB-fetched progressMap
   const hasParentProgress = Object.keys(lessonProgressMap).length > 0
 
   const completedCount = hasParentProgress
-    ? learningLessons.filter((l) => (lessonProgressMap[l.id]?.percent ?? 0) >= 100).length
+    ? filteredLessons.filter((l) => (lessonProgressMap[l.id]?.percent ?? 0) >= 100).length
     : Object.values(statusMap).filter((s) => s === 'completed').length
   const inProgressCount = hasParentProgress
-    ? learningLessons.filter((l) => {
+    ? filteredLessons.filter((l) => {
         const p = lessonProgressMap[l.id]?.percent ?? 0
         return p > 0 && p < 100
       }).length
     : Object.values(statusMap).filter((s) => s === 'in_progress').length
-  const notStartedCount = learningLessons.length - completedCount - inProgressCount
+  const notStartedCount = filteredLessons.length - completedCount - inProgressCount
 
   return (
     <>
@@ -63,7 +64,7 @@ export function LearnTab({
       </div>
 
       <StaggerGrid className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-content-gap">
-        {learningLessons.map((lesson, idx) => {
+        {filteredLessons.map((lesson, idx) => {
           const chapter = chapters.find((ch) => {
             const lessonChapterId =
               typeof lesson.chapter === 'string' ? lesson.chapter : lesson.chapter?.id

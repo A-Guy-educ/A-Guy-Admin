@@ -25,6 +25,7 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 import './globals.css'
 import { LayoutClient } from './LayoutClient'
+import { NavigationBar } from '@/ui/web/homepage/NavigationBar'
 import { ActiveTimeProvider } from '@/client/providers/ActiveTimeProvider'
 
 const assistant = Assistant({
@@ -101,7 +102,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   }}
                 />
                 <Header />
-                <div id="main-content">{children}</div>
+                <NavigationBar />
+                <div id="main-content" className="flex-1">{children}</div>
                 <Footer />
                 <Toaster />
               </PasswordLoginProvider>
