@@ -128,12 +128,16 @@ function parseContextText(contextText: string): ParsedSegment[] {
       }
 
       // Find continuation exercises: plain \item at the same enumerate level
-      // after a detected setcounter exercise (e.g. exercise 5 after setcounter{3}+\item)
+      // Only scan from exercises whose NEXT sequential number is NOT already detected.
+      // This avoids mistaking sub-items (\item \textbf{\alph*. }) for exercises.
+      const foundNumbers = new Set(exerciseMatches.map((e) => e.number))
       const continuations: typeof exerciseMatches = []
       for (const ex of exerciseMatches) {
+        // Only scan if the next number is missing from detected exercises
+        if (foundNumbers.has(ex.number + 1)) continue
+
         const searchStart = ex.index + ex.fullMatch.length
-        const searchEnd = firstSolutionIndex
-        const region = runText.slice(searchStart, searchEnd)
+        const region = runText.slice(searchStart, firstSolutionIndex)
 
         let level = 0
         let exerciseNum = ex.number
@@ -148,10 +152,9 @@ function parseContextText(contextText: string): ParsedSegment[] {
           } else if (tokenMatch[0] === '\\item' && level === 0) {
             exerciseNum++
             const absIndex = searchStart + tokenMatch.index
-            // Skip if already detected or past solutions
             if (
               absIndex >= firstSolutionIndex ||
-              exerciseMatches.some((e) => e.number === exerciseNum) ||
+              foundNumbers.has(exerciseNum) ||
               continuations.some((e) => e.number === exerciseNum)
             ) {
               continue
@@ -162,6 +165,8 @@ function parseContextText(contextText: string): ParsedSegment[] {
               number: exerciseNum,
               fullMatch: tokenMatch[0],
             })
+            // Stop after finding one continuation — don't assume more
+            break
           }
         }
       }
