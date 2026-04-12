@@ -63,9 +63,30 @@ function parseContextText(contextText: string): ParsedSegment[] {
     const exercisePattern =
       /(?:\\textbf\{(תרגיל\s+(\d+)[^}]*)\}|\\section\*?\{(תרגיל\s+(\d+)[^}]*)\}|\\subsection\*?\{(תרגיל\s+(\d+)[^}]*)\})/g
 
-    // Pattern to match exercises defined via \setcounter{enumi}{N} followed by \item
-    const setCounterPattern =
-      /\\begin\{enumerate\}\s*\n?\s*\\setcounter\{enumi\}\{(\d+)\}\s*\n?\s*\\item\b/g
+    // Pattern to match exercises via \setcounter{enumi}{N} followed by \item
+    // Does NOT require \begin{enumerate} — handles mid-enumerate setcounter too
+    const setCounterPattern = /\\setcounter\{enumi\}\{(\d+)\}\s*\n?\s*\\item\b/g
+
+    // Find all solution boundaries (matches both פתרון תרגיל N and פתרון שאלה N)
+    let match
+    const solutionPattern =
+      /(?:\\section\*?\{(פתרון\s+(?:תרגיל|שאלה)\s+(\d+))\}|\\subsection\*?\{(פתרון\s+(?:תרגיל|שאלה)\s+(\d+))\})/g
+    const solutionMatches: Array<{
+      index: number
+      number: number
+      fullMatch: string
+    }> = []
+    while ((match = solutionPattern.exec(runText)) !== null) {
+      const number = parseInt(match[2] || match[4], 10)
+      solutionMatches.push({ index: match.index, number, fullMatch: match[0] })
+    }
+
+    // Find the start of solutions section — check for \section*{פתרונות} or first solution header
+    const solutionsSectionMatch = runText.match(/\\section\*?\{פתרונות\}/)
+    const solutionsSectionStart = solutionsSectionMatch?.index ?? runText.length
+    const firstSolutionHeader =
+      solutionMatches.length > 0 ? solutionMatches[0].index : runText.length
+    const firstSolutionIndex = Math.min(solutionsSectionStart, firstSolutionHeader)
 
     // Find all exercise boundaries
     const exerciseMatches: Array<{
@@ -75,7 +96,6 @@ function parseContextText(contextText: string): ParsedSegment[] {
       fullMatch: string
     }> = []
 
-    let match
     while ((match = exercisePattern.exec(runText)) !== null) {
       const title = match[1] || match[3] || match[5]
       const number = parseInt(match[2] || match[4] || match[6], 10)
@@ -90,8 +110,15 @@ function parseContextText(contextText: string): ParsedSegment[] {
     // Also detect \setcounter{enumi}{N} + \item style exercises
     if (exerciseMatches.length === 0) {
       while ((match = setCounterPattern.exec(runText)) !== null) {
+        // Skip matches inside the solutions section
+        if (match.index >= firstSolutionIndex) continue
+
         const enumi = parseInt(match[1], 10)
         const number = enumi + 1 // \setcounter{enumi}{0} means exercise 1
+
+        // Deduplicate — keep first occurrence of each exercise number
+        if (exerciseMatches.some((e) => e.number === number)) continue
+
         exerciseMatches.push({
           index: match.index,
           title: `תרגיל ${number}`,
@@ -99,24 +126,10 @@ function parseContextText(contextText: string): ParsedSegment[] {
           fullMatch: match[0],
         })
       }
-    }
 
-    // Find all solution boundaries (matches both פתרון תרגיל N and פתרון שאלה N)
-    const solutionPattern =
-      /(?:\\section\*?\{(פתרון\s+(?:תרגיל|שאלה)\s+(\d+))\}|\\subsection\*?\{(פתרון\s+(?:תרגיל|שאלה)\s+(\d+))\})/g
-    const solutionMatches: Array<{
-      index: number
-      number: number
-      fullMatch: string
-    }> = []
-    while ((match = solutionPattern.exec(runText)) !== null) {
-      const number = parseInt(match[2] || match[4], 10)
-      solutionMatches.push({ index: match.index, number, fullMatch: match[0] })
+      // Sort by position in text to ensure correct order
+      exerciseMatches.sort((a, b) => a.index - b.index)
     }
-
-    // Find the start of solutions section (first solution header)
-    const firstSolutionIndex =
-      solutionMatches.length > 0 ? solutionMatches[0].index : runText.length
 
     if (exerciseMatches.length === 0) {
       // No exercises found — treat entire text as one exercise
