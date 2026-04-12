@@ -4,22 +4,26 @@
  * Extracts context text from lesson content files (PDF/images) using AI prompts.
  * The extracted text is stored in the lesson's lessonContextText field.
  *
+ * PDFs are processed page-by-page: each page is split into a single-page PDF,
+ * sent to the LLM independently, validated, then stitched into one LaTeX document.
+ *
  * All Payload Local API calls use overrideAccess: false + user context for security.
  */
 import { isVercelBlobUrl } from '@/infra/blob/vercel-blob-adapter'
 import { fetchBuffer } from '@/infra/utils/http'
 import type { Lesson, Media, Prompt } from '@/payload-types'
+import type { UnifiedLLMProvider } from '@/infra/llm/providers/factory'
+import type { AIModel } from '@/infra/llm/models'
 import { getPdfBufferFromBlob, normalizeToAbsoluteUrl } from '@/server/services/pdf-fetcher'
-import { getPageCount } from '@/server/utils/pdf-metadata'
+import { splitPdfIntoPages } from '@/server/utils/pdf-page-splitter'
+import { validateExtractedLatex } from './validate-latex'
 import type { Payload, User } from 'payload'
 
-import { validateExtractedLatex } from './validate-latex'
+// Controlled concurrency for page-by-page PDF processing
+const PAGE_CONCURRENCY = 3
 
-/**
- * PDFs longer than this will show a warning that output may be incomplete.
- * Based on observed behavior: ~10 pages of exercises + solutions fits in 16384 output tokens.
- */
-const PDF_PAGE_WARNING_THRESHOLD = 12
+// Warning threshold for combined LaTeX size
+const LATEX_SIZE_WARNING_THRESHOLD = 80000
 
 export interface ExtractContextInput {
   lessonId: string
@@ -39,8 +43,9 @@ export interface ExtractContextResult {
 /**
  * Extract context text from a lesson content file and store in lessonContextText.
  *
- * Sends the entire file to the LLM in a single call, validates the LaTeX output,
- * and stores the result. Supports replace (default) and append modes.
+ * For PDFs: splits into individual pages, processes each page independently,
+ * validates LaTeX output, then stitches results into one document.
+ * For images: single LLM call with the full image.
  *
  * @param payload - Payload instance
  * @param user - Authenticated user for access control
@@ -53,6 +58,7 @@ export async function extractLessonContext(
   input: ExtractContextInput,
 ): Promise<ExtractContextResult> {
   const { lessonId, promptId, mediaId, mode = 'replace' } = input
+  const warnings: string[] = []
 
   try {
     // ========== Step 1: Fetch lesson and validate tenant ==========
@@ -164,29 +170,13 @@ export async function extractLessonContext(
       return { success: false, error: 'Failed to download media file' }
     }
 
-    // ========== Step 5: Check PDF page count and warn if large ==========
-    const warnings: string[] = []
-
-    if (isPdf) {
-      try {
-        const pageCount = await getPageCount(fileBuffer)
-        if (pageCount > PDF_PAGE_WARNING_THRESHOLD) {
-          warnings.push(
-            `This PDF has ${pageCount} pages. Extraction works best with up to ~${PDF_PAGE_WARNING_THRESHOLD} pages. Some content at the end may be missing — check the result and re-run if needed.`,
-          )
-        }
-      } catch {
-        // Page count is informational — don't fail if we can't read it
-      }
-    }
-
-    // ========== Step 6: Build prompt with lesson metadata ==========
+    // ========== Step 5: Build prompt with lesson metadata ==========
     const lessonTitle = lessonTyped.title || 'Untitled Lesson'
     const lessonDescription = lessonTyped.description || ''
     const metadataText = `Lesson: ${lessonTitle}\nDescription: ${lessonDescription}`
     const fullPrompt = `${promptTyped.template}\n\n${metadataText}`
 
-    // ========== Step 7: Call LLM via adapter ==========
+    // ========== Step 6: Create LLM adapter and model config ==========
     const { createGenkitUnifiedAdapter } =
       await import('@/infra/llm/genkit/adapters/unified-adapter')
     const adapter = await createGenkitUnifiedAdapter(payload)
@@ -200,55 +190,85 @@ export async function extractLessonContext(
       modelKey: 'PDF_TO_EXERCISE' as const,
     }
 
-    const mimeType = isPdf ? 'application/pdf' : mediaTyped.mimeType || 'image/png'
-    const base64Data = fileBuffer.toString('base64')
+    // ========== Step 7: Process based on media type ==========
+    let extractedText: string
 
-    const response = await adapter.generateMultimodalCompletion(
-      {
-        prompt: fullPrompt,
-        model: modelConfig,
-        attachments: [{ data: base64Data, mimeType }],
-      },
-      payload,
-    )
-
-    // ========== Step 8: Validate response ==========
-    let responseText = response.text?.trim()
-
-    if (!responseText) {
-      return {
-        success: false,
-        error:
-          'AI returned empty response. The PDF may be unreadable or contain only images without text.',
-        warnings: warnings.length > 0 ? warnings : undefined,
-      }
-    }
-
-    // ========== Step 8a: Exercise count validation with retry ==========
-    // Estimate expected exercise count from PDF page count and validate extraction
-    let pdfPageCount = 0
     if (isPdf) {
-      try {
-        pdfPageCount = await getPageCount(fileBuffer)
-      } catch {
-        // Non-fatal
+      // ========== PDF: Process page-by-page with controlled concurrency ==========
+      const pages = await splitPdfIntoPages(fileBuffer)
+      const totalPages = pages.length
+
+      warnings.push(`Processing ${totalPages} pages with concurrency ${PAGE_CONCURRENCY}`)
+
+      // Process pages in batches
+      const results: Array<{ pageIndex: number; latex: string | null; warning?: string }> = []
+
+      for (let i = 0; i < pages.length; i += PAGE_CONCURRENCY) {
+        const batch = pages.slice(i, i + PAGE_CONCURRENCY)
+        const batchResults = await Promise.allSettled(
+          batch.map((pageBuffer) =>
+            extractSinglePage(adapter, modelConfig, fullPrompt, pageBuffer, payload),
+          ),
+        )
+
+        for (let j = 0; j < batchResults.length; j++) {
+          const result = batchResults[j]
+          const pageIndex = i + j
+
+          if (result.status === 'fulfilled') {
+            results.push({ pageIndex, latex: result.value.latex, warning: result.value.warning })
+            warnings.push(
+              `Page ${pageIndex + 1}/${totalPages}: extracted successfully (${result.value.latex.length} chars)`,
+            )
+          } else {
+            const errorMsg =
+              result.reason instanceof Error ? result.reason.message : 'Unknown error'
+            warnings.push(
+              `Page ${pageIndex + 1}/${totalPages}: extraction failed — ${errorMsg}. Skipped.`,
+            )
+            results.push({ pageIndex, latex: null })
+          }
+        }
       }
-    }
 
-    const countExercises = (text: string) => (text.match(/\\textbf\{תרגיל \d+\}/g) || []).length
+      // Sort by page index to ensure correct order
+      results.sort((a, b) => a.pageIndex - b.pageIndex)
 
-    const extractedCount = countExercises(responseText)
-    // Bagrut exams: ~1 exercise per page (excluding cover/answer pages)
-    // Use a conservative minimum: at least half the content pages should yield exercises
-    const minExpectedExercises =
-      pdfPageCount > 2 ? Math.max(3, Math.floor((pdfPageCount - 2) * 0.5)) : 0
+      // Check if all pages failed
+      const successfulResults = results.filter((r) => r.latex !== null)
+      if (successfulResults.length === 0) {
+        return {
+          success: false,
+          error: 'All pages failed extraction',
+          warnings,
+        }
+      }
 
-    if (minExpectedExercises > 0 && extractedCount < minExpectedExercises) {
-      warnings.push(
-        `First extraction found only ${extractedCount} exercises (expected ≥${minExpectedExercises} from ${pdfPageCount}-page PDF). Retrying...`,
-      )
+      // Report summary
+      const skippedCount = results.filter((r) => r.latex === null).length
+      if (skippedCount > 0) {
+        warnings.push(
+          `Successfully extracted ${successfulResults.length}/${totalPages} pages. ${skippedCount} pages skipped.`,
+        )
+      } else {
+        warnings.push(`Successfully extracted all ${totalPages} pages.`)
+      }
 
-      const retryResponse = await adapter.generateMultimodalCompletion(
+      // Stitch results together
+      extractedText = stitchLatexPages(successfulResults.map((r) => r.latex!))
+
+      // Add size warning if needed
+      if (extractedText.length > LATEX_SIZE_WARNING_THRESHOLD) {
+        warnings.push(
+          `Combined LaTeX is ${extractedText.length} chars (threshold: ${LATEX_SIZE_WARNING_THRESHOLD}). May approach lessonContextText limit.`,
+        )
+      }
+    } else {
+      // ========== Non-PDF (image): Single call, existing behavior ==========
+      const mimeType = mediaTyped.mimeType || 'image/png'
+      const base64Data = fileBuffer.toString('base64')
+
+      const response = await adapter.generateMultimodalCompletion(
         {
           prompt: fullPrompt,
           model: modelConfig,
@@ -257,182 +277,18 @@ export async function extractLessonContext(
         payload,
       )
 
-      const retryText = retryResponse.text?.trim()
-      if (retryText) {
-        const retryCount = countExercises(retryText)
-        if (retryCount > extractedCount) {
-          responseText = retryText
-          warnings.push(
-            `Retry extracted ${retryCount} exercises (vs ${extractedCount} initially). Using retry result.`,
-          )
-        } else {
-          warnings.push(
-            `Retry extracted ${retryCount} exercises (no improvement). Keeping original.`,
-          )
-        }
-      }
-    }
-
-    const validation = validateExtractedLatex(responseText)
-    warnings.push(...validation.warnings)
-
-    if (!validation.valid) {
-      warnings.push(...validation.errors)
-    }
-
-    let extractedText = validation.sanitizedText
-
-    // ========== Step 8b: If truncated, retry with solutions-only passes ==========
-    if (validation.isTruncated) {
-      warnings.push('First pass was truncated — running additional passes for solutions.')
-
-      // Count how many exercises were extracted (by matching \textbf{תרגיל N})
-      const exerciseHeaders = extractedText.match(/\\textbf\{תרגיל \d+\}/g) || []
-      const totalExercises = exerciseHeaders.length
-
-      // Remove empty solution stubs from the first pass
-      const textWithoutEmptyStubs = extractedText.replace(/\\newpage[\s\S]*$/, '').trim()
-      extractedText = textWithoutEmptyStubs
-
-      // Run up to 3 solution passes, each asking for remaining solutions only
-      const MAX_SOLUTION_PASSES = 3
-      for (let pass = 0; pass < MAX_SOLUTION_PASSES; pass++) {
-        // Detect which solutions already exist
-        const existingSolutions = extractedText.match(/\\section\*\{פתרון תרגיל (\d+)\}/g) || []
-        const solvedNumbers = new Set(
-          existingSolutions.map((s) => {
-            const m = s.match(/(\d+)/)
-            return m ? parseInt(m[1], 10) : 0
-          }),
-        )
-
-        // Find which exercises still need solutions
-        const missingNumbers: number[] = []
-        for (let i = 1; i <= totalExercises; i++) {
-          if (!solvedNumbers.has(i)) missingNumbers.push(i)
-        }
-
-        // Also check if the last existing solution was truncated (ends mid-sentence)
-        const lastSolutionMatch = extractedText.match(/\\section\*\{פתרון תרגיל \d+\}[\s\S]*$/)
-        const lastSolutionTruncated =
-          lastSolutionMatch &&
-          (lastSolutionMatch[0].endsWith('\\') ||
-            lastSolutionMatch[0].match(/\$[^$]*$/) !== null ||
-            lastSolutionMatch[0].match(/\\begin\{[^}]+\}(?![\s\S]*\\end\{)/))
-
-        if (missingNumbers.length === 0 && !lastSolutionTruncated) break
-
-        const targetExercises =
-          lastSolutionTruncated && missingNumbers.length === 0
-            ? `Complete the truncated solution for exercise ${Math.max(...solvedNumbers)} and any remaining exercises.`
-            : `Generate solutions ONLY for exercises: ${missingNumbers.join(', ')}.`
-
-        const solutionsPrompt = `You are given LaTeX code of math exercises extracted from a PDF. Some solutions are missing or incomplete.
-
-Your task: ${targetExercises}
-
-Rules:
-- Use \\section*{פתרון תרגיל X} for each solution
-- Solutions must be highly detailed, showing formulas, derivatives, and logical steps
-- Match the solution list format: \\begin{enumerate}[label=\\textbf{\\alph*.}]
-- Do NOT repeat exercises or solutions that already exist
-- Do NOT include \\documentclass, \\usepackage, \\begin{document}, or \\end{document}
-
-Current document (with existing solutions):
-
-${extractedText}`
-
-        try {
-          const solutionsResponse = await adapter.generateMultimodalCompletion(
-            {
-              prompt: solutionsPrompt,
-              model: modelConfig,
-              attachments: [{ data: base64Data, mimeType }],
-            },
-            payload,
-          )
-
-          const solutionsText = solutionsResponse.text?.trim()
-
-          if (solutionsText) {
-            const cleanedSolutions = solutionsText
-              .replace(/\\documentclass[\s\S]*?\\begin\{document\}/g, '')
-              .replace(/\\end\{document\}/g, '')
-              .trim()
-
-            if (cleanedSolutions) {
-              extractedText = `${extractedText}\n\n${cleanedSolutions}`
-              warnings.push(`Solutions pass ${pass + 1}: appended solutions successfully.`)
-            }
-          }
-        } catch (solutionsError) {
-          const msg = solutionsError instanceof Error ? solutionsError.message : 'Unknown error'
-          warnings.push(`Solutions pass ${pass + 1} failed: ${msg}.`)
-          break
-        }
+      const responseText = response.text?.trim()
+      if (!responseText) {
+        return { success: false, error: 'AI returned empty response', warnings }
       }
 
-      // Final check: report any still-missing solutions
-      const finalSolutions = extractedText.match(/\\section\*\{פתרון תרגיל (\d+)\}/g) || []
-      const finalSolvedCount = new Set(finalSolutions).size
-      if (finalSolvedCount < totalExercises) {
-        warnings.push(
-          `${finalSolvedCount}/${totalExercises} exercise solutions were extracted. ` +
-            `Some solutions may still be missing.`,
-        )
-      }
+      const validation = validateExtractedLatex(responseText)
+      warnings.push(...validation.warnings)
+      extractedText = validation.sanitizedText
     }
 
-    // ========== Step 8c: Verify solution accuracy ==========
-    // Ask the LLM to check if solutions are mathematically correct.
-    // If errors are found, flag them as warnings so they can be reviewed.
-    try {
-      const solutionVerifyPrompt = `You are a math teacher verifying student solutions. Check the following LaTeX document for mathematical errors in the SOLUTIONS section only.
-
-For each solution that contains a mathematical error (wrong calculation, incorrect formula application, wrong final answer), report it in this exact JSON format:
-{ "errors": [{ "exercise": "exercise number or title", "description": "what is wrong and what the correct answer should be" }] }
-
-If all solutions are correct, return: { "errors": [] }
-
-IMPORTANT: Only report clear mathematical errors, not stylistic issues.
-
-Document to verify:
-${extractedText}`
-
-      const verifyResponse = await adapter.generateChatCompletion(
-        {
-          system: 'You are a precise math verification assistant. Return only valid JSON.',
-          messages: [{ role: 'user', content: solutionVerifyPrompt }],
-          model: modelConfig,
-          acknowledgment: 'Verifying solutions...',
-        },
-        payload,
-      )
-
-      const verifyText = verifyResponse.text?.trim()
-      if (verifyText) {
-        try {
-          const jsonMatch = verifyText.match(/\{[\s\S]*\}/)
-          if (jsonMatch) {
-            const parsed = JSON.parse(jsonMatch[0])
-            if (Array.isArray(parsed.errors) && parsed.errors.length > 0) {
-              for (const err of parsed.errors) {
-                warnings.push(`Solution accuracy issue in ${err.exercise}: ${err.description}`)
-              }
-            }
-          }
-        } catch {
-          // JSON parse failure is non-fatal — skip verification
-        }
-      }
-    } catch {
-      // Verification is best-effort — don't fail extraction if it errors
-      warnings.push('Solution verification step was skipped due to an error.')
-    }
-
-    // ========== Step 9: Store result based on mode ==========
+    // ========== Step 8: Update lessonContextText based on mode ==========
     let updatedContextText: string
-
     if (mode === 'append') {
       const existingContext = lessonTyped.lessonContextText || ''
       const delimiter = '\n\n---\n\n'
@@ -443,7 +299,7 @@ ${extractedText}`
       updatedContextText = extractedText
     }
 
-    // ========== Step 10: Update lesson ==========
+    // ========== Step 9: Update lesson ==========
     await payload.update({
       collection: 'lessons',
       id: lessonId,
@@ -465,11 +321,11 @@ ${extractedText}`
 
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
 
-    // Provide user-friendly messages for common failures
     if (errorMessage.includes('timeout') || errorMessage.includes('ETIMEDOUT')) {
       return {
         success: false,
         error: 'The extraction timed out. The PDF may be too large — try a shorter document.',
+        warnings: warnings.length > 0 ? warnings : undefined,
       }
     }
 
@@ -477,6 +333,7 @@ ${extractedText}`
       return {
         success: false,
         error: 'AI service rate limit reached. Please wait a minute and try again.',
+        warnings: warnings.length > 0 ? warnings : undefined,
       }
     }
 
@@ -485,9 +342,194 @@ ${extractedText}`
         success: false,
         error:
           'The PDF is too large for processing. Try splitting it into smaller parts (under 10 pages).',
+        warnings: warnings.length > 0 ? warnings : undefined,
       }
     }
 
-    return { success: false, error: errorMessage }
+    return {
+      success: false,
+      error: errorMessage,
+      warnings: warnings.length > 0 ? warnings : undefined,
+    }
   }
+}
+
+/**
+ * Extract LaTeX content from a single PDF page.
+ * Uses validateExtractedLatex for full validation (braces, environments, fonts, sanitization).
+ */
+async function extractSinglePage(
+  adapter: UnifiedLLMProvider,
+  modelConfig: AIModel,
+  prompt: string,
+  pageBuffer: Buffer,
+  payload: Payload,
+): Promise<{ latex: string; warning?: string }> {
+  const base64Data = pageBuffer.toString('base64')
+
+  const response = await adapter.generateMultimodalCompletion(
+    {
+      prompt,
+      model: modelConfig,
+      attachments: [{ data: base64Data, mimeType: 'application/pdf' }],
+    },
+    payload,
+  )
+
+  const extractedText = response.text?.trim()
+
+  if (!extractedText) {
+    throw new Error('AI returned empty response')
+  }
+
+  const validation = validateExtractedLatex(extractedText)
+  const allWarnings = [...validation.warnings, ...validation.errors]
+  const warning = allWarnings.length > 0 ? allWarnings.join('; ') : undefined
+
+  return { latex: validation.sanitizedText, warning }
+}
+
+/**
+ * Stitch multiple LaTeX page results into a single valid LaTeX document.
+ *
+ * Strategy:
+ * 1. Take the preamble (\documentclass through \begin{document}) from page 1
+ * 2. Extract content between \begin{document} and \end{document} from ALL pages
+ * 3. Strip per-page artifacts: outline comments, page headers, \begin{hebrew}/\end{hebrew}
+ * 4. Separate exercise content from solution content
+ * 5. Combine: preamble + all exercises + all solutions + \end{document}
+ */
+function stitchLatexPages(pages: string[]): string {
+  if (pages.length === 0) return ''
+  if (pages.length === 1) return pages[0]
+
+  const preamble = extractPreamble(pages[0])
+  const allContent = pages.map(extractDocumentContent)
+
+  // Separate exercises from solutions across all pages
+  const exerciseParts: string[] = []
+  const solutionParts: string[] = []
+
+  for (const content of allContent) {
+    const { exercises, solutions } = splitExercisesAndSolutions(content)
+    if (exercises.trim()) exerciseParts.push(exercises.trim())
+    if (solutions.trim()) solutionParts.push(solutions.trim())
+  }
+
+  // Build final document
+  const parts: string[] = []
+
+  if (exerciseParts.length > 0) {
+    parts.push(exerciseParts.join('\n\n'))
+  }
+
+  if (solutionParts.length > 0) {
+    parts.push('\\newpage\n\\section*{פתרונות}\n\n' + solutionParts.join('\n\n'))
+  }
+
+  const body = parts.join('\n\n')
+
+  if (preamble) {
+    return `${preamble}\n\n${body}\n\n\\end{document}`
+  }
+
+  return body
+}
+
+/**
+ * Extract the preamble (everything up to and including \begin{document}).
+ */
+function extractPreamble(page: string): string {
+  const beginDoc = page.indexOf('\\begin{document}')
+  if (beginDoc !== -1) {
+    return page.slice(0, beginDoc + '\\begin{document}'.length)
+  }
+  return ''
+}
+
+/**
+ * Extract content between \begin{document} and \end{document},
+ * then clean up per-page artifacts.
+ */
+function extractDocumentContent(page: string): string {
+  let content = page
+
+  // Extract between \begin{document} and \end{document} if present
+  const beginDoc = content.indexOf('\\begin{document}')
+  const endDoc = content.indexOf('\\end{document}')
+  if (beginDoc !== -1 && endDoc !== -1 && beginDoc < endDoc) {
+    content = content.slice(beginDoc + '\\begin{document}'.length, endDoc)
+  }
+
+  // Strip preamble fragments that might appear without \begin{document}
+  content = content.replace(/\\documentclass[\s\S]*?(?=\\begin\{|\\section|\\noindent|$)/m, '')
+
+  // Strip \begin{hebrew} and \end{hebrew} — we'll handle language wrapping at document level
+  content = content.replace(/\\begin\{hebrew\}/g, '')
+  content = content.replace(/\\end\{hebrew\}/g, '')
+
+  // Strip outline comment blocks (% OUTLINE: ... through next non-comment line)
+  content = content.replace(/^%\s*(?:OUTLINE|\\begin\{comment\})[\s\S]*?(?=\n[^%\n])/gm, '')
+  // Strip individual % comment lines at the start
+  content = content.replace(/^%[^\n]*\n/gm, '')
+
+  // Strip repeated page headers like "מתמטיקה, חורף תשפ"ה, מס' 35471 + נספח"
+  content = content.replace(/^\\noindent\s*\n*מתמטיקה,.*$/gm, '')
+
+  // Strip page number lines like "-3-", "- 5 -", "05"
+  content = content.replace(/^\\noindent\s*\n*-\s*\d+\s*-\s*$/gm, '')
+  content = content.replace(/^\s*0\d\s*$/gm, '')
+
+  // Strip "המשך מעבר לדף" / "המשך בעמוד N" continuation lines
+  content = content.replace(/^\\noindent\s*\n*\/המשך.*\/\s*$/gm, '')
+
+  // Strip bare \section*{} with empty braces (stitching artifacts)
+  content = content.replace(/\\section\*\{\s*\}/g, '')
+
+  // Clean up excessive blank lines
+  content = content.replace(/\n{4,}/g, '\n\n\n')
+
+  return content.trim()
+}
+
+/**
+ * Split page content into exercises part and solutions part.
+ * Solutions are identified by \section*{פתרונות} or \subsection*{פתרון שאלה N} headers.
+ */
+function splitExercisesAndSolutions(content: string): {
+  exercises: string
+  solutions: string
+} {
+  // Find the first solutions section marker
+  const solutionsMarkers = [/\\newpage\s*\\section\*\{פתרונות\}/, /\\section\*\{פתרונות\}/]
+
+  let splitIndex = -1
+  for (const marker of solutionsMarkers) {
+    const match = content.match(marker)
+    if (match && match.index !== undefined) {
+      splitIndex = match.index
+      break
+    }
+  }
+
+  if (splitIndex === -1) {
+    // No solutions section found — check for individual solution headers
+    const solMatch = content.match(/\\subsection\*\{פתרון שאלה/)
+    if (solMatch && solMatch.index !== undefined) {
+      splitIndex = solMatch.index
+    }
+  }
+
+  if (splitIndex === -1) {
+    return { exercises: content, solutions: '' }
+  }
+
+  const exercises = content.slice(0, splitIndex).trim()
+  let solutions = content.slice(splitIndex).trim()
+
+  // Strip the \section*{פתרונות} header itself — we'll add one unified header during stitching
+  solutions = solutions.replace(/^\\newpage\s*/, '')
+  solutions = solutions.replace(/^\\section\*\{פתרונות\}\s*/, '')
+
+  return { exercises, solutions }
 }
