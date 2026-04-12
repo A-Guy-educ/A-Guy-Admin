@@ -37,6 +37,7 @@ import { SvgRenderer } from '../blocks/SvgRenderer'
 import { GeometryRenderer } from '../blocks/GeometryRenderer'
 import { AxisRenderer } from '../blocks/AxisRenderer'
 import { GraphWithPrompt } from '../blocks/GraphWithPrompt'
+import { LatexBlockRenderer } from '../blocks/LatexBlockRenderer'
 import { MultiAxisRenderer } from '../blocks/MultiAxisRenderer'
 import { TrueFalseQuestion } from '../questions/TrueFalseQuestion'
 import { McqQuestion } from '../questions/McqQuestion'
@@ -404,7 +405,7 @@ export function ExerciseRenderer({
                       key={q.id}
                       title={`שאלה ${qLabel}`}
                       className={cn(
-                        'w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold transition-all duration-300',
+                        'w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold transition-all duration-slow',
                         !isChecked && 'bg-muted border border-border/40 text-muted-foreground',
                         isChecked &&
                           !isCorrect &&
@@ -429,8 +430,8 @@ export function ExerciseRenderer({
         <Confetti active={showAllCorrectConfetti} duration={3000} />
         {allQuestionsCorrect && (
           <FadeIn>
-            <div className="rounded-2xl bg-gradient-to-r from-success/15 via-success/10 to-success/15 border-2 border-success/30 p-5 text-center flex flex-col items-center gap-2 shadow-card">
-              <div className="flex items-center gap-2">
+            <div className="rounded-2xl bg-gradient-to-r from-success/15 via-success/10 to-success/15 border-2 border-success/30 p-5 text-center flex flex-col items-center gap-content-gap-xs shadow-card">
+              <div className="flex items-center gap-content-gap-xs">
                 <Sparkles className="w-6 h-6 text-success" />
                 <span className="text-heading-lg font-black text-success">{t('correct')}</span>
                 <Sparkles className="w-6 h-6 text-success" />
@@ -529,6 +530,17 @@ export function ExerciseRenderer({
                   <FadeIn key={block.id}>
                     <div className="prose prose-slate dark:prose-invert max-w-none text-foreground leading-relaxed">
                       <RichTextRenderer block={block} />
+                    </div>
+                  </FadeIn>
+                )
+              }
+
+              // LaTeX block - render math via KaTeX
+              if (block.type === 'latex') {
+                return (
+                  <FadeIn key={block.id}>
+                    <div className="prose prose-slate dark:prose-invert max-w-none text-foreground leading-relaxed">
+                      <LatexBlockRenderer block={block} />
                     </div>
                   </FadeIn>
                 )
