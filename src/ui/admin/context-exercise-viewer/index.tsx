@@ -255,7 +255,14 @@ export const ContextExerciseViewer: React.FC = () => {
 
   return (
     <div style={{ marginBottom: 24 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: 8,
+        }}
+      >
         <label
           style={{
             fontWeight: 600,
@@ -297,7 +304,10 @@ export const ContextExerciseViewer: React.FC = () => {
             borderRadius: 4,
             marginBottom: 12,
             color: createResult.type === 'success' ? 'var(--theme-success)' : 'var(--theme-error)',
-            backgroundColor: createResult.type === 'success' ? 'var(--theme-success-100)' : 'var(--theme-error-100)',
+            backgroundColor:
+              createResult.type === 'success'
+                ? 'var(--theme-success-100)'
+                : 'var(--theme-error-100)',
           }}
         >
           {createResult.message}
