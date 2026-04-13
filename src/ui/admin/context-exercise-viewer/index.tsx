@@ -283,12 +283,10 @@ export const ContextExerciseViewer: React.FC = () => {
             padding: '6px 12px',
             fontSize: 12,
             fontWeight: 500,
-            border: 'none',
+            border: '1px solid #000',
             borderRadius: 4,
-            backgroundColor: isCreating
-              ? 'var(--theme-elevation-300)'
-              : 'var(--theme-success-500, #16a34a)',
-            color: '#fff',
+            backgroundColor: isCreating ? 'var(--theme-elevation-300)' : '#fff',
+            color: '#000',
             cursor: isCreating || totalExercises === 0 ? 'not-allowed' : 'pointer',
             opacity: totalExercises === 0 ? 0.5 : 1,
           }}
