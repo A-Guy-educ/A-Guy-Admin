@@ -103,6 +103,7 @@ export const POST = withApiHandler<CreateContextExercisesBody, unknown>(
             order: startOrder + i,
           },
           draft: true,
+          context: { _skipBlockSync: true },
         })
         createdIds.push(created.id)
       } catch (err) {

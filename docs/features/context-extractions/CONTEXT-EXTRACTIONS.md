@@ -94,6 +94,14 @@ When "Convert Context" runs:
 
 The extraction is keyed by `(lesson, sourceMedia)` — each PDF gets its own extraction document per lesson.
 
+## Context Exercises vs Lesson Blocks
+
+Exercises created via "Create Exercises" have `origin: 'context_extraction'` and are created with `context: { _skipBlockSync: true }`. This means they are **not** automatically added to the lesson's `blocks` array.
+
+This is intentional — context exercises are a staging area for content extracted from PDFs. They should not appear in the student-facing lesson flow unless explicitly promoted to lesson blocks by an admin.
+
+The `_skipBlockSync` flag bypasses the `afterChange` hook in the Exercises collection that normally calls `addBlockToLesson()` for every new exercise.
+
 ## Communication Between Components
 
 The `ConvertContextModal` dispatches a `context-extraction-updated` custom DOM event after successful extraction. The `ContextExerciseViewer` listens for this event and refreshes its data from the API.
