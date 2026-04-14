@@ -9,6 +9,17 @@ const LOCALE_TO_LANG: Record<string, string> = {
   en: 'en-US',
 }
 
+/** Prime the voice list so getVoices() is populated when we need it. */
+function primeSpeechVoices(): void {
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return
+  window.speechSynthesis.getVoices()
+  if (window.speechSynthesis.onvoiceschanged !== undefined) {
+    window.speechSynthesis.onvoiceschanged = () => {
+      window.speechSynthesis.getVoices()
+    }
+  }
+}
+
 function pickVoiceForLocale(locale: string): SpeechSynthesisVoice | undefined {
   if (typeof window === 'undefined' || !('speechSynthesis' in window)) return undefined
   const voices = window.speechSynthesis.getVoices()
@@ -44,6 +55,11 @@ export function useTTS(): UseTTSReturn {
   const [isPaused, setIsPaused] = useState(false)
   const [currentRate, setCurrentRateState] = useState(1.0)
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null)
+
+  // Prime voice list on mount (Chrome loads voices async)
+  useEffect(() => {
+    primeSpeechVoices()
+  }, [])
 
   const stop = useCallback(() => {
     if (typeof window !== 'undefined' && window.speechSynthesis) window.speechSynthesis.cancel()
@@ -84,17 +100,23 @@ export function useTTS(): UseTTSReturn {
         resume()
         return
       }
-      stop()
+      // Cancel any existing speech
+      if (window.speechSynthesis.speaking || window.speechSynthesis.pending) {
+        window.speechSynthesis.cancel()
+      }
+      utteranceRef.current = null
+      setIsPaused(false)
+
       // Detect language if not provided
       const detectedLocale: SupportedLocale =
         locale ?? (detectLanguage(text) === 'he-IL' ? 'he' : 'en')
       const cleanText = stripMarkdown(text, detectedLocale)
       if (!cleanText) return
+
       const utterance = new SpeechSynthesisUtterance(cleanText)
       utterance.lang = LOCALE_TO_LANG[detectedLocale] ?? 'en-US'
       const voice = pickVoiceForLocale(detectedLocale)
       if (voice) utterance.voice = voice
-      // Rate 0.85 and pitch 0.95 for teacher-cadence tuning
       utterance.rate = 0.85 * currentRate
       utterance.pitch = 0.95
       utterance.onend = () => {
@@ -109,7 +131,13 @@ export function useTTS(): UseTTSReturn {
       }
       utteranceRef.current = utterance
       setPlayingMessageId(messageId)
-      window.speechSynthesis.speak(utterance)
+
+      // Defer speak() — Chrome silently drops utterances queued immediately after cancel()
+      setTimeout(() => {
+        if (utteranceRef.current === utterance) {
+          window.speechSynthesis.speak(utterance)
+        }
+      }, 50)
     },
     [playingMessageId, stop, isPaused, resume, currentRate],
   )
