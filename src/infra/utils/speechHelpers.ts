@@ -5,16 +5,32 @@
  * @ai-summary Shared helpers for speech synthesis: markdown stripping and language detection
  */
 
+import { latexToSpeech, type SupportedLocale } from './latexToSpeech'
+
 /**
- * Strip markdown formatting, LaTeX, and code blocks from text
- * so the TTS engine reads clean plaintext.
+ * Convert LaTeX math expressions within text to spoken equivalents,
+ * then strip remaining markdown formatting.
+ *
+ * Handles both inline ($...$) and block ($$...$$) math, converting them
+ * to natural spoken text using latexToSpeech before removing other markup.
  */
-export function stripMarkdown(text: string): string {
-  return text
+export function stripMarkdown(text: string, locale: SupportedLocale = 'en'): string {
+  // First, convert block math $$...$$ to spoken text
+  let result = text.replace(/\$\$([^$]+)\$\$/g, (_, latex) => {
+    const spoken = latexToSpeech(latex.trim(), locale)
+    return spoken ? ` ${spoken} ` : ''
+  })
+
+  // Convert inline math $...$ to spoken text
+  result = result.replace(/\$([^$]+)\$/g, (_, latex) => {
+    const spoken = latexToSpeech(latex.trim(), locale)
+    return spoken ? ` ${spoken} ` : ''
+  })
+
+  // Strip remaining markdown formatting
+  return result
     .replace(/```[\s\S]*?```/g, '')
     .replace(/`[^`]*`/g, '')
-    .replace(/\$\$[\s\S]*?\$\$/g, '')
-    .replace(/\$[^$]*\$/g, '')
     .replace(/\\[a-zA-Z]+(\{[^}]*\})*/g, '')
     .replace(/^#{1,6}\s+/gm, '')
     .replace(/(\*{1,2}|_{1,2})(.*?)\1/g, '$2')
