@@ -23,8 +23,9 @@ function primeSpeechVoices(): void {
 function pickVoiceForLocale(locale: string): SpeechSynthesisVoice | undefined {
   if (typeof window === 'undefined' || !('speechSynthesis' in window)) return undefined
   const voices = window.speechSynthesis.getVoices()
+  console.warn('[TTS] Available voices:', voices.map((v) => `${v.name} (${v.lang})`).join(', '))
   const langPrefix = locale === 'he' ? ['he', 'iw'] : [locale]
-  const matching = voices.filter((v) => langPrefix.some((p) => v.lang.includes(p)))
+  const matching = voices.filter((v) => langPrefix.some((p) => v.lang.startsWith(p)))
 
   if (matching.length > 0) {
     if (locale === 'he') {
