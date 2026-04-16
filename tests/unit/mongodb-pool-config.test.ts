@@ -89,10 +89,7 @@ describe('MongoDB Connection Pool Guardrail', () => {
 
     /** Mirrors the exact expression in payload.config.ts */
     function resolvePoolSize(): number {
-      return parseInt(
-        process.env.MONGODB_MAX_POOL_SIZE ?? (process.env.VITEST ? '5' : '3'),
-        10,
-      )
+      return parseInt(process.env.MONGODB_MAX_POOL_SIZE ?? (process.env.VITEST ? '5' : '3'), 10)
     }
 
     it('uses 3 for production default', () => {
