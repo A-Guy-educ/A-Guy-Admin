@@ -22,7 +22,7 @@ describe('stripMarkdown', () => {
   it('verbalizes LaTeX block math (Hebrew)', () => {
     // Hebrew: all ^2 -> beribu'a, = -> shav le-
     expect(stripMarkdown('Formula: $$x^2 + y^2 = z^2$$ end', 'he')).toBe(
-      'Formula:  x beribu\'a plus y beribu\'a shav le- z beribu\'a  end',
+      "Formula:  x beribu'a plus y beribu'a shav le- z beribu'a  end",
     )
   })
   it('removes markdown headings', () => {

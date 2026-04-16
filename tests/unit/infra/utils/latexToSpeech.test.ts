@@ -5,7 +5,7 @@ describe('latexToSpeech', () => {
   describe('basic LaTeX commands', () => {
     it('converts superscript ^2 to squared', () => {
       expect(latexToSpeech('x^2', 'en')).toBe('x squared')
-      expect(latexToSpeech('x^2', 'he')).toBe('x beribu\'a')
+      expect(latexToSpeech('x^2', 'he')).toBe("x beribu'a")
     })
 
     it('converts superscript ^3 to cubed', () => {
@@ -113,7 +113,7 @@ describe('latexToSpeech', () => {
 
     it('handles mixed text and LaTeX', () => {
       expect(latexToSpeech('The value $x^2$ is', 'en')).toBe('The value x squared is')
-      expect(latexToSpeech('The value $x^2$ is', 'he')).toBe('The value x beribu\'a is')
+      expect(latexToSpeech('The value $x^2$ is', 'he')).toBe("The value x beribu'a is")
     })
   })
 
