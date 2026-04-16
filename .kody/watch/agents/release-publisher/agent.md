@@ -1,6 +1,6 @@
 ## Release Publisher Watch Agent
 
-This agent automates the full release lifecycle: creates a tracking issue, runs kody release, merges to dev, finalizes (E2E → tag → release → publish → notify), creates promotion PR, and merges to main.
+This agent automates the full release lifecycle: creates a tracking issue, runs kody-engine release, merges to dev, finalizes (E2E → tag → release → publish → notify), creates promotion PR, and merges to main.
 
 ---
 
@@ -41,7 +41,7 @@ Look in the comments for:
 
 ## Step 2: Create tracking issue
 
-1. Read `package.json` to get the current version (this is the base version — the new version will be determined by `kody release`).
+1. Read `package.json` to get the current version (this is the base version — the new version will be determined by `kody-engine release`).
 2. Create a GitHub issue with:
    - Title: `Release v{current_version}` (the new version will appear in the PR title)
    - Labels: `kody:watch:release`
@@ -55,7 +55,7 @@ Save the issue number — all subsequent steps will post comments on this issue.
 
 ---
 
-## Step 3: Run kody release (or skip if PR already exists)
+## Step 3: Run kody-engine release (or skip if PR already exists)
 
 Check if a release PR already exists for this version:
 
@@ -64,11 +64,11 @@ gh pr list --head "release/v{new_version}" --state all --json number,title,url,s
 ```
 
 **If PR already exists and is MERGED:** Go to **Step 4**.
-**If PR exists and is OPEN:** Skip `kody release`, post a comment noting it already exists, and go to **Step 4**.
+**If PR exists and is OPEN:** Skip `kody-engine release`, post a comment noting it already exists, and go to **Step 4**.
 **If no PR exists:** Run the release command:
 
 ```bash
-kody release
+kody-engine release
 ```
 
 This will:
@@ -79,7 +79,7 @@ This will:
 - Create a PR `release/v{new_version}` → `dev`
 - Label the PR with `kody:release`
 
-After `kody release` completes, extract the **new version** from the PR title (format: `chore: release v1.2.3`).
+After `kody-engine release` completes, extract the **new version** from the PR title (format: `chore: release v1.2.3`).
 
 If `package.json` version was bumped, regenerate `pnpm-lock.yaml` to avoid CI failures:
 
@@ -135,12 +135,12 @@ Running finalize...
 
 ---
 
-## Step 5: Run kody release --finalize --version
+## Step 5: Run kody-engine release --finalize --version
 
 Once merged to dev, run finalize:
 
 ```bash
-kody release --finalize --version {new_version}
+kody-engine release --finalize --version {new_version}
 ```
 
 This will:
@@ -212,8 +212,8 @@ Close the tracking issue after completion.
 ## Notes
 
 - Always check for existing open `kody:watch:release` issues before creating a new one.
-- **Failed finalize must be retried, not restarted.** If a finalize fails, always retry with the same version — do not run `kody release` again, as that creates a new version.
-- Extract the new version from the PR title created by `kody release` — do not try to compute it yourself.
+- **Failed finalize must be retried, not restarted.** If a finalize fails, always retry with the same version — do not run `kody-engine release` again, as that creates a new version.
+- Extract the new version from the PR title created by `kody-engine release` — do not try to compute it yourself.
 - If E2E fails in Step 5, create a fix issue and exit — do NOT proceed to Step 6.
 - Use `gh pr view` and `gh pr checks` to monitor status; do not guess or assume.
 - The promotion PR (Step 6) has no code changes — it only exists to trigger any CI/CD that runs on merge to main.

@@ -59,7 +59,6 @@ export default defineConfig({
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'], channel: 'chromium' },
-      grep: /@critical/,
     },
     // Scenario-driven QA - Core scenarios (runs on PRs)
     {
