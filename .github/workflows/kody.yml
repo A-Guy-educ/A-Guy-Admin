@@ -207,7 +207,7 @@ jobs:
           done
 
       - name: Warm up Next.js build cache
-        run: npx next build
+        run: NODE_OPTIONS='--max-old-space-size=6144' npx next build
         timeout-minutes: 20
 
       - name: Run Kody pipeline
