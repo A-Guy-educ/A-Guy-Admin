@@ -1,7 +1,12 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { stripMarkdown, detectLanguage, hasNativeVoiceForLocale } from '@/infra/utils/speechHelpers'
+import {
+  stripMarkdown,
+  detectLanguage,
+  hasNativeVoiceForLocale,
+  pickVoiceForLocale,
+} from '@/infra/utils/speechHelpers'
 import type { SupportedLocale } from '@/infra/utils/latexToSpeech'
 
 const LOCALE_TO_LANG: Record<string, string> = {
@@ -75,25 +80,6 @@ function primeSpeechVoices(): void {
       window.speechSynthesis.getVoices()
     }
   }
-}
-
-function pickVoiceForLocale(locale: string): SpeechSynthesisVoice | undefined {
-  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return undefined
-  const voices = window.speechSynthesis.getVoices()
-  const langPrefix = locale === 'he' ? ['he', 'iw'] : [locale]
-  const matching = voices.filter((v) => langPrefix.some((p) => v.lang.startsWith(p)))
-  if (matching.length === 0) return undefined
-  if (locale === 'he') {
-    return (
-      matching.find((v) => v.name.includes('Natural') || v.name.includes('Online')) ??
-      matching.find((v) => v.name.includes('Hila') || v.name.includes('Carmit')) ??
-      matching.find((v) => v.name.includes('Google') || v.name.includes('Premium')) ??
-      matching[0]
-    )
-  }
-  return (
-    matching.find((v) => v.name.includes('Natural') || v.name.includes('Google')) ?? matching[0]
-  )
 }
 
 interface UseTTSReturn {

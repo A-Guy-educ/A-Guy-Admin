@@ -55,16 +55,16 @@ const LATEX_LOOKUP: Record<string, { en: string; he: string }> = {
 
   // Arithmetic operators
   '\\pm': { en: ' plus or minus ', he: ' plus o minus ' },
-  '\\times': { en: ' times ', he: ' kfi ' },
-  '\\div': { en: ' divided by ', he: ' nifrad ' },
-  '\\cdot': { en: ' times ', he: ' kfi ' },
+  '\\times': { en: ' times ', he: ' kaful ' },
+  '\\div': { en: ' divided by ', he: ' haluk ' },
+  '\\cdot': { en: ' times ', he: ' kaful ' },
 
   // Sets and logic
-  '\\infty': { en: 'infinity', he: 'sagur' },
+  '\\infty': { en: 'infinity', he: 'ein sof' },
   '\\in': { en: ' is in ', he: ' be-' },
-  '\\subset': { en: ' is a subset of ', he: ' keetset miktahat shel ' },
-  '\\subseteq': { en: ' is a subset of or equal to ', he: ' keetset miktahat o shav le-' },
-  '\\cup': { en: ' union ', he: ' ariakh ' },
+  '\\subset': { en: ' is a subset of ', he: ' tat kvutza shel ' },
+  '\\subseteq': { en: ' is a subset of or equal to ', he: ' tat kvutza o shava le-' },
+  '\\cup': { en: ' union ', he: ' ikhud ' },
   '\\cap': { en: ' intersection ', he: ' ' },
   '\\forall': { en: ' for all ', he: ' lekol ' },
   '\\exists': { en: ' there exists ', he: ' yesh ka ' },
@@ -73,22 +73,22 @@ const LATEX_LOOKUP: Record<string, { en: string; he: string }> = {
   '\\neg': { en: ' not ', he: ' lo-' },
 
   // Calculus
-  '\\partial': { en: 'partial ', he: 'hatkafa ' },
+  '\\partial': { en: 'partial ', he: 'negzeret helkit ' },
   '\\nabla': { en: 'nabla ', he: 'nabla ' },
 
   // Arrows
-  '\\rightarrow': { en: ' right arrow ', he: " hatsa'a yeminit " },
-  '\\leftarrow': { en: ' left arrow ', he: " hatsa'a smolit " },
-  '\\Rightarrow': { en: ' implies ', he: ' metzaven ' },
-  '\\Leftarrow': { en: ' is implied by ', he: ' ' },
-  '\\leftrightarrow': { en: ' is equivalent to ', he: ' ' },
-  '\\Leftrightarrow': { en: ' if and only if ', he: ' im ve唖к im rak ' },
+  '\\rightarrow': { en: ' right arrow ', he: ' khetz yamini ' },
+  '\\leftarrow': { en: ' left arrow ', he: ' khetz smoli ' },
+  '\\Rightarrow': { en: ' implies ', he: ' gorer ' },
+  '\\Leftarrow': { en: ' is implied by ', he: ' nigrar mi-' },
+  '\\leftrightarrow': { en: ' is equivalent to ', he: ' shakul le-' },
+  '\\Leftrightarrow': { en: ' if and only if ', he: ' im verak im rak ' },
 
   // Misc
   '\\ldots': { en: ', ', he: ', ' },
   '\\cdots': { en: ', ', he: ', ' },
-  '\\angle': { en: ' angle ', he: ' zh mlui ' },
-  '\\perp': { en: ' is perpendicular to ', he: ' amits ' },
+  '\\angle': { en: ' angle ', he: ' zavit ' },
+  '\\perp': { en: ' is perpendicular to ', he: ' menunakh le-' },
   '\\parallel': { en: ' is parallel to ', he: ' ' },
   '\\cong': { en: ' is congruent to ', he: ' ' },
   '\\sim': { en: ' is similar to ', he: ' ' },
@@ -111,8 +111,8 @@ const LATEX_LOOKUP: Record<string, { en: string; he: string }> = {
   '\\tanh': { en: 'hyperbolic tangent of ', he: 'tangent hiperboli shel ' },
 
   // Calculus
-  '\\sum': { en: 'sum of ', he: 'shumar shel ' },
-  '\\int': { en: 'integral of ', he: 'sh integrali shel ' },
+  '\\sum': { en: 'sum of ', he: 'skhum shel ' },
+  '\\int': { en: 'integral of ', he: 'integral shel ' },
 
   // Logarithms
   '\\log': { en: 'log of ', he: 'log shel ' },
@@ -124,8 +124,8 @@ const LATEX_LOOKUP: Record<string, { en: string; he: string }> = {
   '\\det': { en: 'determinant of ', he: 'determinant shel ' },
   '\\deg': { en: 'degree of ', he: 'grad shel ' },
   '\\mod': { en: 'mod ', he: 'mod ' },
-  '\\gcd': { en: 'gcd of ', he: 'ribua yisodi shel ' },
-  '\\lcm': { en: 'lcm of ', he: 'ribua murkevet shel ' },
+  '\\gcd': { en: 'gcd of ', he: 'mekhalek meshutaf gadol shel ' },
+  '\\lcm': { en: 'lcm of ', he: 'kfula meshutefet ktana shel ' },
 }
 
 /**
@@ -233,7 +233,7 @@ export function latexToSpeech(latex: string, locale: SupportedLocale): string {
     const denContent = denResult.content
     const numSpeech = latexToSpeech(numContent.trim(), locale)
     const denSpeech = latexToSpeech(denContent.trim(), locale)
-    const over = locale === 'en' ? ' over ' : ' chalki '
+    const over = locale === 'en' ? ' over ' : ' khaluk be '
     const replacement = numSpeech + over + denSpeech
     // Replace from \frac to end of denominator
     text = text.slice(0, start) + replacement + text.slice(denResult.end + 1)
@@ -245,8 +245,8 @@ export function latexToSpeech(latex: string, locale: SupportedLocale): string {
     if (n === '2')
       return locale === 'en' ? `square root of ${argSpeech}` : `shoresh shel ${argSpeech}`
     if (n === '3')
-      return locale === 'en' ? `cube root of ${argSpeech}` : `shoresh kibli shel ${argSpeech}`
-    const ordinal = locale === 'en' ? getOrdinal(parseInt(n)) : `${n} kibli`
+      return locale === 'en' ? `cube root of ${argSpeech}` : `shoresh shlishi shel ${argSpeech}`
+    const ordinal = locale === 'en' ? getOrdinal(parseInt(n)) : `${n}`
     return locale === 'en'
       ? `${ordinal} root of ${argSpeech}`
       : `shoresh ${ordinal} shel ${argSpeech}`
@@ -264,7 +264,7 @@ export function latexToSpeech(latex: string, locale: SupportedLocale): string {
     const upperSpeech = latexToSpeech(upper.trim(), locale)
     return locale === 'en'
       ? `integral from ${lowerSpeech} to ${upperSpeech}`
-      : `sh integrali me-${lowerSpeech} ad ${upperSpeech}`
+      : `integral me-${lowerSpeech} ad ${upperSpeech}`
   })
 
   // 9. Handle \sum_{i=...}^{...} before individual _ and ^ handlers
@@ -273,25 +273,25 @@ export function latexToSpeech(latex: string, locale: SupportedLocale): string {
     const upperSpeech = latexToSpeech(upper.trim(), locale)
     return locale === 'en'
       ? `sum from ${lowerSpeech} to ${upperSpeech}`
-      : `shumar me-${lowerSpeech} ad ${upperSpeech}`
+      : `skhum me-${lowerSpeech} ad ${upperSpeech}`
   })
 
   // 10. Handle bare \int (after bounds pattern so \int_{a}^{b} is handled above)
-  text = text.replace(/\\int/g, locale === 'en' ? 'integral' : 'sh integrali')
+  text = text.replace(/\\int/g, locale === 'en' ? 'integral' : 'integral')
 
   // 11. Handle \lim_{...}
   text = text.replace(/\\lim_\{([^{}]*)\}/g, (_, limit) => {
-    return locale === 'en' ? `limit of ${limit}` : `godel shva ${limit}`
+    return locale === 'en' ? `limit of ${limit}` : `gevul shel ${limit}`
   })
 
   // 12. Handle superscript ^2 / ^3 (standalone, not followed by digit)
   text = text.replace(/\^2(?!\d)/g, locale === 'en' ? ' squared' : " beribu'a")
-  text = text.replace(/\^3(?!\d)/g, locale === 'en' ? ' cubed' : ' kibush')
+  text = text.replace(/\^3(?!\d)/g, locale === 'en' ? ' cubed' : ' beshlishit')
 
   // 13. Handle general superscript ^{...}
   text = text.replace(/\^\{([^{}]*)\}/g, (_, power) => {
     const powerSpeech = latexToSpeech(power.trim(), locale)
-    return locale === 'en' ? ` to the power of ${powerSpeech}` : ` shoyrey ${powerSpeech}`
+    return locale === 'en' ? ` to the power of ${powerSpeech}` : ` bekhezkat ${powerSpeech}`
   })
 
   // 14. Handle subscript _{...}

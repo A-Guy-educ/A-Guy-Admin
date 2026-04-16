@@ -10,12 +10,12 @@ describe('latexToSpeech', () => {
 
     it('converts superscript ^3 to cubed', () => {
       expect(latexToSpeech('y^3', 'en')).toBe('y cubed')
-      expect(latexToSpeech('y^3', 'he')).toBe('y kibush')
+      expect(latexToSpeech('y^3', 'he')).toBe('y beshlishit')
     })
 
     it('converts \\frac{}{} to "over"', () => {
       expect(latexToSpeech('\\frac{a}{b}', 'en')).toBe('a over b')
-      expect(latexToSpeech('\\frac{a}{b}', 'he')).toBe('a chalki b')
+      expect(latexToSpeech('\\frac{a}{b}', 'he')).toBe('a khaluk be b')
     })
 
     it('converts \\sqrt{} to "square root of"', () => {
@@ -25,7 +25,7 @@ describe('latexToSpeech', () => {
 
     it('converts \\sqrt[n]{} to "n-th root of"', () => {
       expect(latexToSpeech('\\sqrt[3]{x}', 'en')).toBe('cube root of x')
-      expect(latexToSpeech('\\sqrt[3]{x}', 'he')).toBe('shoresh kibli shel x')
+      expect(latexToSpeech('\\sqrt[3]{x}', 'he')).toBe('shoresh shlishi shel x')
     })
 
     it('converts \\pi to pi', () => {
@@ -59,36 +59,36 @@ describe('latexToSpeech', () => {
 
     it('converts \\times to "times"', () => {
       expect(latexToSpeech('3 \\times 4', 'en')).toBe('3 times 4')
-      expect(latexToSpeech('3 \\times 4', 'he')).toBe('3 kfi 4')
+      expect(latexToSpeech('3 \\times 4', 'he')).toBe('3 kaful 4')
     })
 
     it('converts \\div to "divided by"', () => {
       expect(latexToSpeech('10 \\div 2', 'en')).toBe('10 divided by 2')
-      expect(latexToSpeech('10 \\div 2', 'he')).toBe('10 nifrad 2')
+      expect(latexToSpeech('10 \\div 2', 'he')).toBe('10 haluk 2')
     })
 
     it('converts \\infty to "infinity"', () => {
       expect(latexToSpeech('\\infty', 'en')).toBe('infinity')
-      expect(latexToSpeech('\\infty', 'he')).toBe('sagur')
+      expect(latexToSpeech('\\infty', 'he')).toBe('ein sof')
     })
 
     it('converts \\sum to "sum"', () => {
       expect(latexToSpeech('\\sum_{i=1}^{n} x_i', 'en')).toBe('sum from i equals 1 to n x sub i')
       // Hebrew sum: core conversion (basic sum without complex subscripts)
-      expect(latexToSpeech('\\sum x', 'he')).toBe('shumar shel x')
+      expect(latexToSpeech('\\sum x', 'he')).toBe('skhum shel x')
     })
 
     it('converts \\int to "integral"', () => {
       expect(latexToSpeech('\\int_{0}^{1} x dx', 'en')).toBe('integral from 0 to 1 x d x')
       // Hebrew integral: core bounds conversion with numeric bounds
-      expect(latexToSpeech('\\int_{0}^{1}', 'he')).toBe('sh integrali meminus0 ad 1')
+      expect(latexToSpeech('\\int_{0}^{1}', 'he')).toBe('integral meminus0 ad 1')
     })
   })
 
   describe('nested expressions', () => {
     it('handles \\frac{\\sqrt{x}}{2}', () => {
       expect(latexToSpeech('\\frac{\\sqrt{x}}{2}', 'en')).toBe('square root of x over 2')
-      expect(latexToSpeech('\\frac{\\sqrt{x}}{2}', 'he')).toBe('shoresh shel x chalki 2')
+      expect(latexToSpeech('\\frac{\\sqrt{x}}{2}', 'he')).toBe('shoresh shel x khaluk be 2')
     })
 
     it('handles \\frac{a}{\\frac{b}{c}}', () => {

@@ -50,6 +50,29 @@ export function stripMarkdown(text: string, locale: SupportedLocale = 'en'): str
     .trim()
 }
 
+/**
+ * Pick the best speech synthesis voice for the given locale.
+ * Prefers Natural/Online voices, then Hila/Carmit for Hebrew, then Google/Premium.
+ */
+export function pickVoiceForLocale(locale: string): SpeechSynthesisVoice | undefined {
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return undefined
+  const voices = window.speechSynthesis.getVoices()
+  const langPrefix = locale === 'he' ? ['he', 'iw'] : [locale]
+  const matching = voices.filter((v) => langPrefix.some((p) => v.lang.startsWith(p)))
+  if (matching.length === 0) return undefined
+  if (locale === 'he') {
+    return (
+      matching.find((v) => v.name.includes('Natural') || v.name.includes('Online')) ??
+      matching.find((v) => v.name.includes('Hila') || v.name.includes('Carmit')) ??
+      matching.find((v) => v.name.includes('Google') || v.name.includes('Premium')) ??
+      matching[0]
+    )
+  }
+  return (
+    matching.find((v) => v.name.includes('Natural') || v.name.includes('Google')) ?? matching[0]
+  )
+}
+
 /** Detect if text is primarily Hebrew based on character frequency. */
 export function detectLanguage(text: string): 'he-IL' | 'en-US' {
   const hebrewChars = (text.match(/[\u0590-\u05FF]/g) || []).length
