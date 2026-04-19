@@ -98,7 +98,8 @@ export default buildConfig({
       // The `BeforeDashboard` component renders the 'welcome' block that you see after logging into your admin panel.
       // Feel free to delete this at any time. Simply remove the line below.
       beforeDashboard: [
-        '@/ui/admin/BeforeDashboard',
+        '@/ui/admin/ConversionTracking/UserMetricsWidget',
+        '@/ui/admin/ConversionTracking/ContentCountsWidget',
         '@/ui/admin/AdminChat/DashboardWidget',
         '@/ui/admin/VersionInfo',
       ],
@@ -152,6 +153,12 @@ export default buildConfig({
       maxIdleTimeMS: 10000,
       // Fail fast if MongoDB is unreachable — don't hang serverless functions
       connectTimeoutMS: 5000,
+      // Fail fast when all pool connections are in use — return error instead of
+      // queuing indefinitely, which would cause cascading timeouts in serverless
+      serverSelectionTimeoutMS: 5000,
+      // Wait at most 3s for a connection from the pool before failing.
+      // Prevents requests from piling up when the pool is saturated.
+      waitQueueTimeoutMS: 3000,
       // Socket timeout for long-running operations
       socketTimeoutMS: 30000,
     },
