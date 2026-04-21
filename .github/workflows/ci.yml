@@ -58,6 +58,15 @@ jobs:
       - name: Security audit
         run: pnpm audit --audit-level=high || true # npm retired the audit endpoint as of 2025
 
+      - name: Check generated artifacts are up to date
+        run: |
+          pnpm generate:types
+          pnpm generate:importmap
+          if ! git diff --exit-code src/payload-types.ts 'src/app/(payload)/admin/importMap.js'; then
+            echo "::error::Generated artifacts are stale. Run 'pnpm generate:types && pnpm generate:importmap' locally and commit the result. This usually means payload.config.ts or a collection was changed without regenerating."
+            exit 1
+          fi
+
       - name: Run typecheck
         run: pnpm typecheck
 
