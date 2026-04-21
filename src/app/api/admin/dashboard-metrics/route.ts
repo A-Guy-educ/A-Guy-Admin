@@ -262,13 +262,12 @@ export async function GET(req: Request) {
       limit: 100,
       overrideAccess: true,
     }),
-    // Users with course entitlements (populate course relationship)
+    // Users with course entitlements
     payload.find({
       collection: 'users',
       where: { 'courseEntitlements.course': { exists: true } },
       limit: 500,
       overrideAccess: true,
-      depth: 1,
     }),
     // Lesson type counts
     payload.find({
@@ -347,43 +346,50 @@ export async function GET(req: Request) {
     }
   }
 
-  // Course enrollment distribution — build ID→title map
-  const courseIdToTitle = new Map<string, string>()
-  for (const course of coursesWithTitles.docs) {
-    const c = course as unknown as { id: string; title?: string; courseLabel?: string }
-    const id = String(c.id)
-    const title = c.title || c.courseLabel || 'Untitled'
-    courseIdToTitle.set(id, title)
-  }
-
-  // Count enrollments — with depth:1, course is populated as object with title
+  // Count enrollments per course ID (from entitlements)
   const enrollmentCounts = new Map<string, number>()
-  const enrollmentTitles = new Map<string, string>()
   for (const user of usersWithEntitlements.docs) {
     const u = user as unknown as {
       courseEntitlements?: Array<{
-        course?: string | { id: string; title?: string; courseLabel?: string }
+        course?: string | { id?: string }
       }>
     }
     for (const ent of u.courseEntitlements || []) {
       if (!ent.course) continue
-      let courseId: string
-      let courseTitle: string | undefined
-      if (typeof ent.course === 'object') {
-        courseId = String(ent.course.id)
-        courseTitle = ent.course.title || ent.course.courseLabel
-      } else {
-        courseId = String(ent.course)
-      }
+      const courseId =
+        typeof ent.course === 'object' ? String(ent.course.id || '') : String(ent.course)
       if (!courseId) continue
       enrollmentCounts.set(courseId, (enrollmentCounts.get(courseId) || 0) + 1)
-      if (courseTitle) enrollmentTitles.set(courseId, courseTitle)
+    }
+  }
+
+  // Explicitly fetch courses by the collected IDs to get their titles
+  const uniqueCourseIds = Array.from(enrollmentCounts.keys())
+  const courseIdToTitle = new Map<string, string>()
+  if (uniqueCourseIds.length > 0) {
+    const enrolledCourses = await payload.find({
+      collection: 'courses',
+      where: { id: { in: uniqueCourseIds } },
+      limit: uniqueCourseIds.length,
+      overrideAccess: true,
+    })
+    for (const course of enrolledCourses.docs) {
+      const c = course as unknown as { id: string; title?: string; courseLabel?: string }
+      courseIdToTitle.set(String(c.id), c.title || c.courseLabel || 'Untitled')
+    }
+  }
+  // Also check coursesWithTitles as fallback
+  for (const course of coursesWithTitles.docs) {
+    const c = course as unknown as { id: string; title?: string; courseLabel?: string }
+    const id = String(c.id)
+    if (!courseIdToTitle.has(id)) {
+      courseIdToTitle.set(id, c.title || c.courseLabel || 'Untitled')
     }
   }
 
   const courseEnrollments: CourseEnrollment[] = Array.from(enrollmentCounts.entries())
     .map(([id, count]) => ({
-      courseTitle: enrollmentTitles.get(id) || courseIdToTitle.get(id) || 'Unknown',
+      courseTitle: courseIdToTitle.get(id) || 'Unknown',
       count,
     }))
     .sort((a, b) => b.count - a.count)
