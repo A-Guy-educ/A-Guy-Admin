@@ -366,6 +366,14 @@ export async function GET(req: Request) {
   // Explicitly fetch courses by the collected IDs to get their titles
   const uniqueCourseIds = Array.from(enrollmentCounts.keys())
   const courseIdToTitle = new Map<string, string>()
+  const resolveTitle = (c: {
+    id: string
+    title?: string
+    courseLabel?: string
+    slug?: string
+  }): string => {
+    return c.title || c.courseLabel || c.slug || `Course ${String(c.id).slice(-6)}`
+  }
   if (uniqueCourseIds.length > 0) {
     const enrolledCourses = await payload.find({
       collection: 'courses',
@@ -374,16 +382,26 @@ export async function GET(req: Request) {
       overrideAccess: true,
     })
     for (const course of enrolledCourses.docs) {
-      const c = course as unknown as { id: string; title?: string; courseLabel?: string }
-      courseIdToTitle.set(String(c.id), c.title || c.courseLabel || 'Untitled')
+      const c = course as unknown as {
+        id: string
+        title?: string
+        courseLabel?: string
+        slug?: string
+      }
+      courseIdToTitle.set(String(c.id), resolveTitle(c))
     }
   }
   // Also check coursesWithTitles as fallback
   for (const course of coursesWithTitles.docs) {
-    const c = course as unknown as { id: string; title?: string; courseLabel?: string }
+    const c = course as unknown as {
+      id: string
+      title?: string
+      courseLabel?: string
+      slug?: string
+    }
     const id = String(c.id)
     if (!courseIdToTitle.has(id)) {
-      courseIdToTitle.set(id, c.title || c.courseLabel || 'Untitled')
+      courseIdToTitle.set(id, resolveTitle(c))
     }
   }
 
