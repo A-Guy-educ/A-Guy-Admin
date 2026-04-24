@@ -86,6 +86,13 @@ jobs:
           cache: 'pip'
           cache-dependency-path: .kody-pip-requirements.txt
 
+      # Pre-pull the MongoDB image used by scripts/release-e2e-gate.ts
+      # (invoked during `@kody release --finalize`). The pull happens in its
+      # own GitHub Actions step, outside kody's internal per-step timeout,
+      # so the gate starts with the image already in the local Docker cache.
+      - name: Warm Docker image cache for release e2e gate
+        run: docker pull mongo:6
+
       - env:
           ALL_SECRETS: ${{ toJSON(secrets) }}
           SESSION_ID: ${{ inputs.sessionId }}

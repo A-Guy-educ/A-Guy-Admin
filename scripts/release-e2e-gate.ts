@@ -3,7 +3,7 @@
  * Self-contained E2E gate for kody release finalize.
  *
  * Owns all infra lifecycle:
- *   - Starts MongoDB (docker run -d --rm -p 27017:27017 mongo:7)
+ *   - Starts MongoDB (docker run -d --rm -p 27017:27017 mongo:6)
  *   - Installs Chromium (pnpm exec playwright install --with-deps chromium)
  *   - Runs Playwright tests with the gate config
  *   - Tears down MongoDB container on exit (finally + signal handlers)
@@ -19,7 +19,10 @@
 import { execFile } from 'child_process'
 import type { ExecException } from 'child_process'
 
-const MONGO_IMAGE = 'mongo:7'
+// Aligned with src/infra/utils/test/mongodb-container.ts (mongo:6) so the
+// image is likely already present in the runner's Docker layer cache after
+// other jobs, and so we share the same smaller image across test flows.
+const MONGO_IMAGE = 'mongo:6'
 const MONGO_PORT = 27017
 const MONGO_DB_URL = `mongodb://localhost:${MONGO_PORT}/test?directConnection=true`
 const PLAYWRIGHT_CONFIG = 'playwright.e2e-gate.config.ts'
