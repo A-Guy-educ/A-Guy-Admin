@@ -6000,6 +6000,7 @@ Note: Database values unchanged, backward compatibility exports added
 ## v0.25.3 — 2026-04-26
 
 _No notable commits since the last release._
+
 ## v0.25.2 — 2026-04-24
 
 ### Features
