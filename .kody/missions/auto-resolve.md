@@ -1,6 +1,6 @@
 # auto resolve
 
-## Mission
+## Mission.
 
 For every open, non-draft pull request that is not yet merged: if it has a merge conflict, post the comment `@kody resolve` on the PR. Otherwise do nothing.
 
@@ -37,3 +37,4 @@ Garbage collection:
 - Drop entries from `data.perPr` whose PR is no longer in the open, non-draft candidate set (merged, closed, or returned to draft).
 
 On tick end: emit the updated `data.perPr` inside the next state block.
+
