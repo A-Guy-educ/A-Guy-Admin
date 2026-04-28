@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "rev": 18,
+  "rev": 19,
   "cursor": "fix-ci-1285-actioned",
   "data": {
     "perPr": {
@@ -16,7 +16,7 @@
       },
       "1285": {
         "lastSha": "a1bc68840f012207e904a2e021ce8d1de69dea3e",
-        "attempts": 1,
+        "attempts": 2,
         "stuck": false
       }
     }
