@@ -1,35 +1,59 @@
 {
   "version": 1,
-  "rev": 3,
-  "cursor": "scanned",
+  "rev": 4,
+  "cursor": "acted",
   "data": {
     "perIssue": {
       "1351": {
-        "lastResumedAt": null,
-        "lastResumedHistoryTimestamp": null,
-        "attemptsToday": 0,
+        "lastResumedAt": "2026-04-28T23:08:00Z",
+        "lastResumedHistoryTimestamp": "2026-04-27T20:30:49Z",
+        "attemptsToday": 1,
         "stuck": false
       },
       "1360": {
-        "lastResumedAt": null,
-        "lastResumedHistoryTimestamp": null,
-        "attemptsToday": 0,
+        "lastResumedAt": "2026-04-28T23:08:00Z",
+        "lastResumedHistoryTimestamp": "2026-04-27T09:58:29Z",
+        "attemptsToday": 1,
         "stuck": false
       },
       "1363": {
-        "lastResumedAt": null,
-        "lastResumedHistoryTimestamp": null,
-        "attemptsToday": 0,
+        "lastResumedAt": "2026-04-28T23:08:00Z",
+        "lastResumedHistoryTimestamp": "2026-04-27T09:49:12Z",
+        "attemptsToday": 1,
         "stuck": false
       },
       "1382": {
-        "lastResumedAt": null,
-        "lastResumedHistoryTimestamp": null,
-        "attemptsToday": 0,
+        "lastResumedAt": "2026-04-28T23:08:00Z",
+        "lastResumedHistoryTimestamp": "2026-04-28T14:45:08Z",
+        "attemptsToday": 1,
         "stuck": false
       }
     },
     "dryRunLog": [
+      {
+        "issueNumber": 1382,
+        "action": "resume",
+        "reason": "status=running, lastOutcome 2026-04-28T14:45:08Z (~8.3h ago), last kody comment 2026-04-28T14:48:08Z (~8.3h ago, >40 min), PR #1383 open/human-authored, no in-flight runs, no exclusion labels",
+        "plannedAt": "2026-04-28T23:08:00Z"
+      },
+      {
+        "issueNumber": 1363,
+        "action": "resume",
+        "reason": "status=running, lastOutcome 2026-04-27T09:49:12Z (~37h ago), last kody comment 2026-04-27T09:51:39Z (~37h ago), PR #1364 open/human-authored, no in-flight runs, no exclusion labels",
+        "plannedAt": "2026-04-28T23:08:00Z"
+      },
+      {
+        "issueNumber": 1360,
+        "action": "resume",
+        "reason": "status=running, lastOutcome 2026-04-27T09:58:29Z (~37h ago), last kody comment 2026-04-27T10:00:55Z (~37h ago), PR #1366 open/human-authored, no in-flight runs, no exclusion labels",
+        "plannedAt": "2026-04-28T23:08:00Z"
+      },
+      {
+        "issueNumber": 1351,
+        "action": "resume",
+        "reason": "status=running, lastOutcome 2026-04-27T20:30:49Z (~26h ago), last kody comment 2026-04-27T20:33:24Z (~26h ago), PR #1375 open/human-authored, no in-flight runs, no exclusion labels",
+        "plannedAt": "2026-04-28T23:08:00Z"
+      },
       {
         "issueNumber": 1382,
         "action": "resume",
