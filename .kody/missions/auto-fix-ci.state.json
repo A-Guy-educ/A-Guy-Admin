@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "rev": 2,
-  "cursor": "posted-fix-ci",
+  "rev": 3,
+  "cursor": "fix-ci-posted",
   "data": {
     "perPr": {
       "1217": {
@@ -11,7 +11,7 @@
       },
       "1227": {
         "lastSha": "01da2421b50b6bc8f82bd907b22fd2a524314b40",
-        "attempts": 1,
+        "attempts": 2,
         "stuck": false
       },
       "1266": {
@@ -20,8 +20,8 @@
         "stuck": false
       },
       "1272": {
-        "lastSha": "cf21c67b80abe625e3ba851cc16a7c0e2948b862",
-        "attempts": 1,
+        "lastSha": "605e561919f35a54f83479e9928a512085da7160",
+        "attempts": 0,
         "stuck": false
       }
     }
