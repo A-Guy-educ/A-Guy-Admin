@@ -1,10 +1,34 @@
 {
   "version": 1,
-  "rev": 8,
+  "rev": 9,
   "cursor": "done-no-candidates",
   "data": {
     "perIssue": {},
     "dryRunLog": [
+      {
+        "issueNumber": 1382,
+        "action": "resume",
+        "reason": "core.status='running' in kody state block (reviewing phase), lastOutcome.timestamp 2026-04-28T14:45:08Z (~9.3h ago, >40 min threshold). Has kody:done label but state still running — likely state-machine stall. No kody comment from kody in last 40 min (last kody activity by aguyaharonyair at 2026-04-28T14:48:08Z). No in-flight workflow run referencing #1382 (kody scheduled run 25096040466 has no issue reference in title/branch). No open kody PR (PR #1383 is closed). Not in perIssue, attemptsToday=0.",
+        "plannedAt": "2026-04-29T08:30:00Z"
+      },
+      {
+        "issueNumber": 1363,
+        "action": "resume",
+        "reason": "core.status='running' in kody state block (reviewing phase), lastOutcome.timestamp 2026-04-27T09:49:12Z (~38.5h ago, >40 min threshold). Has kody:done label but state still running — likely state-machine stall. No kody comment in last 40 min (last activity at 2026-04-27T09:51:39Z). No in-flight run referencing #1363. No open kody PR (PR #1364 is closed). Not in perIssue, attemptsToday=0.",
+        "plannedAt": "2026-04-29T08:30:00Z"
+      },
+      {
+        "issueNumber": 1360,
+        "action": "resume",
+        "reason": "core.status='running' in kody state block (reviewing phase), lastOutcome.timestamp 2026-04-27T09:58:29Z (~38.4h ago, >40 min threshold). Has kody:done label but state still running — likely state-machine stall. No kody comment in last 40 min (last activity at 2026-04-27T10:00:55Z). No in-flight run referencing #1360. No open kody PR (PR #1366 is closed). Not in perIssue, attemptsToday=0.",
+        "plannedAt": "2026-04-29T08:30:00Z"
+      },
+      {
+        "issueNumber": 1351,
+        "action": "resume",
+        "reason": "core.status='running' in kody state block (in comment, reviewing phase), lastOutcome.timestamp 2026-04-27T20:30:49Z (~27.9h ago, >40 min threshold). Has kody:done label but state still running — likely state-machine stall. No kody comment in last 40 min (last activity at 2026-04-27T20:33:24Z). No in-flight run referencing #1351. No open kody PR (PR #1375 is closed). Not in perIssue, attemptsToday=0.",
+        "plannedAt": "2026-04-29T08:30:00Z"
+      },
       {
         "issueNumber": 1382,
         "action": "resume",
