@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "rev": 6,
+  "rev": 7,
   "cursor": "gc",
   "data": {
     "perIssue": {},
@@ -76,6 +76,30 @@
         "action": "resume",
         "reason": "status=running, lastOutcome timestamp 2026-04-27T20:30:49Z (26+ hours ago), last kody comment 2026-04-27T20:33:24Z (>40 min ago), human-created PR #1375 linked (not kody-authored), no in-flight workflow runs — prior tick dry-run log entry",
         "plannedAt": "2026-04-28T23:08:00Z"
+      },
+      {
+        "issueNumber": 1380,
+        "action": "resume",
+        "reason": "status=running (phase: reviewing) in kody state block, lastOutcome.timestamp 2026-04-28T15:41:13Z (~8.5h ago) — exceeds 40 min threshold. Last kody-engine comment by korenguy123 at 2026-04-28T11:38:02Z (>40 min ago). Has kody:done label but state still running. Active run 25092200111 references #1380 but is in-progress (not fresh). No kody comment from kody-engine in last 40 min. Not in perIssue, attemptsToday=0.",
+        "plannedAt": "2026-04-29T00:08:00Z"
+      },
+      {
+        "issueNumber": 1363,
+        "action": "resume",
+        "reason": "status=running (phase: reviewing) in kody state block, lastOutcome.timestamp 2026-04-27T09:49:12Z (~38h ago). Last kody comment by korenguy123 at 2026-04-27T08:34:30Z (>40 min ago). Has kody:done label but state still running. No in-flight runs referencing 1363, no open kody PR, no kody comment in last 40 min. Not in perIssue, attemptsToday=0.",
+        "plannedAt": "2026-04-29T00:08:00Z"
+      },
+      {
+        "issueNumber": 1360,
+        "action": "resume",
+        "reason": "status=running (phase: reviewing) in kody state block, lastOutcome.timestamp 2026-04-27T09:58:29Z (~38h ago). Last kody comment by korenguy123 at 2026-04-27T08:16:36Z (>40 min ago). Has kody:done label but state still running. No in-flight runs referencing 1360, no open kody PR, no kody comment in last 40 min. Not in perIssue, attemptsToday=0.",
+        "plannedAt": "2026-04-29T00:08:00Z"
+      },
+      {
+        "issueNumber": 1351,
+        "action": "resume",
+        "reason": "status=running (phase: reviewing) in kody state block, lastOutcome.timestamp 2026-04-27T20:30:49Z (~27h ago). Last kody comment by korenguy123 at 2026-04-27T19:21:59Z (>40 min ago). Has kody:done label but state still running. No in-flight runs referencing 1351, no open kody PR, no kody comment in last 40 min. Not in perIssue, attemptsToday=0.",
+        "plannedAt": "2026-04-29T00:08:00Z"
       }
     ]
   },
