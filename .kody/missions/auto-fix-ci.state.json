@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "rev": 29,
+  "rev": 30,
   "cursor": "fix-ci-action-taken-2026-04-29",
   "data": {
     "perPr": {
@@ -11,7 +11,7 @@
       },
       "1266": {
         "lastSha": "7f64a26f993738887c6d6cd9d660c9b736a9de65",
-        "attempts": 1,
+        "attempts": 2,
         "stuck": false
       }
     }
