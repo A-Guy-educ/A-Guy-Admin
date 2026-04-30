@@ -1,10 +1,16 @@
 {
   "version": 1,
-  "rev": 32,
-  "cursor": "dry-run-scan-v11",
+  "rev": 33,
+  "cursor": "dry-run-scan-v12",
   "data": {
     "perIssue": {},
     "dryRunLog": [
+      {
+        "issueNumber": 0,
+        "action": "resume",
+        "reason": "Dry-run tick 2026-04-30T21:30:00Z: Comprehensive scan of ~80+ open issues via GraphQL. Checked bodies AND comments for kody:state:v1 blocks. Checked for core.status=running. Checked for kody labels (stuck/no-redispatch/stalled). Checked workflow runs for issue references. Checked for recent kody comments. RESULT: Zero state blocks found across all open issues. Prior candidates #1382/#1380/#1363/#1360 all carry kody:done label (terminal state). No issues with core.status=running. perIssue remains {} (never actioned). No candidates qualify for resume.",
+        "plannedAt": "2026-04-30T21:30:00Z"
+      },
       {
         "issueNumber": 0,
         "action": "resume",
