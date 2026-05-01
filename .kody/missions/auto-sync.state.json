@@ -1,20 +1,26 @@
 {
   "version": 1,
-  "rev": 54,
-  "cursor": "tick-54",
+  "rev": 55,
+  "cursor": "tick-55",
   "data": {
     "perPr": {
       "1227": {
         "lastSha": "a69fc75d9157bed2be642a9945ad9d6ceb4ce301",
-        "attempts": 0,
+        "attempts": 1,
         "stuck": false,
-        "lastActionAt": null
+        "lastActionAt": "2026-05-01T01:10:00Z"
       },
       "1384": {
         "lastSha": "07bc19c3a0e0eb495027fb95b13d17e7cea725c0",
         "attempts": 1,
         "stuck": false,
         "lastActionAt": "2026-04-30T23:53:59Z"
+      },
+      "1394": {
+        "lastSha": "dc40c5ae1dc3e2f869582ad4e04d34b535d75187",
+        "attempts": 1,
+        "stuck": false,
+        "lastActionAt": "2026-05-01T01:10:00Z"
       }
     }
   },
