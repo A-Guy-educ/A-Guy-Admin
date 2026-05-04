@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useCallback } from 'react'
+import { useTranslation } from '@payloadcms/ui'
 import type {
   QuestionGeometryBlock,
   GraphLayout,
@@ -18,6 +19,7 @@ import { ShapesPanel } from '../components/geometry/ShapesPanel'
 import { TextsPanel } from '../components/geometry/TextsPanel'
 import { VectorsPanel } from '../components/geometry/VectorsPanel'
 import { InlineRichTextEditor } from './InlineRichTextEditor'
+import { getEditorStrings } from '../strings'
 
 interface GeometryEditorProps {
   block: QuestionGeometryBlock
@@ -25,6 +27,8 @@ interface GeometryEditorProps {
 }
 
 export const GeometryEditor: React.FC<GeometryEditorProps> = ({ block, onChange }) => {
+  const { i18n } = useTranslation()
+  const s = getEditorStrings(i18n.language)
   const geo = block.geometry
 
   const updateGeo = useCallback(
@@ -126,14 +130,14 @@ export const GeometryEditor: React.FC<GeometryEditorProps> = ({ block, onChange 
       </div>
 
       <div className="question-editor-section">
-        <label className="question-editor-label">Label Size</label>
+        <label className="question-editor-label">{s.labelSize}</label>
         <select
           className="w-full p-2 border border-input rounded-md bg-background text-foreground"
           value={block.labelSize || 'default'}
           onChange={(e) => onChange({ ...block, labelSize: e.target.value as LabelSize })}
         >
-          <option value="default">Default</option>
-          <option value="small">Small</option>
+          <option value="default">{s.labelSizeDefault}</option>
+          <option value="small">{s.labelSizeSmall}</option>
         </select>
       </div>
 

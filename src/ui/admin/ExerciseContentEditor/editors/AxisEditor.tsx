@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useCallback } from 'react'
+import { useTranslation } from '@payloadcms/ui'
 import type {
   QuestionAxisBlock,
   GraphLayout,
@@ -17,6 +18,7 @@ import { LineBetweenPointsPanel } from '../components/axis/LineBetweenPointsPane
 import { PaintPanel } from '../components/axis/PaintPanel'
 import { LociPanel } from '../components/axis/LociPanel'
 import { CollapsibleSection } from '@/ui/admin/shared/CollapsibleSection'
+import { getEditorStrings } from '../strings'
 
 interface AxisEditorProps {
   block: QuestionAxisBlock
@@ -24,6 +26,8 @@ interface AxisEditorProps {
 }
 
 export const AxisEditor: React.FC<AxisEditorProps> = ({ block, onChange }) => {
+  const { i18n } = useTranslation()
+  const s = getEditorStrings(i18n.language)
   const spec = block.axis
 
   const updateAxis = useCallback(
@@ -71,7 +75,7 @@ export const AxisEditor: React.FC<AxisEditorProps> = ({ block, onChange }) => {
             </select>
           </div>
           <div className="panel-field">
-            <span className="panel-field-label">Label Size</span>
+            <span className="panel-field-label">{s.labelSize}</span>
             <select
               className="panel-field-select"
               value={block.labelSize || 'default'}
@@ -82,8 +86,8 @@ export const AxisEditor: React.FC<AxisEditorProps> = ({ block, onChange }) => {
                 })
               }
             >
-              <option value="default">Default</option>
-              <option value="small">Small</option>
+              <option value="default">{s.labelSizeDefault}</option>
+              <option value="small">{s.labelSizeSmall}</option>
             </select>
           </div>
         </div>

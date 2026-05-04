@@ -707,10 +707,5 @@
       "practice": "תרגול",
       "exam": "בחינה"
     }
-  },
-  "geometryEditor": {
-    "labelSize": "גודל תווית",
-    "labelSizeDefault": "ברירת מחדל",
-    "labelSizeSmall": "קטן"
   }
 }
