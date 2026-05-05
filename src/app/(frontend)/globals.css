@@ -440,6 +440,19 @@ html[data-theme='light'] {
     color: hsl(var(--wine-red));
   }
 
+  /* PDF tab: every math expression renders in wine-red, regardless of source markup.
+     Scoped to .pdf-tab-content so the interactive tab keeps default coloring. */
+  .pdf-tab-content .katex,
+  .pdf-tab-content .katex .mord,
+  .pdf-tab-content .katex .mop,
+  .pdf-tab-content .katex .mbin,
+  .pdf-tab-content .katex .mrel,
+  .pdf-tab-content .katex .mopen,
+  .pdf-tab-content .katex .mclose,
+  .pdf-tab-content .katex .mpunct {
+    color: hsl(var(--wine-red));
+  }
+
   .katex-display {
     @apply my-5 overflow-x-auto overflow-y-hidden py-2;
 
