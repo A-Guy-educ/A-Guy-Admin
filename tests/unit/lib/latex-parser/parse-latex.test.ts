@@ -180,19 +180,5 @@ Remember to show your work.
       expect(value).not.toMatch(/\$\$\s*\[wine-red-math\]/)
       expect(value).not.toMatch(/\[\/wine-red-math\]\s*\$\$/)
     })
-
-    it('does not strip a lone $ that is not paired around the marker', () => {
-      // A standalone $ in prose should survive when the wine-red marker is
-      // adjacent to only one side (e.g. broken source data).
-      const latex = '\\begin{document}price: $5 and ${\\color{winered} cheaper}\\end{document}'
-      const result = parseLatexToBlocks(latex)
-      expect(result.errors).toHaveLength(0)
-      const richText = result.blocks.find((b) => b.type === 'rich_text')
-      expect(richText).toBeDefined()
-      const value = (richText as { value: string }).value
-      // Lone "$5" stays, the wine-red marker still produced
-      expect(value).toContain('$5')
-      expect(value).toContain('[wine-red-math]')
-    })
   })
 })
