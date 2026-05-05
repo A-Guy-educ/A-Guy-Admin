@@ -242,6 +242,23 @@ function stripColorAndSizing(text: string): string {
     .replace(/\\color\{[^}]*\}/g, '')
     .replace(/\\definecolor\{[^}]*\}\{[^}]*\}\{[^}]*\}/g, '')
 
+  // When a wine-red marker came from a math-mode source like
+  //   ${\color{winered} 70 }$  or  $\textcolor{winered}{70}$
+  // the surrounding $...$ remain. Strip them — MathMarkdown's preprocessor
+  // emits already-rendered KaTeX HTML for wine-red markers, and any leftover
+  // $...$ around that HTML would make remarkMath re-parse the rendered HTML
+  // as math, dropping the wine-red class. We only strip a $ on each side
+  // when BOTH are present, so prose containing a single "$" stays intact.
+  result = result.replace(
+    /\$\s*\[wine-red-math\]([\s\S]*?)\[\/wine-red-math\]\s*\$/g,
+    '[wine-red-math]$1[/wine-red-math]',
+  )
+  // $$...$$ display-math variant
+  result = result.replace(
+    /\$\$\s*\[wine-red-math\]([\s\S]*?)\[\/wine-red-math\]\s*\$\$/g,
+    '[wine-red-math]$1[/wine-red-math]',
+  )
+
   return result
 }
 
