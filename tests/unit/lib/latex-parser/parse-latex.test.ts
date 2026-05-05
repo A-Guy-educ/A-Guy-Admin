@@ -123,5 +123,37 @@ Remember to show your work.
       expect(richText).toBeDefined()
       expect((richText as { value: string }).value).toContain('[wine-red-math]')
     })
+
+    it('preserves winered \\textcolor as [wine-red-math] token', () => {
+      const latex = '\\begin{document}$\\textcolor{winered}{x^2 + 1}$\\end{document}'
+      const result = parseLatexToBlocks(latex)
+      expect(result.errors).toHaveLength(0)
+      const richText = result.blocks.find((b) => b.type === 'rich_text')
+      expect(richText).toBeDefined()
+      expect((richText as { value: string }).value).toContain('[wine-red-math]')
+      expect((richText as { value: string }).value).toContain('[/wine-red-math]')
+      expect((richText as { value: string }).value).toContain('x^2 + 1')
+    })
+
+    it('preserves winered \\textcolor with nested LaTeX structures', () => {
+      const latex =
+        '\\begin{document}$\\textcolor{winered}{\\displaystyle f(x) = \\frac{a}{(x-4)^2}}$\\end{document}'
+      const result = parseLatexToBlocks(latex)
+      expect(result.errors).toHaveLength(0)
+      const richText = result.blocks.find((b) => b.type === 'rich_text')
+      expect(richText).toBeDefined()
+      expect((richText as { value: string }).value).toContain('[wine-red-math]')
+      expect((richText as { value: string }).value).toContain('\\frac{a}{(x-4)^2}')
+    })
+
+    it('strips non-winered \\textcolor normally', () => {
+      const latex = '\\begin{document}$\\textcolor{#21ba3a}{12+5}$\\end{document}'
+      const result = parseLatexToBlocks(latex)
+      expect(result.errors).toHaveLength(0)
+      const richText = result.blocks.find((b) => b.type === 'rich_text')
+      expect(richText).toBeDefined()
+      expect((richText as { value: string }).value).toContain('12+5')
+      expect((richText as { value: string }).value).not.toContain('[wine-red-math]')
+    })
   })
 })

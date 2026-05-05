@@ -144,15 +144,51 @@ function findMatchingBrace(text: string, openPos: number): number {
 }
 
 /**
+ * Process \textcolor{name}{content} calls. When name is "winered", wrap the
+ * content in [wine-red-math]...[/wine-red-math] markers so the frontend can
+ * render it in wine-red. Other colors are stripped (just the inner content
+ * is kept). Uses brace counting so nested braces like \frac{1}{...} are
+ * preserved correctly. Recurses into the content so nested \textcolor works.
+ */
+function processTextColor(text: string): string {
+  let i = 0
+  let output = ''
+  while (i < text.length) {
+    if (text[i] === '\\' && text.slice(i, i + 10) === '\\textcolor') {
+      // Match \textcolor{COLOR}{
+      const headerMatch = /^\\textcolor\{([^}]+)\}\{/.exec(text.slice(i))
+      if (headerMatch) {
+        const color = headerMatch[1].trim().toLowerCase()
+        const openContentBrace = i + headerMatch[0].length - 1
+        const closingBrace = findMatchingBrace(text, openContentBrace)
+        if (closingBrace > openContentBrace) {
+          const inner = processTextColor(text.slice(openContentBrace + 1, closingBrace))
+          if (color === 'winered') {
+            output += `[wine-red-math]${inner}[/wine-red-math]`
+          } else {
+            output += inner
+          }
+          i = closingBrace + 1
+          continue
+        }
+      }
+    }
+    output += text[i]
+    i++
+  }
+  return output
+}
+
+/**
  * Strip {\color{name} content} and {\Large\color{name} content} groups,
  * using proper brace counting to handle nested braces like \frac{1}{...}.
  *
- * Special case: {\color{winered} ...} is preserved as [wine-red-math]...[/wine-red-math]
- * so the frontend can render it in wine-red color.
- * Non-winered colors are stripped normally.
+ * Special case: {\color{winered} ...} and \textcolor{winered}{...} are
+ * preserved as [wine-red-math]...[/wine-red-math] so the frontend can render
+ * them in wine-red color. Non-winered colors are stripped normally.
  */
 function stripColorAndSizing(text: string): string {
-  let result = text
+  let result = processTextColor(text)
 
   // Process {\color{name} ...} and {\Large\color{name} ...} groups with brace counting
   // We scan for { followed by \color or \Large\color, find the matching }, and remove the wrapper
