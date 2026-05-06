@@ -49,8 +49,6 @@
     /* Border: warm stone — premium stationery feel */
     --border: 30, 8%, 82%; /* hsl(30,8%,82%) — warm light gray, not blue */
 
-    /* Wine-red for {\color{winered}...} math expressions */
-    --wine-red: 350 55% 38%; /* ≈ #722F37 */
     --input: 210 14% 97%; /* #f8f9fa */
 
     /* Focus ring follows primary */
@@ -199,9 +197,6 @@
     --tab-practice: 0 72% 62%; /* Red — True/False */
     --tab-exams: 330 81% 68%; /* Pink — Matching */
     --tab-ask: 142 71% 55%; /* Green — Free Response */
-
-    /* Wine-red for {\color{winered}...} math expressions */
-    --wine-red: 350 55% 38%; /* ≈ #722F37 */
   }
 }
 
@@ -429,30 +424,6 @@ html[data-theme='light'] {
   .katex {
     @apply text-foreground;
     font-size: 1.1em;
-  }
-
-  /* Wine-red math color for {\color{winered}...} expressions */
-  .katex.wine-red {
-    color: hsl(var(--wine-red));
-  }
-
-  .wine-red {
-    color: hsl(var(--wine-red));
-  }
-
-  /* PDF tab: every math expression renders in wine-red, regardless of source markup.
-     Scoped to .pdf-tab-content so the interactive tab keeps default coloring.
-     Hex literal (not var) in case --wine-red doesn't resolve in the build.
-     -webkit-text-fill-color belt-and-suspenders for any user-agent override.
-     Targets katex AND katex-html because some renders use the latter wrapper. */
-  .pdf-tab-content .katex,
-  .pdf-tab-content .katex *,
-  .pdf-tab-content .katex-html,
-  .pdf-tab-content .katex-html *,
-  .pdf-tab-content .katex-mathml,
-  .pdf-tab-content .katex-mathml * {
-    color: #722f37 !important;
-    -webkit-text-fill-color: #722f37 !important;
   }
 
   .katex-display {

@@ -144,76 +144,39 @@ function findMatchingBrace(text: string, openPos: number): number {
 }
 
 /**
- * Process \textcolor{name}{content} calls. When name is "winered", wrap the
- * content in [wine-red-math]...[/wine-red-math] markers so the frontend can
- * render it in wine-red. Other colors are stripped (just the inner content
- * is kept). Uses brace counting so nested braces like \frac{1}{...} are
- * preserved correctly. Recurses into the content so nested \textcolor works.
+ * Strip {\color{name} content} and {\Large\color{name} content} groups,
+ * using proper brace counting to handle nested braces like \frac{1}{...}.
+ * Also strips \textcolor{name}{content}, keeping only the content.
  */
-function processTextColor(text: string): string {
+function stripColorAndSizing(text: string): string {
+  // Strip \textcolor{name}{content} → content (brace-counted so nested {} works)
+  let result = ''
   let i = 0
-  let output = ''
   while (i < text.length) {
     if (text[i] === '\\' && text.slice(i, i + 10) === '\\textcolor') {
-      // Match \textcolor{COLOR}{
-      const headerMatch = /^\\textcolor\{([^}]+)\}\{/.exec(text.slice(i))
+      const headerMatch = /^\\textcolor\{[^}]+\}\{/.exec(text.slice(i))
       if (headerMatch) {
-        const color = headerMatch[1].trim().toLowerCase()
         const openContentBrace = i + headerMatch[0].length - 1
         const closingBrace = findMatchingBrace(text, openContentBrace)
         if (closingBrace > openContentBrace) {
-          const inner = processTextColor(text.slice(openContentBrace + 1, closingBrace))
-          if (color === 'winered') {
-            output += `[wine-red-math]${inner}[/wine-red-math]`
-          } else {
-            output += inner
-          }
+          result += text.slice(openContentBrace + 1, closingBrace)
           i = closingBrace + 1
           continue
         }
       }
     }
-    output += text[i]
+    result += text[i]
     i++
   }
-  return output
-}
-
-/**
- * Strip {\color{name} content} and {\Large\color{name} content} groups,
- * using proper brace counting to handle nested braces like \frac{1}{...}.
- *
- * Special case: {\color{winered} ...} and \textcolor{winered}{...} are
- * preserved as [wine-red-math]...[/wine-red-math] so the frontend can render
- * them in wine-red color. Non-winered colors are stripped normally.
- */
-function stripColorAndSizing(text: string): string {
-  let result = processTextColor(text)
 
   // Process {\color{name} ...} and {\Large\color{name} ...} groups with brace counting
   // We scan for { followed by \color or \Large\color, find the matching }, and remove the wrapper
-  let i = 0
+  i = 0
   let output = ''
   while (i < result.length) {
     if (result[i] === '{') {
       // Check if this opens a color/sizing group
       const after = result.slice(i + 1)
-
-      // Special case: {\color{winered} ...} — preserve as wine-red-math token
-      // Handle both {\color{winered}...} and {\Large\color{winered}...} variants
-      const wineredMatch =
-        /^\\color\{winered\}\s*/.exec(after) ||
-        /^\\(?:Large|large|huge|Huge)\s*\\color\{winered\}\s*/.exec(after)
-      if (wineredMatch) {
-        const closingBrace = findMatchingBrace(result, i)
-        if (closingBrace > i) {
-          const contentStart = i + 1 + wineredMatch[0].length
-          const inner = result.slice(contentStart, closingBrace)
-          output += `[wine-red-math]${inner}[/wine-red-math]`
-          i = closingBrace + 1
-          continue
-        }
-      }
 
       const cmdMatch =
         /^\\(?:Large|large|huge|Huge)\s*\\color\{[^}]*\}\s*/.exec(after) ||
@@ -241,23 +204,6 @@ function stripColorAndSizing(text: string): string {
     .replace(/\\(?:Large|large|huge|Huge|normalsize|small|footnotesize|tiny)\s*/g, '')
     .replace(/\\color\{[^}]*\}/g, '')
     .replace(/\\definecolor\{[^}]*\}\{[^}]*\}\{[^}]*\}/g, '')
-
-  // When a wine-red marker came from a math-mode source like
-  //   ${\color{winered} 70 }$  or  $\textcolor{winered}{70}$
-  // the surrounding $...$ remain. Strip them — MathMarkdown's preprocessor
-  // emits already-rendered KaTeX HTML for wine-red markers, and any leftover
-  // $...$ around that HTML would make remarkMath re-parse the rendered HTML
-  // as math, dropping the wine-red class. We only strip a $ on each side
-  // when BOTH are present, so prose containing a single "$" stays intact.
-  result = result.replace(
-    /\$\s*\[wine-red-math\]([\s\S]*?)\[\/wine-red-math\]\s*\$/g,
-    '[wine-red-math]$1[/wine-red-math]',
-  )
-  // $$...$$ display-math variant
-  result = result.replace(
-    /\$\$\s*\[wine-red-math\]([\s\S]*?)\[\/wine-red-math\]\s*\$\$/g,
-    '[wine-red-math]$1[/wine-red-math]',
-  )
 
   return result
 }
