@@ -75,18 +75,35 @@ IMPORTANT:
  * 1. All published system prompts (joined with separator)
  * 2. Teacher profile block (injected into system role, NOT stored in conversation)
  * 3. Lesson-specific resolved prompt
- * 4. Mandatory math formatting instructions
- * 5. Mandatory image handling instructions
+ * 4. Lesson/exercise context block (fallback metadata about what the student is on)
+ * 5. Course context text (if provided)
+ * 6. Lesson context text (AI-injected lesson content, if provided)
+ * 7. Lesson exercises (structured content blocks, if provided)
+ * 8. Mandatory math formatting instructions
+ * 9. Image handling instructions — INJECTED ONLY when an image is attached
+ *    (see hasImageAttached). When no image is in the request these rules
+ *    confuse the model into refusing text-only chat with "please upload
+ *    an image" responses, so we skip them.
  *
  * @param systemPrompts - Array of system prompt templates (can be empty)
  * @param lessonPromptTemplate - Resolved lesson prompt template
  * @param teacherProfileBlock - Optional teacher profile block to inject
+ * @param lessonContextBlock - Optional fallback metadata about the current lesson/exercise (from origin/dev buildLessonContextBlock)
+ * @param lessonContextText - Optional AI context text for the lesson (lessonContextText or description)
+ * @param courseContextText - Optional AI context text for the course
+ * @param exercises - Optional exercises associated with the lesson
+ * @param hasImageAttached - When true, append IMAGE_HANDLING_INSTRUCTIONS. Defaults to true for back-compat with callers that don't (yet) plumb this through.
  * @returns Final composed system instructions string
  */
 export function composeSystemInstructions(
   systemPrompts: string[],
   lessonPromptTemplate: string,
   teacherProfileBlock?: string,
+  lessonContextBlock?: string,
+  lessonContextText?: string,
+  courseContextText?: string,
+  exercises?: Array<{ id: string; title?: string; content: unknown }>,
+  hasImageAttached: boolean = true,
 ): string {
   // Step 1: Join system prompts (if any)
   const systemPart =
@@ -102,9 +119,179 @@ export function composeSystemInstructions(
   // Step 3: Append lesson prompt
   const withLessonPrompt = withTeacherProfile + lessonPromptTemplate
 
-  // Step 4: Append mandatory math formatting instructions
-  const withMathFormatting = withLessonPrompt + '\n\n' + MATH_FORMATTING_INSTRUCTIONS
+  // Step 4: Append lesson/exercise context block (from buildLessonContextBlock — fallback metadata)
+  const withLessonContextBlock = lessonContextBlock
+    ? withLessonPrompt + '\n\n' + lessonContextBlock
+    : withLessonPrompt
 
-  // Step 5: Append mandatory image handling instructions
-  return withMathFormatting + '\n\n' + IMAGE_HANDLING_INSTRUCTIONS
+  // Step 5: Append course context text (if provided)
+  const withCourseContext = courseContextText
+    ? withLessonContextBlock + '\n\n## Course Context\n' + courseContextText
+    : withLessonContextBlock
+
+  // Step 6: Append lesson context text (if provided)
+  const withLessonContext =
+    lessonContextText && lessonContextText.trim().length > 0
+      ? withCourseContext + '\n\n## Lesson Content\n' + lessonContextText.trim()
+      : withCourseContext
+
+  // Step 7: Append lesson exercises (if provided), with size budget.
+  // Audit F4: previously emitted full content of every exercise — for a
+  // 31-exercise lesson that produced a ~14 KB system prompt that diluted
+  // the model's attention. Now: per-exercise content is truncated to
+  // EXERCISE_CONTENT_BUDGET, and the section as a whole stops after
+  // EXERCISES_SECTION_BUDGET with a tail noting how many exercises remain.
+  let withExercises = withLessonContext
+  if (exercises && exercises.length > 0) {
+    withExercises = withLessonContext + buildExercisesSection(exercises)
+  }
+
+  // Step 8: Append mandatory math formatting instructions
+  const withMathFormatting = withExercises + '\n\n' + MATH_FORMATTING_INSTRUCTIONS
+
+  // Step 9: Append image handling instructions ONLY when an image is attached.
+  // Otherwise these rules dominate the prompt and Gemini falls back to
+  // "please upload an image" even on text-only chats with full lesson context.
+  return hasImageAttached
+    ? withMathFormatting + '\n\n' + IMAGE_HANDLING_INSTRUCTIONS
+    : withMathFormatting
+}
+
+/**
+ * Per-exercise body is truncated to this many characters to keep the
+ * "## Lesson Exercises" section bounded for lessons with many exercises
+ * or long bodies. Title is always shown — only the body is truncated.
+ */
+const EXERCISE_CONTENT_BUDGET = 400
+
+/**
+ * Total budget for the exercises section. Once exceeded, remaining
+ * exercises are listed by title only and a "...and N more" tail is added.
+ */
+const EXERCISES_SECTION_BUDGET = 4000
+
+/**
+ * Build the exercises section of the system prompt with size budgeting.
+ * Title is always included; per-exercise body is truncated to
+ * EXERCISE_CONTENT_BUDGET; total emitted text is capped at
+ * EXERCISES_SECTION_BUDGET with a tail noting how many remain.
+ */
+function buildExercisesSection(
+  exercises: Array<{ id: string; title?: string; content: unknown }>,
+): string {
+  const header =
+    '\n\n## Lesson Exercises\nThe following exercises are available in this lesson. You can answer questions about them:\n\n'
+
+  const lines: string[] = []
+  let used = 0
+  let remaining = exercises.length
+
+  for (let idx = 0; idx < exercises.length; idx++) {
+    const exercise = exercises[idx]
+    const title = exercise.title ? `**${exercise.title}**` : `Exercise ${idx + 1}`
+    const fullContent = formatExerciseContent(exercise.content)
+    const truncatedContent =
+      fullContent.length > EXERCISE_CONTENT_BUDGET
+        ? fullContent.slice(0, EXERCISE_CONTENT_BUDGET) + '…(truncated)'
+        : fullContent
+
+    const candidate = `${idx + 1}. ${title}\n${truncatedContent}`
+
+    // If adding this entry would blow the budget, switch to title-only mode
+    // for the rest and break.
+    if (used + candidate.length > EXERCISES_SECTION_BUDGET) {
+      const remainingTitles = exercises.slice(idx).map((e, i) => {
+        const t = e.title ? `**${e.title}**` : `Exercise ${idx + i + 1}`
+        return `${idx + i + 1}. ${t}`
+      })
+      lines.push(...remainingTitles)
+      remaining = 0
+      break
+    }
+
+    lines.push(candidate)
+    used += candidate.length + 2 // +2 for the joining \n\n
+    remaining--
+  }
+
+  let body = lines.join('\n\n')
+  if (remaining > 0) {
+    body += `\n\n…and ${remaining} more exercise${remaining === 1 ? '' : 's'} in this lesson (titles only above to fit the prompt budget).`
+  }
+  return header + body
+}
+
+/**
+ * Format exercise content blocks into readable text for the system prompt.
+ * Extracts key information from content blocks to give the LLM context.
+ */
+function formatExerciseContent(content: unknown): string {
+  if (!content || typeof content !== 'object') return '(No content)'
+
+  const data = content as { blocks?: unknown[] }
+  if (!Array.isArray(data.blocks) || data.blocks.length === 0) return '(No content)'
+
+  const parts: string[] = []
+
+  for (const block of data.blocks) {
+    if (!block || typeof block !== 'object') continue
+
+    const b = block as { type?: string; value?: string; prompt?: unknown }
+
+    if (b.type === 'latex') {
+      const latexBlock = b as { type: 'latex'; latex: string }
+      parts.push(`[LaTeX]: ${latexBlock.latex}`)
+    } else if (b.type === 'rich_text') {
+      const rtBlock = b as { type: 'rich_text'; value: string }
+      if (rtBlock.value) parts.push(rtBlock.value)
+    } else if (b.type === 'question_select') {
+      const qBlock = b as { type: 'question_select'; prompt?: { value?: string } }
+      const prompt =
+        qBlock.prompt && typeof qBlock.prompt === 'object'
+          ? (qBlock.prompt as { value?: string }).value
+          : undefined
+      if (prompt) parts.push(`[Question]: ${prompt}`)
+    } else if (b.type === 'question_free_response') {
+      const qBlock = b as { type: 'question_free_response'; prompt?: { value?: string } }
+      const prompt =
+        qBlock.prompt && typeof qBlock.prompt === 'object'
+          ? (qBlock.prompt as { value?: string }).value
+          : undefined
+      if (prompt) parts.push(`[Free Response Question]: ${prompt}`)
+    } else if (b.type === 'question_table') {
+      const qBlock = b as { type: 'question_table'; prompt?: { value?: string } }
+      const prompt =
+        qBlock.prompt && typeof qBlock.prompt === 'object'
+          ? (qBlock.prompt as { value?: string }).value
+          : undefined
+      if (prompt) parts.push(`[Table Question]: ${prompt}`)
+    } else if (b.type === 'question_matching') {
+      const qBlock = b as { type: 'question_matching'; prompt?: { value?: string } }
+      const prompt =
+        qBlock.prompt && typeof qBlock.prompt === 'object'
+          ? (qBlock.prompt as { value?: string }).value
+          : undefined
+      if (prompt) parts.push(`[Matching Question]: ${prompt}`)
+    } else if (b.type === 'html') {
+      const htmlBlock = b as { type: 'html'; html?: string }
+      if (htmlBlock.html) {
+        // Strip HTML tags for a cleaner text representation
+        const text = htmlBlock.html
+          .replace(/<[^>]+>/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim()
+        if (text) parts.push(`[Content]: ${text}`)
+      }
+    } else if (b.type === 'svg') {
+      const svgBlock = b as { type: 'svg'; caption?: { value?: string } }
+      const caption =
+        svgBlock.caption && typeof svgBlock.caption === 'object'
+          ? (svgBlock.caption as { value?: string }).value
+          : undefined
+      if (caption) parts.push(`[SVG Diagram]: ${caption}`)
+    }
+    // Skip geometry, axis, multi_axis blocks (visual content not easily represented in text)
+  }
+
+  return parts.length > 0 ? parts.join('\n') : '(No extractable text content)'
 }
