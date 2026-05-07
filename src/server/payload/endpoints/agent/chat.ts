@@ -746,6 +746,7 @@ async function handleContextScopedChat(
       lessonContext.coursePrompt,
       lessonContext.courseContextText,
       userId,
+      lessonContext.lessonContextBlock,
       lessonContext.lessonContextText,
       lessonContext.exercises,
     )

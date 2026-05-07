@@ -75,15 +75,17 @@ IMPORTANT:
  * 1. All published system prompts (joined with separator)
  * 2. Teacher profile block (injected into system role, NOT stored in conversation)
  * 3. Lesson-specific resolved prompt
- * 4. Course context text (if provided)
- * 5. Lesson context text (AI-injected lesson content, if provided)
- * 6. Lesson exercises (structured content blocks, if provided)
- * 7. Mandatory math formatting instructions
- * 8. Mandatory image handling instructions
+ * 4. Lesson/exercise context block (fallback metadata about what the student is on)
+ * 5. Course context text (if provided)
+ * 6. Lesson context text (AI-injected lesson content, if provided)
+ * 7. Lesson exercises (structured content blocks, if provided)
+ * 8. Mandatory math formatting instructions
+ * 9. Mandatory image handling instructions
  *
  * @param systemPrompts - Array of system prompt templates (can be empty)
  * @param lessonPromptTemplate - Resolved lesson prompt template
  * @param teacherProfileBlock - Optional teacher profile block to inject
+ * @param lessonContextBlock - Optional fallback metadata about the current lesson/exercise (from origin/dev buildLessonContextBlock)
  * @param lessonContextText - Optional AI context text for the lesson (lessonContextText or description)
  * @param courseContextText - Optional AI context text for the course
  * @param exercises - Optional exercises associated with the lesson
@@ -93,6 +95,7 @@ export function composeSystemInstructions(
   systemPrompts: string[],
   lessonPromptTemplate: string,
   teacherProfileBlock?: string,
+  lessonContextBlock?: string,
   lessonContextText?: string,
   courseContextText?: string,
   exercises?: Array<{ id: string; title?: string; content: unknown }>,
@@ -111,18 +114,23 @@ export function composeSystemInstructions(
   // Step 3: Append lesson prompt
   const withLessonPrompt = withTeacherProfile + lessonPromptTemplate
 
-  // Step 4: Append course context text (if provided)
-  const withCourseContext = courseContextText
-    ? withLessonPrompt + '\n\n## Course Context\n' + courseContextText
+  // Step 4: Append lesson/exercise context block (from buildLessonContextBlock — fallback metadata)
+  const withLessonContextBlock = lessonContextBlock
+    ? withLessonPrompt + '\n\n' + lessonContextBlock
     : withLessonPrompt
 
-  // Step 5: Append lesson context text (if provided)
+  // Step 5: Append course context text (if provided)
+  const withCourseContext = courseContextText
+    ? withLessonContextBlock + '\n\n## Course Context\n' + courseContextText
+    : withLessonContextBlock
+
+  // Step 6: Append lesson context text (if provided)
   const withLessonContext =
     lessonContextText && lessonContextText.trim().length > 0
       ? withCourseContext + '\n\n## Lesson Content\n' + lessonContextText.trim()
       : withCourseContext
 
-  // Step 6: Append lesson exercises (if provided)
+  // Step 7: Append lesson exercises (if provided)
   let withExercises = withLessonContext
   if (exercises && exercises.length > 0) {
     const exercisesSection =
@@ -138,10 +146,10 @@ export function composeSystemInstructions(
     withExercises = withLessonContext + exercisesSection
   }
 
-  // Step 7: Append mandatory math formatting instructions
+  // Step 8: Append mandatory math formatting instructions
   const withMathFormatting = withExercises + '\n\n' + MATH_FORMATTING_INSTRUCTIONS
 
-  // Step 8: Append mandatory image handling instructions
+  // Step 9: Append mandatory image handling instructions
   return withMathFormatting + '\n\n' + IMAGE_HANDLING_INSTRUCTIONS
 }
 
