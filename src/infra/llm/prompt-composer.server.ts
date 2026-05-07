@@ -75,18 +75,27 @@ IMPORTANT:
  * 1. All published system prompts (joined with separator)
  * 2. Teacher profile block (injected into system role, NOT stored in conversation)
  * 3. Lesson-specific resolved prompt
- * 4. Mandatory math formatting instructions
- * 5. Mandatory image handling instructions
+ * 4. Course context text (if provided)
+ * 5. Lesson context text (AI-injected lesson content, if provided)
+ * 6. Lesson exercises (structured content blocks, if provided)
+ * 7. Mandatory math formatting instructions
+ * 8. Mandatory image handling instructions
  *
  * @param systemPrompts - Array of system prompt templates (can be empty)
  * @param lessonPromptTemplate - Resolved lesson prompt template
  * @param teacherProfileBlock - Optional teacher profile block to inject
+ * @param lessonContextText - Optional AI context text for the lesson (lessonContextText or description)
+ * @param courseContextText - Optional AI context text for the course
+ * @param exercises - Optional exercises associated with the lesson
  * @returns Final composed system instructions string
  */
 export function composeSystemInstructions(
   systemPrompts: string[],
   lessonPromptTemplate: string,
   teacherProfileBlock?: string,
+  lessonContextText?: string,
+  courseContextText?: string,
+  exercises?: Array<{ id: string; title?: string; content: unknown }>,
 ): string {
   // Step 1: Join system prompts (if any)
   const systemPart =
@@ -102,9 +111,111 @@ export function composeSystemInstructions(
   // Step 3: Append lesson prompt
   const withLessonPrompt = withTeacherProfile + lessonPromptTemplate
 
-  // Step 4: Append mandatory math formatting instructions
-  const withMathFormatting = withLessonPrompt + '\n\n' + MATH_FORMATTING_INSTRUCTIONS
+  // Step 4: Append course context text (if provided)
+  const withCourseContext = courseContextText
+    ? withLessonPrompt + '\n\n## Course Context\n' + courseContextText
+    : withLessonPrompt
 
-  // Step 5: Append mandatory image handling instructions
+  // Step 5: Append lesson context text (if provided)
+  const withLessonContext =
+    lessonContextText && lessonContextText.trim().length > 0
+      ? withCourseContext + '\n\n## Lesson Content\n' + lessonContextText.trim()
+      : withCourseContext
+
+  // Step 6: Append lesson exercises (if provided)
+  let withExercises = withLessonContext
+  if (exercises && exercises.length > 0) {
+    const exercisesSection =
+      '\n\n## Lesson Exercises\nThe following exercises are available in this lesson. You can answer questions about them:\n\n' +
+      exercises
+        .map((exercise, idx) => {
+          const title = exercise.title ? `**${exercise.title}**` : `Exercise ${idx + 1}`
+          const content = formatExerciseContent(exercise.content)
+          return `${idx + 1}. ${title}\n${content}`
+        })
+        .join('\n\n')
+
+    withExercises = withLessonContext + exercisesSection
+  }
+
+  // Step 7: Append mandatory math formatting instructions
+  const withMathFormatting = withExercises + '\n\n' + MATH_FORMATTING_INSTRUCTIONS
+
+  // Step 8: Append mandatory image handling instructions
   return withMathFormatting + '\n\n' + IMAGE_HANDLING_INSTRUCTIONS
+}
+
+/**
+ * Format exercise content blocks into readable text for the system prompt.
+ * Extracts key information from content blocks to give the LLM context.
+ */
+function formatExerciseContent(content: unknown): string {
+  if (!content || typeof content !== 'object') return '(No content)'
+
+  const data = content as { blocks?: unknown[] }
+  if (!Array.isArray(data.blocks) || data.blocks.length === 0) return '(No content)'
+
+  const parts: string[] = []
+
+  for (const block of data.blocks) {
+    if (!block || typeof block !== 'object') continue
+
+    const b = block as { type?: string; value?: string; prompt?: unknown }
+
+    if (b.type === 'latex') {
+      const latexBlock = b as { type: 'latex'; latex: string }
+      parts.push(`[LaTeX]: ${latexBlock.latex}`)
+    } else if (b.type === 'rich_text') {
+      const rtBlock = b as { type: 'rich_text'; value: string }
+      if (rtBlock.value) parts.push(rtBlock.value)
+    } else if (b.type === 'question_select') {
+      const qBlock = b as { type: 'question_select'; prompt?: { value?: string } }
+      const prompt =
+        qBlock.prompt && typeof qBlock.prompt === 'object'
+          ? (qBlock.prompt as { value?: string }).value
+          : undefined
+      if (prompt) parts.push(`[Question]: ${prompt}`)
+    } else if (b.type === 'question_free_response') {
+      const qBlock = b as { type: 'question_free_response'; prompt?: { value?: string } }
+      const prompt =
+        qBlock.prompt && typeof qBlock.prompt === 'object'
+          ? (qBlock.prompt as { value?: string }).value
+          : undefined
+      if (prompt) parts.push(`[Free Response Question]: ${prompt}`)
+    } else if (b.type === 'question_table') {
+      const qBlock = b as { type: 'question_table'; prompt?: { value?: string } }
+      const prompt =
+        qBlock.prompt && typeof qBlock.prompt === 'object'
+          ? (qBlock.prompt as { value?: string }).value
+          : undefined
+      if (prompt) parts.push(`[Table Question]: ${prompt}`)
+    } else if (b.type === 'question_matching') {
+      const qBlock = b as { type: 'question_matching'; prompt?: { value?: string } }
+      const prompt =
+        qBlock.prompt && typeof qBlock.prompt === 'object'
+          ? (qBlock.prompt as { value?: string }).value
+          : undefined
+      if (prompt) parts.push(`[Matching Question]: ${prompt}`)
+    } else if (b.type === 'html') {
+      const htmlBlock = b as { type: 'html'; html?: string }
+      if (htmlBlock.html) {
+        // Strip HTML tags for a cleaner text representation
+        const text = htmlBlock.html
+          .replace(/<[^>]+>/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim()
+        if (text) parts.push(`[Content]: ${text}`)
+      }
+    } else if (b.type === 'svg') {
+      const svgBlock = b as { type: 'svg'; caption?: { value?: string } }
+      const caption =
+        svgBlock.caption && typeof svgBlock.caption === 'object'
+          ? (svgBlock.caption as { value?: string }).value
+          : undefined
+      if (caption) parts.push(`[SVG Diagram]: ${caption}`)
+    }
+    // Skip geometry, axis, multi_axis blocks (visual content not easily represented in text)
+  }
+
+  return parts.length > 0 ? parts.join('\n') : '(No extractable text content)'
 }
