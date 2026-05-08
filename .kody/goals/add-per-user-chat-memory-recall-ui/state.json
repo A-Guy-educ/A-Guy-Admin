@@ -2,6 +2,7 @@
   "version": 1,
   "state": "active",
   "startedAt": "2026-05-07T15:25:27.611Z",
-  "updatedAt": "2026-05-08T15:34:15.934976Z",
-  "lastDispatchedIssue": 1471
+  "updatedAt": "2026-05-08T16:12:08.189967Z",
+  "lastDispatchedIssue": 1471,
+  "goalIssueNumber": 1508
 }
