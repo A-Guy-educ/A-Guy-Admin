@@ -59,4 +59,5 @@ Daily digest of **tasks already assigned to Kody** — any open issue carrying a
 - `data.lastRunISO`: ISO timestamp of the last tick that posted a digest (or null)
 - `data.trackingIssue`: number of the rolling tracking issue (or null until first run)
 - `data.lastStuckCount`: count of stuck tasks in the last digest (or 0)
+- `data.nextEligibleISO`: UTC ISO timestamp this job will next be eligible to act, computed from the cadence guard above. **Always emit this, every tick.** For this job: `data.lastRunISO + 20h`. Surfaced as "next run" on the dashboard.
 - `done`: always `false` — this job is evergreen.
