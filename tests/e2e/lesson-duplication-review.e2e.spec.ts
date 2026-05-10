@@ -305,5 +305,12 @@ test.describe('Lesson Duplication Review', () => {
 
     // Verify sticky summary bar shows exercise counts
     await expect(page.getByText(/of .* exercises reviewed/)).toBeVisible()
+
+    // Click "Looks right" on the first exercise
+    const looksRightBtn = page.getByRole('button', { name: 'Looks right' }).first()
+    await looksRightBtn.click()
+
+    // Assert the "Reviewed" badge appears for that exercise
+    await expect(page.getByText('Reviewed').first()).toBeVisible()
   })
 })

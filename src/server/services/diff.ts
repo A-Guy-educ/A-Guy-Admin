@@ -1,6 +1,6 @@
 /**
  * Diff utility for comparing exercise block arrays.
- * Re-exports the shared implementation from @/server/services/diff.
+ * Re-exports the shared implementation from @/utils/diff.
  *
  * @fileType utility
  * @domain lesson-duplication
@@ -13,4 +13,4 @@ export {
   classifyDiff,
   numericDifferencesOnly,
   type DiffCategory,
-} from '@/server/services/diff'
+} from '@/utils/diff'

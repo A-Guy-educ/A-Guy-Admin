@@ -8,11 +8,15 @@
  *  4. POST /resolve — all failures resolved → status=succeeded auto-transition
  *  5. POST /resolve — non-admin returns 401
  *  6. POST /resolve — record not in needs_review returns 500
+ *  7. POST /resolve — looks_right marks failure resolved without content change (via HTTP)
+ *  8. POST /resolve — all looks_right → status=succeeded (via HTTP)
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { getPayload, type Payload } from 'payload'
 import config from '@payload-config'
 
+import { POST as resolvePOST } from '@/app/api/lesson-duplications/[id]/resolve/route'
+import { NextRequest } from 'next/server'
 import { getDefaultTenantSlug } from '@/server/repos/tenant/get-default-tenant'
 
 async function ensureDefaultTenant(payload: Payload): Promise<string> {
@@ -34,6 +38,7 @@ async function ensureDefaultTenant(payload: Payload): Promise<string> {
 
 describe('Lesson duplication review — resolve endpoint', () => {
   let payload: Payload
+  let adminToken: string
   let categoryId: string
   let courseId: string
   let chapterId: string
@@ -173,6 +178,23 @@ describe('Lesson duplication review — resolve endpoint', () => {
     })
     outputExerciseId2 = outEx2.id
     cleanupExerciseIds.push(outputExerciseId2)
+
+    // Create admin user for HTTP endpoint tests
+    const adminUser = await payload.create({
+      collection: 'users',
+      data: {
+        email: `resolve-admin-${ts}@example.com`,
+        password: 'TestPassword123!',
+        name: `Resolve Admin ${ts}`,
+        role: 'admin' as never,
+      },
+      overrideAccess: true,
+    })
+    const loginResult = await payload.login({
+      collection: 'users',
+      data: { email: adminUser.email, password: 'TestPassword123!' },
+    })
+    adminToken = loginResult.token!
   }, 120000)
 
   afterAll(async () => {
@@ -657,5 +679,189 @@ describe('Lesson duplication review — resolve endpoint', () => {
     })
 
     expect(updated.status).toBe('succeeded')
+  })
+
+  describe('POST /resolve via HTTP — looks_right action', () => {
+    it('looks_right action marks failure resolved without touching exercise content', async () => {
+      // Create a fresh needs_review record with an exercise that has content
+      const ex1 = await payload.create({
+        collection: 'exercises',
+        data: {
+          title: `HTTP LooksRight Ex ${Date.now()}`,
+          lesson: sourceLessonId,
+          content: {
+            blocks: [{ id: 'r1', type: 'rich_text', format: 'md-math-v1', value: 'Original text' }],
+          },
+        },
+        draft: true,
+      })
+      cleanupExerciseIds.push(ex1.id)
+
+      const outEx1 = await payload.create({
+        collection: 'exercises',
+        data: {
+          title: `Variation of ${ex1.id}`,
+          lesson: outputLessonId,
+          content: {
+            blocks: [{ id: 'r1', type: 'rich_text', format: 'md-math-v1', value: 'Changed text' }],
+          },
+        },
+        draft: true,
+      })
+      cleanupExerciseIds.push(outEx1.id)
+
+      const record = await payload.create({
+        collection: 'lesson-duplications',
+        data: {
+          sourceLesson: sourceLessonId,
+          level: 'medium',
+          status: 'needs_review',
+          outputLesson: outputLessonId,
+          outputExercises: [
+            {
+              sourceExerciseId: ex1.id,
+              outputExerciseId: outEx1.id,
+              strategy: 'ai',
+            },
+          ],
+          failures: [
+            {
+              exerciseRef: ex1.id,
+              sectionIndex: 0,
+              code: 'PHRA_SNG_CHA GE',
+              message: 'Phrasing changed',
+              suggestedAction: 'keep',
+              resolved: false,
+            },
+          ],
+        },
+        overrideAccess: true,
+      })
+      cleanupDuplicationIds.push(record.id)
+
+      // Call POST /resolve with action: looks_right
+      const resolveUrl = `http://localhost:3000/api/lesson-duplications/${record.id}/resolve`
+      const request = new NextRequest(resolveUrl, {
+        method: 'POST',
+        headers: {
+          Authorization: `JWT ${adminToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          actions: [{ failureIndex: 0, action: 'looks_right' }],
+        }),
+      })
+      const response = await resolvePOST(request)
+
+      expect(response.status).toBe(200)
+      const data = (await response.json()) as { data?: { status: string } }
+      expect(data.data?.status).toBe('needs_review')
+
+      // Verify the failure is resolved on the record
+      const updated = await payload.findByID({
+        collection: 'lesson-duplications',
+        id: record.id,
+        depth: 0,
+        overrideAccess: true,
+      })
+      const failures = (updated.failures as Array<{ resolved: boolean }>) ?? []
+      expect(failures[0]?.resolved).toBe(true)
+
+      // Verify exercise content is unchanged
+      const exercise = await payload.findByID({
+        collection: 'exercises',
+        id: outEx1.id,
+        depth: 0,
+        overrideAccess: true,
+      })
+      const content = (exercise as unknown as { content?: { blocks: Array<{ value: string }> } })
+        .content
+      expect(content?.blocks?.[0]?.value).toBe('Changed text')
+    })
+
+    it('all looks_right → status=succeeded', async () => {
+      const ex1 = await payload.create({
+        collection: 'exercises',
+        data: { title: `HTTP AllLooksRight Ex1 ${Date.now()}`, lesson: sourceLessonId },
+        draft: true,
+      })
+      cleanupExerciseIds.push(ex1.id)
+
+      const ex2 = await payload.create({
+        collection: 'exercises',
+        data: { title: `HTTP AllLooksRight Ex2 ${Date.now()}`, lesson: sourceLessonId },
+        draft: true,
+      })
+      cleanupExerciseIds.push(ex2.id)
+
+      const outEx1 = await payload.create({
+        collection: 'exercises',
+        data: { title: `Variation of ${ex1.id}`, lesson: outputLessonId },
+        draft: true,
+      })
+      cleanupExerciseIds.push(outEx1.id)
+
+      const outEx2 = await payload.create({
+        collection: 'exercises',
+        data: { title: `Variation of ${ex2.id}`, lesson: outputLessonId },
+        draft: true,
+      })
+      cleanupExerciseIds.push(outEx2.id)
+
+      const record = await payload.create({
+        collection: 'lesson-duplications',
+        data: {
+          sourceLesson: sourceLessonId,
+          level: 'medium',
+          status: 'needs_review',
+          outputLesson: outputLessonId,
+          outputExercises: [
+            { sourceExerciseId: ex1.id, outputExerciseId: outEx1.id, strategy: 'ai' },
+            { sourceExerciseId: ex2.id, outputExerciseId: outEx2.id, strategy: 'ai' },
+          ],
+          failures: [
+            {
+              exerciseRef: ex1.id,
+              sectionIndex: 0,
+              code: 'PHRA_SNG_CHA GE',
+              message: 'Phrasing changed',
+              suggestedAction: 'keep',
+              resolved: false,
+            },
+            {
+              exerciseRef: ex2.id,
+              sectionIndex: 0,
+              code: 'PHRASING_CHANGED',
+              message: 'Phrasing changed',
+              suggestedAction: 'keep',
+              resolved: false,
+            },
+          ],
+        },
+        overrideAccess: true,
+      })
+      cleanupDuplicationIds.push(record.id)
+
+      // Call POST /resolve with looks_right for both failures
+      const resolveUrl = `http://localhost:3000/api/lesson-duplications/${record.id}/resolve`
+      const request = new NextRequest(resolveUrl, {
+        method: 'POST',
+        headers: {
+          Authorization: `JWT ${adminToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          actions: [
+            { failureIndex: 0, action: 'looks_right' },
+            { failureIndex: 1, action: 'looks_right' },
+          ],
+        }),
+      })
+      const response = await resolvePOST(request)
+
+      expect(response.status).toBe(200)
+      const data = (await response.json()) as { data?: { status: string } }
+      expect(data.data?.status).toBe('succeeded')
+    })
   })
 })
