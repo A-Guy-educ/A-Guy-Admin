@@ -471,4 +471,191 @@ describe('Lesson duplication review — resolve endpoint', () => {
     })
     expect(exercise).toBeTruthy()
   })
+
+  it('looks_right action marks failure resolved without touching exercise content', async () => {
+    // Create a fresh needs_review record with an exercise that has content
+    const ex1 = await payload.create({
+      collection: 'exercises',
+      data: {
+        title: `LooksRight Ex ${Date.now()}`,
+        lesson: sourceLessonId,
+        content: {
+          blocks: [{ id: 'r1', type: 'rich_text', format: 'md-math-v1', value: 'Original text' }],
+        },
+      },
+      draft: true,
+    })
+    cleanupExerciseIds.push(ex1.id)
+
+    const outEx1 = await payload.create({
+      collection: 'exercises',
+      data: {
+        title: `Variation of ${ex1.id}`,
+        lesson: outputLessonId,
+        content: {
+          blocks: [{ id: 'r1', type: 'rich_text', format: 'md-math-v1', value: 'Changed text' }],
+        },
+      },
+      draft: true,
+    })
+    cleanupExerciseIds.push(outEx1.id)
+
+    const record = await payload.create({
+      collection: 'lesson-duplications',
+      data: {
+        sourceLesson: sourceLessonId,
+        level: 'medium',
+        status: 'needs_review',
+        outputLesson: outputLessonId,
+        outputExercises: [
+          {
+            sourceExerciseId: ex1.id,
+            outputExerciseId: outEx1.id,
+            strategy: 'ai',
+          },
+        ],
+        failures: [
+          {
+            exerciseRef: ex1.id,
+            sectionIndex: 0,
+            code: 'PHRA_SNG_CHA GE',
+            message: 'Phrasing changed',
+            suggestedAction: 'keep',
+            resolved: false,
+          },
+        ],
+      },
+      overrideAccess: true,
+    })
+    cleanupDuplicationIds.push(record.id)
+
+    // Apply looks_right action on failure[0]
+    const updated = await payload.update({
+      collection: 'lesson-duplications',
+      id: record.id,
+      data: {
+        failures: [
+          {
+            exerciseRef: ex1.id,
+            sectionIndex: 0,
+            code: 'PHRASING_CHANGED',
+            message: 'Phrasing changed',
+            suggestedAction: 'keep',
+            resolved: true,
+          },
+        ],
+      },
+      overrideAccess: true,
+    })
+
+    // The failure is resolved
+    expect((updated.failures as unknown[])[0]).toMatchObject({ resolved: true })
+    // Status is still needs_review (one failure resolved but not all)
+    expect(updated.status).toBe('needs_review')
+    // Exercise content is unchanged
+    const exercise = await payload.findByID({
+      collection: 'exercises',
+      id: outEx1.id,
+      depth: 0,
+      overrideAccess: true,
+    })
+    expect(exercise).toBeTruthy()
+    const content = (exercise as unknown as { content?: { blocks: Array<{ value: string }> } })
+      .content
+    expect(content?.blocks?.[0]?.value).toBe('Changed text')
+  })
+
+  it('all looks_right → status=succeeded', async () => {
+    const ex1 = await payload.create({
+      collection: 'exercises',
+      data: { title: `AllLooksRight Ex1 ${Date.now()}`, lesson: sourceLessonId },
+      draft: true,
+    })
+    cleanupExerciseIds.push(ex1.id)
+
+    const ex2 = await payload.create({
+      collection: 'exercises',
+      data: { title: `AllLooksRight Ex2 ${Date.now()}`, lesson: sourceLessonId },
+      draft: true,
+    })
+    cleanupExerciseIds.push(ex2.id)
+
+    const outEx1 = await payload.create({
+      collection: 'exercises',
+      data: { title: `Variation of ${ex1.id}`, lesson: outputLessonId },
+      draft: true,
+    })
+    cleanupExerciseIds.push(outEx1.id)
+
+    const outEx2 = await payload.create({
+      collection: 'exercises',
+      data: { title: `Variation of ${ex2.id}`, lesson: outputLessonId },
+      draft: true,
+    })
+    cleanupExerciseIds.push(outEx2.id)
+
+    const record = await payload.create({
+      collection: 'lesson-duplications',
+      data: {
+        sourceLesson: sourceLessonId,
+        level: 'medium',
+        status: 'needs_review',
+        outputLesson: outputLessonId,
+        outputExercises: [
+          { sourceExerciseId: ex1.id, outputExerciseId: outEx1.id, strategy: 'ai' },
+          { sourceExerciseId: ex2.id, outputExerciseId: outEx2.id, strategy: 'ai' },
+        ],
+        failures: [
+          {
+            exerciseRef: ex1.id,
+            sectionIndex: 0,
+            code: 'PHRA_SNG_CHA GE',
+            message: 'Phrasing changed',
+            suggestedAction: 'keep',
+            resolved: false,
+          },
+          {
+            exerciseRef: ex2.id,
+            sectionIndex: 0,
+            code: 'PHRASING_CHANGED',
+            message: 'Phrasing changed',
+            suggestedAction: 'keep',
+            resolved: false,
+          },
+        ],
+      },
+      overrideAccess: true,
+    })
+    cleanupDuplicationIds.push(record.id)
+
+    // Mark all failures as resolved (mirrors looks_right behavior)
+    const updated = await payload.update({
+      collection: 'lesson-duplications',
+      id: record.id,
+      data: {
+        failures: [
+          {
+            exerciseRef: ex1.id,
+            sectionIndex: 0,
+            code: 'PHRASING_CHANGED',
+            message: 'Phrasing changed',
+            suggestedAction: 'keep',
+            resolved: true,
+          },
+          {
+            exerciseRef: ex2.id,
+            sectionIndex: 0,
+            code: 'PHRASING_CHANGED',
+            message: 'Phrasing changed',
+            suggestedAction: 'keep',
+            resolved: true,
+          },
+        ],
+        status: 'succeeded',
+      },
+      overrideAccess: true,
+    })
+
+    expect(updated.status).toBe('succeeded')
+  })
 })
