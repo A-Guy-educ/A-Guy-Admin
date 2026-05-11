@@ -127,7 +127,7 @@ describe('Lesson duplication endpoint — queues orchestrator job for non-none l
     const req = {
       payload,
       user: adminUser,
-      url: `http://localhost:3000/api/lessons/${sourceLessonId}/duplicate`,
+      url: `http://localhost:3000/api/lessons/${sourceLessonId}/duplicate-variation`,
       headers: new Headers({ 'content-type': 'application/json' }),
       json: async () => ({ level: 'deep', subject: 'algebra' }),
     } as unknown as Parameters<typeof duplicateLessonEndpoint>[0]

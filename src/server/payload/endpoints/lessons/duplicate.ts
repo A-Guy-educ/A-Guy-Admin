@@ -129,9 +129,13 @@ export async function duplicateLessonEndpoint(req: PayloadRequest): Promise<Resp
     return Response.json({ error: 'Admin access required' }, { status: 403 })
   }
 
-  // 2) Lesson id from path: /lessons/:id/duplicate
+  // 2) Lesson id from path: /lessons/:id/duplicate-variation
+  // Path was renamed from /duplicate to /duplicate-variation because Payload's
+  // built-in collection duplicate handler also registers /lessons/:id/duplicate
+  // and shadowed our custom endpoint, silently routing requests to its dumb
+  // field-copy instead.
   const url = new URL(req.url || 'http://localhost')
-  const match = url.pathname.match(/\/lessons\/([^/]+)\/duplicate/)
+  const match = url.pathname.match(/\/lessons\/([^/]+)\/duplicate(?:-variation)?/)
   const lessonId = match?.[1]
   if (!lessonId) {
     return Response.json({ error: 'Lesson id missing from path' }, { status: 400 })
