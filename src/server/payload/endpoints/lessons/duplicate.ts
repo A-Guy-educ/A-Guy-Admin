@@ -70,12 +70,22 @@ async function deepCloneLesson(req: PayloadRequest, sourceLessonId: string): Pro
 
   // Build new lesson data — same fields, but force a copy-suffixed title and
   // let the Lessons beforeChange hook regenerate a unique slug.
+  // Strip the source `blocks` JSON: it references source exercise IDs by string,
+  // and the exercise auto-add hook will rebuild it as new exercises are created.
+  // Strip `slug` so the formatSlugAsync hook regenerates from the new title
+  // (passing `slug: undefined` through `...sourceData` was ambiguous).
   const sourceData = stripManagedFields(source as unknown as Record<string, unknown>)
   const baseTitle = typeof sourceData.title === 'string' ? sourceData.title : 'Untitled'
+  const {
+    slug: _ignoreSlug,
+    blocks: _ignoreBlocks,
+    ...restSource
+  } = sourceData as Record<string, unknown>
+  void _ignoreSlug
+  void _ignoreBlocks
   const newLessonData = {
-    ...sourceData,
+    ...restSource,
     title: `${baseTitle} - Copy`,
-    slug: undefined, // force re-generation by hook
     status: 'draft', // never publish a duplicate by default
   }
 
@@ -210,14 +220,19 @@ export async function duplicateLessonEndpoint(req: PayloadRequest): Promise<Resp
     }
   }
 
-  // 8) For light/medium/deep, enqueue the orchestrator job and return immediately.
-  //    Without this, the record sits in `pending` forever.
+  // 8) For light/medium/deep, enqueue the orchestrator job AND trigger it.
+  //    Payload's job queue is just a DB insert — nothing executes pending jobs
+  //    on Vercel unless we explicitly ping /api/jobs/run-immediate. Without
+  //    this two-step, records sat in `pending` forever and the entire AI
+  //    pipeline was unreachable.
+  let queuedJobId: string | number | null = null
   try {
-    await req.payload.jobs.queue({
+    const queued = await req.payload.jobs.queue({
       task: 'lesson_duplication',
       input: { duplicationId: record.id },
       req,
     })
+    queuedJobId = (queued as { id?: string | number }).id ?? null
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
     await req.payload.update({
@@ -232,5 +247,27 @@ export async function duplicateLessonEndpoint(req: PayloadRequest): Promise<Resp
       { status: 500 },
     )
   }
-  return Response.json({ id: record.id, status: 'pending' })
+
+  // Fire-and-forget the run-immediate ping. We do NOT await — the user shouldn't
+  // wait for AI generation in the HTTP response. The runner endpoint is best-
+  // effort: if it can't reach the job before the platform kills this function,
+  // an admin can re-trigger via the jobs admin page.
+  if (queuedJobId !== null) {
+    const url = new URL(req.url || 'http://localhost')
+    const origin = `${url.protocol}//${url.host}`
+    const cookieHeader = req.headers.get('cookie')
+    void fetch(`${origin}/api/jobs/run-immediate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(cookieHeader ? { cookie: cookieHeader } : {}),
+      },
+      body: JSON.stringify({ jobId: String(queuedJobId) }),
+      keepalive: true,
+    }).catch(() => {
+      // Swallow — fire-and-forget. Admin can re-trigger if it doesn't fire.
+    })
+  }
+
+  return Response.json({ id: record.id, status: 'pending', jobId: queuedJobId })
 }

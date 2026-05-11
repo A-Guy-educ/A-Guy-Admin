@@ -190,6 +190,8 @@ export const LessonDuplicateAction: React.FC = () => {
               padding: 24,
               width: 480,
               maxWidth: '90vw',
+              maxHeight: '85vh',
+              overflowY: 'auto',
               color: 'var(--theme-elevation-1000)',
             }}
           >
