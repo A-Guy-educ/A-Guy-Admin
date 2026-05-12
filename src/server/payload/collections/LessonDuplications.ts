@@ -72,6 +72,13 @@ export const LessonDuplications: CollectionConfig = {
     group: 'System',
     description:
       'Job records for the lesson-duplication pipeline. Use the review screen at /admin/lesson-duplications/<id> to skip / regenerate / keep individual exercise failures.',
+    components: {
+      edit: {
+        beforeDocumentControls: [
+          '@/ui/admin/LessonDuplicationReview/ReviewLinkButton#LessonDuplicationReviewLink',
+        ],
+      },
+    },
   },
   access: {
     create: adminOnly,

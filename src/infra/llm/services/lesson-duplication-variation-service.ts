@@ -297,13 +297,57 @@ export async function generateVariation(
   // Merge: pass-1 blocks (question/hint) + pass-2 solution fields
   const mergedBlocks = mergePassOutputs(pass1Output, pass2Patch)
 
+  // Sanitize AI output before we hand it to payload.create. Catches the
+  // common "Gemini hallucinated a field" class of bug (e.g. `answer.kind` on a
+  // question_select block, which broke the calculus run) by stripping known
+  // bad fields. Truly malformed blocks still fail at payload.create — which
+  // the orchestrator's per-exercise isolation handles as GENERATION_FAILED.
+  const cleanedBlocks = sanitizeAiBlocks(mergedBlocks)
+
   const latencyMs = Date.now() - startTime
   logger.info(
     { latencyMs, level, subject, exerciseId },
     '[LessonDuplicationVariation] Two-pass complete',
   )
 
-  return { exercise: { ...exercise, content: { blocks: mergedBlocks } } }
+  return { exercise: { ...exercise, content: { blocks: cleanedBlocks } } }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AI output sanitization + schema gate
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Strip known AI-hallucinated fields from each block before we run schema
+ * validation. Adding cases here is preferred over loosening the Zod schemas.
+ *
+ * Known patterns:
+ *  - `answer.kind`: only valid on question_geometry / question_axis (uses
+ *    QuestionAnswerSchema). On other question blocks Gemini sometimes adds
+ *    `kind` by analogy, which the strict McqAnswerSchema rejects.
+ */
+function sanitizeAiBlocks(blocks: unknown[]): unknown[] {
+  return blocks.map((block) => {
+    if (!block || typeof block !== 'object') return block
+    const b = block as Record<string, unknown>
+    const type = typeof b.type === 'string' ? b.type : ''
+
+    // Strip `answer.kind` on question types where it's not in the schema.
+    if (
+      type.startsWith('question_') &&
+      type !== 'question_geometry' &&
+      type !== 'question_axis' &&
+      b.answer &&
+      typeof b.answer === 'object'
+    ) {
+      const ans = b.answer as Record<string, unknown>
+      if ('kind' in ans) {
+        delete ans.kind
+      }
+    }
+
+    return b
+  })
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
