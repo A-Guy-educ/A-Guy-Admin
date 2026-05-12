@@ -42,29 +42,68 @@ export interface StructuralFailure {
 }
 
 /**
- * Failure codes that DROP the exercise from the output lesson — these usually
- * mean the renderer will crash, the exercise is unsalvageable without a
- * second AI pass, or we can't synthesize a sane placeholder for the missing
- * data. The rest are recorded as warnings and the exercise lands in the
- * output with placeholder text for the missing field.
+ * Failure codes that are NON-BLOCKING. The exercise still ships in the output
+ * lesson with a `_TODO:_` placeholder for the missing field; the admin
+ * polishes from the review screen.
  *
- * MISSING_CORRECT_OPTION / MISSING_WRONG_OPTIONS are blocking because we
- * can't invent plausible MCQ options without knowing the subject matter —
- * a "_TODO_" option set would make the exercise unanswerable, and would
- * then fail McqAnswerSchema's min(2) requirement at save time anyway,
- * producing a duplicate GENERATION_FAILED on top of the warning.
+ * This is intentionally an allowlist of warnings (not a denylist of blockers)
+ * so that ANY future failure code added to FAILURE_CODES defaults to blocking
+ * until someone explicitly decides it's safe to ship with a placeholder. The
+ * exhaustive check in `isBlocking` (assertNever) makes that decision a
+ * compile-time gate.
  */
-export const BLOCKING_FAILURE_CODES = new Set<FailureCode>([
-  FAILURE_CODES.PNG_FORBIDDEN,
-  FAILURE_CODES.INVALID_SVG,
-  FAILURE_CODES.INVALID_GEOMETRY_SPEC,
-  FAILURE_CODES.INVALID_AXIS_SPEC,
-  FAILURE_CODES.INVALID_GUIDED_EXPLANATION,
-  FAILURE_CODES.TOO_MANY_SECTIONS,
-  FAILURE_CODES.MISSING_QUESTION,
-  FAILURE_CODES.MISSING_CORRECT_OPTION,
-  FAILURE_CODES.MISSING_WRONG_OPTIONS,
+const WARNING_FAILURE_CODES = new Set<FailureCode>([
+  FAILURE_CODES.MISSING_HINT,
+  FAILURE_CODES.MISSING_SOLUTION,
+  FAILURE_CODES.MISSING_FULL_SOLUTION,
 ])
+
+/**
+ * True when the given failure code should drop the exercise from the output
+ * lesson (renderer would crash, no safe placeholder can be synthesized, or
+ * save would fail anyway). Exhaustive: TypeScript will fail to compile if a
+ * new FailureCode is added without classifying it here.
+ *
+ * MISSING_CORRECT_OPTION / MISSING_WRONG_OPTIONS are blocking: we can't
+ * invent plausible MCQ options, and McqAnswerSchema's min(2) constraint would
+ * reject the save anyway.
+ */
+export function isBlockingFailureCode(code: FailureCode): boolean {
+  switch (code) {
+    case FAILURE_CODES.PNG_FORBIDDEN:
+    case FAILURE_CODES.INVALID_SVG:
+    case FAILURE_CODES.INVALID_GEOMETRY_SPEC:
+    case FAILURE_CODES.INVALID_AXIS_SPEC:
+    case FAILURE_CODES.INVALID_GUIDED_EXPLANATION:
+    case FAILURE_CODES.TOO_MANY_SECTIONS:
+    case FAILURE_CODES.MISSING_QUESTION:
+    case FAILURE_CODES.MISSING_CORRECT_OPTION:
+    case FAILURE_CODES.MISSING_WRONG_OPTIONS:
+      return true
+    case FAILURE_CODES.MISSING_HINT:
+    case FAILURE_CODES.MISSING_SOLUTION:
+    case FAILURE_CODES.MISSING_FULL_SOLUTION:
+      return false
+    default: {
+      // Exhaustive check: adding a new FailureCode without a case here
+      // will fail to compile.
+      const _exhaustive: never = code
+      void _exhaustive
+      // Fail-safe at runtime: treat unknown codes as blocking.
+      return true
+    }
+  }
+}
+
+/**
+ * @deprecated Use `isBlockingFailureCode(code)` for new code. Kept for
+ * existing call sites that import the Set directly.
+ */
+export const BLOCKING_FAILURE_CODES: ReadonlySet<FailureCode> = new Set(
+  (Object.values(FAILURE_CODES) as FailureCode[]).filter(
+    (code) => !WARNING_FAILURE_CODES.has(code),
+  ),
+)
 
 /**
  * Return a NEW array of new block objects with missing hint / solution /

@@ -17,12 +17,35 @@
  */
 import type { PayloadRequest } from 'payload'
 
+import { logger } from '@/infra/utils/logger'
 import {
   DUPLICATION_LEVELS,
   DUPLICATION_SUBJECTS,
   type DuplicationLevel,
   type DuplicationSubject,
 } from '@/server/payload/collections/LessonDuplications'
+
+/**
+ * Resolve the public origin for fire-and-forget callbacks (run-immediate ping).
+ * Behind Vercel's proxy `req.url` is often the internal URL, not the public
+ * one — so prefer explicit env vars, fall back to req.url, and last resort
+ * localhost (dev). If all three are wrong, the fire-and-forget POST goes to
+ * the void and the admin has to manually trigger the job from the jobs page.
+ */
+function resolvePublicOrigin(req: PayloadRequest): string {
+  if (process.env.NEXT_PUBLIC_SERVER_URL) {
+    return process.env.NEXT_PUBLIC_SERVER_URL.replace(/\/$/, '')
+  }
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`
+  }
+  try {
+    const url = new URL(req.url || 'http://localhost:3000')
+    return `${url.protocol}//${url.host}`
+  } catch {
+    return 'http://localhost:3000'
+  }
+}
 
 interface DuplicateBody {
   level?: unknown
@@ -68,21 +91,29 @@ async function deepCloneLesson(req: PayloadRequest, sourceLessonId: string): Pro
     req,
   })
 
-  // Build new lesson data — same fields, but force a copy-suffixed title and
-  // let the Lessons beforeChange hook regenerate a unique slug.
-  // Strip the source `blocks` JSON: it references source exercise IDs by string,
-  // and the exercise auto-add hook will rebuild it as new exercises are created.
-  // Strip `slug` so the formatSlugAsync hook regenerates from the new title
-  // (passing `slug: undefined` through `...sourceData` was ambiguous).
+  // Build new lesson data. We spread every non-managed source field so the
+  // variation inherits accessType / visibleRenderers / contentStatus / etc.
+  // but explicitly drop fields that should NOT carry over:
+  //  - slug: regenerated from the new title by formatSlugAsync hook.
+  //  - blocks: references source exercise IDs by string. The exercise
+  //    auto-add hook rebuilds it as new exercises are cloned.
+  //  - translatedFrom: this duplicate is a fresh lesson, not a translation
+  //    of whatever the source was translated from.
+  //  - createdBy: set to the duplicating admin via createdByField hook on
+  //    insert. Inheriting the source's createdBy is wrong.
   const sourceData = stripManagedFields(source as unknown as Record<string, unknown>)
   const baseTitle = typeof sourceData.title === 'string' ? sourceData.title : 'Untitled'
   const {
     slug: _ignoreSlug,
     blocks: _ignoreBlocks,
+    translatedFrom: _ignoreTranslatedFrom,
+    createdBy: _ignoreCreatedBy,
     ...restSource
   } = sourceData as Record<string, unknown>
   void _ignoreSlug
   void _ignoreBlocks
+  void _ignoreTranslatedFrom
+  void _ignoreCreatedBy
   const newLessonData = {
     ...restSource,
     title: `${baseTitle} - Copy`,
@@ -257,8 +288,7 @@ export async function duplicateLessonEndpoint(req: PayloadRequest): Promise<Resp
   // effort: if it can't reach the job before the platform kills this function,
   // an admin can re-trigger via the jobs admin page.
   if (queuedJobId !== null) {
-    const url = new URL(req.url || 'http://localhost')
-    const origin = `${url.protocol}//${url.host}`
+    const origin = resolvePublicOrigin(req)
     const cookieHeader = req.headers.get('cookie')
     void fetch(`${origin}/api/jobs/run-immediate`, {
       method: 'POST',
@@ -268,8 +298,13 @@ export async function duplicateLessonEndpoint(req: PayloadRequest): Promise<Resp
       },
       body: JSON.stringify({ jobId: String(queuedJobId) }),
       keepalive: true,
-    }).catch(() => {
-      // Swallow — fire-and-forget. Admin can re-trigger if it doesn't fire.
+    }).catch((err) => {
+      // Fire-and-forget — log so we can spot mis-routed runners in production.
+      // The job is still queued and an admin can re-trigger from the jobs UI.
+      logger.warn(
+        { err, origin, jobId: queuedJobId, duplicationId: record.id },
+        'Run-immediate ping failed; job remains queued',
+      )
     })
   }
 

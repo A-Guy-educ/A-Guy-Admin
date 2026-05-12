@@ -139,6 +139,15 @@ export async function generateVariation(
   // cooldown waits. The Genkit adapter wraps every call in a 60s circuit
   // breaker; once it opens, subsequent exercises also fail until cooldown ends.
   // We respect the breaker's "Try again in Xs" message and pause for that long.
+  //
+  // Worst-case wall time per pass (one timeout + all backoffs + 2 breaker
+  // waits) ≈ 180s + (2+5+12)s + 2×60s ≈ ~5min. Two passes per exercise = ~10min
+  // worst case. With CONCURRENCY_LIMIT=1 this multiplies linearly with exercise
+  // count, easily exceeding Vercel function timeout for big lessons. If the
+  // function is killed mid-exercise the LessonDuplications record stays in
+  // 'running' with whatever partial progress was streamed to DB; an admin can
+  // re-trigger via the jobs UI. Long-term fix is an external queue worker
+  // (Inngest / Trigger.dev) — out of scope for this PR.
   const maxAttempts = 1 + 1 + (RATE_LIMIT_MAX_ATTEMPTS - 1) + CIRCUIT_BREAKER_MAX_ATTEMPTS
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {

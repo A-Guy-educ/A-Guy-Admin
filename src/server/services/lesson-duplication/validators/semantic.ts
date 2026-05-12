@@ -85,9 +85,15 @@ export async function validateExerciseSemantic(
     return { ok: true, reasons: [] }
   }
 
-  // Use the deterministic variation model (temp 0, gemini-3.1-pro) for the
-  // semantic review pass. Previously this used EXERCISE_CHAT (flash-lite) which
-  // gave a cheaper but weaker reviewer judging a much stronger generator.
+  // Use the deterministic variation model (temp 0, currently gemini-2.5-pro)
+  // for the semantic review pass. Trade-off: we lose reviewer-vs-generator
+  // independence — a model judging output produced by the SAME model is more
+  // likely to rubber-stamp subtle issues than a different family would. We're
+  // accepting that for now because (a) capability matters more than independence
+  // for math correctness checks, (b) we don't currently have another provider
+  // wired through Genkit at the right tier. If review quality becomes the
+  // bottleneck, swap to a Claude/OpenAI reviewer here without changing the
+  // generator config.
   const provider = await getLLMProvider(payload)
   const providerType = await getProviderTypeFromEnv(payload)
   const modelConfig = getProviderModelConfig(
