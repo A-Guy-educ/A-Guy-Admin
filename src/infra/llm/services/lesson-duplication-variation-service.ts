@@ -167,13 +167,14 @@ export async function generateVariation(
 
   let creativeJsonRetried = false
   let creativeRateLimitRetries = 0
+  let creativeBreakerRetries = 0
   let pass1Output: Partial<Exercise> | null = null
 
-  // Retry envelope: 1 JSON-parse retry + up to RATE_LIMIT_MAX_ATTEMPTS-1
-  // rate-limit retries with backoff. Concurrency=3 with two passes per
-  // exercise can briefly exceed Gemini's per-minute quota; backoff lets the
-  // window reopen instead of failing every exercise in the lesson.
-  const maxAttempts = 1 + 1 + (RATE_LIMIT_MAX_ATTEMPTS - 1) // initial + 1 json + N-1 rate-limit
+  // Retry envelope: 1 JSON-parse retry + rate-limit backoffs + circuit-breaker
+  // cooldown waits. The Genkit adapter wraps every call in a 60s circuit
+  // breaker; once it opens, subsequent exercises also fail until cooldown ends.
+  // We respect the breaker's "Try again in Xs" message and pause for that long.
+  const maxAttempts = 1 + 1 + (RATE_LIMIT_MAX_ATTEMPTS - 1) + CIRCUIT_BREAKER_MAX_ATTEMPTS
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
       const { createGenkitUnifiedAdapter } = await import('../genkit/adapters/unified-adapter')
@@ -196,6 +197,16 @@ export async function generateVariation(
       pass1Output = parseVariationResponse(result.text)
       break
     } catch (error) {
+      const breakerCooldown = getCircuitBreakerCooldownMs(error)
+      if (breakerCooldown !== null && creativeBreakerRetries < CIRCUIT_BREAKER_MAX_ATTEMPTS) {
+        logger.warn(
+          { level, subject, exerciseId, cooldownMs: breakerCooldown },
+          '[LessonDuplicationVariation] Pass 1 hit circuit breaker, waiting for cooldown',
+        )
+        creativeBreakerRetries++
+        await sleep(breakerCooldown)
+        continue
+      }
       if (isRateLimitError(error) && creativeRateLimitRetries < RATE_LIMIT_MAX_ATTEMPTS - 1) {
         const backoff = RATE_LIMIT_BACKOFFS_MS[creativeRateLimitRetries] ?? 12_000
         logger.warn(
@@ -232,7 +243,8 @@ export async function generateVariation(
 
   let pass2JsonRetried = false
   let pass2RateLimitRetries = 0
-  const maxPass2Attempts = 1 + 1 + (RATE_LIMIT_MAX_ATTEMPTS - 1)
+  let pass2BreakerRetries = 0
+  const maxPass2Attempts = 1 + 1 + (RATE_LIMIT_MAX_ATTEMPTS - 1) + CIRCUIT_BREAKER_MAX_ATTEMPTS
 
   for (let attempt = 0; attempt < maxPass2Attempts; attempt++) {
     try {
@@ -256,6 +268,16 @@ export async function generateVariation(
       pass2Patch = parseSolutionDerivationResponse(result.text)
       break
     } catch (error) {
+      const breakerCooldown = getCircuitBreakerCooldownMs(error)
+      if (breakerCooldown !== null && pass2BreakerRetries < CIRCUIT_BREAKER_MAX_ATTEMPTS) {
+        logger.warn(
+          { level, subject, exerciseId, cooldownMs: breakerCooldown },
+          '[LessonDuplicationVariation] Pass 2 hit circuit breaker, waiting for cooldown',
+        )
+        pass2BreakerRetries++
+        await sleep(breakerCooldown)
+        continue
+      }
       if (isRateLimitError(error) && pass2RateLimitRetries < RATE_LIMIT_MAX_ATTEMPTS - 1) {
         const backoff = RATE_LIMIT_BACKOFFS_MS[pass2RateLimitRetries] ?? 12_000
         logger.warn(
@@ -413,7 +435,7 @@ function isJsonParseError(error: unknown): boolean {
 
 /**
  * True for Gemini / Vertex rate-limit and quota-exhausted errors. We treat
- * these as retryable with exponential backoff — concurrency=3 plus 2 passes
+ * these as retryable with exponential backoff — concurrency plus 2 passes
  * per exercise can momentarily exceed the per-minute quota for Gemini 3.1 Pro.
  */
 function isRateLimitError(error: unknown): boolean {
@@ -429,6 +451,20 @@ function isRateLimitError(error: unknown): boolean {
   )
 }
 
+/**
+ * Returns the suggested cooldown in ms if the error is from the genkit
+ * circuit-breaker, else null. The breaker's message format is
+ * `circuit breaker is open ... Try again in 58s.` — parse the seconds.
+ */
+function getCircuitBreakerCooldownMs(error: unknown): number | null {
+  if (!(error instanceof Error)) return null
+  if (!/circuit breaker is open/i.test(error.message)) return null
+  const m = error.message.match(/try again in\s+(\d+)\s*s/i)
+  const secs = m ? parseInt(m[1], 10) : 60
+  // Add a small jitter buffer so the next call doesn't race the cooldown.
+  return secs * 1000 + 1_000
+}
+
 /** Sleep helper for retry backoff. */
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
@@ -439,3 +475,6 @@ const RATE_LIMIT_MAX_ATTEMPTS = 4
 
 /** Backoff schedule (ms) between rate-limit retries — 2s, 5s, 12s. */
 const RATE_LIMIT_BACKOFFS_MS = [2_000, 5_000, 12_000]
+
+/** Max attempts when the circuit breaker is open. Each waits ~60s. */
+const CIRCUIT_BREAKER_MAX_ATTEMPTS = 2
