@@ -399,7 +399,11 @@ export async function runDuplicationOrchestrator(
     const duplicationSubject =
       (duplication.subject as DuplicationSubject | null | undefined) ?? 'mixed'
 
-    // Process all exercises with concurrency limit
+    // Process all exercises with concurrency limit. We isolate ALL per-exercise
+    // failures (strategy errors AND createOutputExercise schema rejections)
+    // inside this callback — letting one throw out of the factory would cause
+    // withConcurrencyLimit's Promise.all to reject, aborting the whole run and
+    // dropping every exercise that hadn't finished yet.
     const results = await withConcurrencyLimit(
       selectedExercises,
       CONCURRENCY_LIMIT,
@@ -411,12 +415,31 @@ export async function runDuplicationOrchestrator(
           duplicationSubject,
           payload,
         )
-        // If exercise succeeded, persist it to the DB
-        if (result !== null) {
+        if (result === null) return null
+
+        // Persist the variation. If payload.create rejects (e.g., Zod strict
+        // mode trips on a malformed AI-generated block or our placeholder
+        // shape), record it as a per-exercise failure and continue — don't
+        // kill the rest of the run.
+        try {
           const mapping = await createOutputExercise(payload, result, outputLessonId)
           return mapping
+        } catch (err) {
+          const message = err instanceof Error ? err.message : 'Unknown create error'
+          logger.error(
+            { exerciseRef: exercise.id, err },
+            'createOutputExercise failed — exercise dropped from output lesson',
+          )
+          await appendFailure(
+            payload,
+            duplicationId,
+            exercise.id,
+            0,
+            GENERATION_FAILURE_CODE,
+            `Failed to save variation: ${message}`,
+          )
+          return null
         }
-        return null
       },
     )
 
