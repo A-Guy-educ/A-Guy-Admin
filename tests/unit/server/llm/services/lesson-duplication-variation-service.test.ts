@@ -674,6 +674,106 @@ describe('generateVariation', () => {
 
   // ── Schema-constrained output ────────────────────────────────────────────
 
+  it('uses adapter `output` when present, even with empty `text` (Gemini responseSchema path)', async () => {
+    // Simulates the production failure path: Genkit's structured-output mode
+    // populates `result.output` but `result.text` comes back empty / non-JSON.
+    // Before the fix, parseVariationResponseFromText would throw "Response
+    // missing required content.blocks field" on the empty text.
+    mockGenerateChatCompletion.mockImplementation(async () => {
+      const callCount = mockGenerateChatCompletion.mock.calls.length
+      if (callCount === 1) {
+        return {
+          text: '',
+          output: {
+            content: {
+              blocks: [
+                {
+                  id: 'block-1',
+                  type: 'question_select',
+                  variant: 'mcq',
+                  prompt: {
+                    type: 'rich_text',
+                    format: 'md-math-v1',
+                    value: 'What is $4+4$?',
+                    mediaIds: [],
+                  },
+                  answer: { options: [], correctOptionIds: ['a'] },
+                },
+              ],
+            },
+          },
+        }
+      }
+      return {
+        text: '',
+        output: {
+          solution: { type: 'rich_text', format: 'md-math-v1', value: '4+4=8', mediaIds: [] },
+          fullSolution: { type: 'rich_text', format: 'md-math-v1', value: '4+4=8', mediaIds: [] },
+          answer: { correctOptionIds: ['a'] },
+        },
+      }
+    })
+
+    const result = await generateVariation(
+      { exercise: makeMockExercise('ex-output-path'), level: 'medium', subject: 'algebra' },
+      mockPayload,
+    )
+
+    const block = (result.exercise.content as { blocks: unknown[] }).blocks[0] as {
+      prompt: { value: string }
+      answer: { correctOptionIds: string[] }
+    }
+    expect(block.prompt.value).toBe('What is $4+4$?')
+    expect(block.answer.correctOptionIds).toEqual(['a'])
+  })
+
+  it('falls back to `text` parsing when `output` is missing (free-text fallback path)', async () => {
+    // Adapter didn't populate `output` (e.g. outputSchema was rejected or
+    // provider returned free text). Service should JSON.parse `text` instead.
+    mockGenerateChatCompletion.mockImplementation(async () => {
+      const callCount = mockGenerateChatCompletion.mock.calls.length
+      if (callCount === 1) {
+        return {
+          text: JSON.stringify({
+            content: {
+              blocks: [
+                {
+                  id: 'block-1',
+                  type: 'question_select',
+                  variant: 'mcq',
+                  prompt: {
+                    type: 'rich_text',
+                    format: 'md-math-v1',
+                    value: 'Fallback?',
+                    mediaIds: [],
+                  },
+                  answer: { options: [], correctOptionIds: ['a'] },
+                },
+              ],
+            },
+          }),
+        }
+      }
+      return {
+        text: JSON.stringify({
+          solution: { type: 'rich_text', format: 'md-math-v1', value: 's', mediaIds: [] },
+          fullSolution: { type: 'rich_text', format: 'md-math-v1', value: 'fs', mediaIds: [] },
+          answer: { correctOptionIds: ['a'] },
+        }),
+      }
+    })
+
+    const result = await generateVariation(
+      { exercise: makeMockExercise('ex-text-fallback'), level: 'light', subject: 'algebra' },
+      mockPayload,
+    )
+
+    const block = (result.exercise.content as { blocks: unknown[] }).blocks[0] as {
+      prompt: { value: string }
+    }
+    expect(block.prompt.value).toBe('Fallback?')
+  })
+
   it('passes outputSchema to the adapter on both passes', async () => {
     const callSchemas: Array<unknown> = []
 

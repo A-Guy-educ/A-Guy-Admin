@@ -141,7 +141,17 @@ export interface UnifiedLLMProvider {
       outputSchema?: import('zod').ZodTypeAny
     },
     payload: Payload,
-  ) => Promise<{ text: string; raw?: unknown }>
+  ) => Promise<{
+    text: string
+    raw?: unknown
+    /**
+     * Genkit's parsed structured output when `outputSchema` was supplied.
+     * When set, callers should prefer this over re-parsing `text` — Genkit
+     * already validated it against the schema and the provider may emit the
+     * structured payload in a form that `text` doesn't faithfully serialize.
+     */
+    output?: unknown
+  }>
 
   // Streaming chat (optional - falls back to generateChatCompletion if not implemented)
   generateStreamingChatCompletion?: (

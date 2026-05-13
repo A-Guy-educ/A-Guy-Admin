@@ -37,8 +37,8 @@ describe('LessonVariationOutputSchema', () => {
     expect(LessonVariationOutputSchema.safeParse({ content: {} }).success).toBe(false)
   })
 
-  it('rejects empty blocks array', () => {
-    expect(LessonVariationOutputSchema.safeParse({ content: { blocks: [] } }).success).toBe(false)
+  it('accepts empty blocks array (length constraints removed for Gemini compatibility)', () => {
+    expect(LessonVariationOutputSchema.safeParse({ content: { blocks: [] } }).success).toBe(true)
   })
 
   it('rejects block missing id or type', () => {

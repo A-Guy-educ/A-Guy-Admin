@@ -177,7 +177,7 @@ export async function generateVariation(
         'pass-1-creative',
       )
 
-      pass1Output = parseVariationResponse(result.text)
+      pass1Output = extractPass1Output(result)
       break
     } catch (error) {
       const breakerCooldown = getCircuitBreakerCooldownMs(error)
@@ -253,7 +253,7 @@ export async function generateVariation(
         'pass-2-deterministic',
       )
 
-      pass2Patch = parseSolutionDerivationResponse(result.text)
+      pass2Patch = extractPass2Patch(result)
       break
     } catch (error) {
       const breakerCooldown = getCircuitBreakerCooldownMs(error)
@@ -392,13 +392,47 @@ interface Pass2Patch {
   answer?: { correctOptionIds: string[] }
 }
 
-function parseVariationResponse(text: string): Partial<Exercise> {
-  const cleaned = text
-    .replace(/^```json\s*/i, '')
-    .replace(/^```\s*/, '')
-    .replace(/```\s*$/, '')
-    .trim()
+/**
+ * Adapter response from `generateChatCompletion`. `output` is set when the
+ * call was made with an `outputSchema` (Genkit's parsed structured value).
+ */
+interface AdapterResult {
+  text: string
+  output?: unknown
+}
 
+/**
+ * Pull pass-1's content envelope out of the adapter result. Prefers Genkit's
+ * parsed `output` (already schema-validated). Falls back to parsing `text`,
+ * which keeps the path alive if the provider returns JSON-as-text without
+ * also populating `output` (e.g. when output schema was rejected and the
+ * model fell back to free text).
+ */
+function extractPass1Output(result: AdapterResult): Partial<Exercise> {
+  // Structured-output path: Genkit hands us the parsed object directly.
+  if (result.output && typeof result.output === 'object') {
+    const candidate = result.output as { content?: { blocks?: unknown } }
+    if (candidate.content && Array.isArray(candidate.content.blocks)) {
+      return candidate as Partial<Exercise>
+    }
+  }
+  // Text fallback: strip code fences, JSON.parse, validate envelope.
+  return parseVariationResponseFromText(result.text)
+}
+
+/**
+ * Pull pass-2's solution patch out of the adapter result. Same precedence:
+ * structured output first, text fallback.
+ */
+function extractPass2Patch(result: AdapterResult): Pass2Patch {
+  if (result.output && typeof result.output === 'object') {
+    return result.output as Pass2Patch
+  }
+  return parseSolutionDerivationResponseFromText(result.text)
+}
+
+function parseVariationResponseFromText(text: string): Partial<Exercise> {
+  const cleaned = stripCodeFences(text)
   const parsed = JSON.parse(cleaned)
 
   if (!parsed.content || !Array.isArray(parsed.content.blocks)) {
@@ -408,14 +442,17 @@ function parseVariationResponse(text: string): Partial<Exercise> {
   return parsed as Partial<Exercise>
 }
 
-function parseSolutionDerivationResponse(text: string): Pass2Patch {
-  const cleaned = text
+function parseSolutionDerivationResponseFromText(text: string): Pass2Patch {
+  const cleaned = stripCodeFences(text)
+  return JSON.parse(cleaned) as Pass2Patch
+}
+
+function stripCodeFences(text: string): string {
+  return text
     .replace(/^```json\s*/i, '')
     .replace(/^```\s*/, '')
     .replace(/```\s*$/, '')
     .trim()
-
-  return JSON.parse(cleaned) as Pass2Patch
 }
 
 function mergePassOutputs(pass1Output: Partial<Exercise>, pass2Patch: Pass2Patch): unknown[] {

@@ -185,9 +185,20 @@ export async function createGenkitUnifiedAdapter(
 
               const result = await ai.generate(generateArgs)
 
+              // When outputSchema is set, Genkit exposes the parsed structured
+              // value on `result.output`. We forward both — callers that asked
+              // for structured output should prefer `output`, because Gemini's
+              // responseSchema mode can return the payload in ways that
+              // `result.text` does not always faithfully reflect (empty text,
+              // extra wrapping, etc.).
+              const structuredOutput = input.outputSchema
+                ? (result as { output?: unknown }).output
+                : undefined
+
               return {
                 text: result.text,
                 raw: result,
+                output: structuredOutput,
               }
             } catch (error) {
               const llmError = errorAdapter.wrapError(

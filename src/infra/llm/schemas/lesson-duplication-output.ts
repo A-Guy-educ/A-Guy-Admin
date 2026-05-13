@@ -30,6 +30,11 @@ import { z } from 'zod'
  * collections/Exercises/schemas.ts. We accept any string for `format` so a
  * stale model output doesn't fail the whole generation; the strict schema at
  * payload.create still enforces 'md-math-v1'.
+ *
+ * No `.min(1)` constraints on strings: Gemini's `responseSchema` ignores
+ * `minLength` and using it can cause it to silently downgrade the schema.
+ * Empty strings are caught downstream by the strict Exercise Zod schema at
+ * payload.create.
  */
 const InlineRichTextSchema = z
   .object({
@@ -49,11 +54,14 @@ const InlineRichTextSchema = z
  * across the 12 block variants and Gemini's responseSchema cannot represent
  * the full discriminated union reliably. `.passthrough()` keeps everything
  * the model emits beyond those two keys.
+ *
+ * No `.min(1)` constraints — see note on InlineRichTextSchema. Empty `id`/
+ * `type` would fail at payload.create's strict schema anyway.
  */
 const VariationContentBlockSchema = z
   .object({
-    id: z.string().min(1),
-    type: z.string().min(1),
+    id: z.string(),
+    type: z.string(),
   })
   .passthrough()
 
@@ -66,7 +74,7 @@ export const LessonVariationOutputSchema = z
   .object({
     content: z
       .object({
-        blocks: z.array(VariationContentBlockSchema).min(1),
+        blocks: z.array(VariationContentBlockSchema),
       })
       .passthrough(),
   })
@@ -94,7 +102,7 @@ export const SolutionDerivationOutputSchema = z
     fullSolution: InlineRichTextSchema.optional(),
     answer: z
       .object({
-        correctOptionIds: z.array(z.string().min(1)).optional(),
+        correctOptionIds: z.array(z.string()).optional(),
       })
       .passthrough()
       .optional(),
