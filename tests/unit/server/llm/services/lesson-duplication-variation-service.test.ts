@@ -774,56 +774,80 @@ describe('generateVariation', () => {
     expect(block.prompt.value).toBe('Fallback?')
   })
 
-  it('passes outputSchema to pass 2 only (pass 1 disabled — Gemini mangles full content schema)', async () => {
-    const callSchemas: Array<unknown> = []
+  it('passes a per-exercise input-derived schema to pass 1 and a Zod schema to pass 2', async () => {
+    const callInputs: Array<{
+      outputSchema?: unknown
+      outputJsonSchema?: unknown
+      modelVersion?: unknown
+    }> = []
 
-    mockGenerateChatCompletion.mockImplementation(async (input: { outputSchema?: unknown }) => {
-      callSchemas.push(input.outputSchema)
-      const callCount = callSchemas.length
+    mockGenerateChatCompletion.mockImplementation(
+      async (input: {
+        outputSchema?: unknown
+        outputJsonSchema?: unknown
+        modelVersion?: unknown
+      }) => {
+        callInputs.push({
+          outputSchema: input.outputSchema,
+          outputJsonSchema: input.outputJsonSchema,
+          modelVersion: input.modelVersion,
+        })
+        const callCount = callInputs.length
 
-      if (callCount === 1) {
+        if (callCount === 1) {
+          return {
+            text: JSON.stringify({
+              content: {
+                blocks: [
+                  {
+                    id: 'block-1',
+                    type: 'question_select',
+                    variant: 'mcq',
+                    prompt: {
+                      type: 'rich_text',
+                      format: 'md-math-v1',
+                      value: 'What?',
+                      mediaIds: [],
+                    },
+                    answer: { options: [], correctOptionIds: ['a'] },
+                  },
+                ],
+              },
+            }),
+          }
+        }
         return {
           text: JSON.stringify({
-            content: {
-              blocks: [
-                {
-                  id: 'block-1',
-                  type: 'question_select',
-                  variant: 'mcq',
-                  prompt: {
-                    type: 'rich_text',
-                    format: 'md-math-v1',
-                    value: 'What?',
-                    mediaIds: [],
-                  },
-                  answer: { options: [], correctOptionIds: ['a'] },
-                },
-              ],
-            },
+            solution: { type: 'rich_text', format: 'md-math-v1', value: 's', mediaIds: [] },
+            fullSolution: { type: 'rich_text', format: 'md-math-v1', value: 'fs', mediaIds: [] },
+            answer: { correctOptionIds: ['a'] },
           }),
         }
-      }
-      return {
-        text: JSON.stringify({
-          solution: { type: 'rich_text', format: 'md-math-v1', value: 's', mediaIds: [] },
-          fullSolution: { type: 'rich_text', format: 'md-math-v1', value: 'fs', mediaIds: [] },
-          answer: { correctOptionIds: ['a'] },
-        }),
-      }
-    })
+      },
+    )
 
     await generateVariation(
       { exercise: makeMockExercise('ex-schema'), level: 'medium', subject: 'algebra' },
       mockPayload,
     )
 
-    expect(callSchemas).toHaveLength(2)
-    // Pass 1: no schema (Gemini's responseSchema collapses the full
-    // content.blocks shape to garbage — verified live).
-    expect(callSchemas[0]).toBeUndefined()
-    // Pass 2: schema is set (small, well-bounded — Gemini handles it).
-    expect(callSchemas[1]).toBeDefined()
-    expect(typeof (callSchemas[1] as { parse?: unknown }).parse).toBe('function')
+    expect(callInputs).toHaveLength(2)
+    // Pass 1: raw JSON schema derived from the input exercise.
+    expect(callInputs[0].outputSchema).toBeUndefined()
+    expect(callInputs[0].outputJsonSchema).toBeDefined()
+    const pass1Schema = callInputs[0].outputJsonSchema as {
+      type: string
+      properties?: { content?: { properties?: { blocks?: unknown } } }
+    }
+    expect(pass1Schema.type).toBe('object')
+    expect(pass1Schema.properties?.content?.properties?.blocks).toBeDefined()
+    // Pass 2: Zod schema for the small derivation envelope.
+    expect(callInputs[1].outputJsonSchema).toBeUndefined()
+    expect(callInputs[1].outputSchema).toBeDefined()
+    expect(typeof (callInputs[1].outputSchema as { parse?: unknown }).parse).toBe('function')
+    // Both passes pin gemini-3.1-pro-preview.
+    expect(callInputs[0].modelVersion).toBe('gemini-3.1-pro-preview')
+    expect(callInputs[1].modelVersion).toBe('gemini-3.1-pro-preview')
   })
 
   it('strips markdown code fences from LLM response', async () => {

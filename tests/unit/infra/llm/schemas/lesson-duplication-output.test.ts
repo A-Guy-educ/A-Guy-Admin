@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
+  buildPass1JsonSchemaForExercise,
+  deriveJsonSchemaFromValue,
   LessonVariationOutputSchema,
   SolutionDerivationOutputSchema,
 } from '@/infra/llm/schemas/lesson-duplication-output'
@@ -75,10 +77,85 @@ describe('SolutionDerivationOutputSchema', () => {
     )
   })
 
-  it('passes through extra answer fields rather than failing', () => {
+  it('strips extra answer fields without failing', () => {
+    // Zod's default is to strip unknown keys silently, so the parse succeeds
+    // and returns only the schema-declared fields.
     const result = SolutionDerivationOutputSchema.parse({
       answer: { correctOptionIds: ['a'], extra: 'ignored-not-rejected' },
     }) as { answer: Record<string, unknown> }
     expect(result.answer.correctOptionIds).toEqual(['a'])
+  })
+})
+
+describe('deriveJsonSchemaFromValue', () => {
+  it('builds primitive types', () => {
+    expect(deriveJsonSchemaFromValue('hi')).toEqual({ type: 'string' })
+    expect(deriveJsonSchemaFromValue(3)).toEqual({ type: 'integer' })
+    expect(deriveJsonSchemaFromValue(3.14)).toEqual({ type: 'number' })
+    expect(deriveJsonSchemaFromValue(true)).toEqual({ type: 'boolean' })
+    expect(deriveJsonSchemaFromValue(null)).toEqual({ type: 'string' })
+  })
+
+  it('walks objects with required-on-every-field semantics', () => {
+    const schema = deriveJsonSchemaFromValue({ id: 'b1', value: 7 }) as {
+      type: string
+      properties: Record<string, unknown>
+      required: string[]
+    }
+    expect(schema.type).toBe('object')
+    expect(schema.properties.id).toEqual({ type: 'string' })
+    expect(schema.properties.value).toEqual({ type: 'integer' })
+    expect(schema.required).toEqual(['id', 'value'])
+  })
+
+  it('collapses single-shape arrays into plain `items`', () => {
+    const schema = deriveJsonSchemaFromValue([{ a: 1 }, { a: 2 }, { a: 3 }]) as {
+      type: string
+      items: { type: string }
+    }
+    expect(schema.type).toBe('array')
+    expect(schema.items.type).toBe('object')
+  })
+
+  it('builds anyOf when array items have heterogeneous shapes', () => {
+    const schema = deriveJsonSchemaFromValue([
+      { type: 'rich_text', value: 'x' },
+      { type: 'question_select', variant: 'mcq' },
+    ]) as { type: string; items: { anyOf: unknown[] } }
+    expect(schema.type).toBe('array')
+    expect(schema.items.anyOf).toBeDefined()
+    expect(schema.items.anyOf).toHaveLength(2)
+  })
+
+  it('falls back to string items on empty arrays (no shape info)', () => {
+    expect(deriveJsonSchemaFromValue([])).toEqual({
+      type: 'array',
+      items: { type: 'string' },
+    })
+  })
+})
+
+describe('buildPass1JsonSchemaForExercise', () => {
+  it('wraps the input blocks schema in a closed content envelope', () => {
+    const exercise = {
+      content: {
+        blocks: [{ id: 'b1', type: 'rich_text', value: 'hello' }],
+      },
+    }
+    const schema = buildPass1JsonSchemaForExercise(exercise) as {
+      type: string
+      properties: { content: { type: string; properties: { blocks: unknown } } }
+      required: string[]
+    }
+    expect(schema.type).toBe('object')
+    expect(schema.required).toEqual(['content'])
+    expect(schema.properties.content.type).toBe('object')
+    expect(schema.properties.content.properties.blocks).toBeDefined()
+  })
+
+  it('tolerates missing/empty content', () => {
+    expect(buildPass1JsonSchemaForExercise({})).toBeDefined()
+    expect(buildPass1JsonSchemaForExercise({ content: null })).toBeDefined()
+    expect(buildPass1JsonSchemaForExercise({ content: { blocks: [] } })).toBeDefined()
   })
 })

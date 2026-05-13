@@ -95,6 +95,119 @@ export const LessonVariationOutputSchema = z.object({
 export type LessonVariationOutput = z.infer<typeof LessonVariationOutputSchema>
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Pass 1 — Input-derived JSON Schema (live, used at runtime)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Raw JSON-Schema shape compatible with both standard JSON Schema (which
+ * Genkit's Ajv validator enforces before forwarding) and Gemini's
+ * `responseSchema` (which accepts the same OpenAPI 3.0 subset in either case).
+ * Lowercase types are required because Ajv rejects Gemini's uppercase dialect.
+ *
+ * Supported keywords: `type`, `properties`, `required`, `items`, `enum`,
+ * `anyOf`. `additionalProperties` is rejected by Gemini's v1beta API.
+ */
+type GeminiJsonSchema =
+  | { type: 'string' | 'number' | 'integer' | 'boolean' }
+  | { type: 'array'; items: GeminiJsonSchema }
+  | { type: 'object'; properties: Record<string, GeminiJsonSchema>; required?: string[] }
+  | { anyOf: GeminiJsonSchema[] }
+
+/**
+ * Walk a JSON value and produce a Gemini-compatible JSON Schema that mirrors
+ * its shape. Used to derive a per-exercise schema at runtime: the input
+ * exercise IS the schema, so Gemini's variation must keep the same fields,
+ * same nesting, and (via array unions) the same heterogeneous block layout.
+ *
+ * This sidesteps the problem of hand-authoring a discriminated union for the
+ * full 12-block ContentSchema — we don't need to know what shapes exist in
+ * advance, we only need the shapes that appear in *this* exercise.
+ *
+ * Edge cases:
+ *  - `null`/`undefined`: fall back to `STRING` (Gemini's responseSchema does
+ *    not support `nullable: true` reliably in v1beta; using string lets the
+ *    model emit any literal without rejecting the schema).
+ *  - Empty arrays: default items to `STRING` (no shape info is recoverable).
+ *  - Heterogeneous arrays (e.g. `content.blocks` mixing question_select,
+ *    rich_text, question_axis…): produce an `anyOf` over the unique item
+ *    shapes seen in the input.
+ *
+ * The returned schema mirrors structure only — Gemini fills in NEW values
+ * matching that structure. IDs aren't preserved at the schema level (no
+ * literal-value enforcement in Gemini); the prompt instructs the model to
+ * keep ids, and `payload.create` validates downstream.
+ */
+export function deriveJsonSchemaFromValue(value: unknown): GeminiJsonSchema {
+  if (value === null || value === undefined) {
+    return { type: 'string' }
+  }
+  if (Array.isArray(value)) {
+    if (value.length === 0) {
+      return { type: 'array', items: { type: 'string' } }
+    }
+    if (value.length === 1) {
+      return { type: 'array', items: deriveJsonSchemaFromValue(value[0]) }
+    }
+    // Multiple items — dedupe by canonical JSON and union with `anyOf` so the
+    // model can emit each shape in its correct slot. Single-shape arrays
+    // collapse to a plain `items`.
+    const seen = new Map<string, GeminiJsonSchema>()
+    for (const item of value) {
+      const itemSchema = deriveJsonSchemaFromValue(item)
+      const key = JSON.stringify(itemSchema)
+      if (!seen.has(key)) {
+        seen.set(key, itemSchema)
+      }
+    }
+    const unique = Array.from(seen.values())
+    if (unique.length === 1) {
+      return { type: 'array', items: unique[0] }
+    }
+    return { type: 'array', items: { anyOf: unique } }
+  }
+  if (typeof value === 'object') {
+    const properties: Record<string, GeminiJsonSchema> = {}
+    const required: string[] = []
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      properties[k] = deriveJsonSchemaFromValue(v)
+      required.push(k)
+    }
+    return { type: 'object', properties, required }
+  }
+  if (typeof value === 'string') return { type: 'string' }
+  if (typeof value === 'number') {
+    return { type: Number.isInteger(value) ? 'integer' : 'number' }
+  }
+  if (typeof value === 'boolean') return { type: 'boolean' }
+  return { type: 'string' }
+}
+
+/**
+ * Build the pass-1 output JSON Schema for a specific source exercise. Wraps
+ * the input's `content.blocks` shape in a closed `{ content: { blocks: … } }`
+ * envelope so Gemini stays focused on the variation payload and doesn't
+ * waste tokens echoing back exercise metadata (id, tenant, slug, …).
+ */
+export function buildPass1JsonSchemaForExercise(exercise: unknown): GeminiJsonSchema {
+  const content = (exercise as { content?: unknown }).content
+  const rawBlocks =
+    content && typeof content === 'object' ? (content as { blocks?: unknown }).blocks : undefined
+  const blocks = Array.isArray(rawBlocks) ? rawBlocks : []
+  const blocksSchema = deriveJsonSchemaFromValue(blocks)
+  return {
+    type: 'object',
+    properties: {
+      content: {
+        type: 'object',
+        properties: { blocks: blocksSchema },
+        required: ['blocks'],
+      },
+    },
+    required: ['content'],
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Pass 2 — Deterministic derivation pass (solution + answer only)
 // ─────────────────────────────────────────────────────────────────────────────
 

@@ -139,6 +139,20 @@ export interface UnifiedLLMProvider {
        * `text` being valid JSON parsable into the schema's shape on success.
        */
       outputSchema?: import('zod').ZodTypeAny
+      /**
+       * Raw JSON Schema (Gemini's responseSchema dialect — uppercase types,
+       * no `additionalProperties`). Use when the schema is generated at
+       * runtime, e.g. derived from an input document. Mutually exclusive
+       * with `outputSchema`.
+       */
+      outputJsonSchema?: unknown
+      /**
+       * Optional model-version override. When set, the adapter resolves the
+       * model via the provider's `model(version)` helper rather than the
+       * pre-registered allowlist, so versions newer than the installed plugin
+       * (e.g. `gemini-3.1-pro-preview` on @genkit-ai/googleai@1.28) work.
+       */
+      modelVersion?: string
     },
     payload: Payload,
   ) => Promise<{

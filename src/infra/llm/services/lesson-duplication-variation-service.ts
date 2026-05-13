@@ -24,7 +24,21 @@ import { getModelRegistryEntry, getProviderModelName } from '../models'
 import { LLMProviderType } from '../providers/types'
 import { logger } from '@/infra/utils/logger'
 import { VariationGenerationError } from '../errors'
-import { SolutionDerivationOutputSchema } from '../schemas/lesson-duplication-output'
+import {
+  buildPass1JsonSchemaForExercise,
+  SolutionDerivationOutputSchema,
+} from '../schemas/lesson-duplication-output'
+
+/**
+ * Model used for both passes. Pinned to gemini-3.1-pro-preview because:
+ *  - Pass 1: schema-constrained output on this codebase's `content.blocks`
+ *    shape is only reliable on 3.x — 2.5-pro silently collapses the structured
+ *    response to `{ "content": "blocks" }` literals.
+ *  - Pass 2: 2.5-pro times out (>180s) on complex calculus/axis derivations
+ *    even with a small schema; 3.x is faster and still schema-compliant.
+ * Verified live 2026-05-13.
+ */
+const VARIATION_MODEL_VERSION = 'gemini-3.1-pro-preview'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -44,11 +58,14 @@ import { withTimeout as withSharedTimeout } from '@/infra/utils/with-timeout'
 
 /**
  * Per-LLM-call timeout. A stuck Gemini call would otherwise leave the
- * duplication record in `running` indefinitely. 180s leaves headroom for
- * gemini-2.5-pro with thinking budget at this prompt size — early runs at
- * 60s timed out on complex calculus exercises before the model returned.
+ * duplication record in `running` indefinitely. 300s observed empirically on
+ * gemini-3.1-pro-preview for a complex calculus/axis exercise: schema-
+ * constrained pass 1 around 120-180s, pass-2 re-derivation in the 150-200s
+ * range, with bursts above 180s on the heaviest exercises. The Vercel Pro
+ * function ceiling is 900s, so we still have headroom for the surrounding
+ * orchestrator work.
  */
-export const LLM_CALL_TIMEOUT_MS = 180_000
+export const LLM_CALL_TIMEOUT_MS = 300_000
 
 /** Convenience wrapper that pins the default timeout to LLM_CALL_TIMEOUT_MS. */
 function withTimeout<T>(promise: Promise<T>, stage: string): Promise<T> {
@@ -163,14 +180,16 @@ export async function generateVariation(
             messages: [{ role: 'user', content: creativeUserPrompt }],
             model: creativeConfig,
             acknowledgment: `Generating ${level} variation for exercise`,
-            // We do NOT pass `outputSchema` here. Gemini's responseSchema
-            // interpreter handles the full content.blocks shape badly: with
-            // either `.passthrough()` or strict objects, it returns
-            // `{ "content": "blocks" }` (treating the property name as a
-            // string value) or echoes the input exercise verbatim. Verified
-            // against real Gemini on 2026-05-13 across light/medium/deep on
-            // 3 different exercises. `sanitizeAiBlocks` + payload.create's
-            // strict schema remain the structural gate for pass 1.
+            // Schema is derived per-exercise from the input's own shape:
+            // walk the source `content.blocks` JSON, produce a Gemini-dialect
+            // responseSchema that mirrors it. Forces the variation to keep
+            // the same block layout (same types, same nested fields) — no
+            // hallucinated `answer.kind`, no missing variants, no extra
+            // properties. The schema is delivered fresh on every call.
+            outputJsonSchema: buildPass1JsonSchemaForExercise(exercise),
+            // Pinned to gemini-3.1-pro-preview — 2.5-pro mangles complex
+            // schemas (see VARIATION_MODEL_VERSION rationale above).
+            modelVersion: VARIATION_MODEL_VERSION,
           },
           payload,
         ),
@@ -247,6 +266,7 @@ export async function generateVariation(
             // strongest gate we have against the model returning prose,
             // markdown, or an unexpected envelope.
             outputSchema: SolutionDerivationOutputSchema,
+            modelVersion: VARIATION_MODEL_VERSION,
           },
           payload,
         ),
@@ -409,16 +429,16 @@ interface AdapterResult {
  * model fell back to free text).
  */
 function extractPass1Output(result: AdapterResult): Partial<Exercise> {
-  // Pass 1 currently runs without `outputSchema` (Gemini's responseSchema
-  // mangles the content.blocks shape — see the call site), so `result.output`
-  // is generally absent. Kept as a forward-compatible preference in case the
-  // pass-1 schema path becomes viable later.
+  // Schema-constrained path: Genkit parsed Gemini's structured output for us.
   if (result.output && typeof result.output === 'object') {
     const candidate = result.output as { content?: { blocks?: unknown } }
     if (candidate.content && Array.isArray(candidate.content.blocks)) {
       return candidate as Partial<Exercise>
     }
   }
+  // Fallback for the rare case Gemini delivered the payload as text instead
+  // of a structured data part. Lets the pipeline survive a transient quirk
+  // without dropping the exercise.
   return parseVariationResponseFromText(result.text)
 }
 

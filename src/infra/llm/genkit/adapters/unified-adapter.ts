@@ -15,6 +15,7 @@ import { getCircuitBreaker } from '@/infra/llm/providers/shared/circuit-breaker'
 import { LLMErrorCode } from '@/infra/llm/providers/shared/errors'
 import { withRetry } from '@/infra/llm/providers/shared/retry'
 import { withTimeout } from '@/infra/llm/providers/shared/timeout'
+import { gemini } from '@genkit-ai/googleai'
 import { tool } from 'genkit'
 import type { Payload } from 'payload'
 import { resolveGenkitConfig } from '../config-resolver'
@@ -69,6 +70,19 @@ interface ChatCompletionInput {
    * so the model refuses to emit non-conforming output.
    */
   outputSchema?: import('zod').ZodTypeAny
+  /**
+   * Raw JSON Schema (Gemini responseSchema dialect). Alternative to
+   * `outputSchema` for runtime-generated schemas. Forwarded to Genkit as
+   * `output.jsonSchema`.
+   */
+  outputJsonSchema?: unknown
+  /**
+   * When set, builds a model reference via `gemini(version)` rather than
+   * relying on the plugin's pre-registered allowlist. Lets us call newer
+   * preview models (e.g. gemini-3.1-pro-preview) before they're added to
+   * @genkit-ai/googleai.
+   */
+  modelVersion?: string
 }
 
 /**
@@ -165,14 +179,20 @@ export async function createGenkitUnifiedAdapter(
               // Build structured messages to preserve conversation history
               const messages = buildGenkitMessages(input.system, input.messages)
 
-              // When the caller supplies a Zod schema, configure Genkit's
-              // structured output. Genkit converts the schema to JSON-Schema
-              // and sets Gemini's responseSchema / response MIME type, so the
-              // model refuses to emit non-conforming JSON. We still return
-              // `result.text` (Genkit serializes the structured value back to
-              // text), which keeps the caller-side JSON.parse contract intact.
+              // Resolve the model. When `modelVersion` is set we use the
+              // `gemini()` helper, which builds a modelRef against the plugin's
+              // GENERIC_GEMINI_MODEL — this unlocks versions newer than the
+              // plugin's pre-registered allowlist (e.g. gemini-3.x previews on
+              // @genkit-ai/googleai@1.28).
+              const modelRef = input.modelVersion ? gemini(input.modelVersion) : config.model
+
+              // When the caller supplies a schema, configure Genkit's
+              // structured output. `outputSchema` (Zod) goes to `schema`;
+              // `outputJsonSchema` (raw) goes to `jsonSchema`. Both set
+              // Gemini's responseSchema + responseMimeType, so the model
+              // refuses to emit non-conforming JSON.
               const generateArgs: Parameters<typeof ai.generate>[0] = {
-                model: config.model,
+                model: modelRef as never,
                 messages,
                 config: { temperature: config.temperature },
               }
@@ -181,19 +201,25 @@ export async function createGenkitUnifiedAdapter(
                   schema: input.outputSchema,
                   format: 'json',
                 }
+              } else if (input.outputJsonSchema) {
+                ;(generateArgs as { output?: unknown }).output = {
+                  jsonSchema: input.outputJsonSchema,
+                  format: 'json',
+                }
               }
 
               const result = await ai.generate(generateArgs)
 
-              // When outputSchema is set, Genkit exposes the parsed structured
-              // value on `result.output`. We forward both — callers that asked
-              // for structured output should prefer `output`, because Gemini's
-              // responseSchema mode can return the payload in ways that
-              // `result.text` does not always faithfully reflect (empty text,
-              // extra wrapping, etc.).
-              const structuredOutput = input.outputSchema
-                ? (result as { output?: unknown }).output
-                : undefined
+              // When a schema is set (Zod or raw JSON), Genkit exposes the
+              // parsed structured value on `result.output`. We forward both —
+              // callers should prefer `output` over re-parsing `text`, because
+              // Gemini's responseSchema mode can return the payload as a
+              // structured `data` part that `result.text` does not always
+              // serialize back (empty text, extra wrapping, etc.).
+              const structuredOutput =
+                input.outputSchema || input.outputJsonSchema
+                  ? (result as { output?: unknown }).output
+                  : undefined
 
               return {
                 text: result.text,
