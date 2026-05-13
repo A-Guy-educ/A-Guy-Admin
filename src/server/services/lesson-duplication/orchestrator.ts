@@ -470,7 +470,18 @@ export async function runDuplicationOrchestrator(
     // lesson (e.g. shared exercises across re-published lesson copies).
     const allExercises = await getSourceExercisesForLesson(payload, sourceLessonId)
 
-    const selectedExercises = selectExercisesScaled(allExercises as ExerciseDoc[], 20)
+    // Per-run exercise cap. Vercel kills the orchestrator function at ~800s
+    // (see `maxDuration` on /api/jobs/run-immediate). Pass-1 + pass-2 on
+    // gemini-3.1-pro-preview measure 120-250s per exercise. 5 × ~150s ≈ 12
+    // minutes, comfortably under the cap. The selector uses scaling-random
+    // bucketing so even with a low cap the picks span the whole lesson.
+    // Admin can re-run for additional coverage; proper unbounded handling
+    // needs an external queue worker (Inngest), tracked as handoff item #2.
+    const PER_RUN_EXERCISE_CAP = 5
+    const selectedExercises = selectExercisesScaled(
+      allExercises as ExerciseDoc[],
+      PER_RUN_EXERCISE_CAP,
+    )
 
     const duplicationLevel = duplication.level as 'none' | 'light' | 'medium' | 'deep'
     const duplicationSubject =
