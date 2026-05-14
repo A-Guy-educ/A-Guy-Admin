@@ -15,8 +15,9 @@ import config from '@payload-config'
 import { getDefaultTenantSlug } from '@/server/repos/tenant/get-default-tenant'
 import { runDuplicationOrchestrator } from '@/server/services/lesson-duplication/orchestrator'
 
-// Mock the LLM variation service to inject failures deterministically.
-// This bypasses the complex runStrategy mock and directly controls LLM call outcomes.
+// Mock the variation service so AiVariationStrategy (used for medium/deep level)
+// does not make real LLM calls in the integration test environment.
+// Uses hoisted state for reliable module-level tracking across test runs.
 const { mockState } = vi.hoisted(() => {
   let callCount = 0
   return {
@@ -32,20 +33,84 @@ const { mockState } = vi.hoisted(() => {
   }
 })
 
-// Mock the variation service — throws on the 3rd exercise call to simulate LLM failure
 vi.mock('@/infra/llm/services/lesson-duplication-variation-service', () => ({
-  generateVariation: vi.fn().mockImplementation(async () => {
-    const n = mockState.next
-    if (n === 3) {
-      throw new Error('Forced LLM failure for test')
-    }
-    return {
-      exercise: {
-        id: `mock-exercise-${n}`,
-        content: { blocks: [] },
+  generateVariation: vi
+    .fn()
+    .mockImplementation(
+      async (
+        input: { exercise: { id: string } },
+        _payload: unknown,
+      ): Promise<{ exercise: { id: string; content: { blocks: unknown[] } } }> => {
+        mockState.next
+        // Force failure on the 3rd exercise (call count 3 = index 2)
+        if (mockState.next === 3) {
+          throw new Error('Forced failure for test')
+        }
+        return {
+          exercise: {
+            id: input.exercise.id,
+            content: {
+              blocks: [
+                {
+                  id: 'q-1',
+                  type: 'question_select',
+                  variant: 'mcq',
+                  selectionMode: 'single',
+                  prompt: {
+                    type: 'rich_text',
+                    format: 'md-math-v1',
+                    value: 'What is 2+2?',
+                    mediaIds: [],
+                  },
+                  answer: {
+                    multiSelect: false,
+                    options: [
+                      {
+                        id: 'a',
+                        content: {
+                          type: 'rich_text',
+                          format: 'md-math-v1',
+                          value: '3',
+                          mediaIds: [],
+                        },
+                      },
+                      {
+                        id: 'b',
+                        content: {
+                          type: 'rich_text',
+                          format: 'md-math-v1',
+                          value: '4',
+                          mediaIds: [],
+                        },
+                      },
+                    ],
+                    correctOptionIds: ['b'],
+                  },
+                  hint: {
+                    type: 'rich_text',
+                    format: 'md-math-v1',
+                    value: 'Think arithmetic',
+                    mediaIds: [],
+                  },
+                  solution: {
+                    type: 'rich_text',
+                    format: 'md-math-v1',
+                    value: '2+2=4',
+                    mediaIds: [],
+                  },
+                  fullSolution: {
+                    type: 'rich_text',
+                    format: 'md-math-v1',
+                    value: 'Basic addition',
+                    mediaIds: [],
+                  },
+                },
+              ],
+            },
+          },
+        }
       },
-    }
-  }),
+    ),
 }))
 
 async function ensureDefaultTenant(payload: Payload): Promise<string> {
@@ -80,6 +145,10 @@ describe('Lesson duplication orchestrator — integration', () => {
   const cleanupLessonIds: string[] = []
   const cleanupExerciseIds: string[] = []
   const cleanupDuplicationIds: string[] = []
+
+  beforeEach(() => {
+    mockState.reset()
+  })
 
   beforeAll(async () => {
     payload = await getPayload({ config })
