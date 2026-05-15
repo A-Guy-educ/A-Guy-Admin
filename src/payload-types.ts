@@ -103,6 +103,7 @@ export interface Config {
     products: Product;
     'access-codes': AccessCode;
     transactions: Transaction;
+    payment_stats: PaymentStat;
     'mcp-audit-logs': McpAuditLog;
     redirects: Redirect;
     forms: Form;
@@ -152,6 +153,7 @@ export interface Config {
     products: ProductsSelect<false> | ProductsSelect<true>;
     'access-codes': AccessCodesSelect<false> | AccessCodesSelect<true>;
     transactions: TransactionsSelect<false> | TransactionsSelect<true>;
+    payment_stats: PaymentStatsSelect<false> | PaymentStatsSelect<true>;
     'mcp-audit-logs': McpAuditLogsSelect<false> | McpAuditLogsSelect<true>;
     redirects: RedirectsSelect<false> | RedirectsSelect<true>;
     forms: FormsSelect<false> | FormsSelect<true>;
@@ -2723,6 +2725,46 @@ export interface Transaction {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "payment_stats".
+ */
+export interface PaymentStat {
+  id: string;
+  /**
+   * Calendar date in YYYY-MM-DD format (UTC)
+   */
+  date: string;
+  /**
+   * Currency for all amounts on this date
+   */
+  currency: 'ILS' | 'USD' | 'EUR';
+  /**
+   * Sum of succeeded transaction amounts in agorot
+   */
+  totalRevenueAgorot: number;
+  /**
+   * Sum of refunded amounts in agorot
+   */
+  refundedAgorot: number;
+  /**
+   * Sum of failed amounts in agorot
+   */
+  failedAgorot: number;
+  /**
+   * Total number of transactions on this date (all statuses)
+   */
+  transactionCount: number;
+  succeededCount: number;
+  refundedCount: number;
+  failedCount: number;
+  /**
+   * Distinct users whose first ever succeeded transaction falls on this date
+   */
+  newCustomersCount: number;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "mcp-audit-logs".
  */
 export interface McpAuditLog {
@@ -3168,6 +3210,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'transactions';
         value: string | Transaction;
+      } | null)
+    | ({
+        relationTo: 'payment_stats';
+        value: string | PaymentStat;
       } | null)
     | ({
         relationTo: 'mcp-audit-logs';
@@ -4232,6 +4278,24 @@ export interface TransactionsSelect<T extends boolean = true> {
   cancelUrl?: T;
   errorMessage?: T;
   createdBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "payment_stats_select".
+ */
+export interface PaymentStatsSelect<T extends boolean = true> {
+  date?: T;
+  currency?: T;
+  totalRevenueAgorot?: T;
+  refundedAgorot?: T;
+  failedAgorot?: T;
+  transactionCount?: T;
+  succeededCount?: T;
+  refundedCount?: T;
+  failedCount?: T;
+  newCustomersCount?: T;
   updatedAt?: T;
   createdAt?: T;
 }
