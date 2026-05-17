@@ -21,7 +21,7 @@ import type { DuplicationSubject } from '@/server/payload/collections/LessonDupl
 import { logger } from '@/infra/utils/logger'
 import {
   selectExercisesScaled,
-  selectSectionsScaled,
+  selectSectionsForVariation,
 } from '@/server/services/lesson-duplication/selectors'
 import { getSourceExercisesForLesson } from '@/server/services/lesson-duplication/source-exercises'
 import {
@@ -104,10 +104,10 @@ export async function runStrategy(
 function trimSourceBlocksIfNeeded(exercise: ExerciseDoc): ExerciseDoc {
   const blocks = exercise.content?.blocks
   if (!Array.isArray(blocks) || blocks.length <= 5) return exercise
-  const picked = selectSectionsScaled(blocks, 5)
+  const picked = selectSectionsForVariation(blocks, 5)
   logger.info(
     { exerciseId: exercise.id, originalCount: blocks.length, trimmedTo: picked.length },
-    'Source exercise has more than 5 blocks — trimming via scaling-random selector',
+    'Source exercise has more than 5 blocks — trimming via variation-aware selector',
   )
   return {
     ...exercise,

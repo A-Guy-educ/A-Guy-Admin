@@ -1,10 +1,10 @@
 /**
  * Unit tests for issue #1665: Smarter section selector for variations
  *
- * Tests that selectSectionsScaled prioritizes question blocks over
+ * Tests that selectSectionsForVariation prioritizes question blocks over
  * context blocks (rich_text, latex) when selecting a subset of blocks.
  *
- * The current selectSectionsScaled uses scaling-random selection that ignores
+ * The current selectSectionsForVariation uses scaling-random selection that ignores
  * block type, potentially dropping all question blocks in favor of context.
  *
  * Acceptance criteria (from issue #1665):
@@ -17,8 +17,8 @@
  */
 import { describe, expect, it } from 'vitest'
 
-// Import the existing selector - the BUG is that this function ignores block type
-import { selectSectionsScaled } from '@/server/services/lesson-duplication/selectors'
+// Import the new variation-aware selector
+import { selectSectionsForVariation } from '@/server/services/lesson-duplication/selectors'
 
 // ---------------------------------------------------------------------------
 // Block type helpers for test clarity
@@ -57,11 +57,11 @@ function question(id: string, variant: BlockType = 'question_select'): TestBlock
 // ---------------------------------------------------------------------------
 // Bug reproduction tests
 // These tests assert the EXPECTED correct behavior which the current
-// selectSectionsScaled implementation FAILS to provide.
+// selectSectionsForVariation implementation FAILS to provide.
 // ---------------------------------------------------------------------------
 
-describe('selectSectionsScaled for variations (issue #1665)', () => {
-  describe('BUG: should always include at least one question block', () => {
+describe('selectSectionsForVariation (issue #1665)', () => {
+  describe('should always include at least one question block', () => {
     /**
      * This is the core bug reproduction. When context blocks (rich_text, latex)
      * are interspersed with question blocks, the scaling-random algorithm
@@ -92,7 +92,7 @@ describe('selectSectionsScaled for variations (issue #1665)', () => {
       // Try seeds 1-200 to find distributions
       const distributions = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
       for (let seed = 1; seed <= 200; seed++) {
-        const result = selectSectionsScaled(blocks, 5, seed)
+        const result = selectSectionsForVariation(blocks, 5, seed)
         const questionCount = result.filter((b) => b.type.startsWith('question_')).length
         if (questionCount in distributions) {
           distributions[questionCount as keyof typeof distributions]++
@@ -123,12 +123,12 @@ describe('selectSectionsScaled for variations (issue #1665)', () => {
         question('q5'),
       ]
 
-      const result = selectSectionsScaled(blocks, 5, 42)
+      const result = selectSectionsForVariation(blocks, 5, 42)
 
       expect(result).toHaveLength(5)
 
       // ACCEPTANCE CRITERION: Must include at least one question block
-      // BUG: This FAILS because selectSectionsScaled ignores block type
+      // BUG: This FAILS because selectSectionsForVariation ignores block type
       const questionCount = result.filter((b) => b.type.startsWith('question_')).length
       expect(questionCount).toBeGreaterThanOrEqual(1)
 
@@ -150,7 +150,7 @@ describe('selectSectionsScaled for variations (issue #1665)', () => {
         question('q10'),
       ]
 
-      const result = selectSectionsScaled(blocks, 5, 137)
+      const result = selectSectionsForVariation(blocks, 5, 137)
 
       expect(result).toHaveLength(5)
       // All 5 should be questions
@@ -175,7 +175,7 @@ describe('selectSectionsScaled for variations (issue #1665)', () => {
         question('q8'),
       ]
 
-      const result = selectSectionsScaled(blocks, 5, 137)
+      const result = selectSectionsForVariation(blocks, 5, 137)
 
       // First rich_text should be included
       expect(result[0].type).toBe('rich_text')
@@ -200,7 +200,7 @@ describe('selectSectionsScaled for variations (issue #1665)', () => {
         question('q6'),
       ]
 
-      const result = selectSectionsScaled(blocks, 5, 137)
+      const result = selectSectionsForVariation(blocks, 5, 137)
 
       // First latex should be included
       expect(result[0].type).toBe('latex')
@@ -227,7 +227,7 @@ describe('selectSectionsScaled for variations (issue #1665)', () => {
         question('q8'),
       ]
 
-      const result = selectSectionsScaled(blocks, 5, 137)
+      const result = selectSectionsForVariation(blocks, 5, 137)
 
       // Extract source indices to verify order
       const sourceOrder = blocks.map((b, i) => ({ id: b.id, index: i }))
@@ -250,7 +250,7 @@ describe('selectSectionsScaled for variations (issue #1665)', () => {
         question('q3'),
       ]
 
-      const result = selectSectionsScaled(blocks, 5, 137)
+      const result = selectSectionsForVariation(blocks, 5, 137)
 
       expect(result).toHaveLength(5)
       expect(result).toEqual(blocks)
@@ -266,7 +266,7 @@ describe('selectSectionsScaled for variations (issue #1665)', () => {
         question('q5'),
       ]
 
-      const result = selectSectionsScaled(blocks, 5, 137)
+      const result = selectSectionsForVariation(blocks, 5, 137)
 
       expect(result).toHaveLength(5)
       // Should include the intro and 4 questions (dropping 1 question)
@@ -287,7 +287,7 @@ describe('selectSectionsScaled for variations (issue #1665)', () => {
         richText('intro4'),
       ]
 
-      const result = selectSectionsScaled(blocks, 5, 137)
+      const result = selectSectionsForVariation(blocks, 5, 137)
 
       expect(result).toHaveLength(5)
       // All should be context blocks since no questions exist
@@ -296,14 +296,14 @@ describe('selectSectionsScaled for variations (issue #1665)', () => {
     })
 
     it('returns empty array for empty input', () => {
-      const result = selectSectionsScaled([], 5, 137)
+      const result = selectSectionsForVariation([], 5, 137)
       expect(result).toEqual([])
     })
 
     it('returns empty array when max is zero or negative', () => {
       const blocks: TestBlock[] = [question('q1'), question('q2')]
-      expect(selectSectionsScaled(blocks, 0, 137)).toEqual([])
-      expect(selectSectionsScaled(blocks, -1, 137)).toEqual([])
+      expect(selectSectionsForVariation(blocks, 0, 137)).toEqual([])
+      expect(selectSectionsForVariation(blocks, -1, 137)).toEqual([])
     })
   })
 
@@ -323,12 +323,12 @@ describe('selectSectionsScaled for variations (issue #1665)', () => {
         question('q5'),
       ]
 
-      const result = selectSectionsScaled(blocks, 5, 7)
+      const result = selectSectionsForVariation(blocks, 5, 7)
 
       // Verify we got 5 blocks
       expect(result).toHaveLength(5)
 
-      // BUG: This assertion FAILS because selectSectionsScaled doesn't prioritize questions
+      // BUG: This assertion FAILS because selectSectionsForVariation doesn't prioritize questions
       // The acceptance criteria states: "always include at least one question_* block"
       const questionCount = result.filter((b) => b.type.startsWith('question_')).length
       expect(questionCount).toBeGreaterThanOrEqual(1)
