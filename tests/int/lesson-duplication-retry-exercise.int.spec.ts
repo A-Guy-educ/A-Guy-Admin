@@ -9,6 +9,7 @@
  *  5. POST /retry-exercise — missing outputLesson returns 409 conflict
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { NextRequest } from 'next/server'
 import { getPayload, type Payload } from 'payload'
 import config from '@payload-config'
 
@@ -313,7 +314,7 @@ describe('Lesson duplication — retry-exercise endpoint', () => {
 
     // Call POST /retry-exercise
     const retryUrl = `http://localhost:3000/api/lesson-duplications/${record.id}/retry-exercise`
-    const request = new Request(retryUrl, {
+    const request = new NextRequest(retryUrl, {
       method: 'POST',
       headers: {
         Authorization: `JWT ${adminToken}`,
@@ -354,7 +355,7 @@ describe('Lesson duplication — retry-exercise endpoint', () => {
     cleanupDuplicationIds.push(record.id)
 
     const retryUrl = `http://localhost:3000/api/lesson-duplications/${record.id}/retry-exercise`
-    const request = new Request(retryUrl, {
+    const request = new NextRequest(retryUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sourceExerciseId: sourceExerciseId1 }),
@@ -380,7 +381,7 @@ describe('Lesson duplication — retry-exercise endpoint', () => {
     cleanupDuplicationIds.push(record.id)
 
     const retryUrl = `http://localhost:3000/api/lesson-duplications/${record.id}/retry-exercise`
-    const request = new Request(retryUrl, {
+    const request = new NextRequest(retryUrl, {
       method: 'POST',
       headers: {
         Authorization: `JWT ${adminToken}`,
@@ -409,7 +410,7 @@ describe('Lesson duplication — retry-exercise endpoint', () => {
     cleanupDuplicationIds.push(record.id)
 
     const retryUrl = `http://localhost:3000/api/lesson-duplications/${record.id}/retry-exercise`
-    const request = new Request(retryUrl, {
+    const request = new NextRequest(retryUrl, {
       method: 'POST',
       headers: {
         Authorization: `JWT ${adminToken}`,
@@ -438,7 +439,7 @@ describe('Lesson duplication — retry-exercise endpoint', () => {
     cleanupDuplicationIds.push(record.id)
 
     const retryUrl = `http://localhost:3000/api/lesson-duplications/${record.id}/retry-exercise`
-    const request = new Request(retryUrl, {
+    const request = new NextRequest(retryUrl, {
       method: 'POST',
       headers: {
         Authorization: `JWT ${adminToken}`,

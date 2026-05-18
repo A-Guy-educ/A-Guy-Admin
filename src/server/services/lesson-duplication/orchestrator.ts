@@ -36,7 +36,6 @@ import {
   SEMANTIC_FAILURE_CODE,
 } from '@/server/services/lesson-duplication/validators/semantic'
 import { RouterStrategy } from '@/server/services/lesson-duplication/strategies/router'
-import { getModelCost } from '@/infra/llm/pricing'
 
 // Concurrency of 1 = process exercises sequentially. Each exercise hits the
 // LLM twice (creative + deterministic). Gemini's per-minute quota is easily
@@ -105,7 +104,7 @@ export async function runStrategy(
  * Admins doing deep variations on real lessons would silently lose any
  * exercise that exceeded the block cap.
  */
-function trimSourceBlocksIfNeeded(exercise: ExerciseDoc): ExerciseDoc {
+export function trimSourceBlocksIfNeeded(exercise: ExerciseDoc): ExerciseDoc {
   const blocks = exercise.content?.blocks
   if (!Array.isArray(blocks) || blocks.length <= 5) return exercise
   const picked = selectSectionsForVariation(blocks, 5)
@@ -207,7 +206,7 @@ async function appendEntry(
 }
 
 /** Append a blocking failure (exercise dropped from output lesson). */
-async function appendFailure(
+export async function appendFailure(
   payload: Payload,
   duplicationId: string,
   exerciseRef: string,
@@ -219,7 +218,7 @@ async function appendFailure(
 }
 
 /** Append a non-blocking warning (exercise kept with placeholder). */
-async function appendWarning(
+export async function appendWarning(
   payload: Payload,
   duplicationId: string,
   exerciseRef: string,
@@ -386,15 +385,10 @@ export async function createOutputExercise(
  *  1. Run strategy → get new exercise content
  *  2. Structural validation → collect failures
  *  3. If structural passes AND strategy != 'script' → semantic validation
- *  4. On any failure: return null with newFailures populated
- *  5. On all pass: return StrategyResult with empty newFailures
- *
- * Unlike runDuplicationOrchestrator which calls appendFailure/appendWarning to
- * stream failures to the DB, this function returns all failures in newFailures[]
- * so callers (e.g. retry-exercise endpoint) can control when failures are
- * written to the DB.
+ *  4. On any failure: stream failure to DB, return null
+ *  5. On all pass: return StrategyResult for the orchestrator to use
  */
-export async function processExercise(
+async function processExercise(
   exercise: ExerciseDoc,
   duplicationId: string,
   level: 'none' | 'light' | 'medium' | 'deep',
@@ -403,22 +397,8 @@ export async function processExercise(
 ): Promise<{
   result: StrategyResult | null
   tokensUsed: { inputTokens: number; outputTokens: number }
-  newFailures: FailureEntry[]
 }> {
   const exerciseRef = exercise.id
-  const newFailures: FailureEntry[] = []
-
-  // Helper to push a failure instead of writing to DB directly
-  const pushFailure = (code: string, message: string, sectionIndex: number) => {
-    newFailures.push({
-      exerciseRef,
-      sectionIndex,
-      code,
-      message,
-      suggestedAction: suggestAction(code),
-      resolved: false,
-    })
-  }
 
   // Pre-trim source blocks. The structural validator caps exercises at 5
   // blocks (TOO_MANY_SECTIONS — renderer / UX limit). Source exercises with
@@ -433,14 +413,14 @@ export async function processExercise(
   let strategyResult: StrategyResult
   let tokensUsed = { inputTokens: 0, outputTokens: 0 }
   try {
-    const strategyResponse = await runStrategy(exercise, level, subject, payload)
+    const strategyResponse = await runStrategy(trimmedExercise, level, subject, payload)
     strategyResult = strategyResponse
     tokensUsed = strategyResponse.tokensUsed
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown strategy error'
     logger.error({ exerciseRef, level, err }, 'Strategy generation failed')
-    pushFailure(GENERATION_FAILURE_CODE, message, 0)
-    return { result: null, tokensUsed, newFailures }
+    await appendFailure(payload, duplicationId, exerciseRef, 0, GENERATION_FAILURE_CODE, message)
+    return { result: null, tokensUsed }
   }
 
   // Step 2: Structural validation. Split failures into blocking (drop the
@@ -460,19 +440,35 @@ export async function processExercise(
   const blockingFailures = structuralFailures.filter((f) => BLOCKING_FAILURE_CODES.has(f.code))
   const warningFailures = structuralFailures.filter((f) => !BLOCKING_FAILURE_CODES.has(f.code))
 
-  // Collect all failures in newFailures — caller decides when to write to DB
+  // Record blocking failures and non-blocking warnings into separate buckets
+  // so the review UI can show them under different headings.
   for (const failure of blockingFailures) {
-    pushFailure(failure.code, failure.message, failure.blockIndex ?? 0)
+    await appendFailure(
+      payload,
+      duplicationId,
+      exerciseRef,
+      failure.blockIndex ?? 0,
+      failure.code,
+      failure.message,
+    )
   }
   for (const warning of warningFailures) {
-    pushFailure(warning.code, warning.message, warning.blockIndex ?? 0)
+    await appendWarning(
+      payload,
+      duplicationId,
+      exerciseRef,
+      warning.blockIndex ?? 0,
+      warning.code,
+      warning.message,
+    )
   }
 
   if (blockingFailures.length > 0) {
-    return { result: null, tokensUsed, newFailures }
+    return { result: null, tokensUsed }
   }
 
-  // Warning-only path: fill placeholders so the exercise renders.
+  // Warning-only path: fill placeholders so the exercise renders. Warnings are
+  // already recorded so the admin can find the TODOs in the review screen.
   if (warningFailures.length > 0) {
     strategyResult = {
       ...strategyResult,
@@ -495,16 +491,19 @@ export async function processExercise(
       payload,
     )
     if (!semanticResult.ok) {
-      pushFailure(
+      await appendFailure(
+        payload,
+        duplicationId,
+        exerciseRef,
+        0,
         SEMANTIC_FAILURE_CODE,
         `Semantic mismatch: ${semanticResult.reasons.join('; ')}`,
-        0,
       )
-      return { result: null, tokensUsed, newFailures }
+      return { result: null, tokensUsed }
     }
   }
 
-  return { result: strategyResult, tokensUsed, newFailures }
+  return { result: strategyResult, tokensUsed }
 }
 
 /**
@@ -593,11 +592,6 @@ export async function runDuplicationOrchestrator(
     )
     return 'failed'
   }
-
-  // Token accumulators and timing for AI telemetry (issue #1552)
-  const runStartTime = Date.now()
-  let totalAiTokensInput = 0
-  let totalAiTokensOutput = 0
 
   try {
     const sourceLessonId =
@@ -763,39 +757,13 @@ export async function runDuplicationOrchestrator(
         }
       }
 
-      const { result, tokensUsed, newFailures } = await processExercise(
+      const { result } = await processExercise(
         exercise,
         duplicationId,
         duplicationLevel,
         duplicationSubject,
         payload,
       )
-      // Accumulate token usage across all exercises (issue #1552)
-      totalAiTokensInput += tokensUsed.inputTokens
-      totalAiTokensOutput += tokensUsed.outputTokens
-
-      // Write failures to DB — split blocking from warnings into respective buckets
-      for (const f of newFailures) {
-        if (BLOCKING_FAILURE_CODES.has(f.code as FailureCode)) {
-          await appendFailure(
-            payload,
-            duplicationId,
-            f.exerciseRef,
-            f.sectionIndex,
-            f.code,
-            f.message,
-          )
-        } else {
-          await appendWarning(
-            payload,
-            duplicationId,
-            f.exerciseRef,
-            f.sectionIndex,
-            f.code,
-            f.message,
-          )
-        }
-      }
 
       if (result === null) continue
 
@@ -848,18 +816,11 @@ export async function runDuplicationOrchestrator(
       'Duplication orchestrator completed',
     )
 
-    const runDurationMs = Date.now() - runStartTime
-    // Compute cost using gemini-3.1-pro as the representative model (issue #1552)
-    const aiCostUsd = getModelCost('gemini-3.1-pro', totalAiTokensInput, totalAiTokensOutput)
     await payload.update({
       collection: 'lesson-duplications',
       id: duplicationId,
       data: {
         status: finalStatus,
-        aiTokensInput: totalAiTokensInput,
-        aiTokensOutput: totalAiTokensOutput,
-        aiCostUsd,
-        runDurationMs,
       } as never,
       overrideAccess: true,
     })
