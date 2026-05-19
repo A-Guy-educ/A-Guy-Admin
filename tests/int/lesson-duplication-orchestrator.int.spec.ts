@@ -34,89 +34,87 @@ const { mockState } = vi.hoisted(() => {
 })
 
 vi.mock('@/infra/llm/services/lesson-duplication-variation-service', () => ({
-  generateVariation: vi
-    .fn()
-    .mockImplementation(
-      async (
-        input: { exercise: { id: string } },
-        _payload: unknown,
-      ): Promise<{
-        exercise: { id: string; content: { blocks: unknown[] } }
-        tokensUsed: { inputTokens: number; outputTokens: number }
-      }> => {
-        // Capture once — `mockState.next` is a getter that increments on
-        // every read, so re-reading it inside the check would skip past 3.
-        const callNumber = mockState.next
-        // Force failure on the 3rd exercise (call count 3 = index 2)
-        if (callNumber === 3) {
-          throw new Error('Forced failure for test')
-        }
-        return {
-          exercise: {
-            id: input.exercise.id,
-            content: {
-              blocks: [
-                {
-                  id: 'q-1',
-                  type: 'question_select',
-                  variant: 'mcq',
-                  selectionMode: 'single',
-                  prompt: {
-                    type: 'rich_text',
-                    format: 'md-math-v1',
-                    value: 'What is 2+2?',
-                    mediaIds: [],
-                  },
-                  answer: {
-                    multiSelect: false,
-                    options: [
-                      {
-                        id: 'a',
-                        content: {
-                          type: 'rich_text',
-                          format: 'md-math-v1',
-                          value: '3',
-                          mediaIds: [],
-                        },
-                      },
-                      {
-                        id: 'b',
-                        content: {
-                          type: 'rich_text',
-                          format: 'md-math-v1',
-                          value: '4',
-                          mediaIds: [],
-                        },
-                      },
-                    ],
-                    correctOptionIds: ['b'],
-                  },
-                  hint: {
-                    type: 'rich_text',
-                    format: 'md-math-v1',
-                    value: 'Think arithmetic',
-                    mediaIds: [],
-                  },
-                  solution: {
-                    type: 'rich_text',
-                    format: 'md-math-v1',
-                    value: '2+2=4',
-                    mediaIds: [],
-                  },
-                  fullSolution: {
-                    type: 'rich_text',
-                    format: 'md-math-v1',
-                    value: 'Basic addition',
-                    mediaIds: [],
-                  },
+  generateVariation: vi.fn().mockImplementation(
+    async (
+      input: { exercise: { id: string } },
+      _payload: unknown,
+    ): Promise<{
+      exercise: { id: string; content: { blocks: unknown[] } }
+      tokensUsed: { inputTokens: number; outputTokens: number }
+    }> => {
+      // Capture once — `mockState.next` is a getter that increments on
+      // every read, so re-reading it inside the check would skip past 3.
+      const callNumber = mockState.next
+      // Force failure on the 3rd exercise (call count 3 = index 2)
+      if (callNumber === 3) {
+        throw new Error('Forced failure for test')
+      }
+      return {
+        exercise: {
+          id: input.exercise.id,
+          content: {
+            blocks: [
+              {
+                id: 'q-1',
+                type: 'question_select',
+                variant: 'mcq',
+                selectionMode: 'single',
+                prompt: {
+                  type: 'rich_text',
+                  format: 'md-math-v1',
+                  value: 'What is 2+2?',
+                  mediaIds: [],
                 },
-              ],
-            },
+                answer: {
+                  multiSelect: false,
+                  options: [
+                    {
+                      id: 'a',
+                      content: {
+                        type: 'rich_text',
+                        format: 'md-math-v1',
+                        value: '3',
+                        mediaIds: [],
+                      },
+                    },
+                    {
+                      id: 'b',
+                      content: {
+                        type: 'rich_text',
+                        format: 'md-math-v1',
+                        value: '4',
+                        mediaIds: [],
+                      },
+                    },
+                  ],
+                  correctOptionIds: ['b'],
+                },
+                hint: {
+                  type: 'rich_text',
+                  format: 'md-math-v1',
+                  value: 'Think arithmetic',
+                  mediaIds: [],
+                },
+                solution: {
+                  type: 'rich_text',
+                  format: 'md-math-v1',
+                  value: '2+2=4',
+                  mediaIds: [],
+                },
+                fullSolution: {
+                  type: 'rich_text',
+                  format: 'md-math-v1',
+                  value: 'Basic addition',
+                  mediaIds: [],
+                },
+              },
+            ],
           },
-          tokensUsed: { inputTokens: 0, outputTokens: 0 },
-        }
-      },
-    ),
+        },
+        tokensUsed: { inputTokens: 0, outputTokens: 0 },
+      }
+    },
+  ),
 }))
 
 async function ensureDefaultTenant(payload: Payload): Promise<string> {
