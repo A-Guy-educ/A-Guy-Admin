@@ -6387,6 +6387,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- #1697: Return 400/500 on webhook signature verification failure instead… ([#1704](https://github.com/A-Guy-educ/A-Guy/pull/1704)) — @aguyaharonyair
 - #1694: Switch PayPal API base on env flag + require webhook secrets at … ([#1703](https://github.com/A-Guy-educ/A-Guy/pull/1703)) — @aguyaharonyair
 - #1698: Prevent invalid Transaction status transitions via beforeChange … ([#1702](https://github.com/A-Guy-educ/A-Guy/pull/1702)) — @aguyaharonyair
 - #1696: Pass idempotencyKey to stripe.refunds.create ([#1701](https://github.com/A-Guy-educ/A-Guy/pull/1701)) — @aguyaharonyair
