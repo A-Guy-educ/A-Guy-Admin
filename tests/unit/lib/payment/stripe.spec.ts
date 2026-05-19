@@ -129,25 +129,26 @@ describe('Stripe Payment Service', () => {
   })
 
   describe('refundStripe', () => {
-    it('should create refund with transaction id', async () => {
+    it('should create refund with idempotency key', async () => {
       const { refundStripe } = await import('@/lib/payment/stripe')
 
-      await refundStripe('pi_test_transaction_id')
+      await refundStripe('tx_123', 'pi_test_transaction_id')
 
-      expect(refundsCreateMock).toHaveBeenCalledWith({
-        payment_intent: 'pi_test_transaction_id',
-      })
+      expect(refundsCreateMock).toHaveBeenCalledWith(
+        { payment_intent: 'pi_test_transaction_id' },
+        { idempotencyKey: 'refund-tx_123' },
+      )
     })
 
-    it('should create refund with amount when provided', async () => {
+    it('should create refund with amount and idempotency key when provided', async () => {
       const { refundStripe } = await import('@/lib/payment/stripe')
 
-      await refundStripe('pi_test_transaction_id', 500)
+      await refundStripe('tx_456', 'pi_test_transaction_id', 500)
 
-      expect(refundsCreateMock).toHaveBeenCalledWith({
-        payment_intent: 'pi_test_transaction_id',
-        amount: 500,
-      })
+      expect(refundsCreateMock).toHaveBeenCalledWith(
+        { payment_intent: 'pi_test_transaction_id', amount: 500 },
+        { idempotencyKey: 'refund-tx_456' },
+      )
     })
   })
 })
