@@ -500,7 +500,7 @@ export interface User {
         course: string | Course;
         grantMethod: 'admin' | 'payment' | 'code';
         grantedAt?: string | null;
-        transactionId: string;
+        transactionId?: string | null;
         id?: string | null;
       }[]
     | null;
@@ -510,7 +510,7 @@ export interface User {
   featureEntitlements?:
     | {
         key: string;
-        transactionId: string;
+        transactionId?: string | null;
         grantedAt?: string | null;
         id?: string | null;
       }[]
@@ -1719,6 +1719,8 @@ export interface ChatAsset {
   createdAt: string;
 }
 /**
+ * Tracks coupon usage per transaction
+ *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "coupon-usages".
  */
@@ -1729,21 +1731,27 @@ export interface CouponUsage {
    */
   coupon: string | Coupon;
   /**
-   * The transaction where the coupon was applied
+   * The checkout transaction where the coupon was applied
    */
   transaction: string | Transaction;
   /**
-   * The user who redeemed the coupon
+   * The user who used the coupon
    */
   user: string | User;
   /**
-   * When the coupon was redeemed
+   * When the coupon was redeemed (distinct from createdAt for delayed redemptions)
    */
-  usedAt: string;
+  usedAt?: string | null;
+  /**
+   * User who created this document
+   */
+  createdBy?: (string | null) | User;
   updatedAt: string;
   createdAt: string;
 }
 /**
+ * Manage discount coupons that can be applied at checkout
+ *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "coupons".
  */
@@ -1753,23 +1761,22 @@ export interface Coupon {
    * Coupon code (stored uppercase, case-insensitive in app logic)
    */
   code: string;
+  /**
+   * Percentage: discountValue is a percent (0-100). Fixed: discountValue is in agorot.
+   */
   discountType: 'percentage' | 'fixed';
   /**
-   * Percentage (0–100) or agorot amount depending on discountType
+   * Percentage (0-100) or fixed amount in agorot, depending on discountType
    */
   discountValue: number;
   /**
-   * Currency for fixed discount
+   * Currency for fixed-amount discounts
    */
   currency: 'ILS' | 'USD' | 'EUR';
   /**
-   * Maximum uses (0 = unlimited)
+   * Whether this coupon can be used
    */
-  maxUses: number;
-  /**
-   * How many times this coupon has been used
-   */
-  usesCount: number;
+  isActive: boolean;
   /**
    * מתחילת תוקף (אם לא מוגדר — תקף מעכשיו)
    */
@@ -1778,15 +1785,22 @@ export interface Coupon {
    * סוף תוקף (אם לא מוגדר — ללא הגבלה)
    */
   validUntil?: string | null;
-  isActive: boolean;
   /**
-   * אם ריק — חל על כל המוצרים
+   * Maximum number of uses (0 = unlimited)
    */
-  applicableProducts?: (string | Product)[] | null;
+  maxUses: number;
+  /**
+   * Number of times this coupon has been used
+   */
+  usesCount: number;
   /**
    * מקסימום שימושים למשתמש
    */
   maxUsesPerUser?: number | null;
+  /**
+   * אם ריק — חל על כל המוצרים
+   */
+  applicableProducts?: (string | Product)[] | null;
   /**
    * User who created this document
    */
@@ -2096,6 +2110,26 @@ export interface LessonDuplication {
         id?: string | null;
       }[]
     | null;
+  /**
+   * Total input tokens consumed across all LLM calls for this duplication run.
+   */
+  aiTokensInput?: number | null;
+  /**
+   * Total output tokens generated across all LLM calls for this duplication run.
+   */
+  aiTokensOutput?: number | null;
+  /**
+   * Estimated USD cost of all LLM calls for this duplication run, based on Gemini 3.1 Pro pricing.
+   */
+  aiCostUsd?: number | null;
+  /**
+   * Wall-clock duration of the duplication run in milliseconds.
+   */
+  runDurationMs?: number | null;
+  /**
+   * Number of consecutive cron ticks that claimed this record without producing any new output exercises. Reset to 0 when outputExercises grows. Auto-fails at ≥ 5.
+   */
+  claimAttempts?: number | null;
   /**
    * User who created this document
    */
@@ -3631,6 +3665,7 @@ export interface CouponUsagesSelect<T extends boolean = true> {
   transaction?: T;
   user?: T;
   usedAt?: T;
+  createdBy?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -3643,13 +3678,13 @@ export interface CouponsSelect<T extends boolean = true> {
   discountType?: T;
   discountValue?: T;
   currency?: T;
-  maxUses?: T;
-  usesCount?: T;
+  isActive?: T;
   validFrom?: T;
   validUntil?: T;
-  isActive?: T;
-  applicableProducts?: T;
+  maxUses?: T;
+  usesCount?: T;
   maxUsesPerUser?: T;
+  applicableProducts?: T;
   createdBy?: T;
   updatedAt?: T;
   createdAt?: T;
@@ -3840,6 +3875,11 @@ export interface LessonDuplicationsSelect<T extends boolean = true> {
         strategy?: T;
         id?: T;
       };
+  aiTokensInput?: T;
+  aiTokensOutput?: T;
+  aiCostUsd?: T;
+  runDurationMs?: T;
+  claimAttempts?: T;
   createdBy?: T;
   updatedAt?: T;
   createdAt?: T;

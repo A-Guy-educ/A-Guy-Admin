@@ -1,60 +1,32 @@
 /**
  * CouponUsages Collection
  *
+ * Records each use of a coupon for auditing and tracking.
+ *
  * @fileType collection-config
  * @domain payments
- * @pattern usage-log
- * @ai-summary Tracks each coupon redemption for usage counting and per-user limits
+ * @pattern coupon
+ * @ai-summary Records coupon usage for auditing
  */
 
-import type { CollectionConfig, CollectionAfterChangeHook } from 'payload'
+import type { CollectionConfig } from 'payload'
 
 import { adminOnly } from '../access/adminOnly'
-
-/**
- * afterChange: Increment coupon.usesCount when a usage is created.
- * Uses context.skipHooks to prevent infinite loops.
- */
-const incrementCouponUsesCount: CollectionAfterChangeHook = async ({ doc, operation, req }) => {
-  if (operation !== 'create') return doc
-
-  const couponId = typeof doc.coupon === 'string' ? doc.coupon : (doc.coupon as { id?: string })?.id
-  if (!couponId) return doc
-
-  try {
-    await req.payload.update({
-      collection: 'coupons',
-      id: couponId,
-      data: { $inc: { usesCount: 1 } } as Record<string, unknown>,
-      context: { skipHooks: true },
-      req,
-      overrideAccess: true,
-    })
-  } catch (error) {
-    req.payload.logger.error(
-      { err: error, couponUsageId: doc.id, couponId },
-      'Failed to increment coupon usesCount',
-    )
-  }
-
-  return doc
-}
+import { createdByField } from '../fields/createdBy'
 
 export const CouponUsages: CollectionConfig = {
   slug: 'coupon-usages',
-  access: {
-    create: adminOnly,
-    read: adminOnly,
-    update: adminOnly,
-    delete: adminOnly,
-  },
-  hooks: {
-    afterChange: [incrementCouponUsesCount],
-  },
   admin: {
-    useAsTitle: 'usedAt',
-    defaultColumns: ['coupon', 'user', 'transaction', 'usedAt'],
+    useAsTitle: 'coupon',
+    defaultColumns: ['coupon', 'transaction', 'user', 'createdAt'],
     group: 'Payments',
+    description: 'Tracks coupon usage per transaction',
+  },
+  access: {
+    create: () => true, // Public create for recording usage during checkout
+    read: adminOnly,
+    update: () => false, // No updates allowed
+    delete: adminOnly,
   },
   fields: [
     {
@@ -63,7 +35,9 @@ export const CouponUsages: CollectionConfig = {
       relationTo: 'coupons',
       required: true,
       index: true,
-      admin: { description: 'The coupon that was used' },
+      admin: {
+        description: 'The coupon that was used',
+      },
     },
     {
       name: 'transaction',
@@ -71,7 +45,9 @@ export const CouponUsages: CollectionConfig = {
       relationTo: 'transactions',
       required: true,
       index: true,
-      admin: { description: 'The transaction where the coupon was applied' },
+      admin: {
+        description: 'The checkout transaction where the coupon was applied',
+      },
     },
     {
       name: 'user',
@@ -79,14 +55,19 @@ export const CouponUsages: CollectionConfig = {
       relationTo: 'users',
       required: true,
       index: true,
-      admin: { description: 'The user who redeemed the coupon' },
+      admin: {
+        description: 'The user who used the coupon',
+      },
     },
     {
       name: 'usedAt',
       type: 'date',
-      required: true,
-      admin: { description: 'When the coupon was redeemed' },
+      admin: {
+        description:
+          'When the coupon was redeemed (distinct from createdAt for delayed redemptions)',
+      },
     },
+    createdByField,
   ],
   timestamps: true,
 }
