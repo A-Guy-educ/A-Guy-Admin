@@ -34,6 +34,18 @@ export const syncPaymentStats: CollectionAfterChangeHook = async ({
     return doc
   }
 
+  // Per-doc idempotency: Payload may fire afterChange more than once for a single
+  // create (e.g. when defaults/tenant fields trigger a follow-up save). Without this
+  // guard the upsert below double-counts. Tracking by doc.id within req.context
+  // ensures one application per transaction per request.
+  const processed = ((req.context as Record<string, unknown>)._paymentStatsProcessed ??=
+    new Set<string>()) as Set<string>
+  const txKey = String(doc.id)
+  if (processed.has(txKey)) {
+    return doc
+  }
+  processed.add(txKey)
+
   const currentStatus = doc.status as string | undefined
   const prevStatus = previousDoc?.status as string | undefined
 
