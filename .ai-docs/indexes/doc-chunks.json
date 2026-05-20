@@ -1303,7 +1303,7 @@
     {
       "id": "AGENTS-when-to-record-a-memory",
       "title": "When to record a memory",
-      "content": "- **Preference** — you learn how the operator wants kody to behave.\n- **Decision** — a non-obvious choice was made (and especially *why*).\n- **Lesson** — you tried something that broke or surprised you; future\n  sessions should not repeat it.\n- **Verdict** — an inbox approve / reject / dismiss happened (dashboard\n  writes these; you only do it from a chat where the operator gave a\n  verdict in words).\n\nIf the thing is already in the code, the commit history, or current\nsession context, don't bother — memory is for things that would\notherwise evaporate.",
+      "content": "- **Preference** — you learn how the operator wants kody to behave.\n- **Decision** — a non-obvious choice was made (and especially _why_).\n- **Lesson** — you tried something that broke or surprised you; future\n  sessions should not repeat it.\n- **Verdict** — an inbox approve / reject / dismiss happened (dashboard\n  writes these; you only do it from a chat where the operator gave a\n  verdict in words).\n\nIf the thing is already in the code, the commit history, or current\nsession context, don't bother — memory is for things that would\notherwise evaporate.",
       "keywords": [
         "memory",
         "operator",
@@ -5592,7 +5592,7 @@
     }
   ],
   "metadata": {
-    "generatedAt": "2026-05-20T12:22:56.318Z",
+    "generatedAt": "2026-05-20T12:26:15.269Z",
     "totalChunks": 272,
     "sourceFiles": [
       "AGENTS.md",

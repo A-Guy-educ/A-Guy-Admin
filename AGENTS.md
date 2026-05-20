@@ -1262,7 +1262,7 @@ directly — they are owned by the `memory-writer` job.
 ### When to record a memory
 
 - **Preference** — you learn how the operator wants kody to behave.
-- **Decision** — a non-obvious choice was made (and especially *why*).
+- **Decision** — a non-obvious choice was made (and especially _why_).
 - **Lesson** — you tried something that broke or surprised you; future
   sessions should not repeat it.
 - **Verdict** — an inbox approve / reject / dismiss happened (dashboard
