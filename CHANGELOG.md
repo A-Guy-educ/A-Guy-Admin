@@ -6387,6 +6387,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- #1720: Fix lesson-duplication prompts that omit hint / fullSolution fro… ([#1722](https://github.com/A-Guy-educ/A-Guy/pull/1722)) — @aguyaharonyair
 - fix(prompts): Add missing hint/solution/fullSolution to example outputs ([#1724](https://github.com/A-Guy-educ/A-Guy/pull/1724)) — @aguyshayb
 - #1712: URL-encode cancelUrl params and validate productId as ObjectId ([#1719](https://github.com/A-Guy-educ/A-Guy/pull/1719)) — @aguyshayb
 - #1710: Grant entitlements before flipping Transaction to succeeded ([#1714](https://github.com/A-Guy-educ/A-Guy/pull/1714)) — @aguyaharonyair
