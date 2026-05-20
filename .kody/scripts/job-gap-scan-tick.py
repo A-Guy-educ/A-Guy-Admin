@@ -404,9 +404,15 @@ def commit_state(slug: str) -> bool:
     ).stdout.strip()
     if not status:
         return False
-    msg = f"chore(jobs): job-gap-scan proposed {slug}"
+    # Sentence-case subject + a non-empty body so the repo's commitlint
+    # (subject-case + body-empty rules) accepts the auto-commit.
+    subject = f"chore(jobs): Record job-gap-scan proposal for {slug}"
+    body = (
+        f"Bumps .kody/jobs/job-gap-scan.state.json after proposing "
+        f"`{slug}` (see `kody:ceo-proposal` issue)."
+    )
     commit_result = subprocess.run(
-        ["git", "-C", str(REPO_ROOT), "commit", "-m", msg],
+        ["git", "-C", str(REPO_ROOT), "commit", "-m", subject, "-m", body],
         capture_output=True,
         text=True,
     )
