@@ -1,6 +1,7 @@
 ---
 every: 30m
 staff: qa
+disabled: true
 ---
 
 # QA Changelog Verification
