@@ -1,5 +1,5 @@
 ---
-audience: [qa]
+for: qa
 ---
 
 # QA scenarios
