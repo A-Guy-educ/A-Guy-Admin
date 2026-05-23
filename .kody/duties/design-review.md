@@ -1,7 +1,6 @@
 ---
 every: 7d
 staff: ux-designer
-disabled: true
 ---
 
 # Design Review
