@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- #1747: Force pass-1 schema to include hint/solution/fullSolution slots … ([#1751](https://github.com/A-Guy-educ/A-Guy/pull/1751)) — @aguyaharonyair
 - #2000: Short-circuit lesson duplication for level=none with fast clone … ([#2002](https://github.com/A-Guy-educ/A-Guy/pull/2002)) — @kodyade
 - #1986: Persist Stripe payment_intent ID + gate entitlements on payment_… ([#1998](https://github.com/A-Guy-educ/A-Guy/pull/1998)) — @kodyade
 - #1748: Drop responseSchema on pass-2 solution derivation and validate o… ([#1749](https://github.com/A-Guy-educ/A-Guy/pull/1749)) — @aguyaharonyair
