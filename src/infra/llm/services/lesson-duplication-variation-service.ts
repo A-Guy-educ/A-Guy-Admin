@@ -24,10 +24,7 @@ import { getModelRegistryEntry, getProviderModelName } from '../models'
 import { LLMProviderType } from '../providers/types'
 import { logger } from '@/infra/utils/logger'
 import { VariationGenerationError } from '../errors'
-import {
-  buildPass1JsonSchemaForExercise,
-  SolutionDerivationOutputSchema,
-} from '../schemas/lesson-duplication-output'
+import { SolutionDerivationOutputSchema } from '../schemas/lesson-duplication-output'
 
 /**
  * Model used for both passes. Pinned to gemini-3.1-pro-preview because:
@@ -190,15 +187,15 @@ export async function generateVariation(
             messages: [{ role: 'user', content: creativeUserPrompt }],
             model: creativeConfig,
             acknowledgment: `Generating ${level} variation for exercise`,
-            // Schema is derived per-exercise from the input's own shape:
-            // walk the source `content.blocks` JSON, produce a Gemini-dialect
-            // responseSchema that mirrors it. Forces the variation to keep
-            // the same block layout (same types, same nested fields) — no
-            // hallucinated `answer.kind`, no missing variants, no extra
-            // properties. The schema is delivered fresh on every call.
-            outputJsonSchema: buildPass1JsonSchemaForExercise(exercise),
-            // Pinned to gemini-3.1-pro-preview — 2.5-pro mangles complex
-            // schemas (see VARIATION_MODEL_VERSION rationale above).
+            // NOTE: outputJsonSchema intentionally omitted.
+            // Verified live (2026-05-24) that Gemini 3.1-pro-preview silently
+            // ignores responseSchema slots/required for hint/solution/fullSolution
+            // — even when the per-exercise derived schema declares them required,
+            // pass-1 output has 0/N hints. Without the schema, prompt-level rules
+            // produce N/N hints. Same collapse pattern as pass-2 (issue #1748).
+            // Structural validity is enforced post-hoc by sanitizeAiBlocks +
+            // payload.create's strict Zod schema. Keep buildPass1JsonSchemaForExercise
+            // exported in case Gemini's responseSchema improves.
             modelVersion: VARIATION_MODEL_VERSION,
           },
           payload,
