@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- #1986: Persist Stripe payment_intent ID + gate entitlements on payment_… ([#1998](https://github.com/A-Guy-educ/A-Guy/pull/1998)) — @kodyade
 - #1748: Drop responseSchema on pass-2 solution derivation and validate o… ([#1749](https://github.com/A-Guy-educ/A-Guy/pull/1749)) — @aguyaharonyair
 - #1581: Phase 7: Course data scope decision + brand smoke test ([#1757](https://github.com/A-Guy-educ/A-Guy/pull/1757)) — @aguyaharonyair · ⚠️ QA 2026-05-23 (#1946)
 - #1812: [ExerciseWorksheet] Question label text should align vertically … ([#1815](https://github.com/A-Guy-educ/A-Guy/pull/1815)) — @aguyaharonyair
