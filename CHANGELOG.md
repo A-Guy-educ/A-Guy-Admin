@@ -1490,6 +1490,7 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- #2110: Add WebhookEvents collection and dedup all webhook handlers on (… ([#2118](https://github.com/A-Guy-educ/A-Guy/pull/2118)) — @aguyaharonyair
 ## [v0.25.9] - 2026-05-26
 
 - chore: release v0.25.9 ([#2121](https://github.com/A-Guy-educ/A-Guy/pull/2121)) — @kodyade[bot]
