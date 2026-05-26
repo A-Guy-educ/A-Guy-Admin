@@ -1490,6 +1490,8 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+## [v0.25.9] - 2026-05-26
+
 - chore: release v0.25.9 ([#2121](https://github.com/A-Guy-educ/A-Guy/pull/2121)) — @kodyade[bot]
 - #2113: Add public product catalog page and checkout success/cancel pages ([#2117_(https://github.com/A-Guy-educ/A-Guy/pull/2117)) — @aguyaharonyair
 - #2112: Add PayPal sandbox key smoke test script + developer setup doc ([#2114](https://github.com/A-Guy-educ/A-Guy/pull/2114)) — @aguyaharonyair
