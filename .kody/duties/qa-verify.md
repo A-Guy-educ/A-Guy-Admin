@@ -47,23 +47,30 @@ frontmatter to pause it.
 **Per tick (one action max):**
 
 1. **A review is in flight** (`data.inflightPr` set) → read that PR:
-   `gh pr view <pr> --json labels,comments`.
-   - **Carries `kody:ui-verified`** (verdict PASS/CONCERNS) → the change works.
-     **Check the trust ledger first:** read the `kody:cto-decisions` manifest
-     issue (`gh issue list --label kody:cto-decisions --state all --json number`
-     then `gh issue view <n> --json body`, parse the fenced JSON) and look at
+   `gh pr view <pr> --json labels,comments`. **Read the actual verdict from the
+   `ui-review` comment** (`## Verdict: PASS | CONCERNS | FAIL`) — do NOT key off
+   the `kody:ui-verified` label alone, because the dashboard maps **both** PASS
+   and CONCERNS to that label. Merge is offered for a clean **PASS only**.
+   - **Verdict PASS** → the change is confirmed working. **Check the trust
+     ledger first:** read the `kody:cto-decisions` manifest issue
+     (`gh issue list --label kody:cto-decisions --state all --json number` then
+     `gh issue view <n> --json body`, parse the fenced JSON) and look at
      `staff.qa.merge.mode`:
      - **`mode === "auto"`** → squash-merge directly:
        `gh pr merge <pr> --squash --delete-branch`, post a one-line
        "✅ auto-merged (QA trust)" note. Clear `data.inflightPr`.
      - **otherwise** → post the **merge recommendation** (format below) on the
        PR so the operator gets a one-tap Approve. Clear `data.inflightPr`.
-   - **Carries `kody:ui-failed`** (verdict FAIL) → post the **fix recommendation**
+   - **Verdict CONCERNS** (`kody:ui-verified` but not a clean pass) → do NOT
+     offer a one-tap merge. Post one **advisory** inbox note (`@`-mention +
+     `<!-- kody-staff: qa -->`, no merge/fix action) summarizing the concern so
+     the operator decides. Clear `data.inflightPr`.
+   - **Verdict FAIL** (`kody:ui-failed`) → post the **fix recommendation**
      (format below). Clear `data.inflightPr`.
-   - **Neither label yet, dispatched < 90 min ago** → emit
+   - **No verdict yet, dispatched < 90 min ago** → emit
      `cursor: awaiting-result`, exit.
-   - **Neither, ≥ 90 min** → clear `data.inflightPr` (the next tick re-dispatches).
-     A stuck review must never wedge the duty.
+   - **No verdict, ≥ 90 min** → clear `data.inflightPr` (the next tick
+     re-dispatches). A stuck review must never wedge the duty.
 
    Exit after resolving — that is your single mutation this tick.
 
