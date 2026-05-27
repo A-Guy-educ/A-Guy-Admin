@@ -1811,6 +1811,9 @@ export interface Coupon {
    * אם ריק — חל על כל המוצרים
    */
   applicableProducts?: (string | Product)[] | null;
+  status?: string | null;
+  usageDisplay?: string | null;
+  expiresDisplay?: string | null;
   /**
    * User who created this document
    */
@@ -3761,6 +3764,9 @@ export interface CouponsSelect<T extends boolean = true> {
   usesCount?: T;
   maxUsesPerUser?: T;
   applicableProducts?: T;
+  status?: T;
+  usageDisplay?: T;
+  expiresDisplay?: T;
   createdBy?: T;
   updatedAt?: T;
   createdAt?: T;
