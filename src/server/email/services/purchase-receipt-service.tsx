@@ -14,7 +14,7 @@
  * @ai-summary Sends purchase receipt emails after successful payment webhooks
  */
 
-import ReactDOMServer from 'react-dom/server'
+import { renderToReadableStream } from 'react-dom/server'
 
 import type { Payload } from 'payload'
 
@@ -46,9 +46,10 @@ export interface SendPurchaseReceiptOptions {
 /**
  * Renders a React email template to an HTML string.
  */
-function renderEmailTemplate(locale: string, data: PurchaseReceiptData): string {
+async function renderEmailTemplate(locale: string, data: PurchaseReceiptData): Promise<string> {
   const Template = locale === 'he' ? PurchaseReceiptEmailHE : PurchaseReceiptEmailEN
-  const html = ReactDOMServer.renderToStaticMarkup(<Template data={data} />)
+  const stream = await renderToReadableStream(<Template data={data} />)
+  const html = await new Response(stream).text()
   return `<!DOCTYPE html>${html}`
 }
 
@@ -147,7 +148,7 @@ export async function sendPurchaseReceipt(
       : {}),
   }
 
-  const html = renderEmailTemplate(userLocale, templateData)
+  const html = await renderEmailTemplate(userLocale, templateData)
 
   // ── 4. Send email (no-op fallback if adapter not configured) ──────────────
   // payload.email is only populated when an email adapter (e.g. Resend, SendGrid)
