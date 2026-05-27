@@ -40,9 +40,9 @@ A "delivery PR" is an **open** PR linked to an issue — head branch
 judges each against its own issue's goal. Skip pure chore/docs PRs and PRs with
 no linked issue.
 
-`disabled: true` only to avoid auto-activating — this repo is already set up
-(`LOGIN_USER` + `LOGIN_PASSWORD`, `.kody/context/*.md` QA flows). Flip to
-`disabled: false` to go live.
+Live (no `disabled` flag) — this repo is already set up (`LOGIN_USER` +
+`LOGIN_PASSWORD`, `.kody/context/*.md` QA flows). Add `disabled: true` to the
+frontmatter to pause it.
 
 **Per tick (one action max):**
 
