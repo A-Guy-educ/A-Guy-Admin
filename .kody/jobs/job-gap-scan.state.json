@@ -1,9 +1,9 @@
 {
-  "lastRunISO": "2026-05-26T08:39:34Z",
+  "lastRunISO": "2026-05-28T20:23:08Z",
   "proposed": {
     "sentry-digest": {
       "firstSuggestedISO": "2026-05-20T12:37:00Z",
-      "lastWrittenISO": "2026-05-20T12:37:00Z"
+      "lastWrittenISO": "2026-05-28T20:23:08Z"
     },
     "secret-leak-scan": {
       "firstSuggestedISO": "2026-05-20T13:01:00Z",
