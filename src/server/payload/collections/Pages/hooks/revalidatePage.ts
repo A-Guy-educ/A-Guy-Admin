@@ -7,7 +7,7 @@ async function revalidatePagePath(path: string, tag: string) {
   try {
     const { revalidatePath, revalidateTag } = await import('next/cache')
     revalidatePath(path)
-    revalidateTag(tag, 'default')
+    revalidateTag(tag)
   } catch (error) {
     // Silently fail if next/cache is not available (e.g., in non-Next.js contexts)
     console.warn('Failed to revalidate:', error)

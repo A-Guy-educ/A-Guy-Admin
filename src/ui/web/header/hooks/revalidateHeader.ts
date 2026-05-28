@@ -4,7 +4,7 @@ import type { GlobalAfterChangeHook } from 'payload'
 async function revalidateHeaderTag(tag: string) {
   try {
     const { revalidateTag } = await import('next/cache')
-    revalidateTag(tag, 'default')
+    revalidateTag(tag)
   } catch (error) {
     // Silently fail if next/cache is not available (e.g., in non-Next.js contexts)
     console.warn('Failed to revalidate:', error)
