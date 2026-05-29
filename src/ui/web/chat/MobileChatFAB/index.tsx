@@ -1,7 +1,8 @@
 'use client'
 
-import { useTranslations } from '@/ui/web/providers/I18n'
+import { useTranslations, useLocale } from '@/ui/web/providers/I18n'
 import { cn } from '@/infra/utils/ui'
+import { isRTL, type Locale } from '@/i18n/config'
 import { MessageSquare, ChevronDown } from 'lucide-react'
 import React, { useEffect, useCallback } from 'react'
 
@@ -26,6 +27,7 @@ interface MobileChatFABProps {
  */
 export function MobileChatFAB({ isOpen, onOpen, onClose, children }: MobileChatFABProps) {
   const t = useTranslations('courses')
+  const locale = useLocale()
 
   // Escape key handler
   useEffect(() => {
@@ -63,7 +65,7 @@ export function MobileChatFAB({ isOpen, onOpen, onClose, children }: MobileChatF
           type="button"
           onClick={onOpen}
           className={cn(
-            'fixed left-6 bottom-6 z-[70]',
+            `fixed ${isRTL(locale as Locale) ? 'left-6' : 'right-6'} bottom-6 z-[70]`,
             'w-14 h-14',
             'bg-primary text-primary-foreground rounded-full',
             'shadow-elevation-3 hover:scale-110 hover:bg-primary/90',

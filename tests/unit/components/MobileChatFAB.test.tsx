@@ -171,7 +171,8 @@ describe('MobileChatFAB Component', () => {
     )
 
     const fabButton = screen.getByRole('button', { name: /Open chat/i })
-    expect(fabButton.className).toContain('left-6')
+    // LTR locale (en) → FAB on right side
+    expect(fabButton.className).toContain('right-6')
     expect(fabButton.className).toContain('bottom-6')
     expect(fabButton.className).toContain('fixed')
   })
