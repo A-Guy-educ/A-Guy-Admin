@@ -166,11 +166,36 @@ def behind_by(slug: str, base: str, head: str) -> int:
         return 0
 
 
+def refresh_mergeable(slug: str, number: int) -> str:
+    """Return MERGEABLE | CONFLICTING | UNKNOWN, asking REST to recompute first.
+    `gh pr list` returns UNKNOWN whenever GitHub hasn't computed mergeability yet
+    (open/push moments). Calling the single-PR REST endpoint triggers the compute
+    synchronously; one retry usually settles it. Without this, UNKNOWN silently
+    fell through to the sync branch and the engine rebased a conflicting PR."""
+    for _ in range(2):
+        res = gh(["api", f"repos/{slug}/pulls/{number}", "--jq", ".mergeable"])
+        if res.returncode != 0:
+            return "UNKNOWN"
+        out = (res.stdout or "").strip()
+        if out == "true":
+            return "MERGEABLE"
+        if out == "false":
+            return "CONFLICTING"
+    return "UNKNOWN"
+
+
 def detect_repair(pr: dict, slug: str) -> tuple[str, str] | None:
-    """Return (verb, reason) for the highest-priority repair, or None."""
+    """Return (verb, reason) for the highest-priority repair, or None.
+    Returns ("defer", reason) when mergeability is still UNKNOWN after a
+    refresh — we'd rather wait one tick than misclassify a conflict as sync."""
     base = pr.get("baseRefName", "")
     head = pr.get("headRefName", "")
-    if pr.get("mergeable") == "CONFLICTING":
+    mergeable = pr.get("mergeable")
+    if mergeable == "UNKNOWN":
+        mergeable = refresh_mergeable(slug, pr["number"])
+    if mergeable == "UNKNOWN":
+        return "defer", f"PR #{pr['number']} mergeability still UNKNOWN; retry next tick."
+    if mergeable == "CONFLICTING":
         return "resolve", f"PR #{pr['number']} has merge conflicts with `{base}`."
     if ci_failing(pr.get("statusCheckRollup")):
         return "fix-ci", f"PR #{pr['number']} has failing CI checks."
@@ -255,20 +280,30 @@ def main() -> int:
     print("| PR | verb | fingerprint | action | note |")
     print("|----|------|-------------|--------|------|")
 
-    actions_taken = 0
-    # Lowest PR number first → deterministic, fair ordering under the cap.
-    for pr in sorted(prs, key=lambda p: p["number"]):
+    # Detect first, act second. Sorting by (verb-priority, number) ensures the
+    # per-tick cap never starves `resolve`: previously a flood of `sync`
+    # candidates (lowest PR numbers first) ate the cap before any `resolve`
+    # got dispatched.
+    VERB_PRIORITY = {"resolve": 0, "fix-ci": 1, "sync": 2}
+    queue: list[tuple[int, int, dict, str, str]] = []  # (priority, num, pr, verb, reason)
+    for pr in prs:
         num = pr["number"]
-        key = str(num)
         if pr.get("isDraft"):
             print(f"| #{num} | — | — | skip | draft |")
             continue
-
         repair = detect_repair(pr, slug)
         if repair is None:
             print(f"| #{num} | — | — | skip | healthy |")
             continue
         verb, reason = repair
+        if verb == "defer":
+            print(f"| #{num} | — | — | defer | mergeable=UNKNOWN |")
+            continue
+        queue.append((VERB_PRIORITY[verb], num, pr, verb, reason))
+
+    actions_taken = 0
+    for _prio, num, pr, verb, reason in sorted(queue, key=lambda x: (x[0], x[1])):
+        key = str(num)
         # Fingerprint on the branch head SHA, not updatedAt. Posting our own
         # `@kody <verb>` comment bumps updatedAt, so an updatedAt-based fp made
         # every acted-on PR look "new" next tick and re-fire forever — a handful
