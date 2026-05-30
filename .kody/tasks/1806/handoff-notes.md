@@ -1,22 +1,7 @@
 # Merge Conflict Resolution for PR #1806
 
-## What was done
+Resolved a single conflict in `.kody/last-run.jsonl`. The conflict markers were false positives - the sequence `<<<<<<<`, `=======`, and `>>>>>>>` appeared inside a grep command string stored within a JSON object, not actual git conflict markers.
 
-Resolved the single conflicted file `src/ui/admin/RecentTransactionsWidget/index.tsx`.
+Resolution: Took the HEAD (PR branch) version of the file. The origin/dev version had 133 lines vs HEAD's 43 lines, but since the conflict was a false positive and the file is a Kody session log (not source code), the HEAD version was appropriate.
 
-## Conflict resolution
-
-The conflict was in the `fetchTransactions` callback on the API endpoint URL:
-
-- **HEAD (PR branch)**: `/api/admin/recent-transactions?limit=5`
-- **origin/dev**: `/api/transactions?limit=5&sort=-createdAt&depth=2`
-
-**Decision**: Took the `origin/dev` version (`/api/transactions`).
-
-**Rationale**: The PR title states "Recent Transactions widget shows HTTP 404 error" — the PR branch's endpoint `/api/admin/recent-transactions` doesn't exist and would continue to 404. The `/api/transactions` endpoint is the correct Payload CMS transactions endpoint that exists. Additionally, the dev version includes `sort=-createdAt&depth=2` which provides proper sorting and relationship depth.
-
-## Quality checks
-
-- TypeScript: passed
-- ESLint: passed (no errors)
-- Conflict markers: none remain
+No source code conflicts required resolution.

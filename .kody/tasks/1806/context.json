@@ -4,11 +4,11 @@
   "target": "1783-p1-recent-transactions-widget-shows-http-404-error",
   "outcome": "success",
   "exitCode": 0,
-  "reason": "Resolved single conflict in RecentTransactionsWidget by taking dev endpoint",
-  "prUrl": "https://github.com/A-Guy-educ/A-Guy/pull/1806",
+  "reason": "Single file conflict in .kody/last-run.jsonl - false positive conflict markers inside grep command string; resolved by taking HEAD version",
+  "prUrl": null,
   "runUrl": null,
-  "filesTouched": ["src/ui/admin/RecentTransactionsWidget/index.tsx"],
-  "sessionLog": ".kody/sessions/",
-  "startedAt": "2026-05-26T09:36:00Z",
-  "finishedAt": "2026-05-26T09:37:00Z"
+  "filesTouched": [".kody/last-run.jsonl"],
+  "sessionLog": null,
+  "startedAt": "2026-05-30T17:35:00Z",
+  "finishedAt": "2026-05-30T17:36:30Z"
 }
