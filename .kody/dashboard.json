@@ -2,5 +2,12 @@
   "version": 1,
   "defaultPreviewUrl": "https://www.dev.aguy.co.il/",
   "defaultChatEntryKey": "kody:minimax/MiniMax-M2.7-highspeed",
-  "brainFlyChatEnabled": true
+  "brainFlyChatEnabled": true,
+  "namedPreviews": [
+    {
+      "id": "default",
+      "label": "Default",
+      "url": "https://www.dev.aguy.co.il"
+    }
+  ]
 }
