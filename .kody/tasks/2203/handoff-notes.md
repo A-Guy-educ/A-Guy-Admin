@@ -1,19 +1,33 @@
 ## Root Cause
 
-Node.js 22 (used in CI) enforces ESM import assertions for JSON files. The error:
+E2E test failures in CI on PR #2203.
 
-```
-TypeError: Module "file:///home/runner/work/A-Guy/A-Guy/src/brands/aguy/messages/en.json" needs an import attribute of "type: json"
-```
+### Failure 1: themeColor meta tag test (FIXED)
+- **Error**: `strict mode violation: locator('meta[name="theme-color"]') resolved to 2 elements`
+- **Cause**: `generateViewport()` returns an array with both light and dark theme colors. The test used `.getAttribute('content')` without specifying which element to select.
+- **Fix**: Updated test selector to `meta[name="theme-color"][media="(prefers-color-scheme: light)"]` to explicitly select the light mode meta tag.
 
-## Fix
+### Failure 2: Header logo test
+- **Error**: `locator resolved to <svg>... but unexpected value "hidden"`
+- **Status**: Not yet diagnosed. The SVG element exists in the DOM (12 locators resolved) but Playwright considers it hidden.
 
-`src/brands/aguy/index.ts` lines 13–14: added `with { type: "json" }` import attribute to both `en.json` and `he.json` imports.
+### Failure 3: Hebrew content test
+- **Error**: Neither RTL direction nor Hebrew text found on /courses page
+- **Status**: Not yet diagnosed. May be auth/i18n issue or environmental.
 
-## Why it worked before
+## Files Changed
 
-Local dev used a different Node.js version or the project was using CommonJS-style `require()`. The CI runner (Node 22) requires explicit import attributes for JSON under ESM.
+- `tests/e2e/brand-identity/brand-identity.e2e.spec.ts` — Fixed theme-color test selector
 
 ## Verification
 
-`mcp__kody-verify__verify` passed on first attempt (typecheck + lint + tests).
+- TypeScript check: PASSED
+- ESLint: PASSED
+- Format check: PASSED
+- E2E tests: 3 failures remain (see above)
+
+## Recommendations
+
+1. Investigate header logo visibility issue in CI environment
+2. Investigate Hebrew content rendering in /courses page
+3. Consider adding more specific locators or wait conditions to the failing tests
