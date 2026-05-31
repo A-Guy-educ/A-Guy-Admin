@@ -8,6 +8,11 @@
       "id": "default",
       "label": "Default",
       "url": "https://www.dev.aguy.co.il"
+    },
+    {
+      "id": "prod-esw0",
+      "label": "Prod",
+      "url": "https://www.aguy.co.il"
     }
   ]
 }
