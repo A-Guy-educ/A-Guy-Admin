@@ -45,7 +45,8 @@
     "allowedAssociations": [
       "OWNER",
       "COLLABORATOR",
-      "CONTRIBUTOR"
+      "CONTRIBUTOR",
+      "FIRST_TIME_CONTRIBUTOR"
     ]
   }
 }
