@@ -69,7 +69,7 @@ import { withTimeout as withSharedTimeout } from '@/infra/utils/with-timeout'
  * function ceiling is 900s, so we still have headroom for the surrounding
  * orchestrator work.
  */
-export const LLM_CALL_TIMEOUT_MS = 300_000
+export const LLM_CALL_TIMEOUT_MS = 600_000
 
 /** Convenience wrapper that pins the default timeout to LLM_CALL_TIMEOUT_MS. */
 function withTimeout<T>(promise: Promise<T>, stage: string): Promise<T> {
