@@ -44,7 +44,6 @@
   "access": {
     "allowedAssociations": [
       "OWNER",
-      "MEMBER",
       "COLLABORATOR"
     ]
   }
