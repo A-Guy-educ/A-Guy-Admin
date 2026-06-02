@@ -16,6 +16,7 @@ The Exercises collection provides a minimal foundation for creating and managing
 - **Zod Validation**: Runtime validation of block structures via `ContentBlockSchema`
 - **Self-Contained Questions**: Each question block owns its own prompt, answer, and optional hint/solution
 - **Relationship to Lessons**: Each exercise belongs to a Lesson
+- **Scroll View Rendering**: Exercises render as a "Scroll view" document — same blocks as the Interactive tab, styled as a static card with no inputs
 - **Type-Safe**: Full TypeScript integration with Payload
 
 ---
@@ -44,14 +45,36 @@ The Exercises collection provides a minimal foundation for creating and managing
                  │
                  ▼
 ┌─────────────────────────────────────────────────────────┐
-│             Zod Schemas (ContentBlockSchema)              │
-│  src/server/payload/collections/Exercises/schemas.ts    │
+│             Scroll View (BlocksDocumentLessonView)       │
+│  src/app/(frontend)/courses/.../BlocksDocumentLessonView│
 │                                                          │
-│  - ContentBlockSchema (discriminated union, 12 types)   │
-│  - QuestionGeometryBlockSchema / QuestionAxisBlockSchema │
-│  - QuestionMultiAxisBlockSchema                         │
-│  - QuestionSelectBlockSchema (mcq, true_false)          │
-│  - QuestionFreeResponseBlockSchema / QuestionTable...   │
+│  - Renders exercises as a static "Scroll view" card    │
+│  - Uses ExerciseWorksheet for block rendering           │
+│  - Collects fullSolution/solution into Solutions section │
+│  - Locale-aware: RTL for Hebrew, LTR for English       │
+└────────────────┬────────────────────────────────────────┘
+                 │
+                 ▼
+┌─────────────────────────────────────────────────────────┐
+│          ExerciseWorksheet (block renderer)               │
+│  src/ui/web/exerciserenderer/ExerciseWorksheet/          │
+│                                                          │
+│  - question_geometry / question_axis → GraphWithPrompt   │
+│    (card-wrapped, 50/50 split, 3/5 wrap, RTL-aware)   │
+│  - question_multi_axis → MultiAxisRenderer               │
+│  - question_select → WorksheetMcq / WorksheetTrueFalse   │
+│  - question_table → side-by-side (narrow) or stacked    │
+└────────────────┬────────────────────────────────────────┘
+                 │
+                 ▼
+┌─────────────────────────────────────────────────────────┐
+│          GraphWithPrompt (geometry/axis wrapper)          │
+│  src/ui/web/exerciserenderer/blocks/GraphWithPrompt/   │
+│                                                          │
+│  - 4 layouts: textAbove, textBelow, textLeft, textRight │
+│  - Forces dir='ltr' on flex container for RTL safety   │
+│  - 3/5 wrap rule: wide diagrams (>5:3) stack vertically│
+│  - worksheetLayout: 50/50 proportions, mobile stacking  │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -245,6 +268,8 @@ Each question type is a **block inside `content.blocks[]`**. There is no exercis
 
 ### 6. Geometry — `question_geometry`
 
+Geometry blocks render via `GraphWithPrompt`, wrapping the diagram in a card with the prompt side-by-side. The `layout` field controls text/diagram positioning; the 3/5 wrap rule applies — wide diagrams (>5:3 aspect) stack vertically, square/portrait stay side-by-side.
+
 ```json
 {
   "id": "q6",
@@ -265,7 +290,11 @@ Each question type is a **block inside `content.blocks[]`**. There is no exercis
 }
 ```
 
+**Worksheet rendering**: Geometry blocks are wrapped in a card (`rounded-xl border bg-card p-card-padding-sm`) with a 50/50 split between prompt and diagram. On mobile, the prompt stacks above the diagram; on desktop, they are side-by-side with text on the reading-start side (left in LTR, right in RTL — the flex container forces `dir="ltr"` so layout names always describe physical position regardless of page direction).
+
 ### 7. Axis System — `question_axis`
+
+Axis blocks render identically to geometry: `GraphWithPrompt` with card wrapper, 50/50 split, 3/5 wrap rule, and RTL-aware side-by-side layout.
 
 ```json
 {
@@ -482,8 +511,6 @@ When extending the Exercises collection:
 3. **Update Collection**: Modify `src/server/payload/collections/Exercises/index.ts`
 4. **Update Docs**: Update this README and [MANUAL_VERIFICATION.md](./MANUAL_VERIFICATION.md)
 5. **Run Validation**: `pnpm typecheck && pnpm lint`
-4. **Update Docs**: Update this README and verification guide
-5. **Run Validation**: `npx tsc --noEmit && pnpm test`
 
 ---
 

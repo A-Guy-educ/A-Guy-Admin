@@ -1,19 +1,18 @@
-# Doc update for PR #2154 (issue #2250)
+# Doc update for PR #2154 rendering changes (issue #2250)
 
-Updated `docs/exercises/README.md` to correct stale references after PR #2154.
+Updated `docs/exercises/README.md` to reflect PR #2154's rendering behavior changes.
 
-## Changes made
+## Changes made (this session)
 
-1. **Rename**: Removed "PDF view" references throughout (PR #2154 renamed `pdfView` → `scrollView`)
+1. **Key Features**: Added "Scroll View Rendering" bullet describing the scroll view card rendering.
 
-2. **Data model**: The doc described an old Stage 0 model with `questionType`, `contentJson`, `answerSpecJson` fields — all replaced with the current block-based model (`content.blocks: ContentBlock[]`)
+2. **Architecture diagram**: Replaced the Zod schemas box with three new layers:
+   - `BlocksDocumentLessonView` (Scroll View) — lesson-level renderer with Solutions section
+   - `ExerciseWorksheet` — block-level renderer with card wrapping for geometry/axis
+   - `GraphWithPrompt` — geometry/axis wrapper with dir=ltr, 3/5 wrap, worksheetLayout
 
-3. **Architecture diagram**: Updated `src/collections/Exercises.ts` → `src/server/payload/collections/Exercises/index.ts`, beforeValidate → beforeChange, removed "Stage 0" reference
+3. **Geometry block description**: Added worksheet rendering notes — card wrapper (`rounded-xl border bg-card p-card-padding-sm`), 50/50 split, mobile prompt-first stacking, RTL via forced `dir="ltr"` on flex container.
 
-4. **Supported Question Block Types section**: Replaced old `stem`/`answerSpecJson` JSON examples with correct block examples for all 8 question block types (`question_select` mcq/true_false, `question_free_response`, `question_table`, `question_matching`, `question_geometry`, `question_axis`, `question_multi_axis`)
+4. **Axis block description**: Same as geometry — card wrapper, 50/50, 3/5 wrap, RTL-aware.
 
-5. **Content Block Types section**: Replaced old section (5 raw block types: axis_system, geometry, etc.) with new section listing all 12 actual `ContentBlockSchema` types with correct structure
-
-6. **Testing section**: Updated stale "54 tests passing" count and test paths to current file locations
-
-7. **Troubleshooting/Contributing**: Updated paths from `src/contracts/` to `src/server/payload/collections/Exercises/schemas.ts`
+5. **Contributing section**: Fixed duplicate steps 4/5 (leftover from prior edit).
