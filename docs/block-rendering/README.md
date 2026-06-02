@@ -57,7 +57,7 @@ This document describes the block-based exercise rendering architecture and prov
 | **`question_select`** (variant: `mcq`) | Multiple choice questions | [`McqQuestion`](../../src/ui/web/exerciserenderer/questions/McqQuestion/index.tsx) | ✅ Yes |
 | **`question_free_response`** | Open-ended text answers | [`FreeResponseQuestion`](../../src/ui/web/exerciserenderer/questions/FreeResponseQuestion/index.tsx) | ✅ Yes |
 
-> **HTML Block Security Model**: HTML content is authored by admins only and stored verbatim. When rendered to students, it passes through [DOMPurify](https://github.com/cure53/DOMPurify) with a strict allowlist (safe formatting tags + `href`/`src`/`class`/`dir` attributes). Dangerous patterns (inline event handlers, `javascript:` URLs) are blocked at admin-input time.
+> **HTML Block Security Model**: HTML content is authored by admins only and stored verbatim. Admin input validation only blocks the most dangerous patterns: `<script>`, `<iframe>`, and other hazardous tags; inline event handlers (`on*=`); and `javascript:` URLs in href/src. All other HTML (including `style` attributes, `details`/`summary`, `dir`, external URLs, data URLs) is allowed in the admin editor. When rendered to students, content passes through [DOMPurify](https://github.com/cure53/DOMPurify) with a strict allowlist of safe formatting tags and attributes — any HTML not in that allowlist is stripped at render time.
 
 ---
 

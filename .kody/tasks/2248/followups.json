@@ -1,8 +1,1 @@
-[
-  {
-    "title": "Rendering Pipeline code examples are stale",
-    "body": "The Stage 2 rendering loop example in docs/block-rendering/README.md (lines ~88-109) shows `block.type === 'rich_text'` and a switch with `RichTextRenderer`/`QuestionCard` but the actual ExerciseRenderer at src/ui/web/exerciserenderer/ExerciseRenderer/index.tsx uses a different structure (inline conditionals per block type with explicit casts). The example should be updated or removed to avoid misguiding readers.",
-    "rationale": "Pre-existing doc drift unrelated to PR #2116 scope — the doc's code examples don't match actual implementation.",
-    "priority": "low"
-  }
-]
+[]

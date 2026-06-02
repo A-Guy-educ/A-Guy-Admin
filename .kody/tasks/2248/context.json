@@ -1,14 +1,14 @@
 {
   "taskId": "2248",
   "taskType": "issue",
-  "target": "2248",
+  "target": "2248-docs-drift-block-rendering-2116",
   "outcome": "success",
   "exitCode": 0,
-  "reason": "Added HtmlBlock to block types table and documented its security model (admin verbatim storage, DOMPurify sanitization on student-facing render) — matching the behavior changed in PR #2116",
+  "reason": "Updated HTML Block Security Model note in docs/block-rendering/README.md to reflect PR #2116's relaxed admin validation",
   "prUrl": null,
   "runUrl": null,
   "filesTouched": ["docs/block-rendering/README.md"],
-  "sessionLog": ".kody/sessions/2248-docs-drift-block-rendering-2116.jsonl",
-  "startedAt": "2026-06-02T12:00:00.000Z",
-  "finishedAt": "2026-06-02T12:05:00.000Z"
+  "sessionLog": null,
+  "startedAt": "2026-06-02T17:30:00Z",
+  "finishedAt": "2026-06-02T17:32:00Z"
 }

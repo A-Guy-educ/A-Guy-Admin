@@ -1,16 +1,19 @@
-## Task 2248: Docs drift — Block Rendering (HtmlBlock)
+## Issue #2248: docs-drift Block Rendering
 
-**What changed**: `docs/block-rendering/README.md`
+### What was done
+Updated the HTML Block Security Model note in `docs/block-rendering/README.md` (line 60) to accurately reflect PR #2116's changes to HtmlBlock validation.
 
-PR #2116 removed HTML sanitization restrictions in the admin HtmlBlock editors (HtmlBlockEditor, QuillField). The doc previously did not mention HtmlBlock at all.
+### What changed
+The old note said dangerous patterns (inline event handlers, javascript: URLs) are blocked at admin-input time and implied external/data URLs were also blocked. The new note clarifies:
 
-**Changes made**:
-1. Added `**html**` row to the "Current Block Types" table with HtmlBlockRenderer path and a security note
-2. Added a callout note explaining the two-tier HTML security model: admin stores verbatim HTML; student rendering uses DOMPurify with a strict allowlist
-3. Updated "Last Updated" dates (header and footer) from 2026-01-07 to 2026-06-02
+- Admin input validation only blocks: `<script>`, `<iframe>` and other hazardous tags; inline event handlers (`on*=`); `javascript:` URLs in href/src
+- Everything else (style attrs, details/summary, dir, external URLs, data URLs) is now allowed in the admin editor
+- Student-facing rendering still uses DOMPurify with a strict allowlist — any unlisted HTML is stripped at render time
 
-**Security model** (for future reference):
-- Admin input: only blocks `<script>`, `<iframe>`, `<object>`, `<embed>`, `<applet>`, `<meta>`, `<base>`, `<link>`, `<title>`, inline event handlers, and `javascript:` URLs
-- Student output: DOMPurify ALLOWED_TAGS (safe formatting tags) + ALLOWED_ATTR (`href`, `src`, `alt`, `title`, `class`, `target`, `rel`, `width`, `height`, `colspan`, `rowspan`, `dir`)
+### Why the note was wrong
+PR #2116 simplified `validate-html.ts` to remove the external URL block, data URL block, mailto/tel/ftp block, and the extensive tag allowlist. The old note's description of what was blocked at admin-input time was stale.
 
-**Pre-existing issue not addressed**: The "Rendering Pipeline" Stage 2 code example shows stale switch-case code that doesn't match the actual ExerciseRenderer structure.
+### What was NOT changed
+- No code files were modified
+- The HtmlBlock table entry (html block type) was already added in the prior chore run on this branch
+- HtmlBlockRenderer student-facing DOMPurify config is unchanged

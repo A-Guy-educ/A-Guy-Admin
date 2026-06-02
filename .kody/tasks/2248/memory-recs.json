@@ -1,10 +1,1 @@
-[
-  {
-    "type": "lesson",
-    "name": "htmlblock-security-model",
-    "hook": "HtmlBlock admin sanitization removed — DOMPurify only on student render",
-    "body": "HtmlBlock (type: 'html') is an admin-only content block. PR #2116 removed HTML sanitization restrictions in the admin editor (HtmlBlockEditor, QuillField) — admins can now use style attributes, details/summary, dir, data-* attributes. The student-facing HtmlBlockRenderer still applies DOMPurify with a strict allowlist (safe formatting tags + limited attributes). Dangerous patterns (event handlers, javascript: URLs) are blocked at admin-input time. Security boundary is: admin trust vs. student untrusted rendering.",
-    "why": "Future changes to HtmlBlock sanitization should understand the two-tier model (admin verbatim → DOMPurify on render) to avoid introducing vulnerabilities.",
-    "confidence": 0.95
-  }
-]
+[]
