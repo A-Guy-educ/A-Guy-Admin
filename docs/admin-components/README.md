@@ -50,7 +50,7 @@ This guide explains how to create and register custom components for the Payload
 |-----------|------|---------|----------|
 | **ExerciseContentEditor** | Field | Block-based exercise content editor | [`src/ui/admin/ExerciseContentEditor/index.tsx`](../../src/ui/admin/ExerciseContentEditor/index.tsx) |
 | **LessonBlocksField** | Field | Sortable list of exercise/content page references with inline editing | [`src/ui/admin/LessonBlocksField/index.tsx`](../../src/ui/admin/LessonBlocksField/index.tsx) |
-| **InlineExerciseEditor** | Field | Per-exercise inline editor with REST save (nested within LessonBlocksField) | [`src/ui/admin/LessonBlocksField/InlineExerciseEditor.tsx`](../../src/ui/admin/LessonBlocksField/InlineExerciseEditor.tsx) |
+| **InlineExerciseEditor** | Field | Per-exercise inline editor with REST save (nested within LessonBlocksField); fetches exercise content via REST API, renders all block types inline, lazy-loads geometry/axis editors; `contentPageRef` blocks still navigate to the admin editor | [`src/ui/admin/LessonBlocksField/InlineExerciseEditor.tsx`](../../src/ui/admin/LessonBlocksField/InlineExerciseEditor.tsx) |
 | **AnswerSpecJsonField** | Field | JSON editor with syntax highlighting | *File removed* |
 | **ChapterBreadcrumbField** | Field | Breadcrumb navigation for chapters | `src/ui/admin/ChapterBreadcrumbField/` |
 | **LessonBreadcrumbField** | Field | Breadcrumb navigation for lessons | `src/ui/admin/LessonBreadcrumbField/` |
