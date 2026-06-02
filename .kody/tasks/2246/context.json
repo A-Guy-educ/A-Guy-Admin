@@ -1,0 +1,14 @@
+{
+  "taskId": "2246",
+  "taskType": "issue",
+  "target": "2246",
+  "outcome": "success",
+  "exitCode": 0,
+  "reason": "Updated docs/admin-components/README.md to add LessonBlocksField and InlineExerciseEditor to the components table, fixed architecture diagram path from src/components/admin/ to src/ui/admin/, updated Last Updated dates, and fixed the checklist path.",
+  "prUrl": null,
+  "runUrl": null,
+  "filesTouched": ["docs/admin-components/README.md"],
+  "sessionLog": ".kody/sessions/.session",
+  "startedAt": "2026-06-02T00:00:00.000Z",
+  "finishedAt": "2026-06-02T00:00:00.000Z"
+}

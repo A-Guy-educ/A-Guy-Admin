@@ -1,7 +1,7 @@
 # Payload Admin Custom Components Guide
 
 **Status**: ✅ Complete - Production Ready
-**Last Updated**: 2026-01-07
+**Last Updated**: 2026-06-02
 
 This guide explains how to create and register custom components for the Payload Admin Panel.
 
@@ -26,9 +26,10 @@ This guide explains how to create and register custom components for the Payload
                          ▼
 ┌─────────────────────────────────────────────────────────────┐
 │              Component Implementation                        │
-│   src/components/admin/                                     │
-│   - ExerciseContentEditor (complex field)                   │
-│   - AnswerSpecJsonField (JSON with syntax highlighting)     │
+│   src/ui/admin/                                             │
+│   - ExerciseContentEditor (block-based rich text editor)    │
+│   - LessonBlocksField (sortable exercise/content list)      │
+│   - InlineExerciseEditor (per-exercise inline save)         │
 │   - BreadcrumbFields (custom UI)                           │
 └────────────────────────┬────────────────────────────────────┘
                          │
@@ -48,9 +49,11 @@ This guide explains how to create and register custom components for the Payload
 | Component | Type | Purpose | Location |
 |-----------|------|---------|----------|
 | **ExerciseContentEditor** | Field | Block-based exercise content editor | [`src/ui/admin/ExerciseContentEditor/index.tsx`](../../src/ui/admin/ExerciseContentEditor/index.tsx) |
+| **LessonBlocksField** | Field | Sortable list of exercise/content page references with inline editing | [`src/ui/admin/LessonBlocksField/index.tsx`](../../src/ui/admin/LessonBlocksField/index.tsx) |
+| **InlineExerciseEditor** | Field | Per-exercise inline editor with REST save (nested within LessonBlocksField) | [`src/ui/admin/LessonBlocksField/InlineExerciseEditor.tsx`](../../src/ui/admin/LessonBlocksField/InlineExerciseEditor.tsx) |
 | **AnswerSpecJsonField** | Field | JSON editor with syntax highlighting | *File removed* |
-| **ChapterBreadcrumbField** | Field | Breadcrumb navigation for chapters | `src/components/admin/ChapterBreadcrumbField/` |
-| **LessonBreadcrumbField** | Field | Breadcrumb navigation for lessons | `src/components/admin/LessonBreadcrumbField/` |
+| **ChapterBreadcrumbField** | Field | Breadcrumb navigation for chapters | `src/ui/admin/ChapterBreadcrumbField/` |
+| **LessonBreadcrumbField** | Field | Breadcrumb navigation for lessons | `src/ui/admin/LessonBreadcrumbField/` |
 
 ---
 
@@ -718,7 +721,7 @@ components: {
 
 When creating a new admin component:
 
-- [ ] **File created** in `src/components/admin/`
+- [ ] **File created** in `src/ui/admin/`
 - [ ] **'use client' directive** added at top
 - [ ] **Proper type** imported (`TextFieldClientComponent`, etc.)
 - [ ] **useField hook** used to get/set value
@@ -741,5 +744,5 @@ When creating a new admin component:
 
 ---
 
-**Last Updated**: 2026-01-07
+**Last Updated**: 2026-06-02
 **Status**: ✅ Production Ready
