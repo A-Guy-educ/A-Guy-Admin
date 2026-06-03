@@ -53,20 +53,13 @@ describe('formatMessageTime', () => {
     })
 
     it('returns Hebrew date format for older messages in Hebrew', () => {
-      const twoDaysAgo = new Date()
-      twoDaysAgo.setDate(twoDaysAgo.getDate() - 2)
-      const ts = new Date(
-        twoDaysAgo.getFullYear(),
-        twoDaysAgo.getMonth(),
-        twoDaysAgo.getDate(),
-        10,
-        0,
-        0,
-      ).toISOString()
+      // Use a hardcoded May date to avoid time-sensitivity
+      const ts = new Date(2026, 4, 15, 10, 0, 0).toISOString()
 
       const result = formatMessageTime(ts, 'he')
-      // Hebrew format: "11 במאי, 10:00" — Hebrew month names contain Hebrew characters
+      // Hebrew format: "15 במאי, 10:00" — Hebrew month names contain Hebrew characters
       expect(result).toMatch(/במאי/)
+      expect(result).toMatch(/15/)
       expect(result).toMatch(/\d{2}:\d{2}$/)
     })
   })
