@@ -2,8 +2,8 @@
 
 import { useTranslations } from '@/ui/web/providers/I18n'
 import { cn } from '@/infra/utils/ui'
-import { MessageCircle, ChevronDown } from 'lucide-react'
-import React, { useEffect, useCallback } from 'react'
+import { MessageSquare, X } from 'lucide-react'
+import React, { useCallback, useEffect } from 'react'
 
 interface MobileChatFABProps {
   /** Whether the FAB panel is currently open */
@@ -19,8 +19,13 @@ interface MobileChatFABProps {
 /**
  * Mobile Chat FAB (Floating Action Button) component
  *
- * A bottom-left FAB that opens a bottom-anchored partial panel containing the chat interface.
- * The panel occupies at most 60% of viewport height so the exercise above stays visible.
+ * - A single button at bottom-left that toggles a bottom-anchored chat panel
+ * - When closed: MessageSquare icon, sits 1.5rem from the bottom
+ * - When open: X icon, rises so it sits 1.5rem above the panel
+ * - Panel has no internal header — the button itself closes the chat
+ * - Sets a CSS custom property `--mobile-chat-panel-h` on documentElement
+ *   so other bottom-fixed UI (e.g. the Learning Assistant button) can lift
+ *   to clear the panel while it's open.
  *
  * Issue #2192: Add mobile chat FAB (button-to-open) on lesson pages
  */
@@ -30,90 +35,74 @@ export function MobileChatFAB({ isOpen, onOpen, onClose, children }: MobileChatF
   // Escape key handler
   useEffect(() => {
     if (!isOpen) return
-
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose()
-      }
+      if (e.key === 'Escape') onClose()
     }
-
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [isOpen, onClose])
 
-  // Handle focus-chat-input event from exercise flows (wrong-answer help)
+  // focus-chat-input event auto-opens the panel (wrong-answer help, etc.)
   useEffect(() => {
-    const handleFocusChatInput = () => {
-      onOpen()
-    }
-
+    const handleFocusChatInput = () => onOpen()
     window.addEventListener('focus-chat-input', handleFocusChatInput)
     return () => window.removeEventListener('focus-chat-input', handleFocusChatInput)
   }, [onOpen])
 
-  const handleCollapse = useCallback(() => {
-    onClose()
-  }, [onClose])
+  // Expose panel height as a CSS variable so siblings can lift above it.
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    document.documentElement.style.setProperty('--mobile-chat-panel-h', isOpen ? '60dvh' : '0px')
+    return () => {
+      document.documentElement.style.setProperty('--mobile-chat-panel-h', '0px')
+    }
+  }, [isOpen])
+
+  const handleToggle = useCallback(() => {
+    if (isOpen) onClose()
+    else onOpen()
+  }, [isOpen, onOpen, onClose])
 
   return (
     <>
-      {/* FAB Button - always visible on mobile when panel is closed */}
-      {!isOpen && (
-        <button
-          type="button"
-          onClick={onOpen}
-          className={cn(
-            'fixed left-6 bottom-6 z-[70]',
-            'w-14 h-14',
-            'bg-primary text-primary-foreground rounded-full',
-            'shadow-elevation-3 hover:scale-110 hover:bg-primary/90',
-            'transition-all duration-normal flex items-center justify-center',
-            'lg:hidden',
-          )}
-          aria-label={t('openChat')}
-        >
-          <MessageCircle className="w-6 h-6" />
-        </button>
-      )}
+      {/* Toggle button — always rendered. Bottom position lifts above the
+          panel via the same --mobile-chat-panel-h variable used by other
+          bottom-fixed UI. */}
+      <button
+        type="button"
+        onClick={handleToggle}
+        style={{ bottom: 'calc(var(--mobile-chat-panel-h, 0px) + 1.5rem)' }}
+        className={cn(
+          'fixed left-6 z-[70]',
+          'w-14 h-14',
+          'bg-primary text-primary-foreground rounded-full',
+          'shadow-elevation-3 hover:scale-110 hover:bg-primary/90',
+          'transition-all duration-normal flex items-center justify-center',
+          'lg:hidden',
+        )}
+        aria-label={isOpen ? t('closeChat') : t('openChat')}
+        aria-expanded={isOpen}
+      >
+        {isOpen ? <X className="w-6 h-6" /> : <MessageSquare className="w-6 h-6" />}
+      </button>
 
-      {/* Bottom Panel */}
+      {/* Bottom panel — fixed 60dvh so the inner flex layout (messages on
+          top, input pinned at bottom) has a real height to distribute. */}
       {isOpen && (
         <div
           className={cn(
             'fixed left-0 right-0 bottom-0 z-[60]',
             'bg-card border-t border-border',
-            'max-h-[60dvh] overflow-y-auto',
-            'flex flex-col',
-            'animate-in slide-in-from-bottom-0 duration-300',
+            'h-[60dvh]',
+            'flex flex-col overflow-hidden',
+            'animate-in slide-in-from-bottom-0 duration-slow',
             'lg:hidden',
           )}
-          style={{
-            maxHeight: '60dvh',
-          }}
           role="dialog"
           aria-modal="false"
           aria-label={t('chatPanelTitle')}
         >
-          {/* Collapse handle */}
-          <div className="flex items-center justify-center py-2 shrink-0 border-b border-border">
-            <button
-              type="button"
-              onClick={handleCollapse}
-              className={cn(
-                'flex items-center gap-1.5 px-4 py-2',
-                'text-muted-foreground hover:text-foreground',
-                'transition-colors duration-normal',
-                'rounded-lg hover:bg-muted',
-              )}
-              aria-label={t('closeChat')}
-            >
-              <ChevronDown className="w-4 h-4 rotate-180" />
-              <span className="text-body-sm">{t('closeChat')}</span>
-            </button>
-          </div>
-
-          {/* Chat content */}
-          <div className="flex-1 min-h-0 overflow-hidden">{children}</div>
+          <div className="flex-1 min-h-0 flex flex-col overflow-hidden">{children}</div>
         </div>
       )}
     </>

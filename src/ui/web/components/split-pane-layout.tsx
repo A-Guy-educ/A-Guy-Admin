@@ -215,7 +215,11 @@ export function SplitPaneLayout({
         </div>
       )}
 
-      {/* Mobile: Use FAB-based chat panel instead of inline chat */}
+      {/* Mobile: Use FAB-based chat panel instead of inline chat.
+          ChatInterface renders normally inside the panel (messages + its
+          own input bar) — don't pass fabOpen, otherwise ChatInterface
+          hides its input expecting MobileChatFAB to provide one, and the
+          panel ends up with no way to send a message. */}
       <MobileChatFAB
         isOpen={fabPanelOpen}
         onOpen={handleFabPanelOpen}
@@ -228,20 +232,13 @@ export function SplitPaneLayout({
             isMobile?: boolean
             viewMode?: ViewMode
             onModeToggle?: () => void
-            fabOpen?: boolean
           }>,
           {
             onChatInteraction: handleChatExpand,
-            displayMode:
-              viewMode === 'CHAT' || (viewMode === 'PDF' && chatExpandedInPdf)
-                ? 'full'
-                : fabPanelOpen
-                  ? 'full'
-                  : ('input-only' as const),
+            displayMode: 'full',
             isMobile: true,
             viewMode,
             onModeToggle: handleModeToggle,
-            fabOpen: fabPanelOpen,
           },
         )}
       </MobileChatFAB>
