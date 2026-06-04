@@ -1,23 +1,24 @@
 # CI Failure Investigation for PR #1573
 
 ## Issue
-CI workflow was failing at `pnpm format` step with "Prettier not found" error.
+CI workflow failing at preview Docker build stage.
+
+## Root Cause
+OOM (Out of Memory) during Docker preview build. The `next build` command was killed with SIGKILL because the runner ran out of memory.
+
+```
+ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command was killed with SIGKILL (Forced termination): next build
+cannot allocate memory
+```
 
 ## Investigation
-1. Checked `.kody/last-run.jsonl` for failed step details - found multiple vulnerability warnings but these were likely noise
-2. Ran `pnpm format` directly - it worked successfully
-3. Ran `pnpm ci:local` to verify full CI pipeline
+1. Checked CI run logs via `gh run view 26968907003 --log`
+2. Found the preview build failed at Docker image build stage
+3. All actual code checks passed: Fast Gate, Build, Integration Tests, Analyze (CodeQL)
+4. The failure was in the preview build which is separate from main CI pipeline
 
-## Results
-- **pnpm typecheck**: PASSED
-- **pnpm lint**: PASSED (only a warning about design tokens in LatexDocumentViewer)
-- **pnpm test:unit**: PASSED
-- **Integration/E2E tests**: Were running but extremely slow (1+ hours due to database seeding per test file)
+## Resolution
+Triggered CI rerun via `gh run rerun 26968907003`. The run is now in_progress.
 
 ## Conclusion
-The CI failure was transient - likely a package installation timing issue in CI. When running locally, all critical checks (typecheck, lint, unit tests) pass successfully.
-
-## Files
-- `.kody/tasks/1573/context.json` — task metadata
-- `.kody/tasks/1573/memory-recs.json` — no memories to promote
-- `.kody/tasks/1573/followups.json` — no follow-up tasks
+This is a transient infrastructure failure (OOM on runner), not a code issue. No code changes required. Re-running CI should resolve.
