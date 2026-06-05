@@ -13,11 +13,6 @@
       "id": "prod-esw0",
       "label": "Prod",
       "url": "https://www.aguy.co.il"
-    },
-    {
-      "id": "guthub-o8q2",
-      "label": "guthub",
-      "url": "https://github.com/aharonyaircohen/kody-demo"
     }
   ],
   "branchPreviews": [
