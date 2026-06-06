@@ -1,24 +1,22 @@
-# Feature: Show Per-Message Timestamps in Admin Chat
+# Fix Stale Payload Types
 
-## What was implemented
+## What was fixed
 
-Added per-message timestamps to admin chat bubbles. The timestamp shows:
-- **Same day**: "14:32" (time only)
-- **Older**: "May 11, 14:32" (short date + time)
-- **Hebrew locale**: Proper Hebrew month names (e.g., "11 במאי, 14:32")
+The `src/payload-types.ts` file contained types for a `payload-mcp-api-keys` collection that no longer exists in `payload.config.ts`. This caused the `check-types-drift.ts` script (run as part of `pnpm typecheck`) to fail in CI.
 
-## Key files
+## How it was fixed
 
-- `src/ui/web/chat/utils/formatMessageTime.ts` — New utility function
-- `src/ui/web/chat/ChatInterface/index.tsx` — Uses `formatMessageTime` at line 548-552
-- `tests/unit/ui/web/chat/utils/format-message-time.test.ts` — 9 unit tests (all passing)
-
-## Implementation details
-
-Timestamps only appear in `adminMode` for messages that have a `createdAt` field. The `createdAt` is set when messages are created via `useNotebookChat` hook.
+1. Ran `pnpm generate:types` to regenerate the types file
+2. The regenerated file no longer contains the stale `payload-mcp-api-keys` references (160 lines removed, 11 added)
+3. Committed as `12150ecb4 fix: regenerate stale payload-types.ts`
+4. Pushed to `1570-feat-show-per-message-timestamp-in-admin-chat`
 
 ## Verification
 
-- Unit tests: `pnpm exec vitest run --config ./vitest.config.unit.mts tests/unit/ui/web/chat/utils/format-message-time.test.ts` — 9/9 passing
-- Lint: passes (warning only on unrelated file)
-- Typecheck: passes
+- `pnpm typecheck` passes (types drift check passes)
+- `pnpm lint` passes (warning only, not error)
+- `pnpm format:check` passes
+
+## Follow-up
+
+The `payload.config.ts` still has a stale comment referencing `PayloadMcpApiKey` at lines 77-86. This is a low-priority cleanup since the code itself only checks the `users` collection.
