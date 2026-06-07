@@ -1,5 +1,4 @@
-Resolved merge conflict in `.kody/last-run.jsonl` by taking the origin/dev version.
-
-The conflicted file is an operational log (JSONL session trace), not source code. Both sides were different session runs with no meaningful merge semantics — origin/dev's version was taken as it represents the more recent codebase state.
-
-No source code files were touched. All conflicts are resolved; merge commit is ready to complete.
+Resolved a single conflict in `.kody/reports/duty-review.md`, an auto-generated duty
+status report. HEAD (Cycle 11) conflicted with origin/dev (Cycle 13). Took the
+origin/dev version since it is the newer cycle and represents the current state of
+duties. No code changes were made beyond resolving the conflict markers.

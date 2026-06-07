@@ -1,14 +1,14 @@
 {
   "taskId": "1806",
   "taskType": "pr",
-  "target": "1806",
+  "target": "PR #1806",
   "outcome": "success",
   "exitCode": 0,
-  "reason": "Resolved single conflicted file (.kody/last-run.jsonl) by taking origin/dev version - operational log artifact, no source code impact",
-  "prUrl": "https://github.com/A-Guy-educ/A-Guy/pull/1806",
+  "reason": "Single conflict in .kody/reports/duty-review.md resolved by taking origin/dev (Cycle 13 is newer than Cycle 11)",
+  "prUrl": null,
   "runUrl": null,
-  "filesTouched": [".kody/last-run.jsonl"],
-  "sessionLog": ".kody/sessions/246a5245-7846-4a62-9388-1aaa1f7197f4.jsonl",
-  "startedAt": "2026-06-07T12:59:00Z",
-  "finishedAt": "2026-06-07T13:01:28Z"
+  "filesTouched": [".kody/reports/duty-review.md"],
+  "sessionLog": ".kody/sessions/0327E94F-0086-444C-A019-777A2FEAA414.jsonl",
+  "startedAt": "2026-06-07T20:15:00Z",
+  "finishedAt": "2026-06-07T20:21:19Z"
 }
