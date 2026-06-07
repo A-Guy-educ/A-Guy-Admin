@@ -23,6 +23,8 @@ export interface ChatMessage {
   chatAssets?: Array<{ chatAssetId: string; filename?: string }>
   /** Populated for user messages sent while the lesson player was on a step. */
   stepContext?: ChatStepContext
+  /** ISO 8601 timestamp for message display in admin chat. */
+  createdAt?: string
 }
 
 export interface UploadedMedia {
@@ -249,6 +251,7 @@ export function useNotebookChat({
                   id?: string
                   media?: Array<{ mediaId: string; filename?: string; url?: string }>
                   chatAssets?: Array<{ chatAssetId: string; filename?: string }>
+                  createdAt?: string
                 }
                 return {
                   id: raw.id || crypto.randomUUID(),
@@ -262,6 +265,7 @@ export function useNotebookChat({
                   content: stripStepContext(String(msg.content)),
                   media: raw.media,
                   chatAssets: raw.chatAssets,
+                  createdAt: raw.createdAt,
                 }
               })
 
@@ -403,6 +407,7 @@ export function useNotebookChat({
       chatAssets: chatAssetMetadata.length > 0 ? chatAssetMetadata : undefined,
       media: askMediaMeta,
       stepContext: stepContext ?? undefined,
+      createdAt: new Date().toISOString(),
     }
     setMessages((prev) => [...prev, userMessage])
     setInputValue('')
@@ -482,6 +487,7 @@ export function useNotebookChat({
           id: crypto.randomUUID(),
           role: ChatRole.Assistant,
           content: '',
+          createdAt: new Date().toISOString(),
         }
         setMessages((prev) => [...prev, placeholderMessage])
 
@@ -629,6 +635,7 @@ export function useNotebookChat({
           id: crypto.randomUUID(),
           role: ChatRole.Assistant,
           content: cleanMessage,
+          createdAt: new Date().toISOString(),
         }
         setMessages((prev) => [...prev, assistantMessage])
       }

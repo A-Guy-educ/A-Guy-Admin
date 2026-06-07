@@ -1,24 +1,16 @@
-# CI Failure Investigation for PR #1573
+# Merge Conflict Resolution for #1573
 
-## Issue
-CI workflow failing at preview Docker build stage.
+## What was done
+Resolved a single conflict in `.kody/last-run.jsonl` — a runtime session log file.
 
-## Root Cause
-OOM (Out of Memory) during Docker preview build. The `next build` command was killed with SIGKILL because the runner ran out of memory.
+## Conflict details
+- File: `.kody/last-run.jsonl`
+- Type: JSONL session log from a Kody run
+- Both sides had different session logs (different session IDs)
+- Resolution: Took HEAD (current branch) version
 
-```
-ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command was killed with SIGKILL (Forced termination): next build
-cannot allocate memory
-```
+## Why this approach
+`.kody/last-run.jsonl` is a runtime log file that records tool calls and responses from a Kody session. It is not source code and has no meaningful content to merge — session logs from different runs are not mergeable. Taking the HEAD version preserves the current branch's runtime context without affecting the actual bug fix code.
 
-## Investigation
-1. Checked CI run logs via `gh run view 26968907003 --log`
-2. Found the preview build failed at Docker image build stage
-3. All actual code checks passed: Fast Gate, Build, Integration Tests, Analyze (CodeQL)
-4. The failure was in the preview build which is separate from main CI pipeline
-
-## Resolution
-Triggered CI rerun via `gh run rerun 26968907003`. The run is now in_progress.
-
-## Conclusion
-This is a transient infrastructure failure (OOM on runner), not a code issue. No code changes required. Re-running CI should resolve.
+## No quality gates needed
+This was a pure conflict resolution with no code changes. The bug fix itself is in the non-conflicted source files on this branch.
