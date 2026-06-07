@@ -13,6 +13,8 @@
 import { getDirection } from '@/i18n/config'
 import { getSystemLocale } from '@/i18n/server-locale'
 import { pageMetadata } from '@/infra/seo/pageMetadata'
+import { capturePayPalOrder } from '@/lib/payment/paypal'
+import { serializePaymentError } from '@/lib/payment/error-log'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import type { Metadata } from 'next'
@@ -44,10 +46,25 @@ export default async function CheckoutSuccessPage({ searchParams: searchParamsPr
 
   let transaction = null
   let productName = ''
+  const payload = lookupId ? await getPayload({ config }) : null
 
-  if (lookupId) {
+  // PayPal v2 requires an explicit capture call after buyer approval.
+  // Without this, intent: 'CAPTURE' orders sit in APPROVED forever and the
+  // PAYMENT.CAPTURE.COMPLETED webhook never fires. Capture is idempotent,
+  // so a page reload doesn't double-charge.
+  if (token && payload) {
     try {
-      const payload = await getPayload({ config })
+      await capturePayPalOrder(token)
+    } catch (error) {
+      payload.logger.error(
+        { err: serializePaymentError(error), orderId: token },
+        'PayPal capture failed on /checkout/success — transaction will stay pending',
+      )
+    }
+  }
+
+  if (lookupId && payload) {
+    try {
       const result = await payload.find({
         collection: 'transactions',
         where: { providerTransactionId: { equals: lookupId } },
