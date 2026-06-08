@@ -1677,6 +1677,7 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- #2162: Doc gap: src/infra/utils/ — 6/27 modules carry @ai-summary ([#2164](https://github.com/A-Guy-educ/A-Guy/pull/2164)) — @kodyade[bot]
 - chore(memory): Rescue orphaned knowledge from kody-memorize branches ([#1891](https://github.com/A-Guy-educ/A-Guy/pull/1891)) — @aguyaharonyair
 - #1563: feat: show app version in admin dashboard footer ([#1566](https://github.com/A-Guy-educ/A-Guy/pull/1566)) — @aguyaharonyair
 - fix(health-badge): Read 'version' field from /api/health response ([#2519](https://github.com/A-Guy-educ/A-Guy/pull/2519)) — @aguyshayb
