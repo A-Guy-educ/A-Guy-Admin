@@ -4,11 +4,15 @@
   "target": "1806",
   "outcome": "success",
   "exitCode": 0,
-  "reason": "Single conflicted file (.kody/reports/health-check.md) resolved by taking origin/dev timestamps",
+  "reason": "All three conflicted .kody operational files resolved using origin/dev content",
   "prUrl": "https://github.com/A-Guy-educ/A-Guy/pull/1806",
   "runUrl": null,
-  "filesTouched": [".kody/reports/health-check.md"],
-  "sessionLog": ".kody/sessions/instant-gh-27122239549-1.jsonl",
-  "startedAt": "2026-06-08T12:00:00Z",
-  "finishedAt": "2026-06-08T12:01:00Z"
+  "filesTouched": [
+    ".kody/last-run.jsonl",
+    ".kody/reports/duty-review.md",
+    ".kody/reports/health-check.md"
+  ],
+  "sessionLog": ".kody/sessions/gh-27127926896-1.jsonl",
+  "startedAt": "2026-06-08T09:21:00Z",
+  "finishedAt": "2026-06-08T09:22:10Z"
 }
