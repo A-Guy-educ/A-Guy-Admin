@@ -1,13 +1,6 @@
 import { defineConfig, devices } from '@playwright/test'
 
 /**
- * Custom test options for scenario-driven QA
- */
-export interface ScenarioTestOptions {
-  scenarioCategory?: 'core' | 'feature' | 'edge' | Array<'core' | 'feature' | 'edge'>
-}
-
-/**
  * Read environment variables from file.
  * https://github.com/motdotla/dotenv
  */
@@ -29,7 +22,6 @@ process.env.SKIP_BUILD = process.env.SKIP_BUILD || 'true'
 // Otherwise use provided DATABASE_URL or fallback
 const databaseUrl =
   process.env.E2E_DATABASE_URL || process.env.DATABASE_URL || 'mongodb://127.0.0.1:27017/test'
-const runQaProjects = process.env.PLAYWRIGHT_QA_PROJECTS === 'true'
 
 /**
  * See https://playwright.dev/docs/test-configuration.
@@ -61,28 +53,6 @@ export default defineConfig({
       name: 'chromium',
       use: { ...devices['Desktop Chrome'], channel: 'chromium' },
     },
-    ...(runQaProjects
-      ? [
-          {
-            name: 'qa-core',
-            testDir: './tests/qa/student/runner',
-            testMatch: 'run-scenarios.spec.ts',
-            use: { scenarioCategory: 'core' } as Record<string, unknown>,
-          },
-          {
-            name: 'qa-full',
-            testDir: './tests/qa/student/runner',
-            testMatch: 'run-scenarios.spec.ts',
-            use: { scenarioCategory: ['core', 'feature'] } as Record<string, unknown>,
-          },
-          {
-            name: 'qa-nightly',
-            testDir: './tests/qa/student/runner',
-            testMatch: 'run-scenarios.spec.ts',
-            use: { scenarioCategory: ['core', 'feature', 'edge'] } as Record<string, unknown>,
-          },
-        ]
-      : []),
   ],
   webServer: {
     command: 'test -d .next && pnpm start',
