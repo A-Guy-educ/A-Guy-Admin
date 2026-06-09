@@ -48,6 +48,10 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+        env:
+          DATABASE_URL: mongodb://localhost:27017/test
+          PAYLOAD_SECRET: ${{ secrets.PAYLOAD_SECRET || 'test-secret-for-ci' }}
+          NEXT_PUBLIC_SERVER_URL: http://localhost:3000
 
       - name: Install Vercel CLI
         run: pnpm add -g vercel
