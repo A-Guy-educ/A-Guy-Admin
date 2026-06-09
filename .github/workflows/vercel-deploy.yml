@@ -63,6 +63,8 @@ jobs:
       - name: Build Preview
         if: github.ref_name == 'dev'
         run: vercel build --token=${{ secrets.VERCEL_ACCESS_TOKEN }}
+        env:
+          PAYLOAD_SECRET: ${{ secrets.PAYLOAD_SECRET }}
 
       - name: Deploy Preview
         if: github.ref_name == 'dev'
@@ -83,6 +85,8 @@ jobs:
       - name: Build Production
         if: github.ref_name == 'main'
         run: vercel build --prod --token=${{ secrets.VERCEL_ACCESS_TOKEN }}
+        env:
+          PAYLOAD_SECRET: ${{ secrets.PAYLOAD_SECRET }}
 
       - name: Deploy Production
         if: github.ref_name == 'main'
