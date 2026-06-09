@@ -173,5 +173,5 @@ interface AnswerSpec {
 
 - [`AGENTS.md`](../../../AGENTS.md) - Complete Payload patterns
 - [`src/server/payload/collections/`](../../server/payload/collections/README.md) - Collections
-- [`src/ui/web/`](../web/README.md) - Web components
+- [`src/ui/shared/`](../shared/README.md) - Shared admin and Payload components
 - [`src/infra/`](../../infra/README.md) - Infrastructure

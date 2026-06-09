@@ -1677,6 +1677,12 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- ci: Clean dev app workflow ([#31](https://github.com/A-Guy-educ/A-Guy-Admin/pull/31)) — @aguyaharonyair
+- fix: Remove stale student QA CI gate ([#30](https://github.com/A-Guy-educ/A-Guy-Admin/pull/30)) — @aguyaharonyair
+- fix: Correct design token lint test ([#29](https://github.com/A-Guy-educ/A-Guy-Admin/pull/29)) — @aguyaharonyair
+- ci: Alias dev preview deploys ([#27](https://github.com/A-Guy-educ/A-Guy-Admin/pull/27)) — @aguyaharonyair
+- ci: Add build env for Vercel deploy ([#25](https://github.com/A-Guy-educ/A-Guy-Admin/pull/25)) — @aguyaharonyair
+- ci: Add install env for Vercel deploy ([#24](https://github.com/A-Guy-educ/A-Guy-Admin/pull/24)) — @aguyaharonyair
 - #2250: docs-drift: Exercises (#2154) ([#2341](https://github.com/A-Guy-educ/A-Guy/pull/2341)) — @kodyade[bot] · ⚠️ QA 2026-06-08 (#2527)
 - #2248: docs-drift: Block Rendering (#2116) ([#2340](https://github.com/A-Guy-educ/A-Guy/pull/2340)) — @kodyade[bot] · ⚠️ QA 2026-06-08 (#2530)
 - #2246: docs-drift: Admin Components (#2108) ([#2339](https://github.com/A-Guy-educ/A-Guy/pull/2339)) — @kodyade[bot] · ✅ QA 2026-06-08

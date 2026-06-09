@@ -1,7 +1,7 @@
 import {
   extractMediaIds,
   extractAllMediaIds,
-} from '@/ui/web/exerciserenderer/utils/extractMediaIds'
+} from '@/ui/shared/exerciserenderer/utils/extractMediaIds'
 import { describe, expect, it } from 'vitest'
 
 describe('extractMediaIds', () => {

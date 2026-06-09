@@ -3,8 +3,8 @@
 import { render, waitFor, act, screen } from '@testing-library/react'
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest'
 
-import { HealthBadge } from '@/ui/web/components/HealthBadge'
-import { I18nProvider } from '@/ui/web/providers/I18n'
+import { HealthBadge } from '@/ui/shared/components/HealthBadge'
+import { I18nProvider } from '@/ui/shared/providers/I18n'
 import enMessages from '../../../src/i18n/en.json'
 
 const renderWithI18n = (showVersion = false) => {

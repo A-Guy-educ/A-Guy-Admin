@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest'
 import {
   checkSvgAnswer,
   type AnswerErrorMessages,
-} from '@/ui/web/exerciserenderer/utils/answerChecking'
-import type { SvgBlock } from '@/ui/web/exerciserenderer/types'
+} from '@/ui/shared/exerciserenderer/utils/answerChecking'
+import type { SvgBlock } from '@/ui/shared/exerciserenderer/types'
 
 const messages: AnswerErrorMessages = {
   invalidAnswerType: 'Invalid answer type',
