@@ -71,15 +71,19 @@ jobs:
 
       - name: Deploy Preview
         if: github.ref_name == 'dev'
-        run: >
-          vercel deploy --prebuilt --token=${{ secrets.VERCEL_ACCESS_TOKEN }}
-          -m githubDeployment=1
-          -m githubCommitRef=${{ github.ref_name }}
-          -m githubCommitSha=${{ github.sha }}
-          -m githubCommitOrg=${{ github.repository_owner }}
-          -m githubCommitRepo=${{ github.event.repository.name }}
-          -m githubOrg=${{ github.repository_owner }}
-          -m githubRepo=${{ github.event.repository.name }}
+        run: |
+          deployment_url="$(
+            vercel deploy --prebuilt --token=${{ secrets.VERCEL_ACCESS_TOKEN }} \
+              -m githubDeployment=1 \
+              -m githubCommitRef=${{ github.ref_name }} \
+              -m githubCommitSha=${{ github.sha }} \
+              -m githubCommitOrg=${{ github.repository_owner }} \
+              -m githubCommitRepo=${{ github.event.repository.name }} \
+              -m githubOrg=${{ github.repository_owner }} \
+              -m githubRepo=${{ github.event.repository.name }}
+          )"
+          echo "$deployment_url"
+          vercel alias set "$deployment_url" a-guy-admin-git-dev-aguy.vercel.app --token=${{ secrets.VERCEL_ACCESS_TOKEN }} --scope=${{ secrets.VERCEL_ORG_ID }}
 
       - name: Pull Vercel Production Settings
         if: github.ref_name == 'main'
