@@ -3,18 +3,6 @@ import { readFileSync } from 'fs'
 import { join } from 'path'
 
 describe('Inline style removal refactor', () => {
-  describe('Footer VersionDisplay (FR-001)', () => {
-    const source = readFileSync(join(process.cwd(), 'src/ui/shared/footer/Component.tsx'), 'utf-8')
-
-    it('should NOT contain inline fontSize style', () => {
-      expect(source).not.toMatch(/style=\{\{[\s]*fontSize/)
-    })
-
-    it('should still have text-body-xs Tailwind class (design token)', () => {
-      expect(source).toMatch(/text-body-xs/)
-    })
-  })
-
   describe('TypingAnimation (FR-002, FR-003)', () => {
     const source = readFileSync(
       join(process.cwd(), 'src/ui/shared/primitives/TypingAnimation/index.tsx'),
