@@ -1677,6 +1677,7 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- fix: Remove stale student QA CI gate ([#30](https://github.com/A-Guy-educ/A-Guy-Admin/pull/30)) — @aguyaharonyair
 - fix: Correct design token lint test ([#29](https://github.com/A-Guy-educ/A-Guy-Admin/pull/29)) — @aguyaharonyair
 - ci: Alias dev preview deploys ([#27](https://github.com/A-Guy-educ/A-Guy-Admin/pull/27)) — @aguyaharonyair
 - ci: Add build env for Vercel deploy ([#25](https://github.com/A-Guy-educ/A-Guy-Admin/pull/25)) — @aguyaharonyair
