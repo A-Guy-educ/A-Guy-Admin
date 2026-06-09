@@ -92,7 +92,7 @@ The Exercises collection provides a minimal foundation for creating and managing
 
 ### Validation Rules
 
-1. **Content Validation**: `content.blocks` must pass [`ContentBlockSchema`](../../../src/server/payload/collections/Exercises/schemas.ts) — a discriminated union of 12 block types.
+1. **Content Validation**: `content.blocks` must pass [`ContentBlockSchema`](../../src/server/payload/collections/Exercises/schemas.ts) — a discriminated union of 12 block types.
 2. Each question block (`question_geometry`, `question_axis`, etc.) carries its own prompt, answer, and optional hint/solution inline — there is no exercise-level `questionType` or `answerSpecJson`.
 
 ---
@@ -474,7 +474,7 @@ Follow [MANUAL_VERIFICATION.md](./MANUAL_VERIFICATION.md) to test:
 ### Issue: Exercises collection not appearing in Admin
 
 **Solution:**
-1. Verify [`src/payload.config.ts`](../../../src/payload.config.ts) includes `Exercises` in collections array
+1. Verify [`src/payload.config.ts`](../../src/payload.config.ts) includes `Exercises` in collections array
 2. Restart Payload dev server: `pnpm dev`
 3. Clear browser cache and refresh
 

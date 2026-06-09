@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { ChatMessage } from '@/ui/web/chat/hooks/useNotebookChat'
+import { ChatMessage } from '@/ui/shared/chat/hooks/useNotebookChat'
 import { ChatRole } from '@/infra/llm/chat-message-role'
 import { describe, expect, it } from 'vitest'
 import * as fs from 'node:fs'
@@ -49,7 +49,10 @@ describe('ChatMessage ID validation', () => {
 })
 
 describe('ChatInterface static analysis - React keys', () => {
-  const chatInterfacePath = path.resolve(process.cwd(), 'src/ui/web/chat/ChatInterface/index.tsx')
+  const chatInterfacePath = path.resolve(
+    process.cwd(),
+    'src/ui/shared/chat/ChatInterface/index.tsx',
+  )
 
   describe('Test 3: ChatInterface does not use key={idx} or key={index} for messages', () => {
     it('should NOT use key={idx} or key={index} in messages.map', () => {
@@ -114,7 +117,7 @@ describe('ChatInterface static analysis - React keys', () => {
 describe('CollectionArchive static analysis - React keys', () => {
   const collectionArchivePath = path.resolve(
     process.cwd(),
-    'src/ui/web/CollectionArchive/index.tsx',
+    'src/ui/shared/CollectionArchive/index.tsx',
   )
 
   describe('Test 6: CollectionArchive uses key={result.slug} instead of key={index}', () => {

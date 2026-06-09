@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { McqQuestion } from '@/ui/web/exerciserenderer/questions/McqQuestion'
-import type { QuestionSelectMcqBlock, UserAnswer } from '@/ui/web/exerciserenderer/types'
+import { McqQuestion } from '@/ui/shared/exerciserenderer/questions/McqQuestion'
+import type { QuestionSelectMcqBlock, UserAnswer } from '@/ui/shared/exerciserenderer/types'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -587,7 +587,7 @@ describe('McqQuestion component', () => {
       })
     })
 
-    it('does not apply text-lg to the prompt text', () => {
+    it('does not apply text-body-lg to the prompt text', () => {
       const answer: UserAnswer = { type: 'mcq', selectedIds: [] }
       const { container } = render(
         <McqQuestion
@@ -600,7 +600,7 @@ describe('McqQuestion component', () => {
         />,
       )
 
-      // The prompt should NOT have text-lg (it uses text-body-md per design system)
+      // The prompt should NOT have text-body-lg (it uses text-body-md per design system)
       const promptContainer = container.querySelector('.text-body-md.font-medium')
       expect(promptContainer).toBeTruthy()
     })

@@ -12,18 +12,18 @@ import { cleanup, render, screen } from '@testing-library/react'
 import React from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import enMessages from '../../../src/i18n/en.json'
-import { I18nProvider } from '@/ui/web/providers/I18n'
-import { ExerciseRenderer } from '@/ui/web/exerciserenderer/ExerciseRenderer'
-import type { ExerciseContentData } from '@/ui/web/exerciserenderer/types'
+import { I18nProvider } from '@/ui/shared/providers/I18n'
+import { ExerciseRenderer } from '@/ui/shared/exerciserenderer/ExerciseRenderer'
+import type { ExerciseContentData } from '@/ui/shared/exerciserenderer/types'
 
 // Mock the two block renderers we care about with tiny test stubs so we can
 // assert DOM presence without pulling in KaTeX / markdown machinery.
-vi.mock('@/ui/web/exerciserenderer/blocks/LatexBlockRenderer', () => ({
+vi.mock('@/ui/shared/exerciserenderer/blocks/LatexBlockRenderer', () => ({
   LatexBlockRenderer: ({ block }: { block: { latex: string } }) => (
     <div data-testid="latex-block">{block.latex}</div>
   ),
 }))
-vi.mock('@/ui/web/exerciserenderer/blocks/RichTextRenderer', () => ({
+vi.mock('@/ui/shared/exerciserenderer/blocks/RichTextRenderer', () => ({
   RichTextRenderer: ({ block }: { block: { value: string } }) => (
     <div data-testid="rich-text">{block.value}</div>
   ),

@@ -6,7 +6,7 @@ import { useFormFields } from '@payloadcms/ui'
 import type { Media } from '@/payload-types'
 
 // Dynamically import PDFMedia with ssr: false to prevent server-side rendering
-const PDFMedia = dynamic(() => import('@/ui/web/media/PDFMedia').then((mod) => mod.PDFMedia), {
+const PDFMedia = dynamic(() => import('@/ui/shared/media/PDFMedia').then((mod) => mod.PDFMedia), {
   ssr: false,
   loading: () => (
     <div className="flex items-center justify-center p-card-padding-lg">

@@ -6,9 +6,9 @@
 
 import { describe } from 'vitest'
 import { RuleTester } from 'eslint'
-// eslint-disable-next-line @typescript-eslint/no-require-imports
+
 const rule = require('../../../eslint-plugin-aguy/rules/file-location.mjs')
-// eslint-disable-next-line @typescript-eslint/no-require-imports
+
 const tseslintParser = require('@typescript-eslint/parser')
 
 // Use TypeScript ESLint parser to support JSX in test code
@@ -36,7 +36,10 @@ describe('file-location ESLint rule', () => {
         code: `import React from 'react'\nexport const MyComponent = () => {\n  return <div>Hello</div>\n}`,
         filename: 'src/components/MyComponent.tsx',
         errors: [
-          { messageId: 'deprecatedLocation', data: { destination: 'src/ui/web/MyComponent.tsx' } },
+          {
+            messageId: 'deprecatedLocation',
+            data: { destination: 'src/ui/shared/MyComponent.tsx' },
+          },
         ],
       },
     ],
@@ -51,7 +54,7 @@ describe('file-location ESLint rule', () => {
         errors: [
           {
             messageId: 'deprecatedLocation',
-            data: { destination: 'src/ui/web/components/Button.tsx' },
+            data: { destination: 'src/ui/shared/components/Button.tsx' },
           },
         ],
       },
@@ -67,7 +70,7 @@ describe('file-location ESLint rule', () => {
         errors: [
           {
             messageId: 'deprecatedLocation',
-            data: { destination: 'src/ui/web/courses/CourseCard.tsx' },
+            data: { destination: 'src/ui/shared/courses/CourseCard.tsx' },
           },
         ],
       },
@@ -90,11 +93,11 @@ describe('file-location ESLint rule', () => {
     invalid: [],
   })
 
-  ruleTester.run('ignores React component in src/ui/web/', rule.default ?? rule, {
+  ruleTester.run('ignores React component in src/ui/shared/', rule.default ?? rule, {
     valid: [
       {
         code: `import React from 'react'\nexport const Header = () => <header>Site Header</header>`,
-        filename: 'src/ui/web/Header.tsx',
+        filename: 'src/ui/shared/Header.tsx',
       },
     ],
     invalid: [],
@@ -120,7 +123,7 @@ describe('file-location ESLint rule', () => {
           code: `import Image from 'next/image'\nexport default function Avatar() {\n  return <Image src="/avatar.png" alt="avatar" />\n}`,
           filename: 'src/components/Avatar.tsx',
           errors: [
-            { messageId: 'deprecatedLocation', data: { destination: 'src/ui/web/Avatar.tsx' } },
+            { messageId: 'deprecatedLocation', data: { destination: 'src/ui/shared/Avatar.tsx' } },
           ],
         },
       ],
@@ -137,7 +140,7 @@ describe('file-location ESLint rule', () => {
           code: `import Link from 'next/link'\nexport const Nav = () => <Link href="/">Home</Link>`,
           filename: 'src/components/Nav.tsx',
           errors: [
-            { messageId: 'deprecatedLocation', data: { destination: 'src/ui/web/Nav.tsx' } },
+            { messageId: 'deprecatedLocation', data: { destination: 'src/ui/shared/Nav.tsx' } },
           ],
         },
       ],
@@ -208,11 +211,11 @@ describe('file-location ESLint rule', () => {
     invalid: [],
   })
 
-  ruleTester.run('ignores deeply nested component in src/ui/web/', rule.default ?? rule, {
+  ruleTester.run('ignores deeply nested component in src/ui/shared/', rule.default ?? rule, {
     valid: [
       {
         code: `import React from 'react'\nexport const DeepCard = () => <div>Deep</div>`,
-        filename: 'src/ui/web/cards/featured/DeepCard.tsx',
+        filename: 'src/ui/shared/cards/featured/DeepCard.tsx',
       },
     ],
     invalid: [],

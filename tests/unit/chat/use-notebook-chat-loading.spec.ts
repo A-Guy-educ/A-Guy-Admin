@@ -53,7 +53,7 @@ vi.mock('@/server/services/api/api-service', () => ({
 }))
 
 // Mock useDirectChatAssetUpload
-vi.mock('@/ui/web/chat/hooks/useDirectChatAssetUpload', () => ({
+vi.mock('@/ui/shared/chat/hooks/useDirectChatAssetUpload', () => ({
   useDirectChatAssetUpload: vi.fn(() => ({
     uploadingFiles: [],
     addFiles: vi.fn(),
@@ -118,7 +118,7 @@ describe('useNotebookChat loading behavior timing', () => {
       })
 
       const setTimeoutSpy = vi.spyOn(global, 'setTimeout')
-      const { useNotebookChat } = await import('@/ui/web/chat/hooks/useNotebookChat')
+      const { useNotebookChat } = await import('@/ui/shared/chat/hooks/useNotebookChat')
 
       const { result } = renderHook(() =>
         useNotebookChat({
@@ -160,7 +160,7 @@ describe('useNotebookChat loading behavior timing', () => {
         contextKey: 'users:test-user',
       })
 
-      const { useNotebookChat } = await import('@/ui/web/chat/hooks/useNotebookChat')
+      const { useNotebookChat } = await import('@/ui/shared/chat/hooks/useNotebookChat')
 
       const { result } = renderHook(() =>
         useNotebookChat({
@@ -204,7 +204,7 @@ describe('useNotebookChat loading behavior timing', () => {
         contextKey: 'users:test-user',
       })
 
-      const { useNotebookChat } = await import('@/ui/web/chat/hooks/useNotebookChat')
+      const { useNotebookChat } = await import('@/ui/shared/chat/hooks/useNotebookChat')
 
       const { result } = renderHook(() =>
         useNotebookChat({

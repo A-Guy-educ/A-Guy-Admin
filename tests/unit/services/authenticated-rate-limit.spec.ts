@@ -56,7 +56,7 @@ describe('Authenticated Rate Limiting', () => {
       }
 
       // Same user, different endpoint should be allowed
-      const result = checkAuthenticatedRateLimit('user-1', '/api/study-plan', config)
+      const result = checkAuthenticatedRateLimit('user-1', '/api/agent/chat', config)
       expect(result.allowed).toBe(true)
     })
 

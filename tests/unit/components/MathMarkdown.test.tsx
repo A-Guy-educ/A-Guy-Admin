@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { MathMarkdown } from '@/ui/web/shared'
+import { MathMarkdown } from '@/ui/shared/primitives'
 import { render } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 

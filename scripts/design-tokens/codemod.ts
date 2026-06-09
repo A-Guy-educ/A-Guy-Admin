@@ -90,6 +90,13 @@ const REPLACEMENTS: Array<[pattern: RegExp, replacement: string]> = [
   [/\bmax-w-\[1280px\]\b/g, 'max-w-content'],
 ]
 
+const SKIP_FILE_PATTERNS = [
+  /\/tests?\//,
+  /(^|\/)__tests__\//,
+  /\.(test|spec)\.[tj]sx?$/,
+  /(^|\/)scripts\/design-tokens\/codemod\.ts$/,
+]
+
 interface Options {
   dryRun: boolean
   verbose: boolean
@@ -97,7 +104,16 @@ interface Options {
   files: string[]
 }
 
+function shouldSkipFile(filePath: string): boolean {
+  const normalizedPath = filePath.replace(/\\/g, '/')
+  return SKIP_FILE_PATTERNS.some((pattern) => pattern.test(normalizedPath))
+}
+
 async function processFile(filePath: string, options: Options): Promise<number> {
+  if (shouldSkipFile(filePath)) {
+    return 0
+  }
+
   const content = await readFile(filePath, 'utf-8')
   let newContent = content
   let changeCount = 0

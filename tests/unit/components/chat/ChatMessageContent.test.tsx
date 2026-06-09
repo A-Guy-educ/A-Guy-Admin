@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { ChatMessageContent } from '@/ui/web/chat'
+import { ChatMessageContent } from '@/ui/shared/chat'
 import { render } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
