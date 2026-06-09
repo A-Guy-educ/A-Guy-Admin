@@ -64,6 +64,9 @@ jobs:
         if: github.ref_name == 'dev'
         run: vercel build --token=${{ secrets.VERCEL_ACCESS_TOKEN }}
         env:
+          BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          NEXT_PUBLIC_SERVER_URL: https://a-guy-admin-git-dev-aguy.vercel.app
           PAYLOAD_SECRET: ${{ secrets.PAYLOAD_SECRET }}
 
       - name: Deploy Preview
@@ -86,6 +89,9 @@ jobs:
         if: github.ref_name == 'main'
         run: vercel build --prod --token=${{ secrets.VERCEL_ACCESS_TOKEN }}
         env:
+          BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          NEXT_PUBLIC_SERVER_URL: ${{ secrets.NEXT_PUBLIC_SERVER_URL }}
           PAYLOAD_SECRET: ${{ secrets.PAYLOAD_SECRET }}
 
       - name: Deploy Production
