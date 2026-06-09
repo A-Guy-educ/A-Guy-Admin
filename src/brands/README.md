@@ -163,7 +163,6 @@ NEXT_PUBLIC_BRAND=<brand-slug> pnpm dev
 # - Title should contain the new brand name
 # - og:site_name should match
 # - theme-color meta tag should match themeColor.light
-# - /manifest.webmanifest should return JSON with the new brand name
 ```
 
 **Step 12 — Deploy**

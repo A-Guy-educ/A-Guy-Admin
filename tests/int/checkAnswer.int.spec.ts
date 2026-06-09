@@ -4,7 +4,7 @@
  */
 
 import type { AnswerSpec } from '@/infra/contracts'
-import { checkAnswer } from '@/ui/web/exerciserenderer/utils/checkAnswer'
+import { checkAnswer } from '@/ui/shared/exerciserenderer/utils/checkAnswer'
 import { describe, expect, test } from 'vitest'
 
 // Legacy UserAnswer types for the old exercise format

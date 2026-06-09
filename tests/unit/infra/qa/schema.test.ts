@@ -181,7 +181,7 @@ describe('DSComponentSchema', () => {
   it('should validate a component with variants', () => {
     const component = {
       name: 'Button',
-      path: '@/ui/web/components/button',
+      path: '@/ui/shared/components/button',
       variants: ['default', 'destructive', 'outline'],
       sizes: ['sm', 'md', 'lg'],
     }
@@ -193,7 +193,7 @@ describe('DSComponentSchema', () => {
   it('should validate a minimal component', () => {
     const component = {
       name: 'Card',
-      path: '@/ui/web/components/card',
+      path: '@/ui/shared/components/card',
     }
 
     const result = DSComponentSchema.safeParse(component)

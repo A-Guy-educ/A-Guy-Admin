@@ -10,10 +10,10 @@
 
 | Area                 | Location                          | Purpose                                        |
 | -------------------- | --------------------------------- | ---------------------------------------------- |
-| **Frontend Routes**  | `src/app/(frontend)/`             | Next.js App Router pages and components        |
 | **Payload Admin**    | `src/app/(payload)/`              | Payload CMS admin panel routes                 |
+| **Custom APIs**      | `src/app/api/`                    | Admin, job, webhook, and service endpoints     |
 | **Collections**      | `src/server/payload/collections/` | Payload CMS collection configurations          |
-| **Components**       | `src/components/`                 | React components (UI, Admin, Custom)           |
+| **Components**       | `src/ui/`                         | Admin and shared Payload UI components         |
 | **Business Logic**   | `src/server/`                     | Server-side logic and services                 |
 | **Access Control**   | `src/server/payload/access/`      | Reusable access control functions              |
 | **Hooks**            | `src/server/payload/hooks/`       | Payload lifecycle hooks                        |

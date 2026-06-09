@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { VideoMedia } from '@/ui/web/media/VideoMedia'
+import { VideoMedia } from '@/ui/shared/media/VideoMedia'
 import type { Media as MediaType } from '@/payload-types'
 import { cleanup, render } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'

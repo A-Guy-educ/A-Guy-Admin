@@ -12,7 +12,7 @@ import {
   escapeStepContextField,
   stripStepContext,
   type ChatStepContext,
-} from '@/ui/web/chat/hooks/step-context'
+} from '@/ui/shared/chat/hooks/step-context'
 
 const baseStep: ChatStepContext = {
   currentStepId: 3,

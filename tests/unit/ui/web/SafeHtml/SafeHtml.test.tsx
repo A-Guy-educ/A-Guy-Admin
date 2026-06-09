@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, render } from '@testing-library/react'
 import { describe, expect, it, afterEach } from 'vitest'
-import { SafeHtml } from '@/ui/web/SafeHtml'
+import { SafeHtml } from '@/ui/shared/SafeHtml'
 
 afterEach(cleanup)
 
@@ -43,9 +43,11 @@ describe('SafeHtml', () => {
 
   describe('className prop', () => {
     it('applies custom className', () => {
-      const { container } = render(<SafeHtml html="<p>Test</p>" className="custom-class text-sm" />)
+      const { container } = render(
+        <SafeHtml html="<p>Test</p>" className="custom-class text-body-sm" />,
+      )
       const div = container.firstElementChild as HTMLElement
-      expect(div.className).toBe('custom-class text-sm')
+      expect(div.className).toBe('custom-class text-body-sm')
     })
 
     it('renders without className attribute when not provided', () => {
@@ -80,11 +82,11 @@ describe('SafeHtml', () => {
 
     it('merges prose classes with custom className', () => {
       const { container } = render(
-        <SafeHtml html="<p>Test</p>" enableProse className="text-xl mb-4" />,
+        <SafeHtml html="<p>Test</p>" enableProse className="text-heading-xl mb-4" />,
       )
       const div = container.firstElementChild as HTMLElement
       expect(div.className).toContain('prose')
-      expect(div.className).toContain('text-xl')
+      expect(div.className).toContain('text-heading-xl')
       expect(div.className).toContain('mb-4')
     })
 
