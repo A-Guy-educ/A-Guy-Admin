@@ -5,7 +5,7 @@
  * The tests here are known to pass reliably in CI. Tests with known
  * pre-existing failures (broken locators, fragile seeding) are excluded.
  *
- * Current gate: admin-settings, auth-onboarding, catalog-navigation.
+ * Current gate: admin dashboard smoke coverage.
  */
 import { defineConfig, devices } from '@playwright/test'
 
@@ -39,16 +39,9 @@ export default defineConfig({
     {
       name: 'chromium',
       testDir: './tests/e2e',
-      // Excluded tests (pre-existing failures, not CI infrastructure issues):
-      // - admin-content: fragile inline seeding / 404 on seeded URLs
-      // - admin-editing: exercise UI locators don't match current selectors
-      // - exercises: MCQ/free-response/matching/table locators not found
-      // - lesson-content: Scenario #5 locator timeout on lesson page
-      // - student-support: Scenario #18 mobile exercises locator timeout
       testMatch: [
-        'verification/admin-settings.e2e.spec.ts',
-        'verification/auth-onboarding.e2e.spec.ts',
-        'verification/catalog-navigation.e2e.spec.ts',
+        'admin-dashboard-course-enrollments-widget.e2e.spec.ts',
+        'admin-dashboard-registered-card.e2e.spec.ts',
       ],
       use: { ...devices['Desktop Chrome'], channel: 'chromium' },
     },

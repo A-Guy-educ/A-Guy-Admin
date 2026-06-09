@@ -1,8 +1,8 @@
 'use client'
 
 import { useAuth } from '@payloadcms/ui'
-import { useTranslations } from '@/ui/web/providers/I18n'
-import { ChatInterface } from '@/ui/web/chat/ChatInterface'
+import { useTranslations } from '@/ui/shared/providers/I18n'
+import { ChatInterface } from '@/ui/shared/chat/ChatInterface'
 import { MessageSquare, X } from 'lucide-react'
 import { createPortal } from 'react-dom'
 import { useCallback, useEffect, useState } from 'react'
@@ -47,7 +47,7 @@ export function AdminChatLauncher({ translationNamespace = 'admin.chat' }: Admin
     <button
       onClick={() => setIsOpen(true)}
       aria-label={String(t('openChat')) || 'Open AI Chat'}
-      className="fixed bottom-6 right-6 flex items-center gap-2 px-4 py-3 rounded-full bg-primary text-primary-foreground shadow-card-hover hover:shadow-card-hover hover:scale-105 transition-all duration-normal cursor-pointer z-fixed"
+      className="fixed bottom-6 right-6 flex items-center gap-content-gap-xs px-4 py-3 rounded-full bg-primary text-primary-foreground shadow-card-hover hover:shadow-card-hover hover:scale-105 transition-all duration-normal cursor-pointer z-fixed"
     >
       <MessageSquare size={20} />
       <span className="text-body-sm font-medium pe-1">{String(t('openChat'))}</span>

@@ -12,17 +12,17 @@
 'use client'
 
 import React from 'react'
-import { RichTextRenderer } from '@/ui/web/exerciserenderer/blocks/RichTextRenderer'
-import { LatexBlockRenderer } from '@/ui/web/exerciserenderer/blocks/LatexBlockRenderer'
-import { SvgRenderer } from '@/ui/web/exerciserenderer/blocks/SvgRenderer'
-import { GeometryRenderer } from '@/ui/web/exerciserenderer/blocks/GeometryRenderer'
-import { AxisRenderer } from '@/ui/web/exerciserenderer/blocks/AxisRenderer'
-import { MultiAxisRenderer } from '@/ui/web/exerciserenderer/blocks/MultiAxisRenderer'
-import { HtmlBlockRenderer } from '@/ui/web/exerciserenderer/blocks/HtmlBlockRenderer'
-import { GraphWithPrompt } from '@/ui/web/exerciserenderer/blocks/GraphWithPrompt'
+import { RichTextRenderer } from '@/ui/shared/exerciserenderer/blocks/RichTextRenderer'
+import { LatexBlockRenderer } from '@/ui/shared/exerciserenderer/blocks/LatexBlockRenderer'
+import { SvgRenderer } from '@/ui/shared/exerciserenderer/blocks/SvgRenderer'
+import { GeometryRenderer } from '@/ui/shared/exerciserenderer/blocks/GeometryRenderer'
+import { AxisRenderer } from '@/ui/shared/exerciserenderer/blocks/AxisRenderer'
+import { MultiAxisRenderer } from '@/ui/shared/exerciserenderer/blocks/MultiAxisRenderer'
+import { HtmlBlockRenderer } from '@/ui/shared/exerciserenderer/blocks/HtmlBlockRenderer'
+import { GraphWithPrompt } from '@/ui/shared/exerciserenderer/blocks/GraphWithPrompt'
 import type { ContentBlock, InlineRichText } from '@/server/payload/collections/Exercises/types'
 import type { GeometrySpecV1, AxisSpecV1 } from '@/infra/contracts'
-import type { DisplaySize } from '@/ui/web/exerciserenderer/blocks/AxisRenderer'
+import type { DisplaySize } from '@/ui/shared/exerciserenderer/blocks/AxisRenderer'
 
 interface AdminBlockRendererProps {
   blocks: ContentBlock[]

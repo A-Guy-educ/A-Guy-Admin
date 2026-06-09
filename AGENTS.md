@@ -22,9 +22,8 @@ You are an expert Payload CMS developer. When working with Payload projects, fol
 ```
 src/
 ├── app/                         # Next.js App Router
-│   ├── (frontend)/              # Frontend routes
 │   ├── (payload)/               # Payload admin routes
-│   └── api/                     # API routes
+│   └── api/                     # Admin, job, webhook, and service APIs
 ├── client/                      # Client-side hooks, state, utils
 ├── infra/                       # Infrastructure (analytics, auth, blob, LLM, config)
 ├── server/                      # Server-side code
@@ -38,8 +37,7 @@ src/
 │   └── services/                # Business logic services
 ├── ui/                          # React components
 │   ├── admin/                   # Payload admin UI components
-│   ├── cody/                    # Cody pipeline components
-│   └── web/                     # Frontend/consumer UI components
+│   └── shared/                  # Shared admin/Payload renderers
 ├── i18n/                        # Internationalization
 ├── types/                       # Type declarations
 └── payload.config.ts            # Main config
@@ -911,7 +909,7 @@ For Payload admin components, you can use Payload's CSS variables via Tailwind's
 **Project Convention**: Place components alongside their related feature code:
 
 - Admin components: `src/ui/admin/MyComponent/index.tsx`
-- Web components: `src/ui/web/MyComponent/index.tsx`
+- Shared UI components: `src/ui/shared/MyComponent/index.tsx`
 
 ### Type Safety
 

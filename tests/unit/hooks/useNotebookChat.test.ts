@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { ChatRole } from '@/infra/llm/chat-message-role'
 import { apiService } from '@/server/services/api/api-service'
-import { useNotebookChat } from '@/ui/web/chat'
+import { useNotebookChat } from '@/ui/shared/chat'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { toast } from 'sonner'
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest'

@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useMemo } from 'react'
-import { GeometryRenderer } from '@/ui/web/exerciserenderer/blocks/GeometryRenderer'
+import { GeometryRenderer } from '@/ui/shared/exerciserenderer/blocks/GeometryRenderer'
 
 import type { GeometryBlock as GeometryBlockType } from '@/payload-types'
 import type { GeometrySpecV1 } from '@/infra/contracts/graphics/geometry.v1'

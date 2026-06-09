@@ -6,7 +6,7 @@
 
 import { describe } from 'vitest'
 import { RuleTester } from 'eslint'
-// eslint-disable-next-line @typescript-eslint/no-require-imports
+
 const rule = require('../../../eslint-plugin-aguy/rules/require-auth-endpoints.mjs')
 
 const ruleTester = new RuleTester({
@@ -232,7 +232,7 @@ describe('require-auth-endpoints ESLint rule', () => {
             return Response.json({ ok: true })
           }
         `,
-        filename: '/app/(frontend)/page.tsx',
+        filename: '/app/admin-page.tsx',
       },
       {
         code: `

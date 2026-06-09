@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest'
 import {
   consolidateLatexBlocks,
   type ExerciseLatexSource,
-} from '@/ui/web/shared/LatexDocumentViewer/consolidate-latex-blocks'
-import { latexToMarkdownWithDiagrams } from '@/ui/web/shared/LatexDocumentViewer/latex-to-markdown'
+} from '@/ui/shared/primitives/LatexDocumentViewer/consolidate-latex-blocks'
+import { latexToMarkdownWithDiagrams } from '@/ui/shared/primitives/LatexDocumentViewer/latex-to-markdown'
 
 function exercise(
   id: string,
