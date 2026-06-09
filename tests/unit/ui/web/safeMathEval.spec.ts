@@ -10,7 +10,7 @@
  * - Code injection attempts are prevented (no eval)
  */
 import { describe, expect, it } from 'vitest'
-import { parseMathExpression } from '@/ui/web/exerciserenderer/utils/safeMathEval'
+import { parseMathExpression } from '@/ui/shared/exerciserenderer/utils/safeMathEval'
 
 describe('safeMathEval', () => {
   describe('basic arithmetic', () => {

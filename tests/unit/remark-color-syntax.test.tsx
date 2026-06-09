@@ -5,7 +5,7 @@
 
 import { describe, expect, it } from 'vitest'
 import { render } from '@testing-library/react'
-import { MathMarkdown } from '@/ui/web/shared/MathMarkdown'
+import { MathMarkdown } from '@/ui/shared/primitives/MathMarkdown'
 import React from 'react'
 
 /**

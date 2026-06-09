@@ -1,6 +1,6 @@
 import { revalidateRedirects } from '@/server/payload/hooks/revalidateRedirects'
-import { beforeSyncWithSearch } from '@/ui/web/search/beforeSync'
-import { searchFields } from '@/ui/web/search/fieldOverrides'
+import { beforeSyncWithSearch } from '@/ui/shared/search/beforeSync'
+import { searchFields } from '@/ui/shared/search/fieldOverrides'
 import { formBuilderPlugin } from '@payloadcms/plugin-form-builder'
 import { nestedDocsPlugin } from '@payloadcms/plugin-nested-docs'
 import { redirectsPlugin } from '@payloadcms/plugin-redirects'

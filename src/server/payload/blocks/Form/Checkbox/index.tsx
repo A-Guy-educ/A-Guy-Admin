@@ -3,8 +3,8 @@ import type { FieldErrorsImpl, FieldValues, UseFormRegister } from 'react-hook-f
 
 import { useFormContext } from 'react-hook-form'
 
-import { Checkbox as CheckboxUi } from '@/ui/web/components/checkbox'
-import { Label } from '@/ui/web/components/label'
+import { Checkbox as CheckboxUi } from '@/ui/shared/components/checkbox'
+import { Label } from '@/ui/shared/components/label'
 import React from 'react'
 
 import { Error } from '../Error'
@@ -21,7 +21,7 @@ export const Checkbox: React.FC<
 
   return (
     <Width width={width}>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-content-gap-xs">
         <CheckboxUi
           defaultChecked={defaultValue}
           id={name}

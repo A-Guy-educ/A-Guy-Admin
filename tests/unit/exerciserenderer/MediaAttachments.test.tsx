@@ -2,8 +2,8 @@
 import React from 'react'
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
-import { MediaAttachments } from '@/ui/web/exerciserenderer/components/MediaAttachments'
-import { MediaMapProvider } from '@/ui/web/exerciserenderer/context/MediaMapContext'
+import { MediaAttachments } from '@/ui/shared/exerciserenderer/components/MediaAttachments'
+import { MediaMapProvider } from '@/ui/shared/exerciserenderer/context/MediaMapContext'
 import type { Media } from '@/payload-types'
 
 function createMedia(overrides: Partial<Media> & { id: string }): Media {
