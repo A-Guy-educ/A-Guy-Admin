@@ -20,7 +20,7 @@ import React from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 // Mock all dependencies with proper translation strings
-vi.mock('@/ui/web/providers/I18n', () => ({
+vi.mock('@/ui/shared/providers/I18n', () => ({
   useTranslations: () => (key: string) => {
     const translations: Record<string, string> = {
       openChat: 'Open chat',
@@ -39,18 +39,18 @@ vi.mock('@/ui/web/providers/I18n', () => ({
 /**
  * These tests verify the MobileChatFAB component exists and behaves correctly.
  * The component should be located at:
- * src/ui/web/chat/MobileChatFAB/index.tsx
+ * src/ui/shared/chat/MobileChatFAB/index.tsx
  */
 describe('MobileChatFAB Component', () => {
   afterEach(() => cleanup())
 
   it('should exist and be importable', async () => {
-    const { MobileChatFAB } = await import('@/ui/web/chat/MobileChatFAB')
+    const { MobileChatFAB } = await import('@/ui/shared/chat/MobileChatFAB')
     expect(MobileChatFAB).toBeDefined()
   })
 
   it('should render FAB button when closed', async () => {
-    const { MobileChatFAB } = await import('@/ui/web/chat/MobileChatFAB')
+    const { MobileChatFAB } = await import('@/ui/shared/chat/MobileChatFAB')
     const onOpen = vi.fn()
     const onClose = vi.fn()
 
@@ -65,7 +65,7 @@ describe('MobileChatFAB Component', () => {
   })
 
   it('should not render FAB button when open', async () => {
-    const { MobileChatFAB } = await import('@/ui/web/chat/MobileChatFAB')
+    const { MobileChatFAB } = await import('@/ui/shared/chat/MobileChatFAB')
     const onOpen = vi.fn()
     const onClose = vi.fn()
 
@@ -80,7 +80,7 @@ describe('MobileChatFAB Component', () => {
   })
 
   it('should render bottom panel when open', async () => {
-    const { MobileChatFAB } = await import('@/ui/web/chat/MobileChatFAB')
+    const { MobileChatFAB } = await import('@/ui/shared/chat/MobileChatFAB')
     const onOpen = vi.fn()
     const onClose = vi.fn()
 
@@ -95,7 +95,7 @@ describe('MobileChatFAB Component', () => {
   })
 
   it('should call onOpen when FAB is clicked', async () => {
-    const { MobileChatFAB } = await import('@/ui/web/chat/MobileChatFAB')
+    const { MobileChatFAB } = await import('@/ui/shared/chat/MobileChatFAB')
     const onOpen = vi.fn()
     const onClose = vi.fn()
 
@@ -112,7 +112,7 @@ describe('MobileChatFAB Component', () => {
   })
 
   it('should call onClose when collapse button is clicked', async () => {
-    const { MobileChatFAB } = await import('@/ui/web/chat/MobileChatFAB')
+    const { MobileChatFAB } = await import('@/ui/shared/chat/MobileChatFAB')
     const onOpen = vi.fn()
     const onClose = vi.fn()
 
@@ -129,7 +129,7 @@ describe('MobileChatFAB Component', () => {
   })
 
   it('should call onClose when Escape key is pressed', async () => {
-    const { MobileChatFAB } = await import('@/ui/web/chat/MobileChatFAB')
+    const { MobileChatFAB } = await import('@/ui/shared/chat/MobileChatFAB')
     const onOpen = vi.fn()
     const onClose = vi.fn()
 
@@ -145,7 +145,7 @@ describe('MobileChatFAB Component', () => {
   })
 
   it('should render children inside the panel when open', async () => {
-    const { MobileChatFAB } = await import('@/ui/web/chat/MobileChatFAB')
+    const { MobileChatFAB } = await import('@/ui/shared/chat/MobileChatFAB')
     const onOpen = vi.fn()
     const onClose = vi.fn()
 
@@ -160,7 +160,7 @@ describe('MobileChatFAB Component', () => {
   })
 
   it('should have correct positioning classes for FAB', async () => {
-    const { MobileChatFAB } = await import('@/ui/web/chat/MobileChatFAB')
+    const { MobileChatFAB } = await import('@/ui/shared/chat/MobileChatFAB')
     const onOpen = vi.fn()
     const onClose = vi.fn()
 

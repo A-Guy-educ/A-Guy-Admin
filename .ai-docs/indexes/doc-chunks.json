@@ -67,23 +67,23 @@
     {
       "id": "AGENTS-project-structure",
       "title": "Project Structure",
-      "content": "```\nsrc/\n├── app/                         # Next.js App Router\n│   ├── (frontend)/              # Frontend routes\n│   ├── (payload)/               # Payload admin routes\n│   └── api/                     # API routes\n├── client/                      # Client-side hooks, state, utils\n├── infra/                       # Infrastructure (analytics, auth, blob, LLM, config)\n├── server/                      # Server-side code\n│   ├── payload/\n│   │   ├── collections/         # Collection configs\n│   │   ├── globals/             # Global configs\n│   │   ├── hooks/              # Hook functions\n│   │   ├── access/             # Access control functions\n│   │   ├── endpoints/          # Custom endpoints\n│   │   └── jobs/               # Background jobs\n│   └── services/                # Business logic services\n├── ui/                          # React components\n│   ├── admin/                   # Payload admin UI components\n│   ├── cody/                    # Cody pipeline components\n│   └── web/                     # Frontend/consumer UI components\n├── i18n/                        # Internationalization\n├── types/                       # Type declarations\n└── payload.config.ts            # Main config\n```\n\n> **Note**: Do NOT create a `lib/` folder under `src/`. Place shared utilities in appropriate domain-specific directories (e.g., `src/ui/cody/`, `src/server/services/`, `src/infra/`).",
+      "content": "```\nsrc/\n├── app/                         # Next.js App Router\n│   ├── (payload)/               # Payload admin routes\n│   └── api/                     # Admin, job, webhook, and service APIs\n├── client/                      # Client-side hooks, state, utils\n├── infra/                       # Infrastructure (analytics, auth, blob, LLM, config)\n├── server/                      # Server-side code\n│   ├── payload/\n│   │   ├── collections/         # Collection configs\n│   │   ├── globals/             # Global configs\n│   │   ├── hooks/              # Hook functions\n│   │   ├── access/             # Access control functions\n│   │   ├── endpoints/          # Custom endpoints\n│   │   └── jobs/               # Background jobs\n│   └── services/                # Business logic services\n├── ui/                          # React components\n│   ├── admin/                   # Payload admin UI components\n│   └── shared/                  # Shared admin/Payload renderers\n├── i18n/                        # Internationalization\n├── types/                       # Type declarations\n└── payload.config.ts            # Main config\n```\n\n> **Note**: Do NOT create a `lib/` folder under `src/`. Place shared utilities in appropriate domain-specific directories (e.g., `src/ui/cody/`, `src/server/services/`, `src/infra/`).",
       "keywords": [
         "payload",
-        "components",
-        "frontend",
-        "routes",
         "admin",
         "config",
         "services",
-        "cody",
+        "shared",
         "hooks",
-        "infra"
+        "infra",
+        "server",
+        "configs",
+        "functions"
       ],
       "category": "patterns",
       "sourceFile": "AGENTS.md",
       "startLine": 20,
-      "endLine": 50,
+      "endLine": 48,
       "priority": 8
     },
     {
@@ -93,8 +93,8 @@
       "keywords": ["configuration"],
       "category": "patterns",
       "sourceFile": "AGENTS.md",
-      "startLine": 50,
-      "endLine": 52,
+      "startLine": 48,
+      "endLine": 50,
       "priority": 8
     },
     {
@@ -115,8 +115,8 @@
       ],
       "category": "patterns",
       "sourceFile": "AGENTS.md",
-      "startLine": 52,
-      "endLine": 83,
+      "startLine": 50,
+      "endLine": 81,
       "priority": 7
     },
     {
@@ -126,8 +126,8 @@
       "keywords": ["collections"],
       "category": "patterns",
       "sourceFile": "AGENTS.md",
-      "startLine": 83,
-      "endLine": 85,
+      "startLine": 81,
+      "endLine": 83,
       "priority": 8
     },
     {
@@ -148,8 +148,8 @@
       ],
       "category": "patterns",
       "sourceFile": "AGENTS.md",
-      "startLine": 85,
-      "endLine": 106,
+      "startLine": 83,
+      "endLine": 104,
       "priority": 7
     },
     {
@@ -170,8 +170,8 @@
       ],
       "category": "patterns",
       "sourceFile": "AGENTS.md",
-      "startLine": 106,
-      "endLine": 129,
+      "startLine": 104,
+      "endLine": 127,
       "priority": 7
     },
     {
@@ -181,8 +181,8 @@
       "keywords": ["fields"],
       "category": "patterns",
       "sourceFile": "AGENTS.md",
-      "startLine": 129,
-      "endLine": 131,
+      "startLine": 127,
+      "endLine": 129,
       "priority": 8
     },
     {
@@ -203,8 +203,8 @@
       ],
       "category": "patterns",
       "sourceFile": "AGENTS.md",
-      "startLine": 131,
-      "endLine": 167,
+      "startLine": 129,
+      "endLine": 165,
       "priority": 7
     },
     {
@@ -214,8 +214,8 @@
       "keywords": ["critical", "security", "patterns"],
       "category": "patterns",
       "sourceFile": "AGENTS.md",
-      "startLine": 167,
-      "endLine": 169,
+      "startLine": 165,
+      "endLine": 167,
       "priority": 8
     },
     {
@@ -236,8 +236,8 @@
       ],
       "category": "patterns",
       "sourceFile": "AGENTS.md",
-      "startLine": 169,
-      "endLine": 194,
+      "startLine": 167,
+      "endLine": 192,
       "priority": 7
     },
     {
@@ -258,8 +258,8 @@
       ],
       "category": "patterns",
       "sourceFile": "AGENTS.md",
-      "startLine": 194,
-      "endLine": 226,
+      "startLine": 192,
+      "endLine": 224,
       "priority": 7
     },
     {
@@ -280,8 +280,8 @@
       ],
       "category": "patterns",
       "sourceFile": "AGENTS.md",
-      "startLine": 226,
-      "endLine": 261,
+      "startLine": 224,
+      "endLine": 259,
       "priority": 7
     },
     {
@@ -291,8 +291,8 @@
       "keywords": ["access", "control"],
       "category": "patterns",
       "sourceFile": "AGENTS.md",
-      "startLine": 261,
-      "endLine": 263,
+      "startLine": 259,
+      "endLine": 261,
       "priority": 8
     },
     {
@@ -313,8 +313,8 @@
       ],
       "category": "patterns",
       "sourceFile": "AGENTS.md",
-      "startLine": 263,
-      "endLine": 298,
+      "startLine": 261,
+      "endLine": 296,
       "priority": 7
     },
     {
@@ -335,8 +335,8 @@
       ],
       "category": "patterns",
       "sourceFile": "AGENTS.md",
-      "startLine": 298,
-      "endLine": 320,
+      "startLine": 296,
+      "endLine": 318,
       "priority": 7
     },
     {
@@ -357,8 +357,8 @@
       ],
       "category": "patterns",
       "sourceFile": "AGENTS.md",
-      "startLine": 320,
-      "endLine": 347,
+      "startLine": 318,
+      "endLine": 345,
       "priority": 7
     },
     {
@@ -368,8 +368,8 @@
       "keywords": ["advanced", "access", "control", "patterns"],
       "category": "patterns",
       "sourceFile": "AGENTS.md",
-      "startLine": 347,
-      "endLine": 349,
+      "startLine": 345,
+      "endLine": 347,
       "priority": 8
     },
     {
@@ -390,8 +390,8 @@
       ],
       "category": "patterns",
       "sourceFile": "AGENTS.md",
-      "startLine": 349,
-      "endLine": 367,
+      "startLine": 347,
+      "endLine": 365,
       "priority": 7
     },
     {
@@ -412,8 +412,8 @@
       ],
       "category": "patterns",
       "sourceFile": "AGENTS.md",
-      "startLine": 367,
-      "endLine": 403,
+      "startLine": 365,
+      "endLine": 401,
       "priority": 7
     },
     {
@@ -434,8 +434,8 @@
       ],
       "category": "patterns",
       "sourceFile": "AGENTS.md",
-      "startLine": 403,
-      "endLine": 436,
+      "startLine": 401,
+      "endLine": 434,
       "priority": 7
     },
     {
@@ -456,8 +456,8 @@
       ],
       "category": "patterns",
       "sourceFile": "AGENTS.md",
-      "startLine": 436,
-      "endLine": 460,
+      "startLine": 434,
+      "endLine": 458,
       "priority": 7
     },
     {
@@ -467,8 +467,8 @@
       "keywords": ["hooks"],
       "category": "patterns",
       "sourceFile": "AGENTS.md",
-      "startLine": 460,
-      "endLine": 462,
+      "startLine": 458,
+      "endLine": 460,
       "priority": 8
     },
     {
@@ -489,8 +489,8 @@
       ],
       "category": "patterns",
       "sourceFile": "AGENTS.md",
-      "startLine": 462,
-      "endLine": 525,
+      "startLine": 460,
+      "endLine": 523,
       "priority": 7
     },
     {
@@ -500,8 +500,8 @@
       "keywords": ["queries"],
       "category": "patterns",
       "sourceFile": "AGENTS.md",
-      "startLine": 525,
-      "endLine": 527,
+      "startLine": 523,
+      "endLine": 525,
       "priority": 8
     },
     {
@@ -522,8 +522,8 @@
       ],
       "category": "patterns",
       "sourceFile": "AGENTS.md",
-      "startLine": 527,
-      "endLine": 575,
+      "startLine": 525,
+      "endLine": 573,
       "priority": 7
     },
     {
@@ -544,8 +544,8 @@
       ],
       "category": "patterns",
       "sourceFile": "AGENTS.md",
-      "startLine": 575,
-      "endLine": 604,
+      "startLine": 573,
+      "endLine": 602,
       "priority": 7
     },
     {
@@ -565,8 +565,8 @@
       ],
       "category": "patterns",
       "sourceFile": "AGENTS.md",
-      "startLine": 604,
-      "endLine": 622,
+      "startLine": 602,
+      "endLine": 620,
       "priority": 7
     },
     {
@@ -587,8 +587,8 @@
       ],
       "category": "patterns",
       "sourceFile": "AGENTS.md",
-      "startLine": 622,
-      "endLine": 651,
+      "startLine": 620,
+      "endLine": 649,
       "priority": 8
     },
     {
@@ -609,8 +609,8 @@
       ],
       "category": "patterns",
       "sourceFile": "AGENTS.md",
-      "startLine": 651,
-      "endLine": 657,
+      "startLine": 649,
+      "endLine": 655,
       "priority": 8
     },
     {
@@ -631,8 +631,8 @@
       ],
       "category": "patterns",
       "sourceFile": "AGENTS.md",
-      "startLine": 657,
-      "endLine": 716,
+      "startLine": 655,
+      "endLine": 714,
       "priority": 7
     },
     {
@@ -653,8 +653,8 @@
       ],
       "category": "patterns",
       "sourceFile": "AGENTS.md",
-      "startLine": 716,
-      "endLine": 723,
+      "startLine": 714,
+      "endLine": 721,
       "priority": 7
     },
     {
@@ -675,8 +675,8 @@
       ],
       "category": "patterns",
       "sourceFile": "AGENTS.md",
-      "startLine": 723,
-      "endLine": 730,
+      "startLine": 721,
+      "endLine": 728,
       "priority": 7
     },
     {
@@ -697,8 +697,8 @@
       ],
       "category": "patterns",
       "sourceFile": "AGENTS.md",
-      "startLine": 730,
-      "endLine": 765,
+      "startLine": 728,
+      "endLine": 763,
       "priority": 7
     },
     {
@@ -719,8 +719,8 @@
       ],
       "category": "patterns",
       "sourceFile": "AGENTS.md",
-      "startLine": 765,
-      "endLine": 792,
+      "startLine": 763,
+      "endLine": 790,
       "priority": 7
     },
     {
@@ -741,8 +741,8 @@
       ],
       "category": "patterns",
       "sourceFile": "AGENTS.md",
-      "startLine": 792,
-      "endLine": 818,
+      "startLine": 790,
+      "endLine": 816,
       "priority": 7
     },
     {
@@ -763,8 +763,8 @@
       ],
       "category": "patterns",
       "sourceFile": "AGENTS.md",
-      "startLine": 818,
-      "endLine": 856,
+      "startLine": 816,
+      "endLine": 854,
       "priority": 7
     },
     {
@@ -785,14 +785,14 @@
       ],
       "category": "patterns",
       "sourceFile": "AGENTS.md",
-      "startLine": 856,
-      "endLine": 880,
+      "startLine": 854,
+      "endLine": 878,
       "priority": 7
     },
     {
       "id": "AGENTS-styling-components",
       "title": "Styling Components",
-      "content": "This project uses **Tailwind CSS** with a **semantic design token system**. See `.kody/memory/design-system.md` for complete rules.\n\n**Key rules:**\n\n- Use semantic typography tokens (`text-body-sm`, `text-heading-lg`, `text-display-md`) — never `text-sm`, `text-xl`, `text-4xl`\n- Use Tailwind color utilities (`bg-primary`, `text-success`) — never `[hsl(var(--xxx))]` or hardcoded colors (`text-red-500`)\n- Use shadow tokens (`shadow-elevation-1`, `shadow-card`) — never `shadow-sm`, `shadow-md`\n- Use spacing tokens for layout (`p-card-padding`, `gap-content-gap`) — never `p-6`, `gap-8`\n- All interactive elements need `transition-all duration-normal`\n- Use `cn()` for className composition — never template literals\n- Never use inline `style={{}}` for typography or colors\n\n```tsx\n// CORRECT\nexport function MyComponent() {\n  return (\n    <div className=\"bg-card text-card-foreground p-card-padding rounded-lg shadow-elevation-1\">\n      Content\n    </div>\n  )\n}\n```\n\nFor Payload admin components, you can use Payload's CSS variables via Tailwind's arbitrary value syntax:\n\n```tsx\n<div className=\"bg-[var(--theme-elevation-500)] text-[var(--theme-text)]\">Admin content</div>\n```\n\n**Project Convention**: Place components alongside their related feature code:\n\n- Admin components: `src/ui/admin/MyComponent/index.tsx`\n- Web components: `src/ui/web/MyComponent/index.tsx`",
+      "content": "This project uses **Tailwind CSS** with a **semantic design token system**. See `.kody/memory/design-system.md` for complete rules.\n\n**Key rules:**\n\n- Use semantic typography tokens (`text-body-sm`, `text-heading-lg`, `text-display-md`) — never `text-sm`, `text-xl`, `text-4xl`\n- Use Tailwind color utilities (`bg-primary`, `text-success`) — never `[hsl(var(--xxx))]` or hardcoded colors (`text-red-500`)\n- Use shadow tokens (`shadow-elevation-1`, `shadow-card`) — never `shadow-sm`, `shadow-md`\n- Use spacing tokens for layout (`p-card-padding`, `gap-content-gap`) — never `p-6`, `gap-8`\n- All interactive elements need `transition-all duration-normal`\n- Use `cn()` for className composition — never template literals\n- Never use inline `style={{}}` for typography or colors\n\n```tsx\n// CORRECT\nexport function MyComponent() {\n  return (\n    <div className=\"bg-card text-card-foreground p-card-padding rounded-lg shadow-elevation-1\">\n      Content\n    </div>\n  )\n}\n```\n\nFor Payload admin components, you can use Payload's CSS variables via Tailwind's arbitrary value syntax:\n\n```tsx\n<div className=\"bg-[var(--theme-elevation-500)] text-[var(--theme-text)]\">Admin content</div>\n```\n\n**Project Convention**: Place components alongside their related feature code:\n\n- Admin components: `src/ui/admin/MyComponent/index.tsx`\n- Shared UI components: `src/ui/shared/MyComponent/index.tsx`",
       "keywords": [
         "never",
         "components",
@@ -807,8 +807,8 @@
       ],
       "category": "patterns",
       "sourceFile": "AGENTS.md",
-      "startLine": 880,
-      "endLine": 916,
+      "startLine": 878,
+      "endLine": 914,
       "priority": 7
     },
     {
@@ -829,8 +829,8 @@
       ],
       "category": "patterns",
       "sourceFile": "AGENTS.md",
-      "startLine": 916,
-      "endLine": 932,
+      "startLine": 914,
+      "endLine": 930,
       "priority": 7
     },
     {
@@ -851,8 +851,8 @@
       ],
       "category": "patterns",
       "sourceFile": "AGENTS.md",
-      "startLine": 932,
-      "endLine": 955,
+      "startLine": 930,
+      "endLine": 953,
       "priority": 7
     },
     {
@@ -873,8 +873,8 @@
       ],
       "category": "patterns",
       "sourceFile": "AGENTS.md",
-      "startLine": 955,
-      "endLine": 974,
+      "startLine": 953,
+      "endLine": 972,
       "priority": 7
     },
     {
@@ -895,8 +895,8 @@
       ],
       "category": "patterns",
       "sourceFile": "AGENTS.md",
-      "startLine": 974,
-      "endLine": 1017,
+      "startLine": 972,
+      "endLine": 1015,
       "priority": 8
     },
     {
@@ -917,8 +917,8 @@
       ],
       "category": "patterns",
       "sourceFile": "AGENTS.md",
-      "startLine": 1017,
-      "endLine": 1055,
+      "startLine": 1015,
+      "endLine": 1053,
       "priority": 8
     },
     {
@@ -939,8 +939,8 @@
       ],
       "category": "patterns",
       "sourceFile": "AGENTS.md",
-      "startLine": 1055,
-      "endLine": 1090,
+      "startLine": 1053,
+      "endLine": 1088,
       "priority": 8
     },
     {
@@ -950,8 +950,8 @@
       "keywords": ["plugins"],
       "category": "patterns",
       "sourceFile": "AGENTS.md",
-      "startLine": 1090,
-      "endLine": 1092,
+      "startLine": 1088,
+      "endLine": 1090,
       "priority": 8
     },
     {
@@ -972,8 +972,8 @@
       ],
       "category": "patterns",
       "sourceFile": "AGENTS.md",
-      "startLine": 1092,
-      "endLine": 1110,
+      "startLine": 1090,
+      "endLine": 1108,
       "priority": 7
     },
     {
@@ -994,8 +994,8 @@
       ],
       "category": "patterns",
       "sourceFile": "AGENTS.md",
-      "startLine": 1110,
-      "endLine": 1136,
+      "startLine": 1108,
+      "endLine": 1134,
       "priority": 7
     },
     {
@@ -1005,8 +1005,8 @@
       "keywords": ["best", "practices"],
       "category": "patterns",
       "sourceFile": "AGENTS.md",
-      "startLine": 1136,
-      "endLine": 1138,
+      "startLine": 1134,
+      "endLine": 1136,
       "priority": 8
     },
     {
@@ -1027,8 +1027,8 @@
       ],
       "category": "patterns",
       "sourceFile": "AGENTS.md",
-      "startLine": 1138,
-      "endLine": 1146,
+      "startLine": 1136,
+      "endLine": 1144,
       "priority": 7
     },
     {
@@ -1049,8 +1049,8 @@
       ],
       "category": "patterns",
       "sourceFile": "AGENTS.md",
-      "startLine": 1146,
-      "endLine": 1154,
+      "startLine": 1144,
+      "endLine": 1152,
       "priority": 7
     },
     {
@@ -1071,8 +1071,8 @@
       ],
       "category": "patterns",
       "sourceFile": "AGENTS.md",
-      "startLine": 1154,
-      "endLine": 1162,
+      "startLine": 1152,
+      "endLine": 1160,
       "priority": 7
     },
     {
@@ -1093,8 +1093,8 @@
       ],
       "category": "patterns",
       "sourceFile": "AGENTS.md",
-      "startLine": 1162,
-      "endLine": 1170,
+      "startLine": 1160,
+      "endLine": 1168,
       "priority": 7
     },
     {
@@ -1115,8 +1115,8 @@
       ],
       "category": "patterns",
       "sourceFile": "AGENTS.md",
-      "startLine": 1170,
-      "endLine": 1178,
+      "startLine": 1168,
+      "endLine": 1176,
       "priority": 7
     },
     {
@@ -1137,8 +1137,8 @@
       ],
       "category": "patterns",
       "sourceFile": "AGENTS.md",
-      "startLine": 1178,
-      "endLine": 1190,
+      "startLine": 1176,
+      "endLine": 1188,
       "priority": 8
     },
     {
@@ -1159,8 +1159,8 @@
       ],
       "category": "patterns",
       "sourceFile": "AGENTS.md",
-      "startLine": 1190,
-      "endLine": 1207,
+      "startLine": 1188,
+      "endLine": 1205,
       "priority": 8
     },
     {
@@ -1181,8 +1181,8 @@
       ],
       "category": "patterns",
       "sourceFile": "AGENTS.md",
-      "startLine": 1207,
-      "endLine": 1215,
+      "startLine": 1205,
+      "endLine": 1213,
       "priority": 7
     },
     {
@@ -1203,8 +1203,8 @@
       ],
       "category": "patterns",
       "sourceFile": "AGENTS.md",
-      "startLine": 1215,
-      "endLine": 1225,
+      "startLine": 1213,
+      "endLine": 1223,
       "priority": 8
     },
     {
@@ -1225,8 +1225,8 @@
       ],
       "category": "patterns",
       "sourceFile": "AGENTS.md",
-      "startLine": 1225,
-      "endLine": 1245,
+      "startLine": 1223,
+      "endLine": 1243,
       "priority": 7
     },
     {
@@ -1247,8 +1247,8 @@
       ],
       "category": "patterns",
       "sourceFile": "AGENTS.md",
-      "startLine": 1245,
-      "endLine": 1255,
+      "startLine": 1243,
+      "endLine": 1253,
       "priority": 8
     },
     {
@@ -1269,8 +1269,8 @@
       ],
       "category": "patterns",
       "sourceFile": "AGENTS.md",
-      "startLine": 1255,
-      "endLine": 1262,
+      "startLine": 1253,
+      "endLine": 1260,
       "priority": 8
     },
     {
@@ -1291,8 +1291,8 @@
       ],
       "category": "patterns",
       "sourceFile": "AGENTS.md",
-      "startLine": 1262,
-      "endLine": 1273,
+      "startLine": 1260,
+      "endLine": 1271,
       "priority": 7
     },
     {
@@ -1313,8 +1313,8 @@
       ],
       "category": "patterns",
       "sourceFile": "AGENTS.md",
-      "startLine": 1273,
-      "endLine": 1280,
+      "startLine": 1271,
+      "endLine": 1278,
       "priority": 7
     },
     {
@@ -1335,8 +1335,8 @@
       ],
       "category": "patterns",
       "sourceFile": "AGENTS.md",
-      "startLine": 1280,
-      "endLine": 1317,
+      "startLine": 1278,
+      "endLine": 1315,
       "priority": 7
     },
     {
@@ -3627,7 +3627,7 @@
     {
       "id": "CLAUDE-development-server",
       "title": "Development Server",
-      "content": "- **Start dev**: `pnpm dev` - Access at http://localhost:3000 (frontend) and /admin (admin panel)\n- **Clean restart**: `pnpm dev:clean` - Clear Next.js cache and restart (shortcut for `rm -rf .next && pnpm dev`)",
+      "content": "- **Start dev**: `pnpm dev` - Access the admin panel at http://localhost:3000/admin\n- **Clean restart**: `pnpm dev:clean` - Clear Next.js cache and restart (shortcut for `rm -rf .next && pnpm dev`)",
       "keywords": [
         "pnpm",
         "admin",
@@ -3638,7 +3638,7 @@
         "server",
         "start",
         "access",
-        "http"
+        "panel"
       ],
       "category": "quick-reference",
       "sourceFile": "CLAUDE.md",
@@ -3867,18 +3867,18 @@
     {
       "id": "CLAUDE-design-system-critical-",
       "title": "Design System (CRITICAL)",
-      "content": "**NEVER create custom colors, design tokens, or visual styles that are not defined in the project's design system.**\n\nAll colors, spacing, typography, shadows, and other visual tokens are centrally defined in:\n\n- **CSS Variables (themes)**: [src/app/(frontend)/globals.css](<./src/app/(frontend)/globals.css>) - Light/dark theme colors, semantic colors, text highlights\n- **Tailwind Tokens**: [tailwind.tokens.mjs](./tailwind.tokens.mjs) - Spacing, shadows, z-index, typography, animations\n- **Tailwind Config**: [tailwind.config.mjs](./tailwind.config.mjs) - Full theme configuration\n\nKey rules:\n\n- Use existing CSS variables (`--primary`, `--secondary`, `--accent`, `--success`, `--warning`, `--error`, `--text-highlight-1` through `--text-highlight-8`, etc.)\n- For canvas/non-CSS contexts, convert design system HSL values to hex - do NOT invent new colors\n- All new UI must use Tailwind classes that reference the design system tokens\n- If a needed color/token doesn't exist, add it to the design system first, then use it\n\n---",
+      "content": "**NEVER create custom colors, design tokens, or visual styles that are not defined in the project's design system.**\n\nAll colors, spacing, typography, shadows, and other visual tokens are centrally defined in:\n\n- **Admin styles**: [src/app/(payload)/custom.scss](<./src/app/(payload)/custom.scss>) - Payload admin custom styles\n- **Tailwind Tokens**: [tailwind.tokens.mjs](./tailwind.tokens.mjs) - Spacing, shadows, z-index, typography, animations\n- **Tailwind Config**: [tailwind.config.mjs](./tailwind.config.mjs) - Full theme configuration\n\nKey rules:\n\n- Use existing CSS variables (`--primary`, `--secondary`, `--accent`, `--success`, `--warning`, `--error`, `--text-highlight-1` through `--text-highlight-8`, etc.)\n- For canvas/non-CSS contexts, convert design system HSL values to hex - do NOT invent new colors\n- All new UI must use Tailwind classes that reference the design system tokens\n- If a needed color/token doesn't exist, add it to the design system first, then use it\n\n---",
       "keywords": [
         "tailwind",
         "design",
         "tokens",
         "system",
+        "custom",
         "colors",
+        "styles",
+        "payload",
         "config",
-        "visual",
-        "defined",
-        "spacing",
-        "typography"
+        "visual"
       ],
       "category": "quick-reference",
       "sourceFile": "CLAUDE.md",
@@ -5373,7 +5373,7 @@
     }
   ],
   "metadata": {
-    "generatedAt": "2026-05-20T20:22:40.573Z",
+    "generatedAt": "2026-06-09T10:45:58.259Z",
     "totalChunks": 272,
     "sourceFiles": [
       "AGENTS.md",

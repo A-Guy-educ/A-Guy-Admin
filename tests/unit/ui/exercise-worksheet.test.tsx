@@ -11,33 +11,33 @@ import React from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import enMessages from '../../../src/i18n/en.json'
 import heMessages from '../../../src/i18n/he.json'
-import { I18nProvider } from '@/ui/web/providers/I18n'
-import { ExerciseWorksheet } from '@/ui/web/exerciserenderer/ExerciseWorksheet'
+import { I18nProvider } from '@/ui/shared/providers/I18n'
+import { ExerciseWorksheet } from '@/ui/shared/exerciserenderer/ExerciseWorksheet'
 import type { ContentBlock } from '@/server/payload/collections/Exercises/types'
 
-vi.mock('@/ui/web/exerciserenderer/blocks/RichTextRenderer', () => ({
+vi.mock('@/ui/shared/exerciserenderer/blocks/RichTextRenderer', () => ({
   RichTextRenderer: ({ block }: { block: { value: string } }) => (
     <div data-testid="rich">{block.value}</div>
   ),
 }))
-vi.mock('@/ui/web/exerciserenderer/blocks/HtmlBlockRenderer', () => ({
+vi.mock('@/ui/shared/exerciserenderer/blocks/HtmlBlockRenderer', () => ({
   HtmlBlockRenderer: ({ block }: { block: { html: string } }) => (
     <div data-testid="html">{block.html}</div>
   ),
 }))
-vi.mock('@/ui/web/exerciserenderer/blocks/SvgRenderer', () => ({
+vi.mock('@/ui/shared/exerciserenderer/blocks/SvgRenderer', () => ({
   SvgRenderer: () => <div data-testid="svg" />,
 }))
-vi.mock('@/ui/web/exerciserenderer/blocks/GeometryRenderer', () => ({
+vi.mock('@/ui/shared/exerciserenderer/blocks/GeometryRenderer', () => ({
   GeometryRenderer: () => <div data-testid="geometry" />,
 }))
-vi.mock('@/ui/web/exerciserenderer/blocks/AxisRenderer', () => ({
+vi.mock('@/ui/shared/exerciserenderer/blocks/AxisRenderer', () => ({
   AxisRenderer: () => <div data-testid="axis" />,
 }))
-vi.mock('@/ui/web/exerciserenderer/blocks/MultiAxisRenderer', () => ({
+vi.mock('@/ui/shared/exerciserenderer/blocks/MultiAxisRenderer', () => ({
   MultiAxisRenderer: () => <div data-testid="multi-axis" />,
 }))
-vi.mock('@/ui/web/exerciserenderer/blocks/LatexBlockRenderer', () => ({
+vi.mock('@/ui/shared/exerciserenderer/blocks/LatexBlockRenderer', () => ({
   LatexBlockRenderer: ({ block }: { block: { latex: string } }) => (
     <div data-testid="latex">{block.latex}</div>
   ),

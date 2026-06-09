@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { latexToMarkdown } from '@/ui/web/shared/LatexDocumentViewer/latex-to-markdown'
+import { latexToMarkdown } from '@/ui/shared/primitives/LatexDocumentViewer/latex-to-markdown'
 
 describe('latexToMarkdown', () => {
   it('strips preamble commands', () => {

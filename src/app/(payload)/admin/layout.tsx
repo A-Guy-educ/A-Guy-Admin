@@ -11,7 +11,7 @@
 import React from 'react'
 
 import { AdminChatLauncher } from '@/ui/admin/AdminChatLauncher'
-import { I18nProvider } from '@/ui/web/providers/I18n'
+import { I18nProvider } from '@/ui/shared/providers/I18n'
 import enMessages from '@/i18n/en.json'
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

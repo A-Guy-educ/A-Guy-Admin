@@ -7,8 +7,8 @@
 // @vitest-environment jsdom
 import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
-import { ContentStatusBadge } from '@/ui/web/shared/ContentStatusBadge'
-import { I18nProvider } from '@/ui/web/providers/I18n'
+import { ContentStatusBadge } from '@/ui/shared/primitives/ContentStatusBadge'
+import { I18nProvider } from '@/ui/shared/providers/I18n'
 import enMessages from '../../../src/i18n/en.json'
 
 const renderWithI18n = (props: {
