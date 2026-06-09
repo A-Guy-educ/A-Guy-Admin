@@ -58,7 +58,7 @@ pnpm generate:importmap
 pnpm dev
 ```
 
-Open http://localhost:3000 to access the application.
+Open http://localhost:3000/admin to access the admin panel.
 
 ### Admin Access
 
@@ -68,19 +68,16 @@ The admin panel is available at `/admin`. Create your first admin user during th
 
 ```
 src/
-├── app/                    # Next.js App Router pages
-│   ├── (frontend)/         # Public-facing pages
-│   │   ├── courses/       # Course, chapter, lesson pages
-│   │   ├── ask/           # AI chat interface
-│   │   └── practice/      # Practice exercises
-│   └── (payload)/         # Payload admin routes
-│       └── admin/          # Admin panel
+├── app/                    # Next.js App Router admin/API host
+│   ├── (payload)/          # Payload admin routes
+│   │   └── admin/          # Admin panel
+│   └── api/                # Admin, job, webhook, and service APIs
 ├── collections/            # Payload CMS collections
 ├── globals/                # Global configurations
 ├── hooks/                  # Custom hooks
 ├── ui/
 │   ├── admin/             # Admin panel components
-│   └── web/               # Frontend components
+│   └── shared/            # Shared admin/Payload renderers
 ├── server/
 │   └── payload/           # Payload server code
 │       ├── collections/    # Collection configurations

@@ -18,39 +18,36 @@
  */
 
 import '@testing-library/jest-dom'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup } from '@testing-library/react'
 import React from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import enMessages from '../../../src/i18n/en.json'
-import heMessages from '../../../src/i18n/he.json'
-import { I18nProvider } from '@/ui/web/providers/I18n'
 
 // Mock dependencies
-vi.mock('@/ui/web/providers/I18n', () => ({
+vi.mock('@/ui/shared/providers/I18n', () => ({
   useTranslations: () => (key: string) => key,
   useLocale: () => 'en',
   I18nProvider: ({ children }: { children: React.ReactNode }) => children,
 }))
 
-vi.mock('@/ui/web/providers/I18n', () => ({
+vi.mock('@/ui/shared/providers/I18n', () => ({
   useTranslations: () => (key: string) => key,
   useLocale: () => 'en',
   I18nProvider: ({ children }: { children: React.ReactNode }) => children,
 }))
 
-vi.mock('@/ui/web/exerciserenderer', () => ({
+vi.mock('@/ui/shared/exerciserenderer', () => ({
   ExerciseRenderer: () => <div data-testid="exercise-renderer">Exercise</div>,
 }))
 
-vi.mock('@/ui/web/chat', () => ({
+vi.mock('@/ui/shared/chat', () => ({
   ChatInterface: () => <div data-testid="chat-interface">Chat</div>,
 }))
 
-vi.mock('@/ui/web/components/progress', () => ({
+vi.mock('@/ui/shared/components/progress', () => ({
   Progress: () => <div data-testid="progress">Progress</div>,
 }))
 
-vi.mock('@/ui/web/components/button', () => ({
+vi.mock('@/ui/shared/components/button', () => ({
   Button: ({
     children,
     'aria-label': ariaLabel,
@@ -64,11 +61,11 @@ vi.mock('@/infra/loading/components/SystemLink', () => ({
   SystemLink: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
 }))
 
-vi.mock('@/ui/web/components/confetti', () => ({
+vi.mock('@/ui/shared/components/confetti', () => ({
   Confetti: () => null,
 }))
 
-vi.mock('@/ui/web/components/split-pane-layout', () => ({
+vi.mock('@/ui/shared/components/split-pane-layout', () => ({
   SplitPaneLayout: ({
     primaryContent,
     chatContent,
@@ -106,7 +103,6 @@ describe('Lesson Navigation Scroll Visibility', () => {
       const contentHeight = 1000
       const scrollTop = 850
       const clientHeight = 150 // visible area
-      const scrollableHeight = contentHeight - clientHeight
 
       // scrollPercentage = (scrollTop + clientHeight) / scrollHeight
       // where scrollHeight = contentHeight (since the content itself is scrollable)

@@ -1,4 +1,4 @@
-import { formatMessageTime } from '@/ui/web/chat/utils/formatMessageTime'
+import { formatMessageTime } from '@/ui/shared/chat/utils/formatMessageTime'
 import { describe, expect, it } from 'vitest'
 
 describe('formatMessageTime', () => {

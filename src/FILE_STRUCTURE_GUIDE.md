@@ -7,18 +7,18 @@ This guide documents the proper file structure for the A-Guy project and provide
 ```
 src/
 ├── app/                       # Next.js App Router
-│   ├── (frontend)/            # Frontend routes (public-facing)
-│   └── (payload)/            # Payload admin routes
+│   ├── (payload)/            # Payload admin routes
+│   └── api/                  # Custom server routes
 ├── collections/              # Payload collection configurations
 ├── globals/                  # Payload global configurations
 ├── ui/                      # React components (PAYLOAD-FIRST)
 │   ├── admin/               # Payload admin UI components
 │   │   └── [collection]/
 │   │       └── [component]/
-│   └── web/                  # Frontend/consumer UI components
+│   └── shared/               # Shared admin/Payload UI renderers
 │       ├── [feature]/
 │       │   └── [component]/
-│       └── components/       # Shared web components
+│       └── components/       # Reusable UI components
 ├── hooks/                    # Custom React hooks
 ├── access/                   # Access control functions
 ├── server/                   # Server-side code
@@ -37,11 +37,11 @@ src/
 
 ### When to Use Each Directory
 
-- **`src/ui/web/`**: Frontend/consumer-facing React components
-  - Public pages and layouts
-  - Course-related components
-  - Chat and messaging components
-  - Landing page components
+- **`src/ui/shared/`**: Shared admin/Payload React components
+  - Admin chat pieces
+  - Payload block renderers
+  - Media renderers and previews
+  - Reusable UI components
 
 - **`src/ui/admin/`**: Payload admin panel components
   - Custom field components
@@ -52,13 +52,13 @@ src/
 ### Naming Conventions
 
 1. **Component Files**: Use PascalCase for component files
-   - ✅ `src/ui/web/components/HealthBadge.tsx`
-   - ✅ `src/ui/web/courses/PDFViewer/PDFEmbed.tsx`
+   - ✅ `src/ui/shared/components/HealthBadge.tsx`
+   - ✅ `src/ui/shared/courses/PDFViewer/PDFEmbed.tsx`
 
 2. **Directory Structure**: Group by feature/domain
 
    ```
-   src/ui/web/
+   src/ui/shared/
    ├── courses/
    │   ├── CourseCard/
    │   └── PDFViewer/
@@ -76,7 +76,7 @@ src/
    - Types file (`types.ts` - optional)
 
    ```
-   src/ui/web/components/Button/
+   src/ui/shared/components/Button/
    ├── index.tsx
    ├── index.scss
    └── types.ts
@@ -86,7 +86,7 @@ src/
 
 ### Background
 
-The `src/components/` directory is **deprecated**. All new components should be created in `src/ui/web/` or `src/ui/admin/`. Existing components should be migrated following these patterns.
+The `src/components/` directory is **deprecated**. All new components should be created in `src/ui/shared/` or `src/ui/admin/`. Existing components should be migrated following these patterns.
 
 ### Migration Patterns
 
@@ -101,10 +101,10 @@ src/components/ui/HealthBadge.tsx
 **To:**
 
 ```
-src/ui/web/components/HealthBadge.tsx
+src/ui/shared/components/HealthBadge.tsx
 ```
 
-**Rule**: `src/components/ui/` → `src/ui/web/components/`
+**Rule**: `src/components/ui/` → `src/ui/shared/components/`
 
 #### Pattern 2: Feature Components
 
@@ -117,10 +117,10 @@ src/components/courses/PDFViewer/PDFEmbed.tsx
 **To:**
 
 ```
-src/ui/web/courses/PDFViewer/PDFEmbed.tsx
+src/ui/shared/courses/PDFViewer/PDFEmbed.tsx
 ```
 
-**Rule**: `src/components/[feature]/` → `src/ui/web/[feature]/`
+**Rule**: `src/components/[feature]/` → `src/ui/shared/[feature]/`
 
 #### Pattern 3: Admin Components
 
@@ -143,13 +143,13 @@ src/ui/admin/collections/[collection-name]/CustomField.tsx
 1. **Create the new directory structure**:
 
    ```bash
-   mkdir -p src/ui/web/[feature]/[component]
+   mkdir -p src/ui/shared/[feature]/[component]
    ```
 
 2. **Move the component file**:
 
    ```bash
-   mv src/components/[old-path]/[Component].tsx src/ui/web/[new-path]/[Component].tsx
+   mv src/components/[old-path]/[Component].tsx src/ui/shared/[new-path]/[Component].tsx
    ```
 
 3. **Update imports** in all files that reference the component:
@@ -159,7 +159,7 @@ src/ui/admin/collections/[collection-name]/CustomField.tsx
    import { HealthBadge } from '@/components/ui/HealthBadge'
 
    // New import
-   import { HealthBadge } from '@/ui/web/components/HealthBadge'
+   import { HealthBadge } from '@/ui/shared/components/HealthBadge'
    ```
 
 4. **Update Payload admin import map** (if applicable):
@@ -196,7 +196,7 @@ pnpm lint:fix
 
 ```typescript
 // Frontend component
-import { CourseCard } from '@/ui/web/courses/CourseCard'
+import { CourseCard } from '@/ui/shared/courses/CourseCard'
 
 // Admin component
 import { CustomField } from '@/ui/admin/collections/posts/CustomField'
@@ -223,7 +223,7 @@ export const Posts: CollectionConfig = {
 ```typescript
 import dynamic from 'next/dynamic'
 
-const PDFEmbed = dynamic(() => import('@/ui/web/courses/PDFViewer/PDFEmbed'), { ssr: false })
+const PDFEmbed = dynamic(() => import('@/ui/shared/courses/PDFViewer/PDFEmbed'), { ssr: false })
 ```
 
 ## Deprecated Directories
@@ -232,13 +232,13 @@ const PDFEmbed = dynamic(() => import('@/ui/web/courses/PDFViewer/PDFEmbed'), { 
 
 **Status**: Deprecated
 
-All new components should be placed in `src/ui/web/` or `src/ui/admin/`. Existing components will be migrated gradually.
+All new components should be placed in `src/ui/shared/` or `src/ui/admin/`. Existing components will be migrated gradually.
 
 ### src/ui/shared/
 
-**Status**: Deprecated
+**Status**: Active
 
-The `src/ui/shared/` directory is no longer used. Components that were there have been migrated to `src/ui/web/components/` or removed.
+The `src/ui/shared/` directory now holds reusable UI needed by Payload admin extensions, admin-only chat, and Payload content renderers.
 
 ## ESLint Rule Configuration
 
@@ -276,7 +276,7 @@ The `file-location` rule can be configured in `eslint-plugin-aguy/rules/file-loc
 ### 1. Create the directory structure:
 
 ```bash
-mkdir -p src/ui/web/courses/CourseCard
+mkdir -p src/ui/shared/courses/CourseCard
 ```
 
 ### 2. Create the component files:
@@ -329,7 +329,7 @@ export interface CourseCardProps {
 
 ### 3. Export from feature barrel (optional):
 
-**src/ui/web/courses/index.ts:**
+**src/ui/shared/courses/index.ts:**
 
 ```typescript
 export { CourseCard } from './CourseCard'

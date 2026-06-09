@@ -6,7 +6,7 @@ Canonical event tracking system for A-Guy platform.
 
 **✅ Fully Integrated (9 events):**
 
-- `page_view` - Auto-tracked via LayoutClient
+- `page_view` - Event contract retained; public page tracking was removed with the web app
 - `session_started` - Auto-tracked via AnalyticsProvider
 - `user_identified` - Auto-tracked via UserIdentificationTracker + SignupForm
 - `course_entered` - Integrated in course page
@@ -259,7 +259,7 @@ NEXT_PUBLIC_MIXPANEL_TOKEN=
 
 **CRITICAL:** Page views are tracked in ONE place only:
 
-- **File:** `src/app/(frontend)/LayoutClient.tsx`
+- **File:** Public page tracking was removed with the web app
 - **Hook:** `usePageView()`
 - **Rule:** NEVER call `track(PRODUCT_EVENTS.PAGE_VIEW)` from components
 

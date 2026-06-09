@@ -13,7 +13,7 @@
 
 import React from 'react'
 import { useFormFields, useTranslation } from '@payloadcms/ui'
-import { Progress } from '@/ui/web/components/progress'
+import { Progress } from '@/ui/shared/components/progress'
 import { getCouponStrings } from '../strings'
 
 export const CouponUsageProgress: React.FC = () => {

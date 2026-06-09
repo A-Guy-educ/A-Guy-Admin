@@ -2,7 +2,7 @@
  * ESLint Rule: file-location
  *
  * Enforces that React components are located in the correct directory structure.
- * Components should be placed under src/ui/web/ or src/ui/admin/, not src/components/
+ * Components should be placed under src/ui/shared/ or src/ui/admin/, not src/components/
  *
  * @version 1.0.0
  */
@@ -11,9 +11,8 @@
  * Creates an ESLint rule that enforces proper file location for React components.
  *
  * Rule Logic:
- * - Files in src/components/ are deprecated and should be migrated to src/ui/web/ or src/ui/admin/
- * - New components should be created in src/ui/web/ or src/ui/admin/
- * - src/ui/shared/ is also deprecated for new components
+ * - Files in src/components/ are deprecated and should be migrated to src/ui/shared/ or src/ui/admin/
+ * - New shared components should be created in src/ui/shared/ or src/ui/admin/
  *
  * @returns {import('eslint').Rule.RuleModule}
  */
@@ -23,7 +22,7 @@ const rule = {
     version: '1.0.0',
     type: 'problem',
     docs: {
-      description: 'Enforce React components to be located in src/ui/web/ or src/ui/admin/',
+      description: 'Enforce React components to be located in src/ui/shared/ or src/ui/admin/',
       category: 'Best Practices',
       recommended: true,
       url: 'https://github.com/aguy/A-Guy/blob/main/docs/file-location-rule.md',
@@ -54,8 +53,6 @@ const rule = {
     messages: {
       deprecatedLocation:
         'React components should not be in src/components/. Migrate to {{destination}}.',
-      deprecatedShared:
-        'React components should not be in src/ui/shared/. Use src/ui/web/ or src/ui/admin/ instead.',
       suggestMigration: 'Consider migrating this file to {{destination}}',
     },
   },
@@ -89,18 +86,18 @@ const rule = {
 
       // Check if it's a ui component (in src/components/ui/)
       if (pathParts[0] === 'ui') {
-        // src/components/ui/Foo -> src/ui/web/components/Foo
-        return `src/ui/web/components/${pathParts.slice(1).join('/')}`
+        // src/components/ui/Foo -> src/ui/shared/components/Foo
+        return `src/ui/shared/components/${pathParts.slice(1).join('/')}`
       }
 
       // Check if it's a courses component
       if (pathParts[0] === 'courses') {
-        // src/components/courses/Foo -> src/ui/web/courses/Foo
-        return `src/ui/web/courses/${pathParts.slice(1).join('/')}`
+        // src/components/courses/Foo -> src/ui/shared/courses/Foo
+        return `src/ui/shared/courses/${pathParts.slice(1).join('/')}`
       }
 
-      // Default: src/components/foo -> src/ui/web/foo
-      return `src/ui/web/${relativePath}`
+      // Default: src/components/foo -> src/ui/shared/foo
+      return `src/ui/shared/${relativePath}`
     }
 
     /**
@@ -149,16 +146,6 @@ const rule = {
               node,
               messageId: 'deprecatedLocation',
               data: { destination },
-            })
-          }
-        }
-
-        // Check for deprecated src/ui/shared/ location
-        if (/src\/ui\/shared\//.test(filePath)) {
-          if (isReactComponent(sourceCode.getText())) {
-            context.report({
-              node,
-              messageId: 'deprecatedShared',
             })
           }
         }

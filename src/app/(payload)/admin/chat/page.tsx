@@ -12,8 +12,8 @@
 
 import { useCurrentUser } from '@/client/hooks/useCurrentUser'
 import enMessages from '@/i18n/en.json'
-import { ChatInterface } from '@/ui/web/chat/ChatInterface'
-import { I18nProvider } from '@/ui/web/providers/I18n'
+import { ChatInterface } from '@/ui/shared/chat/ChatInterface'
+import { I18nProvider } from '@/ui/shared/providers/I18n'
 
 export default function AdminChatPage() {
   const { user, isLoading } = useCurrentUser()

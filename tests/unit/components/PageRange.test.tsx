@@ -2,7 +2,7 @@
 import { render, screen } from '@testing-library/react'
 import React from 'react'
 
-import { PageRange } from '@/ui/web/PageRange'
+import { PageRange } from '@/ui/shared/PageRange'
 
 describe('PageRange', () => {
   describe('when rendered for a list view (isSearch not set)', () => {

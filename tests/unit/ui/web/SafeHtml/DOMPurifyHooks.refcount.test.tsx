@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { cleanup, render } from '@testing-library/react'
 import { describe, expect, it, afterEach, beforeEach, vi } from 'vitest'
-import { SafeHtml } from '@/ui/web/SafeHtml'
-import { registerPurifyHook, unregisterPurifyHook } from '@/ui/web/shared/DOMPurifyHooks'
+import { SafeHtml } from '@/ui/shared/SafeHtml'
+import { unregisterPurifyHook } from '@/ui/shared/primitives/DOMPurifyHooks'
 
 afterEach(cleanup)
 
