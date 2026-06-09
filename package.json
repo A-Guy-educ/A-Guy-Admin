@@ -138,7 +138,7 @@
     "@radix-ui/react-tooltip": "^1.2.8",
     "@rollup/rollup-darwin-x64": "^4.59.0",
     "@sentry/nextjs": "^10.32.1",
-    "@vercel/blob": "^0.22.3",
+    "@vercel/blob": "^2.4.0",
     "ajv": "^8.17.1",
     "animejs": "^4.3.6",
     "class-variance-authority": "^0.7.0",
