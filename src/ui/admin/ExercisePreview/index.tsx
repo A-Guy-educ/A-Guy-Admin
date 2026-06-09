@@ -5,7 +5,7 @@
 
 'use client'
 
-import type { ExerciseContentData } from '@/ui/web/exerciserenderer/types'
+import type { ExerciseContentData } from '@/ui/shared/exerciserenderer/types'
 import { useDocumentInfo, useFormFields } from '@payloadcms/ui'
 
 export const ExercisePreview: React.FC = () => {

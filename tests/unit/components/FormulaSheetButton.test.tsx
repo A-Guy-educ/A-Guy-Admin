@@ -12,7 +12,7 @@ import { render, fireEvent } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
 // Mock useTranslations
-vi.mock('@/ui/web/providers/I18n', () => ({
+vi.mock('@/ui/shared/providers/I18n', () => ({
   useTranslations: () => (key: string) => {
     const translations: Record<string, string> = {
       formulaSheetTitle: 'Formula Sheet',
@@ -21,7 +21,7 @@ vi.mock('@/ui/web/providers/I18n', () => ({
   },
 }))
 
-import { FormulaSheetButton } from '@/ui/web/shared/FormulaSheetViewer/FormulaSheetButton'
+import { FormulaSheetButton } from '@/ui/shared/primitives/FormulaSheetViewer/FormulaSheetButton'
 
 describe('FormulaSheetButton', () => {
   it('renders with label text', () => {

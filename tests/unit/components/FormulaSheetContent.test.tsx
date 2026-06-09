@@ -12,7 +12,7 @@ import { render } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
 // Mock useTranslations
-vi.mock('@/ui/web/providers/I18n', () => ({
+vi.mock('@/ui/shared/providers/I18n', () => ({
   useTranslations: () => (key: string) => {
     const translations: Record<string, string> = {
       formulaSheetEmpty: 'No content available',
@@ -22,13 +22,13 @@ vi.mock('@/ui/web/providers/I18n', () => ({
 }))
 
 // Mock PDFEmbed
-vi.mock('@/ui/web/courses/PDFViewer/PDFEmbed', () => ({
+vi.mock('@/ui/shared/courses/PDFViewer/PDFEmbed', () => ({
   PDFEmbed: ({ pdfUrl, title }: { pdfUrl: string; title: string }) => (
     <div data-testid="pdf-embed" data-url={pdfUrl} data-title={title} />
   ),
 }))
 
-import { FormulaSheetContent } from '@/ui/web/shared/FormulaSheetViewer/FormulaSheetContent'
+import { FormulaSheetContent } from '@/ui/shared/primitives/FormulaSheetViewer/FormulaSheetContent'
 // Use loose typing for test fixtures — Payload types have many required fields
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type TestFormulaSheet = any
