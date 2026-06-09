@@ -1,8 +1,8 @@
 'use client'
 
 import React, { useMemo } from 'react'
-import { AxisRenderer } from '@/ui/web/exerciserenderer/blocks/AxisRenderer'
-import type { DisplaySize } from '@/ui/web/exerciserenderer/blocks/AxisRenderer'
+import { AxisRenderer } from '@/ui/shared/exerciserenderer/blocks/AxisRenderer'
+import type { DisplaySize } from '@/ui/shared/exerciserenderer/blocks/AxisRenderer'
 
 import type { GraphBlock as GraphBlockType } from '@/payload-types'
 import type { AxisSpecV1 } from '@/infra/contracts/graphics/axis.v1'

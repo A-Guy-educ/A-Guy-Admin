@@ -106,7 +106,7 @@ const eslintConfig = [
   {
     name: 'ui-boundaries',
     files: ['src/ui/**/*.{ts,tsx}'],
-    ignores: ['src/ui/web/chat/**'],
+    ignores: ['src/ui/shared/chat/**'],
     rules: {
       'no-restricted-imports': [
         'error',

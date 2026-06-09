@@ -4,7 +4,7 @@ import { join } from 'path'
 
 describe('Inline style removal refactor', () => {
   describe('Footer VersionDisplay (FR-001)', () => {
-    const source = readFileSync(join(process.cwd(), 'src/ui/web/footer/Component.tsx'), 'utf-8')
+    const source = readFileSync(join(process.cwd(), 'src/ui/shared/footer/Component.tsx'), 'utf-8')
 
     it('should NOT contain inline fontSize style', () => {
       expect(source).not.toMatch(/style=\{\{[\s]*fontSize/)
@@ -17,7 +17,7 @@ describe('Inline style removal refactor', () => {
 
   describe('TypingAnimation (FR-002, FR-003)', () => {
     const source = readFileSync(
-      join(process.cwd(), 'src/ui/web/shared/TypingAnimation/index.tsx'),
+      join(process.cwd(), 'src/ui/shared/primitives/TypingAnimation/index.tsx'),
       'utf-8',
     )
 

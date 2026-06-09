@@ -6,7 +6,7 @@
 
 import { describe } from 'vitest'
 import { RuleTester } from 'eslint'
-// eslint-disable-next-line @typescript-eslint/no-require-imports
+
 const rule = require('../../../eslint-plugin-aguy/rules/tailwind-only-components.mjs')
 
 const ruleTester = new RuleTester({
@@ -162,13 +162,13 @@ describe('tailwind-only-components ESLint rule', () => {
   })
 
   ruleTester.run(
-    'ignores src/ui/web/ SCSS imports (not admin but not /components/)',
+    'ignores src/ui/shared/ SCSS imports (not admin but not /components/)',
     rule.default ?? rule,
     {
       valid: [
         {
           code: `import styles from './web.module.scss'`,
-          filename: 'src/ui/web/CustomComponent.tsx',
+          filename: 'src/ui/shared/CustomComponent.tsx',
         },
       ],
       invalid: [],

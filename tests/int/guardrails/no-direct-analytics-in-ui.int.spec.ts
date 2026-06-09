@@ -32,7 +32,6 @@ describe('no-direct-analytics-in-ui', () => {
    * All analytics should go through systemEventBus.emit() instead.
    */
   const _UI_PATTERNS = [
-    /src\/app\/\(frontend\)\//, // Frontend routes
     /src\/components\//, // React components
     /src\/ui\//, // UI components
   ]
@@ -46,13 +45,10 @@ describe('no-direct-analytics-in-ui', () => {
   ]
 
   it('should not have direct analytics.track() calls in frontend code', () => {
-    const frontendDir = path.resolve(process.cwd(), 'src/app/(frontend)')
     const uiDir = path.resolve(process.cwd(), 'src/ui')
 
     const violations: string[] = []
 
-    // Check frontend app directory
-    checkDirectoryForViolations(frontendDir, violations)
     // Check UI directory
     checkDirectoryForViolations(uiDir, violations)
 

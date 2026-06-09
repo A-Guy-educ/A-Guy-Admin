@@ -1,4 +1,4 @@
-import RichText from '@/ui/web/RichText'
+import RichText from '@/ui/shared/RichText'
 import React from 'react'
 
 import { Width } from '../Width'
