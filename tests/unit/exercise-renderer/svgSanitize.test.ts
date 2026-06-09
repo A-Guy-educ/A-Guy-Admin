@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from 'vitest'
-import { sanitizeSvg } from '@/ui/web/exerciserenderer/utils/svgSanitize'
+import { sanitizeSvg } from '@/ui/shared/exerciserenderer/utils/svgSanitize'
 
 describe('sanitizeSvg', () => {
   it('passes clean SVG through', () => {

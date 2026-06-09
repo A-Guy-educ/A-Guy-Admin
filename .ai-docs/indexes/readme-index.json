@@ -28,14 +28,6 @@
       "wordCount": 184
     },
     {
-      "path": ".kody/memory/inbox/README.md",
-      "title": "Memory sticky-note inbox",
-      "sections": ["File shape", "Rules"],
-      "relativeUrl": ".kody/memory/inbox/README.md",
-      "category": ".kody",
-      "wordCount": 138
-    },
-    {
       "path": ".kody/README.md",
       "title": "Untitled",
       "sections": [],
@@ -81,6 +73,7 @@
         "📝 Component Implementation",
         "🎨 Styling Custom Components",
         "🔍 Real Example: ExerciseContentEditor",
+        "🔍 Real Example: Coupons Admin Components",
         "🔄 Import Map Generation",
         "🎓 Common Patterns",
         "🧪 Testing Admin Components",
@@ -91,7 +84,7 @@
       ],
       "relativeUrl": "admin-components/README.md",
       "category": "admin-components",
-      "wordCount": 728
+      "wordCount": 1035
     },
     {
       "path": "docs/ai/README.md",
@@ -147,7 +140,7 @@
       ],
       "relativeUrl": "block-rendering/README.md",
       "category": "block-rendering",
-      "wordCount": 899
+      "wordCount": 999
     },
     {
       "path": "docs/brain-server/README.md",
@@ -244,25 +237,25 @@
     },
     {
       "path": "docs/exercises/README.md",
-      "title": "Exercises Collection - Stage 0 Implementation",
+      "title": "Exercises Collection",
       "sections": [
         "Overview",
         "Architecture",
         "Data Model",
         "Quick Start",
         "Implementation Details",
-        "Supported Question Types",
+        "Supported Question Block Types",
         "Content Block Types",
         "Testing",
         "Related Documentation",
-        "Future Enhancements (Out of Stage 0 Scope)",
+        "Future Enhancements",
         "Troubleshooting",
         "Contributing",
         "License"
       ],
       "relativeUrl": "exercises/README.md",
       "category": "exercises",
-      "wordCount": 751
+      "wordCount": 985
     },
     {
       "path": "docs/features/chat-context/README.md",
@@ -312,7 +305,7 @@
       ],
       "relativeUrl": "README.md",
       "category": "root",
-      "wordCount": 592
+      "wordCount": 593
     },
     {
       "path": "scripts/brain-server/README.md",
@@ -416,10 +409,25 @@
     {
       "path": "src/app/README.md",
       "title": "Application Routes",
-      "sections": ["Structure", "Patterns", "Key Files", "Common Tasks", "Related"],
+      "sections": ["Structure", "Key Files", "Related"],
       "relativeUrl": "src/app/README.md",
       "category": "src/app",
-      "wordCount": 172
+      "wordCount": 68
+    },
+    {
+      "path": "src/brands/README.md",
+      "title": "Brand Bundle Contract",
+      "sections": [
+        "What a brand bundle owns",
+        "Required exports",
+        "Future required exports",
+        "How to add a new brand",
+        "Environment variable",
+        "Phases 2–7 context"
+      ],
+      "relativeUrl": "src/brands/README.md",
+      "category": "src/brands",
+      "wordCount": 636
     },
     {
       "path": "src/client/README.md",
@@ -427,7 +435,7 @@
       "sections": ["Structure", "Patterns", "Key Files", "Common Tasks", "Related"],
       "relativeUrl": "src/client/README.md",
       "category": "src/client",
-      "wordCount": 169
+      "wordCount": 113
     },
     {
       "path": "src/infra/analytics/README.md",
@@ -453,7 +461,7 @@
       ],
       "relativeUrl": "src/infra/analytics/README.md",
       "category": "src/infra",
-      "wordCount": 735
+      "wordCount": 752
     },
     {
       "path": "src/infra/llm/README.md",
@@ -491,6 +499,14 @@
       "relativeUrl": "src/infra/README.md",
       "category": "src/infra",
       "wordCount": 324
+    },
+    {
+      "path": "src/server/api/README.md",
+      "title": "API Utilities",
+      "sections": ["Entry Point", "File Map", "Gotchas"],
+      "relativeUrl": "src/server/api/README.md",
+      "category": "src/server",
+      "wordCount": 230
     },
     {
       "path": "src/server/payload/blocks/README.md",
@@ -601,33 +617,23 @@
       ],
       "relativeUrl": "src/ui/admin/README.md",
       "category": "src/ui",
-      "wordCount": 347
+      "wordCount": 350
     },
     {
-      "path": "src/ui/web/README.md",
-      "title": "Web UI Components",
-      "sections": [
-        "Structure",
-        "Exercise Renderer (Core Feature)",
-        "Shared Components Usage",
-        "Header/Nav Pattern",
-        "Footer Pattern",
-        "i18n Support",
-        "Component Guidelines",
-        "File Organization",
-        "Related Documentation"
-      ],
-      "relativeUrl": "src/ui/web/README.md",
-      "category": "src/ui",
-      "wordCount": 208
-    },
-    {
-      "path": "src/ui/web/shared/README.md",
+      "path": "src/ui/shared/primitives/README.md",
       "title": "Shared Components",
       "sections": ["Directory Structure", "Guidelines"],
-      "relativeUrl": "src/ui/web/shared/README.md",
+      "relativeUrl": "src/ui/shared/primitives/README.md",
       "category": "src/ui",
       "wordCount": 87
+    },
+    {
+      "path": "src/ui/shared/README.md",
+      "title": "Shared UI",
+      "sections": ["Structure"],
+      "relativeUrl": "src/ui/shared/README.md",
+      "category": "src/ui",
+      "wordCount": 62
     },
     {
       "path": "docs/system-test/README.md",
@@ -672,12 +678,12 @@
     }
   ],
   "metadata": {
-    "generatedAt": "2026-05-20T12:22:56.494Z",
-    "totalReadmes": 42,
+    "generatedAt": "2026-06-09T10:42:39.961Z",
+    "totalReadmes": 43,
     "categories": {
       ".agents": 1,
       ".claude": 1,
-      ".kody": 2,
+      ".kody": 1,
       "root": 1,
       "README.md": 1,
       "a-guy": 1,
@@ -698,9 +704,10 @@
       "scripts": 5,
       "site-docs": 1,
       "src/app": 1,
+      "src/brands": 1,
       "src/client": 1,
       "src/infra": 3,
-      "src/server": 5,
+      "src/server": 6,
       "src/ui": 4,
       "tests": 1
     }

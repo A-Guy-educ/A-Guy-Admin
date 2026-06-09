@@ -6,9 +6,9 @@
 
 import { describe } from 'vitest'
 import { RuleTester } from 'eslint'
-// eslint-disable-next-line @typescript-eslint/no-require-imports
+
 const rule = require('../../../eslint-plugin-aguy/rules/prefer-design-tokens.mjs')
-// eslint-disable-next-line @typescript-eslint/no-require-imports
+
 const tseslintParser = require('@typescript-eslint/parser')
 
 const ruleTester = new RuleTester({
@@ -25,66 +25,66 @@ const ruleTester = new RuleTester({
 })
 
 describe('prefer-design-tokens ESLint rule', () => {
-  ruleTester.run('flags raw text-xs className', rule.default ?? rule, {
+  ruleTester.run('flags raw text-body-xs className', rule.default ?? rule, {
     valid: [],
     invalid: [
       {
-        code: `<div className="text-xs">Small text</div>`,
-        filename: 'src/ui/web/MyComponent.tsx',
+        code: `<div className="text-body-xs">Small text</div>`,
+        filename: 'src/ui/shared/MyComponent.tsx',
         errors: [
           {
             messageId: 'preferToken',
-            data: { token: 'text-xs', raw: 'text-xs', suggestion: 'text-body-xs' },
+            data: { token: 'text-body-xs', raw: 'text-body-xs', suggestion: 'text-body-xs' },
           },
         ],
       },
     ],
   })
 
-  ruleTester.run('flags raw text-sm className', rule.default ?? rule, {
+  ruleTester.run('flags raw text-body-sm className', rule.default ?? rule, {
     valid: [],
     invalid: [
       {
-        code: `<span className="text-sm">Label</span>`,
-        filename: 'src/ui/web/FormField.tsx',
+        code: `<span className="text-body-sm">Label</span>`,
+        filename: 'src/ui/shared/FormField.tsx',
         errors: [
           {
             messageId: 'preferToken',
-            data: { token: 'text-sm', raw: 'text-sm', suggestion: 'text-body-sm' },
+            data: { token: 'text-body-sm', raw: 'text-body-sm', suggestion: 'text-body-sm' },
           },
         ],
       },
     ],
   })
 
-  ruleTester.run('flags raw text-base className', rule.default ?? rule, {
+  ruleTester.run('flags raw text-body-md className', rule.default ?? rule, {
     valid: [],
     invalid: [
       {
-        code: `<p className="text-base">Body</p>`,
-        filename: 'src/ui/web/Paragraph.tsx',
+        code: `<p className="text-body-md">Body</p>`,
+        filename: 'src/ui/shared/Paragraph.tsx',
         errors: [
           {
             messageId: 'preferToken',
-            data: { token: 'text-base', raw: 'text-base', suggestion: 'text-body-md' },
+            data: { token: 'text-body-md', raw: 'text-body-md', suggestion: 'text-body-md' },
           },
         ],
       },
     ],
   })
 
-  ruleTester.run('flags raw text-xl className', rule.default ?? rule, {
+  ruleTester.run('flags raw text-heading-xl className', rule.default ?? rule, {
     valid: [],
     invalid: [
       {
-        code: `<h2 className="text-xl">Heading</h2>`,
-        filename: 'src/ui/web/Heading.tsx',
+        code: `<h2 className="text-heading-xl">Heading</h2>`,
+        filename: 'src/ui/shared/Heading.tsx',
         errors: [
           {
             messageId: 'preferToken',
             data: {
-              token: 'text-xl',
-              raw: 'text-xl',
+              token: 'text-heading-xl',
+              raw: 'text-heading-xl',
               suggestion: 'text-heading-xl or text-heading-lg',
             },
           },
@@ -93,98 +93,114 @@ describe('prefer-design-tokens ESLint rule', () => {
     ],
   })
 
-  ruleTester.run('flags raw text-2xl className', rule.default ?? rule, {
+  ruleTester.run('flags raw text-display-xl className', rule.default ?? rule, {
     valid: [],
     invalid: [
       {
-        code: `<h1 className="text-2xl">Title</h1>`,
-        filename: 'src/ui/web/PageTitle.tsx',
-        errors: [
-          {
-            messageId: 'preferToken',
-            data: { token: 'text-2xl', raw: 'text-2xl', suggestion: 'text-heading-xl' },
-          },
-        ],
-      },
-    ],
-  })
-
-  ruleTester.run('flags raw p-4 className', rule.default ?? rule, {
-    valid: [],
-    invalid: [
-      {
-        code: `<div className="p-4">Content</div>`,
-        filename: 'src/ui/web/Container.tsx',
-        errors: [
-          {
-            messageId: 'preferToken',
-            data: { token: 'p-4', raw: 'p-4', suggestion: 'p-card-padding or p-card-padding-sm' },
-          },
-        ],
-      },
-    ],
-  })
-
-  ruleTester.run('flags raw p-6 className', rule.default ?? rule, {
-    valid: [],
-    invalid: [
-      {
-        code: `<section className="p-6">Section</section>`,
-        filename: 'src/ui/web/Section.tsx',
-        errors: [
-          {
-            messageId: 'preferToken',
-            data: { token: 'p-6', raw: 'p-6', suggestion: 'p-card-padding' },
-          },
-        ],
-      },
-    ],
-  })
-
-  ruleTester.run('flags raw p-8 className', rule.default ?? rule, {
-    valid: [],
-    invalid: [
-      {
-        code: `<div className="p-8">Large padding</div>`,
-        filename: 'src/ui/web/BigBox.tsx',
-        errors: [
-          {
-            messageId: 'preferToken',
-            data: { token: 'p-8', raw: 'p-8', suggestion: 'p-card-padding-lg' },
-          },
-        ],
-      },
-    ],
-  })
-
-  ruleTester.run('flags raw shadow-sm className', rule.default ?? rule, {
-    valid: [],
-    invalid: [
-      {
-        code: `<div className="shadow-sm">Card</div>`,
-        filename: 'src/ui/web/Card.tsx',
-        errors: [
-          {
-            messageId: 'preferToken',
-            data: { token: 'shadow-sm', raw: 'shadow-sm', suggestion: 'shadow-elevation-1' },
-          },
-        ],
-      },
-    ],
-  })
-
-  ruleTester.run('flags raw shadow-md className', rule.default ?? rule, {
-    valid: [],
-    invalid: [
-      {
-        code: `<div className="shadow-md">Elevated</div>`,
-        filename: 'src/ui/web/ElevatedBox.tsx',
+        code: `<h1 className="text-display-xl">Title</h1>`,
+        filename: 'src/ui/shared/PageTitle.tsx',
         errors: [
           {
             messageId: 'preferToken',
             data: {
-              token: 'shadow-md',
-              raw: 'shadow-md',
+              token: 'text-display-xl',
+              raw: 'text-display-xl',
+              suggestion: 'text-heading-xl',
+            },
+          },
+        ],
+      },
+    ],
+  })
+
+  ruleTester.run('flags raw p-card-padding-sm className', rule.default ?? rule, {
+    valid: [],
+    invalid: [
+      {
+        code: `<div className="p-card-padding-sm">Content</div>`,
+        filename: 'src/ui/shared/Container.tsx',
+        errors: [
+          {
+            messageId: 'preferToken',
+            data: {
+              token: 'p-card-padding-sm',
+              raw: 'p-card-padding-sm',
+              suggestion: 'p-card-padding or p-card-padding-sm',
+            },
+          },
+        ],
+      },
+    ],
+  })
+
+  ruleTester.run('flags raw p-card-padding className', rule.default ?? rule, {
+    valid: [],
+    invalid: [
+      {
+        code: `<section className="p-card-padding">Section</section>`,
+        filename: 'src/ui/shared/Section.tsx',
+        errors: [
+          {
+            messageId: 'preferToken',
+            data: { token: 'p-card-padding', raw: 'p-card-padding', suggestion: 'p-card-padding' },
+          },
+        ],
+      },
+    ],
+  })
+
+  ruleTester.run('flags raw p-card-padding-lg className', rule.default ?? rule, {
+    valid: [],
+    invalid: [
+      {
+        code: `<div className="p-card-padding-lg">Large padding</div>`,
+        filename: 'src/ui/shared/BigBox.tsx',
+        errors: [
+          {
+            messageId: 'preferToken',
+            data: {
+              token: 'p-card-padding-lg',
+              raw: 'p-card-padding-lg',
+              suggestion: 'p-card-padding-lg',
+            },
+          },
+        ],
+      },
+    ],
+  })
+
+  ruleTester.run('flags raw shadow-elevation-1 className', rule.default ?? rule, {
+    valid: [],
+    invalid: [
+      {
+        code: `<div className="shadow-elevation-1">Card</div>`,
+        filename: 'src/ui/shared/Card.tsx',
+        errors: [
+          {
+            messageId: 'preferToken',
+            data: {
+              token: 'shadow-elevation-1',
+              raw: 'shadow-elevation-1',
+              suggestion: 'shadow-elevation-1',
+            },
+          },
+        ],
+      },
+    ],
+  })
+
+  ruleTester.run('flags raw shadow-elevation-3 className', rule.default ?? rule, {
+    valid: [],
+    invalid: [
+      {
+        code: `<div className="shadow-elevation-3">Elevated</div>`,
+        filename: 'src/ui/shared/ElevatedBox.tsx',
+        errors: [
+          {
+            messageId: 'preferToken',
+            data: {
+              token: 'shadow-elevation-3',
+              raw: 'shadow-elevation-3',
               suggestion: 'shadow-elevation-2 or shadow-card',
             },
           },
@@ -193,18 +209,18 @@ describe('prefer-design-tokens ESLint rule', () => {
     ],
   })
 
-  ruleTester.run('flags raw shadow-lg className', rule.default ?? rule, {
+  ruleTester.run('flags raw shadow-card className', rule.default ?? rule, {
     valid: [],
     invalid: [
       {
-        code: `<div className="shadow-lg">Modal</div>`,
-        filename: 'src/ui/web/Modal.tsx',
+        code: `<div className="shadow-card">Modal</div>`,
+        filename: 'src/ui/shared/Modal.tsx',
         errors: [
           {
             messageId: 'preferToken',
             data: {
-              token: 'shadow-lg',
-              raw: 'shadow-lg',
+              token: 'shadow-card',
+              raw: 'shadow-card',
               suggestion: 'shadow-elevation-3 or shadow-card',
             },
           },
@@ -213,32 +229,36 @@ describe('prefer-design-tokens ESLint rule', () => {
     ],
   })
 
-  ruleTester.run('flags raw duration-100 className', rule.default ?? rule, {
+  ruleTester.run('flags raw duration-fast className', rule.default ?? rule, {
     valid: [],
     invalid: [
       {
-        code: `<button className="duration-100">Fast</button>`,
-        filename: 'src/ui/web/Button.tsx',
+        code: `<button className="duration-fast">Fast</button>`,
+        filename: 'src/ui/shared/Button.tsx',
         errors: [
           {
             messageId: 'preferToken',
-            data: { token: 'duration-100', raw: 'duration-100', suggestion: 'duration-fast' },
+            data: { token: 'duration-fast', raw: 'duration-fast', suggestion: 'duration-fast' },
           },
         ],
       },
     ],
   })
 
-  ruleTester.run('flags raw duration-200 className', rule.default ?? rule, {
+  ruleTester.run('flags raw duration-normal className', rule.default ?? rule, {
     valid: [],
     invalid: [
       {
-        code: `<button className="duration-200">Normal</button>`,
-        filename: 'src/ui/web/Transition.tsx',
+        code: `<button className="duration-normal">Normal</button>`,
+        filename: 'src/ui/shared/Transition.tsx',
         errors: [
           {
             messageId: 'preferToken',
-            data: { token: 'duration-200', raw: 'duration-200', suggestion: 'duration-normal' },
+            data: {
+              token: 'duration-normal',
+              raw: 'duration-normal',
+              suggestion: 'duration-normal',
+            },
           },
         ],
       },
@@ -249,7 +269,7 @@ describe('prefer-design-tokens ESLint rule', () => {
     valid: [
       {
         code: `<span className="text-body-sm">Small label</span>`,
-        filename: 'src/ui/web/Label.tsx',
+        filename: 'src/ui/shared/Label.tsx',
       },
     ],
     invalid: [],
@@ -259,7 +279,7 @@ describe('prefer-design-tokens ESLint rule', () => {
     valid: [
       {
         code: `<div className="p-card-padding">Content</div>`,
-        filename: 'src/ui/web/Box.tsx',
+        filename: 'src/ui/shared/Box.tsx',
       },
     ],
     invalid: [],
@@ -269,7 +289,7 @@ describe('prefer-design-tokens ESLint rule', () => {
     valid: [
       {
         code: `<div className="shadow-elevation-2">Elevated</div>`,
-        filename: 'src/ui/web/Elevated.tsx',
+        filename: 'src/ui/shared/Elevated.tsx',
       },
     ],
     invalid: [],
@@ -302,22 +322,26 @@ describe('prefer-design-tokens ESLint rule', () => {
     valid: [
       {
         code: `<div className="p-card-padding text-heading-xl">Styled</div>`,
-        filename: 'src/app/(frontend)/page.tsx',
+        filename: 'src/ui/shared/page.tsx',
       },
     ],
     invalid: [],
   })
 
-  ruleTester.run('flags raw gap-4 className', rule.default ?? rule, {
+  ruleTester.run('flags raw gap-content-gap className', rule.default ?? rule, {
     valid: [],
     invalid: [
       {
-        code: `<div className="gap-4">Grid</div>`,
-        filename: 'src/ui/web/Grid.tsx',
+        code: `<div className="gap-content-gap">Grid</div>`,
+        filename: 'src/ui/shared/Grid.tsx',
         errors: [
           {
             messageId: 'preferToken',
-            data: { token: 'gap-4', raw: 'gap-4', suggestion: 'gap-content-gap' },
+            data: {
+              token: 'gap-content-gap',
+              raw: 'gap-content-gap',
+              suggestion: 'gap-content-gap',
+            },
           },
         ],
       },
@@ -328,23 +352,27 @@ describe('prefer-design-tokens ESLint rule', () => {
     valid: [],
     invalid: [
       {
-        code: `<div className="text-sm p-4 shadow-md">Multiple issues</div>`,
-        filename: 'src/ui/web/Alert.tsx',
+        code: `<div className="text-body-sm p-card-padding-sm shadow-elevation-3">Multiple issues</div>`,
+        filename: 'src/ui/shared/Alert.tsx',
         // Each token produces an error with its own hydrated message
         errors: [
           {
             messageId: 'preferToken',
-            data: { token: 'text-sm', raw: 'text-sm', suggestion: 'text-body-sm' },
-          },
-          {
-            messageId: 'preferToken',
-            data: { token: 'p-4', raw: 'p-4', suggestion: 'p-card-padding or p-card-padding-sm' },
+            data: { token: 'text-body-sm', raw: 'text-body-sm', suggestion: 'text-body-sm' },
           },
           {
             messageId: 'preferToken',
             data: {
-              token: 'shadow-md',
-              raw: 'shadow-md',
+              token: 'p-card-padding-sm',
+              raw: 'p-card-padding-sm',
+              suggestion: 'p-card-padding or p-card-padding-sm',
+            },
+          },
+          {
+            messageId: 'preferToken',
+            data: {
+              token: 'shadow-elevation-3',
+              raw: 'shadow-elevation-3',
               suggestion: 'shadow-elevation-2 or shadow-card',
             },
           },
@@ -356,9 +384,9 @@ describe('prefer-design-tokens ESLint rule', () => {
   ruleTester.run('respects disabledSuggestions option', rule.default ?? rule, {
     valid: [
       {
-        code: `<span className="text-sm">Intentionally raw</span>`,
-        filename: 'src/ui/web/RawText.tsx',
-        options: [{ disabledSuggestions: ['text-sm'] }],
+        code: `<span className="text-body-sm">Intentionally raw</span>`,
+        filename: 'src/ui/shared/RawText.tsx',
+        options: [{ disabledSuggestions: ['text-body-sm'] }],
       },
     ],
     invalid: [],
@@ -368,7 +396,7 @@ describe('prefer-design-tokens ESLint rule', () => {
     valid: [
       {
         code: `<section className="py-section-md">Section</section>`,
-        filename: 'src/ui/web/Section.tsx',
+        filename: 'src/ui/shared/Section.tsx',
       },
     ],
     invalid: [],

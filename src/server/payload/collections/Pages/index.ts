@@ -1,7 +1,7 @@
 import type { CollectionConfig } from 'payload'
 
 import { generatePreviewPath } from '@/infra/utils/generatePreviewPath'
-import { hero } from '@/ui/web/heros/config'
+import { hero } from '@/ui/shared/heros/config'
 import { slugField } from 'payload'
 import { authenticated } from '../../access/authenticated'
 import { authenticatedOrPublished } from '../../access/authenticatedOrPublished'

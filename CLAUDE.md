@@ -22,7 +22,7 @@ These commands are frequently used during development. Suggest them proactively 
 
 ### Development Server
 
-- **Start dev**: `pnpm dev` - Access at http://localhost:3000 (frontend) and /admin (admin panel)
+- **Start dev**: `pnpm dev` - Access the admin panel at http://localhost:3000/admin
 - **Clean restart**: `pnpm dev:clean` - Clear Next.js cache and restart (shortcut for `rm -rf .next && pnpm dev`)
 
 ### Database
@@ -123,7 +123,7 @@ See [.ai-docs/BOOTSTRAP.md](.ai-docs/BOOTSTRAP.md) for details.
 
 All colors, spacing, typography, shadows, and other visual tokens are centrally defined in:
 
-- **CSS Variables (themes)**: [src/app/(frontend)/globals.css](<./src/app/(frontend)/globals.css>) - Light/dark theme colors, semantic colors, text highlights
+- **Admin styles**: [src/app/(payload)/custom.scss](<./src/app/(payload)/custom.scss>) - Payload admin custom styles
 - **Tailwind Tokens**: [tailwind.tokens.mjs](./tailwind.tokens.mjs) - Spacing, shadows, z-index, typography, animations
 - **Tailwind Config**: [tailwind.config.mjs](./tailwind.config.mjs) - Full theme configuration
 

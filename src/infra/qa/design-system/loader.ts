@@ -2,7 +2,7 @@
  * @fileType loader
  * @domain qa
  * @pattern design-system-loader
- * @ai-summary Loads and parses design system components from src/ui/web/components
+ * @ai-summary Loads and parses design system components from src/ui/shared/components
  */
 import fs from 'fs'
 import path from 'path'
@@ -10,8 +10,8 @@ import path from 'path'
 import type { DSComponent } from '../schema'
 
 // Base directory for design system components
-const DS_BASE_PATH = path.resolve(process.cwd(), 'src/ui/web/components')
-const EXERCISE_RENDERER_PATH = path.resolve(process.cwd(), 'src/ui/web/exerciserenderer')
+const DS_BASE_PATH = path.resolve(process.cwd(), 'src/ui/shared/components')
+const EXERCISE_RENDERER_PATH = path.resolve(process.cwd(), 'src/ui/shared/exerciserenderer')
 
 /**
  * Get all TypeScript files in a directory recursively
@@ -79,7 +79,7 @@ function parseComponentFile(filePath: string): Partial<DSComponent> {
 
   const result: Partial<DSComponent> = {
     name,
-    path: `@/ui/web/components/${name
+    path: `@/ui/shared/components/${name
       .toLowerCase()
       .replace(/([A-Z])/g, '-$1')
       .replace(/^-/, '')}`,
