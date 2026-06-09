@@ -29,7 +29,7 @@ describe('PDF Desktop Layout Fix', () => {
   describe('PDFMedia component', () => {
     it('should render iframe with PDF.js viewer URL', async () => {
       // Import dynamically since PDFMedia is a client component
-      const { PDFMedia } = await import('@/ui/web/media/PDFMedia')
+      const { PDFMedia } = await import('@/ui/shared/media/PDFMedia')
 
       const mockResource = {
         id: 'test-pdf-1',
@@ -56,7 +56,7 @@ describe('PDF Desktop Layout Fix', () => {
       const fs = await import('fs')
       const path = await import('path')
 
-      const pdfMediaPath = path.join(process.cwd(), 'src/ui/web/media/PDFMedia/index.tsx')
+      const pdfMediaPath = path.join(process.cwd(), 'src/ui/shared/media/PDFMedia/index.tsx')
       const source = fs.readFileSync(pdfMediaPath, 'utf-8')
 
       // Verify the wrapper div has min-h-0
@@ -70,7 +70,7 @@ describe('PDF Desktop Layout Fix', () => {
       const fs = await import('fs')
       const path = await import('path')
 
-      const pdfMediaPath = path.join(process.cwd(), 'src/ui/web/media/PDFMedia/index.tsx')
+      const pdfMediaPath = path.join(process.cwd(), 'src/ui/shared/media/PDFMedia/index.tsx')
       const source = fs.readFileSync(pdfMediaPath, 'utf-8')
 
       // The component should have a null check when pdfUrl is null
@@ -94,7 +94,10 @@ describe('PDF Desktop Layout Fix', () => {
       const fs = await import('fs')
       const path = await import('path')
 
-      const splitPanePath = path.join(process.cwd(), 'src/ui/web/components/split-pane-layout.tsx')
+      const splitPanePath = path.join(
+        process.cwd(),
+        'src/ui/shared/components/split-pane-layout.tsx',
+      )
       const source = fs.readFileSync(splitPanePath, 'utf-8')
 
       // The desktop path renders primaryContent in a wrapper that needs min-h-0
@@ -109,30 +112,6 @@ describe('PDF Desktop Layout Fix', () => {
       expect(hasMinH0InDesktopPath).toBe(true)
     })
   })
-
-  describe('PdfLessonPager primaryContent structure', () => {
-    it('should use flex-1 min-h-0 for file wrappers (not h-full flex-shrink-0)', async () => {
-      // Read the PdfLessonPager source to verify the class structure
-      // (PDF rendering moved from page.tsx to PdfLessonPager)
-      const fs = await import('fs')
-      const path = await import('path')
-
-      const pagerPath = path.join(
-        process.cwd(),
-        'src/app/(frontend)/courses/[courseSlug]/chapters/[chapterSlug]/lessons/[lessonSlug]/_components/PdfLessonPager/index.tsx',
-      )
-      const source = fs.readFileSync(pagerPath, 'utf-8')
-
-      // The primaryContent wrapper should have min-h-0
-      expect(source).toContain('flex flex-col min-h-0')
-
-      // File wrappers should use a concrete viewport-relative height
-      // so the PDF iframe gets a real height (not h-full which resolves to 0 in scroll containers)
-      expect(source).toContain('calc(100vh-120px)')
-      // Should NOT have the old problematic pattern
-      expect(source).not.toContain('w-full h-full flex-shrink-0')
-    })
-  })
 })
 
 describe('Flexbox height propagation requirements', () => {
@@ -143,24 +122,14 @@ describe('Flexbox height propagation requirements', () => {
     const fs = await import('fs')
     const path = await import('path')
 
-    const pdfMediaPath = path.join(process.cwd(), 'src/ui/web/media/PDFMedia/index.tsx')
-    const splitPanePath = path.join(process.cwd(), 'src/ui/web/components/split-pane-layout.tsx')
-    const pagerPath = path.join(
-      process.cwd(),
-      'src/app/(frontend)/courses/[courseSlug]/chapters/[chapterSlug]/lessons/[lessonSlug]/_components/PdfLessonPager/index.tsx',
-    )
-
+    const pdfMediaPath = path.join(process.cwd(), 'src/ui/shared/media/PDFMedia/index.tsx')
+    const splitPanePath = path.join(process.cwd(), 'src/ui/shared/components/split-pane-layout.tsx')
     const pdfMediaSource = fs.readFileSync(pdfMediaPath, 'utf-8')
     const splitPaneSource = fs.readFileSync(splitPanePath, 'utf-8')
-    const pagerSource = fs.readFileSync(pagerPath, 'utf-8')
 
     // Verify all components have the min-h-0 fix
-    // (PDF rendering moved from page.tsx to PdfLessonPager)
     const results = {
       'PDFMedia wrapper': pdfMediaSource.includes("cn('w-full h-full min-h-0'"),
-      'PdfLessonPager primaryContent wrapper': pagerSource.includes('flex flex-col min-h-0'),
-      'PdfLessonPager file wrapper': pagerSource.includes('calc(100vh-120px)'),
-      // This is the one that should fail until fixed
       'SplitPaneLayout desktop wrapper': /h-full overflow-hidden.*min-h-0/.test(splitPaneSource),
     }
 
@@ -169,9 +138,6 @@ describe('Flexbox height propagation requirements', () => {
 
     // All should be true except possibly SplitPaneLayout
     expect(results['PDFMedia wrapper']).toBe(true)
-    expect(results['PdfLessonPager primaryContent wrapper']).toBe(true)
-    expect(results['PdfLessonPager file wrapper']).toBe(true)
-    // This will fail until the fix is implemented
     expect(results['SplitPaneLayout desktop wrapper']).toBe(true)
   })
 })

@@ -16,14 +16,14 @@ import { cleanup, render } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 // Mock RichTextRenderer since it's a dependency
-vi.mock('@/ui/web/exerciserenderer/blocks/RichTextRenderer', () => ({
+vi.mock('@/ui/shared/exerciserenderer/blocks/RichTextRenderer', () => ({
   RichTextRenderer: ({ block }: { block: { value: string } }) => (
     <div data-testid="prompt-renderer">{block.value}</div>
   ),
 }))
 
 // Import actual implementation
-import { GraphWithPrompt } from '@/ui/web/exerciserenderer/blocks/GraphWithPrompt'
+import { GraphWithPrompt } from '@/ui/shared/exerciserenderer/blocks/GraphWithPrompt'
 
 describe('GraphWithPrompt Component', () => {
   afterEach(() => {

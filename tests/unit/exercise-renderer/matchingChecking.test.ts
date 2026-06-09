@@ -2,9 +2,9 @@ import { describe, it, expect } from 'vitest'
 import {
   checkQuestionAnswer,
   getInitialAnswer,
-} from '@/ui/web/exerciserenderer/utils/answerChecking'
+} from '@/ui/shared/exerciserenderer/utils/answerChecking'
 import type { QuestionMatchingBlock } from '@/server/payload/collections/Exercises/types'
-import type { UserAnswer } from '@/ui/web/exerciserenderer/types'
+import type { UserAnswer } from '@/ui/shared/exerciserenderer/types'
 
 const MESSAGES = {
   invalidAnswerType: 'Invalid answer type',

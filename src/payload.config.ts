@@ -66,8 +66,8 @@ import { runLocalizeTeacherProfilesOnInit } from '@/server/payload/migrations/lo
 import { runPopulateLessonBlocksOnInit } from '@/server/payload/migrations/populateLessonBlocks'
 import { plugins } from '@/server/payload/plugins'
 import { seedTeacherProfiles } from '@/server/payload/seed/teacher-profiles-seed'
-import { Footer } from '@/ui/web/footer/config'
-import { Header } from '@/ui/web/header/config'
+import { Footer } from '@/ui/shared/footer/config'
+import { Header } from '@/ui/shared/header/config'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
