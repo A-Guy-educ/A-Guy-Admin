@@ -24,6 +24,19 @@ describe('CSP Configuration - Vercel Feedback Script on /admin', () => {
     return match ? match[1] : null
   }
 
+  function extractFrameAncestors(csp: string): string[] {
+    const match = csp.match(/frame-ancestors\s+([^;]+)/)
+    return match ? match[1].split(/\s+/) : []
+  }
+
+  const expectedFrameAncestors = [
+    "'self'",
+    'https://kody-dashboard-aguy.vercel.app',
+    'https://kody-dashboard-sable.vercel.app',
+    'http://localhost:3333',
+    'http://127.0.0.1:3333',
+  ]
+
   it('should include vercel.live in script-src for general routes', async () => {
     const configContent = fs.readFileSync(nextConfigPath, 'utf8')
 
@@ -114,5 +127,33 @@ describe('CSP Configuration - Vercel Feedback Script on /admin', () => {
     // We need '*.gravatar.com' to match subdomains like www.gravatar.com.
     // See: https://www.w3.org/TR/CSP/#source-list-syntax
     expect(imgSrc).toMatch(/\*\.gravatar\.com/)
+  })
+
+  it('should use the Kody dashboard allow-list for general frame ancestors', async () => {
+    const configContent = fs.readFileSync(nextConfigPath, 'utf8')
+
+    const generalRouteMatch = configContent.match(
+      /source:\s*'\/\(\(\?!api\/pdfjs-viewer\)\.\*\)'[\s\S]*?Content-Security-Policy[\s\S]*?value:\s*"([^"]+)"/,
+    )
+    expect(generalRouteMatch).not.toBeNull()
+
+    const frameAncestors = extractFrameAncestors(generalRouteMatch![1])
+
+    expect(frameAncestors).toEqual(expectedFrameAncestors)
+    expect(frameAncestors).not.toContain('*')
+  })
+
+  it('should use the Kody dashboard allow-list for admin frame ancestors', async () => {
+    const configContent = fs.readFileSync(nextConfigPath, 'utf8')
+
+    const adminRouteMatch = configContent.match(
+      /source:\s*'\/admin\/:path\*'[\s\S]*?Content-Security-Policy[\s\S]*?value:\s*"([^"]+)"/,
+    )
+    expect(adminRouteMatch).not.toBeNull()
+
+    const frameAncestors = extractFrameAncestors(adminRouteMatch![1])
+
+    expect(frameAncestors).toEqual(expectedFrameAncestors)
+    expect(frameAncestors).not.toContain('*')
   })
 })
