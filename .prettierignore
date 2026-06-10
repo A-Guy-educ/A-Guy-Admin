@@ -12,6 +12,7 @@
 **/docs/**
 tsconfig.json
 kody.config.json
+kody.yml
 pnpm-lock.yaml
 CHANGELOG.md
 CHANGELOGOG.md
