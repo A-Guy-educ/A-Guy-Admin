@@ -1,0 +1,10 @@
+{
+  "type": "preference",
+  "name": "work-directly-on-dev",
+  "title": "Work directly on dev",
+  "hook": "User wants Codex to stop creating feature branches and work directly on dev.",
+  "body": "The operator explicitly said: \"remember to stop creating branches merge directly to dev\". Future implementation work should use the dev branch directly unless the operator explicitly requests a separate branch.",
+  "source": "chat",
+  "ts": "2026-06-10T08:04:40Z",
+  "links": []
+}
