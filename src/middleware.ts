@@ -6,6 +6,10 @@ import {
   locales,
   getLocaleFromSubdomain,
 } from './i18n/config'
+import {
+  adminContentSecurityPolicy,
+  contentSecurityPolicy,
+} from './infra/security/content-security-policy.js'
 
 /**
  * Check if a path is a protected learning route that requires authentication.
@@ -66,6 +70,14 @@ function resolveCookieDomain(host: string): string | undefined {
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   const host = request.headers.get('host') || ''
+  const response = NextResponse.next()
+
+  if (!pathname.startsWith('/api/pdfjs-viewer')) {
+    response.headers.set(
+      'Content-Security-Policy',
+      pathname.startsWith('/admin') ? adminContentSecurityPolicy : contentSecurityPolicy,
+    )
+  }
 
   // Exclude paths from locale handling (double safety, even though matcher already excludes many)
   const shouldExclude =
@@ -75,7 +87,7 @@ export function middleware(request: NextRequest) {
     pathname.includes('.')
 
   if (shouldExclude) {
-    return NextResponse.next()
+    return response
   }
 
   // Auth guard: redirect unauthenticated users to login for protected learning routes
@@ -115,8 +127,6 @@ export function middleware(request: NextRequest) {
     }
   }
 
-  const response = NextResponse.next()
-
   if (shouldSetCookie) {
     const cookieDomain = resolveCookieDomain(host)
     const isHttps = request.nextUrl.protocol === 'https:'
@@ -150,7 +160,7 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Locale handling — exclude admin, api routes, static assets
-    '/((?!api|admin|_next|_static|.*\\..*).*)',
+    // Security headers run broadly; locale handling still exits early for admin/api/assets.
+    '/((?!api/pdfjs-viewer|_next|_static|.*\\..*).*)',
   ],
 }
