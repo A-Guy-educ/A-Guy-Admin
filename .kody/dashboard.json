@@ -13,6 +13,11 @@
       "id": "prod-esw0",
       "label": "Prod",
       "url": "https://www.aguy.co.il"
+    },
+    {
+      "id": "admin-prod-4gka",
+      "label": "Admin Prod",
+      "url": "https://a-guy-admin.vercel.app/admin"
     }
   ],
   "branchPreviews": [
