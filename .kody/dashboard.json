@@ -18,6 +18,11 @@
       "id": "admin-prod-4gka",
       "label": "Admin Prod",
       "url": "https://a-guy-admin.vercel.app/admin"
+    },
+    {
+      "id": "admin-dev-1tul",
+      "label": "Admin Dev",
+      "url": "https://a-guy-admin-git-dev-aguy.vercel.app/admin"
     }
   ],
   "branchPreviews": [
