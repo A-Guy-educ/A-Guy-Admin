@@ -23,6 +23,21 @@
       "id": "admin-dev-1tul",
       "label": "Admin Dev",
       "url": "https://a-guy-admin-git-dev-aguy.vercel.app/admin"
+    },
+    {
+      "id": "lesson-login-page-admin-html-0kwg",
+      "label": "lesson login page - ADMIN.html",
+      "url": "https://kp-866cab-310ad6-st-38bac7.fly.dev",
+      "staticId": "ded2eafc",
+      "expiresAt": 1781956578461,
+      "uploadContext": {
+        "name": "lesson login page - ADMIN.html",
+        "mimeType": "text/html",
+        "size": 16655,
+        "title": "Admin - Edit Lesson Details",
+        "outline": "header: / Lessons / סדר פעולות חשבון שיעור 2: סדר פעולות חשבון Translate Cascade Delete Duplicate Last Modified: June 9th 2026, \nh1: שיעור 2: סדר פעולות חשבון\nbutton: Translate\nbutton: Cascade Delete\nbutton: Duplicate\nbutton: Save\nlabel: Course *\nlabel: Chapter *\nlabel: Lesson Title *\ninput type=\"text\"\nlabel: Lesson Summary\ntextarea type=\"textarea\": בשיעור זה נלמד את הכללים הבסיסיים לפתרון תרגילים מורכבים. נבין מדוע פעולות כפל וחילוק קודמות לחיבור וחיסור, ואיצד סוגריי\nh3: Required Knowledge (Prerequisites)\nlabel: Required Lessons\ninput type=\"text\" label=\"Search lessons in course...\"\nbutton: Add\nlabel: Next Lesson (Follow-up)\nbutton: Override\nlabel: Tenant *\nlabel: Locale *\nlabel: Type *\nlabel: Access Type *\nlabel: Order *\ninput type=\"number\"\ninput#isActive type=\"checkbox\"\nlabel: Is Active *",
+        "textPreview": "/ Lessons / סדר פעולות חשבון שיעור 2: סדר פעולות חשבון Translate Cascade Delete Duplicate Last Modified: June 9th 2026, 12:15 PM Created: June 1st 2026, 09:00 AM Save Course * מתמטיקה כיתה ז' Chapter * אלגברה The chapter this lesson belongs to Lesson Title * Displayed prominently on the lesson entry card. Lesson Summary בשיעור זה נלמד את הכללים הבסיסיים לפתרון תרגילים מורכבים. נבין מדוע פעולות כפל וחילוק קודמות לחיבור וחיסור, ואיצד סוגריים יכולים לשנות לחלוטין את התוצאה הסופית של התרגיל. A brief explanation of what the student will learn in this lesson. Required Knowledge (Prerequisites) Select previous lessons that students must complete or review before starting this one. Required Lessons Add שיעור 1: לוח הכפל למתקדמים חיבור וחיסור מספרים מכוונים Next Lesson (Follow-up) שיעור 3: חזקות ושורשים (אוטומטי לפי סדר הפרק) Override The lesson the student will be directed to after completing this one. Tenant * AGuy Tenant scope for this document Locale * HE Content language Type * Learning Content The type of lesson: Learning content, Practice exercises, or Exam Access Type * Inherit from Course Access control for this lesson. Order * Sort order within the course/chapter Is Active * Whether this lesson is currently active"
+      }
     }
   ],
   "branchPreviews": [
