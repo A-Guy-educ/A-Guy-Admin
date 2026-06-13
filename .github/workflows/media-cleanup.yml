@@ -23,14 +23,20 @@ jobs:
     timeout-minutes: 10
     environment:
       name: production
+    env:
+      CRON_ENDPOINT: ${{ secrets.CRON_ENDPOINT }}
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
     steps:
-      - name: Call cleanup endpoint
-        run: |
-          if [ -z "$CRON_ENDPOINT" ]; then
-            echo "Error: CRON_ENDPOINT secret is not set. Please configure it in GitHub Actions environment secrets."
-            exit 1
-          fi
+      - name: Skip when cleanup is not configured
+        if: ${{ env.CRON_ENDPOINT == '' || env.CRON_SECRET == '' }}
+        run: echo "Media cleanup is skipped because CRON_ENDPOINT or CRON_SECRET is not set."
 
+      - name: Call cleanup endpoint
+        if: ${{ env.CRON_ENDPOINT != '' && env.CRON_SECRET != '' }}
+        env:
+          CRON_ENDPOINT: ${{ secrets.CRON_ENDPOINT }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
           response=$(curl -s -w "\n%{http_code}" -X POST \
             "$CRON_ENDPOINT/api/cron/media-expiry" \
             -H "Authorization: Bearer $CRON_SECRET" \
@@ -48,6 +54,3 @@ jobs:
           fi
 
           echo "Cleanup completed successfully"
-        env:
-          CRON_ENDPOINT: ${{ secrets.CRON_ENDPOINT }}
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
