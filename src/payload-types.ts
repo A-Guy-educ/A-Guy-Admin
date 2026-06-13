@@ -1482,9 +1482,21 @@ export interface Lesson {
    */
   title: string;
   /**
+   * Auto-computed display title for admin relationship dropdowns
+   */
+  adminTitle?: string | null;
+  /**
+   * Short intro shown on lesson cards before students start
+   */
+  intro?: string | null;
+  /**
    * Detailed description of the lesson
    */
   description?: string | null;
+  /**
+   * Lessons students should complete before this lesson
+   */
+  prerequisites?: (string | Lesson)[] | null;
   /**
    * Sort order within the course
    */
@@ -4008,7 +4020,10 @@ export interface LessonsSelect<T extends boolean = true> {
   course?: T;
   type?: T;
   title?: T;
+  adminTitle?: T;
+  intro?: T;
   description?: T;
+  prerequisites?: T;
   order?: T;
   status?: T;
   isActive?: T;

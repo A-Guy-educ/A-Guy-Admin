@@ -1,4 +1,4 @@
-import type { CollectionBeforeChangeHook, CollectionConfig } from 'payload'
+import type { CollectionAfterReadHook, CollectionBeforeChangeHook, CollectionConfig } from 'payload'
 
 import { DEFAULT_LESSON_ACCESS_TYPE } from '@/server/constants/access-types'
 import { tenantField } from '@/server/payload/fields/tenant'
@@ -15,7 +15,175 @@ type VisibleRenderersData = {
   visibleRenderers?: string[] | null
 }
 
+type LessonAdminTitleData = {
+  adminTitle?: string | null
+  title?: string | null
+  chapter?:
+    | string
+    | {
+        id?: string | null
+        title?: string | null
+        chapterLabel?: string | null
+        course?:
+          | string
+          | {
+              id?: string | null
+              title?: string | null
+              courseLabel?: string | null
+            }
+          | null
+      }
+    | null
+}
+
 const VALID_RENDERERS = ['media', 'pdf', 'interactive'] as const
+
+const getRelationshipId = (value: unknown): string | null => {
+  if (typeof value === 'string') return value
+  if (value && typeof value === 'object' && 'id' in value && typeof value.id === 'string') {
+    return value.id
+  }
+  return null
+}
+
+const formatLabelPart = (...parts: Array<string | null | undefined>) =>
+  [
+    ...new Set(parts.map((part) => part?.trim()).filter((part): part is string => Boolean(part))),
+  ].join(' ')
+
+const computeLessonAdminTitle: CollectionBeforeChangeHook = async ({ data, originalDoc, req }) => {
+  const lessonData = data as LessonAdminTitleData
+  const originalLesson = originalDoc as LessonAdminTitleData | undefined
+  const title = lessonData?.title ?? originalLesson?.title
+
+  if (!title) return data
+
+  const chapterValue = lessonData?.chapter ?? originalLesson?.chapter
+  const chapterId = getRelationshipId(chapterValue)
+  let chapterTitle =
+    chapterValue && typeof chapterValue === 'object' && 'title' in chapterValue
+      ? chapterValue.title
+      : null
+  let chapterLabel =
+    chapterValue && typeof chapterValue === 'object' && 'chapterLabel' in chapterValue
+      ? chapterValue.chapterLabel
+      : null
+  let courseTitle =
+    chapterValue &&
+    typeof chapterValue === 'object' &&
+    'course' in chapterValue &&
+    chapterValue.course &&
+    typeof chapterValue.course === 'object' &&
+    'title' in chapterValue.course
+      ? chapterValue.course.title
+      : null
+  let courseLabel =
+    chapterValue &&
+    typeof chapterValue === 'object' &&
+    'course' in chapterValue &&
+    chapterValue.course &&
+    typeof chapterValue.course === 'object' &&
+    'courseLabel' in chapterValue.course
+      ? chapterValue.course.courseLabel
+      : null
+
+  if (chapterId) {
+    try {
+      const chapter = await req.payload.findByID({
+        collection: 'chapters',
+        id: chapterId,
+        depth: 1,
+        overrideAccess: true,
+        req,
+      })
+
+      chapterTitle = chapter?.title ?? chapterTitle
+      chapterLabel = chapter?.chapterLabel ?? chapterLabel
+
+      if (chapter?.course && typeof chapter.course === 'object') {
+        courseTitle = chapter.course.title ?? courseTitle
+        courseLabel = chapter.course.courseLabel ?? courseLabel
+      }
+    } catch {
+      // Keep the title usable even if parent lookup fails.
+    }
+  }
+
+  lessonData.adminTitle = [
+    formatLabelPart(courseLabel, courseTitle),
+    formatLabelPart(chapterLabel, chapterTitle),
+    title,
+  ]
+    .filter(Boolean)
+    .join(' / ')
+
+  return data
+}
+
+const populateLessonAdminTitle: CollectionAfterReadHook = async ({ doc, req }) => {
+  const lessonData = doc as LessonAdminTitleData
+  const title = lessonData?.title
+
+  if (!title) return doc
+
+  const chapterValue = lessonData?.chapter
+  const chapterId = getRelationshipId(chapterValue)
+  let chapterTitle =
+    chapterValue && typeof chapterValue === 'object' && 'title' in chapterValue
+      ? chapterValue.title
+      : null
+  let chapterLabel =
+    chapterValue && typeof chapterValue === 'object' && 'chapterLabel' in chapterValue
+      ? chapterValue.chapterLabel
+      : null
+  let courseTitle =
+    chapterValue &&
+    typeof chapterValue === 'object' &&
+    'course' in chapterValue &&
+    chapterValue.course &&
+    typeof chapterValue.course === 'object' &&
+    'title' in chapterValue.course
+      ? chapterValue.course.title
+      : null
+  let courseLabel =
+    chapterValue &&
+    typeof chapterValue === 'object' &&
+    'course' in chapterValue &&
+    chapterValue.course &&
+    typeof chapterValue.course === 'object' &&
+    'courseLabel' in chapterValue.course
+      ? chapterValue.course.courseLabel
+      : null
+
+  if (chapterId) {
+    try {
+      const chapter = await req.payload.findByID({
+        collection: 'chapters',
+        id: chapterId,
+        depth: 1,
+        overrideAccess: true,
+        req,
+      })
+
+      chapterTitle = chapter?.title ?? chapterTitle
+      chapterLabel = chapter?.chapterLabel ?? chapterLabel
+
+      if (chapter?.course && typeof chapter.course === 'object') {
+        courseTitle = chapter.course.title ?? courseTitle
+        courseLabel = chapter.course.courseLabel ?? courseLabel
+      }
+    } catch {
+      // Keep title usable even if parent lookup fails.
+    }
+  }
+
+  lessonData.adminTitle =
+    [formatLabelPart(courseLabel, courseTitle), formatLabelPart(chapterLabel, chapterTitle), title]
+      .filter(Boolean)
+      .join(' / ') || title
+
+  return doc
+}
 
 /**
  * Validates `visibleRenderers` when present. Treats missing/undefined as
@@ -114,6 +282,7 @@ export const Lessons: CollectionConfig = {
                 id: chapterId,
                 depth: 0,
                 select: { course: true },
+                req,
               })
               if (chapter?.course) {
                 data.course =
@@ -126,9 +295,11 @@ export const Lessons: CollectionConfig = {
         }
         return data
       },
+      computeLessonAdminTitle,
       validateVisibleRenderers,
     ],
     afterRead: [
+      populateLessonAdminTitle,
       // Lazy backfill: when a lesson is read and its denormalized course field is
       // empty, resolve it from chapter -> course and persist to the DB.
       // One-time write per record — subsequent reads skip (already populated).
@@ -147,6 +318,7 @@ export const Lessons: CollectionConfig = {
             id: chapterId,
             depth: 0,
             select: { course: true },
+            req,
           })
           const courseId =
             typeof chapter?.course === 'string' ? chapter.course : chapter?.course?.id
@@ -175,8 +347,15 @@ export const Lessons: CollectionConfig = {
   // and thinking the AI flow was broken).
   disableDuplicate: true,
   admin: {
-    useAsTitle: 'title',
-    listSearchableFields: ['chapter.course.courseLabel', 'chapter.course.title'],
+    useAsTitle: 'adminTitle',
+    listSearchableFields: [
+      'adminTitle',
+      'title',
+      'chapter.title',
+      'chapter.chapterLabel',
+      'chapter.course.courseLabel',
+      'chapter.course.title',
+    ],
     components: {
       edit: {
         beforeDocumentControls: [
@@ -262,6 +441,22 @@ export const Lessons: CollectionConfig = {
       },
     },
     {
+      name: 'adminTitle',
+      type: 'text',
+      index: true,
+      admin: {
+        hidden: true,
+        description: 'Auto-computed display title for admin relationship dropdowns',
+      },
+    },
+    {
+      name: 'intro',
+      type: 'textarea',
+      admin: {
+        description: 'Short intro shown on lesson cards before students start',
+      },
+    },
+    {
       name: 'description',
       type: 'textarea',
       admin: {
@@ -269,6 +464,15 @@ export const Lessons: CollectionConfig = {
         components: {
           Field: '@/ui/admin/QuillField#QuillField',
         },
+      },
+    },
+    {
+      name: 'prerequisites',
+      type: 'relationship',
+      relationTo: 'lessons',
+      hasMany: true,
+      admin: {
+        description: 'Lessons students should complete before this lesson',
       },
     },
     {
