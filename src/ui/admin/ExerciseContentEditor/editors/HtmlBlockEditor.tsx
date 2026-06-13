@@ -11,6 +11,7 @@
 
 import type { HtmlBlock } from '@/server/payload/collections/Exercises/types'
 import { parseHtmlToGuidedExplanation } from '@/infra/contracts/guided-explanation/parseHtmlToGuidedExplanation'
+import { HtmlPreview } from '@/ui/admin/HtmlPreview'
 import React, { useRef, useState } from 'react'
 
 type Mode = 'edit' | 'preview'
@@ -120,11 +121,7 @@ export const HtmlBlockEditor: React.FC<HtmlBlockEditorProps> = ({ block, onChang
           rows={12}
         />
       ) : (
-        <div
-          className="html-block-preview-pane"
-          // Admin-only preview: render exactly what was authored.
-          dangerouslySetInnerHTML={{ __html: block.html || '' }}
-        />
+        <HtmlPreview html={block.html} />
       )}
     </div>
   )
