@@ -1,0 +1,27 @@
+[
+  {
+    "type": "project_context",
+    "title": "Current repo topology is Payload admin plus service-heavy backend",
+    "file": ".kody/memory/inbox/2026-06-15-repo-current-topology.md"
+  },
+  {
+    "type": "lesson",
+    "title": "AI indexes are stale; verify with filesystem first",
+    "file": ".kody/memory/inbox/2026-06-15-ai-indexes-stale.md"
+  },
+  {
+    "type": "project_context",
+    "title": "API surface mixes Next routes, Payload endpoints, and route wrappers",
+    "file": ".kody/memory/inbox/2026-06-15-api-auth-surface.md"
+  },
+  {
+    "type": "project_context",
+    "title": "Highest-risk implementation zones in A-Guy Admin",
+    "file": ".kody/memory/inbox/2026-06-15-high-risk-zones.md"
+  },
+  {
+    "type": "project_context",
+    "title": "Quality and test map for current repo",
+    "file": ".kody/memory/inbox/2026-06-15-quality-test-map.md"
+  }
+]
