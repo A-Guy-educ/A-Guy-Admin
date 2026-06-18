@@ -1,4 +1,4 @@
-import type { Payload, User } from 'payload'
+import type { PayloadRequest } from 'payload'
 
 import { ContentSchema } from '@/server/payload/collections/Exercises/schemas'
 import { getDefaultTenantId } from '@/server/repos/tenant/get-default-tenant'
@@ -39,11 +39,37 @@ export interface ImportLessonNotFoundError {
 
 export type ImportLessonError = ImportLessonValidationError | ImportLessonNotFoundError
 
+async function resolveLessonOrder(
+  req: PayloadRequest,
+  chapterId: string,
+  filename: string,
+): Promise<number> {
+  const parsed = parseLessonOrderFromFilename(filename)
+  if (parsed > 0) return parsed
+
+  // Filename didn't match the expected pattern. Append after the current max
+  // order in this chapter so two unparseable files don't both land on `order: 0`.
+  const existing = await req.payload.find({
+    collection: 'lessons',
+    where: { chapter: { equals: chapterId } },
+    sort: '-order',
+    limit: 1,
+    depth: 0,
+    req,
+    overrideAccess: true,
+  })
+  const top = existing.docs[0] as { order?: number } | undefined
+  return (top?.order ?? -1) + 1
+}
+
 export async function importLessonFromJson(
-  payload: Payload,
-  user: User,
+  req: PayloadRequest,
   input: ImportLessonInput,
 ): Promise<ImportLessonResult | ImportLessonError> {
+  if (!req.user) {
+    return { kind: 'not_found', message: 'Authenticated user required' }
+  }
+
   const parsed = LessonJsonSchema.safeParse(input.json)
   if (!parsed.success) {
     return {
@@ -56,10 +82,13 @@ export async function importLessonFromJson(
   }
   const lessonJson = parsed.data
 
-  const chapter = await payload.findByID({
+  const chapter = await req.payload.findByID({
     collection: 'chapters',
     id: input.chapterId,
     depth: 0,
+    req,
+    overrideAccess: false,
+    user: req.user,
   })
   if (!chapter) {
     return { kind: 'not_found', message: 'Chapter not found' }
@@ -71,24 +100,27 @@ export async function importLessonFromJson(
       ? chapterTenant
       : chapterTenant && typeof chapterTenant === 'object'
         ? chapterTenant.id
-        : await getDefaultTenantId(payload)
+        : await getDefaultTenantId(req.payload)
 
-  const order = parseLessonOrderFromFilename(input.filename)
+  const order = await resolveLessonOrder(req, input.chapterId, input.filename)
 
-  const lesson = await payload.create({
+  const lessonData = {
+    tenant: tenantId,
+    locale: 'he',
+    chapter: input.chapterId,
+    type: 'practice',
+    title: lessonJson.topic,
+    order,
+    status: 'draft',
+    isActive: true,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } as any
+  const lesson = await req.payload.create({
     collection: 'lessons',
-    data: {
-      tenant: tenantId,
-      locale: 'he',
-      chapter: input.chapterId,
-      type: 'practice',
-      title: lessonJson.topic,
-      order,
-      status: 'draft',
-      isActive: true,
-    },
+    data: lessonData,
+    req,
     overrideAccess: false,
-    user,
+    user: req.user,
   })
 
   const exerciseResults: ImportLessonExerciseResult[] = []
@@ -108,7 +140,14 @@ export async function importLessonFromJson(
         continue
       }
 
-      const created = await payload.create({
+      // Idempotency key scoped to (chapter, filename, exercise_number) so that
+      // re-importing the same file into the same chapter produces a stable
+      // identity for each exercise — even though a fresh lesson row is created
+      // each time. Currently informational only; the field is non-unique at the
+      // DB level until Stage 4 of the Exercises spec.
+      const idempotencyKey = `json-import:${input.chapterId}:${input.filename}:${ex.exercise_number}`
+
+      const created = await req.payload.create({
         collection: 'exercises',
         data: {
           tenant: tenantId,
@@ -118,10 +157,11 @@ export async function importLessonFromJson(
           order: i,
           content,
           origin: 'import',
-          idempotencyKey: `json-import:${lesson.id}:${ex.exercise_number}`,
+          idempotencyKey,
         },
+        req,
         overrideAccess: false,
-        user,
+        user: req.user,
       })
       exerciseResults.push({ exerciseNumber: ex.exercise_number, id: created.id })
     } catch (err) {

@@ -6,6 +6,8 @@
  * the source JSON's `exercises[]`. Each section in an exercise becomes a
  * question_select MCQ block, with optional rich_text/svg context blocks.
  */
+import type { PayloadRequest } from 'payload'
+
 import { ApiErrors, apiError, apiSuccess } from '@/server/api/responses'
 import { withApiHandler } from '@/server/api/with-api-handler'
 import { importLessonFromJson } from '@/server/services/lesson-json-import/import-lesson'
@@ -25,8 +27,22 @@ export const POST = withApiHandler<ImportBody, unknown>(
     auth: 'admin',
     bodySchema: importBodySchema,
   },
-  async ({ payload, user, body }) => {
-    const result = await importLessonFromJson(payload, user!, body)
+  async ({ payload, user, body, request }) => {
+    // Build a minimal PayloadRequest so the import service can pass it to
+    // payload.create/find — this lets the collection hooks (chapter→course
+    // backfill, content-status defaults, slug uniqueness) run with the right
+    // user/headers/context, and would carry transactionID once we adopt
+    // explicit transactions.
+    const payloadReq = {
+      payload,
+      user: user!,
+      url: request.url,
+      headers: request.headers,
+      routeParams: {},
+      context: {},
+    } as unknown as PayloadRequest
+
+    const result = await importLessonFromJson(payloadReq, body)
 
     if ('kind' in result) {
       if (result.kind === 'not_found') {

@@ -57,12 +57,13 @@ export function ChapterSelector({ selectedChapterId, onSelectChapter }: ChapterS
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
+    const controller = new AbortController()
     async function fetchAll() {
       try {
         const url = debounced
           ? `/api/chapters?where[title][contains]=${encodeURIComponent(debounced)}&limit=20&depth=1`
           : `/api/chapters?limit=20&depth=1`
-        const res = await fetch(url, { credentials: 'include' })
+        const res = await fetch(url, { credentials: 'include', signal: controller.signal })
         if (!res.ok) return
         const data = await res.json()
         const docs: ChapterDoc[] = data.docs || []
@@ -74,11 +75,13 @@ export function ChapterSelector({ selectedChapterId, onSelectChapter }: ChapterS
               typeof d.course === 'object' && d.course ? d.course.title : undefined,
           })),
         )
-      } catch {
+      } catch (err) {
+        if ((err as { name?: string })?.name === 'AbortError') return
         // silent — user can retry by typing
       }
     }
     fetchAll()
+    return () => controller.abort()
   }, [debounced])
 
   useEffect(() => {
