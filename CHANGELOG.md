@@ -1677,6 +1677,7 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- fix: Omit tenant on create in JSON importer ([#56](https://github.com/A-Guy-educ/A-Guy-Admin/pull/56)) — @aguyshayb
 - fix: Force default tenant in JSON importer + surface per-exercise errors ([#55](https://github.com/A-Guy-educ/A-Guy-Admin/pull/55)) — @aguyshayb
 - fix: Write lesson.blocks playlist once in JSON import ([#54](https://github.com/A-Guy-educ/A-Guy-Admin/pull/54)) — @aguyshayb
 - feat: Add bulk JSON importer for lessons and exercises ([#53](https://github.com/A-Guy-educ/A-Guy-Admin/pull/53)) — @aguyshayb
