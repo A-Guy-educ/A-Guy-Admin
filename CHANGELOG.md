@@ -1677,6 +1677,7 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- feat: Add bulk JSON importer for lessons and exercises ([#53](https://github.com/A-Guy-educ/A-Guy-Admin/pull/53)) — @aguyshayb
 - ci: Clean dev app workflow ([#31](https://github.com/A-Guy-educ/A-Guy-Admin/pull/31)) — @aguyaharonyair
 - fix: Remove stale student QA CI gate ([#30](https://github.com/A-Guy-educ/A-Guy-Admin/pull/30)) — @aguyaharonyair
 - fix: Correct design token lint test ([#29](https://github.com/A-Guy-educ/A-Guy-Admin/pull/29)) — @aguyaharonyair
