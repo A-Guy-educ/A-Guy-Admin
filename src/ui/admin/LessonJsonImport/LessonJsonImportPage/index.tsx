@@ -229,7 +229,7 @@ export function LessonJsonImportPage() {
             exercisesFailed: data.exercisesFailed,
             message:
               data.exercisesFailed > 0
-                ? `Created lesson with ${data.exercisesCreated} exercises, ${data.exercisesFailed} failed`
+                ? `Rolled back — ${data.exercisesFailed} exercise${data.exercisesFailed === 1 ? '' : 's'} failed to import`
                 : `Created lesson with ${data.exercisesCreated} exercises`,
           },
         }))

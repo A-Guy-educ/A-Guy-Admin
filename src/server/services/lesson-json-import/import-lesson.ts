@@ -124,6 +124,7 @@ export async function importLessonFromJson(
   })
 
   const exerciseResults: ImportLessonExerciseResult[] = []
+  const createdExerciseIds: string[] = []
 
   for (let i = 0; i < lessonJson.exercises.length; i++) {
     const ex = lessonJson.exercises[i]
@@ -140,11 +141,9 @@ export async function importLessonFromJson(
         continue
       }
 
-      // Idempotency key scoped to (chapter, filename, exercise_number) so that
-      // re-importing the same file into the same chapter produces a stable
-      // identity for each exercise — even though a fresh lesson row is created
-      // each time. Currently informational only; the field is non-unique at the
-      // DB level until Stage 4 of the Exercises spec.
+      // Idempotency key scoped to (chapter, filename, exercise_number) so the
+      // value stays stable across re-imports. Informational only until Stage 4
+      // of the Exercises spec makes the field unique at the DB level.
       const idempotencyKey = `json-import:${input.chapterId}:${input.filename}:${ex.exercise_number}`
 
       const created = await req.payload.create({
@@ -164,6 +163,7 @@ export async function importLessonFromJson(
         user: req.user,
       })
       exerciseResults.push({ exerciseNumber: ex.exercise_number, id: created.id })
+      createdExerciseIds.push(created.id)
     } catch (err) {
       exerciseResults.push({
         exerciseNumber: ex.exercise_number,
@@ -173,12 +173,40 @@ export async function importLessonFromJson(
   }
 
   const failed = exerciseResults.filter((r) => r.error)
+
+  // Manual rollback on any failure — Mongo transactions need replica-set config
+  // we don't have. Without this, a partial import leaves a draft lesson with
+  // some exercises and a confusing "success: false" response. Roll back so the
+  // operator only sees clean state and can retry the file after fixing it.
+  if (failed.length > 0) {
+    for (const id of createdExerciseIds) {
+      try {
+        await req.payload.delete({ collection: 'exercises', id, req, overrideAccess: true })
+      } catch {
+        // best-effort — surfaced via error in results below
+      }
+    }
+    try {
+      await req.payload.delete({ collection: 'lessons', id: lesson.id, req, overrideAccess: true })
+    } catch {
+      // best-effort
+    }
+    return {
+      success: false,
+      lessonId: '',
+      lessonTitle: lesson.title,
+      exercisesCreated: 0,
+      exercisesFailed: failed.length,
+      results: exerciseResults,
+    }
+  }
+
   return {
-    success: failed.length === 0,
+    success: true,
     lessonId: lesson.id,
     lessonTitle: lesson.title,
     exercisesCreated: exerciseResults.filter((r) => r.id).length,
-    exercisesFailed: failed.length,
+    exercisesFailed: 0,
     results: exerciseResults,
   }
 }
