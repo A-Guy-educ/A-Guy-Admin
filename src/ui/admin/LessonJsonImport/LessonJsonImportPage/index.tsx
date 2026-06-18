@@ -273,11 +273,7 @@ export function LessonJsonImportPage() {
       <div style={{ ...cardStyle, marginBottom: 16 }}>
         <h2 style={sectionHeadingStyle}>2. Drop JSON files</h2>
         <label htmlFor="json-file-input">
-          <div
-            style={dropzoneStyle}
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={onDrop}
-          >
+          <div style={dropzoneStyle} onDragOver={(e) => e.preventDefault()} onDrop={onDrop}>
             Drag &amp; drop lesson JSON files here, or click to browse.
             <input
               id="json-file-input"
@@ -310,9 +306,7 @@ export function LessonJsonImportPage() {
                     {f.status === 'valid' ? (
                       <span style={{ color: 'var(--theme-success)' }}>✓ ready</span>
                     ) : (
-                      <span style={{ color: 'var(--theme-error)' }}>
-                        ✗ {f.parseError}
-                      </span>
+                      <span style={{ color: 'var(--theme-error)' }}>✗ {f.parseError}</span>
                     )}
                   </td>
                 </tr>

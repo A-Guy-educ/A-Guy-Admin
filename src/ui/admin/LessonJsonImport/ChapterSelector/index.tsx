@@ -71,8 +71,7 @@ export function ChapterSelector({ selectedChapterId, onSelectChapter }: ChapterS
           docs.map((d) => ({
             id: d.id,
             title: d.title || d.chapterLabel || 'Untitled',
-            courseTitle:
-              typeof d.course === 'object' && d.course ? d.course.title : undefined,
+            courseTitle: typeof d.course === 'object' && d.course ? d.course.title : undefined,
           })),
         )
       } catch (err) {
@@ -116,9 +115,7 @@ export function ChapterSelector({ selectedChapterId, onSelectChapter }: ChapterS
                 onMouseLeave={() => setHover(-1)}
                 onClick={() => {
                   onSelectChapter(c)
-                  setSelectedLabel(
-                    c.courseTitle ? `${c.courseTitle} → ${c.title}` : c.title,
-                  )
+                  setSelectedLabel(c.courseTitle ? `${c.courseTitle} → ${c.title}` : c.title)
                   setQuery('')
                   setOpen(false)
                 }}

@@ -7,11 +7,7 @@ import type {
 } from '@/server/payload/collections/Exercises/types'
 import { generateId } from '@/server/payload/collections/Exercises/types'
 
-import type {
-  LessonJsonContentBlock,
-  LessonJsonExercise,
-  LessonJsonSection,
-} from './json-schema'
+import type { LessonJsonContentBlock, LessonJsonExercise, LessonJsonSection } from './json-schema'
 
 const isNonEmpty = (s: string | undefined): s is string => typeof s === 'string' && s.trim() !== ''
 
@@ -62,7 +58,10 @@ function buildQuestionBlock(section: LessonJsonSection): QuestionSelectMcqBlock 
   const wrongs = section.wrong_options.map((o) => o.text ?? '')
 
   // Shuffle once so the correct answer doesn't always land in slot 1.
-  const all = [{ text: correct, correct: true }, ...wrongs.map((t) => ({ text: t, correct: false }))]
+  const all = [
+    { text: correct, correct: true },
+    ...wrongs.map((t) => ({ text: t, correct: false })),
+  ]
   for (let i = all.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1))
     ;[all[i], all[j]] = [all[j], all[i]]
@@ -115,10 +114,7 @@ export function convertExerciseToBlocks(exercise: LessonJsonExercise): ContentBl
   return blocks
 }
 
-export function buildExerciseTitle(
-  lessonTopic: string,
-  exercise: LessonJsonExercise,
-): string {
+export function buildExerciseTitle(lessonTopic: string, exercise: LessonJsonExercise): string {
   const subTopic = exercise.topic?.trim()
   const number = exercise.exercise_number
   if (subTopic && subTopic !== lessonTopic) return `${subTopic} — תרגיל ${number}`
