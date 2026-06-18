@@ -161,6 +161,12 @@ export async function importLessonFromJson(
         req,
         overrideAccess: false,
         user: req.user,
+        // Suppress the per-exercise afterChange → addBlockToLesson hook. That
+        // hook does a read-modify-write on lesson.blocks per exercise; even
+        // when our loop awaits sequentially, 8 of those in a row race and
+        // most appends get lost. We write the complete blocks array once at
+        // the bottom of this function instead.
+        context: { _skipBlockSync: true },
       })
       exerciseResults.push({ exerciseNumber: ex.exercise_number, id: created.id })
       createdExerciseIds.push(created.id)
@@ -199,6 +205,32 @@ export async function importLessonFromJson(
       exercisesFailed: failed.length,
       results: exerciseResults,
     }
+  }
+
+  // Write the complete lesson.blocks playlist in one shot. Each exercise was
+  // created with _skipBlockSync to suppress the per-create append hook (it
+  // races on serial imports), so we own the final ordering here.
+  const blocks = createdExerciseIds.map((exerciseId) => ({
+    id: Math.random().toString(36).slice(2, 14),
+    blockType: 'exerciseRef' as const,
+    exercise: exerciseId,
+  }))
+  try {
+    await req.payload.update({
+      collection: 'lessons',
+      id: lesson.id,
+      data: { blocks: JSON.stringify(blocks) },
+      req,
+      overrideAccess: true,
+      context: { _skipBlockSync: true },
+    })
+  } catch (err) {
+    // The exercises exist and link back to the lesson via their `lesson` field;
+    // the admin lesson view will still work because LessonBlocksField queries
+    // exercises by lesson. Worst case is the playlist order isn't pre-set.
+    // Logged here so we have a trace if it ever fires.
+    // eslint-disable-next-line no-console
+    console.error('[lesson-json-import] failed to write lesson.blocks playlist', err)
   }
 
   return {
