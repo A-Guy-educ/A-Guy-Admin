@@ -1,7 +1,6 @@
 import type { PayloadRequest } from 'payload'
 
 import { ContentSchema } from '@/server/payload/collections/Exercises/schemas'
-import { getDefaultTenantId } from '@/server/repos/tenant/get-default-tenant'
 
 import { buildExerciseTitle, convertExerciseToBlocks } from './convert-exercise'
 import { LessonJsonSchema, parseLessonOrderFromFilename } from './json-schema'
@@ -94,16 +93,15 @@ export async function importLessonFromJson(
     return { kind: 'not_found', message: 'Chapter not found' }
   }
 
-  // Always resolve via the default-tenant helper (AGuy via DEFAULT_TENANT_SLUG)
-  // rather than inferring from chapter.tenant. The chapter relation is returned
-  // at depth=0 and the value sometimes fails Payload's relationship validation
-  // for the Exercises tenant field even when the lesson create accepts it.
-  const tenantId = await getDefaultTenantId(req.payload)
+  // We don't pass tenant on create — the tenantField beforeValidate hook
+  // auto-populates from getDefaultTenantId (AGuy). Passing it ourselves keeps
+  // tripping Payload's relationship validation on Exercises for reasons that
+  // don't reproduce on Lessons; letting the hook own it is the only path that
+  // works for both collections.
 
   const order = await resolveLessonOrder(req, input.chapterId, input.filename)
 
   const lessonData = {
-    tenant: tenantId,
     locale: 'he',
     chapter: input.chapterId,
     type: 'practice',
@@ -144,18 +142,20 @@ export async function importLessonFromJson(
       // of the Exercises spec makes the field unique at the DB level.
       const idempotencyKey = `json-import:${input.chapterId}:${input.filename}:${ex.exercise_number}`
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const exerciseData = {
+        locale: 'he',
+        lesson: lesson.id,
+        title: buildExerciseTitle(lessonJson.topic, ex),
+        order: i,
+        content,
+        origin: 'import',
+        idempotencyKey,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any
       const created = await req.payload.create({
         collection: 'exercises',
-        data: {
-          tenant: tenantId,
-          locale: 'he',
-          lesson: lesson.id,
-          title: buildExerciseTitle(lessonJson.topic, ex),
-          order: i,
-          content,
-          origin: 'import',
-          idempotencyKey,
-        },
+        data: exerciseData,
         req,
         overrideAccess: false,
         user: req.user,
