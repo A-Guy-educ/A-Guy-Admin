@@ -94,13 +94,11 @@ export async function importLessonFromJson(
     return { kind: 'not_found', message: 'Chapter not found' }
   }
 
-  const chapterTenant = (chapter as { tenant?: string | { id: string } }).tenant
-  const tenantId =
-    typeof chapterTenant === 'string'
-      ? chapterTenant
-      : chapterTenant && typeof chapterTenant === 'object'
-        ? chapterTenant.id
-        : await getDefaultTenantId(req.payload)
+  // Always resolve via the default-tenant helper (AGuy via DEFAULT_TENANT_SLUG)
+  // rather than inferring from chapter.tenant. The chapter relation is returned
+  // at depth=0 and the value sometimes fails Payload's relationship validation
+  // for the Exercises tenant field even when the lesson create accepts it.
+  const tenantId = await getDefaultTenantId(req.payload)
 
   const order = await resolveLessonOrder(req, input.chapterId, input.filename)
 

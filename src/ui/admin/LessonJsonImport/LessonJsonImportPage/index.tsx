@@ -219,6 +219,10 @@ export function LessonJsonImportPage() {
           continue
         }
         const data = envelope.data || {}
+        const firstError =
+          Array.isArray(data.results) && data.exercisesFailed > 0
+            ? data.results.find((r: { error?: string }) => r?.error)?.error
+            : undefined
         setResults((prev) => ({
           ...prev,
           [f.id]: {
@@ -229,7 +233,7 @@ export function LessonJsonImportPage() {
             exercisesFailed: data.exercisesFailed,
             message:
               data.exercisesFailed > 0
-                ? `Rolled back — ${data.exercisesFailed} exercise${data.exercisesFailed === 1 ? '' : 's'} failed to import`
+                ? `Rolled back — ${data.exercisesFailed} exercise${data.exercisesFailed === 1 ? '' : 's'} failed. First error: ${firstError ?? 'unknown'}`
                 : `Created lesson with ${data.exercisesCreated} exercises`,
           },
         }))
