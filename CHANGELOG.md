@@ -1677,6 +1677,7 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- fix: Write lesson.blocks playlist once in JSON import ([#54](https://github.com/A-Guy-educ/A-Guy-Admin/pull/54)) — @aguyshayb
 - feat: Add bulk JSON importer for lessons and exercises ([#53](https://github.com/A-Guy-educ/A-Guy-Admin/pull/53)) — @aguyshayb
 - ci: Clean dev app workflow ([#31](https://github.com/A-Guy-educ/A-Guy-Admin/pull/31)) — @aguyaharonyair
 - fix: Remove stale student QA CI gate ([#30](https://github.com/A-Guy-educ/A-Guy-Admin/pull/30)) — @aguyaharonyair
