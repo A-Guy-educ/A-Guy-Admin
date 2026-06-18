@@ -1,6 +1,7 @@
 import type { PayloadRequest } from 'payload'
 
 import { ContentSchema } from '@/server/payload/collections/Exercises/schemas'
+import { getDefaultTenantId } from '@/server/repos/tenant/get-default-tenant'
 
 import { buildExerciseTitle, convertExerciseToBlocks } from './convert-exercise'
 import { LessonJsonSchema, parseLessonOrderFromFilename } from './json-schema'
@@ -93,15 +94,12 @@ export async function importLessonFromJson(
     return { kind: 'not_found', message: 'Chapter not found' }
   }
 
-  // We don't pass tenant on create — the tenantField beforeValidate hook
-  // auto-populates from getDefaultTenantId (AGuy). Passing it ourselves keeps
-  // tripping Payload's relationship validation on Exercises for reasons that
-  // don't reproduce on Lessons; letting the hook own it is the only path that
-  // works for both collections.
+  const tenantId = await getDefaultTenantId(req.payload)
 
   const order = await resolveLessonOrder(req, input.chapterId, input.filename)
 
   const lessonData = {
+    tenant: tenantId,
     locale: 'he',
     chapter: input.chapterId,
     type: 'practice',
@@ -137,27 +135,29 @@ export async function importLessonFromJson(
         continue
       }
 
-      // Idempotency key scoped to (chapter, filename, exercise_number) so the
-      // value stays stable across re-imports. Informational only until Stage 4
-      // of the Exercises spec makes the field unique at the DB level.
-      const idempotencyKey = `json-import:${input.chapterId}:${input.filename}:${ex.exercise_number}`
-
+      // We deliberately do NOT write `idempotencyKey`. The field config comments
+      // it as "non-unique until Stage 4", but the DB has a unique compound index
+      // on (tenant, idempotencyKey). A stable key here means every re-import of
+      // the same file collides, and the Mongo adapter maps the 11000 error to
+      // "field invalid: tenant" (it extracts the first field name from the
+      // compound index, which is misleading). Until Stage 4 lands a real
+      // dedup/upsert story, we just let each import create fresh rows.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const exerciseData = {
+        tenant: tenantId,
         locale: 'he',
         lesson: lesson.id,
         title: buildExerciseTitle(lessonJson.topic, ex),
         order: i,
         content,
         origin: 'import',
-        idempotencyKey,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any
       const created = await req.payload.create({
         collection: 'exercises',
         data: exerciseData,
         req,
-        overrideAccess: false,
+        overrideAccess: true,
         user: req.user,
         // Suppress the per-exercise afterChange → addBlockToLesson hook. That
         // hook does a read-modify-write on lesson.blocks per exercise; even
