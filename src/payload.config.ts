@@ -120,6 +120,7 @@ export default buildConfig({
       beforeNavLinks: [
         '@/ui/admin/PdfConversion/SidebarLink',
         '@/ui/admin/LessonDuplicationReview/SidebarLink',
+        '@/ui/admin/LessonJsonImport/SidebarLink',
       ],
       afterNavLinks: ['@/ui/admin/UserEmail'],
     },
