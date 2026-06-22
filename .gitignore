@@ -96,3 +96,6 @@ latex_examples/
 # The Playwright MCP server writes its own working dir at the repo root.
 .kody/qa-reports/
 .playwright-mcp/
+
+# Kody runtime/state now lives in configured kody-state repo.
+.kody/
