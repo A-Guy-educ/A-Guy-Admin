@@ -471,8 +471,41 @@ export const Lessons: CollectionConfig = {
       type: 'relationship',
       relationTo: 'lessons',
       hasMany: true,
+      label: { en: 'Prerequisites', he: 'תנאי קדם' },
       admin: {
         description: 'Lessons students should complete before this lesson',
+      },
+      hooks: {
+        beforeValidate: [
+          ({ value, originalDoc, req }) => {
+            if (value === undefined || value === null) return value
+            if (!Array.isArray(value)) return value
+
+            const selfId =
+              (originalDoc as { id?: string | number } | undefined)?.id ??
+              req.routeParams?.id ??
+              null
+            const selfIdStr = selfId != null ? String(selfId) : null
+
+            const seen = new Set<string>()
+            const deduped: Array<string | number | Record<string, unknown>> = []
+            for (const entry of value) {
+              const idValue =
+                typeof entry === 'string' || typeof entry === 'number'
+                  ? entry
+                  : (entry as { id?: string | number } | null)?.id
+              if (idValue == null) continue
+              const key = String(idValue)
+              if (selfIdStr && key === selfIdStr) {
+                throw new Error('A lesson cannot be a prerequisite of itself.')
+              }
+              if (seen.has(key)) continue
+              seen.add(key)
+              deduped.push(entry)
+            }
+            return deduped
+          },
+        ],
       },
     },
     {
