@@ -71,9 +71,9 @@ describe('Lessons prerequisites field', () => {
   })
 
   it('rejects self-reference based on originalDoc.id', async () => {
-    await expect(
-      runHook({ value: ['a', 'self'], originalDoc: { id: 'self' } }),
-    ).rejects.toThrow(/cannot be a prerequisite of itself/i)
+    await expect(runHook({ value: ['a', 'self'], originalDoc: { id: 'self' } })).rejects.toThrow(
+      /cannot be a prerequisite of itself/i,
+    )
   })
 
   it('rejects self-reference based on req.routeParams.id', async () => {
