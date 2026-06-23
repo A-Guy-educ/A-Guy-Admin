@@ -300,9 +300,12 @@ export const Lessons: CollectionConfig = {
     ],
     afterRead: [
       populateLessonAdminTitle,
-      // Lazy backfill: when a lesson is read and its denormalized course field is
-      // empty, resolve it from chapter -> course and persist to the DB.
-      // One-time write per record — subsequent reads skip (already populated).
+      // In-memory population: when a lesson is read and its denormalized course
+      // field is empty, resolve it from chapter -> course for the current request
+      // so the UI displays correctly. The DB write that previously lived here
+      // turned every list-view render into N+1 UPDATEs against a maxPoolSize=3
+      // connection pool; the `beforeChange` hook above already persists `course`
+      // on every save, so legacy docs get backfilled the next time they're edited.
       // Skipped during build/seed (no req.user) to avoid slow static generation.
       async ({ doc, req }) => {
         if (!doc?.chapter) return doc
@@ -324,17 +327,10 @@ export const Lessons: CollectionConfig = {
             typeof chapter?.course === 'string' ? chapter.course : chapter?.course?.id
 
           if (courseId) {
-            // Persist to DB so list-view filters match on the next query
-            await req.payload.update({
-              collection: 'lessons',
-              id: doc.id,
-              data: { course: courseId } as any, // eslint-disable-line @typescript-eslint/no-explicit-any
-              overrideAccess: true,
-            })
             doc.course = courseId
           }
         } catch {
-          // Silently skip — backfill is best-effort
+          // Silently skip — in-memory backfill is best-effort
         }
 
         return doc
@@ -348,14 +344,10 @@ export const Lessons: CollectionConfig = {
   disableDuplicate: true,
   admin: {
     useAsTitle: 'adminTitle',
-    listSearchableFields: [
-      'adminTitle',
-      'title',
-      'chapter.title',
-      'chapter.chapterLabel',
-      'chapter.course.courseLabel',
-      'chapter.course.title',
-    ],
+    // `adminTitle` already concatenates "<course> / <chapter> / <lesson>",
+    // so searching it covers chapter + course terms without forcing depth-2
+    // relationship joins on every list-view search.
+    listSearchableFields: ['adminTitle', 'title'],
     components: {
       edit: {
         beforeDocumentControls: [
