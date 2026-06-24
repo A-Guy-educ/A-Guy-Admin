@@ -53,7 +53,8 @@
   },
   "company": {
     "activeGoals": [
-      "ci-health"
+      "ci-health",
+      "prs-stay-mergeable"
     ]
   }
 }
