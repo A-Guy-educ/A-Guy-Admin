@@ -50,5 +50,10 @@
       "FIRST_TIME_CONTRIBUTOR",
       "MEMBER"
     ]
+  },
+  "company": {
+    "activeGoals": [
+      "ci-health"
+    ]
   }
 }
