@@ -1,15 +1,26 @@
 /**
- * Integration test — content-promotion export → import round-trip via the
- * Payload local API. Skips media binaries (no Vercel Blob in tests) by using
- * type='external' media records, which exercise the same code paths without
- * needing a blob store.
+ * Integration test — content-promotion import via Payload's local API.
+ *
+ * We don't drive a full export→import round-trip through `exportContent`
+ * because the shared test Payload instance accumulates docs from other
+ * suites; a full-DB re-import would step on every other test. Instead we
+ * exercise the import service against a synthetic minimal bundle that we
+ * construct here, which covers the parts that depend on Payload (id
+ * preservation via `allowIDOnCreate`, collision detection, reference
+ * rewriting, transaction wrapping). Pure-logic coverage of the remap
+ * walker lives in tests/unit/content-promotion-id-remap.test.ts.
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import JSZip from 'jszip'
 import type { Payload, PayloadRequest } from 'payload'
 
 import { getDefaultTenantSlug } from '@/server/repos/tenant/get-default-tenant'
-import { exportContent } from '@/server/services/content-promotion/export-content'
+import {
+  BUNDLE_MANIFEST_VERSION,
+  MANIFEST_FILENAME,
+} from '@/server/services/content-promotion/constants'
 import { importContent } from '@/server/services/content-promotion/import-content'
+import type { BundleManifest } from '@/server/services/content-promotion/types'
 import { getSharedPayload } from '../setup/shared-payload'
 
 async function ensureDefaultTenant(payload: Payload): Promise<string> {
@@ -40,7 +51,24 @@ function mockAdminReq(payload: Payload): PayloadRequest {
   } as unknown as PayloadRequest
 }
 
-describe('Content promotion: export → import round-trip', () => {
+interface BundleSpec {
+  manifest: BundleManifest
+}
+
+async function buildBundle(spec: BundleSpec): Promise<Buffer> {
+  const zip = new JSZip()
+  zip.file(MANIFEST_FILENAME, JSON.stringify(spec.manifest))
+  return await zip.generateAsync({ type: 'nodebuffer' })
+}
+
+function newId(): string {
+  const chars = '0123456789abcdef'
+  let s = ''
+  for (let i = 0; i < 24; i++) s += chars[Math.floor(Math.random() * 16)]
+  return s
+}
+
+describe('Content promotion: import service', () => {
   let payload: Payload
   let tenantId: string
   let categoryId: string
@@ -76,149 +104,133 @@ describe('Content promotion: export → import round-trip', () => {
     } catch {
       // ignore
     }
-    // Don't destroy the DB connection — it's shared across the suite via
-    // getSharedPayload() and the global teardown handles cleanup.
+    // Shared payload instance — global teardown handles the DB connection.
   })
 
-  it('exports a tree on collision-free target and imports it preserving IDs', async () => {
+  it('preserves IDs when no collision on the target', async () => {
     const ts = Date.now()
     const req = mockAdminReq(payload)
 
-    // Create a source-side content tree.
-    const course = await payload.create({
-      collection: 'courses',
-      data: {
-        courseLabel: `CP-${ts}`,
-        title: `Course ${ts}`,
-        locale: 'he',
-        categories: [categoryId],
-        order: 0,
-        status: 'published',
-        isActive: true,
-        tenant: tenantId,
-        pageAccessType: 'free',
-        accessType: 'free',
-        contentStatus: 'none',
+    const courseId = newId()
+    const chapterId = newId()
+    const lessonId = newId()
+    const exerciseId = newId()
+
+    const manifest: BundleManifest = {
+      version: BUNDLE_MANIFEST_VERSION,
+      exportedAt: new Date().toISOString(),
+      source: { serverUrl: 'http://test-source' },
+      counts: { media: 0, courses: 1, chapters: 1, lessons: 1, exercises: 1 },
+      collections: {
+        media: [],
+        courses: [
+          {
+            id: courseId,
+            courseLabel: `IMP-${ts}`,
+            title: `Imported Course ${ts}`,
+            locale: 'he',
+            categories: [categoryId],
+            order: 0,
+            status: 'published',
+            isActive: true,
+            tenant: tenantId,
+            pageAccessType: 'free',
+            accessType: 'free',
+            contentStatus: 'none',
+          },
+          // Cast to BundledDoc — manifest accepts passthrough fields.
+        ] as BundleManifest['collections']['courses'],
+        chapters: [
+          {
+            id: chapterId,
+            title: `Imported Chapter ${ts}`,
+            chapterLabel: `ICH-${ts}`,
+            course: courseId,
+            order: 0,
+            status: 'published',
+            isActive: true,
+            tenant: tenantId,
+            locale: 'he',
+          },
+        ] as BundleManifest['collections']['chapters'],
+        lessons: [
+          {
+            id: lessonId,
+            title: `Imported Lesson ${ts}`,
+            slug: `imp-lesson-${ts}`,
+            chapter: chapterId,
+            type: 'practice',
+            order: 0,
+            status: 'published',
+            isActive: true,
+            tenant: tenantId,
+            locale: 'he',
+            accessType: 'inherit',
+            contentStatus: 'none',
+          },
+        ] as BundleManifest['collections']['lessons'],
+        exercises: [
+          {
+            id: exerciseId,
+            title: `Imported Ex ${ts}`,
+            lesson: lessonId,
+            origin: 'manual',
+            content: { blocks: [] },
+          },
+        ] as BundleManifest['collections']['exercises'],
       },
-      overrideAccess: true,
-    })
-    cleanup.push({ collection: 'courses', id: course.id })
+    }
 
-    const chapter = await payload.create({
-      collection: 'chapters',
-      data: {
-        title: `Chapter ${ts}`,
-        chapterLabel: `CH-${ts}`,
-        course: course.id,
-        order: 0,
-        status: 'published',
-        isActive: true,
-        tenant: tenantId,
-        locale: 'he',
-      },
-      overrideAccess: true,
-    })
-    cleanup.push({ collection: 'chapters', id: chapter.id })
+    const buffer = await buildBundle({ manifest })
+    const report = await importContent(payload, req, { bundleBuffer: buffer })
 
-    const lesson = await payload.create({
-      collection: 'lessons',
-      data: {
-        title: `Lesson ${ts}`,
-        slug: `cp-lesson-${ts}`,
-        chapter: chapter.id,
-        type: 'practice',
-        order: 0,
-        status: 'published',
-        isActive: true,
-        tenant: tenantId,
-        locale: 'he',
-        accessType: 'inherit',
-        contentStatus: 'none',
-      },
-      overrideAccess: true,
-    })
-    cleanup.push({ collection: 'lessons', id: lesson.id })
+    // Track for cleanup before any assertions can throw.
+    cleanup.push({ collection: 'exercises', id: exerciseId })
+    cleanup.push({ collection: 'lessons', id: lessonId })
+    cleanup.push({ collection: 'chapters', id: chapterId })
+    cleanup.push({ collection: 'courses', id: courseId })
 
-    const exercise = await payload.create({
-      collection: 'exercises',
-      data: { title: `Ex ${ts}`, lesson: lesson.id, origin: 'manual' },
-      overrideAccess: true,
-      draft: true,
-    })
-    cleanup.push({ collection: 'exercises', id: exercise.id })
+    expect(report.perCollection.courses.failed).toBe(0)
+    expect(report.perCollection.chapters.failed).toBe(0)
+    expect(report.perCollection.lessons.failed).toBe(0)
+    expect(report.perCollection.exercises.failed).toBe(0)
+    expect(Object.keys(report.remappedIds)).toHaveLength(0)
 
-    // Export
-    const { zipBuffer, report } = await exportContent(payload, req)
-    expect(report.counts.courses).toBeGreaterThanOrEqual(1)
-    expect(report.counts.exercises).toBeGreaterThanOrEqual(1)
-
-    // Delete the tree so import doesn't collide on _these_ IDs.
-    await payload.delete({ collection: 'exercises', id: exercise.id, overrideAccess: true })
-    await payload.delete({ collection: 'lessons', id: lesson.id, overrideAccess: true })
-    await payload.delete({ collection: 'chapters', id: chapter.id, overrideAccess: true })
-    await payload.delete({ collection: 'courses', id: course.id, overrideAccess: true })
-
-    // Drop cleanup entries — IDs we just deleted (or any remap, which gets
-    // added below) need to be handled fresh.
-    cleanup.length = 0
-
-    // Import
-    const importReport = await importContent(payload, req, { bundleBuffer: zipBuffer })
-
-    // The deleted IDs no longer collide, so the original IDs are preserved.
+    // The IDs from the bundle were threaded through (allowIDOnCreate works).
     const courseAfter = await payload.findByID({
       collection: 'courses',
-      id: course.id,
+      id: courseId,
       depth: 0,
       overrideAccess: true,
     })
-    expect(courseAfter.id).toBe(course.id)
-    cleanup.push({ collection: 'courses', id: course.id })
+    expect(courseAfter.id).toBe(courseId)
 
+    // Reference resolves to the imported chapter — no remap needed.
     const chapterAfter = await payload.findByID({
       collection: 'chapters',
-      id: chapter.id,
-      depth: 0,
+      id: chapterId,
+      depth: 1,
       overrideAccess: true,
     })
-    expect(chapterAfter.id).toBe(chapter.id)
-    cleanup.push({ collection: 'chapters', id: chapter.id })
-
-    const lessonAfter = await payload.findByID({
-      collection: 'lessons',
-      id: lesson.id,
-      depth: 0,
-      overrideAccess: true,
-    })
-    expect(lessonAfter.id).toBe(lesson.id)
-    cleanup.push({ collection: 'lessons', id: lesson.id })
-
-    const exerciseAfter = await payload.findByID({
-      collection: 'exercises',
-      id: exercise.id,
-      depth: 0,
-      overrideAccess: true,
-    })
-    expect(exerciseAfter.id).toBe(exercise.id)
-    cleanup.push({ collection: 'exercises', id: exercise.id })
-
-    // No IDs needed remapping in the collision-free path.
-    expect(Object.keys(importReport.remappedIds).length).toBe(0)
-    expect(importReport.perCollection.courses.failed).toBe(0)
-    expect(importReport.perCollection.lessons.failed).toBe(0)
-    expect(importReport.perCollection.exercises.failed).toBe(0)
+    const refCourseId =
+      typeof chapterAfter.course === 'string' ? chapterAfter.course : chapterAfter.course?.id
+    expect(refCourseId).toBe(courseId)
   }, 180000)
 
-  it('safe-clones into the same DB without overwriting on ID collision', async () => {
+  it('generates new IDs and rewrites internal references on collision', async () => {
     const ts = Date.now()
     const req = mockAdminReq(payload)
 
-    // Create a single course to export.
-    const course = await payload.create({
+    // Seed an existing course on the target whose ID matches what the bundle
+    // tries to import. The import should treat this as a collision and
+    // remap, leaving the seeded doc untouched.
+    const existingCourseId = newId()
+    const existingCourse = await payload.create({
       collection: 'courses',
       data: {
-        courseLabel: `CPC-${ts}`,
-        title: `Original Title ${ts}`,
+        id: existingCourseId,
+        courseLabel: `SEED-${ts}`,
+        title: `Seeded ${ts}`,
         locale: 'he',
         categories: [categoryId],
         order: 0,
@@ -231,38 +243,88 @@ describe('Content promotion: export → import round-trip', () => {
       },
       overrideAccess: true,
     })
-    cleanup.push({ collection: 'courses', id: course.id })
+    cleanup.push({ collection: 'courses', id: existingCourse.id })
 
-    // Export the bundle.
-    const { zipBuffer } = await exportContent(payload, req)
+    // Bundle contains a course with the same ID, plus a chapter that points
+    // at it. After remap the chapter must point at the new (remapped) id.
+    const chapterId = newId()
+    const manifest: BundleManifest = {
+      version: BUNDLE_MANIFEST_VERSION,
+      exportedAt: new Date().toISOString(),
+      source: { serverUrl: 'http://test-source' },
+      counts: { media: 0, courses: 1, chapters: 1, lessons: 0, exercises: 0 },
+      collections: {
+        media: [],
+        courses: [
+          {
+            id: existingCourseId,
+            courseLabel: `BUN-${ts}`,
+            title: `Bundle Course ${ts}`,
+            locale: 'he',
+            categories: [categoryId],
+            order: 0,
+            status: 'published',
+            isActive: true,
+            tenant: tenantId,
+            pageAccessType: 'free',
+            accessType: 'free',
+            contentStatus: 'none',
+          },
+        ] as BundleManifest['collections']['courses'],
+        chapters: [
+          {
+            id: chapterId,
+            title: `Bundle Chapter ${ts}`,
+            chapterLabel: `BCH-${ts}`,
+            course: existingCourseId,
+            order: 0,
+            status: 'published',
+            isActive: true,
+            tenant: tenantId,
+            locale: 'he',
+          },
+        ] as BundleManifest['collections']['chapters'],
+        lessons: [],
+        exercises: [],
+      },
+    }
 
-    // Re-import into the *same* DB — every ID collides, so import must
-    // generate fresh IDs instead of clobbering the originals.
-    const importReport = await importContent(payload, req, { bundleBuffer: zipBuffer })
+    const buffer = await buildBundle({ manifest })
+    const report = await importContent(payload, req, { bundleBuffer: buffer })
 
-    // Original course must still exist with its original title.
-    const original = await payload.findByID({
+    const remappedCourseId = report.remappedIds[`courses:${existingCourseId}`]
+    expect(remappedCourseId).toBeDefined()
+    expect(remappedCourseId).not.toBe(existingCourseId)
+    cleanup.push({ collection: 'courses', id: remappedCourseId })
+    cleanup.push({ collection: 'chapters', id: chapterId })
+
+    // The seeded course is untouched.
+    const seededAfter = await payload.findByID({
       collection: 'courses',
-      id: course.id,
+      id: existingCourseId,
       depth: 0,
       overrideAccess: true,
     })
-    expect(original.title).toBe(`Original Title ${ts}`)
+    expect(seededAfter.title).toBe(`Seeded ${ts}`)
 
-    // At least one collision was remapped (likely the course we just created).
-    const remappedKey = `courses:${course.id}`
-    const newCourseId = importReport.remappedIds[remappedKey]
-    expect(newCourseId).toBeDefined()
-    expect(newCourseId).not.toBe(course.id)
-    cleanup.push({ collection: 'courses', id: newCourseId })
-
-    // Both originals and clones now coexist.
-    const clone = await payload.findByID({
+    // The bundle's course landed under the remapped id with the bundle's title.
+    const importedCourse = await payload.findByID({
       collection: 'courses',
-      id: newCourseId,
+      id: remappedCourseId,
       depth: 0,
       overrideAccess: true,
     })
-    expect(clone.title).toBe(`Original Title ${ts}`)
+    expect(importedCourse.title).toBe(`Bundle Course ${ts}`)
+
+    // The bundle's chapter rewrote its `course` ref to the remapped id.
+    const chapterAfter = await payload.findByID({
+      collection: 'chapters',
+      id: chapterId,
+      depth: 1,
+      overrideAccess: true,
+    })
+    const refCourseId =
+      typeof chapterAfter.course === 'string' ? chapterAfter.course : chapterAfter.course?.id
+    expect(refCourseId).toBe(remappedCourseId)
   }, 180000)
 })

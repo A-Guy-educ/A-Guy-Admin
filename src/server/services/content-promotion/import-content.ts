@@ -144,8 +144,20 @@ async function uploadMediaWithFile(
         req,
       })
     } else {
-      // External media or non-uploaded record — create without a file. The
-      // Media collection sets `filesRequiredOnCreate: false`, so this is OK.
+      // No blob in the bundle — only `external` media can legitimately be
+      // created without a file. For any other type, `validateMediaUpload`
+      // rejects the create with "MIME Type" validation, so skip defensively
+      // and record it as failed rather than rolling back the whole import.
+      // (The export side already drops such records — this guards against
+      // older bundles or hand-edited manifests.)
+      if (rest.type !== 'external') {
+        report.failed += 1
+        report.failures.push({
+          id: finalId,
+          message: `Non-external media has no blob in bundle (type=${String(rest.type)})`,
+        })
+        return
+      }
       await payload.create({
         collection: 'media',
         // eslint-disable-next-line @typescript-eslint/no-explicit-any -- bundle records are dynamic across collections

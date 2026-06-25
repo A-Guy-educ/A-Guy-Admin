@@ -135,27 +135,47 @@ export async function exportContent(payload: Payload, req: PayloadRequest): Prom
   // 1. Media first — we capture the binaries alongside the records so the
   //    import side can re-upload to the target Vercel Blob store before
   //    creating any document that references them.
+  //
+  //    Records we can't bundle cleanly are dropped from the manifest entirely
+  //    instead of going in with `blobEntry: null` — Payload's media
+  //    `validateMediaUpload` hook rejects creates that have a non-external
+  //    type and no file, so a bundle that included such records would always
+  //    fail import. Any document later referencing a dropped media id ends
+  //    up with a dangling ref on the target, which is logged but doesn't
+  //    block the import.
   const mediaDocs = (await fetchAllDocs(payload, req, 'media')) as MediaRecord[]
   for (const media of mediaDocs) {
     const stripped = stripDoc(media as Record<string, unknown>, 'media')
+    const isExternal = media.type === 'external'
     let blobEntry: string | null = null
 
-    try {
-      const binary = await fetchMediaBinary(media, baseUrl)
-      if (binary) {
-        const ext = getMediaBlobExtension(media)
-        blobEntry = `${BLOB_DIR}/${media.id}${ext}`
-        zip.file(blobEntry, binary)
-        blobCount += 1
-        blobBytes += binary.length
+    if (!isExternal) {
+      try {
+        const binary = await fetchMediaBinary(media, baseUrl)
+        if (binary) {
+          const ext = getMediaBlobExtension(media)
+          blobEntry = `${BLOB_DIR}/${media.id}${ext}`
+          zip.file(blobEntry, binary)
+          blobCount += 1
+          blobBytes += binary.length
+        }
+      } catch (error) {
+        payload.logger.warn(
+          { err: error, mediaId: media.id },
+          '[content-promotion/export] Failed to fetch media binary; skipping record',
+        )
       }
-    } catch (error) {
-      // Surface the error in the manifest instead of failing the whole export.
-      // The import side reports any missing-blob media records as warnings.
+    }
+
+    // Non-external media without a fetched binary can't be recreated on the
+    // target — skip the record entirely rather than ship a record that will
+    // fail validation on import.
+    if (!isExternal && !blobEntry) {
       payload.logger.warn(
-        { err: error, mediaId: media.id },
-        '[content-promotion/export] Failed to fetch media binary; skipping',
+        { mediaId: media.id, mediaType: media.type ?? 'unknown' },
+        '[content-promotion/export] Non-external media has no fetchable binary; omitting from bundle',
       )
+      continue
     }
 
     const bundled: BundledMedia = {
