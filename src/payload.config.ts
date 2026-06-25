@@ -121,6 +121,7 @@ export default buildConfig({
         '@/ui/admin/PdfConversion/SidebarLink',
         '@/ui/admin/LessonDuplicationReview/SidebarLink',
         '@/ui/admin/LessonJsonImport/SidebarLink',
+        '@/ui/admin/ContentPromotion/SidebarLink',
       ],
       afterNavLinks: ['@/ui/admin/UserEmail'],
     },
@@ -155,6 +156,11 @@ export default buildConfig({
   editor: defaultLexical,
   db: mongooseAdapter({
     url: databaseUrl,
+    // Required by the content-promotion import flow, which threads source-env
+    // document IDs through `payload.create({ data: { id } })` so cross-document
+    // references inside the bundle resolve without a remap when no collision
+    // exists on the target environment.
+    allowIDOnCreate: true,
     connectOptions: {
       // ⚠️ CONNECTION POOL GUARDRAIL — DO NOT increase without updating the guardrail test
       // Atlas limit: 500 connections. At maxPoolSize=N, max safe instances = 500/N.
