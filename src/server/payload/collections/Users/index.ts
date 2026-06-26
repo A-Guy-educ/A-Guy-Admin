@@ -179,6 +179,21 @@ export const Users: CollectionConfig = {
           admin: { readOnly: true },
         },
         {
+          name: 'value',
+          type: 'number',
+          admin: { readOnly: true },
+        },
+        {
+          name: 'period',
+          type: 'select',
+          options: [
+            { label: 'Day', value: 'day' },
+            { label: 'Month', value: 'month' },
+            { label: 'Lifetime', value: 'lifetime' },
+          ],
+          admin: { readOnly: true },
+        },
+        {
           name: 'transactionId',
           type: 'text',
           admin: { readOnly: true },

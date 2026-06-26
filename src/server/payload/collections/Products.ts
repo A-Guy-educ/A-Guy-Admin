@@ -155,6 +155,24 @@ export const Products: CollectionConfig = {
       },
     },
     {
+      name: 'durationDays',
+      type: 'number',
+      min: 1,
+      admin: {
+        description:
+          'תקופת גישה בימים מרגע הרכישה (השאר ריק לגישה ללא הגבלת זמן). שדה אחסון בלבד — האכיפה תיושם במשימה הבאה (B/#75).',
+      },
+    },
+    {
+      name: 'maxDevices',
+      type: 'number',
+      min: 1,
+      admin: {
+        description:
+          'מספר מקסימלי של מכשירים למשתמש (השאר ריק = ללא הגבלה). שדה לתצורה בלבד — האכיפה אינה מיושמת.',
+      },
+    },
+    {
       name: 'items',
       type: 'relationship',
       relationTo: 'product-items',

@@ -91,6 +91,12 @@ export async function grantProductEntitlements(
         })
       } else if (item.type === 'feature' && item.featureKey) {
         featureKeys.push({ key: item.featureKey as FeatureKey })
+      } else if (item.type === 'course') {
+        // Course bundle grant flow is implemented in Task B (#75). Fail loud
+        // so a purchase containing a course item never silently grants nothing.
+        throw new Error(
+          `ProductItem type='course' (id=${item.id}) cannot be granted yet — pending Task B (#75) implementation. Refusing to silently no-op on purchase (product=${productId}, transaction=${transactionId}).`,
+        )
       }
     }
   }

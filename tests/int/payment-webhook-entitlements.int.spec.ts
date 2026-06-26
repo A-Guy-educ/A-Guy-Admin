@@ -364,6 +364,45 @@ describe('grantProductEntitlements', () => {
       grantProductEntitlements(userId, 'non_existent_product_id', 'tx_missing_test'),
     ).rejects.toThrow()
   })
+
+  it('should throw loudly when a product contains a course-type item (Task B pending)', async () => {
+    // Resolve courseId via the chapter created in beforeAll
+    const chapter = await payload.findByID({
+      collection: 'chapters',
+      id: chapterId,
+      depth: 0,
+      overrideAccess: true,
+    })
+    const courseId =
+      typeof chapter.course === 'string' ? chapter.course : (chapter.course as any).id
+
+    const courseItem = await payload.create({
+      collection: 'product-items',
+      data: { type: 'course', course: courseId } as any,
+      overrideAccess: true,
+    })
+
+    const courseProduct = await payload.create({
+      collection: 'products',
+      data: {
+        name: `Course Bundle Test ${Date.now()}`,
+        slug: `course-bundle-test-${Date.now()}`,
+        billingType: 'one_time',
+        price: 300,
+        currency: 'ILS',
+        durationDays: 90,
+        items: [courseItem.id],
+      } as any,
+      overrideAccess: true,
+    })
+
+    await expect(
+      grantProductEntitlements(userId, courseProduct.id, 'tx_course_pending'),
+    ).rejects.toThrow(/Task B/i)
+
+    await payload.delete({ collection: 'products', id: courseProduct.id, overrideAccess: true })
+    await payload.delete({ collection: 'product-items', id: courseItem.id, overrideAccess: true })
+  })
 })
 
 // ─── Stripe webhook route tests ──────────────────────────────────────────────

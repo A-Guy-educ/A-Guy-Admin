@@ -13,6 +13,12 @@ export const FEATURE_KEYS = [
   'priority-support',
   'analytics',
   'group-access',
+  'ai-questions',
+  'chat-limit',
+  'exercise-generation',
+  'study-plan-generation',
+  'pdf-download',
+  'pdf-print',
 ] as const
 
 export type FeatureKey = (typeof FEATURE_KEYS)[number]
