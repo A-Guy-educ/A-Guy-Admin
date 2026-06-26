@@ -136,7 +136,8 @@ export const ProductItems: CollectionConfig = {
       type: 'number',
       min: 0,
       admin: {
-        description: 'ערך מספרי לתכונה (לדוגמה: 5 עבור 5 שאלות ביום). השאר ריק לתכונה ללא מגבלת כמות.',
+        description:
+          'ערך מספרי לתכונה (לדוגמה: 5 עבור 5 שאלות ביום). השאר ריק לתכונה ללא מגבלת כמות.',
         condition: (data) => data.type === 'feature',
       },
     },
