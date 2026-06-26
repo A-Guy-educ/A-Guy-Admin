@@ -35,7 +35,9 @@ export async function hasEntitlement({
 
   // Step 1: Check Enrollments collection (active + not expired).
   // `expiresAt: { greater_than: now }` filters out expired records.
-  // `{ exists: false }` lets lifetime enrollments through.
+  // Lifetime enrollments are represented two ways: the field is absent
+  // (initial create with no durationDays) OR explicitly null (lifetime
+  // re-purchase that clears a prior expiresAt). Match both.
   const enrollment = await payload.find({
     collection: 'enrollments',
     where: {
@@ -44,7 +46,11 @@ export async function hasEntitlement({
         { course: { equals: courseId } },
         { status: { equals: 'active' } },
         {
-          or: [{ expiresAt: { exists: false } }, { expiresAt: { greater_than: nowIso } }],
+          or: [
+            { expiresAt: { exists: false } },
+            { expiresAt: { equals: null } },
+            { expiresAt: { greater_than: nowIso } },
+          ],
         },
       ],
     },

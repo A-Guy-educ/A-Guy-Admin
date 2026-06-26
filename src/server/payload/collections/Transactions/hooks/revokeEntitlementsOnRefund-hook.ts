@@ -30,12 +30,14 @@ export const revokeEntitlementsOnRefund: CollectionAfterChangeHook = async ({
   const currentStatus = doc.status as string | undefined
   const prevStatus = previousDoc?.status as string | undefined
 
-  // Fire only on the exact transition into 'refunded' via update.
-  // Create-with-refunded is rejected by statusTransitionGuard upstream;
-  // refunded→refunded is a no-op anyway.
+  // Fire on the exact transition into 'refunded'. Two cases:
+  //  - update: prev was something else (pending/succeeded/failed)
+  //  - create: someone wrote a transaction directly with status='refunded'.
+  //    The statusTransitionGuard skips create-time validation, so the
+  //    schema technically allows it; we don't want such a record to leak
+  //    entitlements that were never revoked.
   if (currentStatus !== 'refunded') return doc
-  if (operation !== 'update') return doc
-  if (prevStatus === 'refunded') return doc
+  if (operation === 'update' && prevStatus === 'refunded') return doc
 
   const userId = typeof doc.user === 'string' ? doc.user : (doc.user as { id?: string })?.id
   if (!userId) {

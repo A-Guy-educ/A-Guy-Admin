@@ -1369,4 +1369,78 @@ describe.skipIf(!hasDatabaseUrl)('Cross-type field validators (Task A review)', 
 
     expect((productItem as any).period).toBe('lifetime')
   })
+
+  it('should reject a type change that leaves stale cross-type fields (feature → lesson with value still set)', async () => {
+    const admin = await getAdminUser()
+    const lesson = await createTestLesson('Stale Field Test Lesson')
+
+    // Create a valid feature item with value=5
+    const featureItem = await payload.create({
+      collection: 'product-items',
+      data: {
+        type: 'feature',
+        featureKey: 'ai-questions',
+        value: 5,
+        period: 'day',
+      } as any,
+      user: admin as any,
+      overrideAccess: false,
+    })
+    trackProductItem(featureItem.id)
+
+    // Now switch type to 'lesson' without clearing value/period. The
+    // beforeValidate hook should reject the update because the merged doc
+    // has `type='lesson'` AND `value=5` left over from the prior state.
+    let validationError: Error | null = null
+    try {
+      await payload.update({
+        collection: 'product-items',
+        id: featureItem.id,
+        data: {
+          type: 'lesson',
+          lesson: lesson.id,
+        } as any,
+        user: admin as any,
+        overrideAccess: false,
+      })
+    } catch (e) {
+      validationError = e as Error
+    }
+
+    expect(validationError).not.toBeNull()
+  })
+
+  it('should accept a type change when stale fields are explicitly cleared', async () => {
+    const admin = await getAdminUser()
+    const lesson = await createTestLesson('Clean Type Change Lesson')
+
+    const featureItem = await payload.create({
+      collection: 'product-items',
+      data: {
+        type: 'feature',
+        featureKey: 'ai-questions',
+        value: 5,
+        period: 'day',
+      } as any,
+      user: admin as any,
+      overrideAccess: false,
+    })
+    trackProductItem(featureItem.id)
+
+    // Clearing value + period explicitly lets the type change through.
+    const updated = await payload.update({
+      collection: 'product-items',
+      id: featureItem.id,
+      data: {
+        type: 'lesson',
+        lesson: lesson.id,
+        value: null,
+        period: 'lifetime', // default — explicitly set to keep the hook happy
+      } as any,
+      user: admin as any,
+      overrideAccess: false,
+    })
+
+    expect((updated as any).type).toBe('lesson')
+  })
 })

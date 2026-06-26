@@ -685,6 +685,171 @@ describe('Transaction refund revokes entitlements', () => {
     )
     expect(featureAfter.length).toBe(0)
   })
+
+  it('re-grant after cancel flips Enrollment back to active, refreshes expiresAt, preserves prior metadata', async () => {
+    const { hasEntitlement } = await import('@/server/services/entitlement_check')
+    const chapter = await payload.findByID({
+      collection: 'chapters',
+      id: chapterId,
+      depth: 0,
+      overrideAccess: true,
+    })
+    const courseId =
+      typeof chapter.course === 'string' ? chapter.course : (chapter.course as any).id
+
+    // Build a 30-day time-limited variant of the test product
+    const courseItem = await payload.create({
+      collection: 'product-items',
+      data: { type: 'course', course: courseId } as any,
+      overrideAccess: true,
+    })
+    const timeLimitedProduct = await payload.create({
+      collection: 'products',
+      data: {
+        name: `Re-grant Test ${Date.now()}`,
+        slug: `re-grant-test-${Date.now()}`,
+        billingType: 'one_time',
+        price: 300,
+        currency: 'ILS',
+        durationDays: 30,
+        items: [courseItem.id],
+      } as any,
+      overrideAccess: true,
+    })
+
+    // 1. First purchase
+    await grantProductEntitlements(userId, timeLimitedProduct.id, 'tx_first_purchase')
+
+    // Inject prior metadata that should be preserved across the re-grant
+    const enrollmentsBefore = await payload.find({
+      collection: 'enrollments',
+      where: { and: [{ user: { equals: userId } }, { course: { equals: courseId } }] },
+      overrideAccess: true,
+    })
+    const enrollmentId = (enrollmentsBefore.docs[0] as any).id
+    await payload.update({
+      collection: 'enrollments',
+      id: enrollmentId,
+      data: {
+        metadata: {
+          paymentId: 'tx_first_purchase',
+          accessCodeId: 'ac_legacy_audit',
+          grantedBy: 'admin_audit_user',
+        },
+      },
+      overrideAccess: true,
+    })
+
+    // 2. Cancel the enrollment (simulating a prior refund)
+    await payload.update({
+      collection: 'enrollments',
+      id: enrollmentId,
+      data: { status: 'cancelled', cancelledAt: new Date().toISOString() },
+      overrideAccess: true,
+    })
+    expect(await hasEntitlement({ payload, userId, courseId })).toBe(false)
+
+    // 3. Re-grant with a NEW transaction id (re-purchase)
+    const tStart = Date.now()
+    await grantProductEntitlements(userId, timeLimitedProduct.id, 'tx_second_purchase')
+
+    const enrollmentsAfter = await payload.find({
+      collection: 'enrollments',
+      where: { and: [{ user: { equals: userId } }, { course: { equals: courseId } }] },
+      overrideAccess: true,
+    })
+    expect(enrollmentsAfter.totalDocs).toBe(1)
+    const updated = enrollmentsAfter.docs[0] as any
+    expect(updated.status).toBe('active')
+    expect(updated.cancelledAt ?? null).toBeNull()
+    expect(updated.metadata?.paymentId).toBe('tx_second_purchase')
+    // Prior metadata fields must be preserved.
+    expect(updated.metadata?.accessCodeId).toBe('ac_legacy_audit')
+    expect(updated.metadata?.grantedBy).toBe('admin_audit_user')
+    // expiresAt should be refreshed to ~now + 30 days
+    expect(updated.expiresAt).toBeDefined()
+    const expectedMs = tStart + 30 * 24 * 60 * 60 * 1000
+    expect(Math.abs(new Date(updated.expiresAt).getTime() - expectedMs)).toBeLessThan(60_000)
+
+    expect(await hasEntitlement({ payload, userId, courseId })).toBe(true)
+
+    await payload.delete({
+      collection: 'products',
+      id: timeLimitedProduct.id,
+      overrideAccess: true,
+    })
+    await payload.delete({ collection: 'product-items', id: courseItem.id, overrideAccess: true })
+  })
+
+  it('lifetime re-purchase after a time-limited expiry clears expiresAt and grants access', async () => {
+    const { hasEntitlement } = await import('@/server/services/entitlement_check')
+    const chapter = await payload.findByID({
+      collection: 'chapters',
+      id: chapterId,
+      depth: 0,
+      overrideAccess: true,
+    })
+    const courseId =
+      typeof chapter.course === 'string' ? chapter.course : (chapter.course as any).id
+
+    // 1. Buy a 30-day product
+    const courseItem = await payload.create({
+      collection: 'product-items',
+      data: { type: 'course', course: courseId } as any,
+      overrideAccess: true,
+    })
+    const timeLimited = await payload.create({
+      collection: 'products',
+      data: {
+        name: `30d Test ${Date.now()}`,
+        slug: `30d-test-${Date.now()}`,
+        billingType: 'one_time',
+        price: 300,
+        currency: 'ILS',
+        durationDays: 30,
+        items: [courseItem.id],
+      } as any,
+      overrideAccess: true,
+    })
+    await grantProductEntitlements(userId, timeLimited.id, 'tx_30d')
+
+    // Backdate so the enrollment is expired
+    const enrollments = await payload.find({
+      collection: 'enrollments',
+      where: { and: [{ user: { equals: userId } }, { course: { equals: courseId } }] },
+      overrideAccess: true,
+    })
+    const enrollmentId = (enrollments.docs[0] as any).id
+    await payload.update({
+      collection: 'enrollments',
+      id: enrollmentId,
+      data: { expiresAt: new Date(Date.now() - 1000).toISOString() },
+      overrideAccess: true,
+    })
+    expect(await hasEntitlement({ payload, userId, courseId })).toBe(false)
+
+    // 2. Re-purchase with a LIFETIME variant (no durationDays)
+    const lifetimeProduct = await payload.create({
+      collection: 'products',
+      data: {
+        name: `Lifetime Test ${Date.now()}`,
+        slug: `lifetime-test-${Date.now()}`,
+        billingType: 'one_time',
+        price: 500,
+        currency: 'ILS',
+        items: [courseItem.id],
+      } as any,
+      overrideAccess: true,
+    })
+    await grantProductEntitlements(userId, lifetimeProduct.id, 'tx_lifetime_upgrade')
+
+    // hasEntitlement should accept the cleared expiresAt and grant access.
+    expect(await hasEntitlement({ payload, userId, courseId })).toBe(true)
+
+    await payload.delete({ collection: 'products', id: timeLimited.id, overrideAccess: true })
+    await payload.delete({ collection: 'products', id: lifetimeProduct.id, overrideAccess: true })
+    await payload.delete({ collection: 'product-items', id: courseItem.id, overrideAccess: true })
+  })
 })
 
 // ─── Stripe webhook route tests ──────────────────────────────────────────────

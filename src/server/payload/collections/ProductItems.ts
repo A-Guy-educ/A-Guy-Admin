@@ -29,26 +29,34 @@ export const ProductItems: CollectionConfig = {
   },
   hooks: {
     beforeValidate: [
-      ({ data }) => {
+      ({ data, originalDoc, operation }) => {
         if (!data) return data
-        const type = data.type
+        // On update, merge data over originalDoc so we catch stale cross-type
+        // fields. Example: an item created as `type='feature'` with `value=5`
+        // that gets switched to `type='lesson'` without explicitly clearing
+        // value — `data.value` is undefined but the persisted value is still 5.
+        const merged: Record<string, unknown> =
+          operation === 'update'
+            ? { ...(originalDoc as Record<string, unknown>), ...(data as Record<string, unknown>) }
+            : (data as Record<string, unknown>)
+        const type = merged.type
         // Cross-type field integrity: reject meaningful values for fields that
         // belong to a different `type`. Per-field `validate` cannot catch this
         // reliably because Payload may strip conditional field data before
         // validation runs. This hook sees the raw input.
         if (type !== 'course') {
-          if (Array.isArray(data.lessonTypes) && data.lessonTypes.length > 0) {
+          if (Array.isArray(merged.lessonTypes) && merged.lessonTypes.length > 0) {
             throw new Error('lessonTypes is only valid when type is course')
           }
         }
         if (type !== 'feature') {
-          if (typeof data.value === 'number') {
+          if (typeof merged.value === 'number') {
             throw new Error('value is only valid when type is feature')
           }
           // 'lifetime' is the field-level default and is allowed on any type
           // (Payload applies the default to every doc regardless of `condition`).
           // Reject only meaningful mismatches like period='day' on a lesson item.
-          if (typeof data.period === 'string' && data.period && data.period !== 'lifetime') {
+          if (typeof merged.period === 'string' && merged.period && merged.period !== 'lifetime') {
             throw new Error('period is only valid when type is feature')
           }
         }
