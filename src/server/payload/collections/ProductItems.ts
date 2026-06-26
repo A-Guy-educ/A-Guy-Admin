@@ -27,6 +27,35 @@ export const ProductItems: CollectionConfig = {
     useAsTitle: 'id',
     defaultColumns: ['type', 'lesson', 'featureKey', 'isHighlighted'],
   },
+  hooks: {
+    beforeValidate: [
+      ({ data }) => {
+        if (!data) return data
+        const type = data.type
+        // Cross-type field integrity: reject meaningful values for fields that
+        // belong to a different `type`. Per-field `validate` cannot catch this
+        // reliably because Payload may strip conditional field data before
+        // validation runs. This hook sees the raw input.
+        if (type !== 'course') {
+          if (Array.isArray(data.lessonTypes) && data.lessonTypes.length > 0) {
+            throw new Error('lessonTypes is only valid when type is course')
+          }
+        }
+        if (type !== 'feature') {
+          if (typeof data.value === 'number') {
+            throw new Error('value is only valid when type is feature')
+          }
+          // 'lifetime' is the field-level default and is allowed on any type
+          // (Payload applies the default to every doc regardless of `condition`).
+          // Reject only meaningful mismatches like period='day' on a lesson item.
+          if (typeof data.period === 'string' && data.period && data.period !== 'lifetime') {
+            throw new Error('period is only valid when type is feature')
+          }
+        }
+        return data
+      },
+    ],
+  },
   fields: [
     {
       name: 'type',

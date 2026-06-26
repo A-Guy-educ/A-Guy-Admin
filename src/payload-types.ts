@@ -520,6 +520,8 @@ export interface User {
   featureEntitlements?:
     | {
         key: string;
+        value?: number | null;
+        period?: ('day' | 'month' | 'lifetime') | null;
         transactionId?: string | null;
         grantedAt?: string | null;
         id?: string | null;
@@ -1876,7 +1878,7 @@ export interface Product {
    */
   currency: 'ILS' | 'USD' | 'EUR';
   /**
-   * תקופת גישה בימים מרגע הרכישה (השאר ריק לגישה ללא הגבלת זמן)
+   * תקופת גישה בימים מרגע הרכישה (השאר ריק לגישה ללא הגבלת זמן). שדה אחסון בלבד — האכיפה תיושם במשימה הבאה (B/#75).
    */
   durationDays?: number | null;
   /**
@@ -4424,6 +4426,8 @@ export interface UsersSelect<T extends boolean = true> {
     | T
     | {
         key?: T;
+        value?: T;
+        period?: T;
         transactionId?: T;
         grantedAt?: T;
         id?: T;

@@ -65,7 +65,11 @@ beforeAll(async () => {
     } as any,
   })
   studentUserId = student.id
-}, 180_000)
+  // 300s overrides the global 180s hookTimeout (vitest.config.mts). The 60s
+  // default was insufficient on cold-start machines where the first
+  // getPayload({ config }) call bootstraps the full collection graph;
+  // 180s also intermittently trips on a fully cold cache.
+}, 300_000)
 
 // ---------------------------------------------------------------------------
 // Cleanup
@@ -1276,5 +1280,93 @@ describe.skipIf(!hasDatabaseUrl)('Prep course product shape (Task A integration)
 
     const course = items.find((i) => i.type === 'course')
     expect(course).toBeDefined()
+  })
+})
+
+describe.skipIf(!hasDatabaseUrl)('Cross-type field validators (Task A review)', () => {
+  it('should reject lessonTypes on a non-course item', async () => {
+    const admin = await getAdminUser()
+
+    let validationError: Error | null = null
+    try {
+      await payload.create({
+        collection: 'product-items',
+        data: {
+          type: 'feature',
+          featureKey: 'certificate',
+          lessonTypes: ['learning'],
+        } as any,
+        user: admin as any,
+        overrideAccess: false,
+      })
+    } catch (e) {
+      validationError = e as Error
+    }
+
+    expect(validationError).not.toBeNull()
+  })
+
+  it('should reject value on a non-feature item', async () => {
+    const admin = await getAdminUser()
+    const lesson = await createTestLesson('Reject Value Lesson')
+
+    let validationError: Error | null = null
+    try {
+      await payload.create({
+        collection: 'product-items',
+        data: {
+          type: 'lesson',
+          lesson: lesson.id,
+          value: 5,
+        } as any,
+        user: admin as any,
+        overrideAccess: false,
+      })
+    } catch (e) {
+      validationError = e as Error
+    }
+
+    expect(validationError).not.toBeNull()
+  })
+
+  it('should reject period=day on a non-feature item', async () => {
+    const admin = await getAdminUser()
+    const lesson = await createTestLesson('Reject Period Lesson')
+
+    let validationError: Error | null = null
+    try {
+      await payload.create({
+        collection: 'product-items',
+        data: {
+          type: 'lesson',
+          lesson: lesson.id,
+          period: 'day',
+        } as any,
+        user: admin as any,
+        overrideAccess: false,
+      })
+    } catch (e) {
+      validationError = e as Error
+    }
+
+    expect(validationError).not.toBeNull()
+  })
+
+  it("should allow the default period='lifetime' on a non-feature item (it's the field default)", async () => {
+    const admin = await getAdminUser()
+    const lesson = await createTestLesson('Allow Lifetime Default Lesson')
+
+    const productItem = await payload.create({
+      collection: 'product-items',
+      data: {
+        type: 'lesson',
+        lesson: lesson.id,
+      } as any,
+      user: admin as any,
+      overrideAccess: false,
+    })
+    trackProductItem(productItem.id)
+
+    expect((productItem as any).period).toBe('lifetime')
   })
 })
