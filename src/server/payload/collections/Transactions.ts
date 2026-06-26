@@ -12,6 +12,7 @@ import type { CollectionConfig } from 'payload'
 import { adminOnly } from '../access/adminOnly'
 import { createdByField } from '../fields/createdBy'
 import { tenantField } from '../fields/tenant'
+import { revokeEntitlementsOnRefund } from './Transactions/hooks/revokeEntitlementsOnRefund-hook'
 import { statusTransitionGuard } from './Transactions/hooks/statusTransitionGuard-hook'
 import { syncPaymentStats } from './Transactions/hooks/syncPaymentStats-hook'
 
@@ -41,7 +42,7 @@ export const Transactions: CollectionConfig = {
   },
   hooks: {
     beforeChange: [statusTransitionGuard],
-    afterChange: [syncPaymentStats],
+    afterChange: [syncPaymentStats, revokeEntitlementsOnRefund],
   },
   fields: [
     tenantField,
