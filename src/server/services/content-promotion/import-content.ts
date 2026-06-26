@@ -148,9 +148,10 @@ async function uploadMediaWithFile(
       })
       report.created += 1
       if (wasRemapped) report.remapped += 1
-      const url = typeof (created as { url?: unknown }).url === 'string'
-        ? ((created as { url: string }).url)
-        : null
+      const url =
+        typeof (created as { url?: unknown }).url === 'string'
+          ? (created as { url: string }).url
+          : null
       return url
     } else {
       // No blob in the bundle — only `external` media can legitimately be

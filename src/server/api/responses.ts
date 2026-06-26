@@ -84,8 +84,7 @@ export const ApiErrors = {
   conflict: (message = 'Conflict') => apiError('CONFLICT', message, 409),
   unprocessable: (message = 'Unprocessable entity') =>
     apiError('UNPROCESSABLE_ENTITY', message, 422),
-  payloadTooLarge: (message = 'Payload too large') =>
-    apiError('PAYLOAD_TOO_LARGE', message, 413),
+  payloadTooLarge: (message = 'Payload too large') => apiError('PAYLOAD_TOO_LARGE', message, 413),
   internal: (message = 'Internal server error') => apiError('INTERNAL_ERROR', message, 500),
   rateLimited: (retryAfter?: string) => {
     const response = apiError('RATE_LIMITED', 'Rate limit exceeded. Please try again later.', 429)

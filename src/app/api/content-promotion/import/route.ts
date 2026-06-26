@@ -42,9 +42,7 @@ export async function POST(request: NextRequest): Promise<Response> {
       return apiError('BAD_REQUEST', 'Missing `bundle` file field', 400)
     }
     if (file.size > MAX_BUNDLE_BYTES) {
-      return ApiErrors.payloadTooLarge(
-        `Bundle exceeds ${MAX_BUNDLE_BYTES} bytes (${file.size})`,
-      )
+      return ApiErrors.payloadTooLarge(`Bundle exceeds ${MAX_BUNDLE_BYTES} bytes (${file.size})`)
     }
 
     const arrayBuffer = await file.arrayBuffer()
