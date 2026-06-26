@@ -1,8 +1,11 @@
 import type { Payload, PayloadRequest } from 'payload'
 import JSZip from 'jszip'
 
+import { getMediaBlobAdapter } from '@/infra/blob/vercel-blob-adapter'
+import { logger } from '@/infra/utils/logger'
 import { MANIFEST_FILENAME, PROMOTED_COLLECTIONS, PromotedCollection } from './constants'
 import { deepRewriteIds, generateNewId, IdRemap } from './id-remap'
+import { markRequestAsContentPromotionImport } from './import-context'
 import { BundleManifest, BundleManifestSchema, BundledMedia, ImportReport } from './types'
 
 interface ImportFailure {
@@ -105,7 +108,7 @@ async function uploadMediaWithFile(
   zip: JSZip,
   remap: IdRemap,
   report: CollectionReport,
-): Promise<void> {
+): Promise<string | null> {
   const { newDoc, finalId, wasRemapped } = applyRemapToDoc(
     bundled as unknown as Record<string, unknown>,
     'media',
@@ -130,7 +133,7 @@ async function uploadMediaWithFile(
           ? rest.mimeType
           : 'application/octet-stream'
 
-      await payload.create({
+      const created = await payload.create({
         collection: 'media',
         // eslint-disable-next-line @typescript-eslint/no-explicit-any -- bundle records are dynamic across collections
         data: rest as any,
@@ -143,6 +146,12 @@ async function uploadMediaWithFile(
         overrideAccess: true,
         req,
       })
+      report.created += 1
+      if (wasRemapped) report.remapped += 1
+      const url = typeof (created as { url?: unknown }).url === 'string'
+        ? ((created as { url: string }).url)
+        : null
+      return url
     } else {
       // No blob in the bundle — only `external` media can legitimately be
       // created without a file. For any other type, `validateMediaUpload`
@@ -156,7 +165,7 @@ async function uploadMediaWithFile(
           id: finalId,
           message: `Non-external media has no blob in bundle (type=${String(rest.type)})`,
         })
-        return
+        return null
       }
       await payload.create({
         collection: 'media',
@@ -165,9 +174,10 @@ async function uploadMediaWithFile(
         overrideAccess: true,
         req,
       })
+      report.created += 1
+      if (wasRemapped) report.remapped += 1
+      return null
     }
-    report.created += 1
-    if (wasRemapped) report.remapped += 1
   } catch (error) {
     report.failed += 1
     report.failures.push({
@@ -223,6 +233,11 @@ export async function importContent(
 
   const remap = await detectCollisionsAndBuildRemap(payload, req, manifest)
 
+  // Flag this request so the global id-on-create guard (payload.config.ts)
+  // lets the import's `data.id` pass through. Every other code path strips
+  // it; see import-context.ts for the rationale.
+  markRequestAsContentPromotionImport(req)
+
   // Wrap the entire import in a single transaction. `beginTransaction` returns
   // a session ID on a replica set (Atlas) and `undefined` on a single-node
   // setup; in the latter case the rollback/commit calls are no-ops and we
@@ -233,9 +248,23 @@ export async function importContent(
     ;(req as { transactionID?: string | number | undefined }).transactionID = transactionID
   }
 
+  // Blob uploads happen via `payload.create({ file })` and are NOT part of
+  // the DB transaction — Vercel Blob has no rollback. Track each successful
+  // upload's URL so we can delete the orphaned binaries if the transaction
+  // later rolls back.
+  const uploadedBlobUrls: string[] = []
+
   try {
     for (const bundled of manifest.collections.media) {
-      await uploadMediaWithFile(payload, req, bundled, zip, remap, report.perCollection.media)
+      const uploadedUrl = await uploadMediaWithFile(
+        payload,
+        req,
+        bundled,
+        zip,
+        remap,
+        report.perCollection.media,
+      )
+      if (uploadedUrl) uploadedBlobUrls.push(uploadedUrl)
       if (bundled.blobEntry) report.blobsUploaded += 1
     }
     for (const collection of PROMOTED_COLLECTIONS) {
@@ -258,6 +287,27 @@ export async function importContent(
   } catch (error) {
     if (transactionID && payload.db.rollbackTransaction) {
       await payload.db.rollbackTransaction(transactionID)
+    }
+    if (uploadedBlobUrls.length > 0) {
+      // Best-effort cleanup of orphaned binaries. Failures here are logged
+      // but do not mask the original import error; we always rethrow.
+      const blobAdapter = getMediaBlobAdapter()
+      const results = await Promise.allSettled(
+        uploadedBlobUrls.map((url) => blobAdapter.delete(url)),
+      )
+      const failedDeletes = results.filter(
+        (r) => r.status === 'rejected' || (r.status === 'fulfilled' && r.value === false),
+      ).length
+      if (failedDeletes > 0) {
+        logger.error(
+          {
+            failedDeletes,
+            totalAttempted: uploadedBlobUrls.length,
+            transactionID,
+          },
+          'content-promotion: failed to clean up some orphaned Vercel Blob binaries after import rollback',
+        )
+      }
     }
     throw error
   }

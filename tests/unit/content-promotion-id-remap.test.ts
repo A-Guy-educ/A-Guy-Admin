@@ -41,6 +41,19 @@ describe('IdRemap', () => {
     remap.set('lessons', 'b', 'b2')
     expect(remap.size()).toBe(2)
   })
+
+  it('throws when the same source id is remapped to two different new ids across collections', () => {
+    const remap = new IdRemap()
+    remap.set('courses', 'sharedId', 'newA')
+    expect(() => remap.set('lessons', 'sharedId', 'newB')).toThrow(/IdRemap collision/)
+  })
+
+  it('is a no-op when the same (collection, oldId, newId) triple is set twice', () => {
+    const remap = new IdRemap()
+    remap.set('courses', 'sharedId', 'newA')
+    expect(() => remap.set('courses', 'sharedId', 'newA')).not.toThrow()
+    expect(remap.size()).toBe(1)
+  })
 })
 
 describe('deepRewriteIds', () => {

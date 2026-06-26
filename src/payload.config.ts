@@ -48,6 +48,7 @@ import { UserProgress } from '@/server/payload/collections/UserProgress'
 import { Users } from '@/server/payload/collections/Users'
 import { UserSettings } from '@/server/payload/collections/UserSettings'
 import { UserStats } from '@/server/payload/collections/UserStats'
+import { withIdOnCreateGuard } from '@/server/services/content-promotion/import-context'
 import { generateSupportEndpoint } from '@/server/payload/endpoints/exercises/generate-support'
 import { importExerciseFromImage } from '@/server/payload/endpoints/exercises/import-from-image'
 import { importExerciseFromLatex } from '@/server/payload/endpoints/exercises/import-from-latex'
@@ -160,6 +161,10 @@ export default buildConfig({
     // document IDs through `payload.create({ data: { id } })` so cross-document
     // references inside the bundle resolve without a remap when no collision
     // exists on the target environment.
+    // Scoped at runtime by `withIdOnCreateGuard` below: every collection
+    // strips `data.id` on create unless the request is flagged by
+    // `markRequestAsContentPromotionImport`. Net effect: behaves as if
+    // `allowIDOnCreate: false` for every code path except the import service.
     allowIDOnCreate: true,
     connectOptions: {
       // ⚠️ CONNECTION POOL GUARDRAIL — DO NOT increase without updating the guardrail test
@@ -237,7 +242,7 @@ export default buildConfig({
     PaymentStats,
     WebhookEvents,
     MCPAuditLogs,
-  ],
+  ].map(withIdOnCreateGuard),
   cors: [getServerSideURL()].filter(Boolean),
   globals: [Header, Footer],
   plugins,
