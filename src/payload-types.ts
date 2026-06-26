@@ -1876,6 +1876,14 @@ export interface Product {
    */
   currency: 'ILS' | 'USD' | 'EUR';
   /**
+   * תקופת גישה בימים מרגע הרכישה (השאר ריק לגישה ללא הגבלת זמן)
+   */
+  durationDays?: number | null;
+  /**
+   * מספר מקסימלי של מכשירים למשתמש (השאר ריק = ללא הגבלה). שדה לתצורה בלבד — האכיפה אינה מיושמת.
+   */
+  maxDevices?: number | null;
+  /**
    * בחר את פריטי המוצר (שיעורים ותכונות)
    */
   items?: (string | ProductItem)[] | null;
@@ -1897,17 +1905,33 @@ export interface Product {
 export interface ProductItem {
   id: string;
   /**
-   * בחר את סוג הפריט: שיעור מהמערכת או תכונה מוגדרת
+   * בחר את סוג הפריט: שיעור בודד, קורס שלם, או תכונה מוגדרת
    */
-  type: 'lesson' | 'feature';
+  type: 'lesson' | 'course' | 'feature';
   /**
    * בחר את השיעור להוספה למוצר
    */
   lesson?: (string | null) | Lesson;
   /**
+   * בחר את הקורס. כל השיעורים בקורס ייכללו (מסוננים לפי lessonTypes אם הוגדר)
+   */
+  course?: (string | null) | Course;
+  /**
+   * סוגי שיעורים שייכללו (השאר ריק = כל הסוגים)
+   */
+  lessonTypes?: ('learning' | 'practice' | 'exam')[] | null;
+  /**
    * מזהה התכונה (לדוגמה: certificate, live-sessions)
    */
   featureKey?: string | null;
+  /**
+   * ערך מספרי לתכונה (לדוגמה: 5 עבור 5 שאלות ביום). השאר ריק לתכונה ללא מגבלת כמות.
+   */
+  value?: number | null;
+  /**
+   * תקופת איפוס המגבלה. ברירת מחדל "לכל החיים" עבור תכונות ללא מגבלת זמן.
+   */
+  period?: ('day' | 'month' | 'lifetime') | null;
   /**
    * סמן אם יש להדגיש פריט זה בממשק המשתמש
    */
@@ -4627,7 +4651,11 @@ export interface PricingPlansSelect<T extends boolean = true> {
 export interface ProductItemsSelect<T extends boolean = true> {
   type?: T;
   lesson?: T;
+  course?: T;
+  lessonTypes?: T;
   featureKey?: T;
+  value?: T;
+  period?: T;
   isHighlighted?: T;
   createdBy?: T;
   updatedAt?: T;
@@ -4645,6 +4673,8 @@ export interface ProductsSelect<T extends boolean = true> {
   interval?: T;
   price?: T;
   currency?: T;
+  durationDays?: T;
+  maxDevices?: T;
   items?: T;
   isActive?: T;
   createdBy?: T;
