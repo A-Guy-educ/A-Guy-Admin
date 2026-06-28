@@ -43,14 +43,14 @@ export interface ExportContentOptions {
  */
 const STRIPPED_FIELDS = new Set(['_id', 'createdAt', 'updatedAt', 'sizes', 'thumbnailURL'])
 
-const STRIPPED_MEDIA_FIELDS = new Set([
-  'filename',
-  'mimeType',
-  'filesize',
-  'url',
-  'width',
-  'height',
-])
+// `filename` and `mimeType` are KEPT in the bundle because the import side
+// passes them to `payload.create({ file: { name, mimetype } })` — without
+// them the upload falls back to `<id>.bin` + `application/octet-stream`,
+// which makes Vercel Blob store the file under a `.bin` extension and the
+// admin UI render it as a generic blob instead of an image/pdf/video.
+// `url`/`filesize`/`width`/`height` ARE stripped — they're recomputed by
+// the Vercel Blob plugin from the freshly-uploaded file on the target.
+const STRIPPED_MEDIA_FIELDS = new Set(['url', 'filesize', 'width', 'height'])
 
 function stripDoc(
   doc: Record<string, unknown>,
