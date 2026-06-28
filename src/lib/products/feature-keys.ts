@@ -6,6 +6,15 @@
  * @domain billing
  */
 
+/**
+ * Enforcement status:
+ *  - `ai-questions`, `chat-limit` — wired through feature-quota.ts;
+ *    per-day enforcement is live.
+ *  - All other keys are metadata-only at the moment: they appear in the
+ *    admin and on featureEntitlements rows, but no runtime gate consumes
+ *    them. Wire a FIELD_NAMES counter in feature-quota.ts before relying
+ *    on a per-day cap for any of them.
+ */
 export const FEATURE_KEYS = [
   'live-sessions',
   'download-resources',

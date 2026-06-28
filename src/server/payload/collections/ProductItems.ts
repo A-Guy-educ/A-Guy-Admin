@@ -48,6 +48,18 @@ export const ProductItems: CollectionConfig = {
           if (Array.isArray(merged.lessonTypes) && merged.lessonTypes.length > 0) {
             throw new Error('lessonTypes is only valid when type is course')
           }
+          if (merged.course) {
+            throw new Error(
+              'course relationship is only valid when type is course; clear it on type change',
+            )
+          }
+        }
+        if (type !== 'lesson') {
+          if (merged.lesson) {
+            throw new Error(
+              'lesson relationship is only valid when type is lesson; clear it on type change',
+            )
+          }
         }
         if (type !== 'feature') {
           if (typeof merged.value === 'number') {

@@ -539,6 +539,22 @@ export interface User {
    * When the current chat quota window started
    */
   chatWindowStart?: string | null;
+  /**
+   * AI questions used in the current Asia/Jerusalem day
+   */
+  aiQuestionsUsedDay?: number | null;
+  /**
+   * YYYY-MM-DD bucket (Asia/Jerusalem) for aiQuestionsUsedDay
+   */
+  aiQuestionsBucketDay?: string | null;
+  /**
+   * Chat messages used in the current Asia/Jerusalem day (silent cap)
+   */
+  chatLimitUsedDay?: number | null;
+  /**
+   * YYYY-MM-DD bucket (Asia/Jerusalem) for chatLimitUsedDay
+   */
+  chatLimitBucketDay?: string | null;
   oauthLoginSecretEnc?: string | null;
   updatedAt: string;
   createdAt: string;
@@ -1882,7 +1898,7 @@ export interface Product {
    */
   currency: 'ILS' | 'USD' | 'EUR';
   /**
-   * תקופת גישה בימים מרגע הרכישה (השאר ריק לגישה ללא הגבלת זמן). שדה אחסון בלבד — האכיפה תיושם במשימה הבאה (B/#75).
+   * תקופת גישה בימים מרגע הרכישה (השאר ריק לגישה ללא הגבלת זמן). מוחל אוטומטית על Enrollments בעת רכישה.
    */
   durationDays?: number | null;
   /**
@@ -1923,7 +1939,7 @@ export interface ProductItem {
    */
   course?: (string | null) | Course;
   /**
-   * סוגי שיעורים שייכללו (השאר ריק = כל הסוגים)
+   * סוגי שיעורים שייכללו (השאר ריק = כל הסוגים). ⚠️ מטא־דאטה בלבד — Enrollments מעניק כיום גישה לקורס כולו ללא קשר לערך זה.
    */
   lessonTypes?: ('learning' | 'practice' | 'exam')[] | null;
   /**
@@ -4439,6 +4455,10 @@ export interface UsersSelect<T extends boolean = true> {
       };
   chatQuestionsUsed?: T;
   chatWindowStart?: T;
+  aiQuestionsUsedDay?: T;
+  aiQuestionsBucketDay?: T;
+  chatLimitUsedDay?: T;
+  chatLimitBucketDay?: T;
   oauthLoginSecretEnc?: T;
   updatedAt?: T;
   createdAt?: T;
