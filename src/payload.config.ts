@@ -113,11 +113,13 @@ export default buildConfig({
       // The `BeforeLogin` component renders a message that you see while logging into your admin panel.
       // Feel free to delete this at any time. Simply remove the line below.
       beforeLogin: ['@/ui/admin/BeforeLogin'],
-      // The `BeforeDashboard` component renders the 'welcome' block that you see after logging into your admin panel.
-      // Feel free to delete this at any time. Simply remove the line below.
-      beforeDashboard: ['@/ui/admin/ConversionTracking/DashboardWidgets'],
+      // Dashboard widgets used to render here (`beforeDashboard`) — every
+      // /admin landing hit fanned out ~30 collection reads through a 3-slot
+      // pool. Moved to a dedicated /admin/statistics page so the landing
+      // page stays cheap and admins opt in to the metrics view.
       afterDashboard: ['@/ui/admin/VersionInfo'],
       beforeNavLinks: [
+        '@/ui/admin/Statistics/SidebarLink',
         '@/ui/admin/PdfConversion/SidebarLink',
         '@/ui/admin/LessonDuplicationReview/SidebarLink',
         '@/ui/admin/LessonJsonImport/SidebarLink',
