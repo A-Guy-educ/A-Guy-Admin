@@ -178,6 +178,10 @@ export const Users: CollectionConfig = {
           required: true,
           admin: { readOnly: true },
         },
+        // value/period/expiresAt are populated by Task B/C grants and may be
+        // absent on pre-refactor rows. Defensive reads live in
+        // resolveFeatureEntitlement (feature-quota.ts) — keep the typeof
+        // guards there even when the schema looks complete.
         {
           name: 'value',
           type: 'number',

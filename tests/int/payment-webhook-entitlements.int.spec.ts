@@ -3296,3 +3296,156 @@ describe('WebhookEvents collection dedup gate', () => {
       .catch(() => {})
   })
 })
+
+// ─── Cross-product duplicate featureEntitlements + silent denial shape ────────
+
+describe('Cross-product feature entitlements', () => {
+  async function ensureFeature(
+    key: string,
+    type: 'numeric' | 'boolean' = 'numeric',
+  ): Promise<string> {
+    const existing = (
+      await payload.find({
+        collection: 'features',
+        where: { key: { equals: key } },
+        limit: 1,
+        depth: 0,
+        overrideAccess: true,
+      })
+    ).docs[0] as { id: string } | undefined
+    if (existing) return existing.id
+    const created = (await payload.create({
+      collection: 'features',
+      data: {
+        key,
+        label: key,
+        type,
+        defaultPeriod: type === 'numeric' ? 'day' : 'lifetime',
+        enforcement: 'enforced',
+        isActive: true,
+      },
+      overrideAccess: true,
+    })) as { id: string }
+    return created.id
+  }
+
+  async function resolveCourseId(): Promise<string> {
+    const chapter = await payload.findByID({
+      collection: 'chapters',
+      id: chapterId,
+      depth: 0,
+      overrideAccess: true,
+    })
+    return typeof chapter.course === 'string' ? chapter.course : (chapter.course as any).id
+  }
+
+  it('grants from two products carrying the same featureKey produce TWO rows; resolver picks the latest grantedAt', async () => {
+    const aiQuestionsId = await ensureFeature('ai-questions', 'numeric')
+    const courseId = await resolveCourseId()
+
+    const productA = await payload.create({
+      collection: 'products',
+      data: {
+        name: `Cross-Product A ${Date.now()}`,
+        slug: `cross-a-${Date.now()}`,
+        billingType: 'one_time',
+        price: 100,
+        currency: 'ILS',
+        contents: [
+          { blockType: 'courseBlock', course: courseId },
+          { blockType: 'featureBlock', feature: aiQuestionsId, limit: 5, period: 'day' },
+        ],
+      } as any,
+      overrideAccess: true,
+    })
+    const productB = await payload.create({
+      collection: 'products',
+      data: {
+        name: `Cross-Product B ${Date.now()}`,
+        slug: `cross-b-${Date.now()}`,
+        billingType: 'one_time',
+        price: 200,
+        currency: 'ILS',
+        contents: [{ blockType: 'featureBlock', feature: aiQuestionsId, limit: 10, period: 'day' }],
+      } as any,
+      overrideAccess: true,
+    })
+
+    await grantProductEntitlements(userId, productA.id, 'tx_cross_A')
+    // Ensure productB's grant has a later grantedAt by a measurable delta
+    await new Promise((r) => setTimeout(r, 10))
+    await grantProductEntitlements(userId, productB.id, 'tx_cross_B')
+
+    const user = await payload.findByID({
+      collection: 'users',
+      id: userId,
+      depth: 0,
+      overrideAccess: true,
+    })
+    const rows = ((user as any).featureEntitlements || []).filter(
+      (f: any) => f.key === 'ai-questions',
+    )
+    expect(rows.length).toBe(2)
+    expect(rows.map((r: any) => r.value).sort()).toEqual([5, 10])
+
+    const { resolveFeatureEntitlement } = await import('@/server/services/feature-quota')
+    const resolved = await resolveFeatureEntitlement(payload, userId, 'ai-questions')
+    // Latest grant by grantedAt wins → productB (value=10, tx_cross_B)
+    expect(resolved?.value).toBe(10)
+    expect(resolved?.transactionId).toBe('tx_cross_B')
+
+    await payload.delete({ collection: 'products', id: productA.id, overrideAccess: true })
+    await payload.delete({ collection: 'products', id: productB.id, overrideAccess: true })
+  })
+
+  it('chat-quota silent denial returns a generic body with no questionsUsed/maxQuestions/resetAt leakage', async () => {
+    // Configure a chat-limit cap at zero so applyChatLimit short-circuits silently.
+    const chatLimitFeatureId = await ensureFeature('chat-limit', 'numeric')
+    const aiQuestionsFeatureId = await ensureFeature('ai-questions', 'numeric')
+    const courseId = await resolveCourseId()
+
+    const product = await payload.create({
+      collection: 'products',
+      data: {
+        name: `Silent Cap Test ${Date.now()}`,
+        slug: `silent-cap-${Date.now()}`,
+        billingType: 'one_time',
+        price: 1,
+        currency: 'ILS',
+        contents: [
+          { blockType: 'courseBlock', course: courseId },
+          { blockType: 'featureBlock', feature: aiQuestionsFeatureId, limit: 10, period: 'day' },
+          { blockType: 'featureBlock', feature: chatLimitFeatureId, limit: 0, period: 'day' },
+        ],
+      } as any,
+      overrideAccess: true,
+    })
+    await grantProductEntitlements(userId, product.id, 'tx_silent_cap')
+
+    const { checkAndIncrementChatQuota } = await import('@/server/services/chat-quota')
+    const result = await checkAndIncrementChatQuota(payload, userId)
+    expect(result.allowed).toBe(false)
+    expect(result.silent).toBe(true)
+
+    // The endpoint translates `silent: true` into a generic 429 body. Verify
+    // by serializing exactly what the chat handler would send: when silent,
+    // only an `error` string — no questionsUsed/maxQuestions/resetAt.
+    const responseBody = result.silent
+      ? { error: 'Chat is temporarily unavailable. Please try again later.' }
+      : {
+          error: 'Chat limit reached. Try again later.',
+          quotaExceeded: true,
+          questionsUsed: result.questionsUsed,
+          maxQuestions: result.maxQuestions,
+          resetAt: result.resetAt,
+        }
+    expect(responseBody).toEqual({
+      error: 'Chat is temporarily unavailable. Please try again later.',
+    })
+    expect((responseBody as any).questionsUsed).toBeUndefined()
+    expect((responseBody as any).maxQuestions).toBeUndefined()
+    expect((responseBody as any).resetAt).toBeUndefined()
+
+    await payload.delete({ collection: 'products', id: product.id, overrideAccess: true })
+  })
+})

@@ -14,6 +14,7 @@
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { AccountRole } from '@/server/payload/collections/Users/roles'
+import { queryProductBySlug } from '@/server/repos/queries/products'
 import config from '@payload-config'
 import type { Payload } from 'payload'
 import { getPayload } from 'payload'
@@ -451,6 +452,80 @@ describe.skipIf(!hasDatabaseUrl)('Products.contents blocks', () => {
     expect(err).not.toBeNull()
   })
 
+  it('rejects a numeric featureBlock without a limit (silent unlimited guard)', async () => {
+    const admin = await getAdminUser()
+    const numericFeatureId = await createFeature(`ft-numeric-${Date.now()}`, {
+      type: 'numeric',
+      defaultPeriod: 'day',
+    })
+
+    let err: Error | null = null
+    try {
+      await payload.create({
+        collection: 'products',
+        data: {
+          name: 'Bad Numeric Feature',
+          billingType: 'one_time',
+          price: 50,
+          currency: 'ILS',
+          contents: [{ blockType: 'featureBlock', feature: numericFeatureId, period: 'day' }],
+        } as any,
+        user: admin as any,
+        overrideAccess: false,
+      })
+    } catch (e) {
+      err = e as Error
+    }
+    expect(err).not.toBeNull()
+    expect(String(err)).toMatch(/numeric feature requires a limit/i)
+  })
+
+  it('rejects a boolean featureBlock that carries a limit or non-default period', async () => {
+    const admin = await getAdminUser()
+    const boolFeatureId = await createFeature(`ft-bool-${Date.now()}`, {
+      type: 'boolean',
+      defaultPeriod: 'lifetime',
+    })
+
+    let limitErr: Error | null = null
+    try {
+      await payload.create({
+        collection: 'products',
+        data: {
+          name: 'Bad Boolean Feature (limit)',
+          billingType: 'one_time',
+          price: 50,
+          currency: 'ILS',
+          contents: [{ blockType: 'featureBlock', feature: boolFeatureId, limit: 5 }],
+        } as any,
+        user: admin as any,
+        overrideAccess: false,
+      })
+    } catch (e) {
+      limitErr = e as Error
+    }
+    expect(limitErr).not.toBeNull()
+
+    let periodErr: Error | null = null
+    try {
+      await payload.create({
+        collection: 'products',
+        data: {
+          name: 'Bad Boolean Feature (period)',
+          billingType: 'one_time',
+          price: 50,
+          currency: 'ILS',
+          contents: [{ blockType: 'featureBlock', feature: boolFeatureId, period: 'day' }],
+        } as any,
+        user: admin as any,
+        overrideAccess: false,
+      })
+    } catch (e) {
+      periodErr = e as Error
+    }
+    expect(periodErr).not.toBeNull()
+  })
+
   it('composes the full הכנה לכיתה ז prep-course shape end-to-end', async () => {
     const admin = await getAdminUser()
     const courseId = await createTestCourse('Prep 7th Grade')
@@ -489,5 +564,47 @@ describe.skipIf(!hasDatabaseUrl)('Products.contents blocks', () => {
     expect(blocks.length).toBe(3)
     expect(blocks.filter((b) => b.blockType === 'featureBlock').length).toBe(2)
     expect(blocks.filter((b) => b.blockType === 'courseBlock').length).toBe(1)
+  })
+
+  it('queryProductBySlug populates course.title and feature.label at depth=2', async () => {
+    const admin = await getAdminUser()
+    const courseId = await createTestCourse('Depth Test Course')
+    const aiQuestionsId = await createFeature('ai-questions')
+    const ts = Date.now()
+
+    const product = await payload.create({
+      collection: 'products',
+      data: {
+        name: `Depth Test ${ts}`,
+        slug: `depth-test-${ts}`,
+        billingType: 'one_time',
+        price: 300,
+        currency: 'ILS',
+        isActive: true,
+        contents: [
+          { blockType: 'courseBlock', course: courseId },
+          { blockType: 'featureBlock', feature: aiQuestionsId, limit: 5, period: 'day' },
+        ],
+      } as any,
+      user: admin as any,
+      overrideAccess: false,
+    })
+    createdProductIds.push(product.id)
+
+    const queried = await queryProductBySlug({ slug: product.slug! })
+    expect(queried).not.toBeNull()
+
+    const blocks = (queried as any).contents as any[]
+    const courseBlock = blocks.find((b) => b.blockType === 'courseBlock')
+    const featureBlock = blocks.find((b) => b.blockType === 'featureBlock')
+    expect(courseBlock).toBeDefined()
+    expect(featureBlock).toBeDefined()
+
+    // depth=2 must populate the related Course's title (storefront consumes it).
+    expect(typeof courseBlock.course?.title).toBe('string')
+    expect(courseBlock.course.title.length).toBeGreaterThan(0)
+    // depth=2 must populate the related Feature's label (admin + storefront).
+    expect(typeof featureBlock.feature?.label).toBe('string')
+    expect(featureBlock.feature.label.length).toBeGreaterThan(0)
   })
 })

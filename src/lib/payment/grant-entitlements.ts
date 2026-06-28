@@ -145,6 +145,14 @@ export async function grantProductEntitlements(
       }
       if (!key) continue
 
+      // Period fallback ladder: block override → feature defaultPeriod →
+      // 'lifetime'. The schema's defaultValue: 'day' on the block means new
+      // products always supply a valid period, so the 'lifetime' tail is
+      // only reachable via API/manual writes with an unknown period string.
+      // The combination (numeric limit + period='lifetime') would collapse
+      // to "unlimited" at feature-quota.ts; the Products beforeValidate hook
+      // rejects numeric featureBlocks without a limit, which keeps that
+      // pathway closed for admin-driven writes.
       const blockPeriod = block.period
       const resolvedPeriod: FeaturePeriod =
         blockPeriod === 'day' || blockPeriod === 'month' || blockPeriod === 'lifetime'

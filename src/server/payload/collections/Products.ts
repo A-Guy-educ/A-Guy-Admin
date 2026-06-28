@@ -23,6 +23,71 @@ export const Products: CollectionConfig = {
     read: anyone,
   },
   hooks: {
+    beforeValidate: [
+      async ({ data, req }) => {
+        if (!data?.contents || !Array.isArray(data.contents)) return data
+        // Validate featureBlock invariants against the referenced Feature row.
+        // Numeric features REQUIRE a limit (otherwise the runtime quota
+        // checker returns allowed: true / Infinity — a silent unlimited
+        // grant). Boolean features should not carry a meaningful limit or
+        // a non-default period; reject both to prevent confusing data and
+        // misleading admin UI.
+        for (const block of data.contents as Array<Record<string, unknown>>) {
+          if (block?.blockType !== 'featureBlock') continue
+          const featureRef = block.feature
+          if (!featureRef) continue // required-field check handles this
+
+          const featureId =
+            typeof featureRef === 'string' ? featureRef : (featureRef as { id?: string }).id
+          if (!featureId) continue
+
+          let featureType: string | null = null
+          if (typeof featureRef === 'object' && 'type' in featureRef) {
+            featureType = (featureRef as { type?: string }).type ?? null
+          }
+          if (!featureType) {
+            try {
+              const fetched = await req.payload.findByID({
+                collection: 'features',
+                id: featureId,
+                depth: 0,
+                overrideAccess: true,
+                req,
+              })
+              featureType = (fetched as { type?: string })?.type ?? null
+            } catch {
+              // Missing Feature row — surface as a different error so the
+              // admin sees "feature not found" rather than a confusing
+              // limit/period validation.
+              throw new Error(`featureBlock points at a missing Feature (${featureId}).`)
+            }
+          }
+
+          const limit = block.limit
+          const period = block.period
+
+          if (featureType === 'numeric') {
+            if (typeof limit !== 'number') {
+              throw new Error(
+                'featureBlock: numeric feature requires a limit. Without one, the runtime grants unlimited usage.',
+              )
+            }
+          } else if (featureType === 'boolean') {
+            if (typeof limit === 'number') {
+              throw new Error(
+                'featureBlock: boolean feature must not have a limit. Limits only make sense for numeric features.',
+              )
+            }
+            if (typeof period === 'string' && period && period !== 'lifetime') {
+              throw new Error(
+                'featureBlock: boolean feature cannot have a per-day/per-month period. Boolean features are simple unlocks.',
+              )
+            }
+          }
+        }
+        return data
+      },
+    ],
     beforeChange: [
       async ({ data, operation, originalDoc, req }) => {
         if (!data) return data

@@ -164,9 +164,18 @@ export async function seedFeatures(payload: Payload): Promise<void> {
   }
 }
 
-export function runSeedFeaturesOnInit(payload: Payload): void {
-  // Fire-and-forget so payload init isn't blocked by the seed.
-  void seedFeatures(payload).catch((error) => {
+/**
+ * Awaitable wrapper for the on-init seed. Errors are logged AND rethrown so a
+ * silent seed failure can't leave a new environment without the catalog
+ * entries that grant-entitlements relies on. Callers in payload.config.ts's
+ * onInit must `await` this — fire-and-forget here would let production boot
+ * with a half-populated catalog and quietly under-grant new purchases.
+ */
+export async function runSeedFeaturesOnInit(payload: Payload): Promise<void> {
+  try {
+    await seedFeatures(payload)
+  } catch (error) {
     payload.logger.error({ err: error }, '[FeaturesSeed] Failed to seed features')
-  })
+    throw error
+  }
 }

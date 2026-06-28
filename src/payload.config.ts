@@ -412,6 +412,6 @@ export default buildConfig({
     await runPopulateLessonBlocksOnInit(payload)
     await runLocalizeTeacherProfilesOnInit(payload)
     await seedTeacherProfiles(payload)
-    runSeedFeaturesOnInit(payload)
+    await runSeedFeaturesOnInit(payload)
   },
 })

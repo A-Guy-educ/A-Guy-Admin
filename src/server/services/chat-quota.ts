@@ -75,6 +75,13 @@ async function chatLimitPreCheck(
   payload: Payload,
   userId: string,
 ): Promise<{ entitlement: FeatureEntitlement; shouldDeny: boolean } | null> {
+  // The entitlement resolved here is reused by spendChatLimitAfterPrior so we
+  // don't re-read the user document twice. Tiny race window: if a refund hook
+  // fires between pre-check and consume, we'd be enforcing a silent cap
+  // against an entitlement the user no longer holds. Worst case is one extra
+  // silent denial — fail-stricter, not a security issue. Do not "fix" by
+  // re-resolving inside the consume step; that just introduces a different
+  // race and removes the entitlement-capture invariant.
   const entitlement = await resolveFeatureEntitlement(payload, userId, 'chat-limit')
   if (!entitlement || entitlement.value === null) return null
   const status = await getFeatureQuotaStatus(payload, userId, 'chat-limit', entitlement)
