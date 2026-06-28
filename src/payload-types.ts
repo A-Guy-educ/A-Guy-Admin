@@ -524,6 +524,10 @@ export interface User {
         period?: ('day' | 'month' | 'lifetime') | null;
         transactionId?: string | null;
         grantedAt?: string | null;
+        /**
+         * When this feature entitlement expires. Mirrors the parent Enrollment expiry when the source product has durationDays; null = lifetime.
+         */
+        expiresAt?: string | null;
         id?: string | null;
       }[]
     | null;
@@ -4430,6 +4434,7 @@ export interface UsersSelect<T extends boolean = true> {
         period?: T;
         transactionId?: T;
         grantedAt?: T;
+        expiresAt?: T;
         id?: T;
       };
   chatQuestionsUsed?: T;

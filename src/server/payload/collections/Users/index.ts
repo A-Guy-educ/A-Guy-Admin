@@ -204,6 +204,15 @@ export const Users: CollectionConfig = {
           defaultValue: () => new Date().toISOString(),
           admin: { readOnly: true },
         },
+        {
+          name: 'expiresAt',
+          type: 'date',
+          admin: {
+            readOnly: true,
+            description:
+              'When this feature entitlement expires. Mirrors the parent Enrollment expiry when the source product has durationDays; null = lifetime.',
+          },
+        },
       ],
     },
     // Chat quota fields (rolling window)
