@@ -31,15 +31,24 @@ export async function revokeProductEntitlements({
 }: RevokeParams): Promise<void> {
   // 1. Cancel matching Enrollments. Match on (user, metadata.paymentId)
   // because Enrollments persist a transactionId in `metadata.paymentId`.
+  // `pagination: false` so we don't silently drop matches past an arbitrary
+  // page size — one transaction usually grants one enrollment, but the
+  // hard cap was a silent failure mode that a re-run wouldn't recover.
   const enrollments = await payload.find({
     collection: 'enrollments',
     where: {
       and: [{ user: { equals: userId } }, { 'metadata.paymentId': { equals: transactionId } }],
     },
-    limit: 100,
+    pagination: false,
     depth: 0,
     overrideAccess: true,
   })
+  if (enrollments.docs.length > 25) {
+    payload.logger.warn(
+      { userId, transactionId, count: enrollments.docs.length },
+      'revokeProductEntitlements: revoking an unusually large number of enrollments for a single transaction',
+    )
+  }
 
   for (const enrollment of enrollments.docs) {
     if ((enrollment as { status?: string }).status === 'cancelled') continue

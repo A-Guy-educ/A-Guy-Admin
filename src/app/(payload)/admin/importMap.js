@@ -48,7 +48,6 @@ import { MediaPreview as MediaPreview_4b980c9a407724ef7c1755e3482d0258 } from '@
 import { HorizontalRuleFeatureClient as HorizontalRuleFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { BlocksFeatureClient as BlocksFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { MetaImageComponent as MetaImageComponent_a8a977ebc872c5d5ea7ee689724c0860 } from '@payloadcms/plugin-seo/client'
-import { TypeBadgeCell as TypeBadgeCell_13c62dfd4a04ae34ea0273393121f596 } from '@/ui/admin/ProductItems/TypeBadgeCell'
 import { ProductsSaveButton as ProductsSaveButton_bd850752e7866f72b743e2e0c1b129f0 } from '@/ui/admin/Products/SaveButton'
 import { ProductsEditView as ProductsEditView_ff3c2128c868d33a5de1972e5b7e8f8a } from '@/ui/admin/Products/EditView'
 import { TransactionStatusCell as TransactionStatusCell_6b7b08e7fddc3ba187c2fa7390e3cb99 } from '@/ui/admin/TransactionStatusCell'
@@ -120,7 +119,6 @@ export const importMap = {
   "@payloadcms/richtext-lexical/client#HorizontalRuleFeatureClient": HorizontalRuleFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "@payloadcms/richtext-lexical/client#BlocksFeatureClient": BlocksFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "@payloadcms/plugin-seo/client#MetaImageComponent": MetaImageComponent_a8a977ebc872c5d5ea7ee689724c0860,
-  "@/ui/admin/ProductItems/TypeBadgeCell#TypeBadgeCell": TypeBadgeCell_13c62dfd4a04ae34ea0273393121f596,
   "@/ui/admin/Products/SaveButton#ProductsSaveButton": ProductsSaveButton_bd850752e7866f72b743e2e0c1b129f0,
   "@/ui/admin/Products/EditView#ProductsEditView": ProductsEditView_ff3c2128c868d33a5de1972e5b7e8f8a,
   "@/ui/admin/TransactionStatusCell#TransactionStatusCell": TransactionStatusCell_6b7b08e7fddc3ba187c2fa7390e3cb99,

@@ -23,6 +23,71 @@ export const Products: CollectionConfig = {
     read: anyone,
   },
   hooks: {
+    beforeValidate: [
+      async ({ data, req }) => {
+        if (!data?.contents || !Array.isArray(data.contents)) return data
+        // Validate featureBlock invariants against the referenced Feature row.
+        // Numeric features REQUIRE a limit (otherwise the runtime quota
+        // checker returns allowed: true / Infinity — a silent unlimited
+        // grant). Boolean features should not carry a meaningful limit or
+        // a non-default period; reject both to prevent confusing data and
+        // misleading admin UI.
+        for (const block of data.contents as Array<Record<string, unknown>>) {
+          if (block?.blockType !== 'featureBlock') continue
+          const featureRef = block.feature
+          if (!featureRef) continue // required-field check handles this
+
+          const featureId =
+            typeof featureRef === 'string' ? featureRef : (featureRef as { id?: string }).id
+          if (!featureId) continue
+
+          let featureType: string | null = null
+          if (typeof featureRef === 'object' && 'type' in featureRef) {
+            featureType = (featureRef as { type?: string }).type ?? null
+          }
+          if (!featureType) {
+            try {
+              const fetched = await req.payload.findByID({
+                collection: 'features',
+                id: featureId,
+                depth: 0,
+                overrideAccess: true,
+                req,
+              })
+              featureType = (fetched as { type?: string })?.type ?? null
+            } catch {
+              // Missing Feature row — surface as a different error so the
+              // admin sees "feature not found" rather than a confusing
+              // limit/period validation.
+              throw new Error(`featureBlock points at a missing Feature (${featureId}).`)
+            }
+          }
+
+          const limit = block.limit
+          const period = block.period
+
+          if (featureType === 'numeric') {
+            if (typeof limit !== 'number') {
+              throw new Error(
+                'featureBlock: numeric feature requires a limit. Without one, the runtime grants unlimited usage.',
+              )
+            }
+          } else if (featureType === 'boolean') {
+            if (typeof limit === 'number') {
+              throw new Error(
+                'featureBlock: boolean feature must not have a limit. Limits only make sense for numeric features.',
+              )
+            }
+            if (typeof period === 'string' && period && period !== 'lifetime') {
+              throw new Error(
+                'featureBlock: boolean feature cannot have a per-day/per-month period. Boolean features are simple unlocks.',
+              )
+            }
+          }
+        }
+        return data
+      },
+    ],
     beforeChange: [
       async ({ data, operation, originalDoc, req }) => {
         if (!data) return data
@@ -173,13 +238,93 @@ export const Products: CollectionConfig = {
       },
     },
     {
-      name: 'items',
-      type: 'relationship',
-      relationTo: 'product-items',
-      hasMany: true,
-      admin: {
-        description: 'בחר את פריטי המוצר (שיעורים ותכונות)',
+      name: 'contents',
+      type: 'blocks',
+      labels: {
+        singular: 'בלוק תוכן',
+        plural: 'בלוקי תוכן',
       },
+      admin: {
+        description:
+          'מה כלול במוצר. הוסף בלוקים של גישה לקורס ושל תכונות. ניתן לגרור כדי לסדר מחדש.',
+      },
+      blocks: [
+        {
+          slug: 'courseBlock',
+          labels: {
+            singular: '🎓 גישה לקורס',
+            plural: '🎓 גישת קורסים',
+          },
+          fields: [
+            {
+              name: 'course',
+              type: 'relationship',
+              relationTo: 'courses',
+              required: true,
+              admin: {
+                description: 'הקורס שהקונה מקבל גישה אליו',
+              },
+            },
+            {
+              name: 'lessonTypes',
+              type: 'select',
+              hasMany: true,
+              options: [
+                { label: 'לימוד', value: 'learning' },
+                { label: 'תרגול', value: 'practice' },
+                { label: 'בחינה', value: 'exam' },
+              ],
+              admin: {
+                description:
+                  'סוגי שיעורים שייכללו (השאר ריק = כל הסוגים). ⚠️ מטא־דאטה בלבד — Enrollments מעניק גישה לקורס כולו.',
+              },
+            },
+          ],
+        },
+        {
+          slug: 'featureBlock',
+          labels: {
+            singular: '⚙️ תכונה',
+            plural: '⚙️ תכונות',
+          },
+          fields: [
+            {
+              name: 'feature',
+              type: 'relationship',
+              relationTo: 'features',
+              required: true,
+              admin: {
+                description: 'בחר תכונה מהקטלוג. אם חסרה — הוסף ב־Features.',
+              },
+            },
+            {
+              name: 'limit',
+              type: 'number',
+              min: 0,
+              admin: {
+                description:
+                  'מגבלה מספרית (לדוגמה: 5). השאר ריק לתכונה ללא מגבלת כמות / לתכונה בוליאנית.',
+              },
+            },
+            {
+              name: 'period',
+              type: 'select',
+              // No defaultValue: a boolean feature gets auto-rejected by the
+              // beforeValidate hook if period defaults to 'day', forcing the
+              // admin to clear the field manually. The grant code's fallback
+              // ladder (block.period → feature.defaultPeriod → 'lifetime')
+              // supplies a safe default when this is unset.
+              options: [
+                { label: 'יומי', value: 'day' },
+                { label: 'לכל החיים', value: 'lifetime' },
+              ],
+              admin: {
+                description: 'תקופת איפוס המגבלה (רלוונטי רק לתכונות עם limit).',
+              },
+            },
+          ],
+        },
+      ],
     },
     {
       name: 'isActive',

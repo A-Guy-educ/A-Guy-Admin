@@ -18,14 +18,19 @@
 import { ObjectId } from 'mongodb'
 import type { Payload } from 'payload'
 
-import type { FeatureKey } from '@/lib/products/feature-keys'
-
 import { getUsersMongoCollection } from './internal/users-mongo-collection'
+
+/**
+ * Feature keys are dynamic (DB-backed in the Features collection), so this is
+ * just `string` at the type level. Runtime callers pass a key looked up from
+ * a feature relationship.
+ */
+type FeatureKeyString = string
 
 export type FeaturePeriod = 'day' | 'month' | 'lifetime'
 
 export interface FeatureEntitlement {
-  key: FeatureKey
+  key: FeatureKeyString
   value: number | null
   period: FeaturePeriod
   expiresAt: string | null
@@ -135,7 +140,7 @@ export function getNextDayResetIsoIL(date: Date = new Date()): string {
 export async function resolveFeatureEntitlement(
   payload: Payload,
   userId: string,
-  featureKey: FeatureKey,
+  featureKey: FeatureKeyString,
 ): Promise<FeatureEntitlement | null> {
   const { entitlement } = await resolveFeatureEntitlementWithUser(payload, userId, featureKey)
   return entitlement
@@ -149,7 +154,7 @@ export async function resolveFeatureEntitlement(
 export async function resolveFeatureEntitlementWithUser(
   payload: Payload,
   userId: string,
-  featureKey: FeatureKey,
+  featureKey: FeatureKeyString,
 ): Promise<{ entitlement: FeatureEntitlement | null; user: Record<string, unknown> }> {
   const user = (await payload.findByID({
     collection: 'users',
@@ -158,6 +163,20 @@ export async function resolveFeatureEntitlementWithUser(
     overrideAccess: true,
   })) as unknown as Record<string, unknown>
 
+  return { entitlement: pickEntitlementFromUser(user, featureKey), user }
+}
+
+/**
+ * Pure entitlement-picker that operates on an already-loaded user record.
+ * Callers that resolve multiple feature keys for the same user (e.g. the
+ * chat-quota hot path checking both `chat-limit` and `ai-questions`) should
+ * load the user once with `resolveFeatureEntitlementWithUser` and pick
+ * additional keys via this helper to avoid N extra findByID round-trips.
+ */
+export function pickEntitlementFromUser(
+  user: Record<string, unknown>,
+  featureKey: FeatureKeyString,
+): FeatureEntitlement | null {
   const rawEntitlements =
     (user.featureEntitlements as Array<Record<string, unknown>> | undefined) ?? []
 
@@ -165,7 +184,7 @@ export async function resolveFeatureEntitlementWithUser(
   const matching: FeatureEntitlement[] = rawEntitlements
     .filter((e) => e.key === featureKey)
     .map((e) => ({
-      key: e.key as FeatureKey,
+      key: e.key as FeatureKeyString,
       value: typeof e.value === 'number' ? (e.value as number) : null,
       period:
         e.period === 'day' || e.period === 'month' || e.period === 'lifetime'
@@ -177,9 +196,7 @@ export async function resolveFeatureEntitlementWithUser(
     }))
     .filter((e) => !e.expiresAt || new Date(e.expiresAt).getTime() > now)
 
-  if (matching.length === 0) {
-    return { entitlement: null, user }
-  }
+  if (matching.length === 0) return null
 
   // Latest non-expired grant by grantedAt wins; ties broken deterministically
   // by transactionId (descending) so seeds/tests with identical timestamps
@@ -190,7 +207,7 @@ export async function resolveFeatureEntitlementWithUser(
     if (aMs !== bMs) return bMs - aMs
     return (b.transactionId ?? '').localeCompare(a.transactionId ?? '')
   })
-  return { entitlement: matching[0], user }
+  return matching[0]
 }
 
 interface FeatureQuotaFieldNames {
@@ -203,7 +220,7 @@ const FIELD_NAMES: Record<string, FeatureQuotaFieldNames> = {
   'chat-limit': { used: 'chatLimitUsedDay', bucket: 'chatLimitBucketDay' },
 }
 
-function fieldsFor(featureKey: FeatureKey): FeatureQuotaFieldNames | null {
+function fieldsFor(featureKey: FeatureKeyString): FeatureQuotaFieldNames | null {
   return FIELD_NAMES[featureKey] ?? null
 }
 
@@ -220,7 +237,7 @@ function fieldsFor(featureKey: FeatureKey): FeatureQuotaFieldNames | null {
 export async function checkAndIncrementFeatureQuota(
   payload: Payload,
   userId: string,
-  featureKey: FeatureKey,
+  featureKey: FeatureKeyString,
   entitlement: FeatureEntitlement,
 ): Promise<FeatureQuotaResult> {
   const limit = entitlement.value
@@ -335,7 +352,7 @@ export async function checkAndIncrementFeatureQuota(
 export async function decrementFeatureQuota(
   payload: Payload,
   userId: string,
-  featureKey: FeatureKey,
+  featureKey: FeatureKeyString,
 ): Promise<void> {
   const fields = fieldsFor(featureKey)
   if (!fields) return
@@ -358,7 +375,7 @@ export async function decrementFeatureQuota(
 export async function getFeatureQuotaStatus(
   payload: Payload,
   userId: string,
-  featureKey: FeatureKey,
+  featureKey: FeatureKeyString,
   entitlement: FeatureEntitlement,
   preloadedUser?: Record<string, unknown>,
 ): Promise<FeatureQuotaResult> {

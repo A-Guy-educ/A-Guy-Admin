@@ -26,7 +26,7 @@ import {
   checkAndIncrementFeatureQuota,
   decrementFeatureQuota,
   getFeatureQuotaStatus,
-  resolveFeatureEntitlement,
+  pickEntitlementFromUser,
   resolveFeatureEntitlementWithUser,
   type FeatureEntitlement,
 } from './feature-quota'
@@ -74,10 +74,18 @@ async function getQuotaConfig() {
 async function chatLimitPreCheck(
   payload: Payload,
   userId: string,
+  user: Record<string, unknown>,
 ): Promise<{ entitlement: FeatureEntitlement; shouldDeny: boolean } | null> {
-  const entitlement = await resolveFeatureEntitlement(payload, userId, 'chat-limit')
+  // The entitlement resolved here is reused by spendChatLimitAfterPrior so we
+  // don't re-read the user document twice. Tiny race window: if a refund hook
+  // fires between pre-check and consume, we'd be enforcing a silent cap
+  // against an entitlement the user no longer holds. Worst case is one extra
+  // silent denial — fail-stricter, not a security issue. Do not "fix" by
+  // re-resolving inside the consume step; that just introduces a different
+  // race and removes the entitlement-capture invariant.
+  const entitlement = pickEntitlementFromUser(user, 'chat-limit')
   if (!entitlement || entitlement.value === null) return null
-  const status = await getFeatureQuotaStatus(payload, userId, 'chat-limit', entitlement)
+  const status = await getFeatureQuotaStatus(payload, userId, 'chat-limit', entitlement, user)
   return { entitlement, shouldDeny: !status.allowed }
 }
 
@@ -132,11 +140,17 @@ export async function checkAndIncrementChatQuota(
   payload: Payload,
   userId: string,
 ): Promise<ChatQuotaResult> {
+  // Hot path: load the user document ONCE and resolve both feature
+  // entitlements from the in-memory record. Previously this method issued
+  // three serial findByID('users') calls (chat-limit resolve, chat-limit
+  // status read, ai-questions resolve) per chat request.
+  const { user } = await resolveFeatureEntitlementWithUser(payload, userId, 'chat-limit')
+
   // Pre-check the silent chat-limit cap BEFORE touching the visible counter
   // so the common silent-denial path never charges the user. The remaining
   // race window (chat-limit fills between pre-check and post-increment) is
   // handled by spendChatLimitAfterPrior with compensation.
-  const chatLimitPre = await chatLimitPreCheck(payload, userId)
+  const chatLimitPre = await chatLimitPreCheck(payload, userId, user)
   if (chatLimitPre?.shouldDeny) {
     return {
       allowed: false,
@@ -151,7 +165,7 @@ export async function checkAndIncrementChatQuota(
   }
 
   // Entitlement-driven path: `ai-questions` overrides the rolling-window default.
-  const aiQuestionsEntitlement = await resolveFeatureEntitlement(payload, userId, 'ai-questions')
+  const aiQuestionsEntitlement = pickEntitlementFromUser(user, 'ai-questions')
   if (aiQuestionsEntitlement) {
     const featureResult = await checkAndIncrementFeatureQuota(
       payload,
