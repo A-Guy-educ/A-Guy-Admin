@@ -47,8 +47,7 @@ let userId: string
 let chapterId: string
 let courseId: string
 let lessonId: string
-let productItemLessonId: string
-let productItemFeatureId: string
+let testFeatureId: string
 let productId: string
 let _stripeTransactionId: string
 let _paypalTransactionId: string
@@ -133,29 +132,34 @@ beforeAll(async () => {
   })
   lessonId = lesson.id
 
-  // Create product-item (lesson type)
-  const productItemLesson = await payload.create({
-    collection: 'product-items',
-    data: {
-      type: 'lesson',
-      lesson: lessonId,
-    } as any,
-    overrideAccess: true,
-  })
-  productItemLessonId = productItemLesson.id
+  // Create (or fetch) the Feature row used by featureBlock — the seed runs on
+  // payload init but tests can race ahead of it, so be defensive.
+  let featureDoc = (
+    await payload.find({
+      collection: 'features',
+      where: { key: { equals: FEATURE_KEY } },
+      limit: 1,
+      depth: 0,
+      overrideAccess: true,
+    })
+  ).docs[0] as { id: string } | undefined
+  if (!featureDoc) {
+    featureDoc = (await payload.create({
+      collection: 'features',
+      data: {
+        key: FEATURE_KEY,
+        label: 'Completion Certificate',
+        type: 'boolean',
+        defaultPeriod: 'lifetime',
+        enforcement: 'metadata',
+        isActive: true,
+      },
+      overrideAccess: true,
+    })) as { id: string }
+  }
+  testFeatureId = featureDoc.id
 
-  // Create product-item (feature type)
-  const productItemFeature = await payload.create({
-    collection: 'product-items',
-    data: {
-      type: 'feature',
-      featureKey: FEATURE_KEY,
-    } as any,
-    overrideAccess: true,
-  })
-  productItemFeatureId = productItemFeature.id
-
-  // Create product with both items
+  // Create product with contents blocks (courseBlock + featureBlock)
   const product = await payload.create({
     collection: 'products',
     data: {
@@ -164,7 +168,10 @@ beforeAll(async () => {
       billingType: 'one_time',
       price: 1000,
       currency: 'ILS',
-      items: [productItemLessonId, productItemFeatureId],
+      contents: [
+        { blockType: 'courseBlock', course: courseId },
+        { blockType: 'featureBlock', feature: testFeatureId },
+      ],
       isActive: true,
     } as any,
     overrideAccess: true,
@@ -431,13 +438,34 @@ describe('grantProductEntitlements', () => {
     ).rejects.toThrow()
   })
 
-  it('should grant a course-type item by creating an Enrollment for that course', async () => {
-    const courseId = await resolveCourseId()
-    const courseItem = await payload.create({
-      collection: 'product-items',
-      data: { type: 'course', course: courseId } as any,
+  async function ensureFeature(key: string): Promise<string> {
+    const existing = (
+      await payload.find({
+        collection: 'features',
+        where: { key: { equals: key } },
+        limit: 1,
+        depth: 0,
+        overrideAccess: true,
+      })
+    ).docs[0] as { id: string } | undefined
+    if (existing) return existing.id
+    const created = (await payload.create({
+      collection: 'features',
+      data: {
+        key,
+        label: key,
+        type: 'numeric',
+        defaultPeriod: 'day',
+        enforcement: 'enforced',
+        isActive: true,
+      },
       overrideAccess: true,
-    })
+    })) as { id: string }
+    return created.id
+  }
+
+  it('should grant a courseBlock by creating an Enrollment for that course', async () => {
+    const courseId = await resolveCourseId()
     const courseProduct = await payload.create({
       collection: 'products',
       data: {
@@ -446,7 +474,7 @@ describe('grantProductEntitlements', () => {
         billingType: 'one_time',
         price: 300,
         currency: 'ILS',
-        items: [courseItem.id],
+        contents: [{ blockType: 'courseBlock', course: courseId }],
       } as any,
       overrideAccess: true,
     })
@@ -466,27 +494,13 @@ describe('grantProductEntitlements', () => {
     expect(e.expiresAt ?? null).toBeNull() // No durationDays → lifetime
 
     await payload.delete({ collection: 'products', id: courseProduct.id, overrideAccess: true })
-    await payload.delete({ collection: 'product-items', id: courseItem.id, overrideAccess: true })
   })
 
   it('should set expiresAt = now + durationDays on the Enrollment and feature entitlement', async () => {
     const courseId = await resolveCourseId()
     const DURATION_DAYS = 90
-    const courseItem = await payload.create({
-      collection: 'product-items',
-      data: { type: 'course', course: courseId } as any,
-      overrideAccess: true,
-    })
-    const featureItem = await payload.create({
-      collection: 'product-items',
-      data: {
-        type: 'feature',
-        featureKey: 'ai-questions',
-        value: 5,
-        period: 'day',
-      } as any,
-      overrideAccess: true,
-    })
+    const aiQuestionsFeatureId = await ensureFeature('ai-questions')
+
     const timeLimitedProduct = await payload.create({
       collection: 'products',
       data: {
@@ -496,7 +510,10 @@ describe('grantProductEntitlements', () => {
         price: 300,
         currency: 'ILS',
         durationDays: DURATION_DAYS,
-        items: [courseItem.id, featureItem.id],
+        contents: [
+          { blockType: 'courseBlock', course: courseId },
+          { blockType: 'featureBlock', feature: aiQuestionsFeatureId, limit: 5, period: 'day' },
+        ],
       } as any,
       overrideAccess: true,
     })
@@ -538,8 +555,6 @@ describe('grantProductEntitlements', () => {
       id: timeLimitedProduct.id,
       overrideAccess: true,
     })
-    await payload.delete({ collection: 'product-items', id: courseItem.id, overrideAccess: true })
-    await payload.delete({ collection: 'product-items', id: featureItem.id, overrideAccess: true })
   })
 })
 
@@ -724,11 +739,6 @@ describe('Transaction refund revokes entitlements', () => {
       typeof chapter.course === 'string' ? chapter.course : (chapter.course as any).id
 
     // Build a 30-day time-limited variant of the test product
-    const courseItem = await payload.create({
-      collection: 'product-items',
-      data: { type: 'course', course: courseId } as any,
-      overrideAccess: true,
-    })
     const timeLimitedProduct = await payload.create({
       collection: 'products',
       data: {
@@ -738,7 +748,7 @@ describe('Transaction refund revokes entitlements', () => {
         price: 300,
         currency: 'ILS',
         durationDays: 30,
-        items: [courseItem.id],
+        contents: [{ blockType: 'courseBlock', course: courseId }],
       } as any,
       overrideAccess: true,
     })
@@ -804,7 +814,6 @@ describe('Transaction refund revokes entitlements', () => {
       id: timeLimitedProduct.id,
       overrideAccess: true,
     })
-    await payload.delete({ collection: 'product-items', id: courseItem.id, overrideAccess: true })
   })
 
   it('lifetime re-purchase after a time-limited expiry clears expiresAt and grants access', async () => {
@@ -819,11 +828,6 @@ describe('Transaction refund revokes entitlements', () => {
       typeof chapter.course === 'string' ? chapter.course : (chapter.course as any).id
 
     // 1. Buy a 30-day product
-    const courseItem = await payload.create({
-      collection: 'product-items',
-      data: { type: 'course', course: courseId } as any,
-      overrideAccess: true,
-    })
     const timeLimited = await payload.create({
       collection: 'products',
       data: {
@@ -833,7 +837,7 @@ describe('Transaction refund revokes entitlements', () => {
         price: 300,
         currency: 'ILS',
         durationDays: 30,
-        items: [courseItem.id],
+        contents: [{ blockType: 'courseBlock', course: courseId }],
       } as any,
       overrideAccess: true,
     })
@@ -863,7 +867,7 @@ describe('Transaction refund revokes entitlements', () => {
         billingType: 'one_time',
         price: 500,
         currency: 'ILS',
-        items: [courseItem.id],
+        contents: [{ blockType: 'courseBlock', course: courseId }],
       } as any,
       overrideAccess: true,
     })
@@ -874,7 +878,6 @@ describe('Transaction refund revokes entitlements', () => {
 
     await payload.delete({ collection: 'products', id: timeLimited.id, overrideAccess: true })
     await payload.delete({ collection: 'products', id: lifetimeProduct.id, overrideAccess: true })
-    await payload.delete({ collection: 'product-items', id: courseItem.id, overrideAccess: true })
   })
 })
 

@@ -24,6 +24,7 @@ import { EnrollmentProgress } from '@/server/payload/collections/EnrollmentProgr
 import { Enrollments } from '@/server/payload/collections/Enrollments'
 import { Exercises } from '@/server/payload/collections/Exercises'
 import { ExtractionLogs } from '@/server/payload/collections/ExtractionLogs'
+import { Features } from '@/server/payload/collections/Features'
 import { FormulaSheets } from '@/server/payload/collections/FormulaSheets'
 import { GuestSessions } from '@/server/payload/collections/GuestSessions'
 import { InteractiveLessons } from '@/server/payload/collections/InteractiveLessons'
@@ -35,7 +36,6 @@ import { MemoryItems } from '@/server/payload/collections/MemoryItems'
 import { Pages } from '@/server/payload/collections/Pages'
 import { Posts } from '@/server/payload/collections/Posts'
 import { PricingPlans } from '@/server/payload/collections/PricingPlans'
-import { ProductItems } from '@/server/payload/collections/ProductItems'
 import { Products } from '@/server/payload/collections/Products'
 import { Prompts } from '@/server/payload/collections/Prompts'
 import { TeacherProfiles } from '@/server/payload/collections/TeacherProfiles'
@@ -65,6 +65,7 @@ import { runBackfillOnInit } from '@/server/payload/migrations/backfillAdminTitl
 import { runLocalizeTeacherProfilesOnInit } from '@/server/payload/migrations/localize-teacher-profiles'
 import { runPopulateLessonBlocksOnInit } from '@/server/payload/migrations/populateLessonBlocks'
 import { plugins } from '@/server/payload/plugins'
+import { runSeedFeaturesOnInit } from '@/server/payload/seed/features-seed'
 import { seedTeacherProfiles } from '@/server/payload/seed/teacher-profiles-seed'
 import { Footer } from '@/ui/shared/footer/config'
 import { Header } from '@/ui/shared/header/config'
@@ -224,7 +225,7 @@ export default buildConfig({
     UploadSessions,
     Posts,
     PricingPlans,
-    ProductItems,
+    Features,
     Products,
     AccessCodes,
     Transactions,
@@ -411,5 +412,6 @@ export default buildConfig({
     await runPopulateLessonBlocksOnInit(payload)
     await runLocalizeTeacherProfilesOnInit(payload)
     await seedTeacherProfiles(payload)
+    runSeedFeaturesOnInit(payload)
   },
 })

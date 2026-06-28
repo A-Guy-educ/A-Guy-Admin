@@ -18,14 +18,19 @@
 import { ObjectId } from 'mongodb'
 import type { Payload } from 'payload'
 
-import type { FeatureKey } from '@/lib/products/feature-keys'
-
 import { getUsersMongoCollection } from './internal/users-mongo-collection'
+
+/**
+ * Feature keys are dynamic (DB-backed in the Features collection), so this is
+ * just `string` at the type level. Runtime callers pass a key looked up from
+ * a feature relationship.
+ */
+type FeatureKeyString = string
 
 export type FeaturePeriod = 'day' | 'month' | 'lifetime'
 
 export interface FeatureEntitlement {
-  key: FeatureKey
+  key: FeatureKeyString
   value: number | null
   period: FeaturePeriod
   expiresAt: string | null
@@ -135,7 +140,7 @@ export function getNextDayResetIsoIL(date: Date = new Date()): string {
 export async function resolveFeatureEntitlement(
   payload: Payload,
   userId: string,
-  featureKey: FeatureKey,
+  featureKey: FeatureKeyString,
 ): Promise<FeatureEntitlement | null> {
   const { entitlement } = await resolveFeatureEntitlementWithUser(payload, userId, featureKey)
   return entitlement
@@ -149,7 +154,7 @@ export async function resolveFeatureEntitlement(
 export async function resolveFeatureEntitlementWithUser(
   payload: Payload,
   userId: string,
-  featureKey: FeatureKey,
+  featureKey: FeatureKeyString,
 ): Promise<{ entitlement: FeatureEntitlement | null; user: Record<string, unknown> }> {
   const user = (await payload.findByID({
     collection: 'users',
@@ -165,7 +170,7 @@ export async function resolveFeatureEntitlementWithUser(
   const matching: FeatureEntitlement[] = rawEntitlements
     .filter((e) => e.key === featureKey)
     .map((e) => ({
-      key: e.key as FeatureKey,
+      key: e.key as FeatureKeyString,
       value: typeof e.value === 'number' ? (e.value as number) : null,
       period:
         e.period === 'day' || e.period === 'month' || e.period === 'lifetime'
@@ -203,7 +208,7 @@ const FIELD_NAMES: Record<string, FeatureQuotaFieldNames> = {
   'chat-limit': { used: 'chatLimitUsedDay', bucket: 'chatLimitBucketDay' },
 }
 
-function fieldsFor(featureKey: FeatureKey): FeatureQuotaFieldNames | null {
+function fieldsFor(featureKey: FeatureKeyString): FeatureQuotaFieldNames | null {
   return FIELD_NAMES[featureKey] ?? null
 }
 
@@ -220,7 +225,7 @@ function fieldsFor(featureKey: FeatureKey): FeatureQuotaFieldNames | null {
 export async function checkAndIncrementFeatureQuota(
   payload: Payload,
   userId: string,
-  featureKey: FeatureKey,
+  featureKey: FeatureKeyString,
   entitlement: FeatureEntitlement,
 ): Promise<FeatureQuotaResult> {
   const limit = entitlement.value
@@ -335,7 +340,7 @@ export async function checkAndIncrementFeatureQuota(
 export async function decrementFeatureQuota(
   payload: Payload,
   userId: string,
-  featureKey: FeatureKey,
+  featureKey: FeatureKeyString,
 ): Promise<void> {
   const fields = fieldsFor(featureKey)
   if (!fields) return
@@ -358,7 +363,7 @@ export async function decrementFeatureQuota(
 export async function getFeatureQuotaStatus(
   payload: Payload,
   userId: string,
-  featureKey: FeatureKey,
+  featureKey: FeatureKeyString,
   entitlement: FeatureEntitlement,
   preloadedUser?: Record<string, unknown>,
 ): Promise<FeatureQuotaResult> {

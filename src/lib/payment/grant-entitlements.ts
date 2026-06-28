@@ -8,19 +8,18 @@
  * @fileType utility
  * @domain payments
  * @pattern atomic-update, time-limited-access
- * @ai-summary Grants Enrollments + feature entitlements after successful payment, applying product.durationDays as expiresAt
+ * @ai-summary Grants Enrollments + feature entitlements after successful payment by walking the Product.contents blocks
  */
 
 import { ObjectId } from 'mongodb'
 import { getPayload } from 'payload'
 
 import config from '@payload-config'
-import type { FeatureKey } from '@/lib/products/feature-keys'
 
 type FeaturePeriod = 'day' | 'month' | 'lifetime'
 
 interface FeatureGrant {
-  key: FeatureKey
+  key: string
   value: number | null
   period: FeaturePeriod
   expiresAt: string | null
@@ -31,19 +30,35 @@ interface CourseGrant {
   expiresAt: string | null
 }
 
+interface CourseBlock {
+  blockType: 'courseBlock'
+  course: string | { id: string }
+  lessonTypes?: string[] | null
+}
+
+interface FeatureBlock {
+  blockType: 'featureBlock'
+  feature: string | { id: string; key?: string; defaultPeriod?: string }
+  limit?: number | null
+  period?: string | null
+}
+
+type ProductContentBlock = CourseBlock | FeatureBlock
+
 /**
  * Grant entitlements for a purchased product.
  *
  * Flow:
- * 1. Fetch the Product with items populated.
+ * 1. Fetch the Product with `contents` blocks populated (depth=2 so the
+ *    feature relationship inside featureBlock is resolved to {id, key}).
  * 2. Compute `expiresAt = now + product.durationDays` (or null for lifetime).
- * 3. For each ProductItem:
- *    - type='course' → upsert Enrollment for (user, course)
- *    - type='lesson' → resolve lesson.chapter.course, upsert Enrollment for that course
- *    - type='feature' → atomic $push featureEntitlements with value/period/expiresAt
+ * 3. For each block:
+ *    - courseBlock → upsert Enrollment for (user, course)
+ *    - featureBlock → resolve feature key, atomic $push featureEntitlements
+ *      with limit/period/expiresAt
  * 4. Idempotency: Enrollments use a (user, course) unique index +
  *    `metadata.paymentId = transactionId`; featureEntitlements use a
- *    `transactionId + key` $ne guard so replayed webhooks no-op.
+ *    `transactionId + key` $not $elemMatch guard so replayed webhooks no-op.
  */
 export async function grantProductEntitlements(
   userId: string,
@@ -55,7 +70,7 @@ export async function grantProductEntitlements(
   const product = await payload.findByID({
     collection: 'products',
     id: productId,
-    depth: 1,
+    depth: 2,
     overrideAccess: true,
   })
 
@@ -73,62 +88,77 @@ export async function grantProductEntitlements(
       ? new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000).toISOString()
       : null
 
-  const itemIds: string[] = []
-  if (product.items && Array.isArray(product.items)) {
-    for (const item of product.items) {
-      const itemId = typeof item === 'string' ? item : item.id
-      if (itemId) itemIds.push(itemId)
-    }
-  }
-  if (itemIds.length === 0) return
-
-  const items = await payload.find({
-    collection: 'product-items',
-    where: { id: { in: itemIds } },
-    depth: 0,
-    limit: 100,
-    overrideAccess: true,
-  })
+  const blocks =
+    ((product as { contents?: unknown }).contents as ProductContentBlock[] | undefined) ?? []
+  if (blocks.length === 0) return
 
   const courseGrants: CourseGrant[] = []
   const featureGrants: FeatureGrant[] = []
 
-  for (const item of items.docs) {
-    if (item.type === 'course') {
-      if (!item.course) {
+  for (const block of blocks) {
+    if (block.blockType === 'courseBlock') {
+      if (!block.course) {
         payload.logger.warn(
-          { productId, transactionId, productItemId: item.id },
-          'grantProductEntitlements: course-type ProductItem has no course relationship; skipping',
+          { productId, transactionId },
+          'grantProductEntitlements: courseBlock has no course relationship; skipping',
         )
         continue
       }
-      const courseId = typeof item.course === 'string' ? item.course : item.course.id
+      const courseId = typeof block.course === 'string' ? block.course : block.course.id
       courseGrants.push({ courseId, expiresAt })
-    } else if (item.type === 'lesson' && item.lesson) {
-      // Resolve lesson → parent course. Lessons have an auto-populated `course`
-      // field (Lessons.ts), but fall back to chapter.course if missing.
-      const lessonId = typeof item.lesson === 'string' ? item.lesson : item.lesson.id
-      const { courseId, error } = await resolveLessonCourseId(payload, lessonId)
-      if (!courseId) {
+    } else if (block.blockType === 'featureBlock') {
+      if (!block.feature) {
         payload.logger.warn(
-          { lessonId, productId, transactionId, productItemId: item.id, err: error },
-          'grantProductEntitlements: lesson has no resolvable course; skipping',
+          { productId, transactionId },
+          'grantProductEntitlements: featureBlock has no feature relationship; skipping',
         )
         continue
       }
-      courseGrants.push({ courseId, expiresAt })
-    } else if (item.type === 'feature' && item.featureKey) {
-      const rawPeriod = (item as { period?: unknown }).period
-      const period: FeaturePeriod =
-        rawPeriod === 'day' || rawPeriod === 'month' || rawPeriod === 'lifetime'
-          ? rawPeriod
-          : 'lifetime'
-      const rawValue = (item as { value?: unknown }).value
-      const value = typeof rawValue === 'number' ? rawValue : null
+      // Resolve the feature key. With depth >= 1 the relationship is populated
+      // as an object with a `key` field; fall back to a separate read when only
+      // the id is available.
+      let key: string | null = null
+      let defaultPeriod: string | null = null
+      if (typeof block.feature === 'object') {
+        key = typeof block.feature.key === 'string' ? block.feature.key : null
+        defaultPeriod =
+          typeof block.feature.defaultPeriod === 'string' ? block.feature.defaultPeriod : null
+      }
+      if (!key) {
+        const featureId = typeof block.feature === 'string' ? block.feature : block.feature.id
+        try {
+          const featureDoc = await payload.findByID({
+            collection: 'features',
+            id: featureId,
+            depth: 0,
+            overrideAccess: true,
+          })
+          key = (featureDoc as { key?: string }).key ?? null
+          defaultPeriod = (featureDoc as { defaultPeriod?: string }).defaultPeriod ?? null
+        } catch (error) {
+          payload.logger.warn(
+            { err: error, featureId, productId, transactionId },
+            'grantProductEntitlements: featureBlock points at a missing Feature; skipping',
+          )
+          continue
+        }
+      }
+      if (!key) continue
+
+      const blockPeriod = block.period
+      const resolvedPeriod: FeaturePeriod =
+        blockPeriod === 'day' || blockPeriod === 'month' || blockPeriod === 'lifetime'
+          ? blockPeriod
+          : defaultPeriod === 'day' || defaultPeriod === 'month' || defaultPeriod === 'lifetime'
+            ? defaultPeriod
+            : 'lifetime'
+
+      const value = typeof block.limit === 'number' ? block.limit : null
+
       featureGrants.push({
-        key: item.featureKey as FeatureKey,
+        key,
         value,
-        period,
+        period: resolvedPeriod,
         expiresAt,
       })
     }
@@ -140,39 +170,6 @@ export async function grantProductEntitlements(
 
   if (featureGrants.length > 0) {
     await pushFeatureEntitlements(payload, userId, featureGrants, transactionId)
-  }
-}
-
-async function resolveLessonCourseId(
-  payload: Awaited<ReturnType<typeof getPayload>>,
-  lessonId: string,
-): Promise<{ courseId: string | null; error: unknown | null }> {
-  try {
-    const lesson = await payload.findByID({
-      collection: 'lessons',
-      id: lessonId,
-      depth: 1,
-      overrideAccess: true,
-    })
-    if (lesson?.course) {
-      return {
-        courseId: typeof lesson.course === 'string' ? lesson.course : lesson.course.id,
-        error: null,
-      }
-    }
-    // Fallback: chapter.course
-    if (lesson?.chapter && typeof lesson.chapter === 'object' && 'course' in lesson.chapter) {
-      const chapterCourse = (lesson.chapter as { course?: string | { id: string } }).course
-      if (chapterCourse) {
-        return {
-          courseId: typeof chapterCourse === 'string' ? chapterCourse : chapterCourse.id,
-          error: null,
-        }
-      }
-    }
-    return { courseId: null, error: null }
-  } catch (error) {
-    return { courseId: null, error }
   }
 }
 
@@ -220,9 +217,6 @@ async function upsertEnrollment(
     })
     return
   } catch (createError) {
-    // Re-find: if a row exists for (user, course), the create lost a
-    // race (or it's a replay) and we should update. If nothing exists,
-    // the create failed for a real reason — rethrow.
     const recheck = await payload.find({
       collection: 'enrollments',
       where: {
@@ -244,10 +238,6 @@ async function upsertEnrollment(
   }
 }
 
-/**
- * Shared update path for an existing Enrollment. Refreshes state without
- * touching enrolledAt or clobbering prior metadata fields.
- */
 async function performEnrollmentUpdate(
   payload: Awaited<ReturnType<typeof getPayload>>,
   current: {
@@ -258,16 +248,9 @@ async function performEnrollmentUpdate(
   expiresAt: string | null,
   transactionId: string,
 ): Promise<void> {
-  // Same transaction replay → no-op.
   if (current.metadata?.paymentId === transactionId && current.status === 'active') {
     return
   }
-
-  // Different transaction (re-purchase after expiry/refund, or upgrade from
-  // an admin/code grant) → refresh state. Preserve prior metadata fields
-  // (accessCodeId, grantedBy) so audit history isn't clobbered.
-  // `enrolledAt` is the original creation timestamp and is intentionally
-  // left untouched — see Enrollments schema and status reports that key on it.
   await payload.update({
     collection: 'enrollments',
     id: current.id,
@@ -291,13 +274,13 @@ async function performEnrollmentUpdate(
  * create duplicates for the same (key, transactionId) pair.
  *
  * Intent on cross-product duplicates: a user who buys product A granting
- * `ai-questions=5/day` (tx1) and product B granting `ai-questions=10/day`
- * (tx2) ends up with TWO rows under the same key. This is deliberate so
- * each row stays tied to its source transaction (revoke-on-refund can
- * surgically remove just the affected grant). The rate-limit consumer
- * (Task C, #76) is responsible for picking which row's `value`/`period`
- * to apply when multiple non-expired entries share a key — current intent
- * is "latest non-expired grant by grantedAt wins".
+ * `ai-questions=5/day` and product B granting `ai-questions=10/day` ends up
+ * with TWO rows under the same key. This is deliberate so each row stays
+ * tied to its source transaction (revoke-on-refund can surgically remove
+ * just the affected grant). The rate-limit consumer (feature-quota.ts) is
+ * responsible for picking which row's `value`/`period` to apply when
+ * multiple non-expired entries share a key — current intent is "latest
+ * non-expired grant by grantedAt wins".
  */
 async function pushFeatureEntitlements(
   payload: Awaited<ReturnType<typeof getPayload>>,

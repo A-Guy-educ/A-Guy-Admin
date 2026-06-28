@@ -173,13 +173,90 @@ export const Products: CollectionConfig = {
       },
     },
     {
-      name: 'items',
-      type: 'relationship',
-      relationTo: 'product-items',
-      hasMany: true,
-      admin: {
-        description: 'בחר את פריטי המוצר (שיעורים ותכונות)',
+      name: 'contents',
+      type: 'blocks',
+      labels: {
+        singular: 'בלוק תוכן',
+        plural: 'בלוקי תוכן',
       },
+      admin: {
+        description:
+          'מה כלול במוצר. הוסף בלוקים של גישה לקורס ושל תכונות. ניתן לגרור כדי לסדר מחדש.',
+      },
+      blocks: [
+        {
+          slug: 'courseBlock',
+          labels: {
+            singular: '🎓 גישה לקורס',
+            plural: '🎓 גישת קורסים',
+          },
+          fields: [
+            {
+              name: 'course',
+              type: 'relationship',
+              relationTo: 'courses',
+              required: true,
+              admin: {
+                description: 'הקורס שהקונה מקבל גישה אליו',
+              },
+            },
+            {
+              name: 'lessonTypes',
+              type: 'select',
+              hasMany: true,
+              options: [
+                { label: 'לימוד', value: 'learning' },
+                { label: 'תרגול', value: 'practice' },
+                { label: 'בחינה', value: 'exam' },
+              ],
+              admin: {
+                description:
+                  'סוגי שיעורים שייכללו (השאר ריק = כל הסוגים). ⚠️ מטא־דאטה בלבד — Enrollments מעניק גישה לקורס כולו.',
+              },
+            },
+          ],
+        },
+        {
+          slug: 'featureBlock',
+          labels: {
+            singular: '⚙️ תכונה',
+            plural: '⚙️ תכונות',
+          },
+          fields: [
+            {
+              name: 'feature',
+              type: 'relationship',
+              relationTo: 'features',
+              required: true,
+              admin: {
+                description: 'בחר תכונה מהקטלוג. אם חסרה — הוסף ב־Features.',
+              },
+            },
+            {
+              name: 'limit',
+              type: 'number',
+              min: 0,
+              admin: {
+                description:
+                  'מגבלה מספרית (לדוגמה: 5). השאר ריק לתכונה ללא מגבלת כמות / לתכונה בוליאנית.',
+              },
+            },
+            {
+              name: 'period',
+              type: 'select',
+              defaultValue: 'day',
+              options: [
+                { label: 'יומי', value: 'day' },
+                { label: 'חודשי', value: 'month' },
+                { label: 'לכל החיים', value: 'lifetime' },
+              ],
+              admin: {
+                description: 'תקופת איפוס המגבלה (רלוונטי רק לתכונות עם limit).',
+              },
+            },
+          ],
+        },
+      ],
     },
     {
       name: 'isActive',

@@ -103,7 +103,7 @@ export interface Config {
     'upload-sessions': UploadSession;
     posts: Post;
     'pricing-plans': PricingPlan;
-    'product-items': ProductItem;
+    features: Feature;
     products: Product;
     'access-codes': AccessCode;
     transactions: Transaction;
@@ -158,7 +158,7 @@ export interface Config {
     'upload-sessions': UploadSessionsSelect<false> | UploadSessionsSelect<true>;
     posts: PostsSelect<false> | PostsSelect<true>;
     'pricing-plans': PricingPlansSelect<false> | PricingPlansSelect<true>;
-    'product-items': ProductItemsSelect<false> | ProductItemsSelect<true>;
+    features: FeaturesSelect<false> | FeaturesSelect<true>;
     products: ProductsSelect<false> | ProductsSelect<true>;
     'access-codes': AccessCodesSelect<false> | AccessCodesSelect<true>;
     transactions: TransactionsSelect<false> | TransactionsSelect<true>;
@@ -1906,9 +1906,42 @@ export interface Product {
    */
   maxDevices?: number | null;
   /**
-   * בחר את פריטי המוצר (שיעורים ותכונות)
+   * מה כלול במוצר. הוסף בלוקים של גישה לקורס ושל תכונות. ניתן לגרור כדי לסדר מחדש.
    */
-  items?: (string | ProductItem)[] | null;
+  contents?:
+    | (
+        | {
+            /**
+             * הקורס שהקונה מקבל גישה אליו
+             */
+            course: string | Course;
+            /**
+             * סוגי שיעורים שייכללו (השאר ריק = כל הסוגים). ⚠️ מטא־דאטה בלבד — Enrollments מעניק גישה לקורס כולו.
+             */
+            lessonTypes?: ('learning' | 'practice' | 'exam')[] | null;
+            id?: string | null;
+            blockName?: string | null;
+            blockType: 'courseBlock';
+          }
+        | {
+            /**
+             * בחר תכונה מהקטלוג. אם חסרה — הוסף ב־Features.
+             */
+            feature: string | Feature;
+            /**
+             * מגבלה מספרית (לדוגמה: 5). השאר ריק לתכונה ללא מגבלת כמות / לתכונה בוליאנית.
+             */
+            limit?: number | null;
+            /**
+             * תקופת איפוס המגבלה (רלוונטי רק לתכונות עם limit).
+             */
+            period?: ('day' | 'month' | 'lifetime') | null;
+            id?: string | null;
+            blockName?: string | null;
+            blockType: 'featureBlock';
+          }
+      )[]
+    | null;
   /**
    * האם המוצר פעיל וזמין למכירה
    */
@@ -1921,43 +1954,49 @@ export interface Product {
   createdAt: string;
 }
 /**
+ * Reusable feature definitions. Bundle into products via the Product "What's in this product" blocks.
+ *
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "product-items".
+ * via the `definition` "features".
  */
-export interface ProductItem {
+export interface Feature {
   id: string;
   /**
-   * בחר את סוג הפריט: שיעור בודד, קורס שלם, או תכונה מוגדרת
+   * Stable identifier used by runtime gates (e.g. ai-questions). kebab-case, lowercase. Changing this after grants exist will orphan featureEntitlements.
    */
-  type: 'lesson' | 'course' | 'feature';
+  key: string;
   /**
-   * בחר את השיעור להוספה למוצר
+   * Human-friendly name shown in the admin feature picker.
    */
-  lesson?: (string | null) | Lesson;
+  label: string;
   /**
-   * בחר את הקורס. כל השיעורים בקורס ייכללו (מסוננים לפי lessonTypes אם הוגדר)
+   * What this feature does. Shown next to the picker so admins choose the right one.
    */
-  course?: (string | null) | Course;
+  description?: string | null;
   /**
-   * סוגי שיעורים שייכללו (השאר ריק = כל הסוגים). ⚠️ מטא־דאטה בלבד — Enrollments מעניק כיום גישה לקורס כולו ללא קשר לערך זה.
+   * Numeric features carry a limit + period when added to a product; boolean features are simple unlocks.
    */
-  lessonTypes?: ('learning' | 'practice' | 'exam')[] | null;
+  type: 'numeric' | 'boolean';
   /**
-   * מזהה התכונה (לדוגמה: certificate, live-sessions)
+   * Display hint for the limit (e.g., "questions", "messages"). Numeric only.
    */
-  featureKey?: string | null;
+  unit?: string | null;
   /**
-   * ערך מספרי לתכונה (לדוגמה: 5 עבור 5 שאלות ביום). השאר ריק לתכונה ללא מגבלת כמות.
+   * Default reset window used when a product adds this feature. Admin can override per-product.
    */
-  value?: number | null;
+  defaultPeriod?: ('day' | 'month' | 'lifetime') | null;
   /**
-   * תקופת איפוס המגבלה. ברירת מחדל "לכל החיים" עבור תכונות ללא מגבלת זמן.
+   * When on, denials are silent — endpoints return a generic error without revealing the limit (e.g. chat-limit).
    */
-  period?: ('day' | 'month' | 'lifetime') | null;
+  isSilent?: boolean | null;
   /**
-   * סמן אם יש להדגיש פריט זה בממשק המשתמש
+   * Whether a runtime consumer reads this feature. "Metadata only" means it appears on entitlements but nothing checks it.
    */
-  isHighlighted?: boolean | null;
+  enforcement: 'enforced' | 'metadata';
+  /**
+   * Hide from the admin feature picker when off (existing references continue to work).
+   */
+  isActive?: boolean | null;
   /**
    * User who created this document
    */
@@ -3560,8 +3599,8 @@ export interface PayloadLockedDocument {
         value: string | PricingPlan;
       } | null)
     | ({
-        relationTo: 'product-items';
-        value: string | ProductItem;
+        relationTo: 'features';
+        value: string | Feature;
       } | null)
     | ({
         relationTo: 'products';
@@ -4675,17 +4714,18 @@ export interface PricingPlansSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "product-items_select".
+ * via the `definition` "features_select".
  */
-export interface ProductItemsSelect<T extends boolean = true> {
+export interface FeaturesSelect<T extends boolean = true> {
+  key?: T;
+  label?: T;
+  description?: T;
   type?: T;
-  lesson?: T;
-  course?: T;
-  lessonTypes?: T;
-  featureKey?: T;
-  value?: T;
-  period?: T;
-  isHighlighted?: T;
+  unit?: T;
+  defaultPeriod?: T;
+  isSilent?: T;
+  enforcement?: T;
+  isActive?: T;
   createdBy?: T;
   updatedAt?: T;
   createdAt?: T;
@@ -4704,7 +4744,27 @@ export interface ProductsSelect<T extends boolean = true> {
   currency?: T;
   durationDays?: T;
   maxDevices?: T;
-  items?: T;
+  contents?:
+    | T
+    | {
+        courseBlock?:
+          | T
+          | {
+              course?: T;
+              lessonTypes?: T;
+              id?: T;
+              blockName?: T;
+            };
+        featureBlock?:
+          | T
+          | {
+              feature?: T;
+              limit?: T;
+              period?: T;
+              id?: T;
+              blockName?: T;
+            };
+      };
   isActive?: T;
   createdBy?: T;
   updatedAt?: T;
