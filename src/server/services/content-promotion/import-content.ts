@@ -50,6 +50,54 @@ export async function parseBundle(
   return { zip, manifest: parsed.data }
 }
 
+/**
+ * Mutates the manifest in-place to drop records that would trip the
+ * `payload.create` step: missing/empty `id`, or duplicate `id` within the
+ * same collection (Mongo `_id_` index can't accept that). Without this guard
+ * a malformed bundle aborts the whole transaction with a `WiredTigerIdIndex`
+ * collision and the user gets a meaningless retry-prompt error.
+ *
+ * Returns a summary of what was dropped so the caller can log it.
+ */
+function sanitizeManifestRecords(manifest: BundleManifest): {
+  droppedMissingId: number
+  droppedDuplicateId: number
+} {
+  let droppedMissingId = 0
+  let droppedDuplicateId = 0
+
+  for (const collection of PROMOTED_COLLECTIONS) {
+    const docs = manifest.collections[collection] as unknown as Array<Record<string, unknown>>
+    if (docs.length === 0) continue
+
+    const seen = new Set<string>()
+    const kept: Array<Record<string, unknown>> = []
+    for (const doc of docs) {
+      const id = doc.id
+      if (typeof id !== 'string' || id.length === 0) {
+        droppedMissingId += 1
+        continue
+      }
+      if (seen.has(id)) {
+        droppedDuplicateId += 1
+        continue
+      }
+      seen.add(id)
+      // Defensively strip Mongo-shadow `_id` — old bundles created before
+      // export stripped it would otherwise let it through and conflict with
+      // the import's `data.id` thread.
+      if ('_id' in doc) delete doc._id
+      kept.push(doc)
+    }
+    if (kept.length !== docs.length) {
+      ;(manifest.collections as Record<string, unknown>)[collection] = kept
+      manifest.counts[collection] = kept.length
+    }
+  }
+
+  return { droppedMissingId, droppedDuplicateId }
+}
+
 async function detectCollisionsAndBuildRemap(
   payload: Payload,
   req: PayloadRequest,
@@ -232,6 +280,14 @@ export async function importContent(
   const { zip, manifest } = await parseBundle(input.bundleBuffer)
   const report = emptyReport()
 
+  const sanitizationStats = sanitizeManifestRecords(manifest)
+  if (sanitizationStats.droppedMissingId > 0 || sanitizationStats.droppedDuplicateId > 0) {
+    payload.logger.warn(
+      sanitizationStats,
+      '[content-promotion/import] Dropped malformed records from manifest before import',
+    )
+  }
+
   const remap = await detectCollisionsAndBuildRemap(payload, req, manifest)
 
   // Flag this request so the global id-on-create guard (payload.config.ts)
@@ -287,7 +343,18 @@ export async function importContent(
     }
   } catch (error) {
     if (transactionID && payload.db.rollbackTransaction) {
-      await payload.db.rollbackTransaction(transactionID)
+      // Wrap rollback in its own try/catch — if the transaction was already
+      // aborted server-side (e.g., MongoDB killed it after a write conflict),
+      // `rollbackTransaction` itself throws "Not Found"/"session not found",
+      // and an uncaught throw here would mask the real original error.
+      try {
+        await payload.db.rollbackTransaction(transactionID)
+      } catch (rollbackError) {
+        payload.logger.error(
+          { rollbackError, originalError: error },
+          '[content-promotion/import] Rollback failed (transaction likely already aborted); preserving original error',
+        )
+      }
     }
     if (uploadedBlobUrls.length > 0) {
       // Best-effort cleanup of orphaned binaries. Failures here are logged
