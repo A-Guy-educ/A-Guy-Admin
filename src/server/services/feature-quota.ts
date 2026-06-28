@@ -163,6 +163,20 @@ export async function resolveFeatureEntitlementWithUser(
     overrideAccess: true,
   })) as unknown as Record<string, unknown>
 
+  return { entitlement: pickEntitlementFromUser(user, featureKey), user }
+}
+
+/**
+ * Pure entitlement-picker that operates on an already-loaded user record.
+ * Callers that resolve multiple feature keys for the same user (e.g. the
+ * chat-quota hot path checking both `chat-limit` and `ai-questions`) should
+ * load the user once with `resolveFeatureEntitlementWithUser` and pick
+ * additional keys via this helper to avoid N extra findByID round-trips.
+ */
+export function pickEntitlementFromUser(
+  user: Record<string, unknown>,
+  featureKey: FeatureKeyString,
+): FeatureEntitlement | null {
   const rawEntitlements =
     (user.featureEntitlements as Array<Record<string, unknown>> | undefined) ?? []
 
@@ -182,9 +196,7 @@ export async function resolveFeatureEntitlementWithUser(
     }))
     .filter((e) => !e.expiresAt || new Date(e.expiresAt).getTime() > now)
 
-  if (matching.length === 0) {
-    return { entitlement: null, user }
-  }
+  if (matching.length === 0) return null
 
   // Latest non-expired grant by grantedAt wins; ties broken deterministically
   // by transactionId (descending) so seeds/tests with identical timestamps
@@ -195,7 +207,7 @@ export async function resolveFeatureEntitlementWithUser(
     if (aMs !== bMs) return bMs - aMs
     return (b.transactionId ?? '').localeCompare(a.transactionId ?? '')
   })
-  return { entitlement: matching[0], user }
+  return matching[0]
 }
 
 interface FeatureQuotaFieldNames {

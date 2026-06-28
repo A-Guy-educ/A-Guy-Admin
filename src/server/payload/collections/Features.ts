@@ -12,11 +12,25 @@
  * @ai-summary Feature definitions referenced by Product content blocks; carries label, description, type, default period, and enforcement status
  */
 
-import type { CollectionConfig } from 'payload'
+import type { Access, CollectionConfig } from 'payload'
 
 import { adminOnly } from '../access/adminOnly'
-import { anyone } from '../access/anyone'
 import { createdByField } from '../fields/createdBy'
+
+/**
+ * Hide `isSilent` features from unauthenticated/public reads. Silent
+ * features (e.g. chat-limit) are caps the user shouldn't know about —
+ * exposing them via the storefront / API would defeat the silent
+ * mechanism. Admins still see everything.
+ *
+ * Returns `true` for admins (full access) and a `Where` filter that
+ * excludes `isSilent: true` rows for everyone else.
+ */
+const readNonSilentForPublic: Access = ({ req }) => {
+  const user = req.user as { collection?: string; role?: string } | null | undefined
+  if (user?.collection === 'users' && user.role === 'admin') return true
+  return { isSilent: { not_equals: true } }
+}
 
 export const Features: CollectionConfig = {
   slug: 'features',
@@ -24,7 +38,7 @@ export const Features: CollectionConfig = {
     create: adminOnly,
     update: adminOnly,
     delete: adminOnly,
-    read: anyone,
+    read: readNonSilentForPublic,
   },
   admin: {
     useAsTitle: 'label',
@@ -100,9 +114,12 @@ export const Features: CollectionConfig = {
       name: 'defaultPeriod',
       type: 'select',
       defaultValue: 'day',
+      // 'month' is intentionally omitted: the runtime quota service only
+      // implements 'day' bucketing. Re-add here AND wire the counter in
+      // feature-quota.ts before exposing it as a choice — otherwise admins
+      // can configure a per-month cap that silently grants unlimited.
       options: [
         { label: 'Day', value: 'day' },
-        { label: 'Month', value: 'month' },
         { label: 'Lifetime', value: 'lifetime' },
       ],
       admin: {

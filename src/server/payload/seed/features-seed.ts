@@ -38,9 +38,11 @@ const FEATURES: FeatureSeed[] = [
   },
   {
     key: 'chat-limit',
-    label: 'Chat Cap (silent)',
-    description:
-      'Silent server-side ceiling on chat usage. Hits return a generic 429 without revealing the limit.',
+    // Description intentionally neutral — this row is hidden from public
+    // reads by `readNonSilentForPublic` (Features.ts), but a leaked
+    // description would still tip off attackers about the silent mechanism.
+    label: 'Chat Cap',
+    description: 'Daily ceiling on chat usage.',
     type: 'numeric',
     unit: 'messages',
     defaultPeriod: 'day',

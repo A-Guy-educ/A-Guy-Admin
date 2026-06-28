@@ -309,10 +309,13 @@ export const Products: CollectionConfig = {
             {
               name: 'period',
               type: 'select',
-              defaultValue: 'day',
+              // No defaultValue: a boolean feature gets auto-rejected by the
+              // beforeValidate hook if period defaults to 'day', forcing the
+              // admin to clear the field manually. The grant code's fallback
+              // ladder (block.period → feature.defaultPeriod → 'lifetime')
+              // supplies a safe default when this is unset.
               options: [
                 { label: 'יומי', value: 'day' },
-                { label: 'חודשי', value: 'month' },
                 { label: 'לכל החיים', value: 'lifetime' },
               ],
               admin: {
