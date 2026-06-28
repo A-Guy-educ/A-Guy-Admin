@@ -15,10 +15,12 @@
  * @ai-summary Enforces per-day feature limits (ai-questions, chat-limit) keyed on featureEntitlements value/period
  */
 
-import { ObjectId, type Collection, type Document } from 'mongodb'
+import { ObjectId } from 'mongodb'
 import type { Payload } from 'payload'
 
 import type { FeatureKey } from '@/lib/products/feature-keys'
+
+import { getUsersMongoCollection } from './internal/users-mongo-collection'
 
 export type FeaturePeriod = 'day' | 'month' | 'lifetime'
 
@@ -126,21 +128,6 @@ export async function resolveFeatureEntitlement(
   return matching[0]
 }
 
-function getUsersCollection(payload: Payload): Collection<Document> | null {
-  const db = payload.db as unknown as {
-    connection?: { collection?: (name: string) => unknown }
-    collections?: Record<string, unknown>
-    collection?: (name: string) => unknown
-  }
-  const collection =
-    db.connection?.collection?.('users') ||
-    db.collections?.['users'] ||
-    (db.collections as Record<string, unknown>)?.users ||
-    db.collection?.('users') ||
-    null
-  return (collection as Collection<Document>) ?? null
-}
-
 interface FeatureQuotaFieldNames {
   used: string
   bucket: string
@@ -181,13 +168,25 @@ export async function checkAndIncrementFeatureQuota(
     return { allowed: true, used: 0, limit, resetAt: null }
   }
 
+  // Zero-limit guard: a "0/day" cap must deny every request. Without this
+  // short-circuit, Step 2 (bucket missing/stale) would set used=1 on the
+  // first request of the day and incorrectly return allowed=true.
+  if (limit <= 0) {
+    return { allowed: false, used: 0, limit, resetAt: getNextDayResetIsoIL() }
+  }
+
   const fields = fieldsFor(featureKey)
   if (!fields) {
-    // No counter wired for this key — treat as unlimited rather than denying.
+    // No counter wired for this key. Per-day cap configured for a feature
+    // we can't actually enforce — log loudly so ops notice. Fail open: allow.
+    payload.logger.warn(
+      { userId, featureKey, limit, period: entitlement.period },
+      'feature-quota: per-day cap configured for a key with no counter mapping; allowing request',
+    )
     return { allowed: true, used: 0, limit, resetAt: null }
   }
 
-  const collection = getUsersCollection(payload)
+  const collection = getUsersMongoCollection(payload)
   if (!collection) {
     // Adapter shape unavailable — fail open, log via Payload's logger.
     payload.logger.error(
@@ -235,6 +234,27 @@ export async function checkAndIncrementFeatureQuota(
 
   // Step 3: at limit in today's bucket
   return { allowed: false, used: limit, limit, resetAt }
+}
+
+/**
+ * Atomically decrement the per-day counter for a feature, used to compensate
+ * for an already-charged ai-questions increment when a subsequent silent
+ * chat-limit cap denies the request. Best-effort: clamps at 0 (`{ used: { $gt: 0 } }`)
+ * and is a no-op when no counter mapping exists.
+ */
+export async function decrementFeatureQuota(
+  payload: Payload,
+  userId: string,
+  featureKey: FeatureKey,
+): Promise<void> {
+  const fields = fieldsFor(featureKey)
+  if (!fields) return
+  const collection = getUsersMongoCollection(payload)
+  if (!collection) return
+  await collection.updateOne(
+    { _id: new ObjectId(userId), [fields.used]: { $gt: 0 } },
+    { $inc: { [fields.used]: -1 } },
+  )
 }
 
 /**

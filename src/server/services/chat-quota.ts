@@ -17,16 +17,18 @@
  * @pattern rolling-window-quota, daily-feature-quota, silent-cap
  * @ai-summary Coordinates entitlement-driven daily quotas with the legacy rolling-window fallback
  */
-import { ObjectId, type Collection, type Document } from 'mongodb'
+import { ObjectId } from 'mongodb'
 import { getChatConfig } from '@/infra/llm/providers/shared/chat-config'
 import { hoursToMs } from '@/infra/utils/time'
 import type { Payload } from 'payload'
 
 import {
   checkAndIncrementFeatureQuota,
+  decrementFeatureQuota,
   getFeatureQuotaStatus,
   resolveFeatureEntitlement,
 } from './feature-quota'
+import { getUsersMongoCollection } from './internal/users-mongo-collection'
 
 const QUOTA_DEFAULTS = { maxQuestions: 15, windowHours: 12 }
 
@@ -52,41 +54,47 @@ async function getQuotaConfig() {
   }
 }
 
-function getUsersCollection(payload: Payload): Collection<Document> | null {
-  const db = payload.db as unknown as {
-    connection?: { collection?: (name: string) => unknown }
-    collections?: Record<string, unknown>
-    collection?: (name: string) => unknown
-  }
-
-  const collection =
-    db.connection?.collection?.('users') ||
-    db.collections?.['users'] ||
-    (db.collections as Record<string, unknown>)?.users ||
-    db.collection?.('users') ||
-    null
-
-  return (collection as Collection<Document>) ?? null
-}
-
 /**
  * Apply the silent `chat-limit` cap. Returns a silent denial if exceeded
  * and the previous result was allowed. Callers must check `silent` before
  * surfacing quota numbers.
  */
+/**
+ * Compensation strategy for `applyChatLimit`. The visible counter has
+ * already been spent on a request that may now be silently denied; if the
+ * silent cap fires, we need to roll back that increment so the user isn't
+ * billed for a request they never received.
+ */
+type CompensateFn = () => Promise<void>
+
 async function applyChatLimit(
   payload: Payload,
   userId: string,
   prior: ChatQuotaResult,
+  compensate: CompensateFn,
 ): Promise<ChatQuotaResult> {
   if (!prior.allowed) return prior
   const entitlement = await resolveFeatureEntitlement(payload, userId, 'chat-limit')
   if (!entitlement || entitlement.value === null) return prior
   const result = await checkAndIncrementFeatureQuota(payload, userId, 'chat-limit', entitlement)
   if (!result.allowed) {
+    // chat-limit cap fired AFTER the visible counter was already incremented
+    // — roll the visible counter back so the user isn't charged for a request
+    // they never received. Failure here is logged but does not surface as a
+    // different error: the user-facing response is still the silent denial.
+    try {
+      await compensate()
+    } catch (error) {
+      payload.logger.error(
+        { err: error, userId },
+        'chat-quota: failed to compensate visible counter after silent chat-limit denial',
+      )
+    }
     return {
       allowed: false,
-      questionsUsed: prior.questionsUsed,
+      // Surface the pre-increment state so a future read-only quota check
+      // reflects what the user actually got.
+      questionsUsed: Math.max(0, prior.questionsUsed - 1),
       maxQuestions: prior.maxQuestions,
       resetAt: prior.resetAt,
       silent: true,
@@ -124,11 +132,28 @@ export async function checkAndIncrementChatQuota(
       maxQuestions: Number.isFinite(featureResult.limit) ? featureResult.limit : 0,
       resetAt: featureResult.resetAt,
     }
-    return applyChatLimit(payload, userId, baseResult)
+    return applyChatLimit(payload, userId, baseResult, () =>
+      decrementFeatureQuota(payload, userId, 'ai-questions'),
+    )
   }
 
   const legacyResult = await checkAndIncrementLegacyRollingQuota(payload, userId)
-  return applyChatLimit(payload, userId, legacyResult)
+  return applyChatLimit(payload, userId, legacyResult, () =>
+    decrementLegacyChatQuota(payload, userId),
+  )
+}
+
+/**
+ * Compensation helper for the legacy rolling-window quota. Mirrors
+ * `decrementFeatureQuota` but targets the older `chatQuestionsUsed` field.
+ */
+async function decrementLegacyChatQuota(payload: Payload, userId: string): Promise<void> {
+  const collection = getUsersMongoCollection(payload)
+  if (!collection) return
+  await collection.updateOne(
+    { _id: new ObjectId(userId), chatQuestionsUsed: { $gt: 0 } },
+    { $inc: { chatQuestionsUsed: -1 } },
+  )
 }
 
 /**
@@ -145,7 +170,7 @@ async function checkAndIncrementLegacyRollingQuota(
   const windowMs = hoursToMs(windowHours)
   const cutoffDate = new Date(now.getTime() - windowMs) // time before which window is expired
 
-  const collection = getUsersCollection(payload)
+  const collection = getUsersMongoCollection(payload)
 
   // Fallback to non-atomic path if collection is unavailable
   if (!collection) {

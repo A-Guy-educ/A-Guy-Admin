@@ -9,6 +9,7 @@ import type { Payload } from 'payload'
 import { describe, expect, it, vi } from 'vitest'
 
 import {
+  checkAndIncrementFeatureQuota,
   getDayBucketIL,
   getNextDayResetIsoIL,
   resolveFeatureEntitlement,
@@ -152,5 +153,52 @@ describe('resolveFeatureEntitlement', () => {
       'ai-questions',
     )
     expect(result?.period).toBe('lifetime')
+  })
+})
+
+describe('checkAndIncrementFeatureQuota — zero-limit guard', () => {
+  const userId = 'user-zero'
+  const mockPayload = () =>
+    ({
+      logger: { warn: vi.fn(), error: vi.fn(), info: vi.fn(), debug: vi.fn() },
+    }) as unknown as Payload
+
+  it('denies a value=0 per-day entitlement on the very first request of the day', async () => {
+    const result = await checkAndIncrementFeatureQuota(mockPayload(), userId, 'ai-questions', {
+      key: 'ai-questions',
+      value: 0,
+      period: 'day',
+      expiresAt: null,
+      grantedAt: '2026-06-15T12:00:00Z',
+      transactionId: 'tx',
+    })
+    expect(result.allowed).toBe(false)
+    expect(result.used).toBe(0)
+    expect(result.limit).toBe(0)
+    expect(result.resetAt).not.toBeNull()
+  })
+
+  it('allows unlimited when value is null', async () => {
+    const result = await checkAndIncrementFeatureQuota(mockPayload(), userId, 'ai-questions', {
+      key: 'ai-questions',
+      value: null,
+      period: 'day',
+      expiresAt: null,
+      grantedAt: '2026-06-15T12:00:00Z',
+      transactionId: 'tx',
+    })
+    expect(result.allowed).toBe(true)
+  })
+
+  it('allows when period is lifetime regardless of value', async () => {
+    const result = await checkAndIncrementFeatureQuota(mockPayload(), userId, 'ai-questions', {
+      key: 'ai-questions',
+      value: 5,
+      period: 'lifetime',
+      expiresAt: null,
+      grantedAt: '2026-06-15T12:00:00Z',
+      transactionId: 'tx',
+    })
+    expect(result.allowed).toBe(true)
   })
 })
