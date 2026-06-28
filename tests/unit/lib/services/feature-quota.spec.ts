@@ -121,6 +121,33 @@ describe('resolveFeatureEntitlement', () => {
     expect(result).toBeNull()
   })
 
+  it('breaks ties deterministically by transactionId when grantedAt is identical', async () => {
+    const sameTime = '2026-06-01T00:00:00Z'
+    const result = await resolveFeatureEntitlement(
+      mockPayload([
+        {
+          key: 'ai-questions',
+          value: 5,
+          period: 'day',
+          grantedAt: sameTime,
+          transactionId: 'aaa',
+        },
+        {
+          key: 'ai-questions',
+          value: 10,
+          period: 'day',
+          grantedAt: sameTime,
+          transactionId: 'zzz',
+        },
+      ]),
+      userId,
+      'ai-questions',
+    )
+    // transactionId sort is descending — 'zzz' > 'aaa'.
+    expect(result?.transactionId).toBe('zzz')
+    expect(result?.value).toBe(10)
+  })
+
   it('picks the latest non-expired grant when multiple match', async () => {
     const result = await resolveFeatureEntitlement(
       mockPayload([

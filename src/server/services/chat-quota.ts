@@ -27,6 +27,8 @@ import {
   decrementFeatureQuota,
   getFeatureQuotaStatus,
   resolveFeatureEntitlement,
+  resolveFeatureEntitlementWithUser,
+  type FeatureEntitlement,
 } from './feature-quota'
 import { getUsersMongoCollection } from './internal/users-mongo-collection'
 
@@ -60,47 +62,60 @@ async function getQuotaConfig() {
  * surfacing quota numbers.
  */
 /**
- * Compensation strategy for `applyChatLimit`. The visible counter has
- * already been spent on a request that may now be silently denied; if the
- * silent cap fires, we need to roll back that increment so the user isn't
- * billed for a request they never received.
+ * Pre-check the silent `chat-limit` cap WITHOUT incrementing it. Returns
+ * `{ shouldDeny: true }` when the user is already at the daily limit so the
+ * caller can skip the visible counter increment entirely. This avoids the
+ * compensate-after-the-fact race where a concurrent request would observe
+ * an inflated visible counter between the visible increment and the
+ * compensation decrement.
+ *
+ * Returns `null` when the user has no chat-limit entitlement (no cap).
  */
-type CompensateFn = () => Promise<void>
+async function chatLimitPreCheck(
+  payload: Payload,
+  userId: string,
+): Promise<{ entitlement: FeatureEntitlement; shouldDeny: boolean } | null> {
+  const entitlement = await resolveFeatureEntitlement(payload, userId, 'chat-limit')
+  if (!entitlement || entitlement.value === null) return null
+  const status = await getFeatureQuotaStatus(payload, userId, 'chat-limit', entitlement)
+  return { entitlement, shouldDeny: !status.allowed }
+}
 
-async function applyChatLimit(
+/**
+ * After the visible counter has been incremented and the pre-check passed,
+ * spend the chat-limit budget. The remaining race window — both buckets
+ * pass pre-check, then both attempt to spend chat-limit — is small and
+ * compensation is logged but not surfaced as a different user-facing error.
+ */
+async function spendChatLimitAfterPrior(
   payload: Payload,
   userId: string,
   prior: ChatQuotaResult,
-  compensate: CompensateFn,
+  entitlement: FeatureEntitlement | null,
+  compensate: () => Promise<void>,
 ): Promise<ChatQuotaResult> {
   if (!prior.allowed) return prior
-  const entitlement = await resolveFeatureEntitlement(payload, userId, 'chat-limit')
-  if (!entitlement || entitlement.value === null) return prior
+  if (!entitlement) return prior
   const result = await checkAndIncrementFeatureQuota(payload, userId, 'chat-limit', entitlement)
-  if (!result.allowed) {
-    // chat-limit cap fired AFTER the visible counter was already incremented
-    // — roll the visible counter back so the user isn't charged for a request
-    // they never received. Failure here is logged but does not surface as a
-    // different error: the user-facing response is still the silent denial.
-    try {
-      await compensate()
-    } catch (error) {
-      payload.logger.error(
-        { err: error, userId },
-        'chat-quota: failed to compensate visible counter after silent chat-limit denial',
-      )
-    }
-    return {
-      allowed: false,
-      // Surface the pre-increment state so a future read-only quota check
-      // reflects what the user actually got.
-      questionsUsed: Math.max(0, prior.questionsUsed - 1),
-      maxQuestions: prior.maxQuestions,
-      resetAt: prior.resetAt,
-      silent: true,
-    }
+  if (result.allowed) return prior
+  // Race lost — another request consumed the last chat-limit slot. Roll
+  // back the visible counter so the user isn't billed for a request they
+  // never received.
+  try {
+    await compensate()
+  } catch (error) {
+    payload.logger.error(
+      { err: error, userId },
+      'chat-quota: failed to compensate visible counter after silent chat-limit denial',
+    )
   }
-  return prior
+  return {
+    allowed: false,
+    questionsUsed: Math.max(0, prior.questionsUsed - 1),
+    maxQuestions: prior.maxQuestions,
+    resetAt: prior.resetAt,
+    silent: true,
+  }
 }
 
 /**
@@ -117,6 +132,24 @@ export async function checkAndIncrementChatQuota(
   payload: Payload,
   userId: string,
 ): Promise<ChatQuotaResult> {
+  // Pre-check the silent chat-limit cap BEFORE touching the visible counter
+  // so the common silent-denial path never charges the user. The remaining
+  // race window (chat-limit fills between pre-check and post-increment) is
+  // handled by spendChatLimitAfterPrior with compensation.
+  const chatLimitPre = await chatLimitPreCheck(payload, userId)
+  if (chatLimitPre?.shouldDeny) {
+    return {
+      allowed: false,
+      // Surface the visible-quota state without incrementing it. We don't
+      // expose `questionsUsed` from the pre-check because we haven't read
+      // the visible quota yet; clients only need to know it's denied.
+      questionsUsed: 0,
+      maxQuestions: 0,
+      resetAt: null,
+      silent: true,
+    }
+  }
+
   // Entitlement-driven path: `ai-questions` overrides the rolling-window default.
   const aiQuestionsEntitlement = await resolveFeatureEntitlement(payload, userId, 'ai-questions')
   if (aiQuestionsEntitlement) {
@@ -132,14 +165,22 @@ export async function checkAndIncrementChatQuota(
       maxQuestions: Number.isFinite(featureResult.limit) ? featureResult.limit : 0,
       resetAt: featureResult.resetAt,
     }
-    return applyChatLimit(payload, userId, baseResult, () =>
-      decrementFeatureQuota(payload, userId, 'ai-questions'),
+    return spendChatLimitAfterPrior(
+      payload,
+      userId,
+      baseResult,
+      chatLimitPre?.entitlement ?? null,
+      () => decrementFeatureQuota(payload, userId, 'ai-questions'),
     )
   }
 
   const legacyResult = await checkAndIncrementLegacyRollingQuota(payload, userId)
-  return applyChatLimit(payload, userId, legacyResult, () =>
-    decrementLegacyChatQuota(payload, userId),
+  return spendChatLimitAfterPrior(
+    payload,
+    userId,
+    legacyResult,
+    chatLimitPre?.entitlement ?? null,
+    () => decrementLegacyChatQuota(payload, userId),
   )
 }
 
@@ -260,13 +301,20 @@ export async function getChatQuotaStatus(
   payload: Payload,
   userId: string,
 ): Promise<ChatQuotaResult> {
-  const aiQuestionsEntitlement = await resolveFeatureEntitlement(payload, userId, 'ai-questions')
+  // Use the *WithUser variant so getFeatureQuotaStatus can read the same
+  // user document we already loaded — one findByID instead of two.
+  const { entitlement: aiQuestionsEntitlement, user } = await resolveFeatureEntitlementWithUser(
+    payload,
+    userId,
+    'ai-questions',
+  )
   if (aiQuestionsEntitlement) {
     const featureStatus = await getFeatureQuotaStatus(
       payload,
       userId,
       'ai-questions',
       aiQuestionsEntitlement,
+      user,
     )
     return {
       allowed: featureStatus.allowed,
@@ -279,9 +327,9 @@ export async function getChatQuotaStatus(
   const { maxQuestions, windowHours } = await getQuotaConfig()
   const now = new Date()
 
-  const user = await payload.findByID({ collection: 'users', id: userId })
-  const windowStart = user.chatWindowStart ? new Date(user.chatWindowStart) : null
-  let questionsUsed = user.chatQuestionsUsed ?? 0
+  const legacyUser = await payload.findByID({ collection: 'users', id: userId })
+  const windowStart = legacyUser.chatWindowStart ? new Date(legacyUser.chatWindowStart) : null
+  let questionsUsed = legacyUser.chatQuestionsUsed ?? 0
 
   const windowMs = hoursToMs(windowHours)
   const windowExpired = !windowStart || now.getTime() - windowStart.getTime() > windowMs

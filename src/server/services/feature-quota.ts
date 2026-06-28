@@ -52,54 +52,114 @@ export function getDayBucketIL(date: Date = new Date()): string {
   return date.toLocaleDateString('en-CA', { timeZone: IL_TIMEZONE })
 }
 
+// Cached formatter — single allocation per process, ~10x cheaper than
+// constructing a new Intl.DateTimeFormat per call. DST is handled by the
+// timeZone option, so the offset adjusts automatically across spring/fall.
+const IL_PARTS_FORMATTER = new Intl.DateTimeFormat('en-CA', {
+  timeZone: IL_TIMEZONE,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+  hour12: false,
+})
+
+/**
+ * Returns IL-local calendar parts {year, month, day, hour, minute, second}
+ * for a given Date. The numeric parts let us construct tomorrow's IL midnight
+ * directly without walking the clock back minute-by-minute.
+ */
+function getILParts(date: Date): {
+  year: number
+  month: number
+  day: number
+  hour: number
+  minute: number
+  second: number
+} {
+  const parts = IL_PARTS_FORMATTER.formatToParts(date)
+  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? '0')
+  return {
+    year: get('year'),
+    month: get('month'),
+    day: get('day'),
+    hour: get('hour'),
+    minute: get('minute'),
+    second: get('second'),
+  }
+}
+
 /**
  * Next Asia/Jerusalem midnight as an ISO string. Tells clients exactly when
- * the counter will reset.
+ * the counter will reset. DST-correct: we derive IL-local parts via Intl,
+ * advance the date by one IL-day, then find the UTC instant whose IL parts
+ * equal {tomorrow, 00:00:00}.
  */
 export function getNextDayResetIsoIL(date: Date = new Date()): string {
-  // Build the IL local Y/M/D/H/M/S of the input, advance the day by one,
-  // zero the time, then convert back through Date.UTC by offsetting for IL.
-  // Simpler: render the IL "now" parts, then construct tomorrow IL midnight
-  // and let Date interpret it as if local — but IL offset varies (DST), so
-  // we approximate by binary searching the next instant whose IL bucket > today.
-  //
-  // Pragmatic implementation: today's IL bucket vs candidate. Start with
-  // now + 25 hours and step back to the moment the IL bucket flipped.
-  const todayBucket = getDayBucketIL(date)
-  let candidate = new Date(date.getTime() + 25 * 60 * 60 * 1000)
-  // Walk back hour by hour while still on tomorrow's bucket.
-  while (getDayBucketIL(new Date(candidate.getTime() - 60 * 60 * 1000)) !== todayBucket) {
-    candidate = new Date(candidate.getTime() - 60 * 60 * 1000)
+  const il = getILParts(date)
+  // Approximate UTC for tomorrow IL midnight by treating IL as UTC+3
+  // (summer DST). Then correct by the actual IL/UTC offset measured against
+  // the candidate's own IL parts. One Intl call per correction iteration —
+  // converges in at most two iterations (DST transitions move the wall
+  // clock by at most one hour, never more than once in a 24h window).
+  let candidate = Date.UTC(il.year, il.month - 1, il.day + 1, 0, 0, 0) - 3 * 60 * 60 * 1000
+  for (let i = 0; i < 3; i++) {
+    const cParts = getILParts(new Date(candidate))
+    if (cParts.hour === 0 && cParts.minute === 0 && cParts.second === 0) break
+    // Correction: the candidate's IL hour/minute tell us by how much we
+    // overshot or undershot. Adjust by that delta.
+    const drift = ((cParts.hour * 60 + cParts.minute) * 60 + cParts.second) * 1000
+    // If we're past midnight (hour 0–11), drift is positive; subtract it.
+    // If we're before midnight (hour 12–23), we need to advance by (24h - drift).
+    if (cParts.hour < 12) {
+      candidate -= drift
+    } else {
+      candidate += 24 * 60 * 60 * 1000 - drift
+    }
   }
-  // Now walk back minute by minute to find the exact flip.
-  while (getDayBucketIL(new Date(candidate.getTime() - 60 * 1000)) !== todayBucket) {
-    candidate = new Date(candidate.getTime() - 60 * 1000)
-  }
-  return candidate.toISOString()
+  return new Date(candidate).toISOString()
 }
 
 /**
  * Returns the best matching non-expired featureEntitlement for a given key.
  * Per the documented intent in grant-entitlements.ts, when multiple rows
  * exist for the same key (cross-product bundles) the latest by grantedAt
- * wins.
+ * wins (transactionId is the deterministic tiebreaker).
+ *
+ * For callers that need both the entitlement AND will later read other
+ * fields off the same user document, use `resolveFeatureEntitlementWithUser`
+ * to amortize the findByID across both reads.
  */
 export async function resolveFeatureEntitlement(
   payload: Payload,
   userId: string,
   featureKey: FeatureKey,
 ): Promise<FeatureEntitlement | null> {
-  const user = await payload.findByID({
+  const { entitlement } = await resolveFeatureEntitlementWithUser(payload, userId, featureKey)
+  return entitlement
+}
+
+/**
+ * Same as `resolveFeatureEntitlement` but also returns the raw user record
+ * for downstream callers (e.g. `getFeatureQuotaStatus`) that would
+ * otherwise re-read the same document.
+ */
+export async function resolveFeatureEntitlementWithUser(
+  payload: Payload,
+  userId: string,
+  featureKey: FeatureKey,
+): Promise<{ entitlement: FeatureEntitlement | null; user: Record<string, unknown> }> {
+  const user = (await payload.findByID({
     collection: 'users',
     id: userId,
     depth: 0,
     overrideAccess: true,
-  })
+  })) as unknown as Record<string, unknown>
 
   const rawEntitlements =
-    ((user as unknown as { featureEntitlements?: unknown }).featureEntitlements as
-      | Array<Record<string, unknown>>
-      | undefined) ?? []
+    (user.featureEntitlements as Array<Record<string, unknown>> | undefined) ?? []
 
   const now = Date.now()
   const matching: FeatureEntitlement[] = rawEntitlements
@@ -117,15 +177,20 @@ export async function resolveFeatureEntitlement(
     }))
     .filter((e) => !e.expiresAt || new Date(e.expiresAt).getTime() > now)
 
-  if (matching.length === 0) return null
+  if (matching.length === 0) {
+    return { entitlement: null, user }
+  }
 
-  // Latest non-expired grant by grantedAt wins.
+  // Latest non-expired grant by grantedAt wins; ties broken deterministically
+  // by transactionId (descending) so seeds/tests with identical timestamps
+  // don't depend on JS sort stability.
   matching.sort((a, b) => {
     const aMs = a.grantedAt ? new Date(a.grantedAt).getTime() : 0
     const bMs = b.grantedAt ? new Date(b.grantedAt).getTime() : 0
-    return bMs - aMs
+    if (aMs !== bMs) return bMs - aMs
+    return (b.transactionId ?? '').localeCompare(a.transactionId ?? '')
   })
-  return matching[0]
+  return { entitlement: matching[0], user }
 }
 
 interface FeatureQuotaFieldNames {
@@ -232,7 +297,32 @@ export async function checkAndIncrementFeatureQuota(
     return { allowed: true, used: 1, limit, resetAt }
   }
 
-  // Step 3: at limit in today's bucket
+  // Step 3: Step 2 missed. Two possibilities:
+  //   (a) Genuinely at limit in today's bucket — deny.
+  //   (b) Race at the IL day transition: another request just won Step 2
+  //       and reset the bucket to today, so this request's Step 2 missed
+  //       because bucket is no longer != today. Re-run Step 1: if bucket
+  //       now matches and used < limit, this is request #2 of a brand-new
+  //       day and should pass.
+  const retryInc = await collection.findOneAndUpdate(
+    {
+      _id: userObjectId,
+      [fields.bucket]: bucket,
+      [fields.used]: { $lt: limit },
+    },
+    { $inc: { [fields.used]: 1 } },
+    { returnDocument: 'after' },
+  )
+  if (retryInc) {
+    return {
+      allowed: true,
+      used: (retryInc[fields.used] as number) ?? 1,
+      limit,
+      resetAt,
+    }
+  }
+
+  // Truly at limit in today's bucket.
   return { allowed: false, used: limit, limit, resetAt }
 }
 
@@ -260,12 +350,17 @@ export async function decrementFeatureQuota(
 /**
  * Read-only quota status — does not increment. Used by the chat-quota
  * endpoint to surface remaining count + resetAt to clients.
+ *
+ * Accepts an optional `preloadedUser` so callers that already read the
+ * user document (e.g. from a prior `resolveFeatureEntitlement` call) can
+ * pass it through instead of paying for a second findByID.
  */
 export async function getFeatureQuotaStatus(
   payload: Payload,
   userId: string,
   featureKey: FeatureKey,
   entitlement: FeatureEntitlement,
+  preloadedUser?: Record<string, unknown>,
 ): Promise<FeatureQuotaResult> {
   const limit = entitlement.value
   if (limit === null || entitlement.period === 'lifetime') {
@@ -283,14 +378,14 @@ export async function getFeatureQuotaStatus(
   const bucket = getDayBucketIL()
   const resetAt = getNextDayResetIsoIL()
 
-  const user = await payload.findByID({
-    collection: 'users',
-    id: userId,
-    depth: 0,
-    overrideAccess: true,
-  })
-
-  const userRecord = user as unknown as Record<string, unknown>
+  const userRecord =
+    preloadedUser ??
+    ((await payload.findByID({
+      collection: 'users',
+      id: userId,
+      depth: 0,
+      overrideAccess: true,
+    })) as unknown as Record<string, unknown>)
   const storedBucket = userRecord[fields.bucket] as string | undefined
   const storedUsed = userRecord[fields.used] as number | undefined
   const used = storedBucket === bucket ? (storedUsed ?? 0) : 0
