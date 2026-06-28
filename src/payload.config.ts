@@ -48,6 +48,7 @@ import { UserProgress } from '@/server/payload/collections/UserProgress'
 import { Users } from '@/server/payload/collections/Users'
 import { UserSettings } from '@/server/payload/collections/UserSettings'
 import { UserStats } from '@/server/payload/collections/UserStats'
+import { withIdOnCreateGuard } from '@/server/services/content-promotion/import-context'
 import { generateSupportEndpoint } from '@/server/payload/endpoints/exercises/generate-support'
 import { importExerciseFromImage } from '@/server/payload/endpoints/exercises/import-from-image'
 import { importExerciseFromLatex } from '@/server/payload/endpoints/exercises/import-from-latex'
@@ -114,14 +115,17 @@ export default buildConfig({
       // The `BeforeLogin` component renders a message that you see while logging into your admin panel.
       // Feel free to delete this at any time. Simply remove the line below.
       beforeLogin: ['@/ui/admin/BeforeLogin'],
-      // The `BeforeDashboard` component renders the 'welcome' block that you see after logging into your admin panel.
-      // Feel free to delete this at any time. Simply remove the line below.
-      beforeDashboard: ['@/ui/admin/ConversionTracking/DashboardWidgets'],
+      // Dashboard widgets used to render here (`beforeDashboard`) — every
+      // /admin landing hit fanned out ~30 collection reads through a 3-slot
+      // pool. Moved to a dedicated /admin/statistics page so the landing
+      // page stays cheap and admins opt in to the metrics view.
       afterDashboard: ['@/ui/admin/VersionInfo'],
       beforeNavLinks: [
+        '@/ui/admin/Statistics/SidebarLink',
         '@/ui/admin/PdfConversion/SidebarLink',
         '@/ui/admin/LessonDuplicationReview/SidebarLink',
         '@/ui/admin/LessonJsonImport/SidebarLink',
+        '@/ui/admin/ContentPromotion/SidebarLink',
       ],
       afterNavLinks: ['@/ui/admin/UserEmail'],
     },
@@ -156,6 +160,15 @@ export default buildConfig({
   editor: defaultLexical,
   db: mongooseAdapter({
     url: databaseUrl,
+    // Required by the content-promotion import flow, which threads source-env
+    // document IDs through `payload.create({ data: { id } })` so cross-document
+    // references inside the bundle resolve without a remap when no collision
+    // exists on the target environment.
+    // Scoped at runtime by `withIdOnCreateGuard` below: every collection
+    // strips `data.id` on create unless the request is flagged by
+    // `markRequestAsContentPromotionImport`. Net effect: behaves as if
+    // `allowIDOnCreate: false` for every code path except the import service.
+    allowIDOnCreate: true,
     connectOptions: {
       // ⚠️ CONNECTION POOL GUARDRAIL — DO NOT increase without updating the guardrail test
       // Atlas limit: 500 connections. At maxPoolSize=N, max safe instances = 500/N.
@@ -232,7 +245,7 @@ export default buildConfig({
     PaymentStats,
     WebhookEvents,
     MCPAuditLogs,
-  ],
+  ].map(withIdOnCreateGuard),
   cors: [getServerSideURL()].filter(Boolean),
   globals: [Header, Footer],
   plugins,
