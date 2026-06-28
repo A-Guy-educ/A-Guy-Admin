@@ -3386,7 +3386,7 @@ describe('Cross-product feature entitlements', () => {
       (f: any) => f.key === 'ai-questions',
     )
     expect(rows.length).toBe(2)
-    expect(rows.map((r: any) => r.value).sort()).toEqual([5, 10])
+    expect(rows.map((r: any) => r.value).sort((a: number, b: number) => a - b)).toEqual([5, 10])
 
     const { resolveFeatureEntitlement } = await import('@/server/services/feature-quota')
     const resolved = await resolveFeatureEntitlement(payload, userId, 'ai-questions')
