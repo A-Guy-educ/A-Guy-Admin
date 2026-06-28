@@ -45,6 +45,7 @@ let _studentUserId: string
 let tenantId: string
 let userId: string
 let chapterId: string
+let courseId: string
 let lessonId: string
 let productItemLessonId: string
 let productItemFeatureId: string
@@ -104,6 +105,7 @@ beforeAll(async () => {
     } as any,
     overrideAccess: true,
   })
+  courseId = course.id
 
   const chapter = await payload.create({
     collection: 'chapters',
@@ -280,6 +282,30 @@ async function cleanupUsers() {
 
 beforeEach(cleanupUsers)
 afterEach(cleanupUsers)
+
+/**
+ * Webhook tests previously asserted that `user.courseEntitlements` contained
+ * a row pointing at `lessonId`. Task B moves grants to the Enrollments
+ * collection and keys them on the lesson's *parent course*, so the equivalent
+ * assertion is now: does the user have an active Enrollment for the fixture's
+ * `courseId`?
+ */
+async function hasActiveEnrollmentForLessonCourse(): Promise<boolean> {
+  const enrollments = await payload.find({
+    collection: 'enrollments',
+    where: {
+      and: [
+        { user: { equals: userId } },
+        { course: { equals: courseId } },
+        { status: { equals: 'active' } },
+      ],
+    },
+    limit: 1,
+    depth: 0,
+    overrideAccess: true,
+  })
+  return enrollments.totalDocs > 0
+}
 afterEach(() => {
   vi.mocked(grantProductEntitlements).mockClear()
 })
@@ -902,17 +928,7 @@ describe('Stripe webhook handler', () => {
     expect((updated as any).paymentIntentId).toBe(paymentIntentId)
 
     // Verify entitlements were granted
-    const user = await payload.findByID({
-      collection: 'users',
-      id: userId,
-      depth: 0,
-      overrideAccess: true,
-    })
-    const courseEntitlements = (user as any).courseEntitlements || []
-    const hasLessonEntitlement = courseEntitlements.some(
-      (e: any) => e.course?.toString() === lessonId || e.course === lessonId,
-    )
-    expect(hasLessonEntitlement).toBe(true)
+    expect(await hasActiveEnrollmentForLessonCourse()).toBe(true)
 
     await payload
       .delete({ collection: 'transactions', id: tx.id, overrideAccess: true })
@@ -959,17 +975,7 @@ describe('Stripe webhook handler', () => {
     await stripeWebhookHandler(req)
 
     // Entitlements should NOT have been re-granted (idempotency guard: entitlementsGrantedAt set)
-    const user = await payload.findByID({
-      collection: 'users',
-      id: userId,
-      depth: 0,
-      overrideAccess: true,
-    })
-    const courseEntitlements = (user as any).courseEntitlements || []
-    const hasEntitlement = courseEntitlements.some(
-      (e: any) => e.course?.toString() === lessonId || e.course === lessonId,
-    )
-    expect(hasEntitlement).toBe(false)
+    expect(await hasActiveEnrollmentForLessonCourse()).toBe(false)
 
     await payload
       .delete({ collection: 'transactions', id: tx.id, overrideAccess: true })
@@ -1451,17 +1457,7 @@ describe('Stripe webhook handler', () => {
     expect(updated.status).toBe('pending')
 
     // Entitlements should NOT have been granted
-    const user = await payload.findByID({
-      collection: 'users',
-      id: userId,
-      depth: 0,
-      overrideAccess: true,
-    })
-    const courseEntitlements = (user as any).courseEntitlements || []
-    const hasLessonEntitlement = courseEntitlements.some(
-      (e: any) => e.course?.toString() === lessonId || e.course === lessonId,
-    )
-    expect(hasLessonEntitlement).toBe(false)
+    expect(await hasActiveEnrollmentForLessonCourse()).toBe(false)
 
     await payload
       .delete({ collection: 'transactions', id: tx.id, overrideAccess: true })
@@ -1513,17 +1509,7 @@ describe('Stripe webhook handler', () => {
     expect((updated as any).entitlementsGrantedAt).toBeDefined()
 
     // Entitlements should have been granted
-    const user = await payload.findByID({
-      collection: 'users',
-      id: userId,
-      depth: 0,
-      overrideAccess: true,
-    })
-    const courseEntitlements = (user as any).courseEntitlements || []
-    const hasLessonEntitlement = courseEntitlements.some(
-      (e: any) => e.course?.toString() === lessonId || e.course === lessonId,
-    )
-    expect(hasLessonEntitlement).toBe(true)
+    expect(await hasActiveEnrollmentForLessonCourse()).toBe(true)
 
     await payload
       .delete({ collection: 'transactions', id: tx.id, overrideAccess: true })
@@ -1686,17 +1672,7 @@ describe('PayPal webhook handler', () => {
     expect(updated.status).toBe('pending')
 
     // Entitlements should NOT be granted yet
-    const user = await payload.findByID({
-      collection: 'users',
-      id: userId,
-      depth: 0,
-      overrideAccess: true,
-    })
-    const courseEntitlements = (user as any).courseEntitlements || []
-    const hasLessonEntitlement = courseEntitlements.some(
-      (e: any) => e.course?.toString() === lessonId || e.course === lessonId,
-    )
-    expect(hasLessonEntitlement).toBe(false)
+    expect(await hasActiveEnrollmentForLessonCourse()).toBe(false)
 
     await payload
       .delete({ collection: 'transactions', id: tx.id, overrideAccess: true })
@@ -1750,17 +1726,7 @@ describe('PayPal webhook handler', () => {
     await paypalWebhookHandler(req)
 
     // Entitlements should NOT have been re-granted (entitlementsGrantedAt already set)
-    const user = await payload.findByID({
-      collection: 'users',
-      id: userId,
-      depth: 0,
-      overrideAccess: true,
-    })
-    const courseEntitlements = (user as any).courseEntitlements || []
-    const hasEntitlement = courseEntitlements.some(
-      (e: any) => e.course?.toString() === lessonId || e.course === lessonId,
-    )
-    expect(hasEntitlement).toBe(false)
+    expect(await hasActiveEnrollmentForLessonCourse()).toBe(false)
 
     await payload
       .delete({ collection: 'transactions', id: tx.id, overrideAccess: true })
@@ -1821,17 +1787,7 @@ describe('PayPal webhook handler', () => {
     expect((updated as any).entitlementsGrantedAt).toBeDefined()
 
     // Verify entitlements were granted
-    const user = await payload.findByID({
-      collection: 'users',
-      id: userId,
-      depth: 0,
-      overrideAccess: true,
-    })
-    const courseEntitlements = (user as any).courseEntitlements || []
-    const hasLessonEntitlement = courseEntitlements.some(
-      (e: any) => e.course?.toString() === lessonId || e.course === lessonId,
-    )
-    expect(hasLessonEntitlement).toBe(true)
+    expect(await hasActiveEnrollmentForLessonCourse()).toBe(true)
 
     await payload
       .delete({ collection: 'transactions', id: tx.id, overrideAccess: true })
@@ -2116,17 +2072,7 @@ describe('PayPal webhook handler', () => {
     expect(updated.status).toBe('pending')
 
     // Entitlements should NOT be granted yet
-    let user = await payload.findByID({
-      collection: 'users',
-      id: userId,
-      depth: 0,
-      overrideAccess: true,
-    })
-    let courseEntitlements = (user as any).courseEntitlements || []
-    let hasLessonEntitlement = courseEntitlements.some(
-      (e: any) => e.course?.toString() === lessonId || e.course === lessonId,
-    )
-    expect(hasLessonEntitlement).toBe(false)
+    expect(await hasActiveEnrollmentForLessonCourse()).toBe(false)
 
     // Step 2: PAYMENT.CAPTURE.COMPLETED fires after successful capture
     vi.mocked(verifyPayPalWebhook).mockResolvedValueOnce(true)
@@ -2164,17 +2110,7 @@ describe('PayPal webhook handler', () => {
     expect((updated as any).entitlementsGrantedAt).toBeDefined()
 
     // Now entitlements SHOULD be granted
-    user = await payload.findByID({
-      collection: 'users',
-      id: userId,
-      depth: 0,
-      overrideAccess: true,
-    })
-    courseEntitlements = (user as any).courseEntitlements || []
-    hasLessonEntitlement = courseEntitlements.some(
-      (e: any) => e.course?.toString() === lessonId || e.course === lessonId,
-    )
-    expect(hasLessonEntitlement).toBe(true)
+    expect(await hasActiveEnrollmentForLessonCourse()).toBe(true)
 
     await payload
       .delete({ collection: 'transactions', id: tx.id, overrideAccess: true })
@@ -2237,17 +2173,7 @@ describe('PayPal webhook handler', () => {
     expect((updated as any).entitlementsGrantedAt).toBeDefined()
 
     // Entitlements should be granted
-    const user = await payload.findByID({
-      collection: 'users',
-      id: userId,
-      depth: 0,
-      overrideAccess: true,
-    })
-    const courseEntitlements = (user as any).courseEntitlements || []
-    const hasLessonEntitlement = courseEntitlements.some(
-      (e: any) => e.course?.toString() === lessonId || e.course === lessonId,
-    )
-    expect(hasLessonEntitlement).toBe(true)
+    expect(await hasActiveEnrollmentForLessonCourse()).toBe(true)
 
     await payload
       .delete({ collection: 'transactions', id: tx.id, overrideAccess: true })
