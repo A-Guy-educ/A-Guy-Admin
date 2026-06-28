@@ -43,15 +43,25 @@ export async function revokeProductEntitlements({
 
   for (const enrollment of enrollments.docs) {
     if ((enrollment as { status?: string }).status === 'cancelled') continue
-    await payload.update({
-      collection: 'enrollments',
-      id: (enrollment as { id: string }).id,
-      data: {
-        status: 'cancelled',
-        cancelledAt: new Date().toISOString(),
-      },
-      overrideAccess: true,
-    })
+    const enrollmentId = (enrollment as { id: string }).id
+    try {
+      await payload.update({
+        collection: 'enrollments',
+        id: enrollmentId,
+        data: {
+          status: 'cancelled',
+          cancelledAt: new Date().toISOString(),
+        },
+        overrideAccess: true,
+      })
+    } catch (error) {
+      // Log and continue — a single failed cancellation must not skip the
+      // remaining enrollments or the feature-entitlement $pull below.
+      payload.logger.error(
+        { err: error, enrollmentId, userId, transactionId },
+        'revokeProductEntitlements: failed to cancel enrollment; continuing',
+      )
+    }
   }
 
   // 2. Pull featureEntitlements rows added by this transaction. Single $pull

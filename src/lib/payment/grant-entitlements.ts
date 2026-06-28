@@ -246,13 +246,14 @@ async function upsertEnrollment(
   // Different transaction (re-purchase after expiry/refund, or upgrade from
   // an admin/code grant) → refresh state. Preserve prior metadata fields
   // (accessCodeId, grantedBy) so audit history isn't clobbered.
+  // `enrolledAt` is the original creation timestamp and is intentionally
+  // left untouched — see Enrollments schema and status reports that key on it.
   await payload.update({
     collection: 'enrollments',
     id: current.id,
     data: {
       status: 'active',
       grantMethod: 'payment',
-      enrolledAt: new Date().toISOString(),
       expiresAt: expiresAt ?? null,
       cancelledAt: null,
       metadata: {

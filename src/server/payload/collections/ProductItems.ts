@@ -117,7 +117,8 @@ export const ProductItems: CollectionConfig = {
         { label: 'בחינה', value: 'exam' },
       ],
       admin: {
-        description: 'סוגי שיעורים שייכללו (השאר ריק = כל הסוגים)',
+        description:
+          'סוגי שיעורים שייכללו (השאר ריק = כל הסוגים). ⚠️ מטא־דאטה בלבד — Enrollments מעניק כיום גישה לקורס כולו ללא קשר לערך זה.',
         condition: (data) => data.type === 'course',
       },
     },
