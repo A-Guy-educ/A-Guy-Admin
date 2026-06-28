@@ -195,7 +195,7 @@
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "16.3.2",
     "@types/hast": "^3.0.4",
-    "@types/node": "^22.5.4",
+    "@types/node": "^26.0.1",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@typescript-eslint/eslint-plugin": "^8.61.0",
