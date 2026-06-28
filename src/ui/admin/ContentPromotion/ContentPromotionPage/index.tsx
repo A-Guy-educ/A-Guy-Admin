@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import {
   cardStyle,
@@ -26,6 +26,13 @@ interface ImportReport {
   remappedIds: Record<string, string>
   blobsUploaded: number
   durationMs: number
+}
+
+interface CourseOption {
+  id: string
+  title: string
+  courseLabel?: string
+  locale?: string
 }
 
 const pageStyle: React.CSSProperties = {
@@ -72,6 +79,16 @@ const disabledButtonStyle: React.CSSProperties = {
   cursor: 'not-allowed',
 }
 
+const linkButtonStyle: React.CSSProperties = {
+  background: 'none',
+  border: 'none',
+  padding: 0,
+  fontSize: 12,
+  color: 'var(--theme-info)',
+  cursor: 'pointer',
+  textDecoration: 'underline',
+}
+
 const helpStyle: React.CSSProperties = {
   fontSize: 12,
   color: 'var(--theme-elevation-500)',
@@ -101,6 +118,33 @@ const tdStyle: React.CSSProperties = {
   verticalAlign: 'top',
 }
 
+const courseListStyle: React.CSSProperties = {
+  maxHeight: 320,
+  overflowY: 'auto',
+  border: '1px solid var(--theme-elevation-200)',
+  borderRadius: 4,
+  marginTop: 8,
+}
+
+const courseRowStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 10,
+  padding: '8px 12px',
+  borderBottom: '1px solid var(--theme-elevation-150)',
+  fontSize: 13,
+  color: 'var(--theme-elevation-1000)',
+}
+
+const toolbarStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 16,
+  marginTop: 12,
+  fontSize: 12,
+  color: 'var(--theme-elevation-600)',
+}
+
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
@@ -117,15 +161,76 @@ export function ContentPromotionPage() {
   const [confirmText, setConfirmText] = useState('')
   const importFileRef = useRef<HTMLInputElement | null>(null)
 
+  const [courses, setCourses] = useState<CourseOption[]>([])
+  const [coursesLoading, setCoursesLoading] = useState(true)
+  const [coursesError, setCoursesError] = useState<string | null>(null)
+  const [selectedCourseIds, setSelectedCourseIds] = useState<Set<string>>(new Set())
+
+  useEffect(() => {
+    const controller = new AbortController()
+    async function fetchCourses() {
+      setCoursesLoading(true)
+      setCoursesError(null)
+      try {
+        // depth: 0 keeps the payload small — we only need id/title/label/locale.
+        // limit: 0 means "no pagination cap"; Payload returns all docs in one shot.
+        const res = await fetch(
+          `/api/courses?limit=0&depth=0&sort=courseLabel&select[id]=true&select[title]=true&select[courseLabel]=true&select[locale]=true`,
+          { credentials: 'include', signal: controller.signal },
+        )
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        const data = await res.json()
+        const docs: CourseOption[] = (data.docs || []).map((d: CourseOption) => ({
+          id: d.id,
+          title: d.title || '(untitled)',
+          courseLabel: d.courseLabel,
+          locale: d.locale,
+        }))
+        setCourses(docs)
+      } catch (err) {
+        if ((err as { name?: string })?.name === 'AbortError') return
+        setCoursesError(err instanceof Error ? err.message : 'Failed to load courses')
+      } finally {
+        setCoursesLoading(false)
+      }
+    }
+    void fetchCourses()
+    return () => controller.abort()
+  }, [])
+
+  const toggleCourse = useCallback((id: string) => {
+    setSelectedCourseIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }, [])
+
+  const selectAll = useCallback(() => {
+    setSelectedCourseIds(new Set(courses.map((c) => c.id)))
+  }, [courses])
+
+  const clearAll = useCallback(() => {
+    setSelectedCourseIds(new Set())
+  }, [])
+
+  const canExport = useMemo(
+    () => selectedCourseIds.size > 0 && !exporting,
+    [selectedCourseIds, exporting],
+  )
+
   const runExport = useCallback(async () => {
+    if (selectedCourseIds.size === 0) return
     setExporting(true)
     setExportError(null)
     setExportInfo(null)
     try {
-      const response = await fetch('/api/content-promotion/export', {
-        method: 'GET',
-        credentials: 'include',
-      })
+      const ids = Array.from(selectedCourseIds).join(',')
+      const response = await fetch(
+        `/api/content-promotion/export?courseIds=${encodeURIComponent(ids)}`,
+        { method: 'GET', credentials: 'include' },
+      )
       if (!response.ok) {
         const text = await response.text()
         throw new Error(text || `HTTP ${response.status}`)
@@ -162,7 +267,7 @@ export function ContentPromotionPage() {
     } finally {
       setExporting(false)
     }
-  }, [])
+  }, [selectedCourseIds])
 
   const onPickBundle = useCallback(() => {
     importFileRef.current?.click()
@@ -210,20 +315,66 @@ export function ContentPromotionPage() {
       <div style={{ ...cardStyle, marginBottom: 16 }}>
         <h2 style={sectionHeadingStyle}>Export bundle</h2>
         <p style={helpStyle}>
-          Bundles all <code>media</code>, <code>courses</code>, <code>chapters</code>,{' '}
-          <code>lessons</code>, and <code>exercises</code> records — including media binaries — into
-          a single zip you can import into another environment. Run this on the{' '}
-          <strong>source</strong> environment (typically dev).
+          Pick one or more courses to bundle. The export walks each course&apos;s chapters, lessons,
+          and exercises and includes every referenced media binary. Re-importing into the same
+          environment never overwrites existing docs (safe-clone), so selecting only courses you
+          actually changed avoids creating duplicates of unchanged content on the target.
         </p>
-        {exportError && <div style={errorBannerStyle}>{exportError}</div>}
-        {exportInfo && <div style={successBannerStyle}>{exportInfo}</div>}
-        <button
-          style={exporting ? disabledButtonStyle : secondaryButtonStyle}
-          disabled={exporting}
-          onClick={runExport}
-        >
-          {exporting ? 'Building bundle…' : 'Download bundle'}
-        </button>
+
+        {coursesError && <div style={errorBannerStyle}>Courses: {coursesError}</div>}
+
+        {coursesLoading ? (
+          <div style={{ ...helpStyle, marginTop: 12 }}>Loading courses…</div>
+        ) : courses.length === 0 ? (
+          <div style={{ ...helpStyle, marginTop: 12 }}>No courses found.</div>
+        ) : (
+          <>
+            <div style={courseListStyle}>
+              {courses.map((c) => {
+                const checked = selectedCourseIds.has(c.id)
+                return (
+                  <label key={c.id} style={{ ...courseRowStyle, cursor: 'pointer' }}>
+                    <input type="checkbox" checked={checked} onChange={() => toggleCourse(c.id)} />
+                    <span style={{ fontWeight: 500, minWidth: 80 }}>{c.courseLabel || '—'}</span>
+                    <span style={{ flex: 1 }}>{c.title}</span>
+                    {c.locale && (
+                      <span style={{ color: 'var(--theme-elevation-500)', fontSize: 11 }}>
+                        {c.locale}
+                      </span>
+                    )}
+                  </label>
+                )
+              })}
+            </div>
+
+            <div style={toolbarStyle}>
+              <span>
+                {selectedCourseIds.size} of {courses.length} selected
+              </span>
+              <button type="button" style={linkButtonStyle} onClick={selectAll}>
+                Select all
+              </button>
+              <button type="button" style={linkButtonStyle} onClick={clearAll}>
+                Clear
+              </button>
+            </div>
+          </>
+        )}
+
+        {exportError && <div style={{ ...errorBannerStyle, marginTop: 12 }}>{exportError}</div>}
+        {exportInfo && <div style={{ ...successBannerStyle, marginTop: 12 }}>{exportInfo}</div>}
+
+        <div style={{ marginTop: 16 }}>
+          <button
+            style={canExport ? secondaryButtonStyle : disabledButtonStyle}
+            disabled={!canExport}
+            onClick={runExport}
+          >
+            {exporting
+              ? 'Building bundle…'
+              : `Download bundle (${selectedCourseIds.size} course${selectedCourseIds.size === 1 ? '' : 's'})`}
+          </button>
+        </div>
       </div>
 
       <div style={{ ...cardStyle, marginBottom: 16 }}>
