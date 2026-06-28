@@ -1,15 +1,32 @@
 /**
  * Chat Quota Service
  *
+ * Two-layer enforcement:
+ *   1. `ai-questions` feature entitlement (user-visible per-day cap) — when
+ *      a user has this entitlement, its value/period drives the quota and
+ *      the legacy rolling-window logic is bypassed.
+ *   2. `chat-limit` feature entitlement (silent server-side cap) — checked
+ *      additionally; on hit, returns `{ allowed: false, silent: true }` so
+ *      the endpoint can respond without revealing the numeric ceiling.
+ *
+ * Users without an `ai-questions` entitlement fall through to the original
+ * rolling-window quota (config-driven defaults).
+ *
  * @fileType service
  * @domain chat
- * @pattern rolling-window-quota
- * @ai-summary Checks and increments authenticated user chat quota (rolling window)
+ * @pattern rolling-window-quota, daily-feature-quota, silent-cap
+ * @ai-summary Coordinates entitlement-driven daily quotas with the legacy rolling-window fallback
  */
 import { ObjectId, type Collection, type Document } from 'mongodb'
 import { getChatConfig } from '@/infra/llm/providers/shared/chat-config'
 import { hoursToMs } from '@/infra/utils/time'
 import type { Payload } from 'payload'
+
+import {
+  checkAndIncrementFeatureQuota,
+  getFeatureQuotaStatus,
+  resolveFeatureEntitlement,
+} from './feature-quota'
 
 const QUOTA_DEFAULTS = { maxQuestions: 15, windowHours: 12 }
 
@@ -18,6 +35,12 @@ export interface ChatQuotaResult {
   questionsUsed: number
   maxQuestions: number
   resetAt: string | null
+  /**
+   * When true, denial originates from a silent cap (e.g. `chat-limit`).
+   * Callers must NOT echo `questionsUsed` / `maxQuestions` / `resetAt`
+   * back to the client and must return a generic error message.
+   */
+  silent?: boolean
 }
 
 async function getQuotaConfig() {
@@ -47,11 +70,73 @@ function getUsersCollection(payload: Payload): Collection<Document> | null {
 }
 
 /**
+ * Apply the silent `chat-limit` cap. Returns a silent denial if exceeded
+ * and the previous result was allowed. Callers must check `silent` before
+ * surfacing quota numbers.
+ */
+async function applyChatLimit(
+  payload: Payload,
+  userId: string,
+  prior: ChatQuotaResult,
+): Promise<ChatQuotaResult> {
+  if (!prior.allowed) return prior
+  const entitlement = await resolveFeatureEntitlement(payload, userId, 'chat-limit')
+  if (!entitlement || entitlement.value === null) return prior
+  const result = await checkAndIncrementFeatureQuota(payload, userId, 'chat-limit', entitlement)
+  if (!result.allowed) {
+    return {
+      allowed: false,
+      questionsUsed: prior.questionsUsed,
+      maxQuestions: prior.maxQuestions,
+      resetAt: prior.resetAt,
+      silent: true,
+    }
+  }
+  return prior
+}
+
+/**
  * Check if user has quota remaining and increment if so.
- * Uses a rolling window: if windowStart + windowHours has passed, reset the counter.
+ *
+ * When the user has an `ai-questions` feature entitlement, that drives the
+ * visible quota (per-day, Asia/Jerusalem). Otherwise we fall through to the
+ * legacy rolling-window quota. Either way, an additional silent `chat-limit`
+ * cap is applied last.
+ *
  * Uses atomic findOneAndUpdate to prevent race conditions.
  */
 export async function checkAndIncrementChatQuota(
+  payload: Payload,
+  userId: string,
+): Promise<ChatQuotaResult> {
+  // Entitlement-driven path: `ai-questions` overrides the rolling-window default.
+  const aiQuestionsEntitlement = await resolveFeatureEntitlement(payload, userId, 'ai-questions')
+  if (aiQuestionsEntitlement) {
+    const featureResult = await checkAndIncrementFeatureQuota(
+      payload,
+      userId,
+      'ai-questions',
+      aiQuestionsEntitlement,
+    )
+    const baseResult: ChatQuotaResult = {
+      allowed: featureResult.allowed,
+      questionsUsed: featureResult.used,
+      maxQuestions: Number.isFinite(featureResult.limit) ? featureResult.limit : 0,
+      resetAt: featureResult.resetAt,
+    }
+    return applyChatLimit(payload, userId, baseResult)
+  }
+
+  const legacyResult = await checkAndIncrementLegacyRollingQuota(payload, userId)
+  return applyChatLimit(payload, userId, legacyResult)
+}
+
+/**
+ * Legacy rolling-window quota — used when the user has no `ai-questions`
+ * feature entitlement. Preserves the pre-Task-C behavior for existing
+ * non-paying users.
+ */
+async function checkAndIncrementLegacyRollingQuota(
   payload: Payload,
   userId: string,
 ): Promise<ChatQuotaResult> {
@@ -142,11 +227,30 @@ export async function checkAndIncrementChatQuota(
 
 /**
  * Get current quota status without incrementing.
+ *
+ * Returns the entitlement-driven quota when the user has an `ai-questions`
+ * entitlement. NEVER exposes `chat-limit` data — that cap is silent.
  */
 export async function getChatQuotaStatus(
   payload: Payload,
   userId: string,
 ): Promise<ChatQuotaResult> {
+  const aiQuestionsEntitlement = await resolveFeatureEntitlement(payload, userId, 'ai-questions')
+  if (aiQuestionsEntitlement) {
+    const featureStatus = await getFeatureQuotaStatus(
+      payload,
+      userId,
+      'ai-questions',
+      aiQuestionsEntitlement,
+    )
+    return {
+      allowed: featureStatus.allowed,
+      questionsUsed: featureStatus.used,
+      maxQuestions: Number.isFinite(featureStatus.limit) ? featureStatus.limit : 0,
+      resetAt: featureStatus.resetAt,
+    }
+  }
+
   const { maxQuestions, windowHours } = await getQuotaConfig()
   const now = new Date()
 
