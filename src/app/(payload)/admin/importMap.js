@@ -60,8 +60,8 @@ import { RowLabel as RowLabel_49a0f2da415e33c790acf24cb6dd5091 } from '@/ui/admi
 import { RowLabel as RowLabel_4ed9de7504772fe9568f4f8054c5cb47 } from '@/ui/admin/Footer'
 import { default as default_759821dbe781e78024abfaf95f6442c4 } from '@/ui/admin/VersionInfo'
 import { default as default_e7752c936f7e855267a963c057c607b8 } from '@/ui/admin/UserEmail'
-import { default as default_651b6549ba90964af4bff3f3f8153ba6 } from '@/ui/admin/ConversionTracking/DashboardWidgets'
 import { default as default_e8db4fbd97550d4d717940b5cf0234f3 } from '@/ui/admin/BeforeLogin'
+import { default as default_f9988905d888cf1a3e8ff1530b2c5130 } from '@/ui/admin/Statistics/SidebarLink'
 import { default as default_7545204935b55fcf02b3be70dde90fc1 } from '@/ui/admin/PdfConversion/SidebarLink'
 import { default as default_1b2cd3c8450eece915504fde397ab5c7 } from '@/ui/admin/LessonDuplicationReview/SidebarLink'
 import { default as default_6cbe285301e6b5516cbbf36b52b4a7d9 } from '@/ui/admin/LessonJsonImport/SidebarLink'
@@ -132,8 +132,8 @@ export const importMap = {
   "@/ui/admin/Footer#RowLabel": RowLabel_4ed9de7504772fe9568f4f8054c5cb47,
   "@/ui/admin/VersionInfo#default": default_759821dbe781e78024abfaf95f6442c4,
   "@/ui/admin/UserEmail#default": default_e7752c936f7e855267a963c057c607b8,
-  "@/ui/admin/ConversionTracking/DashboardWidgets#default": default_651b6549ba90964af4bff3f3f8153ba6,
   "@/ui/admin/BeforeLogin#default": default_e8db4fbd97550d4d717940b5cf0234f3,
+  "@/ui/admin/Statistics/SidebarLink#default": default_f9988905d888cf1a3e8ff1530b2c5130,
   "@/ui/admin/PdfConversion/SidebarLink#default": default_7545204935b55fcf02b3be70dde90fc1,
   "@/ui/admin/LessonDuplicationReview/SidebarLink#default": default_1b2cd3c8450eece915504fde397ab5c7,
   "@/ui/admin/LessonJsonImport/SidebarLink#default": default_6cbe285301e6b5516cbbf36b52b4a7d9,

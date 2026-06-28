@@ -179,6 +179,21 @@ export const Users: CollectionConfig = {
           admin: { readOnly: true },
         },
         {
+          name: 'value',
+          type: 'number',
+          admin: { readOnly: true },
+        },
+        {
+          name: 'period',
+          type: 'select',
+          options: [
+            { label: 'Day', value: 'day' },
+            { label: 'Month', value: 'month' },
+            { label: 'Lifetime', value: 'lifetime' },
+          ],
+          admin: { readOnly: true },
+        },
+        {
           name: 'transactionId',
           type: 'text',
           admin: { readOnly: true },
@@ -189,9 +204,20 @@ export const Users: CollectionConfig = {
           defaultValue: () => new Date().toISOString(),
           admin: { readOnly: true },
         },
+        {
+          name: 'expiresAt',
+          type: 'date',
+          admin: {
+            readOnly: true,
+            description:
+              'When this feature entitlement expires. Mirrors the parent Enrollment expiry when the source product has durationDays; null = lifetime.',
+          },
+        },
       ],
     },
-    // Chat quota fields (rolling window)
+    // Chat quota fields (rolling window — legacy fallback for users without
+    // an `ai-questions` feature entitlement; see feature-quota.ts for the
+    // entitlement-driven per-day path).
     {
       name: 'chatQuestionsUsed',
       type: 'number',
@@ -207,6 +233,47 @@ export const Users: CollectionConfig = {
       admin: {
         position: 'sidebar',
         description: 'When the current chat quota window started',
+      },
+    },
+    // Feature-quota counters (Asia/Jerusalem calendar day). One bucket pair
+    // per enforceable feature key. Bucket strings are YYYY-MM-DD in IL time;
+    // counter resets when the bucket changes.
+    {
+      name: 'aiQuestionsUsedDay',
+      type: 'number',
+      defaultValue: 0,
+      admin: {
+        position: 'sidebar',
+        description: 'AI questions used in the current Asia/Jerusalem day',
+        readOnly: true,
+      },
+    },
+    {
+      name: 'aiQuestionsBucketDay',
+      type: 'text',
+      admin: {
+        position: 'sidebar',
+        description: 'YYYY-MM-DD bucket (Asia/Jerusalem) for aiQuestionsUsedDay',
+        readOnly: true,
+      },
+    },
+    {
+      name: 'chatLimitUsedDay',
+      type: 'number',
+      defaultValue: 0,
+      admin: {
+        position: 'sidebar',
+        description: 'Chat messages used in the current Asia/Jerusalem day (silent cap)',
+        readOnly: true,
+      },
+    },
+    {
+      name: 'chatLimitBucketDay',
+      type: 'text',
+      admin: {
+        position: 'sidebar',
+        description: 'YYYY-MM-DD bucket (Asia/Jerusalem) for chatLimitUsedDay',
+        readOnly: true,
       },
     },
     {

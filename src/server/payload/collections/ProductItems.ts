@@ -27,6 +27,55 @@ export const ProductItems: CollectionConfig = {
     useAsTitle: 'id',
     defaultColumns: ['type', 'lesson', 'featureKey', 'isHighlighted'],
   },
+  hooks: {
+    beforeValidate: [
+      ({ data, originalDoc, operation }) => {
+        if (!data) return data
+        // On update, merge data over originalDoc so we catch stale cross-type
+        // fields. Example: an item created as `type='feature'` with `value=5`
+        // that gets switched to `type='lesson'` without explicitly clearing
+        // value — `data.value` is undefined but the persisted value is still 5.
+        const merged: Record<string, unknown> =
+          operation === 'update'
+            ? { ...(originalDoc as Record<string, unknown>), ...(data as Record<string, unknown>) }
+            : (data as Record<string, unknown>)
+        const type = merged.type
+        // Cross-type field integrity: reject meaningful values for fields that
+        // belong to a different `type`. Per-field `validate` cannot catch this
+        // reliably because Payload may strip conditional field data before
+        // validation runs. This hook sees the raw input.
+        if (type !== 'course') {
+          if (Array.isArray(merged.lessonTypes) && merged.lessonTypes.length > 0) {
+            throw new Error('lessonTypes is only valid when type is course')
+          }
+          if (merged.course) {
+            throw new Error(
+              'course relationship is only valid when type is course; clear it on type change',
+            )
+          }
+        }
+        if (type !== 'lesson') {
+          if (merged.lesson) {
+            throw new Error(
+              'lesson relationship is only valid when type is lesson; clear it on type change',
+            )
+          }
+        }
+        if (type !== 'feature') {
+          if (typeof merged.value === 'number') {
+            throw new Error('value is only valid when type is feature')
+          }
+          // 'lifetime' is the field-level default and is allowed on any type
+          // (Payload applies the default to every doc regardless of `condition`).
+          // Reject only meaningful mismatches like period='day' on a lesson item.
+          if (typeof merged.period === 'string' && merged.period && merged.period !== 'lifetime') {
+            throw new Error('period is only valid when type is feature')
+          }
+        }
+        return data
+      },
+    ],
+  },
   fields: [
     {
       name: 'type',
@@ -34,10 +83,11 @@ export const ProductItems: CollectionConfig = {
       required: true,
       options: [
         { label: '📚 שיעור', value: 'lesson' },
+        { label: '🎓 קורס', value: 'course' },
         { label: '⚙️ תכונה', value: 'feature' },
       ],
       admin: {
-        description: 'בחר את סוג הפריט: שיעור מהמערכת או תכונה מוגדרת',
+        description: 'בחר את סוג הפריט: שיעור בודד, קורס שלם, או תכונה מוגדרת',
         components: {
           Cell: '@/ui/admin/ProductItems/TypeBadgeCell#TypeBadgeCell',
         },
@@ -57,6 +107,34 @@ export const ProductItems: CollectionConfig = {
       },
     },
     {
+      name: 'course',
+      type: 'relationship',
+      relationTo: 'courses',
+      admin: {
+        description: 'בחר את הקורס. כל השיעורים בקורס ייכללו (מסוננים לפי lessonTypes אם הוגדר)',
+        condition: (data) => data.type === 'course',
+      },
+      validate: (value: unknown, { data }: { data: Record<string, unknown> }) => {
+        if (data?.type === 'course' && !value) return 'Course is required when type is course'
+        return true
+      },
+    },
+    {
+      name: 'lessonTypes',
+      type: 'select',
+      hasMany: true,
+      options: [
+        { label: 'לימוד', value: 'learning' },
+        { label: 'תרגול', value: 'practice' },
+        { label: 'בחינה', value: 'exam' },
+      ],
+      admin: {
+        description:
+          'סוגי שיעורים שייכללו (השאר ריק = כל הסוגים). ⚠️ מטא־דאטה בלבד — Enrollments מעניק כיום גישה לקורס כולו ללא קשר לערך זה.',
+        condition: (data) => data.type === 'course',
+      },
+    },
+    {
       name: 'featureKey',
       type: 'text',
       required: true,
@@ -72,6 +150,30 @@ export const ProductItems: CollectionConfig = {
           return `Invalid feature key. Valid values: ${VALID_FEATURE_KEYS.join(', ')}`
         }
         return true
+      },
+    },
+    {
+      name: 'value',
+      type: 'number',
+      min: 0,
+      admin: {
+        description:
+          'ערך מספרי לתכונה (לדוגמה: 5 עבור 5 שאלות ביום). השאר ריק לתכונה ללא מגבלת כמות.',
+        condition: (data) => data.type === 'feature',
+      },
+    },
+    {
+      name: 'period',
+      type: 'select',
+      defaultValue: 'lifetime',
+      options: [
+        { label: 'יומי', value: 'day' },
+        { label: 'חודשי', value: 'month' },
+        { label: 'לכל החיים', value: 'lifetime' },
+      ],
+      admin: {
+        description: 'תקופת איפוס המגבלה. ברירת מחדל "לכל החיים" עבור תכונות ללא מגבלת זמן.',
+        condition: (data) => data.type === 'feature',
       },
     },
     {

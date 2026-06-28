@@ -520,8 +520,14 @@ export interface User {
   featureEntitlements?:
     | {
         key: string;
+        value?: number | null;
+        period?: ('day' | 'month' | 'lifetime') | null;
         transactionId?: string | null;
         grantedAt?: string | null;
+        /**
+         * When this feature entitlement expires. Mirrors the parent Enrollment expiry when the source product has durationDays; null = lifetime.
+         */
+        expiresAt?: string | null;
         id?: string | null;
       }[]
     | null;
@@ -533,6 +539,22 @@ export interface User {
    * When the current chat quota window started
    */
   chatWindowStart?: string | null;
+  /**
+   * AI questions used in the current Asia/Jerusalem day
+   */
+  aiQuestionsUsedDay?: number | null;
+  /**
+   * YYYY-MM-DD bucket (Asia/Jerusalem) for aiQuestionsUsedDay
+   */
+  aiQuestionsBucketDay?: string | null;
+  /**
+   * Chat messages used in the current Asia/Jerusalem day (silent cap)
+   */
+  chatLimitUsedDay?: number | null;
+  /**
+   * YYYY-MM-DD bucket (Asia/Jerusalem) for chatLimitUsedDay
+   */
+  chatLimitBucketDay?: string | null;
   oauthLoginSecretEnc?: string | null;
   updatedAt: string;
   createdAt: string;
@@ -1876,6 +1898,14 @@ export interface Product {
    */
   currency: 'ILS' | 'USD' | 'EUR';
   /**
+   * תקופת גישה בימים מרגע הרכישה (השאר ריק לגישה ללא הגבלת זמן). מוחל אוטומטית על Enrollments בעת רכישה.
+   */
+  durationDays?: number | null;
+  /**
+   * מספר מקסימלי של מכשירים למשתמש (השאר ריק = ללא הגבלה). שדה לתצורה בלבד — האכיפה אינה מיושמת.
+   */
+  maxDevices?: number | null;
+  /**
    * בחר את פריטי המוצר (שיעורים ותכונות)
    */
   items?: (string | ProductItem)[] | null;
@@ -1897,17 +1927,33 @@ export interface Product {
 export interface ProductItem {
   id: string;
   /**
-   * בחר את סוג הפריט: שיעור מהמערכת או תכונה מוגדרת
+   * בחר את סוג הפריט: שיעור בודד, קורס שלם, או תכונה מוגדרת
    */
-  type: 'lesson' | 'feature';
+  type: 'lesson' | 'course' | 'feature';
   /**
    * בחר את השיעור להוספה למוצר
    */
   lesson?: (string | null) | Lesson;
   /**
+   * בחר את הקורס. כל השיעורים בקורס ייכללו (מסוננים לפי lessonTypes אם הוגדר)
+   */
+  course?: (string | null) | Course;
+  /**
+   * סוגי שיעורים שייכללו (השאר ריק = כל הסוגים). ⚠️ מטא־דאטה בלבד — Enrollments מעניק כיום גישה לקורס כולו ללא קשר לערך זה.
+   */
+  lessonTypes?: ('learning' | 'practice' | 'exam')[] | null;
+  /**
    * מזהה התכונה (לדוגמה: certificate, live-sessions)
    */
   featureKey?: string | null;
+  /**
+   * ערך מספרי לתכונה (לדוגמה: 5 עבור 5 שאלות ביום). השאר ריק לתכונה ללא מגבלת כמות.
+   */
+  value?: number | null;
+  /**
+   * תקופת איפוס המגבלה. ברירת מחדל "לכל החיים" עבור תכונות ללא מגבלת זמן.
+   */
+  period?: ('day' | 'month' | 'lifetime') | null;
   /**
    * סמן אם יש להדגיש פריט זה בממשק המשתמש
    */
@@ -4400,12 +4446,19 @@ export interface UsersSelect<T extends boolean = true> {
     | T
     | {
         key?: T;
+        value?: T;
+        period?: T;
         transactionId?: T;
         grantedAt?: T;
+        expiresAt?: T;
         id?: T;
       };
   chatQuestionsUsed?: T;
   chatWindowStart?: T;
+  aiQuestionsUsedDay?: T;
+  aiQuestionsBucketDay?: T;
+  chatLimitUsedDay?: T;
+  chatLimitBucketDay?: T;
   oauthLoginSecretEnc?: T;
   updatedAt?: T;
   createdAt?: T;
@@ -4627,7 +4680,11 @@ export interface PricingPlansSelect<T extends boolean = true> {
 export interface ProductItemsSelect<T extends boolean = true> {
   type?: T;
   lesson?: T;
+  course?: T;
+  lessonTypes?: T;
   featureKey?: T;
+  value?: T;
+  period?: T;
   isHighlighted?: T;
   createdBy?: T;
   updatedAt?: T;
@@ -4645,6 +4702,8 @@ export interface ProductsSelect<T extends boolean = true> {
   interval?: T;
   price?: T;
   currency?: T;
+  durationDays?: T;
+  maxDevices?: T;
   items?: T;
   isActive?: T;
   createdBy?: T;

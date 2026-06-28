@@ -1677,6 +1677,8 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- perf: Admin big-sweep — kill write-on-read backfills, dashboard cache, lighter list search ([#69](https://github.com/A-Guy-educ/A-Guy-Admin/pull/69)) — @aguyshayb
+- feat: Add product duration, course bundles, and rate-limited features ([#78](https://github.com/A-Guy-educ/A-Guy-Admin/pull/78)) — @aguyshayb
 - fix: Drop idempotencyKey from JSON importer (real fix for 'tenant invalid') ([#57](https://github.com/A-Guy-educ/A-Guy-Admin/pull/57)) — @aguyshayb
 - fix: Omit tenant on create in JSON importer ([#56](https://github.com/A-Guy-educ/A-Guy-Admin/pull/56)) — @aguyshayb
 - fix: Force default tenant in JSON importer + surface per-exercise errors ([#55](https://github.com/A-Guy-educ/A-Guy-Admin/pull/55)) — @aguyshayb

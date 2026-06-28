@@ -282,7 +282,6 @@ export async function GET(req: Request) {
     guestsLastWeek,
     guestsLastMonth,
     guestClaimedResult,
-    coursesCount,
     lessonsCount,
     exercisesCount,
     formulaSheetsCount,
@@ -424,8 +423,9 @@ export async function GET(req: Request) {
       limit: 0,
       overrideAccess: true,
     }),
-    // Content counts
-    payload.find({ collection: 'courses', limit: 0, overrideAccess: true }),
+    // Content counts (courses count comes from `coursesWithTitles.totalDocs`
+    // below — we already fetch up to 100 courses with titles for the
+    // enrollments widget, so a separate limit:0 count query is wasted work)
     payload.find({ collection: 'lessons', limit: 0, overrideAccess: true }),
     payload.find({ collection: 'exercises', limit: 0, overrideAccess: true }),
     payload.find({ collection: 'formula-sheets', limit: 0, overrideAccess: true }),
@@ -761,7 +761,7 @@ export async function GET(req: Request) {
       returningUsersTotal: totalUsersInPeriod.totalDocs,
     },
     contentCounts: {
-      courses: coursesCount.totalDocs,
+      courses: coursesWithTitles.totalDocs,
       lessons: lessonsCount.totalDocs,
       exercises: exercisesCount.totalDocs,
       formulaSheets: formulaSheetsCount.totalDocs,
@@ -787,5 +787,13 @@ export async function GET(req: Request) {
     },
   }
 
-  return Response.json(response)
+  // Cache per-admin for 60s. The metrics are aggregates that don't need to be
+  // real-time, and the underlying query batch is heavy (~30 collection reads
+  // serialized through the connection pool). `private` keeps it out of shared
+  // CDN caches since the endpoint is admin-only.
+  return Response.json(response, {
+    headers: {
+      'Cache-Control': 'private, max-age=60, stale-while-revalidate=120',
+    },
+  })
 }

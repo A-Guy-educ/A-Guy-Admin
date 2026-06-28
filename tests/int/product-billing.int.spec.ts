@@ -65,7 +65,11 @@ beforeAll(async () => {
     } as any,
   })
   studentUserId = student.id
-}, 60_000)
+  // 300s overrides the global 180s hookTimeout (vitest.config.mts). The 60s
+  // default was insufficient on cold-start machines where the first
+  // getPayload({ config }) call bootstraps the full collection graph;
+  // 180s also intermittently trips on a fully cold cache.
+}, 300_000)
 
 // ---------------------------------------------------------------------------
 // Cleanup
@@ -983,5 +987,460 @@ describe.skipIf(!hasDatabaseUrl)('Products.items relationship', () => {
     const featureItemResult = items.find((i) => i.type === 'feature')
     expect(featureItemResult).toBeDefined()
     expect(featureItemResult!.featureKey).toBe('certificate')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Task A — Time-limited products, course bundles, and rate-limited features
+// ---------------------------------------------------------------------------
+
+describe.skipIf(!hasDatabaseUrl)('Time-limited products (Task A)', () => {
+  it('should persist durationDays and maxDevices on a product', async () => {
+    const admin = await getAdminUser()
+
+    const product = await payload.create({
+      collection: 'products',
+      data: {
+        name: 'Time-Limited Test Product',
+        billingType: 'one_time',
+        price: 300,
+        currency: 'ILS',
+        durationDays: 90,
+        maxDevices: 2,
+      } as any,
+      user: admin as any,
+      overrideAccess: false,
+    })
+    trackProduct(product.id)
+
+    expect((product as any).durationDays).toBe(90)
+    expect((product as any).maxDevices).toBe(2)
+  })
+
+  it('should reject durationDays below 1', async () => {
+    const admin = await getAdminUser()
+
+    let validationError: Error | null = null
+    try {
+      await payload.create({
+        collection: 'products',
+        data: {
+          name: 'Bad Duration Product',
+          billingType: 'one_time',
+          price: 100,
+          currency: 'ILS',
+          durationDays: 0,
+        } as any,
+        user: admin as any,
+        overrideAccess: false,
+      })
+    } catch (e) {
+      validationError = e as Error
+    }
+
+    expect(validationError).not.toBeNull()
+  })
+
+  it('should allow products without durationDays (lifetime access)', async () => {
+    const admin = await getAdminUser()
+
+    const product = await payload.create({
+      collection: 'products',
+      data: {
+        name: 'Lifetime Product',
+        billingType: 'one_time',
+        price: 500,
+        currency: 'ILS',
+      } as any,
+      user: admin as any,
+      overrideAccess: false,
+    })
+    trackProduct(product.id)
+
+    expect((product as any).durationDays ?? null).toBeNull()
+  })
+})
+
+describe.skipIf(!hasDatabaseUrl)('Course-type ProductItems (Task A)', () => {
+  it('should create a course-type ProductItem with no lessonTypes filter', async () => {
+    const admin = await getAdminUser()
+    const lesson = await createTestLesson('Course Item Test Lesson')
+
+    const productItem = await payload.create({
+      collection: 'product-items',
+      data: {
+        type: 'course',
+        course: (lesson as any).course,
+      } as any,
+      user: admin as any,
+      overrideAccess: false,
+    })
+    trackProductItem(productItem.id)
+
+    expect(productItem.type).toBe('course')
+    expect((productItem as any).course).toBeDefined()
+  })
+
+  it('should require course when type is course', async () => {
+    const admin = await getAdminUser()
+
+    let validationError: Error | null = null
+    try {
+      await payload.create({
+        collection: 'product-items',
+        data: {
+          type: 'course',
+        } as any,
+        user: admin as any,
+        overrideAccess: false,
+      })
+    } catch (e) {
+      validationError = e as Error
+    }
+
+    expect(validationError).not.toBeNull()
+  })
+
+  it('should accept a lessonTypes subset on a course-type item', async () => {
+    const admin = await getAdminUser()
+    const lesson = await createTestLesson('Course Item Filter Test')
+
+    const productItem = await payload.create({
+      collection: 'product-items',
+      data: {
+        type: 'course',
+        course: (lesson as any).course,
+        lessonTypes: ['learning', 'practice'],
+      } as any,
+      user: admin as any,
+      overrideAccess: false,
+    })
+    trackProductItem(productItem.id)
+
+    expect((productItem as any).lessonTypes).toEqual(
+      expect.arrayContaining(['learning', 'practice']),
+    )
+  })
+})
+
+describe.skipIf(!hasDatabaseUrl)('Rate-limited feature ProductItems (Task A)', () => {
+  it('should persist value and period on a feature item', async () => {
+    const admin = await getAdminUser()
+
+    const productItem = await payload.create({
+      collection: 'product-items',
+      data: {
+        type: 'feature',
+        featureKey: 'ai-questions',
+        value: 5,
+        period: 'day',
+      } as any,
+      user: admin as any,
+      overrideAccess: false,
+    })
+    trackProductItem(productItem.id)
+
+    expect((productItem as any).value).toBe(5)
+    expect((productItem as any).period).toBe('day')
+  })
+
+  it('should default period to lifetime when omitted', async () => {
+    const admin = await getAdminUser()
+
+    const productItem = await payload.create({
+      collection: 'product-items',
+      data: {
+        type: 'feature',
+        featureKey: 'certificate',
+      } as any,
+      user: admin as any,
+      overrideAccess: false,
+    })
+    trackProductItem(productItem.id)
+
+    expect((productItem as any).period).toBe('lifetime')
+  })
+
+  it('should accept all new feature keys', async () => {
+    const admin = await getAdminUser()
+    const newKeys = [
+      'ai-questions',
+      'chat-limit',
+      'exercise-generation',
+      'study-plan-generation',
+      'pdf-download',
+      'pdf-print',
+    ]
+
+    for (const key of newKeys) {
+      const productItem = await payload.create({
+        collection: 'product-items',
+        data: {
+          type: 'feature',
+          featureKey: key,
+        } as any,
+        user: admin as any,
+        overrideAccess: false,
+      })
+      trackProductItem(productItem.id)
+      expect(productItem.featureKey).toBe(key)
+    }
+  })
+})
+
+describe.skipIf(!hasDatabaseUrl)('Prep course product shape (Task A integration)', () => {
+  it('should compose the full הכנה לכיתה ז product shape end-to-end', async () => {
+    const admin = await getAdminUser()
+    const lesson = await createTestLesson('Prep Course Lesson')
+    const courseId = (lesson as any).course
+
+    const courseItem = await payload.create({
+      collection: 'product-items',
+      data: {
+        type: 'course',
+        course: courseId,
+      } as any,
+      user: admin as any,
+      overrideAccess: false,
+    })
+    trackProductItem(courseItem.id)
+
+    const aiQuestionsItem = await payload.create({
+      collection: 'product-items',
+      data: {
+        type: 'feature',
+        featureKey: 'ai-questions',
+        value: 5,
+        period: 'day',
+      } as any,
+      user: admin as any,
+      overrideAccess: false,
+    })
+    trackProductItem(aiQuestionsItem.id)
+
+    const chatLimitItem = await payload.create({
+      collection: 'product-items',
+      data: {
+        type: 'feature',
+        featureKey: 'chat-limit',
+        value: 100,
+        period: 'day',
+      } as any,
+      user: admin as any,
+      overrideAccess: false,
+    })
+    trackProductItem(chatLimitItem.id)
+
+    const product = await payload.create({
+      collection: 'products',
+      data: {
+        name: 'הכנה לכיתה ז',
+        billingType: 'one_time',
+        price: 300,
+        currency: 'ILS',
+        durationDays: 90,
+        maxDevices: 2,
+        items: [courseItem.id, aiQuestionsItem.id, chatLimitItem.id],
+      } as any,
+      user: admin as any,
+      overrideAccess: false,
+    })
+    trackProduct(product.id)
+
+    expect(product.name).toBe('הכנה לכיתה ז')
+    expect(product.billingType).toBe('one_time')
+    expect(product.price).toBe(300)
+    expect(product.currency).toBe('ILS')
+    expect((product as any).durationDays).toBe(90)
+    expect((product as any).maxDevices).toBe(2)
+
+    const reRead = await payload.findByID({
+      collection: 'products',
+      id: product.id,
+      depth: 1,
+      overrideAccess: true,
+    })
+
+    const items = reRead.items as unknown as Array<{
+      id: string
+      type: string
+      featureKey?: string
+      value?: number
+      period?: string
+    }>
+    expect(items.length).toBe(3)
+
+    const aiQ = items.find((i) => i.featureKey === 'ai-questions')
+    expect(aiQ?.value).toBe(5)
+    expect(aiQ?.period).toBe('day')
+
+    const chat = items.find((i) => i.featureKey === 'chat-limit')
+    expect(chat?.value).toBe(100)
+    expect(chat?.period).toBe('day')
+
+    const course = items.find((i) => i.type === 'course')
+    expect(course).toBeDefined()
+  })
+})
+
+describe.skipIf(!hasDatabaseUrl)('Cross-type field validators (Task A review)', () => {
+  it('should reject lessonTypes on a non-course item', async () => {
+    const admin = await getAdminUser()
+
+    let validationError: Error | null = null
+    try {
+      await payload.create({
+        collection: 'product-items',
+        data: {
+          type: 'feature',
+          featureKey: 'certificate',
+          lessonTypes: ['learning'],
+        } as any,
+        user: admin as any,
+        overrideAccess: false,
+      })
+    } catch (e) {
+      validationError = e as Error
+    }
+
+    expect(validationError).not.toBeNull()
+  })
+
+  it('should reject value on a non-feature item', async () => {
+    const admin = await getAdminUser()
+    const lesson = await createTestLesson('Reject Value Lesson')
+
+    let validationError: Error | null = null
+    try {
+      await payload.create({
+        collection: 'product-items',
+        data: {
+          type: 'lesson',
+          lesson: lesson.id,
+          value: 5,
+        } as any,
+        user: admin as any,
+        overrideAccess: false,
+      })
+    } catch (e) {
+      validationError = e as Error
+    }
+
+    expect(validationError).not.toBeNull()
+  })
+
+  it('should reject period=day on a non-feature item', async () => {
+    const admin = await getAdminUser()
+    const lesson = await createTestLesson('Reject Period Lesson')
+
+    let validationError: Error | null = null
+    try {
+      await payload.create({
+        collection: 'product-items',
+        data: {
+          type: 'lesson',
+          lesson: lesson.id,
+          period: 'day',
+        } as any,
+        user: admin as any,
+        overrideAccess: false,
+      })
+    } catch (e) {
+      validationError = e as Error
+    }
+
+    expect(validationError).not.toBeNull()
+  })
+
+  it("should allow the default period='lifetime' on a non-feature item (it's the field default)", async () => {
+    const admin = await getAdminUser()
+    const lesson = await createTestLesson('Allow Lifetime Default Lesson')
+
+    const productItem = await payload.create({
+      collection: 'product-items',
+      data: {
+        type: 'lesson',
+        lesson: lesson.id,
+      } as any,
+      user: admin as any,
+      overrideAccess: false,
+    })
+    trackProductItem(productItem.id)
+
+    expect((productItem as any).period).toBe('lifetime')
+  })
+
+  it('should reject a type change that leaves stale cross-type fields (feature → lesson with value still set)', async () => {
+    const admin = await getAdminUser()
+    const lesson = await createTestLesson('Stale Field Test Lesson')
+
+    // Create a valid feature item with value=5
+    const featureItem = await payload.create({
+      collection: 'product-items',
+      data: {
+        type: 'feature',
+        featureKey: 'ai-questions',
+        value: 5,
+        period: 'day',
+      } as any,
+      user: admin as any,
+      overrideAccess: false,
+    })
+    trackProductItem(featureItem.id)
+
+    // Now switch type to 'lesson' without clearing value/period. The
+    // beforeValidate hook should reject the update because the merged doc
+    // has `type='lesson'` AND `value=5` left over from the prior state.
+    let validationError: Error | null = null
+    try {
+      await payload.update({
+        collection: 'product-items',
+        id: featureItem.id,
+        data: {
+          type: 'lesson',
+          lesson: lesson.id,
+        } as any,
+        user: admin as any,
+        overrideAccess: false,
+      })
+    } catch (e) {
+      validationError = e as Error
+    }
+
+    expect(validationError).not.toBeNull()
+  })
+
+  it('should accept a type change when stale fields are explicitly cleared', async () => {
+    const admin = await getAdminUser()
+    const lesson = await createTestLesson('Clean Type Change Lesson')
+
+    const featureItem = await payload.create({
+      collection: 'product-items',
+      data: {
+        type: 'feature',
+        featureKey: 'ai-questions',
+        value: 5,
+        period: 'day',
+      } as any,
+      user: admin as any,
+      overrideAccess: false,
+    })
+    trackProductItem(featureItem.id)
+
+    // Clearing value + period explicitly lets the type change through.
+    const updated = await payload.update({
+      collection: 'product-items',
+      id: featureItem.id,
+      data: {
+        type: 'lesson',
+        lesson: lesson.id,
+        value: null,
+        period: 'lifetime', // default — explicitly set to keep the hook happy
+      } as any,
+      user: admin as any,
+      overrideAccess: false,
+    })
+
+    expect((updated as any).type).toBe('lesson')
   })
 })
