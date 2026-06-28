@@ -179,8 +179,16 @@ async function resolveLessonCourseId(
 /**
  * Upsert an Enrollment for (user, course). Idempotency + concurrency:
  * - The Enrollments collection has a `{ user, course } unique` index. We
- *   try a create first; on duplicate-key error (concurrent webhook delivery
- *   or true replay) we re-find and fall through to the update branch.
+ *   try a create first; if it throws, we re-find — if a matching row
+ *   exists, treat it as a race/replay and fall through to the update
+ *   branch; otherwise rethrow the original error.
+ *
+ *   We can't reliably pattern-match the underlying E11000 because Payload's
+ *   mongo adapter translates duplicate-key errors on unique indexes into a
+ *   ValidationError citing the first field in the index (e.g. "user
+ *   invalid"). The re-find approach is robust regardless of how the error
+ *   surfaces.
+ *
  * - On update we only refresh state when the existing record was granted by
  *   a different transaction, so true replays of the same tx are no-ops.
  * - On a lifetime re-purchase we explicitly clear expiresAt. `hasEntitlement`
@@ -211,33 +219,45 @@ async function upsertEnrollment(
       overrideAccess: true,
     })
     return
-  } catch (error) {
-    if (!isDuplicateKeyError(error)) throw error
-    // Fall through to the update branch — another concurrent webhook (or a
-    // prior grant for this user+course) won the create race.
+  } catch (createError) {
+    // Re-find: if a row exists for (user, course), the create lost a
+    // race (or it's a replay) and we should update. If nothing exists,
+    // the create failed for a real reason — rethrow.
+    const recheck = await payload.find({
+      collection: 'enrollments',
+      where: {
+        and: [{ user: { equals: userId } }, { course: { equals: courseId } }],
+      },
+      limit: 1,
+      depth: 0,
+      overrideAccess: true,
+    })
+    if (recheck.docs.length === 0) throw createError
+
+    const current = recheck.docs[0] as {
+      id: string
+      status: string
+      metadata?: { paymentId?: string; accessCodeId?: string; grantedBy?: string }
+    }
+
+    return performEnrollmentUpdate(payload, current, expiresAt, transactionId)
   }
+}
 
-  const existing = await payload.find({
-    collection: 'enrollments',
-    where: {
-      and: [{ user: { equals: userId } }, { course: { equals: courseId } }],
-    },
-    limit: 1,
-    depth: 0,
-    overrideAccess: true,
-  })
-
-  if (existing.docs.length === 0) {
-    // Shouldn't happen if we just hit a duplicate-key error, but bail safely.
-    return
-  }
-
-  const current = existing.docs[0] as {
+/**
+ * Shared update path for an existing Enrollment. Refreshes state without
+ * touching enrolledAt or clobbering prior metadata fields.
+ */
+async function performEnrollmentUpdate(
+  payload: Awaited<ReturnType<typeof getPayload>>,
+  current: {
     id: string
     status: string
     metadata?: { paymentId?: string; accessCodeId?: string; grantedBy?: string }
-  }
-
+  },
+  expiresAt: string | null,
+  transactionId: string,
+): Promise<void> {
   // Same transaction replay → no-op.
   if (current.metadata?.paymentId === transactionId && current.status === 'active') {
     return
@@ -263,19 +283,6 @@ async function upsertEnrollment(
     },
     overrideAccess: true,
   })
-}
-
-/**
- * MongoDB duplicate-key errors come through as `code === 11000`. Payload may
- * wrap them, so we also check the message.
- */
-function isDuplicateKeyError(error: unknown): boolean {
-  if (!error) return false
-  const err = error as { code?: number; message?: string; cause?: { code?: number } }
-  if (err.code === 11000) return true
-  if (err.cause?.code === 11000) return true
-  if (typeof err.message === 'string' && /E11000|duplicate key/i.test(err.message)) return true
-  return false
 }
 
 /**
