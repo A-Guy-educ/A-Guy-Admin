@@ -67,7 +67,7 @@ describe('PayPal Payment Service', () => {
       const { createPayPalOrder } = await import('@/lib/payment/paypal')
 
       await expect(createPayPalOrder(mockOptions)).rejects.toThrow(
-        'Missing required payment environment variables: PAYPAL_CLIENT_ID',
+        /PayPal is partially configured.*PAYPAL_CLIENT_ID/,
       )
     })
 
@@ -79,7 +79,7 @@ describe('PayPal Payment Service', () => {
       const { createPayPalOrder } = await import('@/lib/payment/paypal')
 
       await expect(createPayPalOrder(mockOptions)).rejects.toThrow(
-        'Missing required payment environment variables: PAYPAL_CLIENT_SECRET',
+        /PayPal is partially configured.*PAYPAL_CLIENT_SECRET/,
       )
     })
 
@@ -302,7 +302,7 @@ describe('PayPal Payment Service', () => {
       const { verifyPayPalWebhook } = await import('@/lib/payment/paypal')
 
       await expect(verifyPayPalWebhook({ type: 'test' }, mockHeaders)).rejects.toThrow(
-        'Missing required payment environment variables: PAYPAL_WEBHOOK_ID',
+        /PayPal is partially configured.*PAYPAL_WEBHOOK_ID/,
       )
     })
 
