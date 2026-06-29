@@ -1935,7 +1935,7 @@ export interface Product {
             /**
              * תקופת איפוס המגבלה (רלוונטי רק לתכונות עם limit).
              */
-            period?: ('day' | 'month' | 'lifetime') | null;
+            period?: ('day' | 'lifetime') | null;
             id?: string | null;
             blockName?: string | null;
             blockType: 'featureBlock';
@@ -1984,7 +1984,7 @@ export interface Feature {
   /**
    * Default reset window used when a product adds this feature. Admin can override per-product.
    */
-  defaultPeriod?: ('day' | 'month' | 'lifetime') | null;
+  defaultPeriod?: ('day' | 'lifetime') | null;
   /**
    * When on, denials are silent — endpoints return a generic error without revealing the limit (e.g. chat-limit).
    */
