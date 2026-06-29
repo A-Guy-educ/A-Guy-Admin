@@ -1,4 +1,5 @@
 import { mongooseAdapter } from '@payloadcms/db-mongodb'
+import { resendAdapter } from '@payloadcms/email-resend'
 import path from 'path'
 import { buildConfig, PayloadRequest } from 'payload'
 import sharp from 'sharp'
@@ -247,6 +248,20 @@ export default buildConfig({
     MCPAuditLogs,
   ].map(withIdOnCreateGuard),
   cors: [getServerSideURL()].filter(Boolean),
+  // Email adapter — populates `payload.email`, which `purchase-receipt-service`
+  // (and any future transactional email) calls via `payload.email.send(...)`.
+  // When `RESEND_API_KEY` isn't set (local dev / CI without secrets) we omit
+  // the adapter entirely; the receipt service has a no-op fallback that logs
+  // a warning and returns false rather than throwing.
+  ...(process.env.RESEND_API_KEY
+    ? {
+        email: resendAdapter({
+          apiKey: process.env.RESEND_API_KEY,
+          defaultFromAddress: process.env.RESEND_FROM_ADDRESS ?? 'no-reply@aguy.co.il',
+          defaultFromName: process.env.RESEND_FROM_NAME ?? 'AGuy',
+        }),
+      }
+    : {}),
   globals: [Header, Footer],
   plugins,
   secret:
