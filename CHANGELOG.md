@@ -1677,6 +1677,7 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- feat: Wire @payloadcms/email-resend so admin can send purchase receipts ([#86](https://github.com/A-Guy-educ/A-Guy-Admin/pull/86)) — @aguyshayb
 - refactor: Replace ProductItems with inline content blocks + Features … ([#83](https://github.com/A-Guy-educ/A-Guy-Admin/pull/83)) — @aguyshayb
 - feat: Add content promotion export/import between environments ([#73](https://github.com/A-Guy-educ/A-Guy-Admin/pull/73)) — @aguyshayb
 - perf: Admin big-sweep — kill write-on-read backfills, dashboard cache, lighter list search ([#69](https://github.com/A-Guy-educ/A-Guy-Admin/pull/69)) — @aguyshayb
