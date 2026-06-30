@@ -18,7 +18,8 @@
   },
   "state": {
     "repo": "https://github.com/A-Guy-educ/kody-state",
-    "path": "A-Guy-Admin"
+    "path": "A-Guy-Admin",
+    "branch": "main"
   },
   "agent": {
     "model": "minimax/MiniMax-M2.7-highspeed"
