@@ -1677,6 +1677,7 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- Publish admin auth session fix ([#91](https://github.com/A-Guy-educ/A-Guy-Admin/pull/91)) — @aguyaharonyair
 - fix: Make payment env validation provider-aware ([#89](https://github.com/A-Guy-educ/A-Guy-Admin/pull/89)) — @aguyshayb
 - chore: Add deleteme.md placeholder ([#87](https://github.com/A-Guy-educ/A-Guy-Admin/pull/87)) — @aguyshayb
 - feat: Wire @payloadcms/email-resend so admin can send purchase receipts ([#86](https://github.com/A-Guy-educ/A-Guy-Admin/pull/86)) — @aguyshayb
