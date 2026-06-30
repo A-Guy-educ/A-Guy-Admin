@@ -359,7 +359,7 @@ async function handleEvent(
         await grantProductEntitlements(
           transaction.user as string,
           transaction.product as string,
-          transaction.id,
+          String(transaction.id),
         )
 
         // Grant succeeded — atomically flip status and record the grant timestamp and captureId

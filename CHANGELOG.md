@@ -1677,6 +1677,22 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- fix: Make payment env validation provider-aware ([#89](https://github.com/A-Guy-educ/A-Guy-Admin/pull/89)) — @aguyshayb
+- chore: Add deleteme.md placeholder ([#87](https://github.com/A-Guy-educ/A-Guy-Admin/pull/87)) — @aguyshayb
+- feat: Wire @payloadcms/email-resend so admin can send purchase receipts ([#86](https://github.com/A-Guy-educ/A-Guy-Admin/pull/86)) — @aguyshayb
+- refactor: Replace ProductItems with inline content blocks + Features … ([#83](https://github.com/A-Guy-educ/A-Guy-Admin/pull/83)) — @aguyshayb
+- feat: Add content promotion export/import between environments ([#73](https://github.com/A-Guy-educ/A-Guy-Admin/pull/73)) — @aguyshayb
+- perf: Admin big-sweep — kill write-on-read backfills, dashboard cache, lighter list search ([#69](https://github.com/A-Guy-educ/A-Guy-Admin/pull/69)) — @aguyshayb
+- feat: Add product duration, course bundles, and rate-limited features ([#78](https://github.com/A-Guy-educ/A-Guy-Admin/pull/78)) — @aguyshayb
+- fix: Drop idempotencyKey from JSON importer (real fix for 'tenant invalid') ([#57](https://github.com/A-Guy-educ/A-Guy-Admin/pull/57)) — @aguyshayb
+- fix: Omit tenant on create in JSON importer ([#56](https://github.com/A-Guy-educ/A-Guy-Admin/pull/56)) — @aguyshayb
+- fix: Force default tenant in JSON importer + surface per-exercise errors ([#55](https://github.com/A-Guy-educ/A-Guy-Admin/pull/55)) — @aguyshayb
+- fix: Write lesson.blocks playlist once in JSON import ([#54](https://github.com/A-Guy-educ/A-Guy-Admin/pull/54)) — @aguyshayb
+- feat: Add bulk JSON importer for lessons and exercises ([#53](https://github.com/A-Guy-educ/A-Guy-Admin/pull/53)) — @aguyshayb
+- ci: Clean dev app workflow ([#31](https://github.com/A-Guy-educ/A-Guy-Admin/pull/31)) — @aguyaharonyair
+- fix: Remove stale student QA CI gate ([#30](https://github.com/A-Guy-educ/A-Guy-Admin/pull/30)) — @aguyaharonyair
+- fix: Correct design token lint test ([#29](https://github.com/A-Guy-educ/A-Guy-Admin/pull/29)) — @aguyaharonyair
+- ci: Alias dev preview deploys ([#27](https://github.com/A-Guy-educ/A-Guy-Admin/pull/27)) — @aguyaharonyair
 - ci: Add build env for Vercel deploy ([#25](https://github.com/A-Guy-educ/A-Guy-Admin/pull/25)) — @aguyaharonyair
 - ci: Add install env for Vercel deploy ([#24](https://github.com/A-Guy-educ/A-Guy-Admin/pull/24)) — @aguyaharonyair
 - #2250: docs-drift: Exercises (#2154) ([#2341](https://github.com/A-Guy-educ/A-Guy/pull/2341)) — @kodyade[bot] · ⚠️ QA 2026-06-08 (#2527)

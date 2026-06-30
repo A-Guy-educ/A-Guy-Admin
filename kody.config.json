@@ -11,8 +11,14 @@
   },
   "github": {
     "owner": "A-Guy-educ",
-    "repo": "A-Guy",
-    "operators": ["aguyaharonyair"]
+    "repo": "A-Guy-Admin",
+    "operators": [
+      "aguyaharonyair"
+    ]
+  },
+  "state": {
+    "repo": "https://github.com/A-Guy-educ/kody-state",
+    "path": "A-Guy-Admin"
   },
   "agent": {
     "model": "minimax/MiniMax-M2.7-highspeed"
@@ -22,7 +28,9 @@
   },
   "release": {
     "releaseBranch": "main",
-    "versionFiles": ["package.json"],
+    "versionFiles": [
+      "package.json"
+    ],
     "e2eCommand": "npx tsx scripts/release-e2e-gate.ts",
     "timeoutMs": 1800000
   },
@@ -46,5 +54,22 @@
       "FIRST_TIME_CONTRIBUTOR",
       "MEMBER"
     ]
+  },
+  "company": {
+    "activeGoals": [
+      "ci-health",
+      "prs-stay-mergeable"
+    ]
+  },
+  "fly": {
+    "previews": {
+      "cpus": 2,
+      "memoryMb": 2048,
+      "ttlDays": 14,
+      "builderCpus": 8,
+      "builderMemoryMb": 8192,
+      "idleSuspend": true,
+      "healthCheck": false
+    }
   }
 }

@@ -48,7 +48,6 @@ import { MediaPreview as MediaPreview_4b980c9a407724ef7c1755e3482d0258 } from '@
 import { HorizontalRuleFeatureClient as HorizontalRuleFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { BlocksFeatureClient as BlocksFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { MetaImageComponent as MetaImageComponent_a8a977ebc872c5d5ea7ee689724c0860 } from '@payloadcms/plugin-seo/client'
-import { TypeBadgeCell as TypeBadgeCell_13c62dfd4a04ae34ea0273393121f596 } from '@/ui/admin/ProductItems/TypeBadgeCell'
 import { ProductsSaveButton as ProductsSaveButton_bd850752e7866f72b743e2e0c1b129f0 } from '@/ui/admin/Products/SaveButton'
 import { ProductsEditView as ProductsEditView_ff3c2128c868d33a5de1972e5b7e8f8a } from '@/ui/admin/Products/EditView'
 import { TransactionStatusCell as TransactionStatusCell_6b7b08e7fddc3ba187c2fa7390e3cb99 } from '@/ui/admin/TransactionStatusCell'
@@ -60,10 +59,12 @@ import { RowLabel as RowLabel_49a0f2da415e33c790acf24cb6dd5091 } from '@/ui/admi
 import { RowLabel as RowLabel_4ed9de7504772fe9568f4f8054c5cb47 } from '@/ui/admin/Footer'
 import { default as default_759821dbe781e78024abfaf95f6442c4 } from '@/ui/admin/VersionInfo'
 import { default as default_e7752c936f7e855267a963c057c607b8 } from '@/ui/admin/UserEmail'
-import { default as default_651b6549ba90964af4bff3f3f8153ba6 } from '@/ui/admin/ConversionTracking/DashboardWidgets'
 import { default as default_e8db4fbd97550d4d717940b5cf0234f3 } from '@/ui/admin/BeforeLogin'
+import { default as default_f9988905d888cf1a3e8ff1530b2c5130 } from '@/ui/admin/Statistics/SidebarLink'
 import { default as default_7545204935b55fcf02b3be70dde90fc1 } from '@/ui/admin/PdfConversion/SidebarLink'
 import { default as default_1b2cd3c8450eece915504fde397ab5c7 } from '@/ui/admin/LessonDuplicationReview/SidebarLink'
+import { default as default_6cbe285301e6b5516cbbf36b52b4a7d9 } from '@/ui/admin/LessonJsonImport/SidebarLink'
+import { default as default_808dcfaece6a11816da5208dd9c344f6 } from '@/ui/admin/ContentPromotion/SidebarLink'
 import { VercelBlobClientUploadHandler as VercelBlobClientUploadHandler_16c82c5e25f430251a3e3ba57219ff4e } from '@payloadcms/storage-vercel-blob/client'
 import { CollectionCards as CollectionCards_ab83ff7e88da8d3530831f296ec4756a } from '@payloadcms/ui/rsc'
 
@@ -118,7 +119,6 @@ export const importMap = {
   "@payloadcms/richtext-lexical/client#HorizontalRuleFeatureClient": HorizontalRuleFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "@payloadcms/richtext-lexical/client#BlocksFeatureClient": BlocksFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "@payloadcms/plugin-seo/client#MetaImageComponent": MetaImageComponent_a8a977ebc872c5d5ea7ee689724c0860,
-  "@/ui/admin/ProductItems/TypeBadgeCell#TypeBadgeCell": TypeBadgeCell_13c62dfd4a04ae34ea0273393121f596,
   "@/ui/admin/Products/SaveButton#ProductsSaveButton": ProductsSaveButton_bd850752e7866f72b743e2e0c1b129f0,
   "@/ui/admin/Products/EditView#ProductsEditView": ProductsEditView_ff3c2128c868d33a5de1972e5b7e8f8a,
   "@/ui/admin/TransactionStatusCell#TransactionStatusCell": TransactionStatusCell_6b7b08e7fddc3ba187c2fa7390e3cb99,
@@ -130,10 +130,12 @@ export const importMap = {
   "@/ui/admin/Footer#RowLabel": RowLabel_4ed9de7504772fe9568f4f8054c5cb47,
   "@/ui/admin/VersionInfo#default": default_759821dbe781e78024abfaf95f6442c4,
   "@/ui/admin/UserEmail#default": default_e7752c936f7e855267a963c057c607b8,
-  "@/ui/admin/ConversionTracking/DashboardWidgets#default": default_651b6549ba90964af4bff3f3f8153ba6,
   "@/ui/admin/BeforeLogin#default": default_e8db4fbd97550d4d717940b5cf0234f3,
+  "@/ui/admin/Statistics/SidebarLink#default": default_f9988905d888cf1a3e8ff1530b2c5130,
   "@/ui/admin/PdfConversion/SidebarLink#default": default_7545204935b55fcf02b3be70dde90fc1,
   "@/ui/admin/LessonDuplicationReview/SidebarLink#default": default_1b2cd3c8450eece915504fde397ab5c7,
+  "@/ui/admin/LessonJsonImport/SidebarLink#default": default_6cbe285301e6b5516cbbf36b52b4a7d9,
+  "@/ui/admin/ContentPromotion/SidebarLink#default": default_808dcfaece6a11816da5208dd9c344f6,
   "@payloadcms/storage-vercel-blob/client#VercelBlobClientUploadHandler": VercelBlobClientUploadHandler_16c82c5e25f430251a3e3ba57219ff4e,
   "@payloadcms/ui/rsc#CollectionCards": CollectionCards_ab83ff7e88da8d3530831f296ec4756a
 }

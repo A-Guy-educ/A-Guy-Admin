@@ -11,10 +11,24 @@ import {
   REST_PUT,
 } from '@payloadcms/next/routes'
 
-export const GET = REST_GET(config)
-export const POST = REST_POST(config)
-export const DELETE = REST_DELETE(config)
-export const PATCH = REST_PATCH(config)
+import { withPartitionedPayloadAuthCookie } from '@/infra/auth/payload_auth_cookie_headers'
 
-export const PUT = REST_PUT(config)
+type PayloadRouteArgs = {
+  params: Promise<{
+    slug?: string[]
+  }>
+}
+
+type PayloadRouteHandler = (request: Request, args: PayloadRouteArgs) => Promise<Response>
+
+function withPayloadAuthCookieHeaders(handler: PayloadRouteHandler): PayloadRouteHandler {
+  return async (request, args) => withPartitionedPayloadAuthCookie(await handler(request, args))
+}
+
+export const GET = withPayloadAuthCookieHeaders(REST_GET(config))
+export const POST = withPayloadAuthCookieHeaders(REST_POST(config))
+export const DELETE = withPayloadAuthCookieHeaders(REST_DELETE(config))
+export const PATCH = withPayloadAuthCookieHeaders(REST_PATCH(config))
+
+export const PUT = withPayloadAuthCookieHeaders(REST_PUT(config))
 export const OPTIONS = REST_OPTIONS(config)

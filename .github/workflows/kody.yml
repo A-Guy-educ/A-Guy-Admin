@@ -40,8 +40,8 @@ on:
         description: 'Dashboard event ingest URL with inline ?token=... (chat mode)'
         type: string
         default: ''
-      executable:
-        description: 'Stage to run for issue_number (default: run). goal-tick sets classify.'
+      capability:
+        description: 'Capability action to run for issue_number (default: run). goal-tick sets classify.'
         type: string
         default: ''
       base:
@@ -93,6 +93,7 @@ jobs:
         with:
           app-id: ${{ secrets.KODY_APP_ID }}
           private-key: ${{ secrets.KODY_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
 
       - uses: actions/checkout@v4
         if: env.SHOULD_RUN_KODY_ENGINE == 'true'
@@ -110,7 +111,9 @@ jobs:
 
       - name: Write pip cache key for LiteLLM
         if: env.SHOULD_RUN_KODY_ENGINE == 'true'
-        run: echo "litellm[proxy]" > .kody-pip-requirements.txt
+        run: |
+          echo "litellm[proxy]" > .kody-pip-requirements.txt
+          mkdir -p ~/.cache/pip
 
       - uses: actions/setup-python@v5
         if: env.SHOULD_RUN_KODY_ENGINE == 'true'
@@ -119,13 +122,15 @@ jobs:
           cache: 'pip'
           cache-dependency-path: .kody-pip-requirements.txt
 
-      - if: env.SHOULD_RUN_KODY_ENGINE == 'true'
+      - name: Run Kody engine
+        if: env.SHOULD_RUN_KODY_ENGINE == 'true'
+        continue-on-error: ${{ github.event_name == 'pull_request' && github.event.action != 'closed' }}
         env:
           ALL_SECRETS: ${{ toJSON(secrets) }}
           # The App token wins: set explicitly so it beats any leftover
           # KODY_TOKEN unpacked from ALL_SECRETS (the engine's resolver skips
           # env keys that are already set).
-          KODY_TOKEN: ${{ steps.app-token.outputs.token || github.token }}
+          KODY_TOKEN: ${{ steps.app-token.outputs.token || secrets.KODY_TOKEN || secrets.github_token || github.token }}
           SESSION_ID: ${{ inputs.sessionId }}
           INIT_MESSAGE: ${{ inputs.message }}
           MODEL: ${{ inputs.model }}

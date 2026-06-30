@@ -40,7 +40,7 @@ jobs:
         run: pnpm run repo:hygiene:report
 
       - name: Upload report artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: repo-hygiene-report
           path: .ai-docs/reports/repo-hygiene-report.md

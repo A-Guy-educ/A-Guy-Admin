@@ -67,6 +67,16 @@ const PURIFY_CONFIG = {
   ],
 }
 
+function prepareHtmlDocumentSource(html: string): string {
+  const documentStart = html.search(/<!doctype html|<html\b/i)
+
+  return documentStart > 0 ? html.slice(documentStart) : html
+}
+
+function isFullHtmlDocument(html: string): boolean {
+  return /<!doctype html|<html\b|<body\b/i.test(prepareHtmlDocumentSource(html))
+}
+
 export function HtmlBlockRenderer({ block }: HtmlBlockRendererProps) {
   // When a guided explanation payload is present and valid, render the
   // trusted runner. safeParse guards against malformed data from DB
@@ -78,7 +88,23 @@ export function HtmlBlockRenderer({ block }: HtmlBlockRendererProps) {
     }
   }
 
+  if (isFullHtmlDocument(block.html)) {
+    return <FullHtmlDocumentRenderer html={block.html} />
+  }
+
   return <StaticHtmlRenderer html={block.html} />
+}
+
+function FullHtmlDocumentRenderer({ html }: { html: string }) {
+  return (
+    <iframe
+      className="html-block-content block min-h-[90vh] w-full rounded-lg border-0"
+      sandbox="allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"
+      referrerPolicy="no-referrer"
+      srcDoc={prepareHtmlDocumentSource(html)}
+      title="HTML content"
+    />
+  )
 }
 
 function StaticHtmlRenderer({ html }: { html: string }) {
