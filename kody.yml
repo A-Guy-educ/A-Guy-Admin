@@ -102,9 +102,7 @@ jobs:
           node-version: 22
 
       - name: Write pip cache key for LiteLLM
-        run: |
-          echo "litellm[proxy]" > .kody-pip-requirements.txt
-          mkdir -p ~/.cache/pip
+        run: echo "litellm[proxy]" > .kody-pip-requirements.txt
 
       - uses: actions/setup-python@v5
         with:
@@ -112,14 +110,12 @@ jobs:
           cache: 'pip'
           cache-dependency-path: .kody-pip-requirements.txt
 
-      - name: Run Kody engine
-        continue-on-error: ${{ github.event_name == 'pull_request' && github.event.action != 'closed' }}
-        env:
+      - env:
           ALL_SECRETS: ${{ toJSON(secrets) }}
           # The App token wins: set explicitly so it beats any leftover
           # KODY_TOKEN unpacked from ALL_SECRETS (the engine's resolver skips
           # env keys that are already set).
-          KODY_TOKEN: ${{ steps.app-token.outputs.token || secrets.KODY_TOKEN || secrets.github_token || github.token }}
+          KODY_TOKEN: ${{ steps.app-token.outputs.token || github.token }}
           SESSION_ID: ${{ inputs.sessionId }}
           INIT_MESSAGE: ${{ inputs.message }}
           MODEL: ${{ inputs.model }}

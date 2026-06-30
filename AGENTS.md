@@ -1250,6 +1250,14 @@ See [docs/ai/README.md](./docs/ai/README.md) for full guide and [BOOTSTRAP.md](.
 
 ---
 
+## Kody workflow template guard
+
+Never edit repository-root `kody.yml` during normal fixes, release work, CI
+cleanup, or Kody workflow changes. It is a protected template file. If a change
+is needed for the active GitHub workflow, edit `.github/workflows/kody.yml`
+instead. Only edit root `kody.yml` when the operator explicitly names that file
+and asks for a template change.
+
 ## Kody memory protocol
 
 You have a persistent memory at `.kody/memory/`. `INDEX.md` is the cheap
