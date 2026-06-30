@@ -43,13 +43,35 @@ function buildPrompt(section: TextSection): InlineRichText {
   return inlineRichText(text)
 }
 
-function buildMcqBlock(section: TextSection): QuestionSelectMcqBlock {
-  const wrongs = section.options.filter((o) => o.trim() !== section.correctAnswer.trim())
-  // Shuffle so the correct option doesn't always sit first.
-  const pool = [
-    { text: section.correctAnswer, correct: true },
-    ...wrongs.map((t) => ({ text: t, correct: false })),
-  ]
+/**
+ * Normalize answer strings for comparison so trivial whitespace, en-/em-dash,
+ * and curly-quote drift between an option and `correctAnswer` doesn't make
+ * them count as different. Curriculum text is hand-edited and inconsistent.
+ */
+function normalizeAnswer(s: string): string {
+  return s
+    .trim()
+    .replace(/\s+/g, ' ')
+    .replace(/[–—]/g, '-')
+    .replace(/[‘’‚‛]/g, "'")
+    .replace(/[“”„‟]/g, '"')
+}
+
+/**
+ * Try to build an MCQ from the source's options + correctAnswer. Returns null
+ * if the inputs can't safely form an MCQ — caller falls back to free response
+ * or an error placeholder. The single-option-MCQ case used to nuke the whole
+ * lesson via Mongo validation; we explicitly reject it here instead.
+ */
+function tryBuildMcqBlock(section: TextSection): QuestionSelectMcqBlock | null {
+  if (section.options.length < 2) return null
+
+  const correctNorm = normalizeAnswer(section.correctAnswer)
+  if (!correctNorm) return null
+  const correctIdx = section.options.findIndex((o) => normalizeAnswer(o) === correctNorm)
+  if (correctIdx === -1) return null
+
+  const pool = section.options.map((text, idx) => ({ text, correct: idx === correctIdx }))
   for (let i = pool.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1))
     ;[pool[i], pool[j]] = [pool[j], pool[i]]
@@ -76,17 +98,34 @@ function buildMcqBlock(section: TextSection): QuestionSelectMcqBlock {
   return block
 }
 
-function buildFreeResponseBlock(section: TextSection): QuestionFreeResponseBlock {
-  const accepted = isNonEmpty(section.correctAnswer) ? section.correctAnswer : 'See solution'
+function tryBuildFreeResponseBlock(section: TextSection): QuestionFreeResponseBlock | null {
+  if (!isNonEmpty(section.correctAnswer)) return null
   const block: QuestionFreeResponseBlock = {
     id: generateId(),
     type: 'question_free_response',
     prompt: buildPrompt(section),
-    answer: { acceptedAnswers: [accepted] },
+    answer: { acceptedAnswers: [section.correctAnswer] },
   }
   if (isNonEmpty(section.hint)) block.hint = inlineRichText(section.hint)
   if (isNonEmpty(section.fullSolution)) block.fullSolution = inlineRichText(section.fullSolution)
   return block
+}
+
+/**
+ * Visible placeholder for a section we couldn't safely convert. The teacher
+ * reviewing the draft can fix it manually rather than discovering the lesson
+ * silently rolled back.
+ */
+function unparsableSectionBlock(section: TextSection, reason: string): RichTextBlock {
+  const lines = [
+    `**⚠ סעיף ${section.questionNumber || '?'} – לא ניתן לייבא אוטומטית**`,
+    `סיבה: ${reason}`,
+    '',
+    `שאלה: ${section.question || '(ריק)'}`,
+    section.options.length > 0 ? `אופציות: ${section.options.join(' | ')}` : '',
+    section.correctAnswer ? `פתרון נכון בקובץ: ${section.correctAnswer}` : '',
+  ].filter((l) => l !== '')
+  return richTextBlock(lines.join('\n'))
 }
 
 export function convertTextExerciseToBlocks(exercise: TextExercise): ContentBlock[] {
@@ -96,11 +135,38 @@ export function convertTextExerciseToBlocks(exercise: TextExercise): ContentBloc
   if (isNonEmpty(exercise.svg)) blocks.push(svgBlock(exercise.svg))
 
   for (const section of exercise.sections) {
-    if (section.type.kind === 'free_response' || section.options.length === 0) {
-      blocks.push(buildFreeResponseBlock(section))
-    } else {
-      blocks.push(buildMcqBlock(section))
+    const wantsMcq = section.type.kind !== 'free_response' && section.options.length >= 2
+
+    if (wantsMcq) {
+      const mcq = tryBuildMcqBlock(section)
+      if (mcq) {
+        blocks.push(mcq)
+        continue
+      }
+      // MCQ inputs are sloppy (no option matches correctAnswer, or only one
+      // option). Degrade to free response if we at least have a stated answer.
+      const fr = tryBuildFreeResponseBlock(section)
+      if (fr) {
+        blocks.push(fr)
+        continue
+      }
+      blocks.push(
+        unparsableSectionBlock(
+          section,
+          'MCQ source where פתרון נכון does not match any option, and no free-response fallback available',
+        ),
+      )
+      continue
     }
+
+    // Free-response path. Requires a real accepted answer — we no longer
+    // silently default to the literal string "See solution".
+    const fr = tryBuildFreeResponseBlock(section)
+    if (fr) {
+      blocks.push(fr)
+      continue
+    }
+    blocks.push(unparsableSectionBlock(section, 'Free-response section is missing פתרון נכון'))
   }
 
   // Defensive — Payload's content schema requires at least one block.
