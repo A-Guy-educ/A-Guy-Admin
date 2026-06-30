@@ -110,7 +110,9 @@ jobs:
           cache: 'pip'
           cache-dependency-path: .kody-pip-requirements.txt
 
-      - env:
+      - name: Run Kody engine
+        continue-on-error: ${{ github.event_name == 'pull_request' && github.event.action != 'closed' }}
+        env:
           ALL_SECRETS: ${{ toJSON(secrets) }}
           # The App token wins: set explicitly so it beats any leftover
           # KODY_TOKEN unpacked from ALL_SECRETS (the engine's resolver skips
