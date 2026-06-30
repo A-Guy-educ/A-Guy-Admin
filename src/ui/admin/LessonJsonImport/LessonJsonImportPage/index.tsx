@@ -13,11 +13,14 @@ import {
 import { ChapterSelector } from '../ChapterSelector'
 
 type ParseStatus = 'valid' | 'invalid'
+type ImportFormat = 'json' | 'text'
 
 interface FileEntry {
   id: string
   filename: string
+  format: ImportFormat
   json: unknown
+  text?: string
   status: ParseStatus
   parseError?: string
   lessonTopic?: string
@@ -125,6 +128,33 @@ function safeParseLesson(json: unknown): {
   return { topic, exerciseCount: exercises.length }
 }
 
+const TEXT_LESSON_HEADER_RE = /^שם\s*השיעור\s*-\s*(.+)$/m
+const TEXT_EXERCISE_HEADER_RE = /^תרגיל\s+[^\s–-]+\s*[–-]\s*[^:]+:\s*(.*)$/gm
+
+/**
+ * Cheap client-side preview for the plain-text format. Server has the real
+ * parser; this just counts exercises and lifts the lesson name for the table.
+ */
+function safeParseTextLesson(text: string): {
+  topic?: string
+  exerciseCount?: number
+  error?: string
+} {
+  if (!text || text.trim() === '') return { error: 'File is empty' }
+  const headerMatch = text.match(TEXT_LESSON_HEADER_RE)
+  let topic = headerMatch ? headerMatch[1].trim() : undefined
+  let exerciseCount = 0
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  for (const m of text.matchAll(TEXT_EXERCISE_HEADER_RE)) {
+    if (!topic) topic = m[1]?.trim() || undefined
+    exerciseCount += 1
+  }
+  if (exerciseCount === 0) {
+    return { error: 'No "תרגיל N – …:" headers found — does this match the new format?' }
+  }
+  return { topic, exerciseCount }
+}
+
 export function LessonJsonImportPage() {
   const [chapterId, setChapterId] = useState<string | null>(null)
   const [files, setFiles] = useState<FileEntry[]>([])
@@ -137,27 +167,48 @@ export function LessonJsonImportPage() {
     setGlobalError(null)
     const next: FileEntry[] = []
     for (const file of Array.from(selected)) {
-      if (!file.name.toLowerCase().endsWith('.json')) continue
+      const lower = file.name.toLowerCase()
+      const isJson = lower.endsWith('.json')
+      const isText = lower.endsWith('.txt')
+      if (!isJson && !isText) continue
+      const id = `${file.name}-${file.size}-${file.lastModified}`
       try {
-        const text = await file.text()
-        const json = JSON.parse(text)
-        const summary = safeParseLesson(json)
-        next.push({
-          id: `${file.name}-${file.size}-${file.lastModified}`,
-          filename: file.name,
-          json,
-          status: summary.error ? 'invalid' : 'valid',
-          parseError: summary.error,
-          lessonTopic: summary.topic,
-          exerciseCount: summary.exerciseCount,
-        })
+        const raw = await file.text()
+        if (isJson) {
+          const json = JSON.parse(raw)
+          const summary = safeParseLesson(json)
+          next.push({
+            id,
+            filename: file.name,
+            format: 'json',
+            json,
+            status: summary.error ? 'invalid' : 'valid',
+            parseError: summary.error,
+            lessonTopic: summary.topic,
+            exerciseCount: summary.exerciseCount,
+          })
+        } else {
+          const summary = safeParseTextLesson(raw)
+          next.push({
+            id,
+            filename: file.name,
+            format: 'text',
+            json: null,
+            text: raw,
+            status: summary.error ? 'invalid' : 'valid',
+            parseError: summary.error,
+            lessonTopic: summary.topic,
+            exerciseCount: summary.exerciseCount,
+          })
+        }
       } catch (err) {
         next.push({
-          id: `${file.name}-${file.size}-${file.lastModified}`,
+          id,
           filename: file.name,
+          format: isJson ? 'json' : 'text',
           json: null,
           status: 'invalid',
-          parseError: err instanceof Error ? err.message : 'Invalid JSON',
+          parseError: err instanceof Error ? err.message : 'Invalid file',
         })
       }
     }
@@ -195,15 +246,19 @@ export function LessonJsonImportPage() {
         [f.id]: { ...prev[f.id], state: 'running' },
       }))
       try {
-        const res = await fetch('/api/lessons/import-from-json', {
+        const url =
+          f.format === 'json'
+            ? '/api/lessons/import-from-json'
+            : '/api/lessons/import-from-text'
+        const body =
+          f.format === 'json'
+            ? { chapterId, filename: f.filename, json: f.json }
+            : { chapterId, filename: f.filename, text: f.text ?? '' }
+        const res = await fetch(url, {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            chapterId,
-            filename: f.filename,
-            json: f.json,
-          }),
+          body: JSON.stringify(body),
         })
         const envelope = await res.json()
         if (!res.ok || envelope.error) {
@@ -261,7 +316,7 @@ export function LessonJsonImportPage() {
           Dashboard
         </Link>
         <span style={{ color: 'var(--theme-elevation-300)', fontSize: 14 }}>›</span>
-        <h1 style={titleStyle}>Import Lessons from JSON</h1>
+        <h1 style={titleStyle}>Import Lessons</h1>
       </div>
 
       {globalError && <div style={errorBannerStyle}>{globalError}</div>}
@@ -275,14 +330,15 @@ export function LessonJsonImportPage() {
       </div>
 
       <div style={{ ...cardStyle, marginBottom: 16 }}>
-        <h2 style={sectionHeadingStyle}>2. Drop JSON files</h2>
+        <h2 style={sectionHeadingStyle}>2. Drop lesson files</h2>
         <label htmlFor="json-file-input">
           <div style={dropzoneStyle} onDragOver={(e) => e.preventDefault()} onDrop={onDrop}>
-            Drag &amp; drop lesson JSON files here, or click to browse.
+            Drag &amp; drop lesson <code>.json</code> or <code>.txt</code> files here, or click to
+            browse.
             <input
               id="json-file-input"
               type="file"
-              accept=".json,application/json"
+              accept=".json,application/json,.txt,text/plain"
               multiple
               onChange={(e) => onFiles(e.target.files)}
               style={{ display: 'none' }}
