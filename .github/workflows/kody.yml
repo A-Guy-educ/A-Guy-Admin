@@ -115,7 +115,7 @@ jobs:
           echo "litellm[proxy]" > .kody-pip-requirements.txt
           mkdir -p ~/.cache/pip
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         if: env.SHOULD_RUN_KODY_ENGINE == 'true'
         with:
           python-version: '3.12'
