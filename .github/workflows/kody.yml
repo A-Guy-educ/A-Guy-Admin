@@ -111,7 +111,9 @@ jobs:
 
       - name: Write pip cache key for LiteLLM
         if: env.SHOULD_RUN_KODY_ENGINE == 'true'
-        run: echo "litellm[proxy]" > .kody-pip-requirements.txt
+        run: |
+          echo "litellm[proxy]" > .kody-pip-requirements.txt
+          mkdir -p ~/.cache/pip
 
       - uses: actions/setup-python@v5
         if: env.SHOULD_RUN_KODY_ENGINE == 'true'
