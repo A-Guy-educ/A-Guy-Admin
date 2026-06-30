@@ -115,7 +115,7 @@ jobs:
           # The App token wins: set explicitly so it beats any leftover
           # KODY_TOKEN unpacked from ALL_SECRETS (the engine's resolver skips
           # env keys that are already set).
-          KODY_TOKEN: ${{ steps.app-token.outputs.token || github.token }}
+          KODY_TOKEN: ${{ steps.app-token.outputs.token || secrets.KODY_TOKEN || secrets.github_token || github.token }}
           SESSION_ID: ${{ inputs.sessionId }}
           INIT_MESSAGE: ${{ inputs.message }}
           MODEL: ${{ inputs.model }}
