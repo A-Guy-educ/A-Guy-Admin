@@ -59,7 +59,8 @@
   "company": {
     "activeGoals": [
       "ci-health",
-      "prs-stay-mergeable"
+      "prs-stay-mergeable",
+      "ai-agency-health"
     ]
   },
   "fly": {
