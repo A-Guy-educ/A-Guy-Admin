@@ -12,6 +12,7 @@ import {
 } from '@payloadcms/next/routes'
 
 import { withPartitionedPayloadAuthCookie } from '@/infra/auth/payload_auth_cookie_headers'
+import { normalizePayloadLoginRequest } from '@/infra/auth/payload_login_request'
 
 type PayloadRouteArgs = {
   params: Promise<{
@@ -22,7 +23,10 @@ type PayloadRouteArgs = {
 type PayloadRouteHandler = (request: Request, args: PayloadRouteArgs) => Promise<Response>
 
 function withPayloadAuthCookieHeaders(handler: PayloadRouteHandler): PayloadRouteHandler {
-  return async (request, args) => withPartitionedPayloadAuthCookie(await handler(request, args))
+  return async (request, args) =>
+    withPartitionedPayloadAuthCookie(
+      await handler(await normalizePayloadLoginRequest(request), args),
+    )
 }
 
 export const GET = withPayloadAuthCookieHeaders(REST_GET(config))
