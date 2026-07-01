@@ -54,7 +54,51 @@
     "activeGoals": [
       "ci-health",
       "prs-stay-mergeable",
-      "ai-agency-health"
+      "ai-agency-health",
+      "product-quality"
+    ],
+    "activeCapabilities": [
+      "capability-call",
+      "classify",
+      "research",
+      "plan",
+      "feature",
+      "bug",
+      "chore",
+      "spec",
+      "review",
+      "fix",
+      "fix-ci",
+      "ci-health",
+      "dev-ci-health",
+      "pr-health-triage",
+      "redispatch",
+      "sync",
+      "resolve",
+      "merge",
+      "revert",
+      "release-prepare",
+      "release-merge",
+      "release-promote",
+      "vercel-production-deploy",
+      "design-review",
+      "preview-health",
+      "qa",
+      "qa-engineer",
+      "qa-goal",
+      "qa-sweep",
+      "qa-verify",
+      "quality-watch",
+      "ui-review"
+    ],
+    "activeAgents": [
+      "ceo",
+      "cto",
+      "kody",
+      "qa",
+      "repo-brain",
+      "tech-writer",
+      "ux-designer"
     ]
   },
   "fly": {
