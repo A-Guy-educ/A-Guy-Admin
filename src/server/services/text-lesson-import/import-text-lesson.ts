@@ -49,9 +49,7 @@ export interface ImportTextLessonNotFoundError {
   message: string
 }
 
-export type ImportTextLessonError =
-  | ImportTextLessonValidationError
-  | ImportTextLessonNotFoundError
+export type ImportTextLessonError = ImportTextLessonValidationError | ImportTextLessonNotFoundError
 
 async function resolveLessonOrder(req: PayloadRequest, chapterId: string): Promise<number> {
   // The text format doesn't carry a per-lesson order on the filename pattern

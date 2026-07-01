@@ -47,7 +47,8 @@ export interface TextSection {
 
 export interface TextExercise {
   exerciseNumber: string
-  /** The text after "מנחה:" on the exercise header line. */
+  /** The text after the category's colon on the exercise header line
+   * (e.g. after `מנחה:` / `בסיס:` / `הבנה:` / `שילוב:` / `חזרה מסכמת:`). */
   subtopic: string
   /** Free narrative the teacher gives before the questions. May be empty. */
   intro: string
@@ -59,8 +60,6 @@ export interface TextExercise {
 export interface TextLesson {
   /** Pulled from "שם השיעור - ..." if present, otherwise empty. */
   lessonName?: string
-  course?: string
-  chapter?: string
   exercises: TextExercise[]
 }
 
@@ -69,7 +68,10 @@ export interface TextLesson {
 // it — anything up to the first `:` after the en-dash counts as the category,
 // and the rest is the subtopic.
 const EXERCISE_HEADER_RE = /^תרגיל\s+([^\s–-]+)\s*[–-]\s*[^:]+:\s*(.*)$/
-const SECTION_HEADER_RE = /^\[תרגיל\s+([^\s-]+)\s*-\s*סעיף\s+(.+?)\]$/
+// The section header uses either en-dash or hyphen, matching the exercise
+// header regex above. Files authored with en-dashed section titles were
+// previously dropped silently.
+const SECTION_HEADER_RE = /^\[תרגיל\s+([^\s–-]+)\s*[–-]\s*סעיף\s+(.+?)\]$/
 const FIELD_RE = /^\*\s*([^:]+):\s*(.*)$/
 const OPTION_RE = /^\s+-\s+(.+)$/
 const SVG_START_RE = /^<svg\b/i
@@ -214,11 +216,11 @@ export function parseTextLesson(raw: string): TextLesson {
     if (phase === 'header') {
       const hm = line.match(HEADER_LINE_RE)
       if (hm) {
-        const key = hm[1]
-        const val = hm[2].trim()
-        if (key === 'קורס') lesson.course = val
-        else if (key === 'פרק') lesson.chapter = val
-        else lesson.lessonName = val
+        // Only `שם השיעור` currently drives downstream (deriveLessonTitle).
+        // Course and chapter are recognized so we don't misinterpret them as
+        // narrative, but they aren't stored — chapter comes from the admin
+        // dropdown and course is inferred from the chapter.
+        if (hm[1] === 'שם השיעור') lesson.lessonName = hm[2].trim()
         continue
       }
       // Blank lines and unknown content in the header zone are skipped

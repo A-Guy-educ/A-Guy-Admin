@@ -128,7 +128,10 @@ function safeParseLesson(json: unknown): {
   return { topic, exerciseCount: exercises.length }
 }
 
-const TEXT_LESSON_HEADER_RE = /^שם\s*השיעור\s*-\s*(.+)$/m
+// Kept in sync with HEADER_LINE_RE in parse-text.ts so the preview title
+// matches what the server actually stores. Both sides use a literal single
+// space between the two words of "שם השיעור".
+const TEXT_LESSON_HEADER_RE = /^שם השיעור\s*-\s*(.+)$/m
 const TEXT_EXERCISE_HEADER_RE = /^תרגיל\s+[^\s–-]+\s*[–-]\s*[^:]+:\s*(.*)$/gm
 
 /**
@@ -144,7 +147,6 @@ function safeParseTextLesson(text: string): {
   const headerMatch = text.match(TEXT_LESSON_HEADER_RE)
   let topic = headerMatch ? headerMatch[1].trim() : undefined
   let exerciseCount = 0
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   for (const m of text.matchAll(TEXT_EXERCISE_HEADER_RE)) {
     if (!topic) topic = m[1]?.trim() || undefined
     exerciseCount += 1
@@ -247,9 +249,7 @@ export function LessonJsonImportPage() {
       }))
       try {
         const url =
-          f.format === 'json'
-            ? '/api/lessons/import-from-json'
-            : '/api/lessons/import-from-text'
+          f.format === 'json' ? '/api/lessons/import-from-json' : '/api/lessons/import-from-text'
         const body =
           f.format === 'json'
             ? { chapterId, filename: f.filename, json: f.json }
