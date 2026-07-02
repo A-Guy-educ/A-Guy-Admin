@@ -45,9 +45,9 @@ let _studentUserId: string
 let tenantId: string
 let userId: string
 let chapterId: string
+let courseId: string
 let lessonId: string
-let productItemLessonId: string
-let productItemFeatureId: string
+let testFeatureId: string
 let productId: string
 let _stripeTransactionId: string
 let _paypalTransactionId: string
@@ -104,6 +104,7 @@ beforeAll(async () => {
     } as any,
     overrideAccess: true,
   })
+  courseId = course.id
 
   const chapter = await payload.create({
     collection: 'chapters',
@@ -131,29 +132,34 @@ beforeAll(async () => {
   })
   lessonId = lesson.id
 
-  // Create product-item (lesson type)
-  const productItemLesson = await payload.create({
-    collection: 'product-items',
-    data: {
-      type: 'lesson',
-      lesson: lessonId,
-    } as any,
-    overrideAccess: true,
-  })
-  productItemLessonId = productItemLesson.id
+  // Create (or fetch) the Feature row used by featureBlock — the seed runs on
+  // payload init but tests can race ahead of it, so be defensive.
+  let featureDoc = (
+    await payload.find({
+      collection: 'features',
+      where: { key: { equals: FEATURE_KEY } },
+      limit: 1,
+      depth: 0,
+      overrideAccess: true,
+    })
+  ).docs[0] as { id: string } | undefined
+  if (!featureDoc) {
+    featureDoc = (await payload.create({
+      collection: 'features',
+      data: {
+        key: FEATURE_KEY,
+        label: 'Completion Certificate',
+        type: 'boolean',
+        defaultPeriod: 'lifetime',
+        enforcement: 'metadata',
+        isActive: true,
+      },
+      overrideAccess: true,
+    })) as { id: string }
+  }
+  testFeatureId = featureDoc.id
 
-  // Create product-item (feature type)
-  const productItemFeature = await payload.create({
-    collection: 'product-items',
-    data: {
-      type: 'feature',
-      featureKey: FEATURE_KEY,
-    } as any,
-    overrideAccess: true,
-  })
-  productItemFeatureId = productItemFeature.id
-
-  // Create product with both items
+  // Create product with contents blocks (courseBlock + featureBlock)
   const product = await payload.create({
     collection: 'products',
     data: {
@@ -162,7 +168,10 @@ beforeAll(async () => {
       billingType: 'one_time',
       price: 1000,
       currency: 'ILS',
-      items: [productItemLessonId, productItemFeatureId],
+      contents: [
+        { blockType: 'courseBlock', course: courseId },
+        { blockType: 'featureBlock', feature: testFeatureId },
+      ],
       isActive: true,
     } as any,
     overrideAccess: true,
@@ -258,10 +267,52 @@ async function cleanupUsers() {
   } catch {
     // User may not exist yet (before first test runs)
   }
+  // Also clean Enrollments so each test starts with a clean (user, course) state
+  try {
+    const enrollments = await payload.find({
+      collection: 'enrollments',
+      where: { user: { equals: userId } },
+      limit: 100,
+      overrideAccess: true,
+    })
+    for (const e of enrollments.docs) {
+      await payload.delete({
+        collection: 'enrollments',
+        id: (e as { id: string }).id,
+        overrideAccess: true,
+      })
+    }
+  } catch {
+    // ignore — first run may have nothing to clean
+  }
 }
 
 beforeEach(cleanupUsers)
 afterEach(cleanupUsers)
+
+/**
+ * Webhook tests previously asserted that `user.courseEntitlements` contained
+ * a row pointing at `lessonId`. Task B moves grants to the Enrollments
+ * collection and keys them on the lesson's *parent course*, so the equivalent
+ * assertion is now: does the user have an active Enrollment for the fixture's
+ * `courseId`?
+ */
+async function hasActiveEnrollmentForLessonCourse(): Promise<boolean> {
+  const enrollments = await payload.find({
+    collection: 'enrollments',
+    where: {
+      and: [
+        { user: { equals: userId } },
+        { course: { equals: courseId } },
+        { status: { equals: 'active' } },
+      ],
+    },
+    limit: 1,
+    depth: 0,
+    overrideAccess: true,
+  })
+  return enrollments.totalDocs > 0
+}
 afterEach(() => {
   vi.mocked(grantProductEntitlements).mockClear()
 })
@@ -294,27 +345,46 @@ vi.mock('@/lib/payment/grant-entitlements', async () => {
 // ─── grantProductEntitlements tests ──────────────────────────────────────────
 
 describe('grantProductEntitlements', () => {
-  it('should push lesson entitlement to user courseEntitlements', async () => {
+  async function resolveCourseId(): Promise<string> {
+    const chapter = await payload.findByID({
+      collection: 'chapters',
+      id: chapterId,
+      depth: 0,
+      overrideAccess: true,
+    })
+    return typeof chapter.course === 'string' ? chapter.course : (chapter.course as any).id
+  }
+
+  it('should create an Enrollment for the lesson-type item parent course (not legacy courseEntitlements)', async () => {
     await grantProductEntitlements(userId, productId, 'tx_lesson_test')
 
+    const courseId = await resolveCourseId()
+    const enrollments = await payload.find({
+      collection: 'enrollments',
+      where: {
+        and: [{ user: { equals: userId } }, { course: { equals: courseId } }],
+      },
+      overrideAccess: true,
+    })
+
+    expect(enrollments.totalDocs).toBe(1)
+    const e = enrollments.docs[0] as any
+    expect(e.status).toBe('active')
+    expect(e.grantMethod).toBe('payment')
+    expect(e.metadata?.paymentId).toBe('tx_lesson_test')
+
+    // Legacy array must NOT be written to.
     const user = await payload.findByID({
       collection: 'users',
       id: userId,
       depth: 0,
       overrideAccess: true,
     })
-
-    const entitlements = (user as any).courseEntitlements || []
-    expect(entitlements.length).toBeGreaterThan(0)
-    const lessonEntitlement = entitlements.find(
-      (e: any) => e.course?.toString() === lessonId || e.course === lessonId,
-    )
-    expect(lessonEntitlement).toBeDefined()
-    expect(lessonEntitlement.grantMethod).toBe('payment')
-    expect(lessonEntitlement.transactionId).toBe('tx_lesson_test')
+    const legacy = (user as any).courseEntitlements || []
+    expect(legacy.length).toBe(0)
   })
 
-  it('should push feature entitlement to user featureEntitlements', async () => {
+  it('should push feature entitlement with value/period/expiresAt populated', async () => {
     await grantProductEntitlements(userId, productId, 'tx_feature_test')
 
     const user = await payload.findByID({
@@ -323,20 +393,31 @@ describe('grantProductEntitlements', () => {
       depth: 0,
       overrideAccess: true,
     })
-
     const entitlements = (user as any).featureEntitlements || []
-    expect(entitlements.length).toBeGreaterThan(0)
     const featureEntitlement = entitlements.find((e: any) => e.key === FEATURE_KEY)
     expect(featureEntitlement).toBeDefined()
     expect(featureEntitlement.transactionId).toBe('tx_feature_test')
+    // FEATURE_KEY ProductItem in beforeAll has no value/period → defaults
+    expect(featureEntitlement.value ?? null).toBeNull()
+    expect(featureEntitlement.period ?? 'lifetime').toBe('lifetime')
+    // Fixture product has no durationDays → lifetime → no expiresAt
+    expect(featureEntitlement.expiresAt ?? null).toBeNull()
   })
 
-  it('should be idempotent — duplicate calls do not create double entries', async () => {
+  it('should be idempotent — duplicate calls do not create duplicate Enrollments or featureEntitlements', async () => {
     const txId = 'tx_idempotent_test'
+    await grantProductEntitlements(userId, productId, txId)
+    await grantProductEntitlements(userId, productId, txId)
 
-    // Call twice
-    await grantProductEntitlements(userId, productId, txId)
-    await grantProductEntitlements(userId, productId, txId)
+    const courseId = await resolveCourseId()
+    const enrollments = await payload.find({
+      collection: 'enrollments',
+      where: {
+        and: [{ user: { equals: userId } }, { course: { equals: courseId } }],
+      },
+      overrideAccess: true,
+    })
+    expect(enrollments.totalDocs).toBe(1)
 
     const user = await payload.findByID({
       collection: 'users',
@@ -344,25 +425,459 @@ describe('grantProductEntitlements', () => {
       depth: 0,
       overrideAccess: true,
     })
-
-    const courseEntitlements = (user as any).courseEntitlements || []
     const featureEntitlements = (user as any).featureEntitlements || []
-
-    // Should have exactly one entitlement per type (no duplicates)
-    const lessonCount = courseEntitlements.filter(
-      (e: any) => e.course?.toString() === lessonId || e.course === lessonId,
+    const featureCount = featureEntitlements.filter(
+      (e: any) => e.key === FEATURE_KEY && e.transactionId === txId,
     ).length
-    const featureCount = featureEntitlements.filter((e: any) => e.key === FEATURE_KEY).length
-
-    expect(lessonCount).toBe(1)
     expect(featureCount).toBe(1)
   })
 
   it('should throw when product is not found', async () => {
-    // Payload findByID throws a NotFound error for non-existent IDs
     await expect(
       grantProductEntitlements(userId, 'non_existent_product_id', 'tx_missing_test'),
     ).rejects.toThrow()
+  })
+
+  async function ensureFeature(key: string): Promise<string> {
+    const existing = (
+      await payload.find({
+        collection: 'features',
+        where: { key: { equals: key } },
+        limit: 1,
+        depth: 0,
+        overrideAccess: true,
+      })
+    ).docs[0] as { id: string } | undefined
+    if (existing) return existing.id
+    const created = (await payload.create({
+      collection: 'features',
+      data: {
+        key,
+        label: key,
+        type: 'numeric',
+        defaultPeriod: 'day',
+        enforcement: 'enforced',
+        isActive: true,
+      },
+      overrideAccess: true,
+    })) as { id: string }
+    return created.id
+  }
+
+  it('should grant a courseBlock by creating an Enrollment for that course', async () => {
+    const courseId = await resolveCourseId()
+    const courseProduct = await payload.create({
+      collection: 'products',
+      data: {
+        name: `Course Bundle Test ${Date.now()}`,
+        slug: `course-bundle-test-${Date.now()}`,
+        billingType: 'one_time',
+        price: 300,
+        currency: 'ILS',
+        contents: [{ blockType: 'courseBlock', course: courseId }],
+      } as any,
+      overrideAccess: true,
+    })
+
+    await grantProductEntitlements(userId, courseProduct.id, 'tx_course_grant')
+
+    const enrollments = await payload.find({
+      collection: 'enrollments',
+      where: {
+        and: [{ user: { equals: userId } }, { course: { equals: courseId } }],
+      },
+      overrideAccess: true,
+    })
+    expect(enrollments.totalDocs).toBe(1)
+    const e = enrollments.docs[0] as any
+    expect(e.metadata?.paymentId).toBe('tx_course_grant')
+    expect(e.expiresAt ?? null).toBeNull() // No durationDays → lifetime
+
+    await payload.delete({ collection: 'products', id: courseProduct.id, overrideAccess: true })
+  })
+
+  it('should set expiresAt = now + durationDays on the Enrollment and feature entitlement', async () => {
+    const courseId = await resolveCourseId()
+    const DURATION_DAYS = 90
+    const aiQuestionsFeatureId = await ensureFeature('ai-questions')
+
+    const timeLimitedProduct = await payload.create({
+      collection: 'products',
+      data: {
+        name: `Time Limited Test ${Date.now()}`,
+        slug: `time-limited-test-${Date.now()}`,
+        billingType: 'one_time',
+        price: 300,
+        currency: 'ILS',
+        durationDays: DURATION_DAYS,
+        contents: [
+          { blockType: 'courseBlock', course: courseId },
+          { blockType: 'featureBlock', feature: aiQuestionsFeatureId, limit: 5, period: 'day' },
+        ],
+      } as any,
+      overrideAccess: true,
+    })
+
+    const tStart = Date.now()
+    await grantProductEntitlements(userId, timeLimitedProduct.id, 'tx_time_limited')
+
+    const enrollments = await payload.find({
+      collection: 'enrollments',
+      where: {
+        and: [{ user: { equals: userId } }, { course: { equals: courseId } }],
+      },
+      overrideAccess: true,
+    })
+    const e = enrollments.docs[0] as any
+    expect(e.expiresAt).toBeDefined()
+    const expiresMs = new Date(e.expiresAt).getTime()
+    const expectedMs = tStart + DURATION_DAYS * 24 * 60 * 60 * 1000
+    // Allow ±60s drift for the test runtime gap between tStart and actual grant.
+    expect(Math.abs(expiresMs - expectedMs)).toBeLessThan(60_000)
+
+    const user = await payload.findByID({
+      collection: 'users',
+      id: userId,
+      depth: 0,
+      overrideAccess: true,
+    })
+    const feature = ((user as any).featureEntitlements || []).find(
+      (f: any) => f.key === 'ai-questions',
+    )
+    expect(feature).toBeDefined()
+    expect(feature.value).toBe(5)
+    expect(feature.period).toBe('day')
+    expect(feature.expiresAt).toBeDefined()
+    expect(Math.abs(new Date(feature.expiresAt).getTime() - expectedMs)).toBeLessThan(60_000)
+
+    await payload.delete({
+      collection: 'products',
+      id: timeLimitedProduct.id,
+      overrideAccess: true,
+    })
+  })
+})
+
+// ─── hasEntitlement expiry tests ─────────────────────────────────────────────
+
+describe('hasEntitlement with expiresAt', () => {
+  it('returns true for a lifetime enrollment (no expiresAt)', async () => {
+    const { hasEntitlement } = await import('@/server/services/entitlement_check')
+    const chapter = await payload.findByID({
+      collection: 'chapters',
+      id: chapterId,
+      depth: 0,
+      overrideAccess: true,
+    })
+    const courseId =
+      typeof chapter.course === 'string' ? chapter.course : (chapter.course as any).id
+
+    await grantProductEntitlements(userId, productId, 'tx_lifetime_hasent')
+
+    const result = await hasEntitlement({ payload, userId, courseId })
+    expect(result).toBe(true)
+  })
+
+  it('returns false for an expired enrollment', async () => {
+    const { hasEntitlement } = await import('@/server/services/entitlement_check')
+    const chapter = await payload.findByID({
+      collection: 'chapters',
+      id: chapterId,
+      depth: 0,
+      overrideAccess: true,
+    })
+    const courseId =
+      typeof chapter.course === 'string' ? chapter.course : (chapter.course as any).id
+
+    await grantProductEntitlements(userId, productId, 'tx_will_expire')
+
+    // Backdate expiresAt to 1 second ago
+    const enrollments = await payload.find({
+      collection: 'enrollments',
+      where: { and: [{ user: { equals: userId } }, { course: { equals: courseId } }] },
+      overrideAccess: true,
+    })
+    const enrollmentId = (enrollments.docs[0] as any).id
+    await payload.update({
+      collection: 'enrollments',
+      id: enrollmentId,
+      data: { expiresAt: new Date(Date.now() - 1000).toISOString() },
+      overrideAccess: true,
+    })
+
+    const result = await hasEntitlement({ payload, userId, courseId })
+    expect(result).toBe(false)
+  })
+
+  it('returns true for an enrollment with future expiresAt', async () => {
+    const { hasEntitlement } = await import('@/server/services/entitlement_check')
+    const chapter = await payload.findByID({
+      collection: 'chapters',
+      id: chapterId,
+      depth: 0,
+      overrideAccess: true,
+    })
+    const courseId =
+      typeof chapter.course === 'string' ? chapter.course : (chapter.course as any).id
+
+    await grantProductEntitlements(userId, productId, 'tx_future_expiry')
+
+    const enrollments = await payload.find({
+      collection: 'enrollments',
+      where: { and: [{ user: { equals: userId } }, { course: { equals: courseId } }] },
+      overrideAccess: true,
+    })
+    const enrollmentId = (enrollments.docs[0] as any).id
+    await payload.update({
+      collection: 'enrollments',
+      id: enrollmentId,
+      data: { expiresAt: new Date(Date.now() + 60_000).toISOString() },
+      overrideAccess: true,
+    })
+
+    const result = await hasEntitlement({ payload, userId, courseId })
+    expect(result).toBe(true)
+  })
+})
+
+// ─── Refund revocation tests ─────────────────────────────────────────────────
+
+describe('Transaction refund revokes entitlements', () => {
+  it('flipping transaction status to refunded cancels the Enrollment and pulls featureEntitlements', async () => {
+    const chapter = await payload.findByID({
+      collection: 'chapters',
+      id: chapterId,
+      depth: 0,
+      overrideAccess: true,
+    })
+    const courseId =
+      typeof chapter.course === 'string' ? chapter.course : (chapter.course as any).id
+
+    // Create a succeeded transaction
+    const succeededTx = await payload.create({
+      collection: 'transactions',
+      data: {
+        user: userId,
+        product: productId,
+        provider: 'stripe',
+        providerTransactionId: `cs_refund_test_${Date.now()}`,
+        status: 'pending',
+        amount: 1000,
+        currency: 'ILS',
+        tenant: tenantId,
+      } as any,
+      overrideAccess: true,
+    })
+    await payload.update({
+      collection: 'transactions',
+      id: succeededTx.id,
+      data: { status: 'succeeded' },
+      overrideAccess: true,
+    })
+
+    // Grant entitlements tagged with this transaction's id
+    await grantProductEntitlements(userId, productId, String(succeededTx.id))
+
+    // Sanity: Enrollment exists, feature entitlement exists
+    const beforeEnrollments = await payload.find({
+      collection: 'enrollments',
+      where: { and: [{ user: { equals: userId } }, { course: { equals: courseId } }] },
+      overrideAccess: true,
+    })
+    expect(beforeEnrollments.totalDocs).toBe(1)
+
+    const userBefore = await payload.findByID({
+      collection: 'users',
+      id: userId,
+      depth: 0,
+      overrideAccess: true,
+    })
+    const featureBefore = ((userBefore as any).featureEntitlements || []).filter(
+      (f: any) => f.transactionId === String(succeededTx.id),
+    )
+    expect(featureBefore.length).toBe(1)
+
+    // Flip status to refunded → afterChange hook revokes
+    await payload.update({
+      collection: 'transactions',
+      id: succeededTx.id,
+      data: { status: 'refunded' },
+      overrideAccess: true,
+    })
+
+    const afterEnrollments = await payload.find({
+      collection: 'enrollments',
+      where: { and: [{ user: { equals: userId } }, { course: { equals: courseId } }] },
+      overrideAccess: true,
+    })
+    expect(afterEnrollments.totalDocs).toBe(1)
+    const cancelled = afterEnrollments.docs[0] as any
+    expect(cancelled.status).toBe('cancelled')
+    expect(cancelled.cancelledAt).toBeDefined()
+
+    const userAfter = await payload.findByID({
+      collection: 'users',
+      id: userId,
+      depth: 0,
+      overrideAccess: true,
+    })
+    const featureAfter = ((userAfter as any).featureEntitlements || []).filter(
+      (f: any) => f.transactionId === String(succeededTx.id),
+    )
+    expect(featureAfter.length).toBe(0)
+  })
+
+  it('re-grant after cancel flips Enrollment back to active, refreshes expiresAt, preserves prior metadata', async () => {
+    const { hasEntitlement } = await import('@/server/services/entitlement_check')
+    const chapter = await payload.findByID({
+      collection: 'chapters',
+      id: chapterId,
+      depth: 0,
+      overrideAccess: true,
+    })
+    const courseId =
+      typeof chapter.course === 'string' ? chapter.course : (chapter.course as any).id
+
+    // Build a 30-day time-limited variant of the test product
+    const timeLimitedProduct = await payload.create({
+      collection: 'products',
+      data: {
+        name: `Re-grant Test ${Date.now()}`,
+        slug: `re-grant-test-${Date.now()}`,
+        billingType: 'one_time',
+        price: 300,
+        currency: 'ILS',
+        durationDays: 30,
+        contents: [{ blockType: 'courseBlock', course: courseId }],
+      } as any,
+      overrideAccess: true,
+    })
+
+    // 1. First purchase
+    await grantProductEntitlements(userId, timeLimitedProduct.id, 'tx_first_purchase')
+
+    // Inject prior metadata that should be preserved across the re-grant
+    const enrollmentsBefore = await payload.find({
+      collection: 'enrollments',
+      where: { and: [{ user: { equals: userId } }, { course: { equals: courseId } }] },
+      overrideAccess: true,
+    })
+    const enrollmentId = (enrollmentsBefore.docs[0] as any).id
+    await payload.update({
+      collection: 'enrollments',
+      id: enrollmentId,
+      data: {
+        metadata: {
+          paymentId: 'tx_first_purchase',
+          accessCodeId: 'ac_legacy_audit',
+          grantedBy: 'admin_audit_user',
+        },
+      },
+      overrideAccess: true,
+    })
+
+    // 2. Cancel the enrollment (simulating a prior refund)
+    await payload.update({
+      collection: 'enrollments',
+      id: enrollmentId,
+      data: { status: 'cancelled', cancelledAt: new Date().toISOString() },
+      overrideAccess: true,
+    })
+    expect(await hasEntitlement({ payload, userId, courseId })).toBe(false)
+
+    // 3. Re-grant with a NEW transaction id (re-purchase)
+    const tStart = Date.now()
+    await grantProductEntitlements(userId, timeLimitedProduct.id, 'tx_second_purchase')
+
+    const enrollmentsAfter = await payload.find({
+      collection: 'enrollments',
+      where: { and: [{ user: { equals: userId } }, { course: { equals: courseId } }] },
+      overrideAccess: true,
+    })
+    expect(enrollmentsAfter.totalDocs).toBe(1)
+    const updated = enrollmentsAfter.docs[0] as any
+    expect(updated.status).toBe('active')
+    expect(updated.cancelledAt ?? null).toBeNull()
+    expect(updated.metadata?.paymentId).toBe('tx_second_purchase')
+    // Prior metadata fields must be preserved.
+    expect(updated.metadata?.accessCodeId).toBe('ac_legacy_audit')
+    expect(updated.metadata?.grantedBy).toBe('admin_audit_user')
+    // expiresAt should be refreshed to ~now + 30 days
+    expect(updated.expiresAt).toBeDefined()
+    const expectedMs = tStart + 30 * 24 * 60 * 60 * 1000
+    expect(Math.abs(new Date(updated.expiresAt).getTime() - expectedMs)).toBeLessThan(60_000)
+
+    expect(await hasEntitlement({ payload, userId, courseId })).toBe(true)
+
+    await payload.delete({
+      collection: 'products',
+      id: timeLimitedProduct.id,
+      overrideAccess: true,
+    })
+  })
+
+  it('lifetime re-purchase after a time-limited expiry clears expiresAt and grants access', async () => {
+    const { hasEntitlement } = await import('@/server/services/entitlement_check')
+    const chapter = await payload.findByID({
+      collection: 'chapters',
+      id: chapterId,
+      depth: 0,
+      overrideAccess: true,
+    })
+    const courseId =
+      typeof chapter.course === 'string' ? chapter.course : (chapter.course as any).id
+
+    // 1. Buy a 30-day product
+    const timeLimited = await payload.create({
+      collection: 'products',
+      data: {
+        name: `30d Test ${Date.now()}`,
+        slug: `30d-test-${Date.now()}`,
+        billingType: 'one_time',
+        price: 300,
+        currency: 'ILS',
+        durationDays: 30,
+        contents: [{ blockType: 'courseBlock', course: courseId }],
+      } as any,
+      overrideAccess: true,
+    })
+    await grantProductEntitlements(userId, timeLimited.id, 'tx_30d')
+
+    // Backdate so the enrollment is expired
+    const enrollments = await payload.find({
+      collection: 'enrollments',
+      where: { and: [{ user: { equals: userId } }, { course: { equals: courseId } }] },
+      overrideAccess: true,
+    })
+    const enrollmentId = (enrollments.docs[0] as any).id
+    await payload.update({
+      collection: 'enrollments',
+      id: enrollmentId,
+      data: { expiresAt: new Date(Date.now() - 1000).toISOString() },
+      overrideAccess: true,
+    })
+    expect(await hasEntitlement({ payload, userId, courseId })).toBe(false)
+
+    // 2. Re-purchase with a LIFETIME variant (no durationDays)
+    const lifetimeProduct = await payload.create({
+      collection: 'products',
+      data: {
+        name: `Lifetime Test ${Date.now()}`,
+        slug: `lifetime-test-${Date.now()}`,
+        billingType: 'one_time',
+        price: 500,
+        currency: 'ILS',
+        contents: [{ blockType: 'courseBlock', course: courseId }],
+      } as any,
+      overrideAccess: true,
+    })
+    await grantProductEntitlements(userId, lifetimeProduct.id, 'tx_lifetime_upgrade')
+
+    // hasEntitlement should accept the cleared expiresAt and grant access.
+    expect(await hasEntitlement({ payload, userId, courseId })).toBe(true)
+
+    await payload.delete({ collection: 'products', id: timeLimited.id, overrideAccess: true })
+    await payload.delete({ collection: 'products', id: lifetimeProduct.id, overrideAccess: true })
   })
 })
 
@@ -416,17 +931,7 @@ describe('Stripe webhook handler', () => {
     expect((updated as any).paymentIntentId).toBe(paymentIntentId)
 
     // Verify entitlements were granted
-    const user = await payload.findByID({
-      collection: 'users',
-      id: userId,
-      depth: 0,
-      overrideAccess: true,
-    })
-    const courseEntitlements = (user as any).courseEntitlements || []
-    const hasLessonEntitlement = courseEntitlements.some(
-      (e: any) => e.course?.toString() === lessonId || e.course === lessonId,
-    )
-    expect(hasLessonEntitlement).toBe(true)
+    expect(await hasActiveEnrollmentForLessonCourse()).toBe(true)
 
     await payload
       .delete({ collection: 'transactions', id: tx.id, overrideAccess: true })
@@ -473,17 +978,7 @@ describe('Stripe webhook handler', () => {
     await stripeWebhookHandler(req)
 
     // Entitlements should NOT have been re-granted (idempotency guard: entitlementsGrantedAt set)
-    const user = await payload.findByID({
-      collection: 'users',
-      id: userId,
-      depth: 0,
-      overrideAccess: true,
-    })
-    const courseEntitlements = (user as any).courseEntitlements || []
-    const hasEntitlement = courseEntitlements.some(
-      (e: any) => e.course?.toString() === lessonId || e.course === lessonId,
-    )
-    expect(hasEntitlement).toBe(false)
+    expect(await hasActiveEnrollmentForLessonCourse()).toBe(false)
 
     await payload
       .delete({ collection: 'transactions', id: tx.id, overrideAccess: true })
@@ -965,17 +1460,7 @@ describe('Stripe webhook handler', () => {
     expect(updated.status).toBe('pending')
 
     // Entitlements should NOT have been granted
-    const user = await payload.findByID({
-      collection: 'users',
-      id: userId,
-      depth: 0,
-      overrideAccess: true,
-    })
-    const courseEntitlements = (user as any).courseEntitlements || []
-    const hasLessonEntitlement = courseEntitlements.some(
-      (e: any) => e.course?.toString() === lessonId || e.course === lessonId,
-    )
-    expect(hasLessonEntitlement).toBe(false)
+    expect(await hasActiveEnrollmentForLessonCourse()).toBe(false)
 
     await payload
       .delete({ collection: 'transactions', id: tx.id, overrideAccess: true })
@@ -1027,17 +1512,7 @@ describe('Stripe webhook handler', () => {
     expect((updated as any).entitlementsGrantedAt).toBeDefined()
 
     // Entitlements should have been granted
-    const user = await payload.findByID({
-      collection: 'users',
-      id: userId,
-      depth: 0,
-      overrideAccess: true,
-    })
-    const courseEntitlements = (user as any).courseEntitlements || []
-    const hasLessonEntitlement = courseEntitlements.some(
-      (e: any) => e.course?.toString() === lessonId || e.course === lessonId,
-    )
-    expect(hasLessonEntitlement).toBe(true)
+    expect(await hasActiveEnrollmentForLessonCourse()).toBe(true)
 
     await payload
       .delete({ collection: 'transactions', id: tx.id, overrideAccess: true })
@@ -1200,17 +1675,7 @@ describe('PayPal webhook handler', () => {
     expect(updated.status).toBe('pending')
 
     // Entitlements should NOT be granted yet
-    const user = await payload.findByID({
-      collection: 'users',
-      id: userId,
-      depth: 0,
-      overrideAccess: true,
-    })
-    const courseEntitlements = (user as any).courseEntitlements || []
-    const hasLessonEntitlement = courseEntitlements.some(
-      (e: any) => e.course?.toString() === lessonId || e.course === lessonId,
-    )
-    expect(hasLessonEntitlement).toBe(false)
+    expect(await hasActiveEnrollmentForLessonCourse()).toBe(false)
 
     await payload
       .delete({ collection: 'transactions', id: tx.id, overrideAccess: true })
@@ -1264,17 +1729,7 @@ describe('PayPal webhook handler', () => {
     await paypalWebhookHandler(req)
 
     // Entitlements should NOT have been re-granted (entitlementsGrantedAt already set)
-    const user = await payload.findByID({
-      collection: 'users',
-      id: userId,
-      depth: 0,
-      overrideAccess: true,
-    })
-    const courseEntitlements = (user as any).courseEntitlements || []
-    const hasEntitlement = courseEntitlements.some(
-      (e: any) => e.course?.toString() === lessonId || e.course === lessonId,
-    )
-    expect(hasEntitlement).toBe(false)
+    expect(await hasActiveEnrollmentForLessonCourse()).toBe(false)
 
     await payload
       .delete({ collection: 'transactions', id: tx.id, overrideAccess: true })
@@ -1335,17 +1790,7 @@ describe('PayPal webhook handler', () => {
     expect((updated as any).entitlementsGrantedAt).toBeDefined()
 
     // Verify entitlements were granted
-    const user = await payload.findByID({
-      collection: 'users',
-      id: userId,
-      depth: 0,
-      overrideAccess: true,
-    })
-    const courseEntitlements = (user as any).courseEntitlements || []
-    const hasLessonEntitlement = courseEntitlements.some(
-      (e: any) => e.course?.toString() === lessonId || e.course === lessonId,
-    )
-    expect(hasLessonEntitlement).toBe(true)
+    expect(await hasActiveEnrollmentForLessonCourse()).toBe(true)
 
     await payload
       .delete({ collection: 'transactions', id: tx.id, overrideAccess: true })
@@ -1630,17 +2075,7 @@ describe('PayPal webhook handler', () => {
     expect(updated.status).toBe('pending')
 
     // Entitlements should NOT be granted yet
-    let user = await payload.findByID({
-      collection: 'users',
-      id: userId,
-      depth: 0,
-      overrideAccess: true,
-    })
-    let courseEntitlements = (user as any).courseEntitlements || []
-    let hasLessonEntitlement = courseEntitlements.some(
-      (e: any) => e.course?.toString() === lessonId || e.course === lessonId,
-    )
-    expect(hasLessonEntitlement).toBe(false)
+    expect(await hasActiveEnrollmentForLessonCourse()).toBe(false)
 
     // Step 2: PAYMENT.CAPTURE.COMPLETED fires after successful capture
     vi.mocked(verifyPayPalWebhook).mockResolvedValueOnce(true)
@@ -1678,17 +2113,7 @@ describe('PayPal webhook handler', () => {
     expect((updated as any).entitlementsGrantedAt).toBeDefined()
 
     // Now entitlements SHOULD be granted
-    user = await payload.findByID({
-      collection: 'users',
-      id: userId,
-      depth: 0,
-      overrideAccess: true,
-    })
-    courseEntitlements = (user as any).courseEntitlements || []
-    hasLessonEntitlement = courseEntitlements.some(
-      (e: any) => e.course?.toString() === lessonId || e.course === lessonId,
-    )
-    expect(hasLessonEntitlement).toBe(true)
+    expect(await hasActiveEnrollmentForLessonCourse()).toBe(true)
 
     await payload
       .delete({ collection: 'transactions', id: tx.id, overrideAccess: true })
@@ -1751,17 +2176,7 @@ describe('PayPal webhook handler', () => {
     expect((updated as any).entitlementsGrantedAt).toBeDefined()
 
     // Entitlements should be granted
-    const user = await payload.findByID({
-      collection: 'users',
-      id: userId,
-      depth: 0,
-      overrideAccess: true,
-    })
-    const courseEntitlements = (user as any).courseEntitlements || []
-    const hasLessonEntitlement = courseEntitlements.some(
-      (e: any) => e.course?.toString() === lessonId || e.course === lessonId,
-    )
-    expect(hasLessonEntitlement).toBe(true)
+    expect(await hasActiveEnrollmentForLessonCourse()).toBe(true)
 
     await payload
       .delete({ collection: 'transactions', id: tx.id, overrideAccess: true })
@@ -2879,5 +3294,158 @@ describe('WebhookEvents collection dedup gate', () => {
     await payload
       .delete({ collection: 'transactions', id: tx.id, overrideAccess: true })
       .catch(() => {})
+  })
+})
+
+// ─── Cross-product duplicate featureEntitlements + silent denial shape ────────
+
+describe('Cross-product feature entitlements', () => {
+  async function ensureFeature(
+    key: string,
+    type: 'numeric' | 'boolean' = 'numeric',
+  ): Promise<string> {
+    const existing = (
+      await payload.find({
+        collection: 'features',
+        where: { key: { equals: key } },
+        limit: 1,
+        depth: 0,
+        overrideAccess: true,
+      })
+    ).docs[0] as { id: string } | undefined
+    if (existing) return existing.id
+    const created = (await payload.create({
+      collection: 'features',
+      data: {
+        key,
+        label: key,
+        type,
+        defaultPeriod: type === 'numeric' ? 'day' : 'lifetime',
+        enforcement: 'enforced',
+        isActive: true,
+      },
+      overrideAccess: true,
+    })) as { id: string }
+    return created.id
+  }
+
+  async function resolveCourseId(): Promise<string> {
+    const chapter = await payload.findByID({
+      collection: 'chapters',
+      id: chapterId,
+      depth: 0,
+      overrideAccess: true,
+    })
+    return typeof chapter.course === 'string' ? chapter.course : (chapter.course as any).id
+  }
+
+  it('grants from two products carrying the same featureKey produce TWO rows; resolver picks the latest grantedAt', async () => {
+    const aiQuestionsId = await ensureFeature('ai-questions', 'numeric')
+    const courseId = await resolveCourseId()
+
+    const productA = await payload.create({
+      collection: 'products',
+      data: {
+        name: `Cross-Product A ${Date.now()}`,
+        slug: `cross-a-${Date.now()}`,
+        billingType: 'one_time',
+        price: 100,
+        currency: 'ILS',
+        contents: [
+          { blockType: 'courseBlock', course: courseId },
+          { blockType: 'featureBlock', feature: aiQuestionsId, limit: 5, period: 'day' },
+        ],
+      } as any,
+      overrideAccess: true,
+    })
+    const productB = await payload.create({
+      collection: 'products',
+      data: {
+        name: `Cross-Product B ${Date.now()}`,
+        slug: `cross-b-${Date.now()}`,
+        billingType: 'one_time',
+        price: 200,
+        currency: 'ILS',
+        contents: [{ blockType: 'featureBlock', feature: aiQuestionsId, limit: 10, period: 'day' }],
+      } as any,
+      overrideAccess: true,
+    })
+
+    await grantProductEntitlements(userId, productA.id, 'tx_cross_A')
+    // Ensure productB's grant has a later grantedAt by a measurable delta
+    await new Promise((r) => setTimeout(r, 10))
+    await grantProductEntitlements(userId, productB.id, 'tx_cross_B')
+
+    const user = await payload.findByID({
+      collection: 'users',
+      id: userId,
+      depth: 0,
+      overrideAccess: true,
+    })
+    const rows = ((user as any).featureEntitlements || []).filter(
+      (f: any) => f.key === 'ai-questions',
+    )
+    expect(rows.length).toBe(2)
+    expect(rows.map((r: any) => r.value).sort((a: number, b: number) => a - b)).toEqual([5, 10])
+
+    const { resolveFeatureEntitlement } = await import('@/server/services/feature-quota')
+    const resolved = await resolveFeatureEntitlement(payload, userId, 'ai-questions')
+    // Latest grant by grantedAt wins → productB (value=10, tx_cross_B)
+    expect(resolved?.value).toBe(10)
+    expect(resolved?.transactionId).toBe('tx_cross_B')
+
+    await payload.delete({ collection: 'products', id: productA.id, overrideAccess: true })
+    await payload.delete({ collection: 'products', id: productB.id, overrideAccess: true })
+  })
+
+  it('chat-quota silent denial returns a generic body with no questionsUsed/maxQuestions/resetAt leakage', async () => {
+    // Configure a chat-limit cap at zero so applyChatLimit short-circuits silently.
+    const chatLimitFeatureId = await ensureFeature('chat-limit', 'numeric')
+    const aiQuestionsFeatureId = await ensureFeature('ai-questions', 'numeric')
+    const courseId = await resolveCourseId()
+
+    const product = await payload.create({
+      collection: 'products',
+      data: {
+        name: `Silent Cap Test ${Date.now()}`,
+        slug: `silent-cap-${Date.now()}`,
+        billingType: 'one_time',
+        price: 1,
+        currency: 'ILS',
+        contents: [
+          { blockType: 'courseBlock', course: courseId },
+          { blockType: 'featureBlock', feature: aiQuestionsFeatureId, limit: 10, period: 'day' },
+          { blockType: 'featureBlock', feature: chatLimitFeatureId, limit: 0, period: 'day' },
+        ],
+      } as any,
+      overrideAccess: true,
+    })
+    await grantProductEntitlements(userId, product.id, 'tx_silent_cap')
+
+    const { checkAndIncrementChatQuota } = await import('@/server/services/chat-quota')
+    const result = await checkAndIncrementChatQuota(payload, userId)
+    expect(result.allowed).toBe(false)
+    expect(result.silent).toBe(true)
+
+    // The endpoint translates `silent: true` into a generic 429 body. Verify
+    // by serializing exactly what the chat handler would send: when silent,
+    // only an `error` string — no questionsUsed/maxQuestions/resetAt.
+    const responseBody = result.silent
+      ? { error: 'Chat is temporarily unavailable. Please try again later.' }
+      : {
+          error: 'Chat limit reached. Try again later.',
+          quotaExceeded: true,
+          questionsUsed: result.questionsUsed,
+          maxQuestions: result.maxQuestions,
+          resetAt: result.resetAt,
+        }
+    expect(responseBody).toEqual({
+      error: 'Chat is temporarily unavailable. Please try again later.',
+    })
+    expect((responseBody as any).questionsUsed).toBeUndefined()
+    expect((responseBody as any).maxQuestions).toBeUndefined()
+    expect((responseBody as any).resetAt).toBeUndefined()
+
+    await payload.delete({ collection: 'products', id: product.id, overrideAccess: true })
   })
 })

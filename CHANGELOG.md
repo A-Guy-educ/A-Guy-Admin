@@ -1677,6 +1677,22 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- fix: Skip denormalized-populate hooks during content-promotion import ([#100](https://github.com/A-Guy-educ/A-Guy-Admin/pull/100)) — @aguyshayb
+- fix: Drop DB transaction from content-promotion import to survive real bundle sizes ([#99](https://github.com/A-Guy-educ/A-Guy-Admin/pull/99)) — @aguyshayb
+- feat: Add plain-text lesson importer alongside JSON importer ([#92](https://github.com/A-Guy-educ/A-Guy-Admin/pull/92)) — @aguyshayb
+- Publish admin auth session fix ([#91](https://github.com/A-Guy-educ/A-Guy-Admin/pull/91)) — @aguyaharonyair
+- fix: Make payment env validation provider-aware ([#89](https://github.com/A-Guy-educ/A-Guy-Admin/pull/89)) — @aguyshayb
+- chore: Add deleteme.md placeholder ([#87](https://github.com/A-Guy-educ/A-Guy-Admin/pull/87)) — @aguyshayb
+- feat: Wire @payloadcms/email-resend so admin can send purchase receipts ([#86](https://github.com/A-Guy-educ/A-Guy-Admin/pull/86)) — @aguyshayb
+- refactor: Replace ProductItems with inline content blocks + Features … ([#83](https://github.com/A-Guy-educ/A-Guy-Admin/pull/83)) — @aguyshayb
+- feat: Add content promotion export/import between environments ([#73](https://github.com/A-Guy-educ/A-Guy-Admin/pull/73)) — @aguyshayb
+- perf: Admin big-sweep — kill write-on-read backfills, dashboard cache, lighter list search ([#69](https://github.com/A-Guy-educ/A-Guy-Admin/pull/69)) — @aguyshayb
+- feat: Add product duration, course bundles, and rate-limited features ([#78](https://github.com/A-Guy-educ/A-Guy-Admin/pull/78)) — @aguyshayb
+- fix: Drop idempotencyKey from JSON importer (real fix for 'tenant invalid') ([#57](https://github.com/A-Guy-educ/A-Guy-Admin/pull/57)) — @aguyshayb
+- fix: Omit tenant on create in JSON importer ([#56](https://github.com/A-Guy-educ/A-Guy-Admin/pull/56)) — @aguyshayb
+- fix: Force default tenant in JSON importer + surface per-exercise errors ([#55](https://github.com/A-Guy-educ/A-Guy-Admin/pull/55)) — @aguyshayb
+- fix: Write lesson.blocks playlist once in JSON import ([#54](https://github.com/A-Guy-educ/A-Guy-Admin/pull/54)) — @aguyshayb
+- feat: Add bulk JSON importer for lessons and exercises ([#53](https://github.com/A-Guy-educ/A-Guy-Admin/pull/53)) — @aguyshayb
 - ci: Clean dev app workflow ([#31](https://github.com/A-Guy-educ/A-Guy-Admin/pull/31)) — @aguyaharonyair
 - fix: Remove stale student QA CI gate ([#30](https://github.com/A-Guy-educ/A-Guy-Admin/pull/30)) — @aguyaharonyair
 - fix: Correct design token lint test ([#29](https://github.com/A-Guy-educ/A-Guy-Admin/pull/29)) — @aguyaharonyair
@@ -1693,7 +1709,7 @@
 - #2162: Doc gap: src/infra/utils/ — 6/27 modules carry @ai-summary ([#2164](https://github.com/A-Guy-educ/A-Guy/pull/2164)) — @kodyade[bot]
 - chore(memory): Rescue orphaned knowledge from kody-memorize branches ([#1891](https://github.com/A-Guy-educ/A-Guy/pull/1891)) — @aguyaharonyair
 - #1563: feat: show app version in admin dashboard footer ([#1566](https://github.com/A-Guy-educ/A-Guy/pull/1566)) — @aguyaharonyair
-- fix(health-badge): Read 'version' field from /api/health response ([#2519](https://github.com/A-Guy-educ/A-Guy/pull/2519)) — @aguyshayb
+- fix(health-badge): Read 'version' field from /api/health response ([#2519](https://github.com/A-Guy-educ/A-Guy/pull/2519)) — @aguyshayb · 🔄 QA (#101)
 - #1783: [P1] Recent Transactions widget shows HTTP 404 error ([#1806](https://github.com/A-Guy-educ/A-Guy/pull/1806)) — @aguyaharonyair · ⚠️ QA 2026-06-08 (#2522)
 - #1568: bug: /admin/chat shows 'Loading conversation...' spinner for ~3s… ([#1573](https://github.com/A-Guy-educ/A-Guy/pull/1573)) — @aguyaharonyair · ⚠️ QA 2026-06-08 (#2518)
 - #1570: feat: show per-message timestamp in admin chat ([#1574](https://github.com/A-Guy-educ/A-Guy/pull/1574)) — @aguyaharonyair · ✅ QA 2026-06-07

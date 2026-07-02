@@ -11,6 +11,7 @@
  */
 
 import { useField } from '@payloadcms/ui'
+import { HtmlPreview } from '@/ui/admin/HtmlPreview'
 import React, { useState } from 'react'
 
 type Mode = 'edit' | 'preview'
@@ -54,11 +55,7 @@ export const QuillField: React.FC<{ path: string }> = ({ path }) => {
           rows={12}
         />
       ) : (
-        <div
-          className="html-block-preview-pane"
-          // Admin-only preview: render exactly what was authored.
-          dangerouslySetInnerHTML={{ __html: value || '' }}
-        />
+        <HtmlPreview html={value} />
       )}
     </div>
   )

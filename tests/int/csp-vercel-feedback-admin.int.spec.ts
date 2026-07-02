@@ -1,118 +1,55 @@
-import { describe, it, expect } from 'vitest'
-import path from 'path'
-import { fileURLToPath } from 'url'
-import fs from 'fs'
+import { describe, expect, it } from 'vitest'
+import { NextRequest } from 'next/server'
+import {
+  adminContentSecurityPolicy,
+  contentSecurityPolicy,
+} from '@/infra/security/content-security-policy.js'
+import { middleware } from '@/middleware'
 
-/**
- * CSP Configuration Tests - Issue #1595
- *
- * Tests that Content-Security-Policy headers allow Vercel feedback script
- * to load on /admin routes.
- *
- * Bug: Vercel feedback script (https://vercel.live/_next-live/feedback/feedback.js)
- * is blocked on /admin because vercel.live is not in the script-src directive.
- */
-
-describe('CSP Configuration - Vercel Feedback Script on /admin', () => {
-  const __dirname = path.dirname(fileURLToPath(import.meta.url))
-  const projectRoot = path.resolve(__dirname, '../..')
-  const nextConfigPath = path.join(projectRoot, 'next.config.js')
-
-  // Helper to extract script-src directive from CSP string
-  function extractScriptSrc(csp: string): string | null {
-    const match = csp.match(/script-src\s+([^;]+)/)
+describe('CSP configuration', () => {
+  function extractDirective(csp: string, directive: string): string | null {
+    const match = csp.match(new RegExp(`${directive}\\s+([^;]+)`))
     return match ? match[1] : null
   }
 
-  it('should include vercel.live in script-src for general routes', async () => {
-    const configContent = fs.readFileSync(nextConfigPath, 'utf8')
+  function createRequest(pathname: string) {
+    const url = new URL(pathname, 'https://kp-admin-pr-1.fly.dev')
+    const headers = new Headers()
+    headers.set('host', url.host)
 
-    // Extract the general routes CSP (the first one, not /admin/:path*)
-    const generalRouteMatch = configContent.match(
-      /source:\s*'\/\(\(\?!api\/pdfjs-viewer\)\.\*\)'[\s\S]*?Content-Security-Policy[\s\S]*?value:\s*"([^"]+)"/,
-    )
-    expect(generalRouteMatch).not.toBeNull()
+    return new NextRequest(url, { headers })
+  }
 
-    const csp = generalRouteMatch![1]
-    const scriptSrc = extractScriptSrc(csp)
-
-    expect(scriptSrc).not.toBeNull()
-    // General routes SHOULD have vercel.live in script-src (this is the baseline)
-    expect(scriptSrc).toContain('vercel.live')
-  })
-
-  it('should include vercel.live in script-src for /admin routes', async () => {
-    const configContent = fs.readFileSync(nextConfigPath, 'utf8')
-
-    // Extract the /admin route CSP
-    const adminRouteMatch = configContent.match(
-      /source:\s*'\/admin\/:path\*'[\s\S]*?Content-Security-Policy[\s\S]*?value:\s*"([^"]+)"/,
-    )
-    expect(adminRouteMatch).not.toBeNull()
-
-    const csp = adminRouteMatch![1]
-    const scriptSrc = extractScriptSrc(csp)
+  it('allows Vercel feedback assets in script-src', () => {
+    const scriptSrc = extractDirective(adminContentSecurityPolicy, 'script-src')
 
     expect(scriptSrc).not.toBeNull()
-    // Admin routes MUST have vercel.live in script-src for Vercel feedback to work
-    expect(scriptSrc).toContain('vercel.live')
+    expect(scriptSrc).toContain('https://vercel.live')
   })
 
-  it('should include vercel.live in connect-src for /admin routes', async () => {
-    const configContent = fs.readFileSync(nextConfigPath, 'utf8')
+  it('allows Vercel feedback connections in connect-src', () => {
+    const connectSrc = extractDirective(adminContentSecurityPolicy, 'connect-src')
 
-    // Extract the /admin route CSP
-    const adminRouteMatch = configContent.match(
-      /source:\s*'\/admin\/:path\*'[\s\S]*?Content-Security-Policy[\s\S]*?value:\s*"([^"]+)"/,
-    )
-    expect(adminRouteMatch).not.toBeNull()
-
-    const csp = adminRouteMatch![1]
-    const connectSrcMatch = csp.match(/connect-src\s+([^;]+)/)
-
-    expect(connectSrcMatch).not.toBeNull()
-    const connectSrc = connectSrcMatch![1]
-    // Admin routes should have vercel.live in connect-src for WebSocket connections
-    expect(connectSrc).toContain('vercel.live')
+    expect(connectSrc).not.toBeNull()
+    expect(connectSrc).toContain('https://vercel.live')
   })
 
-  it('should include gravatar.com in img-src for /admin routes', async () => {
-    const configContent = fs.readFileSync(nextConfigPath, 'utf8')
+  it('allows Gravatar avatars in admin img-src', () => {
+    const imgSrc = extractDirective(adminContentSecurityPolicy, 'img-src')
 
-    // Extract the /admin route CSP
-    const adminRouteMatch = configContent.match(
-      /source:\s*'\/admin\/:path\*'[\s\S]*?Content-Security-Policy[\s\S]*?value:\s*"([^"]+)"/,
-    )
-    expect(adminRouteMatch).not.toBeNull()
-
-    const csp = adminRouteMatch![1]
-    const imgSrcMatch = csp.match(/img-src\s+([^;]+)/)
-
-    expect(imgSrcMatch).not.toBeNull()
-    const imgSrc = imgSrcMatch![1]
-    // Admin routes MUST have gravatar.com in img-src for user avatars to load
-    // Use *.gravatar.com to match www.gravatar.com where avatars are actually served
+    expect(imgSrc).not.toBeNull()
     expect(imgSrc).toContain('*.gravatar.com')
   })
 
-  it('should allow www.gravatar.com in img-src for /admin routes (not just gravatar.com)', async () => {
-    const configContent = fs.readFileSync(nextConfigPath, 'utf8')
+  it('does not restrict which hosts can embed admin preview pages', () => {
+    expect(contentSecurityPolicy).not.toContain('frame-ancestors')
+    expect(adminContentSecurityPolicy).not.toContain('frame-ancestors')
+  })
 
-    // Extract the /admin route CSP
-    const adminRouteMatch = configContent.match(
-      /source:\s*'\/admin\/:path\*'[\s\S]*?Content-Security-Policy[\s\S]*?value:\s*"([^"]+)"/,
-    )
-    expect(adminRouteMatch).not.toBeNull()
+  it('sets admin CSP from middleware on admin routes', () => {
+    const response = middleware(createRequest('/admin'))
 
-    const csp = adminRouteMatch![1]
-    const imgSrcMatch = csp.match(/img-src\s+([^;]+)/)
-
-    expect(imgSrcMatch).not.toBeNull()
-    const imgSrc = imgSrcMatch![1]
-    // Gravatar avatars are served from www.gravatar.com, not gravatar.com directly.
-    // In CSP, 'gravatar.com' does NOT match 'www.gravatar.com' (different host).
-    // We need '*.gravatar.com' to match subdomains like www.gravatar.com.
-    // See: https://www.w3.org/TR/CSP/#source-list-syntax
-    expect(imgSrc).toMatch(/\*\.gravatar\.com/)
+    expect(response.headers.get('Content-Security-Policy')).toBe(adminContentSecurityPolicy)
+    expect(response.headers.get('x-locale')).toBeNull()
   })
 })

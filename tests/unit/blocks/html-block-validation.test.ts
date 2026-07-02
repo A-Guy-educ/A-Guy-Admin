@@ -7,7 +7,7 @@
  * style attributes, details/summary tags, data-* attributes, etc.
  *
  * Remaining restrictions are only for critical security:
- * - Dangerous tags: <script>, <iframe>, <object>, <embed>, <applet>, <meta>, <base>, <link>, <title>
+ * - Dangerous rendered tags: <script>, <iframe>, <object>, <embed>, <applet>, <base>
  * - Inline event handlers (on*): XSS prevention
  * - javascript: URLs: XSS prevention
  */
@@ -63,29 +63,32 @@ describe('HtmlBlock Validation (Issue #2101)', () => {
       expect(result).toContain('<applet')
     })
 
-    it('should reject <meta> tags', () => {
-      const result = validate?.('<meta http-equiv="refresh" content="0">')
-      expect(result).toContain('<meta')
-    })
-
     it('should reject <base> tags', () => {
       const result = validate?.('<base href="evil.com">')
       expect(result).toContain('<base')
     })
 
-    it('should reject <link> tags', () => {
-      const result = validate?.('<link rel="stylesheet" href="evil.css">')
-      expect(result).toContain('<link')
+    it('should allow full HTML documents with head metadata and styles', () => {
+      const html = `<!DOCTYPE html>
+        <html lang="he" dir="rtl">
+          <head>
+            <meta charset="UTF-8">
+            <title>Lesson</title>
+            <link rel="stylesheet" href="https://example.com/styles.css">
+            <script src="https://cdn.tailwindcss.com"></script>
+            <style>.lesson { color: #961127; }</style>
+          </head>
+          <body>
+            <main class="lesson" style="padding: 24px;">שלום</main>
+          </body>
+        </html>`
+
+      expect(validate?.(html)).toBe(true)
     })
 
-    it('should reject <title> tags with specific message', () => {
-      const result = validate?.('<title>Page Title</title>')
-      expect(result).toBe('<title> is not allowed in HtmlBlock. Put title in the page head.')
-    })
-
-    it('should reject <title> tag in middle of content', () => {
-      const result = validate?.('<div><title>Bad</title></div>')
-      expect(result).toContain('is not allowed in HtmlBlock')
+    it('should still reject script tags in rendered body content', () => {
+      const result = validate?.('<main><script>alert(1)</script></main>')
+      expect(result).toContain('<script')
     })
   })
 

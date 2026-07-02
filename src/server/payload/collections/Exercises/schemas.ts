@@ -534,7 +534,18 @@ const DANGEROUS_HTML_PATTERNS = [
   /data\s*:[^,]*;base64/i, // data: URIs with base64 (in href/src context)
 ]
 
+function isFullHtmlDocument(html: string): boolean {
+  const documentStart = html.search(/<!doctype html|<html\b/i)
+  const source = documentStart > 0 ? html.slice(documentStart) : html
+
+  return /<!doctype html|<html\b|<body\b/i.test(source)
+}
+
 function validateHtmlTags(html: string): boolean {
+  if (isFullHtmlDocument(html)) {
+    return true
+  }
+
   const tagPattern = /<\/?([a-z][a-z0-9]*)\b[^>]*>/gi
   let match
   while ((match = tagPattern.exec(html)) !== null) {
@@ -543,6 +554,14 @@ function validateHtmlTags(html: string): boolean {
     }
   }
   return true
+}
+
+function hasBlockedHtmlContent(html: string): boolean {
+  if (isFullHtmlDocument(html)) {
+    return false
+  }
+
+  return DANGEROUS_HTML_PATTERNS.some((pattern) => pattern.test(html))
 }
 
 export const HtmlBlockSchema = z
@@ -556,7 +575,7 @@ export const HtmlBlockSchema = z
         'HTML contains disallowed tags. Only safe formatting tags are permitted.',
       )
       .refine(
-        (html) => !DANGEROUS_HTML_PATTERNS.some((pattern) => pattern.test(html)),
+        (html) => !hasBlockedHtmlContent(html),
         'HTML contains blocked content (event handlers, javascript:, vbscript:, or data: URLs)',
       ),
     /**

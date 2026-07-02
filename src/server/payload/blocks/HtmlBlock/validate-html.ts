@@ -1,11 +1,9 @@
 /**
  * @fileType utility
- * @ai-summary HTML validation for HtmlBlock - allows all content for admin users only
+ * @ai-summary HTML validation for HtmlBlock - admin-authored rich HTML.
  *
- * SECURITY NOTE: This HtmlBlock is admin-only - only authorized content creators (teachers)
- * have access to it. The validation here is minimal to allow rich content including
- * style attributes, details/summary tags, and other HTML that would normally be sanitized.
- * Content displayed to students goes through separate rendering logic with proper escaping.
+ * SECURITY NOTE: This block is admin-only. Full HTML documents are accepted,
+ * but only <style> tags from <head> and <body> content are rendered.
  */
 export const validateHtml = (value: string | null | undefined): string | true => {
   if (!value || typeof value !== 'string') {
@@ -17,41 +15,27 @@ export const validateHtml = (value: string | null | undefined): string | true =>
     return 'HTML content is required'
   }
 
-  // Block only the most dangerous tags that could introduce security vulnerabilities
-  // This is admin-only content, so we allow rich HTML including style attributes,
-  // details/summary, dir attribute, data-* attributes, etc.
-  const dangerousTags = [
-    '<script',
-    '<iframe',
-    '<object',
-    '<embed',
-    '<applet',
-    '<meta',
-    '<base',
-    '<link',
-    '<title',
-  ]
+  // Full-page HTML exports often include scripts/links in <head>. The renderer
+  // only keeps <style> tags from the head plus the body content, so validate the
+  // rendered portion instead of rejecting the whole paste.
+  const renderedHtml = trimmed.replace(/<head\b[^>]*>[\s\S]*?<\/head>/gi, '')
+
+  const dangerousTags = ['<script', '<iframe', '<object', '<embed', '<applet', '<base']
 
   for (const tag of dangerousTags) {
-    const lowerTag = tag.toLowerCase()
-    if (trimmed.toLowerCase().includes(lowerTag)) {
-      if (tag === '<title') {
-        return '<title> is not allowed in HtmlBlock. Put title in the page head.'
-      }
+    if (renderedHtml.toLowerCase().includes(tag)) {
       return `HTML contains blocked content: ${tag}`
     }
   }
 
-  // Block inline event handlers (onclick, onload, etc.) - XSS prevention
   const eventHandlerPattern = /\bon\w+\s*=/gi
-  const eventMatch = eventHandlerPattern.exec(trimmed)
+  const eventMatch = eventHandlerPattern.exec(renderedHtml)
   if (eventMatch) {
     return `inline event handlers are not allowed: ${eventMatch[0]}`
   }
 
-  // Block javascript: URLs in href/src
   const jsUrlPattern = /(?:href|src)\s*=\s*["']?\s*javascript:/gi
-  const jsMatch = jsUrlPattern.exec(trimmed)
+  const jsMatch = jsUrlPattern.exec(renderedHtml)
   if (jsMatch) {
     return `javascript: URLs are not allowed: ${jsMatch[0]}`
   }
