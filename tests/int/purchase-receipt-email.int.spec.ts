@@ -37,8 +37,6 @@ let userId: string
 let tenantId: string
 let chapterId: string
 let lessonId: string
-let productItemLessonId: string
-let productItemFeatureId: string
 let productId: string
 
 const FEATURE_KEY = 'certificate'
@@ -116,29 +114,36 @@ beforeAll(async () => {
   })
   lessonId = lesson.id
 
-  // Create product-item (lesson type)
-  const productItemLesson = await payload.create({
-    collection: 'product-items',
-    data: {
-      type: 'lesson',
-      lesson: lessonId,
-    } as any,
-    overrideAccess: true,
-  })
-  productItemLessonId = productItemLesson.id
+  // Create (or fetch) the Feature row for the featureBlock.
+  let featureDoc = (
+    await payload.find({
+      collection: 'features',
+      where: { key: { equals: FEATURE_KEY } },
+      limit: 1,
+      depth: 0,
+      overrideAccess: true,
+    })
+  ).docs[0] as { id: string } | undefined
+  if (!featureDoc) {
+    featureDoc = (await payload.create({
+      collection: 'features',
+      data: {
+        key: FEATURE_KEY,
+        label: 'Completion Certificate',
+        type: 'boolean',
+        defaultPeriod: 'lifetime',
+        enforcement: 'metadata',
+        isActive: true,
+      },
+      overrideAccess: true,
+    })) as { id: string }
+  }
+  const featureRowId = featureDoc.id
 
-  // Create product-item (feature type)
-  const productItemFeature = await payload.create({
-    collection: 'product-items',
-    data: {
-      type: 'feature',
-      featureKey: FEATURE_KEY,
-    } as any,
-    overrideAccess: true,
-  })
-  productItemFeatureId = productItemFeature.id
+  // Use the course already created above for the courseBlock relationship.
+  const courseId = course.id
 
-  // Create product with both items
+  // Create product with contents blocks
   const product = await payload.create({
     collection: 'products',
     data: {
@@ -147,7 +152,10 @@ beforeAll(async () => {
       billingType: 'one_time',
       price: 1000,
       currency: 'ILS',
-      items: [productItemLessonId, productItemFeatureId],
+      contents: [
+        { blockType: 'courseBlock', course: courseId },
+        { blockType: 'featureBlock', feature: featureRowId },
+      ],
       isActive: true,
     } as any,
     overrideAccess: true,

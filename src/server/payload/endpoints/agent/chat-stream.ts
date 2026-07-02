@@ -174,6 +174,13 @@ export async function agentChatStream(
       if (userRole !== AccountRole.Admin) {
         const quota = await checkAndIncrementChatQuota(req.payload, user.id)
         if (!quota.allowed) {
+          if (quota.silent) {
+            // chat-limit silent cap — do NOT leak the numeric ceiling.
+            return Response.json(
+              { error: 'Chat is temporarily unavailable. Please try again later.' },
+              { status: 429 },
+            )
+          }
           return Response.json(
             {
               error: 'Chat limit reached. Try again later.',

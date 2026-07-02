@@ -13,6 +13,7 @@ import { generateSlug, validateSlugUniqueness } from './hooks'
 import { enforceContentStructure } from './hooks/enforceContentStructure'
 import { ContentSchema } from './schemas'
 import { addBlockToLesson, removeBlockFromLesson } from '../../hooks/lessons/syncLessonBlocks'
+import { isContentPromotionImportRequest } from '@/server/services/content-promotion/import-context'
 
 /**
  * Access control - Exercise-specific
@@ -58,6 +59,13 @@ const exerciseHooks: CollectionConfig['hooks'] = {
     enforceContentStructure,
     // Auto-populate course from lesson -> chapter -> course
     async ({ data, req }) => {
+      // Content-promotion imports carry `chapter` and `course` on every
+      // exercise in the bundle (exported at depth: 0 with the denormalized
+      // fields intact), so re-deriving them here would cost two extra
+      // Mongo round trips per exercise for no data gain — 452 unnecessary
+      // trips on a 226-exercise course, ~4 minutes on Atlas via Vercel.
+      // See src/server/services/content-promotion/import-content.ts.
+      if (isContentPromotionImportRequest(req)) return data
       if (data?.lesson) {
         try {
           const lessonId = typeof data.lesson === 'string' ? data.lesson : data.lesson?.id
@@ -92,9 +100,13 @@ const exerciseHooks: CollectionConfig['hooks'] = {
     },
   ],
   afterRead: [
-    // Lazy backfill: when an exercise is read and its denormalized course/chapter
-    // fields are empty, resolve them from the hierarchy and persist to the DB.
-    // This is a one-time write per record — subsequent reads skip (already populated).
+    // In-memory population: when an exercise is read and its denormalized
+    // course/chapter fields are empty, resolve them from the hierarchy for the
+    // current request so the UI displays correctly. The DB write that previously
+    // lived here turned every list-view render into N+1 UPDATEs against a
+    // maxPoolSize=3 connection pool; the `beforeChange` hook above already
+    // persists `course` on every save, so legacy docs get backfilled the next
+    // time they're edited.
     // Skipped during build/seed (no req.user) to avoid slow static generation.
     async ({ doc, req }) => {
       if (!doc?.lesson) return doc
@@ -122,24 +134,10 @@ const exerciseHooks: CollectionConfig['hooks'] = {
         })
         const courseId = typeof chapter?.course === 'string' ? chapter.course : chapter?.course?.id
 
-        const updates: Record<string, string> = {}
-        if (chapterId && !doc.chapter) updates.chapter = chapterId
-        if (courseId && !doc.course) updates.course = courseId
-
-        if (Object.keys(updates).length > 0) {
-          // Persist to DB so list-view filters match on the next query
-          await req.payload.update({
-            collection: 'exercises',
-            id: doc.id,
-            data: updates as any, // eslint-disable-line @typescript-eslint/no-explicit-any
-            overrideAccess: true,
-            context: { _skipBlockSync: true },
-          })
-          if (updates.chapter) doc.chapter = chapterId
-          if (updates.course) doc.course = courseId
-        }
+        if (chapterId && !doc.chapter) doc.chapter = chapterId
+        if (courseId && !doc.course) doc.course = courseId
       } catch {
-        // Silently skip — backfill is best-effort
+        // Silently skip — in-memory backfill is best-effort
       }
 
       return doc
