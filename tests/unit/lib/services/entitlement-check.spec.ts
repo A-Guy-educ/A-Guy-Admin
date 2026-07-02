@@ -19,6 +19,12 @@ const createMockPayload = (overrides = {}): Payload =>
     create: vi.fn(),
     update: vi.fn(),
     delete: vi.fn(),
+    logger: {
+      warn: vi.fn(),
+      error: vi.fn(),
+      info: vi.fn(),
+      debug: vi.fn(),
+    },
     ...overrides,
   }) as unknown as Payload
 

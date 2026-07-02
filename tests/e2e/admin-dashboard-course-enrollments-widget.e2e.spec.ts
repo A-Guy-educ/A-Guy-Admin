@@ -33,7 +33,7 @@ test.describe('Admin Dashboard: Course Enrollments Widget', () => {
       'admin',
     )
 
-    await page.goto('/admin')
+    await page.goto('/admin/statistics')
     await page.waitForLoadState('networkidle')
     await page.waitForTimeout(2000)
 
@@ -55,7 +55,7 @@ test.describe('Admin Dashboard: Course Enrollments Widget', () => {
       'admin',
     )
 
-    await page.goto('/admin')
+    await page.goto('/admin/statistics')
     await page.waitForLoadState('networkidle')
     await page.waitForTimeout(2000)
 
@@ -65,9 +65,6 @@ test.describe('Admin Dashboard: Course Enrollments Widget', () => {
       .locator('h3:has-text("Top Courses"), h3:has-text("קורסים מובילים")')
       .first()
     if (await topCoursesSection.isVisible()) {
-      // Check for the panel style container that holds enrollment rows
-      // Progress bars are divs with height:6px and background colors
-      const progressBars = page.locator('[style*="height: 6px"][style*="border-radius: 3px]')
       // At least verify the structure exists - actual bars depend on data
       const widgetExists = await topCoursesSection.isVisible()
       expect(widgetExists).toBeTruthy()
@@ -84,7 +81,7 @@ test.describe('Admin Dashboard: Course Enrollments Widget', () => {
       'admin',
     )
 
-    await page.goto('/admin')
+    await page.goto('/admin/statistics')
     await page.waitForLoadState('networkidle')
     await page.waitForTimeout(2000)
 

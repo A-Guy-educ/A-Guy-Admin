@@ -90,7 +90,7 @@ describe('Stripe Payment Service', () => {
       const { createStripeCheckout } = await import('@/lib/payment/stripe')
 
       await expect(createStripeCheckout(mockOptions)).rejects.toThrow(
-        'Missing required payment environment variables: STRIPE_SECRET_KEY',
+        /Stripe is partially configured.*STRIPE_SECRET_KEY/,
       )
     })
 
@@ -114,7 +114,7 @@ describe('Stripe Payment Service', () => {
 
       await expect(
         verifyStripeWebhook(Buffer.from('test payload'), 'test_signature'),
-      ).rejects.toThrow('Missing required payment environment variables: STRIPE_WEBHOOK_SECRET')
+      ).rejects.toThrow(/Stripe is partially configured.*STRIPE_WEBHOOK_SECRET/)
     })
 
     it('should verify webhook payload and signature', async () => {

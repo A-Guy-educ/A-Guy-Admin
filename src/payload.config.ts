@@ -1,4 +1,5 @@
 import { mongooseAdapter } from '@payloadcms/db-mongodb'
+import { resendAdapter } from '@payloadcms/email-resend'
 import path from 'path'
 import { buildConfig, PayloadRequest } from 'payload'
 import sharp from 'sharp'
@@ -24,6 +25,7 @@ import { EnrollmentProgress } from '@/server/payload/collections/EnrollmentProgr
 import { Enrollments } from '@/server/payload/collections/Enrollments'
 import { Exercises } from '@/server/payload/collections/Exercises'
 import { ExtractionLogs } from '@/server/payload/collections/ExtractionLogs'
+import { Features } from '@/server/payload/collections/Features'
 import { FormulaSheets } from '@/server/payload/collections/FormulaSheets'
 import { GuestSessions } from '@/server/payload/collections/GuestSessions'
 import { InteractiveLessons } from '@/server/payload/collections/InteractiveLessons'
@@ -35,7 +37,6 @@ import { MemoryItems } from '@/server/payload/collections/MemoryItems'
 import { Pages } from '@/server/payload/collections/Pages'
 import { Posts } from '@/server/payload/collections/Posts'
 import { PricingPlans } from '@/server/payload/collections/PricingPlans'
-import { ProductItems } from '@/server/payload/collections/ProductItems'
 import { Products } from '@/server/payload/collections/Products'
 import { Prompts } from '@/server/payload/collections/Prompts'
 import { TeacherProfiles } from '@/server/payload/collections/TeacherProfiles'
@@ -48,6 +49,7 @@ import { UserProgress } from '@/server/payload/collections/UserProgress'
 import { Users } from '@/server/payload/collections/Users'
 import { UserSettings } from '@/server/payload/collections/UserSettings'
 import { UserStats } from '@/server/payload/collections/UserStats'
+import { withIdOnCreateGuard } from '@/server/services/content-promotion/import-context'
 import { generateSupportEndpoint } from '@/server/payload/endpoints/exercises/generate-support'
 import { importExerciseFromImage } from '@/server/payload/endpoints/exercises/import-from-image'
 import { importExerciseFromLatex } from '@/server/payload/endpoints/exercises/import-from-latex'
@@ -65,6 +67,7 @@ import { runBackfillOnInit } from '@/server/payload/migrations/backfillAdminTitl
 import { runLocalizeTeacherProfilesOnInit } from '@/server/payload/migrations/localize-teacher-profiles'
 import { runPopulateLessonBlocksOnInit } from '@/server/payload/migrations/populateLessonBlocks'
 import { plugins } from '@/server/payload/plugins'
+import { runSeedFeaturesOnInit } from '@/server/payload/seed/features-seed'
 import { seedTeacherProfiles } from '@/server/payload/seed/teacher-profiles-seed'
 import { Footer } from '@/ui/shared/footer/config'
 import { Header } from '@/ui/shared/header/config'
@@ -113,13 +116,17 @@ export default buildConfig({
       // The `BeforeLogin` component renders a message that you see while logging into your admin panel.
       // Feel free to delete this at any time. Simply remove the line below.
       beforeLogin: ['@/ui/admin/BeforeLogin'],
-      // The `BeforeDashboard` component renders the 'welcome' block that you see after logging into your admin panel.
-      // Feel free to delete this at any time. Simply remove the line below.
-      beforeDashboard: ['@/ui/admin/ConversionTracking/DashboardWidgets'],
+      // Dashboard widgets used to render here (`beforeDashboard`) — every
+      // /admin landing hit fanned out ~30 collection reads through a 3-slot
+      // pool. Moved to a dedicated /admin/statistics page so the landing
+      // page stays cheap and admins opt in to the metrics view.
       afterDashboard: ['@/ui/admin/VersionInfo'],
       beforeNavLinks: [
+        '@/ui/admin/Statistics/SidebarLink',
         '@/ui/admin/PdfConversion/SidebarLink',
         '@/ui/admin/LessonDuplicationReview/SidebarLink',
+        '@/ui/admin/LessonJsonImport/SidebarLink',
+        '@/ui/admin/ContentPromotion/SidebarLink',
       ],
       afterNavLinks: ['@/ui/admin/UserEmail'],
     },
@@ -154,6 +161,15 @@ export default buildConfig({
   editor: defaultLexical,
   db: mongooseAdapter({
     url: databaseUrl,
+    // Required by the content-promotion import flow, which threads source-env
+    // document IDs through `payload.create({ data: { id } })` so cross-document
+    // references inside the bundle resolve without a remap when no collision
+    // exists on the target environment.
+    // Scoped at runtime by `withIdOnCreateGuard` below: every collection
+    // strips `data.id` on create unless the request is flagged by
+    // `markRequestAsContentPromotionImport`. Net effect: behaves as if
+    // `allowIDOnCreate: false` for every code path except the import service.
+    allowIDOnCreate: true,
     connectOptions: {
       // ⚠️ CONNECTION POOL GUARDRAIL — DO NOT increase without updating the guardrail test
       // Atlas limit: 500 connections. At maxPoolSize=N, max safe instances = 500/N.
@@ -223,15 +239,29 @@ export default buildConfig({
     UploadSessions,
     Posts,
     PricingPlans,
-    ProductItems,
+    Features,
     Products,
     AccessCodes,
     Transactions,
     PaymentStats,
     WebhookEvents,
     MCPAuditLogs,
-  ],
+  ].map(withIdOnCreateGuard),
   cors: [getServerSideURL()].filter(Boolean),
+  // Email adapter — populates `payload.email`, which `purchase-receipt-service`
+  // (and any future transactional email) calls via `payload.email.send(...)`.
+  // When `RESEND_API_KEY` isn't set (local dev / CI without secrets) we omit
+  // the adapter entirely; the receipt service has a no-op fallback that logs
+  // a warning and returns false rather than throwing.
+  ...(process.env.RESEND_API_KEY
+    ? {
+        email: resendAdapter({
+          apiKey: process.env.RESEND_API_KEY,
+          defaultFromAddress: process.env.RESEND_FROM_ADDRESS ?? 'no-reply@aguy.co.il',
+          defaultFromName: process.env.RESEND_FROM_NAME ?? 'AGuy',
+        }),
+      }
+    : {}),
   globals: [Header, Footer],
   plugins,
   secret:
@@ -410,5 +440,6 @@ export default buildConfig({
     await runPopulateLessonBlocksOnInit(payload)
     await runLocalizeTeacherProfilesOnInit(payload)
     await seedTeacherProfiles(payload)
+    await runSeedFeaturesOnInit(payload)
   },
 })

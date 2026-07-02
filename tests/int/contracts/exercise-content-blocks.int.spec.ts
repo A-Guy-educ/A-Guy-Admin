@@ -1,6 +1,27 @@
 import { ContentBlockSchema } from '@/server/payload/collections/Exercises/schemas'
 import { describe, expect, it } from 'vitest'
 
+describe('HtmlBlockSchema', () => {
+  it('allows full HTML documents for sandboxed rendering', () => {
+    const block = {
+      id: 'html1',
+      type: 'html',
+      html: `זסזס<!DOCTYPE html>
+        <html lang="he" dir="rtl">
+          <head>
+            <script src="https://cdn.tailwindcss.com"></script>
+            <style>.x { color: red; }</style>
+          </head>
+          <body class="bg-white">
+            <main style="padding: 24px;">שלום</main>
+          </body>
+        </html>`,
+    }
+
+    expect(() => ContentBlockSchema.parse(block)).not.toThrow()
+  })
+})
+
 describe('QuestionMatchingBlockSchema', () => {
   it('validates a matching question with correct structure', () => {
     const matchingBlock = {

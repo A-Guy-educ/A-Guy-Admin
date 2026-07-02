@@ -37,7 +37,7 @@ test.describe('Admin Dashboard: Registered Users Card', () => {
     )
 
     // Navigate to admin dashboard
-    await page.goto('/admin')
+    await page.goto('/admin/statistics')
     await page.waitForLoadState('networkidle')
     await page.waitForTimeout(2000) // Wait for metrics to load
 
@@ -64,7 +64,7 @@ test.describe('Admin Dashboard: Registered Users Card', () => {
       'admin',
     )
 
-    await page.goto('/admin')
+    await page.goto('/admin/statistics')
     await page.waitForLoadState('networkidle')
     await page.waitForTimeout(2000)
 
@@ -103,7 +103,7 @@ test.describe('Admin Dashboard: Registered Users Card', () => {
       'admin',
     )
 
-    await page.goto('/admin')
+    await page.goto('/admin/statistics')
     await page.waitForLoadState('networkidle')
     await page.waitForTimeout(2000)
 
@@ -135,7 +135,7 @@ test.describe('Admin Dashboard: Registered Users Card', () => {
       'admin',
     )
 
-    await page.goto('/admin')
+    await page.goto('/admin/statistics')
     await page.waitForLoadState('networkidle')
     await page.waitForTimeout(2000)
 
@@ -159,7 +159,7 @@ test.describe('Admin Dashboard: Registered Users Card', () => {
       'admin',
     )
 
-    await page.goto('/admin')
+    await page.goto('/admin/statistics')
     await page.waitForLoadState('networkidle')
     await page.waitForTimeout(2000)
 
@@ -191,7 +191,7 @@ test.describe('Admin Dashboard: Registered Users Card', () => {
       'admin',
     )
 
-    await page.goto('/admin')
+    await page.goto('/admin/statistics')
     await page.waitForLoadState('networkidle')
     await page.waitForTimeout(3000)
 
