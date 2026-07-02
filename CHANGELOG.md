@@ -1677,6 +1677,7 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- fix: Drop DB transaction from content-promotion import to survive real bundle sizes ([#99](https://github.com/A-Guy-educ/A-Guy-Admin/pull/99)) — @aguyshayb
 - feat: Add plain-text lesson importer alongside JSON importer ([#92](https://github.com/A-Guy-educ/A-Guy-Admin/pull/92)) — @aguyshayb
 - Publish admin auth session fix ([#91](https://github.com/A-Guy-educ/A-Guy-Admin/pull/91)) — @aguyaharonyair
 - fix: Make payment env validation provider-aware ([#89](https://github.com/A-Guy-educ/A-Guy-Admin/pull/89)) — @aguyshayb
