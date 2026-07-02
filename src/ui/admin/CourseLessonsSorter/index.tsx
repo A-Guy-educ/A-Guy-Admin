@@ -17,6 +17,7 @@ interface ChapterDoc {
 interface LessonDoc {
   id: string
   title: string
+  intro?: string | null
   type: 'learning' | 'practice' | 'exam'
   order: number
   chapter: string | { id: string }
@@ -134,6 +135,24 @@ const lessonTitleLinkStyle: React.CSSProperties = {
   textUnderlineOffset: '2px',
   cursor: 'pointer',
   transition: 'color 0.15s',
+}
+
+const lessonTextStyle: React.CSSProperties = {
+  flex: 1,
+  minWidth: 0,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 2,
+}
+
+const lessonIntroStyle: React.CSSProperties = {
+  color: 'var(--theme-elevation-500)',
+  display: '-webkit-box',
+  fontSize: 12,
+  lineHeight: 1.35,
+  overflow: 'hidden',
+  WebkitBoxOrient: 'vertical',
+  WebkitLineClamp: 2,
 }
 
 const chevronBtnStyle = (disabled: boolean): React.CSSProperties => ({
@@ -524,15 +543,18 @@ export const CourseLessonsSorter: React.FC = () => {
                   </span>
 
                   {/* Title */}
-                  <a
-                    href={`/admin/collections/lessons/${lesson.id}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={lessonTitleLinkStyle}
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {lesson.title}
-                  </a>
+                  <div style={lessonTextStyle}>
+                    <a
+                      href={`/admin/collections/lessons/${lesson.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={lessonTitleLinkStyle}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {lesson.title}
+                    </a>
+                    {lesson.intro ? <span style={lessonIntroStyle}>{lesson.intro}</span> : null}
+                  </div>
 
                   {/* Chevron up */}
                   <button

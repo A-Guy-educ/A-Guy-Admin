@@ -9,11 +9,9 @@
 # ANTHROPIC_API_KEY). kody reads any *_API_KEY secret automatically via
 # toJSON(secrets) — no need to list them here.
 #
-# Auth: a GitHub App installation token, minted fresh each run from the
-# KODY_APP_ID + KODY_APP_PRIVATE_KEY secrets. This replaces the old static
-# KODY_TOKEN PAT — the App has its own per-install 5,000+/hr budget that
-# GitHub won't flag for abuse, and (unlike the default GITHUB_TOKEN) it can
-# push to `.github/workflows/*` and trigger downstream workflows.
+# Auth: when KODY_APP_ID + KODY_APP_PRIVATE_KEY exist, mint a fresh GitHub App
+# installation token. Otherwise fall back to the default GITHUB_TOKEN so the
+# workflow can still run in repos that have not configured the App yet.
 # Set KODY_APP_ID + KODY_APP_PRIVATE_KEY in repo Settings → Secrets → Actions.
 # (Install the App on the org first; it auto-resolves the installation.)
 
@@ -42,8 +40,8 @@ on:
         description: 'Dashboard event ingest URL with inline ?token=... (chat mode)'
         type: string
         default: ''
-      executable:
-        description: 'Stage to run for issue_number (default: run). goal-tick sets classify.'
+      capability:
+        description: 'Capability action to run for issue_number (default: run). goal-tick sets classify.'
         type: string
         default: ''
       base:
@@ -71,6 +69,9 @@ jobs:
     if: ${{ github.event_name != 'pull_request' || github.event.action == 'opened' || github.event.action == 'synchronize' || github.event.pull_request.merged == true }}
     runs-on: ubuntu-latest
     timeout-minutes: 360
+    env:
+      HAS_KODY_APP_TOKEN: ${{ secrets.KODY_APP_ID != '' && secrets.KODY_APP_PRIVATE_KEY != '' }}
+      SHOULD_RUN_KODY_ENGINE: ${{ github.event_name != 'pull_request' || secrets.KODY_MASTER_KEY != '' }}
     concurrency:
       group: kody-${{ inputs.sessionId || inputs.issue_number || github.event.issue.number || github.sha }}
       cancel-in-progress: false
@@ -80,20 +81,22 @@ jobs:
       contents: write
       actions: read
       id-token: write # OIDC: Namespace remote builder
-    env:
-      KODY_APP_ID: ${{ secrets.KODY_APP_ID }}
-      KODY_APP_PRIVATE_KEY: ${{ secrets.KODY_APP_PRIVATE_KEY }}
-      KODY_MASTER_KEY: ${{ secrets.KODY_MASTER_KEY }}
     steps:
+      - name: Skip Kody preview build
+        if: env.SHOULD_RUN_KODY_ENGINE != 'true'
+        run: echo "KODY_MASTER_KEY is not configured; skipping Kody preview build for this pull request."
+
       - name: Mint GitHub App token
-        if: ${{ env.KODY_APP_ID != '' && env.KODY_APP_PRIVATE_KEY != '' }}
+        if: env.SHOULD_RUN_KODY_ENGINE == 'true' && env.HAS_KODY_APP_TOKEN == 'true'
         id: app-token
         uses: actions/create-github-app-token@v1
         with:
-          app-id: ${{ env.KODY_APP_ID }}
-          private-key: ${{ env.KODY_APP_PRIVATE_KEY }}
+          app-id: ${{ secrets.KODY_APP_ID }}
+          private-key: ${{ secrets.KODY_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
 
       - uses: actions/checkout@v4
+        if: env.SHOULD_RUN_KODY_ENGINE == 'true'
         with:
           fetch-depth: 0
           # On opened/synchronize, build the PR HEAD so the preview reflects
@@ -101,34 +104,33 @@ jobs:
           ref: ${{ (github.event.action == 'opened' || github.event.action == 'synchronize') && github.event.pull_request.head.sha || github.event.pull_request.base.ref || github.ref }}
           token: ${{ steps.app-token.outputs.token || github.token }}
 
-      - name: Skip preview build when Kody preview is not configured
-        if: ${{ github.event_name == 'pull_request' && env.KODY_MASTER_KEY == '' }}
-        run: echo "Kody preview build is skipped because KODY_MASTER_KEY is not set."
-
       - uses: actions/setup-node@v4
-        if: ${{ github.event_name != 'pull_request' || env.KODY_MASTER_KEY != '' }}
+        if: env.SHOULD_RUN_KODY_ENGINE == 'true'
         with:
           node-version: 22
 
       - name: Write pip cache key for LiteLLM
-        if: ${{ github.event_name != 'pull_request' || env.KODY_MASTER_KEY != '' }}
-        run: echo "litellm[proxy]" > .kody-pip-requirements.txt
+        if: env.SHOULD_RUN_KODY_ENGINE == 'true'
+        run: |
+          echo "litellm[proxy]" > .kody-pip-requirements.txt
+          mkdir -p ~/.cache/pip
 
       - uses: actions/setup-python@v5
-        if: ${{ github.event_name != 'pull_request' || env.KODY_MASTER_KEY != '' }}
+        if: env.SHOULD_RUN_KODY_ENGINE == 'true'
         with:
           python-version: '3.12'
           cache: 'pip'
           cache-dependency-path: .kody-pip-requirements.txt
 
-      - if: ${{ github.event_name != 'pull_request' || env.KODY_MASTER_KEY != '' }}
+      - name: Run Kody engine
+        if: env.SHOULD_RUN_KODY_ENGINE == 'true'
+        continue-on-error: ${{ github.event_name == 'pull_request' && github.event.action != 'closed' }}
         env:
           ALL_SECRETS: ${{ toJSON(secrets) }}
           # The App token wins: set explicitly so it beats any leftover
           # KODY_TOKEN unpacked from ALL_SECRETS (the engine's resolver skips
           # env keys that are already set).
-          KODY_TOKEN: ${{ steps.app-token.outputs.token || github.token }}
-          KODY_MASTER_KEY: ${{ env.KODY_MASTER_KEY }}
+          KODY_TOKEN: ${{ steps.app-token.outputs.token || secrets.KODY_TOKEN || secrets.github_token || github.token }}
           SESSION_ID: ${{ inputs.sessionId }}
           INIT_MESSAGE: ${{ inputs.message }}
           MODEL: ${{ inputs.model }}

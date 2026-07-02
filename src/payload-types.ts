@@ -103,7 +103,7 @@ export interface Config {
     'upload-sessions': UploadSession;
     posts: Post;
     'pricing-plans': PricingPlan;
-    'product-items': ProductItem;
+    features: Feature;
     products: Product;
     'access-codes': AccessCode;
     transactions: Transaction;
@@ -158,7 +158,7 @@ export interface Config {
     'upload-sessions': UploadSessionsSelect<false> | UploadSessionsSelect<true>;
     posts: PostsSelect<false> | PostsSelect<true>;
     'pricing-plans': PricingPlansSelect<false> | PricingPlansSelect<true>;
-    'product-items': ProductItemsSelect<false> | ProductItemsSelect<true>;
+    features: FeaturesSelect<false> | FeaturesSelect<true>;
     products: ProductsSelect<false> | ProductsSelect<true>;
     'access-codes': AccessCodesSelect<false> | AccessCodesSelect<true>;
     transactions: TransactionsSelect<false> | TransactionsSelect<true>;
@@ -520,8 +520,14 @@ export interface User {
   featureEntitlements?:
     | {
         key: string;
+        value?: number | null;
+        period?: ('day' | 'month' | 'lifetime') | null;
         transactionId?: string | null;
         grantedAt?: string | null;
+        /**
+         * When this feature entitlement expires. Mirrors the parent Enrollment expiry when the source product has durationDays; null = lifetime.
+         */
+        expiresAt?: string | null;
         id?: string | null;
       }[]
     | null;
@@ -533,6 +539,22 @@ export interface User {
    * When the current chat quota window started
    */
   chatWindowStart?: string | null;
+  /**
+   * AI questions used in the current Asia/Jerusalem day
+   */
+  aiQuestionsUsedDay?: number | null;
+  /**
+   * YYYY-MM-DD bucket (Asia/Jerusalem) for aiQuestionsUsedDay
+   */
+  aiQuestionsBucketDay?: string | null;
+  /**
+   * Chat messages used in the current Asia/Jerusalem day (silent cap)
+   */
+  chatLimitUsedDay?: number | null;
+  /**
+   * YYYY-MM-DD bucket (Asia/Jerusalem) for chatLimitUsedDay
+   */
+  chatLimitBucketDay?: string | null;
   oauthLoginSecretEnc?: string | null;
   updatedAt: string;
   createdAt: string;
@@ -862,7 +884,7 @@ export interface FormulaSheet {
  */
 export interface HtmlBlock {
   /**
-   * Enter HTML content. Links must be relative (/path or #anchor). Allowed attributes: class, id, data-* on all tags; href (required), title, class, id, data-* on <a> tags; colspan, rowspan, scope on table cells; plus safe SVG attributes (e.g., viewBox, fill, stroke, d). No style=, target=, or on*= attributes allowed. The <style> tag is allowed.
+   * Paste an HTML fragment or full HTML document. Inline style="" and <style> are allowed. Scripts, iframes, event handlers, and javascript: URLs are blocked.
    */
   html: string;
   /**
@@ -1482,9 +1504,21 @@ export interface Lesson {
    */
   title: string;
   /**
+   * Auto-computed display title for admin relationship dropdowns
+   */
+  adminTitle?: string | null;
+  /**
+   * Short intro shown on lesson cards before students start
+   */
+  intro?: string | null;
+  /**
    * Detailed description of the lesson
    */
   description?: string | null;
+  /**
+   * Lessons students should complete before this lesson
+   */
+  prerequisites?: (string | Lesson)[] | null;
   /**
    * Sort order within the course
    */
@@ -1864,9 +1898,50 @@ export interface Product {
    */
   currency: 'ILS' | 'USD' | 'EUR';
   /**
-   * בחר את פריטי המוצר (שיעורים ותכונות)
+   * תקופת גישה בימים מרגע הרכישה (השאר ריק לגישה ללא הגבלת זמן). מוחל אוטומטית על Enrollments בעת רכישה.
    */
-  items?: (string | ProductItem)[] | null;
+  durationDays?: number | null;
+  /**
+   * מספר מקסימלי של מכשירים למשתמש (השאר ריק = ללא הגבלה). שדה לתצורה בלבד — האכיפה אינה מיושמת.
+   */
+  maxDevices?: number | null;
+  /**
+   * מה כלול במוצר. הוסף בלוקים של גישה לקורס ושל תכונות. ניתן לגרור כדי לסדר מחדש.
+   */
+  contents?:
+    | (
+        | {
+            /**
+             * הקורס שהקונה מקבל גישה אליו
+             */
+            course: string | Course;
+            /**
+             * סוגי שיעורים שייכללו (השאר ריק = כל הסוגים). ⚠️ מטא־דאטה בלבד — Enrollments מעניק גישה לקורס כולו.
+             */
+            lessonTypes?: ('learning' | 'practice' | 'exam')[] | null;
+            id?: string | null;
+            blockName?: string | null;
+            blockType: 'courseBlock';
+          }
+        | {
+            /**
+             * בחר תכונה מהקטלוג. אם חסרה — הוסף ב־Features.
+             */
+            feature: string | Feature;
+            /**
+             * מגבלה מספרית (לדוגמה: 5). השאר ריק לתכונה ללא מגבלת כמות / לתכונה בוליאנית.
+             */
+            limit?: number | null;
+            /**
+             * תקופת איפוס המגבלה (רלוונטי רק לתכונות עם limit).
+             */
+            period?: ('day' | 'lifetime') | null;
+            id?: string | null;
+            blockName?: string | null;
+            blockType: 'featureBlock';
+          }
+      )[]
+    | null;
   /**
    * האם המוצר פעיל וזמין למכירה
    */
@@ -1879,27 +1954,49 @@ export interface Product {
   createdAt: string;
 }
 /**
+ * Reusable feature definitions. Bundle into products via the Product "What's in this product" blocks.
+ *
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "product-items".
+ * via the `definition` "features".
  */
-export interface ProductItem {
+export interface Feature {
   id: string;
   /**
-   * בחר את סוג הפריט: שיעור מהמערכת או תכונה מוגדרת
+   * Stable identifier used by runtime gates (e.g. ai-questions). kebab-case, lowercase. Changing this after grants exist will orphan featureEntitlements.
    */
-  type: 'lesson' | 'feature';
+  key: string;
   /**
-   * בחר את השיעור להוספה למוצר
+   * Human-friendly name shown in the admin feature picker.
    */
-  lesson?: (string | null) | Lesson;
+  label: string;
   /**
-   * מזהה התכונה (לדוגמה: certificate, live-sessions)
+   * What this feature does. Shown next to the picker so admins choose the right one.
    */
-  featureKey?: string | null;
+  description?: string | null;
   /**
-   * סמן אם יש להדגיש פריט זה בממשק המשתמש
+   * Numeric features carry a limit + period when added to a product; boolean features are simple unlocks.
    */
-  isHighlighted?: boolean | null;
+  type: 'numeric' | 'boolean';
+  /**
+   * Display hint for the limit (e.g., "questions", "messages"). Numeric only.
+   */
+  unit?: string | null;
+  /**
+   * Default reset window used when a product adds this feature. Admin can override per-product.
+   */
+  defaultPeriod?: ('day' | 'lifetime') | null;
+  /**
+   * When on, denials are silent — endpoints return a generic error without revealing the limit (e.g. chat-limit).
+   */
+  isSilent?: boolean | null;
+  /**
+   * Whether a runtime consumer reads this feature. "Metadata only" means it appears on entitlements but nothing checks it.
+   */
+  enforcement: 'enforced' | 'metadata';
+  /**
+   * Hide from the admin feature picker when off (existing references continue to work).
+   */
+  isActive?: boolean | null;
   /**
    * User who created this document
    */
@@ -3502,8 +3599,8 @@ export interface PayloadLockedDocument {
         value: string | PricingPlan;
       } | null)
     | ({
-        relationTo: 'product-items';
-        value: string | ProductItem;
+        relationTo: 'features';
+        value: string | Feature;
       } | null)
     | ({
         relationTo: 'products';
@@ -4008,7 +4105,10 @@ export interface LessonsSelect<T extends boolean = true> {
   course?: T;
   type?: T;
   title?: T;
+  adminTitle?: T;
+  intro?: T;
   description?: T;
+  prerequisites?: T;
   order?: T;
   status?: T;
   isActive?: T;
@@ -4385,12 +4485,19 @@ export interface UsersSelect<T extends boolean = true> {
     | T
     | {
         key?: T;
+        value?: T;
+        period?: T;
         transactionId?: T;
         grantedAt?: T;
+        expiresAt?: T;
         id?: T;
       };
   chatQuestionsUsed?: T;
   chatWindowStart?: T;
+  aiQuestionsUsedDay?: T;
+  aiQuestionsBucketDay?: T;
+  chatLimitUsedDay?: T;
+  chatLimitBucketDay?: T;
   oauthLoginSecretEnc?: T;
   updatedAt?: T;
   createdAt?: T;
@@ -4607,13 +4714,18 @@ export interface PricingPlansSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "product-items_select".
+ * via the `definition` "features_select".
  */
-export interface ProductItemsSelect<T extends boolean = true> {
+export interface FeaturesSelect<T extends boolean = true> {
+  key?: T;
+  label?: T;
+  description?: T;
   type?: T;
-  lesson?: T;
-  featureKey?: T;
-  isHighlighted?: T;
+  unit?: T;
+  defaultPeriod?: T;
+  isSilent?: T;
+  enforcement?: T;
+  isActive?: T;
   createdBy?: T;
   updatedAt?: T;
   createdAt?: T;
@@ -4630,7 +4742,29 @@ export interface ProductsSelect<T extends boolean = true> {
   interval?: T;
   price?: T;
   currency?: T;
-  items?: T;
+  durationDays?: T;
+  maxDevices?: T;
+  contents?:
+    | T
+    | {
+        courseBlock?:
+          | T
+          | {
+              course?: T;
+              lessonTypes?: T;
+              id?: T;
+              blockName?: T;
+            };
+        featureBlock?:
+          | T
+          | {
+              feature?: T;
+              limit?: T;
+              period?: T;
+              id?: T;
+              blockName?: T;
+            };
+      };
   isActive?: T;
   createdBy?: T;
   updatedAt?: T;
