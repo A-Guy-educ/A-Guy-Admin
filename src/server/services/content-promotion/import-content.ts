@@ -154,7 +154,7 @@ async function uploadMediaWithFile(
   zip: JSZip,
   remap: IdRemap,
   report: CollectionReport,
-): Promise<void> {
+): Promise<boolean> {
   const { newDoc, finalId, wasRemapped } = applyRemapToDoc(
     bundled as unknown as Record<string, unknown>,
     'media',
@@ -194,6 +194,7 @@ async function uploadMediaWithFile(
       })
       report.created += 1
       if (wasRemapped) report.remapped += 1
+      return true
     } else {
       // No blob in the bundle — only `external` media can legitimately be
       // created without a file. For any other type, `validateMediaUpload`
@@ -206,7 +207,7 @@ async function uploadMediaWithFile(
           id: finalId,
           message: `Non-external media has no blob in bundle (type=${String(rest.type)})`,
         })
-        return
+        return false
       }
       await payload.create({
         collection: 'media',
@@ -217,6 +218,7 @@ async function uploadMediaWithFile(
       })
       report.created += 1
       if (wasRemapped) report.remapped += 1
+      return false
     }
   } catch (error) {
     report.failed += 1
@@ -225,6 +227,7 @@ async function uploadMediaWithFile(
       message: error instanceof Error ? error.message : 'Unknown error',
     })
     // Do NOT rethrow — see createDoc rationale.
+    return false
   }
 }
 
@@ -298,10 +301,17 @@ export async function importContent(
   // parent lesson's blocks. Threshold picked so at ~2s/exercise the hook
   // portion stays under ~100s, leaving plenty of headroom for the rest of
   // the import to fit under Vercel's 5-min cap.
+  //
+  // The flag is set on `req.context` and restored in `finally` below so it
+  // doesn't leak to any code that wraps another step around this handler.
   const EXERCISE_HOOK_SKIP_THRESHOLD = 50
   const exerciseCount = manifest.counts.exercises ?? 0
-  if (exerciseCount > EXERCISE_HOOK_SKIP_THRESHOLD) {
-    ;(req.context as Record<string, unknown>)._skipBlockSync = true
+  const shouldSkipBlockSync = exerciseCount > EXERCISE_HOOK_SKIP_THRESHOLD
+  const contextRef = req.context as Record<string, unknown>
+  const priorSkipBlockSync = contextRef._skipBlockSync
+  const priorHadSkipBlockSync = '_skipBlockSync' in contextRef
+  if (shouldSkipBlockSync) {
+    contextRef._skipBlockSync = true
     payload.logger.info(
       { exerciseCount, threshold: EXERCISE_HOOK_SKIP_THRESHOLD },
       '[content-promotion/import] Skipping exercise block-sync hook (large bundle); bundle already carries lesson.blocks with the correct refs',
@@ -321,8 +331,15 @@ export async function importContent(
   // rather than resurrecting the failure.
   try {
     for (const bundled of manifest.collections.media) {
-      await uploadMediaWithFile(payload, req, bundled, zip, remap, report.perCollection.media)
-      if (bundled.blobEntry) report.blobsUploaded += 1
+      const blobUploaded = await uploadMediaWithFile(
+        payload,
+        req,
+        bundled,
+        zip,
+        remap,
+        report.perCollection.media,
+      )
+      if (blobUploaded) report.blobsUploaded += 1
     }
     for (const collection of PROMOTED_COLLECTIONS) {
       if (collection === 'media') continue
@@ -343,6 +360,11 @@ export async function importContent(
     // Payload init failure mid-run, etc.). Surface it — the report so far
     // is still useful context but we can't finalise a partial-success reply.
     throw error
+  } finally {
+    if (shouldSkipBlockSync) {
+      if (priorHadSkipBlockSync) contextRef._skipBlockSync = priorSkipBlockSync
+      else delete contextRef._skipBlockSync
+    }
   }
 
   for (const [key, newId] of remap.entries()) {
