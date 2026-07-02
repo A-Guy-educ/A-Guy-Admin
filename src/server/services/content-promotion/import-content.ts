@@ -289,6 +289,25 @@ export async function importContent(
   // it; see import-context.ts for the rationale.
   markRequestAsContentPromotionImport(req)
 
+  // Skip the Exercises `afterChange` block-sync hook when the bundle is big
+  // enough that its per-exercise `findByID` + `update` of the parent lesson
+  // (~2s each on Atlas via Vercel) would push the total wall time past the
+  // 5-minute function ceiling. Small bundles keep the hook on — it's cheap,
+  // it dedupes so it can't cause duplicate `exerciseRef` blocks, and it
+  // "heals" any source-side inconsistency where an exercise wasn't in its
+  // parent lesson's blocks. Threshold picked so at ~2s/exercise the hook
+  // portion stays under ~100s, leaving plenty of headroom for the rest of
+  // the import to fit under Vercel's 5-min cap.
+  const EXERCISE_HOOK_SKIP_THRESHOLD = 50
+  const exerciseCount = manifest.counts.exercises ?? 0
+  if (exerciseCount > EXERCISE_HOOK_SKIP_THRESHOLD) {
+    ;(req.context as Record<string, unknown>)._skipBlockSync = true
+    payload.logger.info(
+      { exerciseCount, threshold: EXERCISE_HOOK_SKIP_THRESHOLD },
+      '[content-promotion/import] Skipping exercise block-sync hook (large bundle); bundle already carries lesson.blocks with the correct refs',
+    )
+  }
+
   // No cross-doc transaction: MongoDB's transactionLifetimeLimitSeconds
   // defaults to 60, so real-world bundles (dozens of media re-uploads plus
   // hundreds of doc creates) reliably tripped that limit mid-flight —
