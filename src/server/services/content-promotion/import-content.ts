@@ -1,8 +1,6 @@
 import type { Payload, PayloadRequest } from 'payload'
 import JSZip from 'jszip'
 
-import { getMediaBlobAdapter } from '@/infra/blob/vercel-blob-adapter'
-import { logger } from '@/infra/utils/logger'
 import { MANIFEST_FILENAME, PROMOTED_COLLECTIONS, PromotedCollection } from './constants'
 import { deepRewriteIds, generateNewId, IdRemap } from './id-remap'
 import { markRequestAsContentPromotionImport } from './import-context'
@@ -156,7 +154,7 @@ async function uploadMediaWithFile(
   zip: JSZip,
   remap: IdRemap,
   report: CollectionReport,
-): Promise<string | null> {
+): Promise<boolean> {
   const { newDoc, finalId, wasRemapped } = applyRemapToDoc(
     bundled as unknown as Record<string, unknown>,
     'media',
@@ -181,7 +179,7 @@ async function uploadMediaWithFile(
           ? rest.mimeType
           : 'application/octet-stream'
 
-      const created = await payload.create({
+      await payload.create({
         collection: 'media',
         // eslint-disable-next-line @typescript-eslint/no-explicit-any -- bundle records are dynamic across collections
         data: rest as any,
@@ -196,25 +194,20 @@ async function uploadMediaWithFile(
       })
       report.created += 1
       if (wasRemapped) report.remapped += 1
-      const url =
-        typeof (created as { url?: unknown }).url === 'string'
-          ? (created as { url: string }).url
-          : null
-      return url
+      return true
     } else {
       // No blob in the bundle — only `external` media can legitimately be
       // created without a file. For any other type, `validateMediaUpload`
       // rejects the create with "MIME Type" validation, so skip defensively
-      // and record it as failed rather than rolling back the whole import.
-      // (The export side already drops such records — this guards against
-      // older bundles or hand-edited manifests.)
+      // and record it as failed. (The export side already drops such
+      // records — this guards against older bundles or hand-edited manifests.)
       if (rest.type !== 'external') {
         report.failed += 1
         report.failures.push({
           id: finalId,
           message: `Non-external media has no blob in bundle (type=${String(rest.type)})`,
         })
-        return null
+        return false
       }
       await payload.create({
         collection: 'media',
@@ -225,7 +218,7 @@ async function uploadMediaWithFile(
       })
       report.created += 1
       if (wasRemapped) report.remapped += 1
-      return null
+      return false
     }
   } catch (error) {
     report.failed += 1
@@ -233,7 +226,8 @@ async function uploadMediaWithFile(
       id: finalId,
       message: error instanceof Error ? error.message : 'Unknown error',
     })
-    throw error
+    // Do NOT rethrow — see createDoc rationale.
+    return false
   }
 }
 
@@ -263,7 +257,10 @@ async function createDoc(
       id: finalId,
       message: error instanceof Error ? error.message : 'Unknown error',
     })
-    throw error
+    // Do NOT rethrow — one bad record must not kill the whole import. The
+    // caller records the failure in `report` and keeps going so any doc that
+    // referenced this one will simply have a dangling ref on the target, and
+    // the user can inspect `report.perCollection[collection].failures` after.
   }
 }
 
@@ -295,25 +292,46 @@ export async function importContent(
   // it; see import-context.ts for the rationale.
   markRequestAsContentPromotionImport(req)
 
-  // Wrap the entire import in a single transaction. `beginTransaction` returns
-  // a session ID on a replica set (Atlas) and `undefined` on a single-node
-  // setup; in the latter case the rollback/commit calls are no-ops and we
-  // degrade to best-effort atomicity. Any per-doc failure rolls the whole
-  // import back so the target DB is never left half-populated.
-  const transactionID = (await payload.db.beginTransaction?.()) ?? undefined
-  if (transactionID) {
-    ;(req as { transactionID?: string | number | undefined }).transactionID = transactionID
+  // Skip the Exercises `afterChange` block-sync hook when the bundle is big
+  // enough that its per-exercise `findByID` + `update` of the parent lesson
+  // (~2s each on Atlas via Vercel) would push the total wall time past the
+  // 5-minute function ceiling. Small bundles keep the hook on — it's cheap,
+  // it dedupes so it can't cause duplicate `exerciseRef` blocks, and it
+  // "heals" any source-side inconsistency where an exercise wasn't in its
+  // parent lesson's blocks. Threshold picked so at ~2s/exercise the hook
+  // portion stays under ~100s, leaving plenty of headroom for the rest of
+  // the import to fit under Vercel's 5-min cap.
+  //
+  // The flag is set on `req.context` and restored in `finally` below so it
+  // doesn't leak to any code that wraps another step around this handler.
+  const EXERCISE_HOOK_SKIP_THRESHOLD = 50
+  const exerciseCount = manifest.counts.exercises ?? 0
+  const shouldSkipBlockSync = exerciseCount > EXERCISE_HOOK_SKIP_THRESHOLD
+  const contextRef = req.context as Record<string, unknown>
+  const priorSkipBlockSync = contextRef._skipBlockSync
+  const priorHadSkipBlockSync = '_skipBlockSync' in contextRef
+  if (shouldSkipBlockSync) {
+    contextRef._skipBlockSync = true
+    payload.logger.info(
+      { exerciseCount, threshold: EXERCISE_HOOK_SKIP_THRESHOLD },
+      '[content-promotion/import] Skipping exercise block-sync hook (large bundle); bundle already carries lesson.blocks with the correct refs',
+    )
   }
 
-  // Blob uploads happen via `payload.create({ file })` and are NOT part of
-  // the DB transaction — Vercel Blob has no rollback. Track each successful
-  // upload's URL so we can delete the orphaned binaries if the transaction
-  // later rolls back.
-  const uploadedBlobUrls: string[] = []
-
+  // No cross-doc transaction: MongoDB's transactionLifetimeLimitSeconds
+  // defaults to 60, so real-world bundles (dozens of media re-uploads plus
+  // hundreds of doc creates) reliably tripped that limit mid-flight —
+  // MongoDB aborted the session and every subsequent create bubbled up as
+  // "Transaction ... has been aborted." Losing atomicity across the whole
+  // import is the trade-off: on failure the target keeps whatever docs did
+  // land, and the caller inspects `report.perCollection[c].failures` for
+  // per-doc errors. Safe-clone semantics still guarantee no existing target
+  // doc is overwritten, and a retry of a partial import creates remapped
+  // duplicates of the completed subset (visible to the user via the report)
+  // rather than resurrecting the failure.
   try {
     for (const bundled of manifest.collections.media) {
-      const uploadedUrl = await uploadMediaWithFile(
+      const blobUploaded = await uploadMediaWithFile(
         payload,
         req,
         bundled,
@@ -321,8 +339,7 @@ export async function importContent(
         remap,
         report.perCollection.media,
       )
-      if (uploadedUrl) uploadedBlobUrls.push(uploadedUrl)
-      if (bundled.blobEntry) report.blobsUploaded += 1
+      if (blobUploaded) report.blobsUploaded += 1
     }
     for (const collection of PROMOTED_COLLECTIONS) {
       if (collection === 'media') continue
@@ -337,47 +354,17 @@ export async function importContent(
         )
       }
     }
-
-    if (transactionID && payload.db.commitTransaction) {
-      await payload.db.commitTransaction(transactionID)
-    }
   } catch (error) {
-    if (transactionID && payload.db.rollbackTransaction) {
-      // Wrap rollback in its own try/catch — if the transaction was already
-      // aborted server-side (e.g., MongoDB killed it after a write conflict),
-      // `rollbackTransaction` itself throws "Not Found"/"session not found",
-      // and an uncaught throw here would mask the real original error.
-      try {
-        await payload.db.rollbackTransaction(transactionID)
-      } catch (rollbackError) {
-        payload.logger.error(
-          { rollbackError, originalError: error },
-          '[content-promotion/import] Rollback failed (transaction likely already aborted); preserving original error',
-        )
-      }
-    }
-    if (uploadedBlobUrls.length > 0) {
-      // Best-effort cleanup of orphaned binaries. Failures here are logged
-      // but do not mask the original import error; we always rethrow.
-      const blobAdapter = getMediaBlobAdapter()
-      const results = await Promise.allSettled(
-        uploadedBlobUrls.map((url) => blobAdapter.delete(url)),
-      )
-      const failedDeletes = results.filter(
-        (r) => r.status === 'rejected' || (r.status === 'fulfilled' && r.value === false),
-      ).length
-      if (failedDeletes > 0) {
-        logger.error(
-          {
-            failedDeletes,
-            totalAttempted: uploadedBlobUrls.length,
-            transactionID,
-          },
-          'content-promotion: failed to clean up some orphaned Vercel Blob binaries after import rollback',
-        )
-      }
-    }
+    // Per-doc errors are captured on `report` without rethrowing; anything
+    // that lands here is a catastrophic failure (zip corruption after parse,
+    // Payload init failure mid-run, etc.). Surface it — the report so far
+    // is still useful context but we can't finalise a partial-success reply.
     throw error
+  } finally {
+    if (shouldSkipBlockSync) {
+      if (priorHadSkipBlockSync) contextRef._skipBlockSync = priorSkipBlockSync
+      else delete contextRef._skipBlockSync
+    }
   }
 
   for (const [key, newId] of remap.entries()) {
