@@ -1677,6 +1677,7 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- fix: Walk parent refs in content-promotion export instead of denormalized course ([#105](https://github.com/A-Guy-educ/A-Guy-Admin/pull/105)) — @aguyshayb
 - fix: Skip denormalized-populate hooks during content-promotion import ([#100](https://github.com/A-Guy-educ/A-Guy-Admin/pull/100)) — @aguyshayb
 - fix: Drop DB transaction from content-promotion import to survive real bundle sizes ([#99](https://github.com/A-Guy-educ/A-Guy-Admin/pull/99)) — @aguyshayb
 - feat: Add plain-text lesson importer alongside JSON importer ([#92](https://github.com/A-Guy-educ/A-Guy-Admin/pull/92)) — @aguyshayb
