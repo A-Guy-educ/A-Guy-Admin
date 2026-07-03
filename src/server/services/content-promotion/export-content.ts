@@ -200,10 +200,14 @@ export async function exportContent(
     exercises: [],
   }
 
-  // 1. Pull the scoped tree. Lessons and exercises both carry a denormalized
-  //    `course` field (populated by their respective beforeChange hooks) so we
-  //    can filter them by `course in [...]` directly, avoiding a chapter-join
-  //    intermediate hop.
+  // 1. Pull the scoped tree by walking the required parent refs. We used to
+  //    filter lessons and exercises directly on their denormalized `course`
+  //    field, but that field is populated by a `beforeChange` hook wrapped in
+  //    a try/catch — if the lookup ever silently failed (or the doc pre-dates
+  //    the hook), the field stays empty and the whole doc drops out of the
+  //    export. Walking chapter → lesson → exercise uses only fields Payload
+  //    marks required (chapter.course, lesson.chapter, exercise.lesson) which
+  //    can't be null in a valid doc, so no doc is silently omitted.
   const courseDocs = await fetchDocsByFilter(payload, req, 'courses', {
     field: 'id',
     ids: courseIds,
@@ -212,13 +216,19 @@ export async function exportContent(
     field: 'course',
     ids: courseIds,
   })
+  const chapterIds = chapterDocs
+    .map((c) => (c as { id?: unknown }).id)
+    .filter((id): id is string => typeof id === 'string')
   const lessonDocs = await fetchDocsByFilter(payload, req, 'lessons', {
-    field: 'course',
-    ids: courseIds,
+    field: 'chapter',
+    ids: chapterIds,
   })
+  const lessonIds = lessonDocs
+    .map((l) => (l as { id?: unknown }).id)
+    .filter((id): id is string => typeof id === 'string')
   const exerciseDocs = await fetchDocsByFilter(payload, req, 'exercises', {
-    field: 'course',
-    ids: courseIds,
+    field: 'lesson',
+    ids: lessonIds,
   })
 
   // 2. Walk for media IDs referenced by any of the scoped docs.
