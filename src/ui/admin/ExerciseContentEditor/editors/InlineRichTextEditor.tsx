@@ -136,6 +136,7 @@ export const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
         value={value.value}
         onChange={(e) => onChange({ ...value, value: e.target.value })}
         placeholder={placeholder}
+        dir="auto"
       />
 
       {value.mediaIds && value.mediaIds.length > 0 && (
