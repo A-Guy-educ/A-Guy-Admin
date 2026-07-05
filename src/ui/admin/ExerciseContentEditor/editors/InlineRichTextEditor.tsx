@@ -402,6 +402,7 @@ export const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
           value={value.value}
           onChange={(e) => updateValue(e.target.value)}
           placeholder={placeholder}
+          dir="auto"
           data-testid="rte-textarea"
         />
       ) : (
@@ -409,6 +410,7 @@ export const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
           className="inline-rich-text-preview rich-text-content"
           style={{ minHeight }}
           data-testid="rte-preview"
+          dir="auto"
         >
           {value.value.trim().length > 0 ? (
             <MathMarkdown content={value.value} />

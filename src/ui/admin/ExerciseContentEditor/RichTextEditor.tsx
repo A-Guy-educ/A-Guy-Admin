@@ -332,10 +332,11 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange 
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder="Enter markdown content..."
+          dir="auto"
           data-testid="rte-textarea"
         />
       ) : (
-        <div className="rich-text-preview rich-text-content" data-testid="rte-preview">
+        <div className="rich-text-preview rich-text-content" data-testid="rte-preview" dir="auto">
           {value.trim().length > 0 ? (
             <MathMarkdown content={value} />
           ) : (
