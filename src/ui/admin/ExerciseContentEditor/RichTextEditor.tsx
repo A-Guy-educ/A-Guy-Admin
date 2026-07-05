@@ -177,6 +177,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange 
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder="Enter markdown content..."
+        dir="auto"
       />
 
       <div className="rich-text-footer">{value.length} characters</div>
