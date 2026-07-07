@@ -293,3 +293,97 @@ describe('remarkColorSyntax - Marker Removal', () => {
     expect(container.textContent).toContain(' here}')
   })
 })
+
+// =================================================================
+// Issue #110: Toolbar palette (wine red / blue / green / dark orange),
+// text sizes, and right-align directives.
+// =================================================================
+
+describe('remarkColorSyntax - 4-color toolbar palette (Issue #110)', () => {
+  it('parses ::text-wine-red{...}', () => {
+    const { container } = renderHighlightMarkdown('::text-wine-red{wine}')
+    const span = container.querySelector('.aguy-text-wine-red')
+    expect(span).not.toBeNull()
+    expect(span?.textContent).toBe('wine')
+  })
+
+  it('parses ::text-blue{...}', () => {
+    const { container } = renderHighlightMarkdown('::text-blue{blue}')
+    const span = container.querySelector('.aguy-text-blue')
+    expect(span).not.toBeNull()
+    expect(span?.textContent).toBe('blue')
+  })
+
+  it('parses ::text-green{...}', () => {
+    const { container } = renderHighlightMarkdown('::text-green{green}')
+    const span = container.querySelector('.aguy-text-green')
+    expect(span).not.toBeNull()
+    expect(span?.textContent).toBe('green')
+  })
+
+  it('parses ::text-dark-orange{...}', () => {
+    const { container } = renderHighlightMarkdown('::text-dark-orange{dark orange}')
+    const span = container.querySelector('.aguy-text-dark-orange')
+    expect(span).not.toBeNull()
+    expect(span?.textContent).toBe('dark orange')
+  })
+
+  it('does not generate an inline style attribute for new palette tokens', () => {
+    const { container } = renderHighlightMarkdown('::text-wine-red{x}')
+    const span = container.querySelector('.aguy-text-wine-red')
+    expect(span).not.toBeNull()
+    expect(span?.getAttribute('style')).toBeNull()
+  })
+})
+
+describe('remarkColorSyntax - Text sizes (Issue #110)', () => {
+  it('parses ::text-size-small{...}', () => {
+    const { container } = renderHighlightMarkdown('::text-size-small{small text}')
+    const span = container.querySelector('.aguy-text-size-small')
+    expect(span).not.toBeNull()
+    expect(span?.textContent).toBe('small text')
+  })
+
+  it('parses ::text-size-normal{...}', () => {
+    const { container } = renderHighlightMarkdown('::text-size-normal{normal text}')
+    const span = container.querySelector('.aguy-text-size-normal')
+    expect(span).not.toBeNull()
+    expect(span?.textContent).toBe('normal text')
+  })
+
+  it('parses ::text-size-large{...}', () => {
+    const { container } = renderHighlightMarkdown('::text-size-large{large text}')
+    const span = container.querySelector('.aguy-text-size-large')
+    expect(span).not.toBeNull()
+    expect(span?.textContent).toBe('large text')
+  })
+
+  it('parses ::text-size-xlarge{...}', () => {
+    const { container } = renderHighlightMarkdown('::text-size-xlarge{xlarge text}')
+    const span = container.querySelector('.aguy-text-size-xlarge')
+    expect(span).not.toBeNull()
+    expect(span?.textContent).toBe('xlarge text')
+  })
+
+  it('leaves unknown text-size-* tokens as literal text', () => {
+    const { container } = renderHighlightMarkdown('::text-size-huge{big}')
+    expect(container.querySelector('.aguy-text-size-huge')).toBeNull()
+    expect(container.textContent).toContain('::text-size-huge{big}')
+  })
+})
+
+describe('remarkColorSyntax - Right-align directive (Issue #110)', () => {
+  it('parses ::text-align-right{...} as a block-level element with aguy-text-align-right class', () => {
+    const { container } = renderHighlightMarkdown('::text-align-right{right text}')
+    const alignEl = container.querySelector('.aguy-text-align-right')
+    expect(alignEl).not.toBeNull()
+    expect(alignEl?.textContent).toBe('right text')
+  })
+
+  it('preserves Hebrew content within ::text-align-right{...}', () => {
+    const { container } = renderHighlightMarkdown('::text-align-right{שלום עולם}')
+    const alignEl = container.querySelector('.aguy-text-align-right')
+    expect(alignEl).not.toBeNull()
+    expect(alignEl?.textContent).toBe('שלום עולם')
+  })
+})

@@ -2,12 +2,20 @@
  * @fileType utility
  * @domain ui
  * @pattern remark-plugin
- * @ai-summary Simplified remark plugin to transform ::text-highlight-N{text} syntax (single-node only)
+ * @ai-summary Remark plugin that transforms ::token{text} inline directives into spans.
+ *
+ * Supported token categories:
+ *   - text-highlight-1 .. text-highlight-8 (legacy 8-color palette)
+ *   - text-wine-red, text-blue, text-green, text-dark-orange (4-color toolbar palette)
+ *   - text-size-small, text-size-normal, text-size-large, text-size-xlarge (font sizes)
+ *   - text-align-right (RTL/right alignment for Hebrew-friendly content)
+ *
+ * All directives follow the syntax ::token{content} where the opening marker and
+ * the FIRST closing brace must exist within the same text node. Content with
+ * braces is truncated at the first closing brace (same behavior as before).
  */
 
 import { visit } from 'unist-util-visit'
-
-// Local type definitions for mdast nodes (to avoid adding new dependencies)
 
 interface Node {
   type: string
@@ -23,43 +31,9 @@ interface Text extends Node {
   value: string
 }
 
-type PhrasingContent = Text | HighlightTextNode
-
-interface Root extends Parent {
-  type: 'root'
-  children: Node[]
-}
-
-/**
- * Whitelisted highlight tokens that are allowed for rendering.
- * Any token not in this list will be rendered as literal text.
- */
-const ALLOWED_HIGHLIGHTS = [
-  'text-highlight-1',
-  'text-highlight-2',
-  'text-highlight-3',
-  'text-highlight-4',
-  'text-highlight-5',
-  'text-highlight-6',
-  'text-highlight-7',
-  'text-highlight-8',
-] as const
-type AllowedHighlight = (typeof ALLOWED_HIGHLIGHTS)[number]
-
-/**
- * Check if a string is a whitelisted highlight token.
- */
-function isAllowedHighlight(token: string): token is AllowedHighlight {
-  return ALLOWED_HIGHLIGHTS.includes(token as AllowedHighlight)
-}
-
-/**
- * Custom mdast node for highlighted text with hast data.
- * The data.hName and data.hProperties will be used by remark-rehype.
- */
-interface HighlightTextNode extends Parent {
-  type: 'highlightText'
-  children: PhrasingContent[]
+interface BaseSpan extends Parent {
+  type: 'inlineSpan'
+  children: (Text | BaseSpan)[]
   data: {
     hName: 'span'
     hProperties: {
@@ -68,44 +42,86 @@ interface HighlightTextNode extends Parent {
   }
 }
 
+interface AlignSpan extends Parent {
+  type: 'inlineSpan'
+  children: (Text | BaseSpan)[]
+  data: {
+    hName: 'div'
+    hProperties: {
+      className: string[]
+    }
+  }
+}
+
+interface Root extends Parent {
+  type: 'root'
+  children: Node[]
+}
+
 /**
- * Simplified remark plugin to transform ::text-highlight-N{text} syntax.
+ * Whitelisted directive tokens. Tokens are grouped by category so that the
+ * renderer can produce the correct output element/class:
+ *   - color: text-highlight-1..8 (legacy) and the four named palette colors
+ *   - size:  text-size-{small,normal,large,xlarge}
+ *   - align: text-align-right (emits a block-level div)
+ */
+const COLOR_TOKENS = [
+  'text-highlight-1',
+  'text-highlight-2',
+  'text-highlight-3',
+  'text-highlight-4',
+  'text-highlight-5',
+  'text-highlight-6',
+  'text-highlight-7',
+  'text-highlight-8',
+  'text-wine-red',
+  'text-blue',
+  'text-green',
+  'text-dark-orange',
+] as const
+
+const SIZE_TOKENS = [
+  'text-size-small',
+  'text-size-normal',
+  'text-size-large',
+  'text-size-xlarge',
+] as const
+
+const ALIGN_TOKENS = ['text-align-right'] as const
+
+type ColorToken = (typeof COLOR_TOKENS)[number]
+type SizeToken = (typeof SIZE_TOKENS)[number]
+type AlignToken = (typeof ALIGN_TOKENS)[number]
+type AllowedToken = ColorToken | SizeToken | AlignToken
+
+const ALL_TOKENS: readonly AllowedToken[] = [...COLOR_TOKENS, ...SIZE_TOKENS, ...ALIGN_TOKENS]
+
+const TOKEN_PATTERN =
+  /::(text-(?:highlight-[1-8]|wine-red|blue|green|dark-orange|size-(?:small|normal|large|xlarge)|align-right))\{/
+
+function isAllowedToken(token: string): token is AllowedToken {
+  return (ALL_TOKENS as readonly string[]).includes(token)
+}
+
+function isColorToken(token: AllowedToken): token is ColorToken {
+  return (COLOR_TOKENS as readonly AllowedToken[]).includes(token)
+}
+
+function isSizeToken(token: AllowedToken): token is SizeToken {
+  return (SIZE_TOKENS as readonly AllowedToken[]).includes(token)
+}
+
+function isAlignToken(token: AllowedToken): token is AlignToken {
+  return (ALIGN_TOKENS as readonly AllowedToken[]).includes(token)
+}
+
+/**
+ * Transform ::token{...} inline directives into spans (color, size) or a
+ * block-level div (align).
  *
- * IMPORTANT: This plugin ONLY transforms syntax when BOTH the opening marker
- * ::text-highlight-N{ and the matching closing } exist within the SAME text node.
- *
- * If the opening and closing are not in the same text node (e.g., because
- * markdown parsing created separate nodes for bold, italic, etc.), the text
- * is left unchanged as literal text.
- *
- * WHAT IT DOES:
- * - Parses ::text-highlight-1{...} through ::text-highlight-8{...} syntax
- * - ONLY when opening and closing exist in same text node
- * - Splits text node into: [before, content, after]
- * - Emits: [beforeText?, highlightTextNode(content), afterText?]
- * - Recursively processes afterText for multiple highlights
- *
- * WHAT IT DOESN'T DO:
- * - Does NOT scan across multiple nodes
- * - Does NOT support nested markdown (bold, italic, etc.) inside highlights
- * - If closing brace not in same node, leaves node untouched
- *
- * SCOPE:
- * - Transforms in paragraphs, headings, and list items
- * - Does NOT transform in code blocks, tables, etc.
- *
- * SECURITY:
- * - Only whitelisted tokens (text-highlight-1 through 8) are transformed
- * - Uses data.hName and data.hProperties (safe remark-rehype directives)
- * - No raw HTML, only CSS classes
- *
- * @example Works (same node)
- * Input:  "This is ::text-highlight-1{important} text"
- * Output: <p>This is <span class="aguy-text-highlight-1">important</span> text</p>
- *
- * @example Doesn't work (cross-node)
- * Input:  "::text-highlight-1{**bold**}" (bold creates separate nodes)
- * Output: <p>::text-highlight-1{<strong>bold</strong>}</p> (literal text)
+ * IMPORTANT: Only transforms when the opening marker and the FIRST closing
+ * brace are in the SAME text node. Cross-node markers (created by markdown
+ * parsing for bold/italic/code/link) are left as literal text.
  */
 export function remarkColorSyntax() {
   return (tree: Root) => {
@@ -119,17 +135,49 @@ export function remarkColorSyntax() {
   }
 }
 
-/**
- * Transform children nodes to handle highlight syntax within single text nodes.
- *
- * @param children - Array of child nodes to process
- * @returns Transformed array of nodes
- */
+function buildColorNode(token: ColorToken, content: Text): BaseSpan {
+  return {
+    type: 'inlineSpan',
+    children: [content],
+    data: {
+      hName: 'span',
+      hProperties: {
+        className: [`aguy-${token}`],
+      },
+    },
+  }
+}
+
+function buildSizeNode(token: SizeToken, content: Text): BaseSpan {
+  return {
+    type: 'inlineSpan',
+    children: [content],
+    data: {
+      hName: 'span',
+      hProperties: {
+        className: [`aguy-${token}`],
+      },
+    },
+  }
+}
+
+function buildAlignNode(token: AlignToken, content: Text): AlignSpan {
+  return {
+    type: 'inlineSpan',
+    children: [content],
+    data: {
+      hName: 'div',
+      hProperties: {
+        className: [`aguy-${token}`],
+      },
+    },
+  }
+}
+
 function transformChildren(children: Node[]): Node[] {
   const result: Node[] = []
 
   for (const node of children) {
-    // Only process text nodes
     if (node.type !== 'text') {
       result.push(node)
       continue
@@ -138,11 +186,8 @@ function transformChildren(children: Node[]): Node[] {
     const textNode = node as Text
     const text = textNode.value
 
-    // Look for opening marker ::text-highlight-N{
-    const markerMatch = text.match(/::(text-highlight-[1-8])\{/)
-
+    const markerMatch = text.match(TOKEN_PATTERN)
     if (!markerMatch) {
-      // No marker found, keep node as-is
       result.push(node)
       continue
     }
@@ -151,26 +196,19 @@ function transformChildren(children: Node[]): Node[] {
     const markerIndex = markerMatch.index!
     const markerEnd = markerIndex + markerMatch[0].length
 
-    // Only process whitelisted tokens
-    if (!isAllowedHighlight(token)) {
+    if (!isAllowedToken(token)) {
       result.push(node)
       continue
     }
 
-    // Look for FIRST closing brace in the SAME text node
-    // We take the first } we find - no brace depth tracking needed
     const textAfterMarker = text.substring(markerEnd)
     const closingIndex = textAfterMarker.indexOf('}')
 
     if (closingIndex === -1) {
-      // No closing brace in same node - leave untouched (no partial edits)
       result.push(node)
       continue
     }
 
-    // Both opening and closing found in same node - transform it!
-
-    // 1. Text before marker (if any)
     if (markerIndex > 0) {
       result.push({
         type: 'text',
@@ -178,29 +216,19 @@ function transformChildren(children: Node[]): Node[] {
       } as Text)
     }
 
-    // 2. Content between markers
     const content = textAfterMarker.substring(0, closingIndex)
-    const highlightNode: HighlightTextNode = {
-      type: 'highlightText',
-      children: [
-        {
-          type: 'text',
-          value: content,
-        } as Text,
-      ],
-      data: {
-        hName: 'span',
-        hProperties: {
-          className: [`aguy-${token}`],
-        },
-      },
-    }
-    result.push(highlightNode as Node)
+    const contentNode: Text = { type: 'text', value: content }
 
-    // 3. Text after closing brace (if any)
+    if (isColorToken(token)) {
+      result.push(buildColorNode(token, contentNode) as Node)
+    } else if (isSizeToken(token)) {
+      result.push(buildSizeNode(token, contentNode) as Node)
+    } else if (isAlignToken(token)) {
+      result.push(buildAlignNode(token, contentNode) as Node)
+    }
+
     const textAfterClosing = textAfterMarker.substring(closingIndex + 1)
     if (textAfterClosing) {
-      // Recursively process in case there are more highlights
       const remainingNodes = transformChildren([{ type: 'text', value: textAfterClosing } as Text])
       result.push(...remainingNodes)
     }

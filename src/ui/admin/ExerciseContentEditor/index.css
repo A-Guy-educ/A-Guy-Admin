@@ -280,6 +280,235 @@
   background: hsl(var(--text-highlight-8));
 }
 
+/* Toolbar palette swatches (4-color toolbar palette) */
+.color-option--wine-red {
+  background: hsl(var(--text-highlight-1));
+}
+
+.color-option--blue {
+  background: hsl(var(--text-highlight-5));
+}
+
+.color-option--green {
+  background: hsl(var(--text-highlight-4));
+}
+
+.color-option--dark-orange {
+  background: hsl(var(--text-highlight-2));
+}
+
+.toolbar-color-swatch {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1px solid var(--theme-elevation-200, transparent);
+  vertical-align: middle;
+}
+
+.toolbar-color-swatch--wine-red {
+  background: hsl(var(--text-highlight-1));
+}
+
+.toolbar-color-swatch--blue {
+  background: hsl(var(--text-highlight-5));
+}
+
+.toolbar-color-swatch--green {
+  background: hsl(var(--text-highlight-4));
+}
+
+.toolbar-color-swatch--dark-orange {
+  background: hsl(var(--text-highlight-2));
+}
+
+.toolbar-button--color {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.toolbar-size-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 2px;
+}
+
+.toolbar-button--size {
+  min-width: 28px;
+  font-weight: 600;
+  font-size: 0.75rem;
+}
+
+.toolbar-spacer {
+  flex: 1 1 auto;
+  min-width: 0.5rem;
+}
+
+.toolbar-button--mode {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.375rem 0.625rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--theme-elevation-700, currentColor);
+  border: 1px solid transparent;
+  border-radius: 4px;
+}
+
+.toolbar-button--mode:hover {
+  background: var(--theme-elevation-100, transparent);
+}
+
+.toolbar-button--mode.toolbar-button--active {
+  background: var(--theme-elevation-200, transparent);
+  border-color: var(--theme-elevation-300, transparent);
+}
+
+.toolbar-button-label {
+  display: inline-block;
+  margin-left: 0.125rem;
+}
+
+.toolbar-mode-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--theme-elevation-700, currentColor);
+}
+
+.rich-text-toolbar--view,
+.inline-rich-text-toolbar--view {
+  background: var(--theme-elevation-100, transparent);
+}
+
+.rich-text-preview,
+.inline-rich-text-preview {
+  width: 100%;
+  min-height: 200px;
+  padding: 1rem;
+  border: none;
+  background: var(--theme-elevation-0, transparent);
+  color: var(--theme-elevation-1000, currentColor);
+}
+
+.inline-rich-text-preview {
+  min-height: 80px;
+  padding: 0.75rem;
+}
+
+.rich-text-preview-empty,
+.inline-rich-text-preview-empty {
+  color: var(--theme-elevation-400, currentColor);
+  font-style: italic;
+}
+
+/* Rendered output classes for inline directives */
+.aguy-text-wine-red {
+  background-color: hsl(var(--text-highlight-1) / 0.25);
+  color: hsl(var(--text-highlight-1));
+  padding: 0 2px;
+  border-radius: 2px;
+}
+
+.aguy-text-blue {
+  background-color: hsl(var(--text-highlight-5) / 0.25);
+  color: hsl(var(--text-highlight-5));
+  padding: 0 2px;
+  border-radius: 2px;
+}
+
+.aguy-text-green {
+  background-color: hsl(var(--text-highlight-4) / 0.25);
+  color: hsl(var(--text-highlight-4));
+  padding: 0 2px;
+  border-radius: 2px;
+}
+
+.aguy-text-dark-orange {
+  background-color: hsl(var(--text-highlight-2) / 0.25);
+  color: hsl(var(--text-highlight-2));
+  padding: 0 2px;
+  border-radius: 2px;
+}
+
+.aguy-text-size-small {
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+.aguy-text-size-normal {
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.aguy-text-size-large {
+  font-size: 1.25rem;
+  line-height: 1.45;
+}
+
+.aguy-text-size-xlarge {
+  font-size: 1.5rem;
+  line-height: 1.4;
+  font-weight: 500;
+}
+
+.aguy-text-align-right {
+  text-align: right;
+  direction: rtl;
+  unicode-bidi: isolate;
+}
+
+/* Legacy 8-color highlight classes (kept for backward compatibility) */
+.aguy-text-highlight-1,
+.aguy-text-highlight-2,
+.aguy-text-highlight-3,
+.aguy-text-highlight-4,
+.aguy-text-highlight-5,
+.aguy-text-highlight-6,
+.aguy-text-highlight-7,
+.aguy-text-highlight-8 {
+  padding: 0 2px;
+  border-radius: 2px;
+}
+
+.aguy-text-highlight-1 {
+  background-color: hsl(var(--text-highlight-1) / 0.2);
+}
+
+.aguy-text-highlight-2 {
+  background-color: hsl(var(--text-highlight-2) / 0.2);
+}
+
+.aguy-text-highlight-3 {
+  background-color: hsl(var(--text-highlight-3) / 0.2);
+}
+
+.aguy-text-highlight-4 {
+  background-color: hsl(var(--text-highlight-4) / 0.2);
+}
+
+.aguy-text-highlight-5 {
+  background-color: hsl(var(--text-highlight-5) / 0.2);
+}
+
+.aguy-text-highlight-6 {
+  background-color: hsl(var(--text-highlight-6) / 0.2);
+}
+
+.aguy-text-highlight-7 {
+  background-color: hsl(var(--text-highlight-7) / 0.2);
+}
+
+.aguy-text-highlight-8 {
+  background-color: hsl(var(--text-highlight-8) / 0.2);
+}
+
 .rich-text-textarea {
   width: 100%;
   min-height: 200px;
