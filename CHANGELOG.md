@@ -1677,6 +1677,7 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- #110: Exercise Content Editor toolbar: add RTL align, 4 text sizes, 4 h… ([#111](https://github.com/A-Guy-educ/A-Guy-Admin/pull/111)) — @kodyade[bot]
 - #114: [UI] Align text block editing input to the right (RTL support) ([#115](https://github.com/A-Guy-educ/A-Guy-Admin/pull/115)) — @kodyade[bot]
 - fix: Walk parent refs in content-promotion export instead of denormalized course ([#105](https://github.com/A-Guy-educ/A-Guy-Admin/pull/105)) — @aguyshayb
 - fix: Skip denormalized-populate hooks during content-promotion import ([#100](https://github.com/A-Guy-educ/A-Guy-Admin/pull/100)) — @aguyshayb
