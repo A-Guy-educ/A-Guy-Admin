@@ -59,7 +59,6 @@ async function createLessonHierarchy(payload: Payload) {
       order: 0,
       categories: [category.id],
       tenant,
-      pageAccessType: 'free',
       accessType: 'free',
       contentStatus: 'none',
       contentStatusVisible: true,

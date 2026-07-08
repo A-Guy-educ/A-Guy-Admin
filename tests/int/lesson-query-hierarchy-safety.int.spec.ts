@@ -96,7 +96,6 @@ describe('Lesson/Chapter query hierarchy safety (bug reproduction)', () => {
         status: 'published',
         isActive: true,
         tenant: tenantId,
-        pageAccessType: 'free',
         accessType: 'free',
         contentStatus: 'none',
         contentStatusVisible: true,
@@ -153,7 +152,6 @@ describe('Lesson/Chapter query hierarchy safety (bug reproduction)', () => {
         status: 'published',
         isActive: true,
         tenant: tenantId,
-        pageAccessType: 'free',
         accessType: 'free',
         contentStatus: 'none',
         contentStatusVisible: true,
@@ -210,7 +208,6 @@ describe('Lesson/Chapter query hierarchy safety (bug reproduction)', () => {
         status: 'draft', // <-- DRAFT
         isActive: true,
         tenant: tenantId,
-        pageAccessType: 'free',
         accessType: 'free',
         contentStatus: 'none',
         contentStatusVisible: true,

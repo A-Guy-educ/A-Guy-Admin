@@ -94,7 +94,6 @@ describe('process-duplications stuck record auto-fail — integration', () => {
         status: 'published',
         isActive: true,
         tenant: tenantId,
-        pageAccessType: 'free',
         accessType: 'free',
         contentStatus: 'none',
         contentStatusVisible: true,

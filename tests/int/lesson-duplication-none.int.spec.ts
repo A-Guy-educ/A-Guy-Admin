@@ -65,7 +65,6 @@ describe('Lesson duplication — none (deep clone)', () => {
         status: 'published',
         isActive: true,
         tenant: tenantId,
-        pageAccessType: 'free',
         accessType: 'free',
         contentStatus: 'none',
         contentStatusVisible: true,
