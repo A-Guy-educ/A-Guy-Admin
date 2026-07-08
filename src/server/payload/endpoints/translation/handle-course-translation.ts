@@ -67,7 +67,6 @@ export async function handleCourseTranslation(
         order: source.order,
         status: 'published',
         isActive: true,
-        pageAccessType: source.pageAccessType,
         accessType: source.accessType,
         categories: Array.isArray(source.categories)
           ? source.categories.map((c: unknown) =>
