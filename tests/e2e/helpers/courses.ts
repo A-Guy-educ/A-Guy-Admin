@@ -100,7 +100,6 @@ export async function seedTestCourseData(): Promise<TestCourseData | null> {
         order: 0,
         categories: [category.id],
         tenant: tenantId,
-        pageAccessType: 'free',
         accessType: 'free',
         contentStatus: 'none',
         contentStatusVisible: true,

@@ -159,7 +159,6 @@ describe('Lesson duplication orchestrator — level=none fast path', () => {
         status: 'published',
         isActive: true,
         tenant: tenantId,
-        pageAccessType: 'free',
         accessType: 'free',
         contentStatus: 'none',
         contentStatusVisible: true,

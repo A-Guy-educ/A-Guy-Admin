@@ -61,7 +61,6 @@ describe('Lesson duplication endpoint — queues orchestrator job for non-none l
         status: 'published',
         isActive: true,
         tenant: tenantId,
-        pageAccessType: 'free',
         accessType: 'free',
         contentStatus: 'none',
         contentStatusVisible: true,
