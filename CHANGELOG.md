@@ -1,5 +1,103 @@
 # Changelog
 
+## v0.26.0 — 2026-07-09
+
+### Features
+- Wire product purchases to time-limited Enrollments (Task B / #75) (e11f21fa6)
+- Enforce ai-questions / chat-limit daily quotas from featureEntitlements (Task C / #76) (c1a1705a3)
+- Add product duration, course bundles, and rate-limited features (9b14fb329)
+- Add content promotion export/import between environments (6252e8f0f)
+- Scope content promotion export to selected courses (a66596d6f)
+- Skip exercise block-sync hook on large content-promotion imports (3fb741696)
+- Wire @payloadcms/email-resend so admin can send purchase receipts (7ba7288f9)
+- Add Stripe and PayPal provider choice buttons at checkout (d3c285820)
+- Add plain-text lesson importer alongside JSON importer (20a81c4d6)
+- Add bulk JSON importer for lessons and exercises (4b7cd0556)
+- Add lesson intro prerequisites (30c8a65a7)
+- Add mobile chat FAB with bottom panel on lesson pages (e733844b3, 427cb68af)
+- Add RTL align, 4 sizes, 4 highlight colors, view/edit toggle to Exercise Content Editor toolbar (#111) (68367e7ef)
+- Align text block editing input to the right (RTL support) (#115) (460e2d22a)
+- Remove pageAccessType from courses; always require registration (#128) (b8f4d5eab)
+- Show app version in admin dashboard footer (e8b9a0731)
+- Add account.purchases i18n keys to brand messages (08347d4bf)
+- Add dev-ci-health duty to auto-fix broken dev CI (e69e41047)
+- Gate dev-ci-health auto-fix on duty trust (5720c4822)
+- Stamp QA recs with kody-duty for per-duty trust (fbc93a670)
+
+### Fixes
+- (payments) Serialize errors so payload.logger actually shows them (728e240a5)
+- (payments) Make payment env validation provider-aware (0bbf3db44)
+- (paypal) Capture PayPal order on /checkout/success (5e011026b)
+- (paypal) Drop Stripe-only placeholder from PayPal return_url (f4f72dc0c)
+- (checkout/success) Accept PayPal token alongside Stripe session_id (55b4c3cc3)
+- (coupons) Accept fixed discounts in shekels, not agorot (bb6f68aab)
+- (security) Prevent log injection in pdf-to-exercises job error logging (#2275) (03ac74a49)
+- Partition auth and locale cookies for cross-origin iframe previews (4820e0a22)
+- Mirror partitioned attribute on cookie deletes (8f91a2a5a)
+- Serve admin CSP from middleware (38eb91047)
+- Add gravatar.com to img-src CSP directive for admin routes (9d7c79df4)
+- Allow *.gravatar.com subdomains in admin img-src (6761cc939)
+- (api) Handle NotFound from payload.findByID in transaction refund route (e91c98eeb, 7d2088f62)
+- Add /api/admin/recent-transactions endpoint to replace broken widget fetch (542f05c3c)
+- (users) Remove required constraint from read-only transactionId fields (eb15d34c0)
+- (entitlements) Remove required constraint from read-only transactionId fields (1cd03dbda)
+- Preserve admin auth in embedded views (6ed6e18f8)
+- Accept form-encoded admin login requests (779f9baea)
+- Return null from AdminBar for unauthenticated users to fix white strip in dark mode (d1dd097c0)
+- Add autosave to LessonBlocksField delete operations (ab1ca4e1b)
+- Support full HTML lesson blocks (e5620d545)
+- (chat) Make FAB toggle chat and lift sparkle button with it (e6383710c)
+- (chat) Remove artificial 100ms delay in useNotebookChat loading state (c486a26c8)
+- (MobileChatFAB) Use RTL-aware positioning (adb4f56ed)
+- (health-badge) Read 'version' field from /api/health response (cd09a5acd)
+- Add relative overflow-hidden to login/signup page wrappers (d1c502755)
+- Resolve product item titles at depth 2 in queryProductBySlug (e943abda4)
+- Walk parent refs in content-promotion export instead of denormalized course (8abb8408b)
+- Skip denormalized-populate hooks during content-promotion import (99c1ce477)
+- Drop DB transaction wrap from content-promotion import (93e447dd7)
+- Preserve filename and mimeType on media export (9f3f28a94)
+- Skip non-external media without binaries on export and import (caf16bdc1)
+- (JSON importer) Drop idempotencyKey to avoid Mongo unique collision (786d710cb)
+- (JSON importer) Force default tenant and surface per-exercise errors (38eb91047)
+- (JSON importer) Omit tenant on create so tenantField beforeValidate auto-fills (03b82edfa)
+- (JSON importer) Write lesson.blocks playlist once, not per exercise (2e42d8b39)
+- (JSON importer) Rollback lesson + exercises on partial import failure (6324ad6c5)
+- (JSON importer) Plumb req through, fix order collision, abort search (09f9139ee)
+- (text importer) Align section-header dashes and drop dead fields (c7dba25ba)
+- (text importer) Harden MCQ + free-response building (3d1556c2d)
+- (lesson-duplication) Handle pass-2 array shape + geometry answer.kind drift (1e2c7ab50)
+- (lesson-duplication) Batch lesson.blocks update after deep-clone (79e959fe3)
+- (lesson-duplication) Bump per-call LLM timeout from 300s to 600s (aae35ff86)
+- (lesson-duplication) Strip unknown keys + migrate answer.rubric in sanitizer (50ce1e8a8)
+- (lesson-duplication) Log Zod validation errors when variation save fails (96595d2f4)
+- (lesson-duplication) Drop pass-1 outputJsonSchema (1faf49120)
+- (llm) Preserve raw provider error on rate-limit + skip breaker on rate-limit (ee7f1d512)
+- Detect Enrollment unique-index collision via re-find, not E11000 pattern (2cd16d34a)
+- Drop duplicate/malformed records on import + stop rollback masking errors (1531a423e)
+- Regenerate stale payload-types.ts (12150ecb4)
+
+### Performance
+- Move dashboard widgets off /admin landing into /admin/statistics (d0d0ad935)
+- Stop write-on-read backfill + trim heavy list-search joins (16956d742)
+
+### Refactoring
+- Replace ProductItems with inline content blocks + Features catalog (9b3b0d86d)
+- (kody) Rely on Store duties and executables (923608b2d)
+- (duties) Move dev-ci-health to locked-toolbox mode (4a5b9c7be)
+
+### Docs
+- Update admin-components README for PR #2108 inline exercise editing (b1a634307, 0b7b3dd35)
+- Update admin-components README with CouponEditView from PR #2115 (af0fe8969, b5c525a81)
+- Update exercises README to reflect block-based model after PR #2154 (3e8e669bf, cf13f29ac)
+- Add HtmlBlock to block types table with security model note (81f18fb0a, e77c6937a)
+- Add @ai-summary headers to src/server/api and src/infra/utils modules (3b1a329ad, 2bd2ddd90, 322d4bfc5)
+- Save repo analysis memory (a6c1ee9bd)
+
+### Notes
+- **New env vars required in Vercel production before deploy:** `RESEND_API_KEY`, `RESEND_FROM_ADDRESS`, `RESEND_FROM_NAME` (purchase receipts silently no-op without them).
+- Dependency changes: added `@payloadcms/email-resend@3.73.0` and `jszip@^3.10.1`; removed `next-sitemap` (with its `postbuild` script).
+- Also includes ~50 CI/tooling fixes and ~350 chore commits (QA markers, Kody duty runs, job-gap reports).
+
 ## v0.25.10 — 2026-05-29
 
 ### Features
