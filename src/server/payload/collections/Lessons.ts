@@ -9,6 +9,7 @@ import { contentStatusFields } from '../fields/contentStatus'
 import { createdByField } from '../fields/createdBy'
 import { formatSlug, formatSlugAsync } from '../fields/formatSlug'
 import { translatedFromField } from '../fields/translatedFrom'
+import { isContentPromotionImportRequest } from '@/server/services/content-promotion/import-context'
 
 // Type for visibleRenderers field data
 type VisibleRenderersData = {
@@ -52,6 +53,11 @@ const formatLabelPart = (...parts: Array<string | null | undefined>) =>
   ].join(' ')
 
 const computeLessonAdminTitle: CollectionBeforeChangeHook = async ({ data, originalDoc, req }) => {
+  // Bundle carries `adminTitle` verbatim from the source, so the two
+  // findByID calls below (chapter + course) are pure overhead during
+  // content-promotion imports.
+  if (isContentPromotionImportRequest(req)) return data
+
   const lessonData = data as LessonAdminTitleData
   const originalLesson = originalDoc as LessonAdminTitleData | undefined
   const title = lessonData?.title ?? originalLesson?.title
@@ -218,6 +224,13 @@ export const Lessons: CollectionConfig = {
       async ({ data, operation, originalDoc, req }) => {
         if (!data) return data
 
+        // Content-promotion imports carry the source's slug verbatim — the
+        // find-loop below is a full Mongo query per lesson (up to 100 on
+        // collision), which alone eats ~30s on a 53-lesson course over
+        // Atlas via Vercel. Mongo's unique index on `slug` still catches
+        // any actual collision at insert time; we just skip the pre-check.
+        if (isContentPromotionImportRequest(req)) return data
+
         const title = data.title
         const titleChanged = operation === 'update' && title && title !== originalDoc?.title
 
@@ -273,6 +286,9 @@ export const Lessons: CollectionConfig = {
       },
       // Auto-populate course from chapter -> course
       async ({ data, req }) => {
+        // Bundle already carries the denormalized `course` field on every
+        // lesson — see rationale on the exercise-hook skip.
+        if (isContentPromotionImportRequest(req)) return data
         if (data?.chapter) {
           try {
             const chapterId = typeof data.chapter === 'string' ? data.chapter : data.chapter?.id

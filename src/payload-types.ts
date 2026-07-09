@@ -642,10 +642,6 @@ export interface Course {
    */
   isActive: boolean;
   /**
-   * Controls access to the course page itself (study/practice view). "Gated" shows a sign-in prompt after a configurable delay.
-   */
-  pageAccessType: 'free' | 'mandatory' | 'gated' | 'paid';
-  /**
    * Default access type for lessons in this course. Lessons can override with their own setting.
    */
   accessType: 'free' | 'mandatory' | 'gated' | 'paid';
@@ -4050,7 +4046,6 @@ export interface CoursesSelect<T extends boolean = true> {
   order?: T;
   status?: T;
   isActive?: T;
-  pageAccessType?: T;
   accessType?: T;
   categories?: T;
   prompt?: T;

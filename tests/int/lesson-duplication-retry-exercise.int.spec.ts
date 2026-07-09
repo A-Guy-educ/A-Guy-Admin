@@ -71,7 +71,6 @@ describe('Lesson duplication — retry-exercise endpoint', () => {
         status: 'published',
         isActive: true,
         tenant: tenantId,
-        pageAccessType: 'free',
         accessType: 'free',
         contentStatus: 'none',
         contentStatusVisible: true,

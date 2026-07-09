@@ -13,6 +13,7 @@ import { generateSlug, validateSlugUniqueness } from './hooks'
 import { enforceContentStructure } from './hooks/enforceContentStructure'
 import { ContentSchema } from './schemas'
 import { addBlockToLesson, removeBlockFromLesson } from '../../hooks/lessons/syncLessonBlocks'
+import { isContentPromotionImportRequest } from '@/server/services/content-promotion/import-context'
 
 /**
  * Access control - Exercise-specific
@@ -58,6 +59,13 @@ const exerciseHooks: CollectionConfig['hooks'] = {
     enforceContentStructure,
     // Auto-populate course from lesson -> chapter -> course
     async ({ data, req }) => {
+      // Content-promotion imports carry `chapter` and `course` on every
+      // exercise in the bundle (exported at depth: 0 with the denormalized
+      // fields intact), so re-deriving them here would cost two extra
+      // Mongo round trips per exercise for no data gain — 452 unnecessary
+      // trips on a 226-exercise course, ~4 minutes on Atlas via Vercel.
+      // See src/server/services/content-promotion/import-content.ts.
+      if (isContentPromotionImportRequest(req)) return data
       if (data?.lesson) {
         try {
           const lessonId = typeof data.lesson === 'string' ? data.lesson : data.lesson?.id

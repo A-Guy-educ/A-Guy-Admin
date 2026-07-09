@@ -97,5 +97,5 @@ latex_examples/
 .kody/qa-reports/
 .playwright-mcp/
 
-# Kody runtime/state now lives in configured kody-state repo.
+# Kody runtime/state and authored model assets live in configured kody-state repo.
 .kody/

@@ -9,7 +9,7 @@
 
 import type { CollectionConfig } from 'payload'
 
-import { DEFAULT_ACCESS_TYPE, DEFAULT_PAGE_ACCESS_TYPE } from '@/server/constants/access-types'
+import { DEFAULT_ACCESS_TYPE } from '@/server/constants/access-types'
 import { contentLocaleField } from '@/server/payload/fields/contentLocale'
 import { tenantField } from '@/server/payload/fields/tenant'
 import { adminOnly } from '../access/adminOnly'
@@ -157,23 +157,6 @@ export const Courses: CollectionConfig = {
       defaultValue: true,
       admin: {
         description: 'Whether this course is currently active',
-      },
-    },
-    {
-      name: 'pageAccessType',
-      type: 'select',
-      required: true,
-      defaultValue: DEFAULT_PAGE_ACCESS_TYPE,
-      options: [
-        { label: 'Free Access', value: 'free' },
-        { label: 'Require Registration', value: 'mandatory' },
-        { label: 'Gated (5-Minute Delay)', value: 'gated' },
-        { label: 'Paid (Requires Entitlement)', value: 'paid' },
-      ],
-      admin: {
-        position: 'sidebar',
-        description:
-          'Controls access to the course page itself (study/practice view). "Gated" shows a sign-in prompt after a configurable delay.',
       },
     },
     {
