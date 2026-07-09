@@ -1775,6 +1775,7 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- chore: release v0.26.0 ([#132](https://github.com/A-Guy-educ/A-Guy-Admin/pull/132)) — @aguyshayb
 - #127: Remove pageAccessType field from Course; always require registrat… ([#128](https://github.com/A-Guy-educ/A-Guy-Admin/pull/128)) — @kodyade[bot]
 - #110: Exercise Content Editor toolbar: add RTL align, 4 text sizes, 4 h… ([#111](https://github.com/A-Guy-educ/A-Guy-Admin/pull/111)) — @kodyade[bot]
 - #114: [UI] Align text block editing input to the right (RTL support) ([#115](https://github.com/A-Guy-educ/A-Guy-Admin/pull/115)) — @kodyade[bot]
