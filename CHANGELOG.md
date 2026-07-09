@@ -1775,6 +1775,8 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+## [v0.26.0] - 2026-07-09
+
 - promote: dev -> main (v0.26.0) ([#133](https://github.com/A-Guy-educ/A-Guy-Admin/pull/133)) — @aguyshayb
 - chore: release v0.26.0 ([#132](https://github.com/A-Guy-educ/A-Guy-Admin/pull/132)) — @aguyshayb
 - #127: Remove pageAccessType field from Course; always require registrat… ([#128](https://github.com/A-Guy-educ/A-Guy-Admin/pull/128)) — @kodyade[bot]
