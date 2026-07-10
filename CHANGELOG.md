@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.26.1 — 2026-07-10
+
+### Fixes
+- (tenant) Backfill required tenant on update, not just create — unblocks PayPal `PAYMENT.CAPTURE.COMPLETED` webhook and every other `payload.update()` on docs with a null/legacy tenant (#139)
+
 ## v0.26.0 — 2026-07-09
 
 ### Features
