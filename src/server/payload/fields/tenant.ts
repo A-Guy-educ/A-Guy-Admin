@@ -13,11 +13,12 @@ export const tenantField: Field = {
     description: 'Tenant scope for this document',
   },
   hooks: {
+    // Backfill missing tenant on create AND update. Update-time backfill exists because
+    // legacy docs (and cross-service writes from Web) can land with tenant=null, which then
+    // blocks every future payload.update() on required-field re-validation.
     beforeValidate: [
-      async ({ value, operation, req }) => {
-        if (operation !== 'create' || value) {
-          return value
-        }
+      async ({ value, req }) => {
+        if (value) return value
 
         const tenantId = await getDefaultTenantId(req.payload)
         return tenantId

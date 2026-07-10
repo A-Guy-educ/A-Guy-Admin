@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.26.1 — 2026-07-10
+
+### Fixes
+- (tenant) Backfill required tenant on update, not just create — unblocks PayPal `PAYMENT.CAPTURE.COMPLETED` webhook and every other `payload.update()` on docs with a null/legacy tenant (#139)
+
 ## v0.26.0 — 2026-07-09
 
 ### Features
@@ -1775,6 +1780,11 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- chore: release v0.26.1 ([#140](https://github.com/A-Guy-educ/A-Guy-Admin/pull/140)) — @aguyshayb
+- fix(tenant): Backfill required tenant on update, not just create ([#139](https://github.com/A-Guy-educ/A-Guy-Admin/pull/139)) — @aguyshayb
+## [v0.26.0] - 2026-07-09
+
+- promote: dev -> main (v0.26.0) ([#133](https://github.com/A-Guy-educ/A-Guy-Admin/pull/133)) — @aguyshayb
 - chore: release v0.26.0 ([#132](https://github.com/A-Guy-educ/A-Guy-Admin/pull/132)) — @aguyshayb
 - #127: Remove pageAccessType field from Course; always require registrat… ([#128](https://github.com/A-Guy-educ/A-Guy-Admin/pull/128)) — @kodyade[bot]
 - #110: Exercise Content Editor toolbar: add RTL align, 4 text sizes, 4 h… ([#111](https://github.com/A-Guy-educ/A-Guy-Admin/pull/111)) — @kodyade[bot]
