@@ -1782,7 +1782,7 @@
 
 - promote: dev -> main (v0.26.1) ([#142](https://github.com/A-Guy-educ/A-Guy-Admin/pull/142)) — @aguyshayb
 - chore: release v0.26.1 ([#140](https://github.com/A-Guy-educ/A-Guy-Admin/pull/140)) — @aguyshayb
-- fix(tenant): Backfill required tenant on update, not just create ([#139](https://github.com/A-Guy-educ/A-Guy-Admin/pull/139)) — @aguyshayb
+- fix(tenant): Backfill required tenant on update, not just create ([#139](https://github.com/A-Guy-educ/A-Guy-Admin/pull/139)) — @aguyshayb · 🔄 QA (#143)
 ## [v0.26.0] - 2026-07-09
 
 - promote: dev -> main (v0.26.0) ([#133](https://github.com/A-Guy-educ/A-Guy-Admin/pull/133)) — @aguyshayb
