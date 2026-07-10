@@ -1775,6 +1775,7 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- fix(tenant): Backfill required tenant on update, not just create ([#139](https://github.com/A-Guy-educ/A-Guy-Admin/pull/139)) — @aguyshayb
 ## [v0.26.0] - 2026-07-09
 
 - promote: dev -> main (v0.26.0) ([#133](https://github.com/A-Guy-educ/A-Guy-Admin/pull/133)) — @aguyshayb
