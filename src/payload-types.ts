@@ -80,6 +80,7 @@ export interface Config {
     memory_items: MemoryItem;
     tenants: Tenant;
     courses: Course;
+    'course-selections': CourseSelection;
     chapters: Chapter;
     lessons: Lesson;
     'lesson-duplications': LessonDuplication;
@@ -136,6 +137,7 @@ export interface Config {
     memory_items: MemoryItemsSelect<false> | MemoryItemsSelect<true>;
     tenants: TenantsSelect<false> | TenantsSelect<true>;
     courses: CoursesSelect<false> | CoursesSelect<true>;
+    'course-selections': CourseSelectionsSelect<false> | CourseSelectionsSelect<true>;
     chapters: ChaptersSelect<false> | ChaptersSelect<true>;
     lessons: LessonsSelect<false> | LessonsSelect<true>;
     'lesson-duplications': LessonDuplicationsSelect<false> | LessonDuplicationsSelect<true>;
@@ -2238,6 +2240,45 @@ export interface MemoryItem {
   createdAt: string;
 }
 /**
+ * Server-side log of every course pick (anonymous or authenticated)
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "course-selections".
+ */
+export interface CourseSelection {
+  id: string;
+  /**
+   * The course that was selected
+   */
+  course: string | Course;
+  /**
+   * The user who made the selection (null for anonymous guests)
+   */
+  user?: (string | null) | User;
+  /**
+   * Opaque client-generated ID for anonymous users (lets us count unique guests)
+   */
+  guestId?: string | null;
+  /**
+   * Grade level reported by the client (mirrors LocalUserProfile on web)
+   */
+  gradeLevel?: string | null;
+  /**
+   * Where in the UI the selection originated
+   */
+  source: 'start-page' | 'homepage-greeting' | 'course-card' | 'other';
+  /**
+   * SHA-256 (truncated) of the request User-Agent — computed server-side
+   */
+  userAgentHash?: string | null;
+  /**
+   * SHA-256 (truncated) of the request IP — computed server-side
+   */
+  ipHash?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * Job records for the lesson-duplication pipeline. Use the review screen at /admin/lesson-duplications/<id> to skip / regenerate / keep individual exercise failures.
  *
  * This interface was referenced by `Config`'s JSON-Schema
@@ -3622,6 +3663,10 @@ export interface PayloadLockedDocument {
         value: string | Course;
       } | null)
     | ({
+        relationTo: 'course-selections';
+        value: string | CourseSelection;
+      } | null)
+    | ({
         relationTo: 'chapters';
         value: string | Chapter;
       } | null)
@@ -4186,6 +4231,21 @@ export interface CoursesSelect<T extends boolean = true> {
   contentStatusLabel?: T;
   formulaSheet?: T;
   createdBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "course-selections_select".
+ */
+export interface CourseSelectionsSelect<T extends boolean = true> {
+  course?: T;
+  user?: T;
+  guestId?: T;
+  gradeLevel?: T;
+  source?: T;
+  userAgentHash?: T;
+  ipHash?: T;
   updatedAt?: T;
   createdAt?: T;
 }
