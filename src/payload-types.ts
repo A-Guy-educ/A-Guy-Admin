@@ -1474,7 +1474,7 @@ export interface Lesson {
   /**
    * Subject area (e.g. Mathematics). Free-text — no taxonomy yet.
    */
-  topic: string;
+  topic?: string | null;
   /**
    * The chapter this lesson belongs to
    */

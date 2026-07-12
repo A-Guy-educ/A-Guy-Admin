@@ -426,7 +426,6 @@ export const Lessons: CollectionConfig = {
             {
               name: 'topic',
               type: 'text',
-              required: true,
               admin: {
                 description: 'Subject area (e.g. Mathematics). Free-text — no taxonomy yet.',
               },

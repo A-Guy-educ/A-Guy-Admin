@@ -158,7 +158,6 @@ describe('Lessons Collection Config', () => {
 
       expect(findField(contentTab.fields, 'topic')).toMatchObject({
         type: 'text',
-        required: true,
         admin: {
           description: 'Subject area (e.g. Mathematics). Free-text — no taxonomy yet.',
         },
