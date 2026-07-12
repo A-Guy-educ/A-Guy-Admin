@@ -1780,6 +1780,7 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- #150: Split lesson edit page into tabs and lazy-load exercises tab ([#151](https://github.com/A-Guy-educ/A-Guy-Admin/pull/151)) — @kodyade[bot]
 - promote: dev -> main (v0.26.1) ([#142](https://github.com/A-Guy-educ/A-Guy-Admin/pull/142)) — @aguyshayb
 - chore: release v0.26.1 ([#140](https://github.com/A-Guy-educ/A-Guy-Admin/pull/140)) — @aguyshayb · ⚠️ QA 2026-07-11 (#146)
 - fix(tenant): Backfill required tenant on update, not just create ([#139](https://github.com/A-Guy-educ/A-Guy-Admin/pull/139)) — @aguyshayb · ⚠️ QA 2026-07-11 (#143)
