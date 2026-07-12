@@ -72,7 +72,7 @@ describe('Collection Indexes', () => {
 
     describe('Lessons.status', () => {
       it('should have index: true', () => {
-        const field = Lessons.fields?.find((f) => 'name' in f && f.name === 'status') as
+        const field = findFieldByName(Lessons.fields as Field[], 'status') as
           | { name: string; index?: boolean }
           | undefined
         expect(field).toBeDefined()

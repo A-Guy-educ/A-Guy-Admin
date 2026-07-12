@@ -1472,33 +1472,21 @@ export interface Chapter {
 export interface Lesson {
   id: string;
   /**
-   * Tenant scope for this document
+   * The type of lesson: Learning content, Practice exercises, or Exam
    */
-  tenant: string | Tenant;
-  /**
-   * Content language
-   */
-  locale: 'en' | 'he';
-  /**
-   * Source document this was translated from
-   */
-  translatedFrom?: (string | null) | Lesson;
+  type: 'learning' | 'practice' | 'exam';
   /**
    * The chapter this lesson belongs to
    */
   chapter: string | Chapter;
   /**
-   * Auto-populated from chapter. Used for filtering lessons by course.
-   */
-  course?: (string | null) | Course;
-  /**
-   * The type of lesson: Learning content, Practice exercises, or Exam
-   */
-  type: 'learning' | 'practice' | 'exam';
-  /**
    * Lesson title
    */
   title: string;
+  /**
+   * Auto-populated from chapter. Used for filtering lessons by course.
+   */
+  course?: (string | null) | Course;
   /**
    * Auto-computed display title for admin relationship dropdowns
    */
@@ -1520,25 +1508,9 @@ export interface Lesson {
    */
   order: number;
   /**
-   * Publication status of the lesson
+   * AI system prompt for this lesson (uses default if not set)
    */
-  status: 'draft' | 'published' | 'archived';
-  /**
-   * Whether this lesson is currently active
-   */
-  isActive: boolean;
-  /**
-   * Access control for this lesson. "Inherit" uses the parent course setting. "Gated" is a client-side nudge, not hard enforcement.
-   */
-  accessType: 'inherit' | 'free' | 'mandatory' | 'gated' | 'paid';
-  /**
-   * Which renderers are visible to students. At least one must be selected. Note: Media tab only appears when the lesson has attached files regardless of this toggle.
-   */
-  visibleRenderers?: ('media' | 'pdf' | 'interactive')[] | null;
-  /**
-   * Ordered playlist of exercises and content pages. Defines the lesson flow.
-   */
-  blocks?: string | null;
+  prompt?: (string | null) | Prompt;
   /**
    * Upload lesson content files (PDFs, videos, images, etc.)
    */
@@ -1548,13 +1520,41 @@ export interface Lesson {
    */
   lessonContextText?: string | null;
   /**
-   * AI system prompt for this lesson (uses default if not set)
+   * Ordered playlist of exercises and content pages. Defines the lesson flow.
    */
-  prompt?: (string | null) | Prompt;
+  blocks?: string | null;
+  /**
+   * Tenant scope for this document
+   */
+  tenant: string | Tenant;
+  /**
+   * Content language
+   */
+  locale: 'en' | 'he';
+  /**
+   * Source document this was translated from
+   */
+  translatedFrom?: (string | null) | Lesson;
+  /**
+   * Access control for this lesson. "Inherit" uses the parent course setting. "Gated" is a client-side nudge, not hard enforcement.
+   */
+  accessType: 'inherit' | 'free' | 'mandatory' | 'gated' | 'paid';
+  /**
+   * Which renderers are visible to students. At least one must be selected. Note: Media tab only appears when the lesson has attached files regardless of this toggle.
+   */
+  visibleRenderers?: ('media' | 'pdf' | 'interactive')[] | null;
   /**
    * URL-friendly identifier (auto-generated from title if empty)
    */
   slug?: string | null;
+  /**
+   * Publication status of the lesson
+   */
+  status: 'draft' | 'published' | 'archived';
+  /**
+   * Whether this lesson is currently active
+   */
+  isActive: boolean;
   /**
    * Content status badge displayed to students
    */
@@ -1572,13 +1572,13 @@ export interface Lesson {
    */
   contentStatusLabel?: string | null;
   /**
-   * Lesson-specific formula sheet (overrides course default)
-   */
-  formulaSheet?: (string | null) | FormulaSheet;
-  /**
    * User who created this document
    */
   createdBy?: (string | null) | User;
+  /**
+   * Lesson-specific formula sheet (overrides course default)
+   */
+  formulaSheet?: (string | null) | FormulaSheet;
   updatedAt: string;
   createdAt: string;
 }
@@ -4093,33 +4093,33 @@ export interface ChaptersSelect<T extends boolean = true> {
  * via the `definition` "lessons_select".
  */
 export interface LessonsSelect<T extends boolean = true> {
-  tenant?: T;
-  locale?: T;
-  translatedFrom?: T;
-  chapter?: T;
-  course?: T;
   type?: T;
+  chapter?: T;
   title?: T;
+  course?: T;
   adminTitle?: T;
   intro?: T;
   description?: T;
   prerequisites?: T;
   order?: T;
-  status?: T;
-  isActive?: T;
-  accessType?: T;
-  visibleRenderers?: T;
-  blocks?: T;
+  prompt?: T;
   contentFiles?: T;
   lessonContextText?: T;
-  prompt?: T;
+  blocks?: T;
+  tenant?: T;
+  locale?: T;
+  translatedFrom?: T;
+  accessType?: T;
+  visibleRenderers?: T;
   slug?: T;
+  status?: T;
+  isActive?: T;
   contentStatus?: T;
   contentStatusVisible?: T;
   contentStatusExpiresAt?: T;
   contentStatusLabel?: T;
-  formulaSheet?: T;
   createdBy?: T;
+  formulaSheet?: T;
   updatedAt?: T;
   createdAt?: T;
 }
