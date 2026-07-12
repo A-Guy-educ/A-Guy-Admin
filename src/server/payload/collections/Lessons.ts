@@ -514,6 +514,16 @@ export const Lessons: CollectionConfig = {
               },
             },
             {
+              name: 'formulaSheet',
+              type: 'relationship',
+              relationTo: 'formula-sheets',
+              maxDepth: 0,
+              index: true,
+              admin: {
+                description: 'Lesson-specific formula sheet (overrides course default)',
+              },
+            },
+            {
               name: 'examples',
               type: 'textarea',
               admin: {
@@ -786,17 +796,6 @@ export const Lessons: CollectionConfig = {
           ],
         },
       ],
-    },
-    {
-      name: 'formulaSheet',
-      type: 'relationship',
-      relationTo: 'formula-sheets',
-      maxDepth: 0,
-      index: true,
-      admin: {
-        position: 'sidebar',
-        description: 'Lesson-specific formula sheet (overrides course default)',
-      },
     },
     {
       name: 'contentNavigation',

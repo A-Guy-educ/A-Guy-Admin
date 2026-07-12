@@ -18,15 +18,27 @@ type PayloadField = {
   required?: boolean
   index?: boolean
   relationTo?: string
+  tabs?: Array<{ fields?: unknown[] }>
+  fields?: unknown[]
   blocks?: Array<{ slug: string }>
   options?: Array<{ value: string }> | string[]
   defaultValue?: unknown
 }
 
 function findField(fields: unknown[], name: string): PayloadField | undefined {
-  // Flatten spread arrays (like ...contentStatusFields)
-  const flat = fields.flat() as PayloadField[]
-  return flat.find((f) => 'name' in f && f.name === name) as PayloadField | undefined
+  // Flatten spread arrays (like ...contentStatusFields), then walk any tab containers.
+  for (const entry of fields.flat() as PayloadField[]) {
+    if ('name' in entry && entry.name === name) return entry
+    if (entry.tabs) {
+      for (const tab of entry.tabs) {
+        if (tab.fields) {
+          const found = findField(tab.fields, name)
+          if (found) return found
+        }
+      }
+    }
+  }
+  return undefined
 }
 
 describe('FormulaSheets Collection Schema', () => {

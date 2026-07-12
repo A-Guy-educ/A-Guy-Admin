@@ -1508,6 +1508,10 @@ export interface Lesson {
    */
   formulas?: string | null;
   /**
+   * Lesson-specific formula sheet (overrides course default)
+   */
+  formulaSheet?: (string | null) | FormulaSheet;
+  /**
    * Illustrative examples for the material.
    */
   examples?: string | null;
@@ -1623,10 +1627,6 @@ export interface Lesson {
      */
     canonicalUrl?: string | null;
   };
-  /**
-   * Lesson-specific formula sheet (overrides course default)
-   */
-  formulaSheet?: (string | null) | FormulaSheet;
   updatedAt: string;
   createdAt: string;
 }
@@ -4150,6 +4150,7 @@ export interface LessonsSelect<T extends boolean = true> {
   intro?: T;
   description?: T;
   formulas?: T;
+  formulaSheet?: T;
   examples?: T;
   commonMistakes?: T;
   additionalNotes?: T;
@@ -4184,7 +4185,6 @@ export interface LessonsSelect<T extends boolean = true> {
         robots?: T;
         canonicalUrl?: T;
       };
-  formulaSheet?: T;
   updatedAt?: T;
   createdAt?: T;
 }
