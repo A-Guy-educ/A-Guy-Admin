@@ -111,6 +111,7 @@ describe('Lesson types', () => {
       collection: 'lessons',
       data: {
         title: 'Practice Lesson',
+        topic: 'Test Topic',
         chapter: chapterId,
         type: 'practice',
         order: 1,
@@ -133,6 +134,7 @@ describe('Lesson types', () => {
       collection: 'lessons',
       data: {
         title: 'Default Type Lesson',
+        topic: 'Test Topic',
         chapter: chapterId,
         order: 2,
         status: 'published',
@@ -153,6 +155,7 @@ describe('Lesson types', () => {
       collection: 'lessons',
       data: {
         title: 'Changeable Lesson',
+        topic: 'Test Topic',
         chapter: chapterId,
         type: 'learning',
         order: 3,
@@ -181,6 +184,7 @@ describe('Lesson types', () => {
         collection: 'lessons',
         data: {
           title: 'Invalid Type Lesson',
+          topic: 'Test Topic',
           chapter: chapterId,
           type: 'invalid' as 'learning',
           order: 4,

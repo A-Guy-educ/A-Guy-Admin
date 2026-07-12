@@ -216,6 +216,7 @@ describe('Lesson duplication orchestrator — integration', () => {
       collection: 'lessons',
       data: {
         title: `Orch Source Lesson ${ts}`,
+        topic: 'Test Topic',
         chapter: chapterId,
         type: 'practice',
         order: 1,

@@ -186,6 +186,7 @@ describe('Lesson duplication orchestrator — level=none fast path', () => {
       collection: 'lessons',
       data: {
         title: `Fast Source Lesson ${ts}`,
+        topic: 'Test Topic',
         chapter: chapterId,
         type: 'practice',
         order: 1,
