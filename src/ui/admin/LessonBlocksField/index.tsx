@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useField, useForm } from '@payloadcms/ui'
 import { useRouter } from 'next/navigation'
 import {
@@ -99,6 +99,8 @@ export const LessonBlocksField: React.FC<{ path: string }> = ({ path }) => {
   const router = useRouter()
 
   const blocks: RawBlock[] = useMemo(() => parseBlocks(value), [value])
+  const activationRef = useRef<HTMLDivElement>(null)
+  const [hasBeenActivated, setHasBeenActivated] = useState(false)
 
   // Drag-and-drop state
   const [dragIndex, setDragIndex] = useState<number | null>(null)
@@ -108,8 +110,32 @@ export const LessonBlocksField: React.FC<{ path: string }> = ({ path }) => {
   const [titleCache, setTitleCache] = useState<Record<string, string>>({})
   const [loadingIds, setLoadingIds] = useState<Set<string>>(new Set())
 
+  useEffect(() => {
+    if (hasBeenActivated) return
+
+    const container = activationRef.current
+    if (!container) return
+
+    if (typeof IntersectionObserver === 'undefined') {
+      setHasBeenActivated(true)
+      return
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) {
+        setHasBeenActivated(true)
+        observer.disconnect()
+      }
+    })
+
+    observer.observe(container)
+    return () => observer.disconnect()
+  }, [hasBeenActivated])
+
   // Extract inline titles from populated objects into cache on first render
   useEffect(() => {
+    if (!hasBeenActivated) return
+
     const newTitles: Record<string, string> = {}
     for (const block of blocks) {
       if (block.blockType === 'exerciseRef') {
@@ -127,10 +153,12 @@ export const LessonBlocksField: React.FC<{ path: string }> = ({ path }) => {
     }
     // Only run when blocks change, not when titleCache changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [blocks])
+  }, [blocks, hasBeenActivated])
 
   // Fetch titles for IDs not in cache
   useEffect(() => {
+    if (!hasBeenActivated) return
+
     const idsToFetch: Array<{ id: string; collection: string }> = []
 
     for (const block of blocks) {
@@ -168,10 +196,12 @@ export const LessonBlocksField: React.FC<{ path: string }> = ({ path }) => {
         })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [blocks, titleCache])
+  }, [blocks, titleCache, hasBeenActivated])
 
   // Build display rows
   const rows: ResolvedRow[] = useMemo(() => {
+    if (!hasBeenActivated) return []
+
     return blocks
       .map((block, index) => {
         const refField = block.blockType === 'exerciseRef' ? block.exercise : block.contentPage
@@ -186,7 +216,7 @@ export const LessonBlocksField: React.FC<{ path: string }> = ({ path }) => {
         }
       })
       .filter((row) => row.refId) // skip blocks with no ref
-  }, [blocks, titleCache, loadingIds])
+  }, [blocks, titleCache, loadingIds, hasBeenActivated])
 
   /** Update Payload form state with normalized blocks (serialized as JSON string) */
   const updateBlocks = useCallback(
@@ -288,13 +318,27 @@ export const LessonBlocksField: React.FC<{ path: string }> = ({ path }) => {
 
       {/* Block list — reorder/delete controls + inline exercise editors */}
       <div
+        ref={activationRef}
         style={{
           border: '1px solid var(--theme-elevation-150)',
           borderRadius: 6,
           overflow: 'hidden',
         }}
       >
-        {rows.length === 0 && (
+        {!hasBeenActivated && (
+          <div
+            style={{
+              padding: '24px 16px',
+              textAlign: 'center',
+              color: 'var(--theme-elevation-400)',
+              fontSize: 13,
+            }}
+          >
+            Loading exercises…
+          </div>
+        )}
+
+        {hasBeenActivated && rows.length === 0 && (
           <div
             style={{
               padding: '24px 16px',
@@ -307,178 +351,179 @@ export const LessonBlocksField: React.FC<{ path: string }> = ({ path }) => {
           </div>
         )}
 
-        {rows.map((row, idx) => (
-          <div key={`${row.blockType}-${row.refId}-${idx}`}>
-            {/* Row controls: reorder + delete */}
-            <div
-              draggable
-              onDragStart={(e) => handleDragStart(e, idx)}
-              onDragOver={(e) => handleDragOver(e, idx)}
-              onDragLeave={handleDragLeave}
-              onDrop={(e) => handleDrop(e, idx)}
-              onDragEnd={handleDragEnd}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                padding: '6px 12px',
-                borderBottom: '1px solid var(--theme-elevation-100)',
-                background:
-                  dropTarget === idx
-                    ? 'var(--theme-elevation-100)'
-                    : dragIndex === idx
-                      ? 'var(--theme-elevation-50)'
-                      : 'var(--theme-elevation-50)',
-                opacity: dragIndex === idx ? 0.5 : 1,
-                borderTop:
-                  dropTarget === idx ? '2px solid var(--theme-success-500, #22c55e)' : 'none',
-                transition: 'background 0.15s, opacity 0.15s',
-                cursor: 'grab',
-              }}
-            >
-              <span style={{ color: 'var(--theme-elevation-300)', flexShrink: 0 }}>
-                <GripVertical size={16} />
-              </span>
-
-              <span
+        {hasBeenActivated &&
+          rows.map((row, idx) => (
+            <div key={`${row.blockType}-${row.refId}-${idx}`}>
+              {/* Row controls: reorder + delete */}
+              <div
+                draggable
+                onDragStart={(e) => handleDragStart(e, idx)}
+                onDragOver={(e) => handleDragOver(e, idx)}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => handleDrop(e, idx)}
+                onDragEnd={handleDragEnd}
                 style={{
-                  fontSize: 11,
-                  fontWeight: 700,
-                  color: 'var(--theme-elevation-400)',
-                  minWidth: 20,
-                  textAlign: 'center',
-                  flexShrink: 0,
-                }}
-              >
-                {idx + 1}
-              </span>
-
-              <span
-                style={{
-                  display: 'inline-flex',
+                  display: 'flex',
                   alignItems: 'center',
-                  gap: 4,
-                  padding: '2px 8px',
-                  borderRadius: 4,
-                  fontSize: 11,
-                  fontWeight: 600,
-                  flexShrink: 0,
+                  gap: 8,
+                  padding: '6px 12px',
+                  borderBottom: '1px solid var(--theme-elevation-100)',
                   background:
-                    row.blockType === 'exerciseRef'
-                      ? 'var(--theme-success-100, #dcfce7)'
-                      : 'var(--theme-warning-100, #fef3c7)',
-                  color:
-                    row.blockType === 'exerciseRef'
-                      ? 'var(--theme-success-600, #16a34a)'
-                      : 'var(--theme-warning-600, #ca8a04)',
+                    dropTarget === idx
+                      ? 'var(--theme-elevation-100)'
+                      : dragIndex === idx
+                        ? 'var(--theme-elevation-50)'
+                        : 'var(--theme-elevation-50)',
+                  opacity: dragIndex === idx ? 0.5 : 1,
+                  borderTop:
+                    dropTarget === idx ? '2px solid var(--theme-success-500, #22c55e)' : 'none',
+                  transition: 'background 0.15s, opacity 0.15s',
+                  cursor: 'grab',
                 }}
               >
-                {row.blockType === 'exerciseRef' ? (
-                  <>
-                    <BookOpen size={12} /> Exercise
-                  </>
-                ) : (
-                  <>
-                    <FileText size={12} /> Content
-                  </>
-                )}
-              </span>
+                <span style={{ color: 'var(--theme-elevation-300)', flexShrink: 0 }}>
+                  <GripVertical size={16} />
+                </span>
 
-              <span
-                style={{
-                  flex: 1,
-                  fontSize: 14,
-                  color: 'var(--theme-text)',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {row.loading ? (
-                  <span style={{ color: 'var(--theme-elevation-400)' }}>Loading...</span>
-                ) : (
-                  row.title || (
-                    <span style={{ color: 'var(--theme-elevation-400)', fontStyle: 'italic' }}>
-                      Untitled
-                    </span>
-                  )
-                )}
-              </span>
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: 'var(--theme-elevation-400)',
+                    minWidth: 20,
+                    textAlign: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  {idx + 1}
+                </span>
 
-              <button
-                type="button"
-                onClick={() => moveBlock(row.index, row.index - 1)}
-                disabled={idx === 0}
-                style={{
-                  padding: 4,
-                  border: 'none',
-                  background: 'transparent',
-                  cursor: idx === 0 ? 'not-allowed' : 'pointer',
-                  opacity: idx === 0 ? 0.2 : 0.6,
-                  color: 'var(--theme-text)',
-                }}
-                title="Move up"
-              >
-                <ChevronUp size={14} />
-              </button>
-              <button
-                type="button"
-                onClick={() => moveBlock(row.index, row.index + 1)}
-                disabled={idx === rows.length - 1}
-                style={{
-                  padding: 4,
-                  border: 'none',
-                  background: 'transparent',
-                  cursor: idx === rows.length - 1 ? 'not-allowed' : 'pointer',
-                  opacity: idx === rows.length - 1 ? 0.2 : 0.6,
-                  color: 'var(--theme-text)',
-                }}
-                title="Move down"
-              >
-                <ChevronDown size={14} />
-              </button>
-              <button
-                type="button"
-                onClick={() => editBlock(row.refId, row.blockType)}
-                style={{
-                  padding: 4,
-                  border: 'none',
-                  background: 'transparent',
-                  cursor: 'pointer',
-                  opacity: 0.6,
-                  color: 'var(--theme-text)',
-                }}
-                title="Edit"
-              >
-                <Pencil size={14} />
-              </button>
-              <button
-                type="button"
-                onClick={() => deleteBlock(row.index)}
-                style={{
-                  padding: 4,
-                  border: 'none',
-                  background: 'transparent',
-                  cursor: 'pointer',
-                  opacity: 0.6,
-                  color: 'var(--theme-error-500, #ef4444)',
-                }}
-                title="Delete"
-              >
-                <Trash2 size={14} />
-              </button>
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    padding: '2px 8px',
+                    borderRadius: 4,
+                    fontSize: 11,
+                    fontWeight: 600,
+                    flexShrink: 0,
+                    background:
+                      row.blockType === 'exerciseRef'
+                        ? 'var(--theme-success-100, #dcfce7)'
+                        : 'var(--theme-warning-100, #fef3c7)',
+                    color:
+                      row.blockType === 'exerciseRef'
+                        ? 'var(--theme-success-600, #16a34a)'
+                        : 'var(--theme-warning-600, #ca8a04)',
+                  }}
+                >
+                  {row.blockType === 'exerciseRef' ? (
+                    <>
+                      <BookOpen size={12} /> Exercise
+                    </>
+                  ) : (
+                    <>
+                      <FileText size={12} /> Content
+                    </>
+                  )}
+                </span>
+
+                <span
+                  style={{
+                    flex: 1,
+                    fontSize: 14,
+                    color: 'var(--theme-text)',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {row.loading ? (
+                    <span style={{ color: 'var(--theme-elevation-400)' }}>Loading...</span>
+                  ) : (
+                    row.title || (
+                      <span style={{ color: 'var(--theme-elevation-400)', fontStyle: 'italic' }}>
+                        Untitled
+                      </span>
+                    )
+                  )}
+                </span>
+
+                <button
+                  type="button"
+                  onClick={() => moveBlock(row.index, row.index - 1)}
+                  disabled={idx === 0}
+                  style={{
+                    padding: 4,
+                    border: 'none',
+                    background: 'transparent',
+                    cursor: idx === 0 ? 'not-allowed' : 'pointer',
+                    opacity: idx === 0 ? 0.2 : 0.6,
+                    color: 'var(--theme-text)',
+                  }}
+                  title="Move up"
+                >
+                  <ChevronUp size={14} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => moveBlock(row.index, row.index + 1)}
+                  disabled={idx === rows.length - 1}
+                  style={{
+                    padding: 4,
+                    border: 'none',
+                    background: 'transparent',
+                    cursor: idx === rows.length - 1 ? 'not-allowed' : 'pointer',
+                    opacity: idx === rows.length - 1 ? 0.2 : 0.6,
+                    color: 'var(--theme-text)',
+                  }}
+                  title="Move down"
+                >
+                  <ChevronDown size={14} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => editBlock(row.refId, row.blockType)}
+                  style={{
+                    padding: 4,
+                    border: 'none',
+                    background: 'transparent',
+                    cursor: 'pointer',
+                    opacity: 0.6,
+                    color: 'var(--theme-text)',
+                  }}
+                  title="Edit"
+                >
+                  <Pencil size={14} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => deleteBlock(row.index)}
+                  style={{
+                    padding: 4,
+                    border: 'none',
+                    background: 'transparent',
+                    cursor: 'pointer',
+                    opacity: 0.6,
+                    color: 'var(--theme-error-500, #ef4444)',
+                  }}
+                  title="Delete"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+
+              {/* Inline exercise editor (only for exercise blocks) */}
+              {row.blockType === 'exerciseRef' && row.refId && (
+                <InlineExerciseEditor
+                  key={`inline-${row.refId}`}
+                  exerciseId={row.refId}
+                  exerciseTitle={row.loading ? undefined : row.title}
+                />
+              )}
             </div>
-
-            {/* Inline exercise editor (only for exercise blocks) */}
-            {row.blockType === 'exerciseRef' && row.refId && (
-              <InlineExerciseEditor
-                key={`inline-${row.refId}`}
-                exerciseId={row.refId}
-                exerciseTitle={row.loading ? undefined : row.title}
-              />
-            )}
-          </div>
-        ))}
+          ))}
       </div>
     </div>
   )
