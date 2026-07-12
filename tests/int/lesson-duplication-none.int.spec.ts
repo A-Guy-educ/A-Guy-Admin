@@ -92,6 +92,7 @@ describe('Lesson duplication — none (deep clone)', () => {
       collection: 'lessons',
       data: {
         title: `Dup Source Lesson ${ts}`,
+        topic: 'Test Topic',
         chapter: chapterId,
         type: 'practice',
         order: 1,
@@ -219,6 +220,7 @@ describe('Lesson duplication — none (deep clone)', () => {
       data: {
         ...(sourceData as Record<string, unknown>),
         title: `${(sourceData as { title: string }).title} - Copy`,
+        topic: 'Test Topic',
         slug: undefined,
         status: 'draft',
       } as never,

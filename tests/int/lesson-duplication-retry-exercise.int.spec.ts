@@ -98,6 +98,7 @@ describe('Lesson duplication — retry-exercise endpoint', () => {
       collection: 'lessons',
       data: {
         title: `Retry Source Lesson ${ts}`,
+        topic: 'Test Topic',
         chapter: chapterId,
         type: 'practice',
         order: 1,
@@ -118,6 +119,7 @@ describe('Lesson duplication — retry-exercise endpoint', () => {
       collection: 'lessons',
       data: {
         title: `Retry Output Lesson ${ts}`,
+        topic: 'Test Topic',
         chapter: chapterId,
         type: 'practice',
         order: 1,

@@ -94,6 +94,7 @@ async function createNeedsReviewRecord(payload: Payload) {
       chapter: hierarchy.chapterId,
       slug: `dup-review-source-lesson-${suffix}`,
       title: 'Test Source Lesson',
+      topic: 'Test Source Topic',
       type: 'practice',
       status: 'published',
       isActive: true,

@@ -1472,9 +1472,9 @@ export interface Chapter {
 export interface Lesson {
   id: string;
   /**
-   * The type of lesson: Learning content, Practice exercises, or Exam
+   * Subject area (e.g. Mathematics). Free-text — no taxonomy yet.
    */
-  type: 'learning' | 'practice' | 'exam';
+  topic: string;
   /**
    * The chapter this lesson belongs to
    */
@@ -1484,13 +1484,17 @@ export interface Lesson {
    */
   title: string;
   /**
-   * Auto-populated from chapter. Used for filtering lessons by course.
+   * The type of lesson: Learning content, Practice exercises, or Exam
    */
-  course?: (string | null) | Course;
+  type: 'learning' | 'practice' | 'exam';
   /**
    * Auto-computed display title for admin relationship dropdowns
    */
   adminTitle?: string | null;
+  /**
+   * What the student should know or understand by the end of the lesson.
+   */
+  lessonObjective?: string | null;
   /**
    * Short intro shown on lesson cards before students start
    */
@@ -1500,13 +1504,33 @@ export interface Lesson {
    */
   description?: string | null;
   /**
-   * Lessons students should complete before this lesson
+   * Formulas relevant to this lesson.
    */
-  prerequisites?: (string | Lesson)[] | null;
+  formulas?: string | null;
+  /**
+   * Illustrative examples for the material.
+   */
+  examples?: string | null;
+  /**
+   * Common student misconceptions to watch for.
+   */
+  commonMistakes?: string | null;
+  /**
+   * Additional notes for the teacher / system.
+   */
+  additionalNotes?: string | null;
   /**
    * Sort order within the course
    */
   order: number;
+  /**
+   * Lessons students should complete before this lesson
+   */
+  prerequisites?: (string | Lesson)[] | null;
+  /**
+   * Recommended follow-up lessons.
+   */
+  nextLessons?: (string | Lesson)[] | null;
   /**
    * AI system prompt for this lesson (uses default if not set)
    */
@@ -1523,6 +1547,18 @@ export interface Lesson {
    * Ordered playlist of exercises and content pages. Defines the lesson flow.
    */
   blocks?: string | null;
+  /**
+   * Auto-populated from chapter. Used for filtering lessons by course.
+   */
+  course?: (string | null) | Course;
+  /**
+   * Publication status of the lesson
+   */
+  status: 'draft' | 'published' | 'archived';
+  /**
+   * Whether this lesson is currently active
+   */
+  isActive: boolean;
   /**
    * Tenant scope for this document
    */
@@ -1548,14 +1584,6 @@ export interface Lesson {
    */
   slug?: string | null;
   /**
-   * Publication status of the lesson
-   */
-  status: 'draft' | 'published' | 'archived';
-  /**
-   * Whether this lesson is currently active
-   */
-  isActive: boolean;
-  /**
    * Content status badge displayed to students
    */
   contentStatus: 'none' | 'soon' | 'justAdded' | 'custom';
@@ -1575,6 +1603,26 @@ export interface Lesson {
    * User who created this document
    */
   createdBy?: (string | null) | User;
+  meta?: {
+    title?: string | null;
+    /**
+     * Maximum upload file size: 12MB. Recommended file size for images is <500KB.
+     */
+    image?: (string | null) | Media;
+    description?: string | null;
+    /**
+     * Comma-separated keywords / tags.
+     */
+    keywords?: string | null;
+    /**
+     * Search engine visibility.
+     */
+    robots?: ('index-follow' | 'noindex-follow' | 'noindex-nofollow') | null;
+    /**
+     * Leave empty to use the page's default URL. Used to avoid duplicate content.
+     */
+    canonicalUrl?: string | null;
+  };
   /**
    * Lesson-specific formula sheet (overrides course default)
    */
@@ -4093,32 +4141,49 @@ export interface ChaptersSelect<T extends boolean = true> {
  * via the `definition` "lessons_select".
  */
 export interface LessonsSelect<T extends boolean = true> {
-  type?: T;
+  topic?: T;
   chapter?: T;
   title?: T;
-  course?: T;
+  type?: T;
   adminTitle?: T;
+  lessonObjective?: T;
   intro?: T;
   description?: T;
-  prerequisites?: T;
+  formulas?: T;
+  examples?: T;
+  commonMistakes?: T;
+  additionalNotes?: T;
   order?: T;
+  prerequisites?: T;
+  nextLessons?: T;
   prompt?: T;
   contentFiles?: T;
   lessonContextText?: T;
   blocks?: T;
+  course?: T;
+  status?: T;
+  isActive?: T;
   tenant?: T;
   locale?: T;
   translatedFrom?: T;
   accessType?: T;
   visibleRenderers?: T;
   slug?: T;
-  status?: T;
-  isActive?: T;
   contentStatus?: T;
   contentStatusVisible?: T;
   contentStatusExpiresAt?: T;
   contentStatusLabel?: T;
   createdBy?: T;
+  meta?:
+    | T
+    | {
+        title?: T;
+        image?: T;
+        description?: T;
+        keywords?: T;
+        robots?: T;
+        canonicalUrl?: T;
+      };
   formulaSheet?: T;
   updatedAt?: T;
   createdAt?: T;

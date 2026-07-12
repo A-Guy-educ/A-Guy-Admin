@@ -4,6 +4,13 @@ import type {
   CollectionConfig,
   Field,
 } from 'payload'
+import {
+  MetaDescriptionField,
+  MetaImageField,
+  MetaTitleField,
+  OverviewField,
+  PreviewField,
+} from '@payloadcms/plugin-seo/fields'
 
 import { DEFAULT_LESSON_ACCESS_TYPE } from '@/server/constants/access-types'
 import { tenantField } from '@/server/payload/fields/tenant'
@@ -411,36 +418,19 @@ export const Lessons: CollectionConfig = {
   },
   fields: [
     {
-      name: 'type',
-      type: 'select',
-      required: true,
-      defaultValue: 'learning',
-      index: true,
-      options: [
-        {
-          label: 'Learning',
-          value: 'learning',
-        },
-        {
-          label: 'Practice',
-          value: 'practice',
-        },
-        {
-          label: 'Exam',
-          value: 'exam',
-        },
-      ],
-      admin: {
-        description: 'The type of lesson: Learning content, Practice exercises, or Exam',
-        position: 'sidebar',
-      },
-    },
-    {
       type: 'tabs',
       tabs: [
         {
           label: 'Content',
           fields: [
+            {
+              name: 'topic',
+              type: 'text',
+              required: true,
+              admin: {
+                description: 'Subject area (e.g. Mathematics). Free-text — no taxonomy yet.',
+              },
+            },
             {
               name: 'chapter',
               type: 'relationship',
@@ -461,13 +451,27 @@ export const Lessons: CollectionConfig = {
               },
             },
             {
-              name: 'course',
-              type: 'relationship',
-              relationTo: 'courses',
+              name: 'type',
+              type: 'select',
+              required: true,
+              defaultValue: 'learning',
               index: true,
+              options: [
+                {
+                  label: 'Learning',
+                  value: 'learning',
+                },
+                {
+                  label: 'Practice',
+                  value: 'practice',
+                },
+                {
+                  label: 'Exam',
+                  value: 'exam',
+                },
+              ],
               admin: {
-                hidden: true,
-                description: 'Auto-populated from chapter. Used for filtering lessons by course.',
+                description: 'The type of lesson: Learning content, Practice exercises, or Exam',
               },
             },
             {
@@ -477,6 +481,13 @@ export const Lessons: CollectionConfig = {
               admin: {
                 hidden: true,
                 description: 'Auto-computed display title for admin relationship dropdowns',
+              },
+            },
+            {
+              name: 'lessonObjective',
+              type: 'textarea',
+              admin: {
+                description: 'What the student should know or understand by the end of the lesson.',
               },
             },
             {
@@ -497,12 +508,31 @@ export const Lessons: CollectionConfig = {
               },
             },
             {
-              name: 'prerequisites',
-              type: 'relationship',
-              relationTo: 'lessons',
-              hasMany: true,
+              name: 'formulas',
+              type: 'textarea',
               admin: {
-                description: 'Lessons students should complete before this lesson',
+                description: 'Formulas relevant to this lesson.',
+              },
+            },
+            {
+              name: 'examples',
+              type: 'textarea',
+              admin: {
+                description: 'Illustrative examples for the material.',
+              },
+            },
+            {
+              name: 'commonMistakes',
+              type: 'textarea',
+              admin: {
+                description: 'Common student misconceptions to watch for.',
+              },
+            },
+            {
+              name: 'additionalNotes',
+              type: 'textarea',
+              admin: {
+                description: 'Additional notes for the teacher / system.',
               },
             },
             {
@@ -514,6 +544,24 @@ export const Lessons: CollectionConfig = {
               index: true,
               admin: {
                 description: 'Sort order within the course',
+              },
+            },
+            {
+              name: 'prerequisites',
+              type: 'relationship',
+              relationTo: 'lessons',
+              hasMany: true,
+              admin: {
+                description: 'Lessons students should complete before this lesson',
+              },
+            },
+            {
+              name: 'nextLessons',
+              type: 'relationship',
+              relationTo: 'lessons',
+              hasMany: true,
+              admin: {
+                description: 'Recommended follow-up lessons.',
               },
             },
             {
@@ -583,6 +631,58 @@ export const Lessons: CollectionConfig = {
         {
           label: 'System',
           fields: [
+            {
+              name: 'lessonIdDisplay',
+              type: 'ui',
+              admin: {
+                components: {
+                  Field: '@/ui/admin/LessonIdDisplay#LessonIdDisplay',
+                },
+              },
+            },
+            {
+              name: 'course',
+              type: 'relationship',
+              relationTo: 'courses',
+              index: true,
+              admin: {
+                readOnly: true,
+                description: 'Auto-populated from chapter. Used for filtering lessons by course.',
+              },
+            },
+            {
+              name: 'status',
+              type: 'select',
+              required: true,
+              index: true,
+              defaultValue: 'draft',
+              options: [
+                {
+                  label: 'Draft',
+                  value: 'draft',
+                },
+                {
+                  label: 'Published',
+                  value: 'published',
+                },
+                {
+                  label: 'Archived',
+                  value: 'archived',
+                },
+              ],
+              admin: {
+                description: 'Publication status of the lesson',
+              },
+            },
+            {
+              name: 'isActive',
+              type: 'checkbox',
+              required: true,
+              defaultValue: true,
+              admin: {
+                description: 'Whether this lesson is currently active',
+              },
+            },
             withoutSidebarPosition(tenantField),
             withoutSidebarPosition(contentLocaleField),
             withoutSidebarPosition(translatedFromField('lessons')),
@@ -631,41 +731,59 @@ export const Lessons: CollectionConfig = {
                 description: 'URL-friendly identifier (auto-generated from title if empty)',
               },
             },
-            {
-              name: 'status',
-              type: 'select',
-              required: true,
-              index: true,
-              defaultValue: 'draft',
-              options: [
-                {
-                  label: 'Draft',
-                  value: 'draft',
-                },
-                {
-                  label: 'Published',
-                  value: 'published',
-                },
-                {
-                  label: 'Archived',
-                  value: 'archived',
-                },
-              ],
-              admin: {
-                description: 'Publication status of the lesson',
-              },
-            },
-            {
-              name: 'isActive',
-              type: 'checkbox',
-              required: true,
-              defaultValue: true,
-              admin: {
-                description: 'Whether this lesson is currently active',
-              },
-            },
             ...contentStatusFields.map(withoutSidebarPosition),
             withoutSidebarPosition(createdByField),
+          ],
+        },
+        {
+          name: 'meta',
+          label: 'SEO',
+          fields: [
+            OverviewField({
+              titlePath: 'meta.title',
+              descriptionPath: 'meta.description',
+              imagePath: 'meta.image',
+            }),
+            MetaTitleField({
+              hasGenerateFn: true,
+            }),
+            MetaImageField({
+              relationTo: 'media',
+            }),
+            MetaDescriptionField({}),
+            PreviewField({
+              hasGenerateFn: true,
+              titlePath: 'meta.title',
+              descriptionPath: 'meta.description',
+            }),
+            {
+              name: 'keywords',
+              type: 'text',
+              admin: {
+                description: 'Comma-separated keywords / tags.',
+              },
+            },
+            {
+              name: 'robots',
+              type: 'select',
+              defaultValue: 'index-follow',
+              options: [
+                { label: 'Index, Follow', value: 'index-follow' },
+                { label: 'NoIndex, Follow', value: 'noindex-follow' },
+                { label: 'NoIndex, NoFollow', value: 'noindex-nofollow' },
+              ],
+              admin: {
+                description: 'Search engine visibility.',
+              },
+            },
+            {
+              name: 'canonicalUrl',
+              type: 'text',
+              admin: {
+                description:
+                  "Leave empty to use the page's default URL. Used to avoid duplicate content.",
+              },
+            },
           ],
         },
       ],

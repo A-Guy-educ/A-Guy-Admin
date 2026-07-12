@@ -96,6 +96,7 @@ describe('Lesson export endpoint', () => {
       collection: 'lessons',
       data: {
         title: `Export Lesson ${ts}`,
+        topic: 'Test Topic',
         slug: `export-lesson-${ts}`,
         chapter: chapterId,
         type: 'practice',
@@ -262,6 +263,7 @@ describe('Lesson export endpoint', () => {
       collection: 'lessons',
       data: {
         title: `Empty Export Lesson ${Date.now()}`,
+        topic: 'Test Topic',
         slug: `empty-export-${Date.now()}`,
         chapter: chapterId,
         type: 'learning',

@@ -88,6 +88,7 @@ describe('Lesson duplication endpoint — queues orchestrator job for non-none l
       collection: 'lessons',
       data: {
         title: `Endpoint Source Lesson ${ts}`,
+        topic: 'Test Topic',
         chapter: chapterId,
         type: 'practice',
         order: 1,

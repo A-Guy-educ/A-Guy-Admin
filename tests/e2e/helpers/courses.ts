@@ -132,6 +132,7 @@ export async function seedTestCourseData(): Promise<TestCourseData | null> {
         chapter: chapter.id,
         slug: lessonSlug,
         title: 'Test Lesson',
+        topic: 'Test Lesson Topic',
         description: 'A test lesson created for E2E testing',
         type: 'learning',
         status: 'published',
