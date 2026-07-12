@@ -206,7 +206,6 @@ describe('Sections collection — sync + hierarchy', () => {
       } as any,
       overrideAccess: true,
       req: adminReq,
-      draft: true,
     })
     exerciseIds.push(exercise.id)
     return { ...hierarchy, exerciseId: exercise.id }
@@ -225,7 +224,6 @@ describe('Sections collection — sync + hierarchy', () => {
       } as any,
       overrideAccess: true,
       req: adminReq,
-      draft: true,
     })
     sectionIds.push(section.id)
 
@@ -277,7 +275,6 @@ describe('Sections collection — sync + hierarchy', () => {
       } as any,
       overrideAccess: true,
       req: adminReq,
-      draft: true,
     })
     sectionIds.push(section.id)
 
