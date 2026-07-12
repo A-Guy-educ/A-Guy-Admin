@@ -1782,7 +1782,7 @@
 
 - #152: Expand lesson edit with new content fields, SEO tab, and layout r… ([#153](https://github.com/A-Guy-educ/A-Guy-Admin/pull/153)) — @kodyade[bot]
 - #150: Split lesson edit page into tabs and lazy-load exercises tab ([#151](https://github.com/A-Guy-educ/A-Guy-Admin/pull/151)) — @kodyade[bot]
-- promote: dev -> main (v0.26.1) ([#142](https://github.com/A-Guy-educ/A-Guy-Admin/pull/142)) — @aguyshayb
+- promote: dev -> main (v0.26.1) ([#142](https://github.com/A-Guy-educ/A-Guy-Admin/pull/142)) — @aguyshayb · 🔄 QA (#154)
 - chore: release v0.26.1 ([#140](https://github.com/A-Guy-educ/A-Guy-Admin/pull/140)) — @aguyshayb · ⚠️ QA 2026-07-11 (#146)
 - fix(tenant): Backfill required tenant on update, not just create ([#139](https://github.com/A-Guy-educ/A-Guy-Admin/pull/139)) — @aguyshayb · ⚠️ QA 2026-07-11 (#143)
 ## [v0.26.0] - 2026-07-09
