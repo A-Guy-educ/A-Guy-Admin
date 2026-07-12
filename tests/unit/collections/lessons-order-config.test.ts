@@ -114,8 +114,8 @@ describe('Lessons Collection Config', () => {
       expect(tabs[3].name).toBe('meta')
     })
 
-    it('should keep only formulaSheet and contentNavigation in the sidebar', () => {
-      expect(collectSidebarFields(Lessons.fields)).toEqual(['formulaSheet', 'contentNavigation'])
+    it('should keep only contentNavigation in the sidebar', () => {
+      expect(collectSidebarFields(Lessons.fields)).toEqual(['contentNavigation'])
     })
 
     it('should place visible content fields in the requested order', () => {
@@ -130,6 +130,7 @@ describe('Lessons Collection Config', () => {
         'intro',
         'description',
         'formulas',
+        'formulaSheet',
         'examples',
         'commonMistakes',
         'additionalNotes',
