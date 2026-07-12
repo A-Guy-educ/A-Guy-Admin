@@ -10,9 +10,14 @@
  * for collection updates, but the JSON-encoded string is what the field will
  * expect). When the field is added, this code starts being authoritative.
  *
- * The guard `req.context._skipBlockSync` prevents infinite recursion: the
- * update inside this helper sets that flag on the nested `req.context`, so
- * the resulting afterChange hook on the same exercise is a no-op.
+ * The guard `req.context._skipExerciseBlockSync` prevents infinite recursion:
+ * the update inside this helper sets that flag on the nested `req.context`,
+ * so the resulting afterChange hook on the same exercise is a no-op.
+ *
+ * The flag is intentionally distinct from `_skipBlockSync` (used by the
+ * exercise→lesson sync helper) because Payload mutates `req.context` across
+ * nested operations — sharing the name would let a stale flag from a prior
+ * lesson sync leak into a later section sync on the same request.
  */
 
 import type { Payload, PayloadRequest } from 'payload'
@@ -87,7 +92,7 @@ export async function addBlockToExercise({
     data: { blocks: JSON.stringify(updated) },
     overrideAccess: true,
     req,
-    context: { _skipBlockSync: true },
+    context: { _skipExerciseBlockSync: true },
   })
 }
 
@@ -127,6 +132,6 @@ export async function removeBlockFromExercise({
     data: { blocks: JSON.stringify(filtered) },
     overrideAccess: true,
     req,
-    context: { _skipBlockSync: true },
+    context: { _skipExerciseBlockSync: true },
   })
 }

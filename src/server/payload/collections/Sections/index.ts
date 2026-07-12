@@ -170,7 +170,7 @@ const sectionHooks: CollectionConfig['hooks'] = {
   ],
   afterChange: [
     async ({ doc, previousDoc, req }) => {
-      if (req.context?._skipBlockSync) return doc
+      if (req.context?._skipExerciseBlockSync) return doc
 
       const newExerciseId =
         typeof doc.exercise === 'string' ? doc.exercise : (doc.exercise as { id?: string })?.id
@@ -209,7 +209,7 @@ const sectionHooks: CollectionConfig['hooks'] = {
   ],
   afterDelete: [
     async ({ doc, req }) => {
-      if (req.context?._skipBlockSync) return doc
+      if (req.context?._skipExerciseBlockSync) return doc
 
       const exerciseId =
         typeof doc.exercise === 'string' ? doc.exercise : (doc.exercise as { id?: string })?.id
