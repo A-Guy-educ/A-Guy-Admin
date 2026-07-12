@@ -199,7 +199,7 @@ describe.skipIf(!hasDatabaseUrl)('POST /api/course-selections', () => {
     const row = rows.docs[0]
     expect(row.source).toBe('start-page')
     expect(row.gradeLevel).toBe('10')
-    expect(row.user).toBeNull()
+    expect(row.user).toBeUndefined()
     expect(row.guestId).toBe('guest-abc-123')
     expect(typeof row.ipHash).toBe('string')
     expect(row.ipHash).toMatch(/^[a-f0-9]{16}$/)
