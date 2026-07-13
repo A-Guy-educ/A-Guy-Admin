@@ -194,6 +194,7 @@ describe('Sections adminTitle — cascade + fallback', () => {
       collection: 'sections',
       data: {
         title: 'Demo Section',
+        exerciseType: 'guide',
         exercise: exercise.id,
         order: 1,
         tenant: tenantId,
@@ -252,6 +253,7 @@ describe('Sections adminTitle — cascade + fallback', () => {
       collection: 'sections',
       data: {
         title: 'Reassign Me',
+        exerciseType: 'guide',
         exercise: exerciseA.id,
         order: 1,
         tenant: tenantId,
@@ -297,6 +299,7 @@ describe('Sections adminTitle — cascade + fallback', () => {
       collection: 'sections',
       data: {
         title: 'Imported Section',
+        exerciseType: 'guide',
         exercise: exercise.id,
         // Bundles carry the denormalized title verbatim; the skip guard must
         // preserve it instead of recomputing the chain locally.

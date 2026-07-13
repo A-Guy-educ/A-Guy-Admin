@@ -292,6 +292,7 @@ describe('Exercises afterRead aggregator (#172)', () => {
         collection: 'sections',
         data: {
           title: `Sec ${section.order}`,
+          exerciseType: 'guide',
           exercise: exerciseId,
           order: section.order,
           tenant: tenantId,

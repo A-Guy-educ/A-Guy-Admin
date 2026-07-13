@@ -1,4 +1,4 @@
-import type { Access, CollectionConfig } from 'payload'
+import type { Access, CollectionConfig, Field } from 'payload'
 
 import { AccountRole, isAdvancedContentEditor } from '@/infra/auth/roles'
 import type { User } from '@/payload-types'
@@ -15,6 +15,23 @@ import { ContentSchema } from './schemas'
 import { addBlockToLesson, removeBlockFromLesson } from '../../hooks/lessons/syncLessonBlocks'
 import { isContentPromotionImportRequest } from '@/server/services/content-promotion/import-context'
 import { aggregateChildSectionContent } from './hooks/aggregateChildSectionContent'
+
+type FieldWithAdminPosition = Field & {
+  admin?: {
+    position?: string
+    [key: string]: unknown
+  }
+}
+
+const withoutSidebarPosition = (field: Field): Field => {
+  const admin = (field as FieldWithAdminPosition).admin
+  if (admin?.position !== 'sidebar') return field
+
+  return {
+    ...field,
+    admin: Object.fromEntries(Object.entries(admin).filter(([key]) => key !== 'position')),
+  } as Field
+}
 
 /**
  * Access control - Exercise-specific
@@ -234,262 +251,281 @@ export const Exercises: CollectionConfig = {
   },
 
   fields: [
-    // Tenant
-    tenantField,
-    // Content locale
-    contentLocaleField,
-    // Translation link
-    translatedFromField('exercises'),
-    // Section 1: Exercise Meta (Basics)
     {
-      type: 'collapsible',
-      label: 'Exercise Meta (Basics)',
-      admin: { initCollapsed: false },
-      fields: [
+      type: 'tabs',
+      tabs: [
         {
-          name: 'title',
-          type: 'text',
-          required: false,
-          admin: { description: 'Exercise title (for admin reference)' },
-        },
-        {
-          name: 'order',
-          type: 'number',
-          required: false,
-          defaultValue: 0,
-          admin: {
-            description:
-              'DEPRECATED — Order is now defined by lesson blocks array. Kept for backward compatibility.',
-          },
-        },
-        {
-          name: 'lesson',
-          type: 'relationship',
-          relationTo: 'lessons',
-          required: true,
-          index: true,
-          admin: { description: 'The lesson this exercise belongs to' },
-        },
-        {
-          name: 'chapter',
-          type: 'relationship',
-          relationTo: 'chapters',
-          index: true,
-          admin: {
-            hidden: true,
-            description:
-              'Auto-populated from lesson hierarchy. Used for filtering exercises by chapter.',
-          },
-        },
-        {
-          name: 'course',
-          type: 'relationship',
-          relationTo: 'courses',
-          index: true,
-          admin: {
-            hidden: true,
-            description:
-              'Auto-populated from lesson hierarchy. Used for filtering exercises by course.',
-          },
-        },
-        {
-          name: 'slug',
-          type: 'text',
-          required: false,
-          index: true,
-          admin: {
-            description:
-              'URL-friendly identifier (auto-generated from title, unique within lesson)',
-          },
-          hooks: {
-            beforeValidate: [generateSlug, validateSlugUniqueness],
-          },
-        },
-        {
-          name: 'showQuestionNumbering',
-          type: 'checkbox',
-          defaultValue: false,
-          admin: {
-            description:
-              'Show exercise question numbering (the circled number above questions). Enable when multiple exercises share a page.',
-          },
-        },
-      ],
-    },
-
-    // Section 2: Content
-    {
-      type: 'collapsible',
-      label: 'Content',
-      admin: { initCollapsed: false },
-      fields: [
-        {
-          name: 'content',
-          type: 'json',
-          required: true,
-          defaultValue: DEFAULT_CONTENT,
-          validate: (value: unknown) => {
-            const result = ContentSchema.safeParse(value)
-            if (result.success) return true
-            // Log full error for server-side debugging
-            console.error(
-              '[Exercise content validation]',
-              JSON.stringify(result.error.issues, null, 2),
-            )
-            const issues = result.error.issues
-              .map((i) => `[${i.path.join('.')}] ${i.message}`)
-              .join('; ')
-            return `Invalid content: ${issues}`
-          },
-          admin: {
-            description:
-              'Ordered blocks stream. Use question_* blocks to add questions, and rich_text blocks for instructions/notes between questions.',
-            components: {
-              Field: '@/ui/admin/ExerciseContentEditor#ExerciseContentEditor',
-            },
-          },
-        },
-      ],
-    },
-
-    // Created By
-    createdByField,
-
-    // Playlist (sections). Written by the Sections `afterChange`/`afterDelete`
-    // hooks via `syncExerciseBlocks`, and editable from the exercise side via
-    // the `ExerciseBlocksField` UI.
-    {
-      name: 'blocks',
-      type: 'textarea',
-      admin: {
-        description:
-          'Ordered playlist of sections. Populated automatically by the Sections collection hooks and editable from this side via the playlist UI.',
-        components: {
-          Field: '@/ui/admin/ExerciseBlocksField#ExerciseBlocksField',
-        },
-      },
-    },
-
-    // ADD: Conversion Metadata Section
-    {
-      type: 'collapsible',
-      label: 'Conversion Metadata',
-      admin: { initCollapsed: true },
-      fields: [
-        {
-          name: 'origin',
-          type: 'select',
-          options: [
-            { label: 'Manual', value: 'manual' },
-            { label: 'Conversion', value: 'conversion' },
-            { label: 'Import', value: 'import' },
-            { label: 'Context Extraction', value: 'context_extraction' },
-          ],
-          defaultValue: 'manual',
-          required: true,
-          index: true,
-          hooks: {
-            beforeValidate: [
-              async ({ value, operation }) => {
-                // Backfill: set default for existing exercises without origin
-                if (operation === 'update' && !value) {
-                  return 'manual'
-                }
-                return value || 'manual'
+          label: 'Content',
+          fields: [
+            {
+              name: 'subject',
+              type: 'text',
+              admin: {
+                description: 'Subject area (e.g. Mathematics). Free text — no taxonomy yet.',
               },
-            ],
-          },
+            },
+            {
+              name: 'topic',
+              type: 'text',
+              admin: {
+                description: 'Topic within the subject (e.g. Quadratic equations).',
+              },
+            },
+            {
+              name: 'chapter',
+              type: 'relationship',
+              relationTo: 'chapters',
+              index: true,
+              admin: {
+                readOnly: true,
+                description: 'Auto-populated from lesson hierarchy',
+              },
+            },
+            {
+              name: 'title',
+              type: 'text',
+              required: false,
+              admin: { description: 'Exercise title (for admin reference)' },
+            },
+            {
+              name: 'order',
+              type: 'number',
+              required: false,
+              defaultValue: 0,
+              admin: {
+                description:
+                  'DEPRECATED — Order is now defined by lesson blocks array. Kept for backward compatibility.',
+              },
+            },
+            {
+              name: 'slug',
+              type: 'text',
+              required: false,
+              index: true,
+              admin: {
+                description:
+                  'URL-friendly identifier (auto-generated from title, unique within lesson)',
+              },
+              hooks: {
+                beforeValidate: [generateSlug, validateSlugUniqueness],
+              },
+            },
+            {
+              name: 'content',
+              type: 'json',
+              required: true,
+              defaultValue: DEFAULT_CONTENT,
+              validate: (value: unknown) => {
+                const result = ContentSchema.safeParse(value)
+                if (result.success) return true
+                // Log full error for server-side debugging
+                console.error(
+                  '[Exercise content validation]',
+                  JSON.stringify(result.error.issues, null, 2),
+                )
+                const issues = result.error.issues
+                  .map((i) => `[${i.path.join('.')}] ${i.message}`)
+                  .join('; ')
+                return `Invalid content: ${issues}`
+              },
+              admin: {
+                description:
+                  'Legacy inline blocks. For new content, prefer authoring child Sections.',
+                components: {
+                  Field: '@/ui/admin/ExerciseContentEditor#ExerciseContentEditor',
+                },
+              },
+            },
+          ],
         },
         {
-          name: 'sourceDoc',
-          type: 'relationship',
-          relationTo: 'media',
-          index: true,
-          admin: { description: 'Original PDF media for conversion exercises' },
-        },
-        {
-          name: 'sourceLatex',
-          type: 'textarea',
-          admin: {
-            description: 'Raw LaTeX chunk this exercise was derived from (for LaTeX imports)',
-          },
-        },
-        {
-          name: 'conversionJobId',
-          type: 'text',
-          admin: { description: 'Payload job ID that created this exercise' },
-        },
-        {
-          name: 'sourcePageStart',
-          type: 'number',
-          admin: { description: 'Starting page in source PDF' },
-        },
-        {
-          name: 'sourcePageEnd',
-          type: 'number',
-          admin: { description: 'Ending page in source PDF' },
-        },
-        {
-          name: 'sourceOrderInSegment',
-          type: 'number',
-          admin: { description: 'Order within the segment (1-indexed)' },
-        },
-        {
-          name: 'contentHash',
-          type: 'text',
-          admin: { description: 'SHA256 hash for deduplication' },
-        },
-        // Stage 3: Idempotency fields (shadow fields - not yet enforcing uniqueness)
-        {
-          name: 'idempotencyKey',
-          type: 'text',
-          index: true, // Non-unique for now, will be unique in Stage 4
-          admin: {
-            description: 'Source-based identity key (tenant:lesson:doc:pages:ordinal:version)',
-            hidden: true, // Hidden from admin UI - technical field
-          },
-        },
-        {
-          name: 'specVersion',
-          type: 'text',
-          admin: {
-            description: 'Extraction spec version for idempotency key stability',
-            hidden: true,
-          },
-        },
-        {
-          name: 'extractionMeta',
-          type: 'json',
-          admin: {
-            description: 'Additional extraction metadata (segmentIndex, itemOrdinal)',
-            hidden: true,
-          },
-        },
-        // V2-specific fields for image crop pipeline
-        {
-          name: 'pipelineVersion',
-          type: 'number',
-          index: true,
-          admin: {
-            description: 'Pipeline version (1=text extraction, 2=image crops)',
-            hidden: true,
-          },
-        },
-        {
-          name: 'sourcePageIndex',
-          type: 'number',
-          admin: {
-            description: 'Zero-based page index in source PDF (V2 image crops)',
-            hidden: true,
-          },
-        },
-        {
-          name: 'sourceBboxNormalized',
-          type: 'json',
-          admin: {
-            description: 'Normalized bounding box {x,y,width,height} 0..1 (V2 image crops)',
-            hidden: true,
-          },
+          label: 'System',
+          fields: [
+            {
+              name: 'exerciseIdDisplay',
+              type: 'ui',
+              admin: {
+                components: {
+                  Field: '@/ui/admin/ExerciseIdDisplay#ExerciseIdDisplay',
+                },
+              },
+            },
+            {
+              name: 'lesson',
+              type: 'relationship',
+              relationTo: 'lessons',
+              required: true,
+              index: true,
+              admin: { description: 'The lesson this exercise belongs to' },
+            },
+            {
+              name: 'course',
+              type: 'relationship',
+              relationTo: 'courses',
+              index: true,
+              admin: {
+                readOnly: true,
+                description:
+                  'Auto-populated from lesson hierarchy. Used for filtering exercises by course.',
+              },
+            },
+            {
+              type: 'collapsible',
+              label: 'Section Playlist',
+              admin: { initCollapsed: false },
+              fields: [
+                {
+                  name: 'blocks',
+                  type: 'textarea',
+                  admin: {
+                    description:
+                      'Ordered playlist of sections. Populated automatically by the Sections collection hooks and editable from this side via the playlist UI.',
+                    components: {
+                      Field: '@/ui/admin/ExerciseBlocksField#ExerciseBlocksField',
+                    },
+                  },
+                },
+              ],
+            },
+            {
+              name: 'showQuestionNumbering',
+              type: 'checkbox',
+              defaultValue: false,
+              admin: {
+                description:
+                  'Show exercise question numbering (the circled number above questions). Enable when multiple exercises share a page.',
+              },
+            },
+            withoutSidebarPosition(tenantField),
+            withoutSidebarPosition(contentLocaleField),
+            withoutSidebarPosition(translatedFromField('exercises')),
+            withoutSidebarPosition(createdByField),
+            // ADD: Conversion Metadata Section
+            {
+              type: 'collapsible',
+              label: 'Conversion Metadata',
+              admin: { initCollapsed: true },
+              fields: [
+                {
+                  name: 'origin',
+                  type: 'select',
+                  options: [
+                    { label: 'Manual', value: 'manual' },
+                    { label: 'Conversion', value: 'conversion' },
+                    { label: 'Import', value: 'import' },
+                    { label: 'Context Extraction', value: 'context_extraction' },
+                  ],
+                  defaultValue: 'manual',
+                  required: true,
+                  index: true,
+                  hooks: {
+                    beforeValidate: [
+                      async ({ value, operation }) => {
+                        // Backfill: set default for existing exercises without origin
+                        if (operation === 'update' && !value) {
+                          return 'manual'
+                        }
+                        return value || 'manual'
+                      },
+                    ],
+                  },
+                },
+                {
+                  name: 'sourceDoc',
+                  type: 'relationship',
+                  relationTo: 'media',
+                  index: true,
+                  admin: { description: 'Original PDF media for conversion exercises' },
+                },
+                {
+                  name: 'sourceLatex',
+                  type: 'textarea',
+                  admin: {
+                    description:
+                      'Raw LaTeX chunk this exercise was derived from (for LaTeX imports)',
+                  },
+                },
+                {
+                  name: 'conversionJobId',
+                  type: 'text',
+                  admin: { description: 'Payload job ID that created this exercise' },
+                },
+                {
+                  name: 'sourcePageStart',
+                  type: 'number',
+                  admin: { description: 'Starting page in source PDF' },
+                },
+                {
+                  name: 'sourcePageEnd',
+                  type: 'number',
+                  admin: { description: 'Ending page in source PDF' },
+                },
+                {
+                  name: 'sourceOrderInSegment',
+                  type: 'number',
+                  admin: { description: 'Order within the segment (1-indexed)' },
+                },
+                {
+                  name: 'contentHash',
+                  type: 'text',
+                  admin: { description: 'SHA256 hash for deduplication' },
+                },
+                // Stage 3: Idempotency fields (shadow fields - not yet enforcing uniqueness)
+                {
+                  name: 'idempotencyKey',
+                  type: 'text',
+                  index: true, // Non-unique for now, will be unique in Stage 4
+                  admin: {
+                    description:
+                      'Source-based identity key (tenant:lesson:doc:pages:ordinal:version)',
+                    hidden: true, // Hidden from admin UI - technical field
+                  },
+                },
+                {
+                  name: 'specVersion',
+                  type: 'text',
+                  admin: {
+                    description: 'Extraction spec version for idempotency key stability',
+                    hidden: true,
+                  },
+                },
+                {
+                  name: 'extractionMeta',
+                  type: 'json',
+                  admin: {
+                    description: 'Additional extraction metadata (segmentIndex, itemOrdinal)',
+                    hidden: true,
+                  },
+                },
+                // V2-specific fields for image crop pipeline
+                {
+                  name: 'pipelineVersion',
+                  type: 'number',
+                  index: true,
+                  admin: {
+                    description: 'Pipeline version (1=text extraction, 2=image crops)',
+                    hidden: true,
+                  },
+                },
+                {
+                  name: 'sourcePageIndex',
+                  type: 'number',
+                  admin: {
+                    description: 'Zero-based page index in source PDF (V2 image crops)',
+                    hidden: true,
+                  },
+                },
+                {
+                  name: 'sourceBboxNormalized',
+                  type: 'json',
+                  admin: {
+                    description: 'Normalized bounding box {x,y,width,height} 0..1 (V2 image crops)',
+                    hidden: true,
+                  },
+                },
+              ],
+            },
+          ],
         },
       ],
     },

@@ -824,5 +824,95 @@
       "backToProduct": "Try Again",
       "browseProducts": "Browse All Products"
     }
+  },
+  "exerciseForm": {
+    "fields": {
+      "subject": "Subject",
+      "subjectDescription": "Subject area (e.g. Mathematics). Free text — no taxonomy yet.",
+      "topic": "Topic",
+      "topicDescription": "Topic within the subject (e.g. Quadratic equations).",
+      "chapter": "Chapter",
+      "chapterDescription": "Auto-populated from lesson hierarchy",
+      "title": "Title",
+      "titleDescription": "Exercise title (for admin reference)",
+      "order": "Order",
+      "orderDescription": "DEPRECATED — Order is now defined by lesson blocks array. Kept for backward compatibility.",
+      "slug": "Slug",
+      "slugDescription": "URL-friendly identifier (auto-generated from title, unique within lesson)",
+      "content": "Content (legacy blocks)",
+      "contentDescription": "Legacy inline blocks. For new content, prefer authoring child Sections.",
+      "lesson": "Lesson",
+      "lessonDescription": "The lesson this exercise belongs to",
+      "course": "Course",
+      "courseDescription": "Auto-populated from lesson hierarchy. Used for filtering exercises by course.",
+      "showQuestionNumbering": "Show question numbering",
+      "showQuestionNumberingDescription": "Show exercise question numbering (the circled number above questions). Enable when multiple exercises share a page.",
+      "exerciseIdDisplay": "Exercise ID"
+    },
+    "playlist": {
+      "label": "Section Playlist",
+      "description": "Ordered playlist of sections. Populated automatically by the Sections collection hooks and editable from this side via the playlist UI."
+    }
+  },
+  "sectionForm": {
+    "fields": {
+      "title": "Title",
+      "titleDescription": "Section title (for admin reference)",
+      "order": "Order",
+      "orderDescription": "DEPRECATED — Order is now defined by exercise blocks array. Kept for backward compatibility.",
+      "exerciseType": "Exercise type",
+      "exerciseTypeDescription": "Pedagogical role of this section within the exercise",
+      "mainSkill": "Main skill",
+      "mainSkillDescription": "Primary skill the section targets",
+      "subSkills": "Sub-skills",
+      "subSkillsDescription": "Additional skills the section targets (multi-select)",
+      "objective": "Objective",
+      "objectiveDescription": "What the student should be able to do after completing this section.",
+      "questionText": "Question",
+      "questionTextDescription": "The question the student answers.",
+      "hint": "Hint",
+      "hintDescription": "A nudge without giving away the answer.",
+      "solution": "Solution",
+      "solutionDescription": "The core solution.",
+      "fullSolution": "Full solution",
+      "fullSolutionDescription": "Full worked solution shown after the student answers.",
+      "exercise": "Exercise",
+      "exerciseDescription": "The exercise this section belongs to",
+      "lesson": "Lesson",
+      "lessonDescription": "Auto-populated from exercise hierarchy. Used for filtering sections by lesson.",
+      "chapter": "Chapter",
+      "chapterDescription": "Auto-populated from exercise hierarchy. Used for filtering sections by chapter.",
+      "course": "Course",
+      "courseDescription": "Auto-populated from exercise hierarchy. Used for filtering sections by course.",
+      "slug": "Slug",
+      "slugDescription": "URL-friendly identifier (auto-generated from title, unique within exercise)",
+      "sectionIdDisplay": "Section ID"
+    },
+    "exerciseType": {
+      "guide": "Guide",
+      "basic": "Basic",
+      "complex": "Complex",
+      "challenge": "Challenge"
+    },
+    "mainSkill": {
+      "foundations": "Foundational concepts",
+      "understanding": "Understanding",
+      "algebraicTechnique": "Algebraic technique",
+      "orderAndOrganization": "Order & organization",
+      "processThinking": "Process thinking",
+      "creativeThinking": "Creative thinking"
+    },
+    "subSkills": {
+      "foundations": "Foundational concepts",
+      "understanding": "Understanding",
+      "algebraicTechnique": "Algebraic technique",
+      "orderAndOrganization": "Order & organization",
+      "processThinking": "Process thinking",
+      "creativeThinking": "Creative thinking"
+    },
+    "advanced": {
+      "label": "Advanced (legacy blocks)",
+      "contentDescription": "Legacy inline blocks. The exercise-level aggregator (from #172) and the web fallback still read this — keep it in sync with the new pedagogical fields above until the migration ships."
+    }
   }
 }
