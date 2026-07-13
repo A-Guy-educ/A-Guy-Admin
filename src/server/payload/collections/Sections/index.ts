@@ -250,6 +250,12 @@ const computeSectionAdminTitle: CollectionBeforeChangeHook = async ({ data, req 
   return data
 }
 
+/** Extract a label field (chapterLabel / courseLabel) from a populated relation. */
+const readInlineLabelField = (value: unknown, field: 'chapterLabel' | 'courseLabel'): string | null => {
+  if (!value || typeof value !== 'object') return null
+  return (value as Record<string, unknown>)[field] as string | null | undefined ?? null
+}
+
 const populateSectionAdminTitle: CollectionAfterReadHook = async ({ doc, req }) => {
   if (!doc) return doc
   // Bundles carry the denormalized `adminTitle` verbatim — recomputing on
@@ -260,79 +266,17 @@ const populateSectionAdminTitle: CollectionAfterReadHook = async ({ doc, req }) 
   const title = sectionData.title
   if (!title) return doc
 
-  const inlineExercise = readInlineLabel(sectionData.exercise)
-  const inlineLesson = readInlineLabel(sectionData.lesson)
-  const inlineChapter = readInlineLabel(sectionData.chapter)
-  const inlineCourse = readInlineLabel(sectionData.course)
-
-  let exerciseTitle = inlineExercise.title
-  let lessonTitle = inlineLesson.title
-  let chapterTitle = inlineChapter.title
-  let chapterLabel: string | null = null
-  let courseTitle = inlineCourse.title
-  let courseLabel: string | null = null
-
-  if (inlineExercise.id && !exerciseTitle) {
-    try {
-      const exercise = await req.payload.findByID({
-        collection: 'exercises',
-        id: inlineExercise.id,
-        depth: 0,
-        overrideAccess: true,
-        req,
-      })
-      exerciseTitle = (exercise as { title?: string | null } | null)?.title ?? null
-    } catch {
-      // Keep id-only fallback
-    }
-  }
-
-  if (inlineLesson.id && !lessonTitle) {
-    try {
-      const lesson = await req.payload.findByID({
-        collection: 'lessons',
-        id: inlineLesson.id,
-        depth: 0,
-        overrideAccess: true,
-        req,
-      })
-      lessonTitle = (lesson as { title?: string | null } | null)?.title ?? null
-    } catch {
-      // Keep id-only fallback
-    }
-  }
-
-  if (inlineChapter.id) {
-    try {
-      const chapter = await req.payload.findByID({
-        collection: 'chapters',
-        id: inlineChapter.id,
-        depth: 0,
-        overrideAccess: true,
-        req,
-      })
-      chapterTitle = (chapter as { title?: string | null } | null)?.title ?? chapterTitle
-      chapterLabel = (chapter as { chapterLabel?: string | null } | null)?.chapterLabel ?? null
-    } catch {
-      // Keep id-only fallback
-    }
-  }
-
-  if (inlineCourse.id) {
-    try {
-      const course = await req.payload.findByID({
-        collection: 'courses',
-        id: inlineCourse.id,
-        depth: 0,
-        overrideAccess: true,
-        req,
-      })
-      courseTitle = (course as { title?: string | null } | null)?.title ?? courseTitle
-      courseLabel = (course as { courseLabel?: string | null } | null)?.courseLabel ?? null
-    } catch {
-      // Keep id-only fallback
-    }
-  }
+  // Read inline only — no findByID fallback. This hook fires on every section
+  // read, and even one extra round-trip per relation compounds fast enough to
+  // push the CI Integration Tests job past its 15-min timeout. Callers that
+  // want the full breadcrumb should read at `depth: 1`; at `depth: 0` we
+  // degrade to whatever segments are already present in memory.
+  const exerciseTitle = readInlineLabel(sectionData.exercise).title
+  const lessonTitle = readInlineLabel(sectionData.lesson).title
+  const chapterTitle = readInlineLabel(sectionData.chapter).title
+  const chapterLabel = readInlineLabelField(sectionData.chapter, 'chapterLabel')
+  const courseTitle = readInlineLabel(sectionData.course).title
+  const courseLabel = readInlineLabelField(sectionData.course, 'courseLabel')
 
   const fullChain = joinChain([
     formatLabelPart(courseLabel, courseTitle),
