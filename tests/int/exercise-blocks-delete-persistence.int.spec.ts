@@ -197,6 +197,7 @@ describe('Exercise blocks — deletion persistence', () => {
       collection: 'sections',
       data: {
         title: 'Section To Be Removed',
+        exerciseType: 'guide',
         exercise: exercise.id,
         order: 1,
         tenant: tenantId,
@@ -278,19 +279,37 @@ describe('Exercise blocks — deletion persistence', () => {
 
     const a = await payload.create({
       collection: 'sections',
-      data: { title: 'A', exercise: exercise.id, order: 1, tenant: tenantId } as any,
+      data: {
+        title: 'A',
+        exerciseType: 'guide',
+        exercise: exercise.id,
+        order: 1,
+        tenant: tenantId,
+      } as any,
       overrideAccess: true,
       req: adminReq,
     })
     const b = await payload.create({
       collection: 'sections',
-      data: { title: 'B', exercise: exercise.id, order: 2, tenant: tenantId } as any,
+      data: {
+        title: 'B',
+        exerciseType: 'guide',
+        exercise: exercise.id,
+        order: 2,
+        tenant: tenantId,
+      } as any,
       overrideAccess: true,
       req: adminReq,
     })
     const c = await payload.create({
       collection: 'sections',
-      data: { title: 'C', exercise: exercise.id, order: 3, tenant: tenantId } as any,
+      data: {
+        title: 'C',
+        exerciseType: 'guide',
+        exercise: exercise.id,
+        order: 3,
+        tenant: tenantId,
+      } as any,
       overrideAccess: true,
       req: adminReq,
     })
@@ -360,7 +379,13 @@ describe('Exercise blocks — deletion persistence', () => {
 
     const first = await payload.create({
       collection: 'sections',
-      data: { title: 'First', exercise: exercise.id, order: 1, tenant: tenantId } as any,
+      data: {
+        title: 'First',
+        exerciseType: 'guide',
+        exercise: exercise.id,
+        order: 1,
+        tenant: tenantId,
+      } as any,
       overrideAccess: true,
       req: adminReq,
     })
@@ -378,7 +403,13 @@ describe('Exercise blocks — deletion persistence', () => {
     // A new section created against the same exercise should still auto-append.
     const second = await payload.create({
       collection: 'sections',
-      data: { title: 'Second', exercise: exercise.id, order: 2, tenant: tenantId } as any,
+      data: {
+        title: 'Second',
+        exerciseType: 'guide',
+        exercise: exercise.id,
+        order: 2,
+        tenant: tenantId,
+      } as any,
       overrideAccess: true,
       req: adminReq,
     })

@@ -28,7 +28,12 @@ const collectSidebarFields = (fields: Field[]): InspectableField[] =>
     const inspectable = asInspectable(field)
     const current = inspectable.admin?.position === 'sidebar' ? [inspectable] : []
     const nested = inspectable.fields ? collectSidebarFields(inspectable.fields) : []
-    return [...current, ...nested]
+    const tabFields = (inspectable as InspectableField & { tabs?: Array<{ fields?: Field[] }> })
+      .tabs
+    const tabsNested = tabFields
+      ? tabFields.flatMap((t) => (t.fields ? collectSidebarFields(t.fields) : []))
+      : []
+    return [...current, ...nested, ...tabsNested]
   })
 
 const findField = (
@@ -41,6 +46,16 @@ const findField = (
     if (inspectable.fields) {
       const nested = findField(inspectable.fields, predicate)
       if (nested) return nested
+    }
+    const tabFields = (inspectable as InspectableField & { tabs?: Array<{ fields?: Field[] }> })
+      .tabs
+    if (tabFields) {
+      for (const tab of tabFields) {
+        if (tab.fields) {
+          const nested = findField(tab.fields, predicate)
+          if (nested) return nested
+        }
+      }
     }
   }
   return undefined

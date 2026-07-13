@@ -218,6 +218,7 @@ describe('Sections collection — sync + hierarchy', () => {
       collection: 'sections',
       data: {
         title: 'First Section',
+        exerciseType: 'guide',
         exercise: exerciseId,
         order: 1,
         tenant: tenantId,
@@ -244,6 +245,7 @@ describe('Sections collection — sync + hierarchy', () => {
       collection: 'sections',
       data: {
         title: 'Hierarchy Section',
+        exerciseType: 'guide',
         exercise: exerciseId,
         order: 1,
         tenant: tenantId,
@@ -269,6 +271,7 @@ describe('Sections collection — sync + hierarchy', () => {
       collection: 'sections',
       data: {
         title: 'Reassigned Section',
+        exerciseType: 'guide',
         exercise: exerciseA,
         order: 1,
         tenant: tenantId,
@@ -320,6 +323,7 @@ describe('Sections collection — sync + hierarchy', () => {
       collection: 'sections',
       data: {
         title: 'To Be Deleted',
+        exerciseType: 'guide',
         exercise: exerciseId,
         order: 1,
         tenant: tenantId,
@@ -358,6 +362,7 @@ describe('Sections collection — sync + hierarchy', () => {
       collection: 'sections',
       data: {
         title: 'Imported Section',
+        exerciseType: 'guide',
         exercise: exerciseId,
         order: 1,
         tenant: tenantId,

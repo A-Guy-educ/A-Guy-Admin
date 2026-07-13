@@ -3,6 +3,7 @@ import type {
   CollectionBeforeChangeHook,
   Access,
   CollectionConfig,
+  Field,
 } from 'payload'
 
 import { AccountRole, isAdvancedContentEditor } from '@/infra/auth/roles'
@@ -302,6 +303,23 @@ const populateSectionAdminTitle: CollectionAfterReadHook = async ({ doc, req }) 
  * authoritative ordering; until then `order` is editable and acts as a
  * fallback so admin UIs stay sane.
  */
+type FieldWithAdminPosition = Field & {
+  admin?: {
+    position?: string
+    [key: string]: unknown
+  }
+}
+
+const withoutSidebarPosition = (field: Field): Field => {
+  const admin = (field as FieldWithAdminPosition).admin
+  if (admin?.position !== 'sidebar') return field
+
+  return {
+    ...field,
+    admin: Object.fromEntries(Object.entries(admin).filter(([key]) => key !== 'position')),
+  } as Field
+}
+
 const isAdminOrOwner: Access = ({ req }) => {
   const user = req.user as User | null
   if (!user) return false
@@ -521,129 +539,236 @@ export const Sections: CollectionConfig = {
     defaultColumns: ['order', 'title', 'exercise', 'updatedAt'],
   },
   fields: [
-    tenantField,
-    contentLocaleField,
-    translatedFromField('sections'),
-
     {
-      type: 'collapsible',
-      label: 'Section Meta (Basics)',
-      admin: { initCollapsed: false },
-      fields: [
+      type: 'tabs',
+      tabs: [
         {
-          name: 'title',
-          type: 'text',
-          required: false,
-          admin: { description: 'Section title (for admin reference)' },
+          label: 'Content',
+          fields: [
+            {
+              name: 'title',
+              type: 'text',
+              required: false,
+              admin: { description: 'Section title (for admin reference)' },
+            },
+            {
+              name: 'order',
+              type: 'number',
+              required: false,
+              defaultValue: 0,
+              admin: {
+                description:
+                  'DEPRECATED — Order is now defined by exercise blocks array. Kept for backward compatibility.',
+              },
+            },
+            {
+              name: 'exerciseType',
+              type: 'select',
+              required: true,
+              index: true,
+              options: [
+                { label: 'Guide (מנחה)', value: 'guide' },
+                { label: 'Basic (בסיס)', value: 'basic' },
+                { label: 'Complex (מורכב)', value: 'complex' },
+                { label: 'Challenge (אתגר)', value: 'challenge' },
+              ],
+              admin: {
+                description: 'Pedagogical role of this section within the exercise',
+              },
+            },
+            {
+              name: 'mainSkill',
+              type: 'select',
+              required: false,
+              index: true,
+              options: [
+                {
+                  label: 'Foundational concepts (שליטה במושגי יסוד)',
+                  value: 'foundations',
+                },
+                { label: 'Understanding (הבנה)', value: 'understanding' },
+                { label: 'Algebraic technique (טכניקה אלגברית)', value: 'algebraicTechnique' },
+                { label: 'Order & organization (סדר וארגון)', value: 'orderAndOrganization' },
+                { label: 'Process thinking (חשיבה תהליכית)', value: 'processThinking' },
+                { label: 'Creative thinking (חשיבה יצירתית)', value: 'creativeThinking' },
+              ],
+              admin: {
+                description: 'Primary skill the section targets',
+              },
+            },
+            {
+              name: 'subSkills',
+              type: 'select',
+              hasMany: true,
+              options: [
+                {
+                  label: 'Foundational concepts (שליטה במושגי יסוד)',
+                  value: 'foundations',
+                },
+                { label: 'Understanding (הבנה)', value: 'understanding' },
+                { label: 'Algebraic technique (טכניקה אלגברית)', value: 'algebraicTechnique' },
+                { label: 'Order & organization (סדר וארגון)', value: 'orderAndOrganization' },
+                { label: 'Process thinking (חשיבה תהליכית)', value: 'processThinking' },
+                { label: 'Creative thinking (חשיבה יצירתית)', value: 'creativeThinking' },
+              ],
+              // TODO: sub-skill vocabulary is pending PO confirmation — extend
+              // this list (and matching mainSkill list) once the PO finalises
+              // the taxonomy.
+              admin: {
+                description: 'Additional skills the section targets (multi-select)',
+              },
+            },
+            {
+              name: 'objective',
+              type: 'textarea',
+              admin: {
+                description: 'What the student should be able to do after completing this section.',
+              },
+            },
+            {
+              name: 'questionText',
+              type: 'textarea',
+              admin: {
+                description: 'The question the student answers.',
+              },
+            },
+            {
+              name: 'hint',
+              type: 'textarea',
+              admin: {
+                description: 'A nudge without giving away the answer.',
+              },
+            },
+            {
+              name: 'solution',
+              type: 'textarea',
+              admin: {
+                description: 'The core solution.',
+              },
+            },
+            {
+              name: 'fullSolution',
+              type: 'textarea',
+              admin: {
+                description: 'Full worked solution shown after the student answers.',
+              },
+            },
+            {
+              type: 'collapsible',
+              label: 'Advanced (legacy blocks)',
+              admin: { initCollapsed: true },
+              fields: [
+                {
+                  name: 'content',
+                  type: 'json',
+                  required: true,
+                  defaultValue: DEFAULT_CONTENT,
+                  validate: (value: unknown) => {
+                    const result = ContentSchema.safeParse(value)
+                    if (result.success) return true
+                    console.error(
+                      '[Section content validation]',
+                      JSON.stringify(result.error.issues, null, 2),
+                    )
+                    const issues = result.error.issues
+                      .map((i) => `[${i.path.join('.')}] ${i.message}`)
+                      .join('; ')
+                    return `Invalid content: ${issues}`
+                  },
+                  admin: {
+                    description:
+                      'Legacy inline blocks. The exercise-level aggregator (from #172) and the web fallback still read this — keep it in sync with the new pedagogical fields above until the migration ships.',
+                  },
+                },
+              ],
+            },
+          ],
         },
         {
-          name: 'adminTitle',
-          type: 'text',
-          index: true,
-          admin: {
-            hidden: true,
-            description:
-              'Auto-computed display title for admin relationship dropdowns (course / chapter / lesson / exercise / section)',
-          },
-        },
-        {
-          name: 'order',
-          type: 'number',
-          required: false,
-          defaultValue: 0,
-          admin: {
-            description:
-              'DEPRECATED — Order is now defined by exercise blocks array. Kept for backward compatibility.',
-          },
-        },
-        {
-          name: 'exercise',
-          type: 'relationship',
-          relationTo: 'exercises',
-          required: true,
-          index: true,
-          admin: { description: 'The exercise this section belongs to' },
-        },
-        {
-          name: 'lesson',
-          type: 'relationship',
-          relationTo: 'lessons',
-          index: true,
-          admin: {
-            hidden: true,
-            description:
-              'Auto-populated from exercise hierarchy. Used for filtering sections by lesson.',
-          },
-        },
-        {
-          name: 'chapter',
-          type: 'relationship',
-          relationTo: 'chapters',
-          index: true,
-          admin: {
-            hidden: true,
-            description:
-              'Auto-populated from exercise hierarchy. Used for filtering sections by chapter.',
-          },
-        },
-        {
-          name: 'course',
-          type: 'relationship',
-          relationTo: 'courses',
-          index: true,
-          admin: {
-            hidden: true,
-            description:
-              'Auto-populated from exercise hierarchy. Used for filtering sections by course.',
-          },
-        },
-        {
-          name: 'slug',
-          type: 'text',
-          required: false,
-          index: true,
-          admin: {
-            description:
-              'URL-friendly identifier (auto-generated from title, unique within exercise)',
-          },
-          hooks: {
-            beforeValidate: [generateSlug, validateSlugUniqueness],
-          },
+          label: 'System',
+          fields: [
+            {
+              name: 'sectionIdDisplay',
+              type: 'ui',
+              admin: {
+                components: {
+                  Field: '@/ui/admin/SectionIdDisplay#SectionIdDisplay',
+                },
+              },
+            },
+            {
+              name: 'exercise',
+              type: 'relationship',
+              relationTo: 'exercises',
+              required: true,
+              index: true,
+              admin: { description: 'The exercise this section belongs to' },
+            },
+            {
+              name: 'lesson',
+              type: 'relationship',
+              relationTo: 'lessons',
+              index: true,
+              admin: {
+                readOnly: true,
+                description:
+                  'Auto-populated from exercise hierarchy. Used for filtering sections by lesson.',
+              },
+            },
+            {
+              name: 'chapter',
+              type: 'relationship',
+              relationTo: 'chapters',
+              index: true,
+              admin: {
+                readOnly: true,
+                description:
+                  'Auto-populated from exercise hierarchy. Used for filtering sections by chapter.',
+              },
+            },
+            {
+              name: 'course',
+              type: 'relationship',
+              relationTo: 'courses',
+              index: true,
+              admin: {
+                readOnly: true,
+                description:
+                  'Auto-populated from exercise hierarchy. Used for filtering sections by course.',
+              },
+            },
+            {
+              name: 'adminTitle',
+              type: 'text',
+              index: true,
+              admin: {
+                hidden: true,
+                description:
+                  'Auto-computed display title for admin relationship dropdowns (course / chapter / lesson / exercise / section)',
+              },
+            },
+            {
+              name: 'slug',
+              type: 'text',
+              required: false,
+              index: true,
+              admin: {
+                description:
+                  'URL-friendly identifier (auto-generated from title, unique within exercise)',
+              },
+              hooks: {
+                beforeValidate: [generateSlug, validateSlugUniqueness],
+              },
+            },
+            withoutSidebarPosition(tenantField),
+            withoutSidebarPosition(contentLocaleField),
+            withoutSidebarPosition(translatedFromField('sections')),
+            withoutSidebarPosition(createdByField),
+          ],
         },
       ],
     },
 
-    {
-      type: 'collapsible',
-      label: 'Content',
-      admin: { initCollapsed: false },
-      fields: [
-        {
-          name: 'content',
-          type: 'json',
-          required: true,
-          defaultValue: DEFAULT_CONTENT,
-          validate: (value: unknown) => {
-            const result = ContentSchema.safeParse(value)
-            if (result.success) return true
-            console.error(
-              '[Section content validation]',
-              JSON.stringify(result.error.issues, null, 2),
-            )
-            const issues = result.error.issues
-              .map((i) => `[${i.path.join('.')}] ${i.message}`)
-              .join('; ')
-            return `Invalid content: ${issues}`
-          },
-          admin: {
-            description:
-              'Ordered blocks stream. Use question_* blocks to add questions, and rich_text blocks for instructions/notes between questions.',
-          },
-        },
-      ],
-    },
-
-    createdByField,
     // Content hierarchy navigation (sidebar)
     {
       name: 'contentNavigation',

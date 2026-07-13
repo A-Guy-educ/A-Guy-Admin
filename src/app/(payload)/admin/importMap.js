@@ -28,7 +28,6 @@ import { TranslateChapterAction as TranslateChapterAction_5e03fe73ee4379dfd96d49
 import { ChapterCascadeDelete as ChapterCascadeDelete_8b707dd02fbf8886630a64bffcae6998 } from '@/ui/admin/CascadeDeleteButton'
 import { LessonConversionPanel as LessonConversionPanel_057daf3b86f654d90edf003b44c43703 } from '@/ui/admin/exercise-conversion/LessonConversionPanel'
 import { LessonBlocksField as LessonBlocksField_c3ff48da65f411ef372b497cb7c724ee } from '@/ui/admin/LessonBlocksField'
-import { ExerciseBlocksField as ExerciseBlocksField_a1b2c3d4e5f67890a1b2c3d4e5f67890 } from '@/ui/admin/ExerciseBlocksField'
 import { ContextExerciseViewer as ContextExerciseViewer_00433017acccf596fc613f093ab15a2d } from '@/ui/admin/context-exercise-viewer'
 import { LessonIdDisplay as LessonIdDisplay_05dba386507b0a4f994ff6eb8b0cb22c } from '@/ui/admin/LessonIdDisplay'
 import { MetaImageComponent as MetaImageComponent_a8a977ebc872c5d5ea7ee689724c0860 } from '@payloadcms/plugin-seo/client'
@@ -43,10 +42,14 @@ import { IntroTableRowsField as IntroTableRowsField_7c6162afec623d7dc5ec436565e3
 import { IntroGeometrySpecField as IntroGeometrySpecField_c2c1761cbe819b0609cad9be299e1fc7 } from '@/ui/admin/IntroGeometryField'
 import { IntroGraphSpecField as IntroGraphSpecField_8d1eea97d57da5692323d9664ac06d67 } from '@/ui/admin/IntroGraphField'
 import { ExerciseContentEditor as ExerciseContentEditor_d0c5d070052b5cabcf602f1e9878afd8 } from '@/ui/admin/ExerciseContentEditor'
+import { ExerciseIdDisplay as ExerciseIdDisplay_644cbbe3ecc84c7d57eb8fd9f96ff348 } from '@/ui/admin/ExerciseIdDisplay'
+import { ExerciseBlocksField as ExerciseBlocksField_a178cb45a583b7c7ac6ac3ec84dfb752 } from '@/ui/admin/ExerciseBlocksField'
 import { ExerciseNavigation as ExerciseNavigation_3633cb4a281c7c581bfc453746b3dc60 } from '@/ui/admin/ContentNavigation'
 import { ConvertLatexBlockButton as ConvertLatexBlockButton_d913e8ffad94b4f98328d710b349e10d } from '@/ui/admin/exercise-conversion/ConvertLatexBlockButton'
 import { ExercisePreview as ExercisePreview_79d54f4a9901df303ad8ae2cc7d44435 } from '@/ui/admin/ExercisePreview'
 import { TranslateExerciseAction as TranslateExerciseAction_5e03fe73ee4379dfd96d492849856d43 } from '@/ui/admin/TranslationButton'
+import { SectionIdDisplay as SectionIdDisplay_7ef67555ed09efa1ad0f6e5f11651ef5 } from '@/ui/admin/SectionIdDisplay'
+import { SectionNavigation as SectionNavigation_3633cb4a281c7c581bfc453746b3dc60 } from '@/ui/admin/ContentNavigation'
 import { MediaPreview as MediaPreview_4b980c9a407724ef7c1755e3482d0258 } from '@/ui/admin/MediaPreview'
 import { HorizontalRuleFeatureClient as HorizontalRuleFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { BlocksFeatureClient as BlocksFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
@@ -67,7 +70,6 @@ import { default as default_7545204935b55fcf02b3be70dde90fc1 } from '@/ui/admin/
 import { default as default_1b2cd3c8450eece915504fde397ab5c7 } from '@/ui/admin/LessonDuplicationReview/SidebarLink'
 import { default as default_6cbe285301e6b5516cbbf36b52b4a7d9 } from '@/ui/admin/LessonJsonImport/SidebarLink'
 import { default as default_808dcfaece6a11816da5208dd9c344f6 } from '@/ui/admin/ContentPromotion/SidebarLink'
-import { VercelBlobClientUploadHandler as VercelBlobClientUploadHandler_16c82c5e25f430251a3e3ba57219ff4e } from '@payloadcms/storage-vercel-blob/client'
 import { CollectionCards as CollectionCards_ab83ff7e88da8d3530831f296ec4756a } from '@payloadcms/ui/rsc'
 
 export const importMap = {
@@ -101,7 +103,6 @@ export const importMap = {
   "@/ui/admin/CascadeDeleteButton#ChapterCascadeDelete": ChapterCascadeDelete_8b707dd02fbf8886630a64bffcae6998,
   "@/ui/admin/exercise-conversion/LessonConversionPanel#LessonConversionPanel": LessonConversionPanel_057daf3b86f654d90edf003b44c43703,
   "@/ui/admin/LessonBlocksField#LessonBlocksField": LessonBlocksField_c3ff48da65f411ef372b497cb7c724ee,
-  "@/ui/admin/ExerciseBlocksField#ExerciseBlocksField": ExerciseBlocksField_a1b2c3d4e5f67890a1b2c3d4e5f67890,
   "@/ui/admin/context-exercise-viewer#ContextExerciseViewer": ContextExerciseViewer_00433017acccf596fc613f093ab15a2d,
   "@/ui/admin/LessonIdDisplay#LessonIdDisplay": LessonIdDisplay_05dba386507b0a4f994ff6eb8b0cb22c,
   "@payloadcms/plugin-seo/client#MetaImageComponent": MetaImageComponent_a8a977ebc872c5d5ea7ee689724c0860,
@@ -116,10 +117,14 @@ export const importMap = {
   "@/ui/admin/IntroGeometryField#IntroGeometrySpecField": IntroGeometrySpecField_c2c1761cbe819b0609cad9be299e1fc7,
   "@/ui/admin/IntroGraphField#IntroGraphSpecField": IntroGraphSpecField_8d1eea97d57da5692323d9664ac06d67,
   "@/ui/admin/ExerciseContentEditor#ExerciseContentEditor": ExerciseContentEditor_d0c5d070052b5cabcf602f1e9878afd8,
+  "@/ui/admin/ExerciseIdDisplay#ExerciseIdDisplay": ExerciseIdDisplay_644cbbe3ecc84c7d57eb8fd9f96ff348,
+  "@/ui/admin/ExerciseBlocksField#ExerciseBlocksField": ExerciseBlocksField_a178cb45a583b7c7ac6ac3ec84dfb752,
   "@/ui/admin/ContentNavigation#ExerciseNavigation": ExerciseNavigation_3633cb4a281c7c581bfc453746b3dc60,
   "@/ui/admin/exercise-conversion/ConvertLatexBlockButton#ConvertLatexBlockButton": ConvertLatexBlockButton_d913e8ffad94b4f98328d710b349e10d,
   "@/ui/admin/ExercisePreview#ExercisePreview": ExercisePreview_79d54f4a9901df303ad8ae2cc7d44435,
   "@/ui/admin/TranslationButton#TranslateExerciseAction": TranslateExerciseAction_5e03fe73ee4379dfd96d492849856d43,
+  "@/ui/admin/SectionIdDisplay#SectionIdDisplay": SectionIdDisplay_7ef67555ed09efa1ad0f6e5f11651ef5,
+  "@/ui/admin/ContentNavigation#SectionNavigation": SectionNavigation_3633cb4a281c7c581bfc453746b3dc60,
   "@/ui/admin/MediaPreview#MediaPreview": MediaPreview_4b980c9a407724ef7c1755e3482d0258,
   "@payloadcms/richtext-lexical/client#HorizontalRuleFeatureClient": HorizontalRuleFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "@payloadcms/richtext-lexical/client#BlocksFeatureClient": BlocksFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
@@ -140,6 +145,5 @@ export const importMap = {
   "@/ui/admin/LessonDuplicationReview/SidebarLink#default": default_1b2cd3c8450eece915504fde397ab5c7,
   "@/ui/admin/LessonJsonImport/SidebarLink#default": default_6cbe285301e6b5516cbbf36b52b4a7d9,
   "@/ui/admin/ContentPromotion/SidebarLink#default": default_808dcfaece6a11816da5208dd9c344f6,
-  "@payloadcms/storage-vercel-blob/client#VercelBlobClientUploadHandler": VercelBlobClientUploadHandler_16c82c5e25f430251a3e3ba57219ff4e,
   "@payloadcms/ui/rsc#CollectionCards": CollectionCards_ab83ff7e88da8d3530831f296ec4756a
 }

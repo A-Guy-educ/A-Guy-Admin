@@ -824,5 +824,95 @@
       "backToProduct": "נסה שוב",
       "browseProducts": "עיין בכל המוצרים"
     }
+  },
+  "exerciseForm": {
+    "fields": {
+      "subject": "נושא",
+      "subjectDescription": "תחום הנושא (למשל: מתמטיקה). טקסט חופשי — אין עדיין טקסונומיה.",
+      "topic": "פרק",
+      "topicDescription": "הנושא בתוך תחום הלימוד (למשל: משוואות ריבועיות).",
+      "chapter": "פרק",
+      "chapterDescription": "מאוכלס אוטומטית מהיררכיית השיעור",
+      "title": "כותרת",
+      "titleDescription": "כותרת התרגיל (לשימוש פנימי)",
+      "order": "סדר",
+      "orderDescription": "הוצא משימוש — הסדר נקבע כעת על ידי מערך הבלוקים של השיעור. נשמר לתאימות לאחור.",
+      "slug": "כתובת",
+      "slugDescription": "מזהה ידידותי לכתובת (נוצר אוטומטית מהכותרת, ייחודי בתוך השיעור)",
+      "content": "תוכן (בלוקים legacy)",
+      "contentDescription": "בלוקים מדור קודם. לתוכן חדש מומלץ להשתמש בסקציות צאצא.",
+      "lesson": "שיעור",
+      "lessonDescription": "השיעור שאליו שייך התרגיל",
+      "course": "קורס",
+      "courseDescription": "מאוכלס אוטומטית מהיררכיית השיעור. משמש לסינון תרגילים לפי קורס.",
+      "showQuestionNumbering": "הצג מספור שאלות",
+      "showQuestionNumberingDescription": "הצג את מספור השאלות של התרגיל (המספר המעוגל מעל השאלות). הפעל כאשר מספר תרגילים חולקים עמוד.",
+      "exerciseIdDisplay": "מזהה תרגיל"
+    },
+    "playlist": {
+      "label": "רשימת סקציות",
+      "description": "רשימה מסודרת של סקציות. מאוכלסת אוטומטית על ידי הוקים של קולקציית הסקציות וניתנת לעריכה מצד זה דרך ממשק רשימת ההשמעה."
+    }
+  },
+  "sectionForm": {
+    "fields": {
+      "title": "כותרת",
+      "titleDescription": "כותרת הסקציה (לשימוש פנימי)",
+      "order": "סדר",
+      "orderDescription": "הוצא משימוש — הסדר נקבע כעת על ידי מערך הבלוקים של התרגיל. נשמר לתאימות לאחור.",
+      "exerciseType": "סוג תרגיל",
+      "exerciseTypeDescription": "התפקיד הפדגוגי של סקציה זו בתוך התרגיל",
+      "mainSkill": "מיומנות ראשית",
+      "mainSkillDescription": "המיומנות העיקרית שאליה מכוונת הסקציה",
+      "subSkills": "מיומנויות משנה",
+      "subSkillsDescription": "מיומנויות נוספות שאליהן מכוונת הסקציה (בחירה מרובה)",
+      "objective": "מטרה",
+      "objectiveDescription": "מה התלמיד אמור להיות מסוגל לעשות לאחר השלמת הסקציה.",
+      "questionText": "שאלה",
+      "questionTextDescription": "השאלה שהתלמיד עונה עליה.",
+      "hint": "רמז",
+      "hintDescription": "דחיפה קלה מבלי לחשוף את התשובה.",
+      "solution": "פתרון",
+      "solutionDescription": "פתרון הליבה.",
+      "fullSolution": "פתרון מלא",
+      "fullSolutionDescription": "פתרון מלא ומפורט המוצג לאחר שהתלמיד עונה.",
+      "exercise": "תרגיל",
+      "exerciseDescription": "התרגיל שאליו שייכת הסקציה",
+      "lesson": "שיעור",
+      "lessonDescription": "מאוכלס אוטומטית מהיררכיית התרגיל. משמש לסינון סקציות לפי שיעור.",
+      "chapter": "פרק",
+      "chapterDescription": "מאוכלס אוטומטית מהיררכיית התרגיל. משמש לסינון סקציות לפי פרק.",
+      "course": "קורס",
+      "courseDescription": "מאוכלס אוטומטית מהיררכיית התרגיל. משמש לסינון סקציות לפי קורס.",
+      "slug": "כתובת",
+      "slugDescription": "מזהה ידידותי לכתובת (נוצר אוטומטית מהכותרת, ייחודי בתוך התרגיל)",
+      "sectionIdDisplay": "מזהה סקציה"
+    },
+    "exerciseType": {
+      "guide": "מנחה",
+      "basic": "בסיס",
+      "complex": "מורכב",
+      "challenge": "אתגר"
+    },
+    "mainSkill": {
+      "foundations": "שליטה במושגי יסוד",
+      "understanding": "הבנה",
+      "algebraicTechnique": "טכניקה אלגברית",
+      "orderAndOrganization": "סדר וארגון",
+      "processThinking": "חשיבה תהליכית",
+      "creativeThinking": "חשיבה יצירתית"
+    },
+    "subSkills": {
+      "foundations": "שליטה במושגי יסוד",
+      "understanding": "הבנה",
+      "algebraicTechnique": "טכניקה אלגברית",
+      "orderAndOrganization": "סדר וארגון",
+      "processThinking": "חשיבה תהליכית",
+      "creativeThinking": "חשיבה יצירתית"
+    },
+    "advanced": {
+      "label": "מתקדם (בלוקים legacy)",
+      "contentDescription": "בלוקים מדור קודם. האגרגטור ברמת התרגיל (מ-#172) והקוד החלופי של ה-Web עדיין קוראים שדה זה — יש לשמור על סנכרון עם שדות הפדגוגיה החדשים למעלה עד להשלמת ההעברה."
+    }
   }
 }

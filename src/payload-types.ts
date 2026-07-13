@@ -1641,6 +1641,58 @@ export interface Lesson {
 export interface Exercise {
   id: string;
   /**
+   * Subject area (e.g. Mathematics). Free text — no taxonomy yet.
+   */
+  subject?: string | null;
+  /**
+   * Topic within the subject (e.g. Quadratic equations).
+   */
+  topic?: string | null;
+  /**
+   * Auto-populated from lesson hierarchy
+   */
+  chapter?: (string | null) | Chapter;
+  /**
+   * Exercise title (for admin reference)
+   */
+  title?: string | null;
+  /**
+   * DEPRECATED — Order is now defined by lesson blocks array. Kept for backward compatibility.
+   */
+  order?: number | null;
+  /**
+   * URL-friendly identifier (auto-generated from title, unique within lesson)
+   */
+  slug?: string | null;
+  /**
+   * Legacy inline blocks. For new content, prefer authoring child Sections.
+   */
+  content:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * The lesson this exercise belongs to
+   */
+  lesson: string | Lesson;
+  /**
+   * Auto-populated from lesson hierarchy. Used for filtering exercises by course.
+   */
+  course?: (string | null) | Course;
+  /**
+   * Ordered playlist of sections. Populated automatically by the Sections collection hooks and editable from this side via the playlist UI.
+   */
+  blocks?: string | null;
+  /**
+   * Show exercise question numbering (the circled number above questions). Enable when multiple exercises share a page.
+   */
+  showQuestionNumbering?: boolean | null;
+  /**
    * Tenant scope for this document
    */
   tenant: string | Tenant;
@@ -1653,53 +1705,9 @@ export interface Exercise {
    */
   translatedFrom?: (string | null) | Exercise;
   /**
-   * Exercise title (for admin reference)
-   */
-  title?: string | null;
-  /**
-   * DEPRECATED — Order is now defined by lesson blocks array. Kept for backward compatibility.
-   */
-  order?: number | null;
-  /**
-   * The lesson this exercise belongs to
-   */
-  lesson: string | Lesson;
-  /**
-   * Auto-populated from lesson hierarchy. Used for filtering exercises by chapter.
-   */
-  chapter?: (string | null) | Chapter;
-  /**
-   * Auto-populated from lesson hierarchy. Used for filtering exercises by course.
-   */
-  course?: (string | null) | Course;
-  /**
-   * URL-friendly identifier (auto-generated from title, unique within lesson)
-   */
-  slug?: string | null;
-  /**
-   * Show exercise question numbering (the circled number above questions). Enable when multiple exercises share a page.
-   */
-  showQuestionNumbering?: boolean | null;
-  /**
-   * Ordered blocks stream. Use question_* blocks to add questions, and rich_text blocks for instructions/notes between questions.
-   */
-  content:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
-  /**
    * User who created this document
    */
   createdBy?: (string | null) | User;
-  /**
-   * Ordered playlist of sections. Populated automatically by the Sections collection hooks and editable from this side via the playlist UI.
-   */
-  blocks?: string | null;
   origin: 'manual' | 'conversion' | 'import' | 'context_extraction';
   /**
    * Original PDF media for conversion exercises
@@ -2497,29 +2505,75 @@ export interface ContextExtraction {
 export interface Section {
   id: string;
   /**
-   * Tenant scope for this document
-   */
-  tenant: string | Tenant;
-  /**
-   * Content language
-   */
-  locale: 'en' | 'he';
-  /**
-   * Source document this was translated from
-   */
-  translatedFrom?: (string | null) | Section;
-  /**
    * Section title (for admin reference)
    */
   title?: string | null;
   /**
-   * Auto-computed display title for admin relationship dropdowns (course / chapter / lesson / exercise / section)
-   */
-  adminTitle?: string | null;
-  /**
    * DEPRECATED — Order is now defined by exercise blocks array. Kept for backward compatibility.
    */
   order?: number | null;
+  /**
+   * Pedagogical role of this section within the exercise
+   */
+  exerciseType: 'guide' | 'basic' | 'complex' | 'challenge';
+  /**
+   * Primary skill the section targets
+   */
+  mainSkill?:
+    | (
+        | 'foundations'
+        | 'understanding'
+        | 'algebraicTechnique'
+        | 'orderAndOrganization'
+        | 'processThinking'
+        | 'creativeThinking'
+      )
+    | null;
+  /**
+   * Additional skills the section targets (multi-select)
+   */
+  subSkills?:
+    | (
+        | 'foundations'
+        | 'understanding'
+        | 'algebraicTechnique'
+        | 'orderAndOrganization'
+        | 'processThinking'
+        | 'creativeThinking'
+      )[]
+    | null;
+  /**
+   * What the student should be able to do after completing this section.
+   */
+  objective?: string | null;
+  /**
+   * The question the student answers.
+   */
+  questionText?: string | null;
+  /**
+   * A nudge without giving away the answer.
+   */
+  hint?: string | null;
+  /**
+   * The core solution.
+   */
+  solution?: string | null;
+  /**
+   * Full worked solution shown after the student answers.
+   */
+  fullSolution?: string | null;
+  /**
+   * Legacy inline blocks. The exercise-level aggregator (from #172) and the web fallback still read this — keep it in sync with the new pedagogical fields above until the migration ships.
+   */
+  content:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
   /**
    * The exercise this section belongs to
    */
@@ -2537,21 +2591,25 @@ export interface Section {
    */
   course?: (string | null) | Course;
   /**
+   * Auto-computed display title for admin relationship dropdowns (course / chapter / lesson / exercise / section)
+   */
+  adminTitle?: string | null;
+  /**
    * URL-friendly identifier (auto-generated from title, unique within exercise)
    */
   slug?: string | null;
   /**
-   * Ordered blocks stream. Use question_* blocks to add questions, and rich_text blocks for instructions/notes between questions.
+   * Tenant scope for this document
    */
-  content:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
+  tenant: string | Tenant;
+  /**
+   * Content language
+   */
+  locale: 'en' | 'he';
+  /**
+   * Source document this was translated from
+   */
+  translatedFrom?: (string | null) | Section;
   /**
    * User who created this document
    */
@@ -4463,19 +4521,21 @@ export interface ContextExtractionsSelect<T extends boolean = true> {
  * via the `definition` "exercises_select".
  */
 export interface ExercisesSelect<T extends boolean = true> {
+  subject?: T;
+  topic?: T;
+  chapter?: T;
+  title?: T;
+  order?: T;
+  slug?: T;
+  content?: T;
+  lesson?: T;
+  course?: T;
+  blocks?: T;
+  showQuestionNumbering?: T;
   tenant?: T;
   locale?: T;
   translatedFrom?: T;
-  title?: T;
-  order?: T;
-  lesson?: T;
-  chapter?: T;
-  course?: T;
-  slug?: T;
-  showQuestionNumbering?: T;
-  content?: T;
   createdBy?: T;
-  blocks?: T;
   origin?: T;
   sourceDoc?: T;
   sourceLatex?: T;
@@ -4498,18 +4558,26 @@ export interface ExercisesSelect<T extends boolean = true> {
  * via the `definition` "sections_select".
  */
 export interface SectionsSelect<T extends boolean = true> {
-  tenant?: T;
-  locale?: T;
-  translatedFrom?: T;
   title?: T;
-  adminTitle?: T;
   order?: T;
+  exerciseType?: T;
+  mainSkill?: T;
+  subSkills?: T;
+  objective?: T;
+  questionText?: T;
+  hint?: T;
+  solution?: T;
+  fullSolution?: T;
+  content?: T;
   exercise?: T;
   lesson?: T;
   chapter?: T;
   course?: T;
+  adminTitle?: T;
   slug?: T;
-  content?: T;
+  tenant?: T;
+  locale?: T;
+  translatedFrom?: T;
   createdBy?: T;
   updatedAt?: T;
   createdAt?: T;
