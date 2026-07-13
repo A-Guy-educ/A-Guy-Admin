@@ -251,9 +251,12 @@ const computeSectionAdminTitle: CollectionBeforeChangeHook = async ({ data, req 
 }
 
 /** Extract a label field (chapterLabel / courseLabel) from a populated relation. */
-const readInlineLabelField = (value: unknown, field: 'chapterLabel' | 'courseLabel'): string | null => {
+const readInlineLabelField = (
+  value: unknown,
+  field: 'chapterLabel' | 'courseLabel',
+): string | null => {
   if (!value || typeof value !== 'object') return null
-  return (value as Record<string, unknown>)[field] as string | null | undefined ?? null
+  return ((value as Record<string, unknown>)[field] as string | null | undefined) ?? null
 }
 
 const populateSectionAdminTitle: CollectionAfterReadHook = async ({ doc, req }) => {
