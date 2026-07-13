@@ -1697,7 +1697,7 @@ export interface Exercise {
    */
   createdBy?: (string | null) | User;
   /**
-   * Ordered playlist of sections. Populated automatically by the Sections collection hooks.
+   * Ordered playlist of sections. Populated automatically by the Sections collection hooks and editable from this side via the playlist UI.
    */
   blocks?: string | null;
   origin: 'manual' | 'conversion' | 'import' | 'context_extraction';

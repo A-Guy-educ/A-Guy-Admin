@@ -346,16 +346,17 @@ export const Exercises: CollectionConfig = {
     createdByField,
 
     // Playlist (sections). Written by the Sections `afterChange`/`afterDelete`
-    // hooks via `syncExerciseBlocks`. Hidden until the admin UI field lands in
-    // the follow-up task — admin-side editing still flows through the Sections
-    // collection directly.
+    // hooks via `syncExerciseBlocks`, and editable from the exercise side via
+    // the `ExerciseBlocksField` UI.
     {
       name: 'blocks',
       type: 'textarea',
       admin: {
-        hidden: true,
         description:
-          'Ordered playlist of sections. Populated automatically by the Sections collection hooks.',
+          'Ordered playlist of sections. Populated automatically by the Sections collection hooks and editable from this side via the playlist UI.',
+        components: {
+          Field: '@/ui/admin/ExerciseBlocksField#ExerciseBlocksField',
+        },
       },
     },
 
