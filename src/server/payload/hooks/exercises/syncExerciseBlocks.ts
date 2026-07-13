@@ -4,20 +4,18 @@
  * @pattern hook-helper
  * @ai-summary Syncs an exercise's `blocks` array when sections change.
  *
- * Mirrors `syncLessonBlocks.ts`. The exercise-side `blocks` field is being
- * introduced as part of issue #166 — until the field lands in the schema, the
- * helper writes to it anyway (Payload ignores unknown fields at write time
- * for collection updates, but the JSON-encoded string is what the field will
- * expect). When the field is added, this code starts being authoritative.
+ * Mirrors `syncLessonBlocks.ts` with two differences that matter for
+ * correctness on a shared `PayloadRequest`:
  *
- * The guard `req.context._skipExerciseBlockSync` prevents infinite recursion:
- * the update inside this helper sets that flag on the nested `req.context`,
- * so the resulting afterChange hook on the same exercise is a no-op.
- *
- * The flag is intentionally distinct from `_skipBlockSync` (used by the
- * exercise→lesson sync helper) because Payload mutates `req.context` across
- * nested operations — sharing the name would let a stale flag from a prior
- * lesson sync leak into a later section sync on the same request.
+ * 1. The guard flag is `_skipExerciseBlockSync` (not `_skipBlockSync`) so a
+ *    stale flag from an earlier exercise→lesson sync on the same request
+ *    can't short-circuit a later section→exercise sync.
+ * 2. The flag is restored to its prior value after `payload.update` returns.
+ *    Payload's `createLocalReq` merges the passed `context` into
+ *    `req.context` and does NOT restore it, so without this restore the flag
+ *    would persist on the shared `adminReq` and silently skip every
+ *    subsequent section create on the same request (which is what actually
+ *    broke the integration tests on issue #166).
  */
 
 import type { Payload, PayloadRequest } from 'payload'
@@ -26,6 +24,40 @@ interface BlockEntry {
   id: string
   blockType: 'sectionRef'
   section?: string
+}
+
+type MutableContext = Record<string, unknown> & { _skipExerciseBlockSync?: unknown }
+
+/**
+ * Set `_skipExerciseBlockSync` on `req.context` for the duration of the
+ * update, then restore the prior value. Prevents the recursion guard from
+ * leaking to unrelated operations that share this request.
+ */
+async function updateExerciseBlocksAndRestoreFlag(
+  payload: Payload,
+  req: PayloadRequest,
+  exerciseId: string,
+  blocksJson: string,
+): Promise<void> {
+  const ctx = req.context as MutableContext | undefined
+  const hadFlag = ctx ? '_skipExerciseBlockSync' in ctx : false
+  const previous = ctx?._skipExerciseBlockSync
+  try {
+    await payload.update({
+      collection: 'exercises',
+      id: exerciseId,
+      data: { blocks: blocksJson },
+      overrideAccess: true,
+      req,
+      context: { _skipExerciseBlockSync: true },
+    })
+  } finally {
+    const after = req.context as MutableContext | undefined
+    if (after) {
+      if (hadFlag) after._skipExerciseBlockSync = previous
+      else delete after._skipExerciseBlockSync
+    }
+  }
 }
 
 /** Parse the blocks field (JSON string or array) into a typed array. */
@@ -86,14 +118,7 @@ export async function addBlockToExercise({
 
   const updated = [...blocks, newBlock]
 
-  await payload.update({
-    collection: 'exercises',
-    id: exerciseId,
-    data: { blocks: JSON.stringify(updated) },
-    overrideAccess: true,
-    req,
-    context: { _skipExerciseBlockSync: true },
-  })
+  await updateExerciseBlocksAndRestoreFlag(payload, req, exerciseId, JSON.stringify(updated))
 }
 
 /**
@@ -126,12 +151,5 @@ export async function removeBlockFromExercise({
 
   if (filtered.length === blocks.length) return // nothing to remove
 
-  await payload.update({
-    collection: 'exercises',
-    id: exerciseId,
-    data: { blocks: JSON.stringify(filtered) },
-    overrideAccess: true,
-    req,
-    context: { _skipExerciseBlockSync: true },
-  })
+  await updateExerciseBlocksAndRestoreFlag(payload, req, exerciseId, JSON.stringify(filtered))
 }
