@@ -14,6 +14,7 @@ import { enforceContentStructure } from './hooks/enforceContentStructure'
 import { ContentSchema } from './schemas'
 import { addBlockToLesson, removeBlockFromLesson } from '../../hooks/lessons/syncLessonBlocks'
 import { isContentPromotionImportRequest } from '@/server/services/content-promotion/import-context'
+import { aggregateChildSectionContent } from './hooks/aggregateChildSectionContent'
 
 /**
  * Access control - Exercise-specific
@@ -142,6 +143,15 @@ const exerciseHooks: CollectionConfig['hooks'] = {
 
       return doc
     },
+    // Read-time compat shim: if the exercise has no `content.blocks` of its
+    // own but has child sections, concatenate each section's `content.blocks`
+    // into `doc.content.blocks` in memory. The sibling A-Guy-Web repo still
+    // reads the legacy `exercise.content.blocks` field in ~6 places and
+    // doesn't know about sections yet. This keeps that path working
+    // transparently. Skipped during build/seed (no req.user) and during
+    // content-promotion imports (the bundle already carries the full
+    // `content.blocks` payload and must not be reshuffled).
+    aggregateChildSectionContent,
   ],
   afterChange: [
     async ({ doc, previousDoc, req }) => {
