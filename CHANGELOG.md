@@ -1780,6 +1780,7 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- #166: Add Sections collection under Exercises with parent playlist sync ([#168](https://github.com/A-Guy-educ/A-Guy-Admin/pull/168)) — @kodyade[bot]
 - #165: Track course selections server-side (log every pick to a new coll… ([#167](https://github.com/A-Guy-educ/A-Guy-Admin/pull/167)) — @kodyade[bot]
 - #155: Move formula sheet field from sidebar into Content tab ([#156](https://github.com/A-Guy-educ/A-Guy-Admin/pull/156)) — @kodyade[bot]
 - #152: Expand lesson edit with new content fields, SEO tab, and layout r… ([#153](https://github.com/A-Guy-educ/A-Guy-Admin/pull/153)) — @kodyade[bot]
