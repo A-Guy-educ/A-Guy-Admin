@@ -462,7 +462,20 @@
       "openChat": "Open AI Chat",
       "modalTitle": "Admin AI Assistant"
     },
-    "chatLink": "Chat with AI"
+    "chatLink": "Chat with AI",
+    "contentNavigation": {
+      "title": "Content Hierarchy",
+      "loading": "Loading hierarchy...",
+      "empty": "Save the document to see navigation links.",
+      "siblingPrevious": "Previous section",
+      "siblingNext": "Next section",
+      "parent": {
+        "course": "Course",
+        "chapter": "Chapter",
+        "lesson": "Lesson",
+        "exercise": "Exercise"
+      }
+    }
   },
   "accessControl": {
     "mandatoryTitle": "Sign in Required",

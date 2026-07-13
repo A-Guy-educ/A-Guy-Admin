@@ -2513,6 +2513,10 @@ export interface Section {
    */
   title?: string | null;
   /**
+   * Auto-computed display title for admin relationship dropdowns (course / chapter / lesson / exercise / section)
+   */
+  adminTitle?: string | null;
+  /**
    * DEPRECATED — Order is now defined by exercise blocks array. Kept for backward compatibility.
    */
   order?: number | null;
@@ -4498,6 +4502,7 @@ export interface SectionsSelect<T extends boolean = true> {
   locale?: T;
   translatedFrom?: T;
   title?: T;
+  adminTitle?: T;
   order?: T;
   exercise?: T;
   lesson?: T;
