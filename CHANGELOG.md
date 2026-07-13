@@ -1787,7 +1787,7 @@
 - #165: Track course selections server-side (log every pick to a new coll… ([#167](https://github.com/A-Guy-educ/A-Guy-Admin/pull/167)) — @kodyade[bot]
 - #155: Move formula sheet field from sidebar into Content tab ([#156](https://github.com/A-Guy-educ/A-Guy-Admin/pull/156)) — @kodyade[bot]
 - #152: Expand lesson edit with new content fields, SEO tab, and layout r… ([#153](https://github.com/A-Guy-educ/A-Guy-Admin/pull/153)) — @kodyade[bot]
-- #150: Split lesson edit page into tabs and lazy-load exercises tab ([#151](https://github.com/A-Guy-educ/A-Guy-Admin/pull/151)) — @kodyade[bot]
+- #150: Split lesson edit page into tabs and lazy-load exercises tab ([#151](https://github.com/A-Guy-educ/A-Guy-Admin/pull/151)) — @kodyade[bot] · 🔄 QA (#180)
 - promote: dev -> main (v0.26.1) ([#142](https://github.com/A-Guy-educ/A-Guy-Admin/pull/142)) — @aguyshayb · ⚠️ QA 2026-07-12 (#154)
 - chore: release v0.26.1 ([#140](https://github.com/A-Guy-educ/A-Guy-Admin/pull/140)) — @aguyshayb · ⚠️ QA 2026-07-11 (#146)
 - fix(tenant): Backfill required tenant on update, not just create ([#139](https://github.com/A-Guy-educ/A-Guy-Admin/pull/139)) — @aguyshayb · ⚠️ QA 2026-07-11 (#143)
