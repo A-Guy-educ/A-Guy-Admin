@@ -1780,6 +1780,7 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- #176: Extend admin navigation and content-nav chain for Sections ([#177](https://github.com/A-Guy-educ/A-Guy-Admin/pull/177)) — @kodyade[bot]
 - #172: Aggregate child sections into exercise.content.blocks at read time ([#175](https://github.com/A-Guy-educ/A-Guy-Admin/pull/175)) — @kodyade[bot]
 - #173: Add sectionRef playlist UI to Exercises blocks field ([#174](https://github.com/A-Guy-educ/A-Guy-Admin/pull/174)) — @kodyade[bot]
 - #166: Add Sections collection under Exercises with parent playlist sync ([#168](https://github.com/A-Guy-educ/A-Guy-Admin/pull/168)) — @kodyade[bot]
