@@ -115,12 +115,18 @@ const formatLabelPart = (...parts: Array<string | null | undefined>) =>
  * Read the title-like parts of a relationship value WITHOUT triggering a
  * Mongo round trip. Falls back to the stored ID when the value is unresolved.
  * The matching `findByID` lookup below is what actually resolves the labels.
+ *
+ * IMPORTANT: only `title` is read, never `adminTitle`. `Lessons` uses
+ * `adminTitle` as its `useAsTitle`, so a populated `section.lesson` carries an
+ * `adminTitle` that is already the breadcrumb "course / chapter / lesson".
+ * Preferring it here duplicates course + chapter segments in the section
+ * chain.
  */
 const readInlineLabel = (value: unknown): { id: string | null; title: string | null } => {
   const id = getRelationshipId(value)
   if (!value || typeof value !== 'object') return { id, title: null }
-  const obj = value as { title?: string | null; adminTitle?: string | null }
-  return { id, title: obj.adminTitle || obj.title || null }
+  const obj = value as { title?: string | null }
+  return { id, title: obj.title || null }
 }
 
 const joinChain = (parts: Array<string | null | undefined>): string =>
@@ -265,6 +271,36 @@ const populateSectionAdminTitle: CollectionAfterReadHook = async ({ doc, req }) 
   let chapterLabel: string | null = null
   let courseTitle = inlineCourse.title
   let courseLabel: string | null = null
+
+  if (inlineExercise.id && !exerciseTitle) {
+    try {
+      const exercise = await req.payload.findByID({
+        collection: 'exercises',
+        id: inlineExercise.id,
+        depth: 0,
+        overrideAccess: true,
+        req,
+      })
+      exerciseTitle = (exercise as { title?: string | null } | null)?.title ?? null
+    } catch {
+      // Keep id-only fallback
+    }
+  }
+
+  if (inlineLesson.id && !lessonTitle) {
+    try {
+      const lesson = await req.payload.findByID({
+        collection: 'lessons',
+        id: inlineLesson.id,
+        depth: 0,
+        overrideAccess: true,
+        req,
+      })
+      lessonTitle = (lesson as { title?: string | null } | null)?.title ?? null
+    } catch {
+      // Keep id-only fallback
+    }
+  }
 
   if (inlineChapter.id) {
     try {
