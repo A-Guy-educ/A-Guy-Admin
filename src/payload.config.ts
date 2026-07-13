@@ -25,6 +25,7 @@ import { ExerciseAssets } from '@/server/payload/collections/ExerciseAssets'
 import { EnrollmentProgress } from '@/server/payload/collections/EnrollmentProgress'
 import { Enrollments } from '@/server/payload/collections/Enrollments'
 import { Exercises } from '@/server/payload/collections/Exercises'
+import { Sections } from '@/server/payload/collections/Sections'
 import { ExtractionLogs } from '@/server/payload/collections/ExtractionLogs'
 import { Features } from '@/server/payload/collections/Features'
 import { FormulaSheets } from '@/server/payload/collections/FormulaSheets'
@@ -224,6 +225,7 @@ export default buildConfig({
     ContentPages,
     ContextExtractions,
     Exercises,
+    Sections,
     ExtractionLogs,
     FormulaSheets,
     InteractiveLessons,

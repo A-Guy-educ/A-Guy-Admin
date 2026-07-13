@@ -87,6 +87,7 @@ export interface Config {
     'content-pages': ContentPage;
     'context-extractions': ContextExtraction;
     exercises: Exercise;
+    sections: Section;
     'extraction-logs': ExtractionLog;
     'formula-sheets': FormulaSheet;
     interactive_lessons: InteractiveLesson;
@@ -143,6 +144,7 @@ export interface Config {
     'content-pages': ContentPagesSelect<false> | ContentPagesSelect<true>;
     'context-extractions': ContextExtractionsSelect<false> | ContextExtractionsSelect<true>;
     exercises: ExercisesSelect<false> | ExercisesSelect<true>;
+    sections: SectionsSelect<false> | SectionsSelect<true>;
     'extraction-logs': ExtractionLogsSelect<false> | ExtractionLogsSelect<true>;
     'formula-sheets': FormulaSheetsSelect<false> | FormulaSheetsSelect<true>;
     interactive_lessons: InteractiveLessonsSelect<false> | InteractiveLessonsSelect<true>;
@@ -1694,6 +1696,10 @@ export interface Exercise {
    * User who created this document
    */
   createdBy?: (string | null) | User;
+  /**
+   * Ordered playlist of sections. Populated automatically by the Sections collection hooks.
+   */
+  blocks?: string | null;
   origin: 'manual' | 'conversion' | 'import' | 'context_extraction';
   /**
    * Original PDF media for conversion exercises
@@ -2481,6 +2487,71 @@ export interface ContextExtraction {
     | number
     | boolean
     | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "sections".
+ */
+export interface Section {
+  id: string;
+  /**
+   * Tenant scope for this document
+   */
+  tenant: string | Tenant;
+  /**
+   * Content language
+   */
+  locale: 'en' | 'he';
+  /**
+   * Source document this was translated from
+   */
+  translatedFrom?: (string | null) | Section;
+  /**
+   * Section title (for admin reference)
+   */
+  title?: string | null;
+  /**
+   * DEPRECATED — Order is now defined by exercise blocks array. Kept for backward compatibility.
+   */
+  order?: number | null;
+  /**
+   * The exercise this section belongs to
+   */
+  exercise: string | Exercise;
+  /**
+   * Auto-populated from exercise hierarchy. Used for filtering sections by lesson.
+   */
+  lesson?: (string | null) | Lesson;
+  /**
+   * Auto-populated from exercise hierarchy. Used for filtering sections by chapter.
+   */
+  chapter?: (string | null) | Chapter;
+  /**
+   * Auto-populated from exercise hierarchy. Used for filtering sections by course.
+   */
+  course?: (string | null) | Course;
+  /**
+   * URL-friendly identifier (auto-generated from title, unique within exercise)
+   */
+  slug?: string | null;
+  /**
+   * Ordered blocks stream. Use question_* blocks to add questions, and rich_text blocks for instructions/notes between questions.
+   */
+  content:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * User who created this document
+   */
+  createdBy?: (string | null) | User;
   updatedAt: string;
   createdAt: string;
 }
@@ -3620,6 +3691,10 @@ export interface PayloadLockedDocument {
         value: string | Exercise;
       } | null)
     | ({
+        relationTo: 'sections';
+        value: string | Section;
+      } | null)
+    | ({
         relationTo: 'extraction-logs';
         value: string | ExtractionLog;
       } | null)
@@ -4396,6 +4471,7 @@ export interface ExercisesSelect<T extends boolean = true> {
   showQuestionNumbering?: T;
   content?: T;
   createdBy?: T;
+  blocks?: T;
   origin?: T;
   sourceDoc?: T;
   sourceLatex?: T;
@@ -4410,6 +4486,26 @@ export interface ExercisesSelect<T extends boolean = true> {
   pipelineVersion?: T;
   sourcePageIndex?: T;
   sourceBboxNormalized?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "sections_select".
+ */
+export interface SectionsSelect<T extends boolean = true> {
+  tenant?: T;
+  locale?: T;
+  translatedFrom?: T;
+  title?: T;
+  order?: T;
+  exercise?: T;
+  lesson?: T;
+  chapter?: T;
+  course?: T;
+  slug?: T;
+  content?: T;
+  createdBy?: T;
   updatedAt?: T;
   createdAt?: T;
 }
