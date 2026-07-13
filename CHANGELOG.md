@@ -1780,6 +1780,7 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- #172: Aggregate child sections into exercise.content.blocks at read time ([#175](https://github.com/A-Guy-educ/A-Guy-Admin/pull/175)) — @kodyade[bot]
 - #173: Add sectionRef playlist UI to Exercises blocks field ([#174](https://github.com/A-Guy-educ/A-Guy-Admin/pull/174)) — @kodyade[bot]
 - #166: Add Sections collection under Exercises with parent playlist sync ([#168](https://github.com/A-Guy-educ/A-Guy-Admin/pull/168)) — @kodyade[bot]
 - #165: Track course selections server-side (log every pick to a new coll… ([#167](https://github.com/A-Guy-educ/A-Guy-Admin/pull/167)) — @kodyade[bot]
