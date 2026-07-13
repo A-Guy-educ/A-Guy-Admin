@@ -203,26 +203,23 @@ describe('Sections adminTitle — cascade + fallback', () => {
     })
     sectionIds.push(section.id)
 
+    // Mirrors the Lessons pattern: course + chapter segments are
+    // "<label> <title>", the deeper levels are just titles.
     expect(section.adminTitle).toBe(
-      [course.title, chapter.title, lesson.title, exercise.title, section.title].join(' / '),
+      [
+        `${course.courseLabel} ${course.title}`,
+        `${chapter.chapterLabel} ${chapter.title}`,
+        lesson.title,
+        exercise.title,
+        section.title,
+      ].join(' / '),
     )
   })
 
-  it('falls back to the section title when the parent exercise is missing', async () => {
-    const section = await payload.create({
-      collection: 'sections',
-      data: {
-        title: 'Orphan Section',
-        order: 1,
-        tenant: tenantId,
-      } as any,
-      overrideAccess: true,
-      req: adminReq,
-    })
-    sectionIds.push(section.id)
-
-    expect(section.adminTitle).toBe('Orphan Section')
-  })
+  // Note: an "orphan section" (no exercise) is not a supportable state —
+  // `exercise` is `required: true` on the collection so the create would fail
+  // validation before the fallback hook could run. Fallback behavior for a
+  // broken parent chain is covered by the unit tests on `computeSectionAdminTitle`.
 
   it('recomputes adminTitle when the section is reassigned to a different exercise', async () => {
     const { lesson: lessonA } = await seedHierarchy()
@@ -280,6 +277,19 @@ describe('Sections adminTitle — cascade + fallback', () => {
 
   it('skips adminTitle recomputation during content-promotion imports', async () => {
     const { lesson } = await seedHierarchy()
+    const exercise = await payload.create({
+      collection: 'exercises',
+      data: {
+        title: 'Bundled Exercise',
+        lesson: lesson.id,
+        order: 1,
+        tenant: tenantId,
+      } as any,
+      overrideAccess: true,
+      req: adminReq,
+    })
+    exerciseIds.push(exercise.id)
+
     const flagReq: any = { user: adminReq.user, context: {} }
     markRequestAsContentPromotionImport(flagReq)
 
@@ -287,15 +297,15 @@ describe('Sections adminTitle — cascade + fallback', () => {
       collection: 'sections',
       data: {
         title: 'Imported Section',
-        // Bundle carries the denormalized chain; bypass our resolver.
-        exercise: lesson.id, // intentionally wrong (lesson id, not exercise)
+        exercise: exercise.id,
+        // Bundles carry the denormalized title verbatim; the skip guard must
+        // preserve it instead of recomputing the chain locally.
         adminTitle: 'Imported Section',
         order: 1,
         tenant: tenantId,
       } as any,
       overrideAccess: true,
       req: flagReq,
-      draft: true,
     })
     sectionIds.push(section.id)
 

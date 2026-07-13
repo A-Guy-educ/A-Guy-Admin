@@ -246,6 +246,10 @@ const computeSectionAdminTitle: CollectionBeforeChangeHook = async ({ data, req 
 
 const populateSectionAdminTitle: CollectionAfterReadHook = async ({ doc, req }) => {
   if (!doc) return doc
+  // Bundles carry the denormalized `adminTitle` verbatim — recomputing on
+  // every import-time read would burn Mongo round trips and could overwrite
+  // the bundled value with a stale local chain. Matches the beforeChange skip.
+  if (isContentPromotionImportRequest(req)) return doc
   const sectionData = doc as SectionAdminTitleData
   const title = sectionData.title
   if (!title) return doc
