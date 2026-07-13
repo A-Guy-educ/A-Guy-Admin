@@ -462,7 +462,20 @@
       "openChat": "פתח צ'אט AI",
       "modalTitle": "עוזר AI למנהלים"
     },
-    "chatLink": "צ'אט עם AI"
+    "chatLink": "צ'אט עם AI",
+    "contentNavigation": {
+      "title": "היררכיית תוכן",
+      "loading": "טוען היררכיה...",
+      "empty": "שמור את המסמך כדי לראות קישורי ניווט.",
+      "siblingPrevious": "סעיף קודם",
+      "siblingNext": "סעיף הבא",
+      "parent": {
+        "course": "קורס",
+        "chapter": "פרק",
+        "lesson": "שיעור",
+        "exercise": "תרגיל"
+      }
+    }
   },
   "accessControl": {
     "mandatoryTitle": "נדרשת התחברות",
