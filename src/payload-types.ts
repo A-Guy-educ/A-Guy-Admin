@@ -1677,6 +1677,10 @@ export interface Exercise {
     | boolean
     | null;
   /**
+   * Ordered playlist of sections. Populated automatically by the Sections collection hooks and editable from this side via the playlist UI.
+   */
+  blocks?: string | null;
+  /**
    * The lesson this exercise belongs to
    */
   lesson: string | Lesson;
@@ -1684,10 +1688,6 @@ export interface Exercise {
    * Auto-populated from lesson hierarchy. Used for filtering exercises by course.
    */
   course?: (string | null) | Course;
-  /**
-   * Ordered playlist of sections. Populated automatically by the Sections collection hooks and editable from this side via the playlist UI.
-   */
-  blocks?: string | null;
   /**
    * Show exercise question numbering (the circled number above questions). Enable when multiple exercises share a page.
    */
@@ -4528,9 +4528,9 @@ export interface ExercisesSelect<T extends boolean = true> {
   order?: T;
   slug?: T;
   content?: T;
+  blocks?: T;
   lesson?: T;
   course?: T;
-  blocks?: T;
   showQuestionNumbering?: T;
   tenant?: T;
   locale?: T;

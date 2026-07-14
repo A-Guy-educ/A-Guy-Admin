@@ -826,6 +826,9 @@
     }
   },
   "exerciseForm": {
+    "tabs": {
+      "sections": "Sections"
+    },
     "fields": {
       "subject": "Subject",
       "subjectDescription": "Subject area (e.g. Mathematics). Free text — no taxonomy yet.",
