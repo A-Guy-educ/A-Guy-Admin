@@ -339,6 +339,22 @@ export const Exercises: CollectionConfig = {
           ],
         },
         {
+          label: 'Sections',
+          fields: [
+            {
+              name: 'blocks',
+              type: 'textarea',
+              admin: {
+                description:
+                  'Ordered playlist of sections. Populated automatically by the Sections collection hooks and editable from this side via the playlist UI.',
+                components: {
+                  Field: '@/ui/admin/ExerciseBlocksField#ExerciseBlocksField',
+                },
+              },
+            },
+          ],
+        },
+        {
           label: 'System',
           fields: [
             {
@@ -368,24 +384,6 @@ export const Exercises: CollectionConfig = {
                 description:
                   'Auto-populated from lesson hierarchy. Used for filtering exercises by course.',
               },
-            },
-            {
-              type: 'collapsible',
-              label: 'Section Playlist',
-              admin: { initCollapsed: false },
-              fields: [
-                {
-                  name: 'blocks',
-                  type: 'textarea',
-                  admin: {
-                    description:
-                      'Ordered playlist of sections. Populated automatically by the Sections collection hooks and editable from this side via the playlist UI.',
-                    components: {
-                      Field: '@/ui/admin/ExerciseBlocksField#ExerciseBlocksField',
-                    },
-                  },
-                },
-              ],
             },
             {
               name: 'showQuestionNumbering',

@@ -826,6 +826,9 @@
     }
   },
   "exerciseForm": {
+    "tabs": {
+      "sections": "סקציות"
+    },
     "fields": {
       "subject": "נושא",
       "subjectDescription": "תחום הנושא (למשל: מתמטיקה). טקסט חופשי — אין עדיין טקסונומיה.",
