@@ -653,34 +653,35 @@ export const Sections: CollectionConfig = {
                 description: 'Full worked solution shown after the student answers.',
               },
             },
+          ],
+        },
+        {
+          label: 'Blocks',
+          fields: [
             {
-              type: 'collapsible',
-              label: 'Advanced (legacy blocks)',
-              admin: { initCollapsed: true },
-              fields: [
-                {
-                  name: 'content',
-                  type: 'json',
-                  required: true,
-                  defaultValue: DEFAULT_CONTENT,
-                  validate: (value: unknown) => {
-                    const result = ContentSchema.safeParse(value)
-                    if (result.success) return true
-                    console.error(
-                      '[Section content validation]',
-                      JSON.stringify(result.error.issues, null, 2),
-                    )
-                    const issues = result.error.issues
-                      .map((i) => `[${i.path.join('.')}] ${i.message}`)
-                      .join('; ')
-                    return `Invalid content: ${issues}`
-                  },
-                  admin: {
-                    description:
-                      'Legacy inline blocks. The exercise-level aggregator (from #172) and the web fallback still read this — keep it in sync with the new pedagogical fields above until the migration ships.',
-                  },
+              name: 'content',
+              type: 'json',
+              required: true,
+              defaultValue: DEFAULT_CONTENT,
+              validate: (value: unknown) => {
+                const result = ContentSchema.safeParse(value)
+                if (result.success) return true
+                console.error(
+                  '[Section content validation]',
+                  JSON.stringify(result.error.issues, null, 2),
+                )
+                const issues = result.error.issues
+                  .map((i) => `[${i.path.join('.')}] ${i.message}`)
+                  .join('; ')
+                return `Invalid content: ${issues}`
+              },
+              admin: {
+                description:
+                  'Ordered blocks stream for this section. Use question_* blocks to add questions, rich_text blocks for instructions/notes between them.',
+                components: {
+                  Field: '@/ui/admin/ExerciseContentEditor#ExerciseContentEditor',
                 },
-              ],
+              },
             },
           ],
         },
