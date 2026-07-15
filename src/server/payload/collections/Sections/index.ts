@@ -625,34 +625,11 @@ export const Sections: CollectionConfig = {
                 description: 'What the student should be able to do after completing this section.',
               },
             },
-            {
-              name: 'questionText',
-              type: 'textarea',
-              admin: {
-                description: 'The question the student answers.',
-              },
-            },
-            {
-              name: 'hint',
-              type: 'textarea',
-              admin: {
-                description: 'A nudge without giving away the answer.',
-              },
-            },
-            {
-              name: 'solution',
-              type: 'textarea',
-              admin: {
-                description: 'The core solution.',
-              },
-            },
-            {
-              name: 'fullSolution',
-              type: 'textarea',
-              admin: {
-                description: 'Full worked solution shown after the student answers.',
-              },
-            },
+            // NOTE: `questionText` / `hint` / `solution` / `fullSolution` used
+            // to live here (added in #181). Removed because they duplicate the
+            // wrapped block's own prompt/hint/solution/fullSolution fields —
+            // the block editor (Blocks tab) is the single source of truth for
+            // question content.
           ],
         },
         {
