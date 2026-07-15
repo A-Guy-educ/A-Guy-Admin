@@ -2547,23 +2547,7 @@ export interface Section {
    */
   objective?: string | null;
   /**
-   * The question the student answers.
-   */
-  questionText?: string | null;
-  /**
-   * A nudge without giving away the answer.
-   */
-  hint?: string | null;
-  /**
-   * The core solution.
-   */
-  solution?: string | null;
-  /**
-   * Full worked solution shown after the student answers.
-   */
-  fullSolution?: string | null;
-  /**
-   * Legacy inline blocks. The exercise-level aggregator (from #172) and the web fallback still read this — keep it in sync with the new pedagogical fields above until the migration ships.
+   * Ordered blocks stream for this section. Use question_* blocks to add questions, rich_text blocks for instructions/notes between them.
    */
   content:
     | {
@@ -4564,10 +4548,6 @@ export interface SectionsSelect<T extends boolean = true> {
   mainSkill?: T;
   subSkills?: T;
   objective?: T;
-  questionText?: T;
-  hint?: T;
-  solution?: T;
-  fullSolution?: T;
   content?: T;
   exercise?: T;
   lesson?: T;
