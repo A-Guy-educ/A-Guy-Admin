@@ -1780,6 +1780,7 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- refactor(sections): drop typed content fields duplicating block data ([#211](https://github.com/A-Guy-educ/A-Guy-Admin/pull/211)) — @aguyshayb
 - feat(sections): wire block editor UI and split Content/Blocks tabs ([#196](https://github.com/A-Guy-educ/A-Guy-Admin/pull/196)) — @aguyshayb
 - #193: Add Sections tab to Exercises edit view ([#194](https://github.com/A-Guy-educ/A-Guy-Admin/pull/194)) — @kodyade[bot]
 - feat: reorganize Exercise + Section edit forms with pedagogical metadata tabs (#181) ([#182](https://github.com/A-Guy-educ/A-Guy-Admin/pull/182)) — @kodyade[bot]
