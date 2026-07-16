@@ -1,5 +1,6 @@
 import type { FieldHook } from 'payload'
 
+import { isContentPromotionImportRequest } from '@/server/services/content-promotion/import-context'
 import { formatSlug } from './formatSlug'
 
 const MAX_SLUG_ATTEMPTS = 100
@@ -12,6 +13,16 @@ export const generateSlug: FieldHook = async ({
   req,
 }) => {
   if (operation === 'delete') {
+    return value
+  }
+
+  // Content-promotion imports carry per-lesson-unique slugs verbatim from
+  // the source (they were enforced by this same hook when the exercise was
+  // originally authored). Re-checking here costs one Mongo find per
+  // exercise — on a 525-exercise course that's ~525 unnecessary round trips
+  // and enough to push the whole import past Vercel's 5-min function
+  // ceiling. Trust the bundle's slug values during import.
+  if (isContentPromotionImportRequest(req)) {
     return value
   }
 
@@ -68,6 +79,14 @@ export const validateSlugUniqueness: FieldHook = async ({
   req,
 }) => {
   if (operation === 'delete' || !value) {
+    return value
+  }
+
+  // Same rationale as generateSlug above — the bundle's slug was already
+  // unique-per-lesson on the source, and re-validating each one costs
+  // another Mongo find per exercise on top of the generateSlug find,
+  // doubling the per-doc round-trip count.
+  if (isContentPromotionImportRequest(req)) {
     return value
   }
 
