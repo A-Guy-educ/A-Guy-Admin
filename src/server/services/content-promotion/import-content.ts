@@ -1,6 +1,8 @@
 import type { Payload, PayloadRequest } from 'payload'
 import JSZip from 'jszip'
+import { ObjectId } from 'mongodb'
 
+import { ContentSchema } from '@/server/payload/collections/Exercises/schemas'
 import { MANIFEST_FILENAME, PROMOTED_COLLECTIONS, PromotedCollection } from './constants'
 import { deepRewriteIds, generateNewId, IdRemap } from './id-remap'
 import { markRequestAsContentPromotionImport } from './import-context'
@@ -264,6 +266,156 @@ async function createDoc(
   }
 }
 
+/**
+ * Relationship fields on `exercises` that Payload's Mongo adapter stores as
+ * ObjectId (not string) when a doc is written through the local API. We're
+ * bypassing that path with `insertMany`, so we have to convert any 24-hex
+ * string values here manually — otherwise the resulting docs' relationship
+ * queries won't match ones inserted through the normal admin flow.
+ */
+const EXERCISE_RELATIONSHIP_FIELDS = [
+  'lesson',
+  'chapter',
+  'course',
+  'tenant',
+  'translatedFrom',
+  'sourceDoc',
+  'createdBy',
+] as const
+
+function toObjectIdIfHex(value: unknown): unknown {
+  if (typeof value !== 'string' || !/^[a-f0-9]{24}$/i.test(value)) return value
+  try {
+    return new ObjectId(value)
+  } catch {
+    return value
+  }
+}
+
+/**
+ * Bulk-insert exercises with one Mongo round trip instead of N sequential
+ * `payload.create` calls. This bypasses every Payload hook and every field-
+ * level validator — for exercise-heavy imports it drops the write phase from
+ * minutes to sub-second because there's no per-doc transaction overhead.
+ *
+ * Safety measures that replace what we're bypassing:
+ *   1. Pre-flight `ContentSchema.safeParse` on every doc; anything that
+ *      wouldn't have passed Payload's `content` field validate is recorded as
+ *      failed and never sent to Mongo.
+ *   2. Manual ObjectId conversion for every known relationship field, so
+ *      `lesson`/`chapter`/`course`/etc. get the same storage shape they would
+ *      have from `payload.create`.
+ *   3. `ordered: false` on the bulk write so a per-doc conflict (e.g. a
+ *      collision the pre-flight remap missed) doesn't abort the whole batch —
+ *      MongoDB writes everything it can, reports the rest in `writeErrors`.
+ *
+ * All other collections (media, chapters, lessons) stay on `payload.create`
+ * because their counts are small enough for the per-doc overhead to be a
+ * non-issue, and because media specifically needs Payload's file-upload path
+ * to hand off to the Vercel Blob adapter.
+ */
+async function bulkCreateExercises(
+  payload: Payload,
+  docs: Array<Record<string, unknown>>,
+  remap: IdRemap,
+  report: CollectionReport,
+): Promise<void> {
+  if (docs.length === 0) return
+  const now = new Date()
+  const prepared: Array<Record<string, unknown>> = []
+  const remappedFlags: boolean[] = []
+
+  for (const doc of docs) {
+    const { newDoc, finalId, wasRemapped } = applyRemapToDoc(doc, 'exercises', remap)
+
+    // Pre-flight validate; this replaces the field-level `validate` that
+    // `payload.create` would have run. Fail-fast per doc.
+    const parsed = ContentSchema.safeParse((newDoc as { content?: unknown }).content)
+    if (!parsed.success) {
+      const issues = parsed.error.issues.map((i) => `[${i.path.join('.')}] ${i.message}`).join('; ')
+      report.failed += 1
+      report.failures.push({ id: finalId, message: `Content validation failed: ${issues}` })
+      continue
+    }
+
+    const insertDoc: Record<string, unknown> = { ...newDoc }
+    // Move Payload's virtual `id` to Mongo's `_id` for direct-driver inserts.
+    delete insertDoc.id
+    insertDoc._id = finalId
+    // Use the parsed content so defaults (e.g. `mediaIds: []`) are applied.
+    insertDoc.content = parsed.data
+    // Preserve any bundle-provided timestamps; fill in the rest.
+    insertDoc.createdAt = insertDoc.createdAt ?? now
+    insertDoc.updatedAt = insertDoc.updatedAt ?? now
+
+    for (const field of EXERCISE_RELATIONSHIP_FIELDS) {
+      const value = insertDoc[field]
+      if (Array.isArray(value)) {
+        insertDoc[field] = value.map(toObjectIdIfHex)
+      } else if (value !== undefined && value !== null) {
+        insertDoc[field] = toObjectIdIfHex(value)
+      }
+    }
+
+    prepared.push(insertDoc)
+    remappedFlags.push(wasRemapped)
+  }
+
+  if (prepared.length === 0) return
+
+  const mongoCollection = (
+    payload.db as unknown as {
+      collections: Record<string, { collection: { insertMany: typeof Function.prototype } }>
+    }
+  ).collections.exercises.collection as {
+    insertMany: (
+      docs: Array<Record<string, unknown>>,
+      opts: { ordered: false },
+    ) => Promise<{ insertedCount?: number }>
+  }
+
+  try {
+    await mongoCollection.insertMany(prepared, { ordered: false })
+    for (let i = 0; i < prepared.length; i += 1) {
+      report.created += 1
+      if (remappedFlags[i]) report.remapped += 1
+    }
+  } catch (error) {
+    // `ordered: false` means MongoDB kept going after per-doc errors and
+    // reports them in `writeErrors`. We credit the docs that DID make it and
+    // record the specific ones that didn't.
+    const bulkErr = error as {
+      writeErrors?: Array<{ index: number; errmsg?: string }>
+      result?: { insertedIds?: Record<string, unknown> }
+    }
+    const failedIndices = new Set<number>()
+    if (Array.isArray(bulkErr.writeErrors)) {
+      for (const we of bulkErr.writeErrors) {
+        failedIndices.add(we.index)
+        report.failed += 1
+        report.failures.push({
+          id: String(prepared[we.index]._id),
+          message: we.errmsg ?? 'Bulk insert failed',
+        })
+      }
+      for (let i = 0; i < prepared.length; i += 1) {
+        if (failedIndices.has(i)) continue
+        report.created += 1
+        if (remappedFlags[i]) report.remapped += 1
+      }
+      return
+    }
+    // Not a BulkWriteError shape — record the whole batch as failed.
+    for (let i = 0; i < prepared.length; i += 1) {
+      report.failed += 1
+      report.failures.push({
+        id: String(prepared[i]._id),
+        message: error instanceof Error ? error.message : 'Unknown bulk insert error',
+      })
+    }
+  }
+}
+
 export interface ImportContentInput {
   bundleBuffer: Buffer
 }
@@ -343,6 +495,23 @@ export async function importContent(
     }
     for (const collection of PROMOTED_COLLECTIONS) {
       if (collection === 'media') continue
+      // Exercises can run into the hundreds or thousands per bundle. Even
+      // with every non-essential hook skipped, going through payload.create
+      // serially costs ~0.5s per doc of Payload-internal overhead — enough
+      // to push a 500-exercise course past Vercel's 5-min function ceiling.
+      // Bulk-insert bypasses that overhead entirely; safety measures live
+      // inside bulkCreateExercises (schema pre-flight, relationship-field
+      // ObjectId conversion, ordered:false so per-doc failures don't abort
+      // the batch).
+      if (collection === 'exercises') {
+        await bulkCreateExercises(
+          payload,
+          manifest.collections.exercises as unknown as Array<Record<string, unknown>>,
+          remap,
+          report.perCollection.exercises,
+        )
+        continue
+      }
       for (const doc of manifest.collections[collection]) {
         await createDoc(
           payload,
