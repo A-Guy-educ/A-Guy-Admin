@@ -52,6 +52,10 @@ export interface ImportReport {
     }
   >
   remappedIds: Record<string, string>
+  // Keyed as `${collection}:${sourceDocId}` → newSlug. Only chapters/lessons
+  // populate this today — the only promoted collections with a DB-level
+  // unique index on slug.
+  remappedSlugs: Record<string, string>
   blobsUploaded: number
   durationMs: number
 }

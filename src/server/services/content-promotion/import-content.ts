@@ -5,7 +5,7 @@ import { ObjectId } from 'mongodb'
 import { ContentSchema } from '@/server/payload/collections/Exercises/schemas'
 import { getDefaultTenantId } from '@/server/repos/tenant/get-default-tenant'
 import { MANIFEST_FILENAME, PROMOTED_COLLECTIONS, PromotedCollection } from './constants'
-import { deepRewriteIds, generateNewId, IdRemap } from './id-remap'
+import { deepRewriteIds, generateNewId, IdRemap, nextAvailableSuffix, SlugRemap } from './id-remap'
 import { markRequestAsContentPromotionImport } from './import-context'
 import { BundleManifest, BundleManifestSchema, BundledMedia, ImportReport } from './types'
 
@@ -29,6 +29,7 @@ function emptyReport(): ImportReport {
   return {
     perCollection,
     remappedIds: {},
+    remappedSlugs: {},
     blobsUploaded: 0,
     durationMs: 0,
   }
@@ -99,6 +100,125 @@ function sanitizeManifestRecords(manifest: BundleManifest): {
   return { droppedMissingId, droppedDuplicateId }
 }
 
+/**
+ * Collections whose `slug` field is declared `unique: true` at the collection
+ * level (Payload materialises this as a Mongo unique index). During normal
+ * writes the collection's `beforeChange` slug hook checks + suffixes on
+ * collision; during content-promotion imports that hook is skipped for
+ * performance (a full find per doc runs into minutes on Vercel), so a
+ * collision now bubbles up as an E11000 duplicate-key error, formatted by
+ * Payload as "The following field is invalid: slug" — see PR body for the
+ * lesson-collision incident this fix addresses.
+ *
+ * Kept as an explicit allowlist rather than reflecting on the collection
+ * config because the promoted set is small and this file already hardcodes
+ * per-collection knowledge (see `EXERCISE_RELATIONSHIP_FIELDS` below).
+ * Courses use per-`(slug, locale)` uniqueness enforced by a hook that we
+ * skip during import — because there's no DB-level unique index, they can't
+ * hit E11000, and any semantic clash is on the source's shoulders. Exercises
+ * use per-lesson uniqueness (also hook-based, no DB index).
+ */
+const COLLECTIONS_WITH_UNIQUE_SLUG: readonly PromotedCollection[] = ['chapters', 'lessons']
+
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+/**
+ * Reads all slugs on the target collection that match either an exact
+ * bundled slug or `${bundledSlug}-${n}`. Both forms need to seed the
+ * "committed" set — otherwise `nextAvailableSuffix` might hand out a slug
+ * like `foo-1` that's already occupied by a doc the exact-match query
+ * missed, and the doc lands right back at the E11000 wall this whole pass
+ * exists to avoid. Regex done via the raw driver because Payload's `where`
+ * doesn't expose `$regex` directly — same driver access pattern as
+ * `bulkCreateExercises`. Projection to `{slug: 1}` keeps the response cheap
+ * even on collections with thousands of docs.
+ */
+export async function fetchTakenSlugsForBases(
+  payload: Payload,
+  collection: PromotedCollection,
+  bases: string[],
+): Promise<Set<string>> {
+  if (bases.length === 0) return new Set()
+  const pattern = new RegExp(`^(${bases.map(escapeRegex).join('|')})(-\\d+)?$`)
+  const mongoCollection = (
+    payload.db as unknown as {
+      collections: Record<
+        string,
+        {
+          collection: {
+            find: (
+              filter: Record<string, unknown>,
+              opts: { projection: Record<string, unknown> },
+            ) => { toArray: () => Promise<Array<{ slug?: string }>> }
+          }
+        }
+      >
+    }
+  ).collections[collection]?.collection
+  if (!mongoCollection) return new Set()
+  const docs = await mongoCollection.find({ slug: pattern }, { projection: { slug: 1 } }).toArray()
+  const taken = new Set<string>()
+  for (const d of docs) {
+    if (typeof d.slug === 'string') taken.add(d.slug)
+  }
+  return taken
+}
+
+/**
+ * Given the docs the bundle wants to insert and the slugs already claimed
+ * on the target (base + any `${base}-${n}` variants), produce the remap of
+ * source-doc-id → new-slug for anything that would collide. Pure so the
+ * "which slug does bundled-doc-X get?" logic is unit-testable without a
+ * live Payload.
+ *
+ * Walks bundled docs in manifest order and grows a running "committed" set.
+ * First bundled claimant of a slug that isn't on target keeps it; every
+ * subsequent claimant (target-side OR earlier bundled doc) gets suffixed
+ * via `nextAvailableSuffix`. Deterministic and matches the source's own
+ * manifest ordering so re-imports produce identical remaps.
+ */
+export function computeSlugRemap(
+  collection: PromotedCollection,
+  bundledDocs: Array<{ id: string; slug: string }>,
+  takenOnTarget: Set<string>,
+  slugRemap: SlugRemap,
+): void {
+  const committed = new Set<string>(takenOnTarget)
+  for (const doc of bundledDocs) {
+    if (!committed.has(doc.slug)) {
+      committed.add(doc.slug)
+      continue
+    }
+    const replacement = nextAvailableSuffix(doc.slug, committed)
+    slugRemap.set(collection, doc.id, replacement)
+  }
+}
+
+async function detectSlugCollisionsAndBuildRemap(
+  payload: Payload,
+  manifest: BundleManifest,
+): Promise<SlugRemap> {
+  const slugRemap = new SlugRemap()
+
+  for (const collection of COLLECTIONS_WITH_UNIQUE_SLUG) {
+    const docs = manifest.collections[collection] as unknown as Array<Record<string, unknown>>
+    if (docs.length === 0) continue
+
+    const bundledWithSlug: Array<{ id: string; slug: string }> = docs
+      .filter((d) => typeof d.slug === 'string' && (d.slug as string).trim() !== '')
+      .map((d) => ({ id: String(d.id), slug: d.slug as string }))
+    if (bundledWithSlug.length === 0) continue
+
+    const uniqueBundledSlugs = [...new Set(bundledWithSlug.map((d) => d.slug))]
+    const takenOnTarget = await fetchTakenSlugsForBases(payload, collection, uniqueBundledSlugs)
+    computeSlugRemap(collection, bundledWithSlug, takenOnTarget, slugRemap)
+  }
+
+  return slugRemap
+}
+
 async function detectCollisionsAndBuildRemap(
   payload: Payload,
   req: PayloadRequest,
@@ -139,12 +259,21 @@ function applyRemapToDoc(
   doc: Record<string, unknown>,
   collection: PromotedCollection,
   remap: IdRemap,
+  slugRemap?: SlugRemap,
 ): { newDoc: Record<string, unknown>; finalId: string; wasRemapped: boolean } {
   const remappedId = remap.get(collection, String(doc.id))
   const rewritten = deepRewriteIds(doc, remap)
   const finalId = remappedId ?? String(doc.id)
+  // Slug remap is keyed by SOURCE doc id (pre-remap) so we can look it up
+  // regardless of whether the id itself is being rewritten this run. Slug
+  // remaps aren't counted in `wasRemapped` — that field only tracks id
+  // remaps for the per-collection tally. Slug remaps surface via the
+  // top-level `remappedSlugs` map on the report.
+  const remappedSlug = slugRemap?.get(collection, String(doc.id))
+  const newDoc: Record<string, unknown> = { ...rewritten, id: finalId }
+  if (remappedSlug !== undefined) newDoc.slug = remappedSlug
   return {
-    newDoc: { ...rewritten, id: finalId },
+    newDoc,
     finalId,
     wasRemapped: Boolean(remappedId),
   }
@@ -240,9 +369,10 @@ async function createDoc(
   collection: PromotedCollection,
   doc: Record<string, unknown>,
   remap: IdRemap,
+  slugRemap: SlugRemap,
   report: CollectionReport,
 ): Promise<void> {
-  const { newDoc, finalId, wasRemapped } = applyRemapToDoc(doc, collection, remap)
+  const { newDoc, finalId, wasRemapped } = applyRemapToDoc(doc, collection, remap, slugRemap)
 
   try {
     await payload.create({
@@ -524,6 +654,19 @@ export async function importContent(
   }
 
   const remap = await detectCollisionsAndBuildRemap(payload, req, manifest)
+  // Slug collisions are a separate pass: id-remap avoids `_id_` index
+  // conflicts, slug-remap avoids the collection-level unique index on
+  // chapters.slug / lessons.slug. Skipping the source's collision-suffix
+  // hook for performance (see Lessons.ts:261) means those collisions used
+  // to bubble up as "The following field is invalid: slug"; this remap
+  // catches them pre-insert. One bulk find per affected collection.
+  const slugRemap = await detectSlugCollisionsAndBuildRemap(payload, manifest)
+  if (slugRemap.size() > 0) {
+    payload.logger.info(
+      { remappedSlugCount: slugRemap.size() },
+      '[content-promotion/import] Auto-suffixed colliding slugs to avoid unique-index rejection',
+    )
+  }
 
   // Flag this request so the global id-on-create guard (payload.config.ts)
   // lets the import's `data.id` pass through. Every other code path strips
@@ -612,6 +755,7 @@ export async function importContent(
         collection,
         doc as unknown as Record<string, unknown>,
         remap,
+        slugRemap,
         report.perCollection[collection],
       )
     }
@@ -619,6 +763,9 @@ export async function importContent(
 
   for (const [key, newId] of remap.entries()) {
     report.remappedIds[key] = newId
+  }
+  for (const [key, newSlug] of slugRemap.entries()) {
+    report.remappedSlugs[key] = newSlug
   }
   report.durationMs = Date.now() - startedAt
   return report
