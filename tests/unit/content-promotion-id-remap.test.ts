@@ -4,6 +4,8 @@ import {
   deepRewriteIds,
   generateNewId,
   IdRemap,
+  nextAvailableSuffix,
+  SlugRemap,
 } from '@/server/services/content-promotion/id-remap'
 
 describe('generateNewId', () => {
@@ -107,5 +109,61 @@ describe('deepRewriteIds', () => {
     expect(deepRewriteIds(null, remap)).toBeNull()
     expect(deepRewriteIds(42, remap)).toBe(42)
     expect(deepRewriteIds(true, remap)).toBe(true)
+  })
+})
+
+describe('SlugRemap', () => {
+  it('keys entries by (collection, sourceDocId) so two docs with the same source slug can get different targets', () => {
+    // Regression for the collision on "אחוזים"/percentage-1: two lessons in
+    // the bundle can legitimately share a source slug (different courses on
+    // the source), and both need distinct target slugs — a slug→newSlug map
+    // would clobber the first with the second.
+    const remap = new SlugRemap()
+    remap.set('lessons', 'sourceId-A', 'percentage-1-1')
+    remap.set('lessons', 'sourceId-B', 'percentage-1-2')
+    expect(remap.get('lessons', 'sourceId-A')).toBe('percentage-1-1')
+    expect(remap.get('lessons', 'sourceId-B')).toBe('percentage-1-2')
+    expect(remap.size()).toBe(2)
+  })
+
+  it('scopes lookups per collection', () => {
+    const remap = new SlugRemap()
+    remap.set('lessons', 'same-id', 'lesson-slug')
+    remap.set('chapters', 'same-id', 'chapter-slug')
+    expect(remap.get('lessons', 'same-id')).toBe('lesson-slug')
+    expect(remap.get('chapters', 'same-id')).toBe('chapter-slug')
+    expect(remap.get('lessons', 'unknown-id')).toBeUndefined()
+  })
+})
+
+describe('nextAvailableSuffix', () => {
+  it('returns the first "-n" candidate not already in the committed set', () => {
+    const committed = new Set<string>(['foo', 'foo-1'])
+    expect(nextAvailableSuffix('foo', committed)).toBe('foo-2')
+    expect(committed.has('foo-2')).toBe(true)
+  })
+
+  it('skips gaps that later remaps have already reserved', () => {
+    const committed = new Set<string>(['foo', 'foo-1', 'foo-2', 'foo-3'])
+    expect(nextAvailableSuffix('foo', committed)).toBe('foo-4')
+  })
+
+  it('adds the returned candidate to the committed set so chained calls do not collide', () => {
+    const committed = new Set<string>(['foo'])
+    const first = nextAvailableSuffix('foo', committed)
+    const second = nextAvailableSuffix('foo', committed)
+    expect(first).toBe('foo-1')
+    expect(second).toBe('foo-2')
+  })
+
+  it('starts at -1 when only the base is taken', () => {
+    const committed = new Set<string>(['bar'])
+    expect(nextAvailableSuffix('bar', committed)).toBe('bar-1')
+  })
+
+  it('throws if 1000 suffixes are all taken (runaway guard)', () => {
+    const committed = new Set<string>(['x'])
+    for (let n = 1; n <= 1_000; n += 1) committed.add(`x-${n}`)
+    expect(() => nextAvailableSuffix('x', committed)).toThrow(/exhausted 1000 attempts/)
   })
 })

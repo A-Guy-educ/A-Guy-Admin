@@ -62,6 +62,63 @@ export function generateNewId(): string {
 }
 
 /**
+ * Maps `${collection}:${sourceDocId}` → newSlug for docs whose bundled slug
+ * would collide with an existing doc on the target (or with another bundled
+ * doc that already took the slug earlier in the same import).
+ *
+ * Keyed by source doc id — NOT by old slug — because two bundled docs can
+ * legitimately share the same source slug (e.g. two lessons titled "אחוזים"
+ * in different courses on the source): both need distinct target slugs, so a
+ * `slug → newSlug` map would clobber.
+ *
+ * The `commitSuffix` helper picks the first `${slug}-${n}` free of both
+ * target and already-committed remaps. Callers must feed committed values
+ * back in via the `committed` set so subsequent lookups don't collide with
+ * remaps we've already handed out this run.
+ */
+export class SlugRemap {
+  private byKey = new Map<string, string>()
+
+  set(collection: PromotedCollection, sourceDocId: string, newSlug: string): void {
+    this.byKey.set(`${collection}:${sourceDocId}`, newSlug)
+  }
+
+  get(collection: PromotedCollection, sourceDocId: string): string | undefined {
+    return this.byKey.get(`${collection}:${sourceDocId}`)
+  }
+
+  size(): number {
+    return this.byKey.size
+  }
+
+  entries(): IterableIterator<[string, string]> {
+    return this.byKey.entries()
+  }
+}
+
+/**
+ * Finds the first `${base}-${n}` starting at n=1 that isn't already in
+ * `committed`. Adds the chosen candidate to `committed` and returns it, so
+ * callers can chain multiple resolutions against a running "taken" set.
+ * Caps at 1_000 attempts as a runaway guard (that many colliding lessons
+ * with the same base slug would signal a source-data problem worth
+ * failing loudly on).
+ */
+export function nextAvailableSuffix(base: string, committed: Set<string>): string {
+  const MAX = 1_000
+  for (let n = 1; n <= MAX; n += 1) {
+    const candidate = `${base}-${n}`
+    if (!committed.has(candidate)) {
+      committed.add(candidate)
+      return candidate
+    }
+  }
+  throw new Error(
+    `nextAvailableSuffix exhausted ${MAX} attempts for base "${base}" — refusing to spin further`,
+  )
+}
+
+/**
  * Recursively walks a value and rewrites any string that the remap table
  * recognises. Returns a new value — never mutates the input. Used for the
  * top-level relationship paths and for nested IDs inside exercise content
