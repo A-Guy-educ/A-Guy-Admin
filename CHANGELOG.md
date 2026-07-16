@@ -1780,6 +1780,7 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- fix(content-promotion): auto-suffix colliding slugs on chapters/lessons import ([#221](https://github.com/A-Guy-educ/A-Guy-Admin/pull/221)) — @aguyshayb
 - fix(courses): drop stale $jsonSchema validator blocking course inserts ([#220](https://github.com/A-Guy-educ/A-Guy-Admin/pull/220)) — @aguyshayb
 - feat: Bulk-insert exercises during content-promotion import ([#218](https://github.com/A-Guy-educ/A-Guy-Admin/pull/218)) — @aguyshayb
 - fix: Skip exercise slug hooks during content-promotion import ([#217](https://github.com/A-Guy-educ/A-Guy-Admin/pull/217)) — @aguyshayb
