@@ -33,6 +33,20 @@ export async function dropStaleCoursesValidator(payload: Payload): Promise<'drop
   const options = info[0]?.options as { validator?: unknown } | undefined
   if (!options?.validator) return 'noop'
 
+  // Log the validator BEFORE dropping so it's recoverable from server logs
+  // if it turns out we shouldn't have dropped it (e.g. someone reintroduces
+  // a `pageAccessType` field and the validator would actually have caught a
+  // schema/DB drift). Reconstructing from git alone would only get us the
+  // validator definition someone once wrote — this captures the exact shape
+  // that was live on this DB.
+  payload.logger.info(
+    {
+      droppedValidator: options.validator,
+      validationLevel: (options as { validationLevel?: unknown }).validationLevel,
+    },
+    '[migration/dropStaleCoursesValidator] Found existing validator on `courses`; about to drop it',
+  )
+
   await db.command({
     collMod: 'courses',
     validator: {},
