@@ -71,10 +71,10 @@ export function generateNewId(): string {
  * in different courses on the source): both need distinct target slugs, so a
  * `slug → newSlug` map would clobber.
  *
- * The `commitSuffix` helper picks the first `${slug}-${n}` free of both
- * target and already-committed remaps. Callers must feed committed values
- * back in via the `committed` set so subsequent lookups don't collide with
- * remaps we've already handed out this run.
+ * The `nextAvailableSuffix` helper (below) picks the first `${slug}-${n}`
+ * free of both target and already-committed remaps. Callers must feed
+ * committed values back in via the `committed` set so subsequent lookups
+ * don't collide with remaps we've already handed out this run.
  */
 export class SlugRemap {
   private byKey = new Map<string, string>()

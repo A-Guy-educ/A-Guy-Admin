@@ -120,9 +120,84 @@ function sanitizeManifestRecords(manifest: BundleManifest): {
  */
 const COLLECTIONS_WITH_UNIQUE_SLUG: readonly PromotedCollection[] = ['chapters', 'lessons']
 
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+/**
+ * Reads all slugs on the target collection that match either an exact
+ * bundled slug or `${bundledSlug}-${n}`. Both forms need to seed the
+ * "committed" set — otherwise `nextAvailableSuffix` might hand out a slug
+ * like `foo-1` that's already occupied by a doc the exact-match query
+ * missed, and the doc lands right back at the E11000 wall this whole pass
+ * exists to avoid. Regex done via the raw driver because Payload's `where`
+ * doesn't expose `$regex` directly — same driver access pattern as
+ * `bulkCreateExercises`. Projection to `{slug: 1}` keeps the response cheap
+ * even on collections with thousands of docs.
+ */
+export async function fetchTakenSlugsForBases(
+  payload: Payload,
+  collection: PromotedCollection,
+  bases: string[],
+): Promise<Set<string>> {
+  if (bases.length === 0) return new Set()
+  const pattern = new RegExp(`^(${bases.map(escapeRegex).join('|')})(-\\d+)?$`)
+  const mongoCollection = (
+    payload.db as unknown as {
+      collections: Record<
+        string,
+        {
+          collection: {
+            find: (
+              filter: Record<string, unknown>,
+              opts: { projection: Record<string, unknown> },
+            ) => { toArray: () => Promise<Array<{ slug?: string }>> }
+          }
+        }
+      >
+    }
+  ).collections[collection]?.collection
+  if (!mongoCollection) return new Set()
+  const docs = await mongoCollection.find({ slug: pattern }, { projection: { slug: 1 } }).toArray()
+  const taken = new Set<string>()
+  for (const d of docs) {
+    if (typeof d.slug === 'string') taken.add(d.slug)
+  }
+  return taken
+}
+
+/**
+ * Given the docs the bundle wants to insert and the slugs already claimed
+ * on the target (base + any `${base}-${n}` variants), produce the remap of
+ * source-doc-id → new-slug for anything that would collide. Pure so the
+ * "which slug does bundled-doc-X get?" logic is unit-testable without a
+ * live Payload.
+ *
+ * Walks bundled docs in manifest order and grows a running "committed" set.
+ * First bundled claimant of a slug that isn't on target keeps it; every
+ * subsequent claimant (target-side OR earlier bundled doc) gets suffixed
+ * via `nextAvailableSuffix`. Deterministic and matches the source's own
+ * manifest ordering so re-imports produce identical remaps.
+ */
+export function computeSlugRemap(
+  collection: PromotedCollection,
+  bundledDocs: Array<{ id: string; slug: string }>,
+  takenOnTarget: Set<string>,
+  slugRemap: SlugRemap,
+): void {
+  const committed = new Set<string>(takenOnTarget)
+  for (const doc of bundledDocs) {
+    if (!committed.has(doc.slug)) {
+      committed.add(doc.slug)
+      continue
+    }
+    const replacement = nextAvailableSuffix(doc.slug, committed)
+    slugRemap.set(collection, doc.id, replacement)
+  }
+}
+
 async function detectSlugCollisionsAndBuildRemap(
   payload: Payload,
-  req: PayloadRequest,
   manifest: BundleManifest,
 ): Promise<SlugRemap> {
   const slugRemap = new SlugRemap()
@@ -131,48 +206,14 @@ async function detectSlugCollisionsAndBuildRemap(
     const docs = manifest.collections[collection] as unknown as Array<Record<string, unknown>>
     if (docs.length === 0) continue
 
-    const bundledWithSlug = docs.filter(
-      (d) => typeof d.slug === 'string' && (d.slug as string).trim() !== '',
-    )
+    const bundledWithSlug: Array<{ id: string; slug: string }> = docs
+      .filter((d) => typeof d.slug === 'string' && (d.slug as string).trim() !== '')
+      .map((d) => ({ id: String(d.id), slug: d.slug as string }))
     if (bundledWithSlug.length === 0) continue
 
-    const uniqueBundledSlugs = [...new Set(bundledWithSlug.map((d) => d.slug as string))]
-
-    // One bulk query per collection — same shape as the id-collision pass.
-    // `limit` capped at the number of unique bundle slugs since at most that
-    // many target docs can match (one per slug given the unique index).
-    const existing = await payload.find({
-      collection,
-      where: { slug: { in: uniqueBundledSlugs } },
-      depth: 0,
-      limit: uniqueBundledSlugs.length,
-      pagination: false,
-      overrideAccess: true,
-      req,
-    })
-    const takenOnTarget = new Set<string>(
-      (existing.docs as { slug?: string }[])
-        .map((d) => d.slug)
-        .filter((s): s is string => typeof s === 'string'),
-    )
-
-    // Walk bundled docs in manifest order and grow a running "committed"
-    // set as we go. First doc claiming a slug that isn't taken on target
-    // keeps it; every subsequent claimant (whether from target or from an
-    // earlier bundled doc) gets suffixed. That means the FIRST occurrence
-    // wins when the bundle itself has duplicate slugs — arbitrary but
-    // deterministic.
-    const committed = new Set<string>(takenOnTarget)
-    for (const doc of bundledWithSlug) {
-      const slug = doc.slug as string
-      const sourceId = String(doc.id)
-      if (!committed.has(slug)) {
-        committed.add(slug)
-        continue
-      }
-      const replacement = nextAvailableSuffix(slug, committed)
-      slugRemap.set(collection, sourceId, replacement)
-    }
+    const uniqueBundledSlugs = [...new Set(bundledWithSlug.map((d) => d.slug))]
+    const takenOnTarget = await fetchTakenSlugsForBases(payload, collection, uniqueBundledSlugs)
+    computeSlugRemap(collection, bundledWithSlug, takenOnTarget, slugRemap)
   }
 
   return slugRemap
@@ -219,17 +260,15 @@ function applyRemapToDoc(
   collection: PromotedCollection,
   remap: IdRemap,
   slugRemap?: SlugRemap,
-): {
-  newDoc: Record<string, unknown>
-  finalId: string
-  wasRemapped: boolean
-  slugWasRemapped: boolean
-} {
+): { newDoc: Record<string, unknown>; finalId: string; wasRemapped: boolean } {
   const remappedId = remap.get(collection, String(doc.id))
   const rewritten = deepRewriteIds(doc, remap)
   const finalId = remappedId ?? String(doc.id)
   // Slug remap is keyed by SOURCE doc id (pre-remap) so we can look it up
-  // regardless of whether the id itself is being rewritten this run.
+  // regardless of whether the id itself is being rewritten this run. Slug
+  // remaps aren't counted in `wasRemapped` — that field only tracks id
+  // remaps for the per-collection tally. Slug remaps surface via the
+  // top-level `remappedSlugs` map on the report.
   const remappedSlug = slugRemap?.get(collection, String(doc.id))
   const newDoc: Record<string, unknown> = { ...rewritten, id: finalId }
   if (remappedSlug !== undefined) newDoc.slug = remappedSlug
@@ -237,7 +276,6 @@ function applyRemapToDoc(
     newDoc,
     finalId,
     wasRemapped: Boolean(remappedId),
-    slugWasRemapped: remappedSlug !== undefined,
   }
 }
 
@@ -622,7 +660,7 @@ export async function importContent(
   // hook for performance (see Lessons.ts:261) means those collisions used
   // to bubble up as "The following field is invalid: slug"; this remap
   // catches them pre-insert. One bulk find per affected collection.
-  const slugRemap = await detectSlugCollisionsAndBuildRemap(payload, req, manifest)
+  const slugRemap = await detectSlugCollisionsAndBuildRemap(payload, manifest)
   if (slugRemap.size() > 0) {
     payload.logger.info(
       { remappedSlugCount: slugRemap.size() },
