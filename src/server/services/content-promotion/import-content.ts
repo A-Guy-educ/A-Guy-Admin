@@ -113,12 +113,21 @@ function sanitizeManifestRecords(manifest: BundleManifest): {
  * Kept as an explicit allowlist rather than reflecting on the collection
  * config because the promoted set is small and this file already hardcodes
  * per-collection knowledge (see `EXERCISE_RELATIONSHIP_FIELDS` below).
- * Courses use per-`(slug, locale)` uniqueness enforced by a hook that we
- * skip during import — because there's no DB-level unique index, they can't
- * hit E11000, and any semantic clash is on the source's shoulders. Exercises
- * use per-lesson uniqueness (also hook-based, no DB index).
+ * Exercises use per-lesson uniqueness (hook-based, no DB index).
  */
 const COLLECTIONS_WITH_UNIQUE_SLUG: readonly PromotedCollection[] = ['chapters', 'lessons']
+
+/**
+ * Courses enforce uniqueness on `(slug, locale)` via the
+ * `enforceFieldLocaleUniqueness` beforeChange hook (see
+ * validateLocaleUniqueness.ts). Unlike the lesson-slug hook, this one is
+ * NOT skipped during content-promotion imports — the check is cheap (one
+ * find per doc, and there are typically <10 courses per bundle) so removing
+ * the guard entirely would be gratuitous. Instead we pre-scan the same
+ * way we do for chapters/lessons but scope the "taken" set per-locale so
+ * we only rename when the collision would actually trip the hook.
+ */
+const COLLECTIONS_WITH_PER_LOCALE_UNIQUE_SLUG: readonly PromotedCollection[] = ['courses']
 
 function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -139,6 +148,7 @@ export async function fetchTakenSlugsForBases(
   payload: Payload,
   collection: PromotedCollection,
   bases: string[],
+  additionalFilter: Record<string, unknown> = {},
 ): Promise<Set<string>> {
   if (bases.length === 0) return new Set()
   const pattern = new RegExp(`^(${bases.map(escapeRegex).join('|')})(-\\d+)?$`)
@@ -158,7 +168,9 @@ export async function fetchTakenSlugsForBases(
     }
   ).collections[collection]?.collection
   if (!mongoCollection) return new Set()
-  const docs = await mongoCollection.find({ slug: pattern }, { projection: { slug: 1 } }).toArray()
+  const docs = await mongoCollection
+    .find({ slug: pattern, ...additionalFilter }, { projection: { slug: 1 } })
+    .toArray()
   const taken = new Set<string>()
   for (const d of docs) {
     if (typeof d.slug === 'string') taken.add(d.slug)
@@ -202,6 +214,8 @@ async function detectSlugCollisionsAndBuildRemap(
 ): Promise<SlugRemap> {
   const slugRemap = new SlugRemap()
 
+  // Collection-level unique slug (chapters, lessons): one taken-set per
+  // collection covers every locale.
   for (const collection of COLLECTIONS_WITH_UNIQUE_SLUG) {
     const docs = manifest.collections[collection] as unknown as Array<Record<string, unknown>>
     if (docs.length === 0) continue
@@ -214,6 +228,34 @@ async function detectSlugCollisionsAndBuildRemap(
     const uniqueBundledSlugs = [...new Set(bundledWithSlug.map((d) => d.slug))]
     const takenOnTarget = await fetchTakenSlugsForBases(payload, collection, uniqueBundledSlugs)
     computeSlugRemap(collection, bundledWithSlug, takenOnTarget, slugRemap)
+  }
+
+  // Per-`(slug, locale)` unique (courses): group bundled docs by locale,
+  // fetch target docs at THAT locale only, compute remap within the locale
+  // scope. Otherwise a bundled `slug=course-8 locale=en` doc would get
+  // needlessly renamed just because a dev doc has `slug=course-8 locale=he`
+  // — the hook wouldn't have thrown for that pair.
+  for (const collection of COLLECTIONS_WITH_PER_LOCALE_UNIQUE_SLUG) {
+    const docs = manifest.collections[collection] as unknown as Array<Record<string, unknown>>
+    if (docs.length === 0) continue
+
+    const byLocale = new Map<string, Array<{ id: string; slug: string }>>()
+    for (const d of docs) {
+      const slug = d.slug
+      if (typeof slug !== 'string' || slug.trim() === '') continue
+      const locale = typeof d.locale === 'string' && d.locale ? d.locale : 'he'
+      const bucket = byLocale.get(locale) ?? []
+      bucket.push({ id: String(d.id), slug })
+      byLocale.set(locale, bucket)
+    }
+
+    for (const [locale, bundledDocs] of byLocale) {
+      const uniqueBundledSlugs = [...new Set(bundledDocs.map((d) => d.slug))]
+      const takenOnTarget = await fetchTakenSlugsForBases(payload, collection, uniqueBundledSlugs, {
+        locale,
+      })
+      computeSlugRemap(collection, bundledDocs, takenOnTarget, slugRemap)
+    }
   }
 
   return slugRemap

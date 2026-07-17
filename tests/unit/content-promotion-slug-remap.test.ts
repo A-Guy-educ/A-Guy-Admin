@@ -98,7 +98,7 @@ describe('computeSlugRemap', () => {
 })
 
 describe('fetchTakenSlugsForBases', () => {
-  function fakePayload(collection: string, storedSlugs: string[]) {
+  function fakePayload(collection: string, stored: Array<{ slug: string; locale?: string }>) {
     let capturedFilter: Record<string, unknown> | undefined
     const findCalls: number[] = []
     const fake = {
@@ -115,7 +115,11 @@ describe('fetchTakenSlugsForBases', () => {
                 return {
                   toArray: async () => {
                     const pattern = filter.slug as RegExp
-                    return storedSlugs.filter((s) => pattern.test(s)).map((slug) => ({ slug }))
+                    const localeFilter = filter.locale as string | undefined
+                    return stored
+                      .filter((d) => pattern.test(d.slug))
+                      .filter((d) => localeFilter === undefined || d.locale === localeFilter)
+                      .map(({ slug }) => ({ slug }))
                   },
                 }
               },
@@ -128,21 +132,24 @@ describe('fetchTakenSlugsForBases', () => {
   }
 
   it('returns the empty set for zero bases without touching the DB', async () => {
-    const { fake, findCalls } = fakePayload('lessons', ['anything'])
+    const { fake, findCalls } = fakePayload('lessons', [{ slug: 'anything' }])
     const result = await fetchTakenSlugsForBases(fake as unknown as Payload, 'lessons', [])
     expect(result.size).toBe(0)
     expect(findCalls.length).toBe(0)
   })
 
   it('matches exact bases AND ${base}-${n} suffixes — the whole point of the review fix', async () => {
-    const { fake } = fakePayload('lessons', [
-      'foo',
-      'foo-1',
-      'foo-17',
-      'foobar', // NOT a suffix — regex is anchored, must not match
-      'bar-3',
-      'baz', // unrelated
-    ])
+    const { fake } = fakePayload(
+      'lessons',
+      [
+        'foo',
+        'foo-1',
+        'foo-17',
+        'foobar', // NOT a suffix — regex is anchored, must not match
+        'bar-3',
+        'baz', // unrelated
+      ].map((slug) => ({ slug })),
+    )
     const result = await fetchTakenSlugsForBases(fake as unknown as Payload, 'lessons', [
       'foo',
       'bar',
@@ -154,8 +161,38 @@ describe('fetchTakenSlugsForBases', () => {
     // Realistic guard: if slug ever contains `.`, `+`, `?` etc., the raw
     // regex would over-match. Escaping is the reason `foo.bar` doesn't
     // match `fooXbar` on target.
-    const { fake } = fakePayload('lessons', ['fooXbar', 'foo.bar', 'foo.bar-2'])
+    const { fake } = fakePayload(
+      'lessons',
+      ['fooXbar', 'foo.bar', 'foo.bar-2'].map((slug) => ({ slug })),
+    )
     const result = await fetchTakenSlugsForBases(fake as unknown as Payload, 'lessons', ['foo.bar'])
     expect([...result].sort()).toEqual(['foo.bar', 'foo.bar-2'])
+  })
+
+  it('passes additionalFilter through to the underlying find — used for per-locale course scoping', async () => {
+    // Regression for the course-slug-locale incident: bundled course
+    // `slug=course-8 locale=en` must not treat a dev doc at
+    // `slug=course-8 locale=he` as taken. The extra filter is the reason.
+    const { fake, getCapturedFilter } = fakePayload('courses', [
+      { slug: 'course-8', locale: 'he' },
+      { slug: 'course-8', locale: 'en' },
+      { slug: 'course-8-1', locale: 'he' },
+    ])
+    const enOnly = await fetchTakenSlugsForBases(
+      fake as unknown as Payload,
+      'courses',
+      ['course-8'],
+      { locale: 'en' },
+    )
+    expect([...enOnly].sort()).toEqual(['course-8'])
+    expect(getCapturedFilter()?.locale).toBe('en')
+
+    const heOnly = await fetchTakenSlugsForBases(
+      fake as unknown as Payload,
+      'courses',
+      ['course-8'],
+      { locale: 'he' },
+    )
+    expect([...heOnly].sort()).toEqual(['course-8', 'course-8-1'])
   })
 })
