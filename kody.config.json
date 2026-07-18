@@ -11,32 +11,29 @@
   },
   "github": {
     "owner": "A-Guy-educ",
-    "repo": "A-Guy-Admin",
-    "operators": [
-      "aguyaharonyair"
-    ]
-  },
-  "state": {
-    "repo": "https://github.com/A-Guy-educ/kody-state",
-    "path": "A-Guy-Admin",
-    "branch": "main"
+    "repo": "A-Guy",
+    "operators": ["aguyaharonyair"]
   },
   "agent": {
-    "model": "minimax/MiniMax-M3"
+    "model": "minimax/MiniMax-M2.7-highspeed"
   },
   "qa": {
     "fallbackUrl": "https://dev.aguy.co.il"
   },
   "release": {
     "releaseBranch": "main",
-    "versionFiles": [
-      "package.json"
-    ],
+    "versionFiles": ["package.json"],
     "e2eCommand": "npx tsx scripts/release-e2e-gate.ts",
     "timeoutMs": 1800000
   },
+  "missions": {
+    "stateBackend": "local-file"
+  },
   "jobs": {
     "stateBackend": "contents-api"
+  },
+  "executables": {
+    "default": "run"
   },
   "defaultExecutable": "classify",
   "defaultPrExecutable": "fix",
@@ -49,67 +46,5 @@
       "FIRST_TIME_CONTRIBUTOR",
       "MEMBER"
     ]
-  },
-  "company": {
-    "activeGoals": [
-      "ci-health",
-      "prs-stay-mergeable",
-      "ai-agency-health",
-      "product-quality"
-    ],
-    "activeCapabilities": [
-      "capability-call",
-      "classify",
-      "research",
-      "plan",
-      "feature",
-      "bug",
-      "chore",
-      "spec",
-      "review",
-      "fix",
-      "fix-ci",
-      "ci-health",
-      "dev-ci-health",
-      "pr-health-triage",
-      "redispatch",
-      "sync",
-      "resolve",
-      "merge",
-      "revert",
-      "release-prepare",
-      "release-merge",
-      "release-promote",
-      "vercel-production-deploy",
-      "design-review",
-      "preview-health",
-      "qa",
-      "qa-engineer",
-      "qa-goal",
-      "qa-sweep",
-      "qa-verify",
-      "quality-watch",
-      "ui-review"
-    ],
-    "activeAgents": [
-      "ceo",
-      "cto",
-      "kody",
-      "qa",
-      "repo-brain",
-      "tech-writer",
-      "ux-designer"
-    ]
-  },
-  "fly": {
-    "previews": {
-      "cpus": 2,
-      "memoryMb": 2048,
-      "ttlDays": 14,
-      "builderCpus": 8,
-      "builderMemoryMb": 8192,
-      "idleSuspend": true,
-      "healthCheck": false
-    }
   }
 }
