@@ -83,19 +83,13 @@ latex_examples/
 .kody/graph/episodes/*.bak
 .kody/graph/episodes/*.tmp.*
 
-# kody mission state — durable across runs via the local-file backend's
-# Actions cache snapshot (see kody.config.json missions.stateBackend).
-# Tracked-file commits would re-introduce the churn this design eliminates.
+# Local Kody scratch files are never committed; durable runtime state is in Convex.
 .kody/missions/*.state.json
-
-# kody job state is durable via the contents-api backend (see
-# kody.config.json jobs.stateBackend) — the engine commits <slug>.state.json
-# through the GitHub Contents API, so these files are tracked, not ignored.
 
 # kody qa-engineer artifacts — ad-hoc screenshots, snapshots, console logs.
 # The Playwright MCP server writes its own working dir at the repo root.
 .kody/qa-reports/
 .playwright-mcp/
 
-# Kody runtime/state and authored model assets live in configured kody-state repo.
+# Kody runtime scratch; durable runtime state and model definitions live in Convex.
 .kody/
