@@ -1819,6 +1819,7 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- chore: Release v0.27.0 ([#248](https://github.com/A-Guy-educ/A-Guy-Admin/pull/248)) — @aguyshayb
 - #246: Add Course Popularity admin page (counts per course from course-s… ([#247](https://github.com/A-Guy-educ/A-Guy-Admin/pull/247)) — @kodyade[bot]
 - #238: Adjust LaTeX-to-blocks converter to produce Sections ([#241](https://github.com/A-Guy-educ/A-Guy-Admin/pull/241)) — @kodyade[bot]
 - #244: Add CORS handling to /api/course-selections (blocks cross-origin … ([#245](https://github.com/A-Guy-educ/A-Guy-Admin/pull/245)) — @kodyade[bot]
