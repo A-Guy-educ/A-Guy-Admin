@@ -32,6 +32,9 @@ export const CourseSelections: CollectionConfig = {
     group: 'System',
     description: 'Server-side log of every course pick (anonymous or authenticated)',
     defaultColumns: ['course', 'user', 'guestId', 'source', 'gradeLevel', 'createdAt'],
+    components: {
+      beforeList: ['@/ui/admin/CourseSelectionsPopularity/PopularityLinkButton'],
+    },
   },
   access: {
     create: () => true,

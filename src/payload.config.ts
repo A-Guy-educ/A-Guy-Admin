@@ -130,6 +130,7 @@ export default buildConfig({
         '@/ui/admin/LessonDuplicationReview/SidebarLink',
         '@/ui/admin/LessonJsonImport/SidebarLink',
         '@/ui/admin/ContentPromotion/SidebarLink',
+        '@/ui/admin/CourseSelectionsPopularity/SidebarLink',
       ],
       afterNavLinks: ['@/ui/admin/UserEmail'],
     },
