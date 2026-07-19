@@ -1780,6 +1780,7 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- fix(scripts): only chase authoritative parent refs when deleting content orphans ([#237](https://github.com/A-Guy-educ/A-Guy-Admin/pull/237)) — @aguyshayb
 - fix(content-promotion): extend slug remap to per-(slug, locale) unique courses ([#225](https://github.com/A-Guy-educ/A-Guy-Admin/pull/225)) — @aguyshayb
 - fix(content-promotion): auto-suffix colliding slugs on chapters/lessons import ([#221](https://github.com/A-Guy-educ/A-Guy-Admin/pull/221)) — @aguyshayb
 - fix(courses): drop stale $jsonSchema validator blocking course inserts ([#220](https://github.com/A-Guy-educ/A-Guy-Admin/pull/220)) — @aguyshayb
