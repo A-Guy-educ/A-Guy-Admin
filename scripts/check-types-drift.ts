@@ -17,6 +17,15 @@ import { join } from 'node:path'
 const TARGET = 'src/payload-types.ts'
 const BACKUP = join(tmpdir(), `payload-types.${process.pid}.bak`)
 
+// `payload generate:types` loads payload.config.ts, which throws when
+// PAYLOAD_SECRET is unset. The drift check only inspects the generated
+// types file (no runtime call), so a dummy value is safe here — and needed
+// because the secret check fires before PAYLOAD_GENERATE_TYPES bypasses it.
+// CI exports a real secret from secrets.PAYLOAD_SECRET (see ci.yml).
+if (!process.env.PAYLOAD_SECRET) {
+  process.env.PAYLOAD_SECRET = 'kody-typecheck-dummy-secret-not-used-at-runtime'
+}
+
 function restore() {
   try {
     copyFileSync(BACKUP, TARGET)
