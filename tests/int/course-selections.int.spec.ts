@@ -17,8 +17,14 @@
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { AccountRole } from '@/server/payload/collections/Users/roles'
-import { POST } from '@/app/api/course-selections/route'
+import { OPTIONS, POST } from '@/app/api/course-selections/route'
 import { logCourseSelection } from '@/server/payload/endpoints/course-selections/log-selection'
+import {
+  applyCorsHeaders,
+  buildCorsHeaders,
+  createPreflightResponse,
+  isAllowedOrigin,
+} from '@/lib/http/cors'
 import { startMongoContainer, stopMongoContainer } from '@/infra/utils/test/mongodb-container'
 import config from '@payload-config'
 import { NextRequest } from 'next/server'
@@ -337,5 +343,257 @@ describe.skipIf(!hasDatabaseUrl)('POST /api/course-selections', () => {
       overrideAccess: true,
     })
     expect(rows.totalDocs).toBe(1)
+  })
+})
+
+describe.skipIf(!hasDatabaseUrl)('CORS /api/course-selections (issue #244)', () => {
+  describe('isAllowedOrigin', () => {
+    it('accepts the prod + dev allowlist entries', () => {
+      expect(isAllowedOrigin('https://a-guy-web.vercel.app')).toBe(true)
+      expect(isAllowedOrigin('https://www.aguy.co.il')).toBe(true)
+      expect(isAllowedOrigin('https://aguy.co.il')).toBe(true)
+      expect(isAllowedOrigin('https://a-guy-dev-aguy.vercel.app')).toBe(true)
+      expect(isAllowedOrigin('http://localhost:3000')).toBe(true)
+    })
+
+    it('accepts Vercel preview URLs matching the regex', () => {
+      expect(isAllowedOrigin('https://a-guy-pr123-aguy.vercel.app')).toBe(true)
+      expect(isAllowedOrigin('https://a-guy-foo-bar-baz-aguy.vercel.app')).toBe(true)
+      expect(isAllowedOrigin('https://a-guy-my-feature-branch-aguy.vercel.app')).toBe(true)
+    })
+
+    it('rejects origins outside the allowlist', () => {
+      expect(isAllowedOrigin('https://evil.example.com')).toBe(false)
+      expect(isAllowedOrigin('http://a-guy-web.vercel.app')).toBe(false) // wrong scheme
+      expect(isAllowedOrigin('https://a-guy-web.vercel.app.evil.example.com')).toBe(false) // suffix match attempt
+      expect(isAllowedOrigin('https://a-guy-otherteam.vercel.app')).toBe(false) // wrong -aguy suffix
+      expect(isAllowedOrigin(null)).toBe(false)
+      expect(isAllowedOrigin(undefined)).toBe(false)
+      expect(isAllowedOrigin('')).toBe(false)
+    })
+  })
+
+  describe('buildCorsHeaders', () => {
+    it('returns the full CORS header set for allowlisted origins', () => {
+      const headers = buildCorsHeaders('https://a-guy-dev-aguy.vercel.app')
+      expect(headers['Access-Control-Allow-Origin']).toBe('https://a-guy-dev-aguy.vercel.app')
+      expect(headers['Access-Control-Allow-Credentials']).toBe('true')
+      expect(headers['Access-Control-Allow-Methods']).toBe('POST, OPTIONS')
+      expect(headers['Access-Control-Allow-Headers']).toBe('Content-Type')
+      expect(headers['Access-Control-Max-Age']).toBe('86400')
+      expect(headers['Vary']).toBe('Origin')
+    })
+
+    it('never produces wildcard Access-Control-Allow-Origin', () => {
+      const headers = buildCorsHeaders('https://a-guy-dev-aguy.vercel.app')
+      expect(headers['Access-Control-Allow-Origin']).not.toBe('*')
+    })
+
+    it('returns an empty header set for non-allowlisted / missing origins', () => {
+      expect(buildCorsHeaders('https://evil.example.com')).toEqual({})
+      expect(buildCorsHeaders(null)).toEqual({})
+      expect(buildCorsHeaders(undefined)).toEqual({})
+    })
+  })
+
+  describe('applyCorsHeaders', () => {
+    it('preserves the status and body when wrapping a Response', async () => {
+      const original = new Response(JSON.stringify({ success: true }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+      const req = new Request('http://localhost:3000/api/course-selections', {
+        method: 'POST',
+        headers: { origin: 'https://a-guy-dev-aguy.vercel.app' },
+      })
+
+      const wrapped = applyCorsHeaders(original, req)
+      expect(wrapped.status).toBe(200)
+      const body = await wrapped.json()
+      expect(body).toEqual({ success: true })
+      expect(wrapped.headers.get('Access-Control-Allow-Origin')).toBe(
+        'https://a-guy-dev-aguy.vercel.app',
+      )
+      expect(wrapped.headers.get('Access-Control-Allow-Credentials')).toBe('true')
+      expect(wrapped.headers.get('Vary')).toBe('Origin')
+    })
+
+    it('returns the original Response unchanged when origin is not allowlisted', async () => {
+      const original = new Response(JSON.stringify({ success: true }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+      const req = new Request('http://localhost:3000/api/course-selections', {
+        method: 'POST',
+        headers: { origin: 'https://evil.example.com' },
+      })
+
+      const wrapped = applyCorsHeaders(original, req)
+      expect(wrapped.status).toBe(200)
+      expect(wrapped.headers.get('Access-Control-Allow-Origin')).toBeNull()
+      expect(wrapped.headers.get('Access-Control-Allow-Credentials')).toBeNull()
+      expect(wrapped.headers.get('Vary')).toBeNull()
+    })
+  })
+
+  describe('OPTIONS preflight', () => {
+    it('returns 204 with CORS headers when Origin is allowlisted (Vercel dev preview)', async () => {
+      const req = new NextRequest('http://localhost:3000/api/course-selections', {
+        method: 'OPTIONS',
+        headers: {
+          Origin: 'https://a-guy-dev-aguy.vercel.app',
+          'Access-Control-Request-Method': 'POST',
+          'Access-Control-Request-Headers': 'content-type',
+        },
+      })
+
+      const res = await OPTIONS(req)
+      expect(res.status).toBe(204)
+      expect(res.headers.get('Access-Control-Allow-Origin')).toBe(
+        'https://a-guy-dev-aguy.vercel.app',
+      )
+      expect(res.headers.get('Access-Control-Allow-Credentials')).toBe('true')
+      expect(res.headers.get('Access-Control-Allow-Methods')).toBe('POST, OPTIONS')
+      expect(res.headers.get('Access-Control-Allow-Headers')).toBe('Content-Type')
+      expect(res.headers.get('Access-Control-Max-Age')).toBe('86400')
+      expect(res.headers.get('Vary')).toBe('Origin')
+    })
+
+    it('accepts the localhost dev origin', async () => {
+      const req = new NextRequest('http://localhost:3000/api/course-selections', {
+        method: 'OPTIONS',
+        headers: { Origin: 'http://localhost:3000' },
+      })
+
+      const res = await OPTIONS(req)
+      expect(res.status).toBe(204)
+      expect(res.headers.get('Access-Control-Allow-Origin')).toBe('http://localhost:3000')
+    })
+
+    it('accepts Vercel preview URLs matching the regex', async () => {
+      const req = new NextRequest('http://localhost:3000/api/course-selections', {
+        method: 'OPTIONS',
+        headers: {
+          Origin: 'https://a-guy-pr456-aguy.vercel.app',
+          'Access-Control-Request-Method': 'POST',
+        },
+      })
+
+      const res = await OPTIONS(req)
+      expect(res.status).toBe(204)
+      expect(res.headers.get('Access-Control-Allow-Origin')).toBe(
+        'https://a-guy-pr456-aguy.vercel.app',
+      )
+      expect(res.headers.get('Vary')).toBe('Origin')
+    })
+
+    it('returns 204 with NO CORS headers for non-allowlisted origins (silent reject)', async () => {
+      const req = new NextRequest('http://localhost:3000/api/course-selections', {
+        method: 'OPTIONS',
+        headers: {
+          Origin: 'https://evil.example.com',
+          'Access-Control-Request-Method': 'POST',
+        },
+      })
+
+      const res = await OPTIONS(req)
+      expect(res.status).toBe(204)
+      expect(res.headers.get('Access-Control-Allow-Origin')).toBeNull()
+      expect(res.headers.get('Access-Control-Allow-Credentials')).toBeNull()
+      expect(res.headers.get('Access-Control-Allow-Methods')).toBeNull()
+      expect(res.headers.get('Access-Control-Allow-Headers')).toBeNull()
+      expect(res.headers.get('Access-Control-Max-Age')).toBeNull()
+      expect(res.headers.get('Vary')).toBeNull()
+    })
+
+    it('createPreflightResponse returns 204 with CORS headers for allowlisted Origin', () => {
+      const req = new Request('http://localhost:3000/api/course-selections', {
+        method: 'OPTIONS',
+        headers: { origin: 'https://a-guy-dev-aguy.vercel.app' },
+      })
+      const res = createPreflightResponse(req)
+      expect(res.status).toBe(204)
+      expect(res.headers.get('Access-Control-Allow-Origin')).toBe(
+        'https://a-guy-dev-aguy.vercel.app',
+      )
+    })
+  })
+
+  describe('POST CORS response wrapping', () => {
+    it('returns CORS headers on success responses for allowlisted origins', async () => {
+      const req = new NextRequest('http://localhost:3000/api/course-selections', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Origin: 'https://a-guy-dev-aguy.vercel.app',
+          'x-forwarded-for': '203.0.113.50',
+          'user-agent': 'cors-success-tester/1.0',
+        },
+        body: JSON.stringify({
+          course: testCourseId,
+          source: 'start-page',
+          guestId: 'cors-success-guest',
+          gradeLevel: '10',
+        }),
+      })
+
+      const res = await POST(req)
+      expect(res.status).toBe(200)
+      expect(res.headers.get('Access-Control-Allow-Origin')).toBe(
+        'https://a-guy-dev-aguy.vercel.app',
+      )
+      expect(res.headers.get('Access-Control-Allow-Credentials')).toBe('true')
+      expect(res.headers.get('Vary')).toBe('Origin')
+
+      // Wildcard must NEVER appear
+      expect(res.headers.get('Access-Control-Allow-Origin')).not.toBe('*')
+
+      const body = await res.json()
+      expect(body).toEqual({ success: true })
+    })
+
+    it('omits Access-Control-Allow-Origin on responses for non-allowlisted origins', async () => {
+      const req = new NextRequest('http://localhost:3000/api/course-selections', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Origin: 'https://evil.example.com',
+          'x-forwarded-for': '203.0.113.51',
+          'user-agent': 'cors-reject-tester/1.0',
+        },
+        body: JSON.stringify({
+          course: testCourseId,
+          source: 'start-page',
+          guestId: 'cors-reject-guest',
+          gradeLevel: '10',
+        }),
+      })
+
+      const res = await POST(req)
+      expect(res.status).toBe(200)
+      expect(res.headers.get('Access-Control-Allow-Origin')).toBeNull()
+      expect(res.headers.get('Access-Control-Allow-Credentials')).toBeNull()
+      expect(res.headers.get('Vary')).toBeNull()
+    })
+
+    it('also wraps error responses so client-side React error paths see the headers', async () => {
+      // Validation error path (no Mongo write) — must still carry CORS headers
+      // when the request comes from an allowlisted origin.
+      const req = new NextRequest('http://localhost:3000/api/course-selections', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Origin: 'https://a-guy-dev-aguy.vercel.app',
+        },
+        body: JSON.stringify({ source: 'course-card' }), // missing course → 400
+      })
+
+      const res = await POST(req)
+      expect(res.status).toBe(400)
+      expect(res.headers.get('Access-Control-Allow-Origin')).toBe(
+        'https://a-guy-dev-aguy.vercel.app',
+      )
+      expect(res.headers.get('Access-Control-Allow-Credentials')).toBe('true')
+    })
   })
 })
