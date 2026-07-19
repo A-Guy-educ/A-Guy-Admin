@@ -16,11 +16,6 @@
       "aguyaharonyair"
     ]
   },
-  "state": {
-    "repo": "https://github.com/A-Guy-educ/kody-state",
-    "path": "A-Guy-Admin",
-    "branch": "main"
-  },
   "agent": {
     "model": "minimax/MiniMax-M3"
   },
@@ -34,9 +29,6 @@
     ],
     "e2eCommand": "npx tsx scripts/release-e2e-gate.ts",
     "timeoutMs": 1800000
-  },
-  "jobs": {
-    "stateBackend": "contents-api"
   },
   "defaultExecutable": "classify",
   "defaultPrExecutable": "fix",

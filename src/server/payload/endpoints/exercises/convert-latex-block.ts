@@ -7,6 +7,17 @@
  * exercise, same unit, content fleshed out. The original LaTeX block is kept
  * as a source-of-truth reference; the exercise viewer hides it from students.
  *
+ * With the new Sections collection between exercise and question, the parsed
+ * stream is partitioned post-parse: shared intro blocks stay on
+ * `exercise.content.blocks`, and one section is created per question block
+ * with the question always as its LAST block. Trailing non-question blocks
+ * attach to the LAST section. The sectionRef playlist is written to
+ * `exercise.blocks` in a single follow-up update.
+ *
+ * Both the single-exercise endpoint and the lesson-level pipeline's Stage 3
+ * inherit this behaviour via this endpoint change — there is no duplicated
+ * partition logic in `lesson-context-conversion/full-pipeline.ts`.
+ *
  * Fallback (V1-259): when the script parser produces zero usable blocks for a
  * LaTeX block AND fallback is enabled, the AI import route is called internally.
  * The AI route creates temp exercises; we harvest their blocks, apply them to
@@ -19,7 +30,13 @@ import { parseLatexToBlocks } from '@/lib/latex-parser'
 import { logger } from '@/infra/utils/logger'
 import { getConfigValueByKey } from '@/infra/config/runtime'
 import { ConfigDomain } from '@/infra/config/config-constants'
-import type { ContentBlock, LatexBlock } from '@/server/payload/collections/Exercises/types'
+import type { Section as SectionDoc } from '@/payload-types'
+import type {
+  ContentBlock,
+  ContentData,
+  LatexBlock,
+} from '@/server/payload/collections/Exercises/types'
+import { emptyPlaceholder, partitionBlocks } from '@/server/services/sections/partition-blocks'
 
 type ImportMethod = 'script' | 'ai_fallback'
 
@@ -32,6 +49,31 @@ interface ConversionOutcome {
   method: ImportMethod
   warnings: { line: number; message: string; rawLatex: string }[]
   errors: { line: number; message: string; rawLatex: string }[]
+}
+
+interface BlockEntry {
+  id: string
+  blockType: 'sectionRef'
+  section?: string
+}
+
+/** Parse the `exercise.blocks` field into a typed playlist. */
+function parseBlocksPlaylist(raw: unknown): BlockEntry[] {
+  if (Array.isArray(raw)) return raw as BlockEntry[]
+  if (typeof raw === 'string' && raw.trim()) {
+    try {
+      const parsed = JSON.parse(raw)
+      if (Array.isArray(parsed)) return parsed as BlockEntry[]
+    } catch {
+      // ignore
+    }
+  }
+  return []
+}
+
+/** True when the exercise already has a non-empty sectionRef playlist. */
+function hasSectionRefPlaylist(raw: unknown): boolean {
+  return parseBlocksPlaylist(raw).some((b) => b.blockType === 'sectionRef')
 }
 
 export async function convertLatexBlockOnExercise(
@@ -62,10 +104,20 @@ export async function convertLatexBlockOnExercise(
     return Response.json({ success: false, error: 'Exercise not found' }, { status: 404 })
   }
 
+  // Refuse to re-partition an already-sectioned exercise. The endpoint is
+  // idempotent over an empty exercise only; running it twice would race the
+  // sections collection hook and create a duplicate sectionRef chain.
+  if (hasSectionRefPlaylist(exercise.blocks)) {
+    return Response.json(
+      { success: false, error: 'partition only works on empty exercises' },
+      { status: 422 },
+    )
+  }
+
   const lessonId =
     typeof exercise.lesson === 'string' ? exercise.lesson : (exercise.lesson as { id: string })?.id
 
-  const blocks = (exercise.content as { blocks?: ContentBlock[] } | null)?.blocks ?? []
+  const blocks = (exercise.content as ContentData | null)?.blocks ?? []
   const latexBlockIndices = blocks
     .map((b, i) => (b.type === 'latex' ? i : -1))
     .filter((i) => i !== -1)
@@ -166,18 +218,114 @@ export async function convertLatexBlockOnExercise(
 
   // Persist updated content and sourceLatex.
   const combinedSourceLatex = sourceLatexChunks.join('\n\n% --- %\n\n')
+
   try {
-    const updated = await req.payload.update({
-      collection: 'exercises',
-      id: exerciseId,
-      data: {
-        content: { blocks: nextBlocks as never },
-        sourceLatex: combinedSourceLatex,
-      },
-      draft: true,
-      overrideAccess: true,
-      req: { payload: req.payload, user: req.user } as never,
-    })
+    // Partition the parsed stream. When at least one question block is
+    // present, `exercise.content.blocks` becomes the shared intro and one
+    // section is created per question (question always LAST). Trailing
+    // non-question blocks attach to the LAST section. When zero questions,
+    // the stream stays flat on `exercise.content.blocks` (legacy shape).
+    const partition = partitionBlocks(nextBlocks)
+
+    let persistedExerciseId = exerciseId
+    let sectionCount = 0
+    let sectionIds: string[] = []
+
+    if (partition.isFlat) {
+      // Legacy shape: flat stream goes straight onto exercise.content.blocks.
+      await req.payload.update({
+        collection: 'exercises',
+        id: exerciseId,
+        data: {
+          content: { blocks: nextBlocks as never },
+          sourceLatex: combinedSourceLatex,
+        },
+        draft: true,
+        overrideAccess: true,
+        req: { payload: req.payload, user: req.user } as never,
+      })
+    } else {
+      // Partitioned shape: shared intro + N sections + sectionRef playlist.
+      const sharedBlocks =
+        partition.exerciseSharedBlocks.length > 0
+          ? partition.exerciseSharedBlocks
+          : [emptyPlaceholder()]
+
+      // 1) Trim exercise.content.blocks to the shared intro.
+      await req.payload.update({
+        collection: 'exercises',
+        id: exerciseId,
+        data: {
+          content: { blocks: sharedBlocks as never },
+        },
+        draft: true,
+        overrideAccess: true,
+        req: { payload: req.payload, user: req.user } as never,
+      })
+
+      // 2) Create one section per question block. The section afterChange
+      //    hook normally pushes the sectionRef into exercise.blocks; we set
+      //    `_skipExerciseBlockSync` on the request context so the per-section
+      //    appends are skipped and we write the full playlist in a single
+      //    follow-up update (matches the migration-script pattern).
+      sectionIds = []
+      for (const section of partition.sections) {
+        const created = await req.payload.create({
+          collection: 'sections',
+          data: {
+            title: section.title,
+            exerciseType: 'basic',
+            exercise: exerciseId,
+            content: { blocks: section.contentBlocks as never },
+            order: sectionIds.length,
+          },
+          draft: true,
+          overrideAccess: true,
+          req: {
+            payload: req.payload,
+            user: req.user,
+            context: { _skipExerciseBlockSync: true },
+          } as never,
+        })
+        sectionIds.push((created as SectionDoc).id)
+        sectionCount++
+      }
+
+      // 3) Persist the sectionRef playlist (JSON string) in a single update.
+      const playlist: BlockEntry[] = sectionIds.map((sectionId, idx) => ({
+        id: `b-${idx}-${Math.random().toString(36).slice(2, 10)}`,
+        blockType: 'sectionRef',
+        section: sectionId,
+      }))
+      await req.payload.update({
+        collection: 'exercises',
+        id: exerciseId,
+        data: {
+          blocks: JSON.stringify(playlist),
+        },
+        draft: true,
+        overrideAccess: true,
+        req: { payload: req.payload, user: req.user } as never,
+      })
+
+      // Persist sourceLatex separately so a failure here doesn't undo the
+      // partition. (sourceLatex is a convenience field, not structural.)
+      try {
+        await req.payload.update({
+          collection: 'exercises',
+          id: exerciseId,
+          data: { sourceLatex: combinedSourceLatex },
+          draft: true,
+          overrideAccess: true,
+          req: { payload: req.payload, user: req.user } as never,
+        })
+      } catch (err) {
+        reqLogger.warn(
+          { err },
+          'Failed to persist sourceLatex after successful partition — continuing',
+        )
+      }
+    }
 
     reqLogger.info(
       {
@@ -185,21 +333,30 @@ export async function convertLatexBlockOnExercise(
         converted: outcome.convertedBlockIds.length,
         added: outcome.addedBlockCount,
         totalBlocks: nextBlocks.length,
+        sectionCount,
+        isFlat: partition.isFlat,
       },
       'LaTeX block(s) converted; originals preserved alongside parsed blocks',
     )
 
-    return Response.json({
+    const dataBody: Record<string, unknown> = {
+      exerciseId: persistedExerciseId,
+      convertedBlockIds: outcome.convertedBlockIds,
+      addedBlockCount: outcome.addedBlockCount,
+      totalBlocks: nextBlocks.length,
+      warnings: outcome.warnings,
+      sectionCount,
+      isFlat: partition.isFlat,
+    }
+    if (!partition.isFlat) {
+      dataBody.sectionIds = sectionIds
+    }
+    const responseBody: Record<string, unknown> = {
       success: true,
       method: outcome.method,
-      data: {
-        exerciseId: updated.id,
-        convertedBlockIds: outcome.convertedBlockIds,
-        addedBlockCount: outcome.addedBlockCount,
-        totalBlocks: nextBlocks.length,
-        warnings: outcome.warnings,
-      },
-    })
+      data: dataBody,
+    }
+    return Response.json(responseBody)
   } catch (err) {
     reqLogger.error({ err }, 'Failed to persist exercise after LaTeX block conversion')
     const message = err instanceof Error ? err.message : 'Failed to save exercise'
@@ -253,7 +410,7 @@ async function tryAiFallback(
           depth: 0,
           overrideAccess: true,
         })
-        const tempContent = tempExercise.content as { blocks?: ContentBlock[] } | null
+        const tempContent = tempExercise.content as ContentData | null
         if (tempContent?.blocks) {
           allBlocks.push(...tempContent.blocks)
         }
@@ -324,6 +481,14 @@ function deriveOrigin(req: PayloadRequest): string {
  * fall through to AI instead of persisting garbage.
  */
 function isScriptOutputMeaningful(sourceLatex: string, parsedBlocks: ContentBlock[]): boolean {
+  // Question blocks (question_select, question_free_response, question_table, etc.)
+  // store their text in nested fields (prompt.value, choices[].value, ...), not at
+  // the top level. The parser only emits them from valid \question markup, so any
+  // question block in the output is meaningful by construction.
+  if (parsedBlocks.some((b) => typeof b.type === 'string' && b.type.startsWith('question_'))) {
+    return true
+  }
+
   const totalContent = parsedBlocks
     .map((b) => {
       if ('value' in b && typeof b.value === 'string') return b.value

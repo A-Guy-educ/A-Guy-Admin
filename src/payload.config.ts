@@ -20,10 +20,12 @@ import { ContentPages } from '@/server/payload/collections/ContentPages'
 import { ContextExtractions } from '@/server/payload/collections/ContextExtractions'
 import { Conversations } from '@/server/payload/collections/Conversations'
 import { Courses } from '@/server/payload/collections/Courses'
+import { CourseSelections } from '@/server/payload/collections/CourseSelections'
 import { ExerciseAssets } from '@/server/payload/collections/ExerciseAssets'
 import { EnrollmentProgress } from '@/server/payload/collections/EnrollmentProgress'
 import { Enrollments } from '@/server/payload/collections/Enrollments'
 import { Exercises } from '@/server/payload/collections/Exercises'
+import { Sections } from '@/server/payload/collections/Sections'
 import { ExtractionLogs } from '@/server/payload/collections/ExtractionLogs'
 import { Features } from '@/server/payload/collections/Features'
 import { FormulaSheets } from '@/server/payload/collections/FormulaSheets'
@@ -64,6 +66,7 @@ import { pdfToExercisesTask } from '@/server/payload/jobs/pdf-to-exercises-task'
 import { pdfToExercisesV2Task } from '@/server/payload/jobs/pdf-to-exercises-v2-task'
 import type { JobDocument } from '@/server/payload/jobs/types'
 import { runBackfillOnInit } from '@/server/payload/migrations/backfillAdminTitle'
+import { runDropStaleCoursesValidatorOnInit } from '@/server/payload/migrations/dropStaleCoursesValidator'
 import { runLocalizeTeacherProfilesOnInit } from '@/server/payload/migrations/localize-teacher-profiles'
 import { runPopulateLessonBlocksOnInit } from '@/server/payload/migrations/populateLessonBlocks'
 import { plugins } from '@/server/payload/plugins'
@@ -127,6 +130,7 @@ export default buildConfig({
         '@/ui/admin/LessonDuplicationReview/SidebarLink',
         '@/ui/admin/LessonJsonImport/SidebarLink',
         '@/ui/admin/ContentPromotion/SidebarLink',
+        '@/ui/admin/CourseSelectionsPopularity/SidebarLink',
       ],
       afterNavLinks: ['@/ui/admin/UserEmail'],
     },
@@ -216,12 +220,14 @@ export default buildConfig({
     MemoryItems,
     Tenants,
     Courses,
+    CourseSelections,
     Chapters,
     Lessons,
     LessonDuplications,
     ContentPages,
     ContextExtractions,
     Exercises,
+    Sections,
     ExtractionLogs,
     FormulaSheets,
     InteractiveLessons,
@@ -400,6 +406,14 @@ export default buildConfig({
     }),
   },
   onInit: async (payload) => {
+    // Runs BEFORE the Vercel-production early-return: this migration is the
+    // single fix for a Mongo-side validator that blocks legitimate courses
+    // inserts (see the migration's JSDoc). Content-promotion's whole reason
+    // to exist is dev→prod imports, so a fix that skips prod is no fix at
+    // all. The check itself is a single `listCollections` when the validator
+    // is already gone — cheap enough to run on every serverless cold start.
+    await runDropStaleCoursesValidatorOnInit(payload)
+
     // Skip expensive init tasks on Vercel serverless — they run on every cold start
     // and the tenant + seed data already exist in production. These ops are idempotent
     // but waste ~500ms+ per new serverless instance spinning up.

@@ -1,5 +1,44 @@
 # Changelog
 
+## v0.27.0 — 2026-07-19
+
+### Features
+- Add Course Popularity admin page with per-course counts (#246)
+- Create Section docs per source section in lesson-json and text-lesson importers (#243)
+- Partition LaTeX-to-blocks converter output into Sections per question (#241)
+- Bulk-insert exercises during content-promotion import (#218)
+- Wire ExerciseContentEditor and split exercise Content/Blocks tabs (#196)
+- Add Sections tab to Exercises edit view (#194)
+- Reorganize Exercise + Section edit forms with pedagogical metadata tabs (#182)
+- Aggregate child section blocks at read time on exercises (#175)
+- Add sectionRef playlist UI to exercises blocks field (#174)
+- Add Sections collection under Exercises with parent sync (#168)
+- Log course selections server-side via new payload collection (#167)
+- Move formulaSheet field from sidebar into Content tab (#156)
+- Expand lesson edit form with content fields, system ID, and SEO tab (#153)
+- Split lesson edit page into lazy-loaded exercise tabs (#151)
+
+### Fixes
+- Count question blocks as meaningful parser output in LaTeX converter
+- Add CORS handling to /api/course-selections endpoint (#245)
+- Union exercises referenced by lesson.blocks playlist in content-promotion export (#242)
+- Only chase authoritative parent refs when deleting content orphans (#237)
+- Extend content-promotion slug remap to per-(slug,locale) unique courses (#225)
+- Auto-suffix colliding slugs on chapters/lessons content-promotion import (#221)
+- Drop stale $jsonSchema validator on courses collection via onInit migration (#220)
+- Skip exercise slug hooks during content-promotion import (#217)
+- Restore skip-flag after exercise blocks sync on sections
+- Isolate section-sync recursion guard from lesson-sync flag
+- Read only .title in sections adminTitle chain to avoid breadcrumb duplication
+- Make lesson topic field optional to unblock existing factories
+
+### Performance
+- Bulk-delete cascade-delete descendants via raw MongoDB driver instead of per-doc loop (#240)
+- Drop findByID fallbacks in sections adminTitle afterRead
+
+### Refactor
+- Drop typed content fields on sections; block editor is the authoritative source (#211)
+
 ## v0.26.1 — 2026-07-10
 
 ### Fixes
@@ -1780,8 +1819,34 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
-- chore: release v0.26.1 ([#140](https://github.com/A-Guy-educ/A-Guy-Admin/pull/140)) — @aguyshayb
-- fix(tenant): Backfill required tenant on update, not just create ([#139](https://github.com/A-Guy-educ/A-Guy-Admin/pull/139)) — @aguyshayb
+- chore: Release v0.27.0 ([#248](https://github.com/A-Guy-educ/A-Guy-Admin/pull/248)) — @aguyshayb
+- #246: Add Course Popularity admin page (counts per course from course-s… ([#247](https://github.com/A-Guy-educ/A-Guy-Admin/pull/247)) — @kodyade[bot]
+- #238: Adjust LaTeX-to-blocks converter to produce Sections ([#241](https://github.com/A-Guy-educ/A-Guy-Admin/pull/241)) — @kodyade[bot]
+- #244: Add CORS handling to /api/course-selections (blocks cross-origin … ([#245](https://github.com/A-Guy-educ/A-Guy-Admin/pull/245)) — @kodyade[bot]
+- #239: Create Sections in lesson JSON + text importers ([#243](https://github.com/A-Guy-educ/A-Guy-Admin/pull/243)) — @kodyade[bot]
+- fix(content-promotion/export): union exercises referenced by lesson.blocks playlist ([#242](https://github.com/A-Guy-educ/A-Guy-Admin/pull/242)) — @aguyshayb
+- perf(cascade-delete): bulk-delete descendants via raw driver instead of per-doc loop ([#240](https://github.com/A-Guy-educ/A-Guy-Admin/pull/240)) — @aguyshayb
+- fix(scripts): only chase authoritative parent refs when deleting content orphans ([#237](https://github.com/A-Guy-educ/A-Guy-Admin/pull/237)) — @aguyshayb
+- fix(content-promotion): extend slug remap to per-(slug, locale) unique courses ([#225](https://github.com/A-Guy-educ/A-Guy-Admin/pull/225)) — @aguyshayb
+- fix(content-promotion): auto-suffix colliding slugs on chapters/lessons import ([#221](https://github.com/A-Guy-educ/A-Guy-Admin/pull/221)) — @aguyshayb
+- fix(courses): drop stale $jsonSchema validator blocking course inserts ([#220](https://github.com/A-Guy-educ/A-Guy-Admin/pull/220)) — @aguyshayb
+- feat: Bulk-insert exercises during content-promotion import ([#218](https://github.com/A-Guy-educ/A-Guy-Admin/pull/218)) — @aguyshayb
+- fix: Skip exercise slug hooks during content-promotion import ([#217](https://github.com/A-Guy-educ/A-Guy-Admin/pull/217)) — @aguyshayb
+- refactor(sections): drop typed content fields duplicating block data ([#211](https://github.com/A-Guy-educ/A-Guy-Admin/pull/211)) — @aguyshayb
+- feat(sections): wire block editor UI and split Content/Blocks tabs ([#196](https://github.com/A-Guy-educ/A-Guy-Admin/pull/196)) — @aguyshayb
+- #193: Add Sections tab to Exercises edit view ([#194](https://github.com/A-Guy-educ/A-Guy-Admin/pull/194)) — @kodyade[bot]
+- feat: reorganize Exercise + Section edit forms with pedagogical metadata tabs (#181) ([#182](https://github.com/A-Guy-educ/A-Guy-Admin/pull/182)) — @kodyade[bot]
+- #176: Extend admin navigation and content-nav chain for Sections ([#177](https://github.com/A-Guy-educ/A-Guy-Admin/pull/177)) — @kodyade[bot]
+- #172: Aggregate child sections into exercise.content.blocks at read time ([#175](https://github.com/A-Guy-educ/A-Guy-Admin/pull/175)) — @kodyade[bot]
+- #173: Add sectionRef playlist UI to Exercises blocks field ([#174](https://github.com/A-Guy-educ/A-Guy-Admin/pull/174)) — @kodyade[bot]
+- #166: Add Sections collection under Exercises with parent playlist sync ([#168](https://github.com/A-Guy-educ/A-Guy-Admin/pull/168)) — @kodyade[bot] · ⚠️ QA 2026-07-18 (#226)
+- #165: Track course selections server-side (log every pick to a new coll… ([#167](https://github.com/A-Guy-educ/A-Guy-Admin/pull/167)) — @kodyade[bot] · ⚠️ QA 2026-07-17 (#219)
+- #155: Move formula sheet field from sidebar into Content tab ([#156](https://github.com/A-Guy-educ/A-Guy-Admin/pull/156)) — @kodyade[bot] · ⚠️ QA 2026-07-16 (#206)
+- #152: Expand lesson edit with new content fields, SEO tab, and layout r… ([#153](https://github.com/A-Guy-educ/A-Guy-Admin/pull/153)) — @kodyade[bot] · ⚠️ QA 2026-07-14 (#195)
+- #150: Split lesson edit page into tabs and lazy-load exercises tab ([#151](https://github.com/A-Guy-educ/A-Guy-Admin/pull/151)) — @kodyade[bot] · ⚠️ QA 2026-07-13 (#180)
+- promote: dev -> main (v0.26.1) ([#142](https://github.com/A-Guy-educ/A-Guy-Admin/pull/142)) — @aguyshayb · ⚠️ QA 2026-07-12 (#154)
+- chore: release v0.26.1 ([#140](https://github.com/A-Guy-educ/A-Guy-Admin/pull/140)) — @aguyshayb · ⚠️ QA 2026-07-11 (#146)
+- fix(tenant): Backfill required tenant on update, not just create ([#139](https://github.com/A-Guy-educ/A-Guy-Admin/pull/139)) — @aguyshayb · ⚠️ QA 2026-07-11 (#143)
 ## [v0.26.0] - 2026-07-09
 
 - promote: dev -> main (v0.26.0) ([#133](https://github.com/A-Guy-educ/A-Guy-Admin/pull/133)) — @aguyshayb

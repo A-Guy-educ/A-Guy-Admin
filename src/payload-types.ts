@@ -80,12 +80,14 @@ export interface Config {
     memory_items: MemoryItem;
     tenants: Tenant;
     courses: Course;
+    'course-selections': CourseSelection;
     chapters: Chapter;
     lessons: Lesson;
     'lesson-duplications': LessonDuplication;
     'content-pages': ContentPage;
     'context-extractions': ContextExtraction;
     exercises: Exercise;
+    sections: Section;
     'extraction-logs': ExtractionLog;
     'formula-sheets': FormulaSheet;
     interactive_lessons: InteractiveLesson;
@@ -135,12 +137,14 @@ export interface Config {
     memory_items: MemoryItemsSelect<false> | MemoryItemsSelect<true>;
     tenants: TenantsSelect<false> | TenantsSelect<true>;
     courses: CoursesSelect<false> | CoursesSelect<true>;
+    'course-selections': CourseSelectionsSelect<false> | CourseSelectionsSelect<true>;
     chapters: ChaptersSelect<false> | ChaptersSelect<true>;
     lessons: LessonsSelect<false> | LessonsSelect<true>;
     'lesson-duplications': LessonDuplicationsSelect<false> | LessonDuplicationsSelect<true>;
     'content-pages': ContentPagesSelect<false> | ContentPagesSelect<true>;
     'context-extractions': ContextExtractionsSelect<false> | ContextExtractionsSelect<true>;
     exercises: ExercisesSelect<false> | ExercisesSelect<true>;
+    sections: SectionsSelect<false> | SectionsSelect<true>;
     'extraction-logs': ExtractionLogsSelect<false> | ExtractionLogsSelect<true>;
     'formula-sheets': FormulaSheetsSelect<false> | FormulaSheetsSelect<true>;
     interactive_lessons: InteractiveLessonsSelect<false> | InteractiveLessonsSelect<true>;
@@ -1472,6 +1476,98 @@ export interface Chapter {
 export interface Lesson {
   id: string;
   /**
+   * Subject area (e.g. Mathematics). Free-text — no taxonomy yet.
+   */
+  topic?: string | null;
+  /**
+   * The chapter this lesson belongs to
+   */
+  chapter: string | Chapter;
+  /**
+   * Lesson title
+   */
+  title: string;
+  /**
+   * The type of lesson: Learning content, Practice exercises, or Exam
+   */
+  type: 'learning' | 'practice' | 'exam';
+  /**
+   * Auto-computed display title for admin relationship dropdowns
+   */
+  adminTitle?: string | null;
+  /**
+   * What the student should know or understand by the end of the lesson.
+   */
+  lessonObjective?: string | null;
+  /**
+   * Short intro shown on lesson cards before students start
+   */
+  intro?: string | null;
+  /**
+   * Detailed description of the lesson
+   */
+  description?: string | null;
+  /**
+   * Formulas relevant to this lesson.
+   */
+  formulas?: string | null;
+  /**
+   * Lesson-specific formula sheet (overrides course default)
+   */
+  formulaSheet?: (string | null) | FormulaSheet;
+  /**
+   * Illustrative examples for the material.
+   */
+  examples?: string | null;
+  /**
+   * Common student misconceptions to watch for.
+   */
+  commonMistakes?: string | null;
+  /**
+   * Additional notes for the teacher / system.
+   */
+  additionalNotes?: string | null;
+  /**
+   * Sort order within the course
+   */
+  order: number;
+  /**
+   * Lessons students should complete before this lesson
+   */
+  prerequisites?: (string | Lesson)[] | null;
+  /**
+   * Recommended follow-up lessons.
+   */
+  nextLessons?: (string | Lesson)[] | null;
+  /**
+   * AI system prompt for this lesson (uses default if not set)
+   */
+  prompt?: (string | null) | Prompt;
+  /**
+   * Upload lesson content files (PDFs, videos, images, etc.)
+   */
+  contentFiles?: (string | Media)[] | null;
+  /**
+   * AI context text for this lesson. Injected into chat prompts at runtime. NOT indexed or searchable.
+   */
+  lessonContextText?: string | null;
+  /**
+   * Ordered playlist of exercises and content pages. Defines the lesson flow.
+   */
+  blocks?: string | null;
+  /**
+   * Auto-populated from chapter. Used for filtering lessons by course.
+   */
+  course?: (string | null) | Course;
+  /**
+   * Publication status of the lesson
+   */
+  status: 'draft' | 'published' | 'archived';
+  /**
+   * Whether this lesson is currently active
+   */
+  isActive: boolean;
+  /**
    * Tenant scope for this document
    */
   tenant: string | Tenant;
@@ -1484,50 +1580,6 @@ export interface Lesson {
    */
   translatedFrom?: (string | null) | Lesson;
   /**
-   * The chapter this lesson belongs to
-   */
-  chapter: string | Chapter;
-  /**
-   * Auto-populated from chapter. Used for filtering lessons by course.
-   */
-  course?: (string | null) | Course;
-  /**
-   * The type of lesson: Learning content, Practice exercises, or Exam
-   */
-  type: 'learning' | 'practice' | 'exam';
-  /**
-   * Lesson title
-   */
-  title: string;
-  /**
-   * Auto-computed display title for admin relationship dropdowns
-   */
-  adminTitle?: string | null;
-  /**
-   * Short intro shown on lesson cards before students start
-   */
-  intro?: string | null;
-  /**
-   * Detailed description of the lesson
-   */
-  description?: string | null;
-  /**
-   * Lessons students should complete before this lesson
-   */
-  prerequisites?: (string | Lesson)[] | null;
-  /**
-   * Sort order within the course
-   */
-  order: number;
-  /**
-   * Publication status of the lesson
-   */
-  status: 'draft' | 'published' | 'archived';
-  /**
-   * Whether this lesson is currently active
-   */
-  isActive: boolean;
-  /**
    * Access control for this lesson. "Inherit" uses the parent course setting. "Gated" is a client-side nudge, not hard enforcement.
    */
   accessType: 'inherit' | 'free' | 'mandatory' | 'gated' | 'paid';
@@ -1535,22 +1587,6 @@ export interface Lesson {
    * Which renderers are visible to students. At least one must be selected. Note: Media tab only appears when the lesson has attached files regardless of this toggle.
    */
   visibleRenderers?: ('media' | 'pdf' | 'interactive')[] | null;
-  /**
-   * Ordered playlist of exercises and content pages. Defines the lesson flow.
-   */
-  blocks?: string | null;
-  /**
-   * Upload lesson content files (PDFs, videos, images, etc.)
-   */
-  contentFiles?: (string | Media)[] | null;
-  /**
-   * AI context text for this lesson. Injected into chat prompts at runtime. NOT indexed or searchable.
-   */
-  lessonContextText?: string | null;
-  /**
-   * AI system prompt for this lesson (uses default if not set)
-   */
-  prompt?: (string | null) | Prompt;
   /**
    * URL-friendly identifier (auto-generated from title if empty)
    */
@@ -1572,13 +1608,29 @@ export interface Lesson {
    */
   contentStatusLabel?: string | null;
   /**
-   * Lesson-specific formula sheet (overrides course default)
-   */
-  formulaSheet?: (string | null) | FormulaSheet;
-  /**
    * User who created this document
    */
   createdBy?: (string | null) | User;
+  meta?: {
+    title?: string | null;
+    /**
+     * Maximum upload file size: 12MB. Recommended file size for images is <500KB.
+     */
+    image?: (string | null) | Media;
+    description?: string | null;
+    /**
+     * Comma-separated keywords / tags.
+     */
+    keywords?: string | null;
+    /**
+     * Search engine visibility.
+     */
+    robots?: ('index-follow' | 'noindex-follow' | 'noindex-nofollow') | null;
+    /**
+     * Leave empty to use the page's default URL. Used to avoid duplicate content.
+     */
+    canonicalUrl?: string | null;
+  };
   updatedAt: string;
   createdAt: string;
 }
@@ -1588,6 +1640,58 @@ export interface Lesson {
  */
 export interface Exercise {
   id: string;
+  /**
+   * Subject area (e.g. Mathematics). Free text — no taxonomy yet.
+   */
+  subject?: string | null;
+  /**
+   * Topic within the subject (e.g. Quadratic equations).
+   */
+  topic?: string | null;
+  /**
+   * Auto-populated from lesson hierarchy
+   */
+  chapter?: (string | null) | Chapter;
+  /**
+   * Exercise title (for admin reference)
+   */
+  title?: string | null;
+  /**
+   * DEPRECATED — Order is now defined by lesson blocks array. Kept for backward compatibility.
+   */
+  order?: number | null;
+  /**
+   * URL-friendly identifier (auto-generated from title, unique within lesson)
+   */
+  slug?: string | null;
+  /**
+   * Legacy inline blocks. For new content, prefer authoring child Sections.
+   */
+  content:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Ordered playlist of sections. Populated automatically by the Sections collection hooks and editable from this side via the playlist UI.
+   */
+  blocks?: string | null;
+  /**
+   * The lesson this exercise belongs to
+   */
+  lesson: string | Lesson;
+  /**
+   * Auto-populated from lesson hierarchy. Used for filtering exercises by course.
+   */
+  course?: (string | null) | Course;
+  /**
+   * Show exercise question numbering (the circled number above questions). Enable when multiple exercises share a page.
+   */
+  showQuestionNumbering?: boolean | null;
   /**
    * Tenant scope for this document
    */
@@ -1600,46 +1704,6 @@ export interface Exercise {
    * Source document this was translated from
    */
   translatedFrom?: (string | null) | Exercise;
-  /**
-   * Exercise title (for admin reference)
-   */
-  title?: string | null;
-  /**
-   * DEPRECATED — Order is now defined by lesson blocks array. Kept for backward compatibility.
-   */
-  order?: number | null;
-  /**
-   * The lesson this exercise belongs to
-   */
-  lesson: string | Lesson;
-  /**
-   * Auto-populated from lesson hierarchy. Used for filtering exercises by chapter.
-   */
-  chapter?: (string | null) | Chapter;
-  /**
-   * Auto-populated from lesson hierarchy. Used for filtering exercises by course.
-   */
-  course?: (string | null) | Course;
-  /**
-   * URL-friendly identifier (auto-generated from title, unique within lesson)
-   */
-  slug?: string | null;
-  /**
-   * Show exercise question numbering (the circled number above questions). Enable when multiple exercises share a page.
-   */
-  showQuestionNumbering?: boolean | null;
-  /**
-   * Ordered blocks stream. Use question_* blocks to add questions, and rich_text blocks for instructions/notes between questions.
-   */
-  content:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
   /**
    * User who created this document
    */
@@ -2184,6 +2248,45 @@ export interface MemoryItem {
   createdAt: string;
 }
 /**
+ * Server-side log of every course pick (anonymous or authenticated)
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "course-selections".
+ */
+export interface CourseSelection {
+  id: string;
+  /**
+   * The course that was selected
+   */
+  course: string | Course;
+  /**
+   * The user who made the selection (null for anonymous guests)
+   */
+  user?: (string | null) | User;
+  /**
+   * Opaque client-generated ID for anonymous users (lets us count unique guests)
+   */
+  guestId?: string | null;
+  /**
+   * Grade level reported by the client (mirrors LocalUserProfile on web)
+   */
+  gradeLevel?: string | null;
+  /**
+   * Where in the UI the selection originated
+   */
+  source: 'start-page' | 'homepage-greeting' | 'course-card' | 'other';
+  /**
+   * SHA-256 (truncated) of the request User-Agent — computed server-side
+   */
+  userAgentHash?: string | null;
+  /**
+   * SHA-256 (truncated) of the request IP — computed server-side
+   */
+  ipHash?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * Job records for the lesson-duplication pipeline. Use the review screen at /admin/lesson-duplications/<id> to skip / regenerate / keep individual exercise failures.
  *
  * This interface was referenced by `Config`'s JSON-Schema
@@ -2392,6 +2495,109 @@ export interface ContextExtraction {
     | number
     | boolean
     | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "sections".
+ */
+export interface Section {
+  id: string;
+  /**
+   * Section title (for admin reference)
+   */
+  title?: string | null;
+  /**
+   * DEPRECATED — Order is now defined by exercise blocks array. Kept for backward compatibility.
+   */
+  order?: number | null;
+  /**
+   * Pedagogical role of this section within the exercise
+   */
+  exerciseType: 'guide' | 'basic' | 'complex' | 'challenge';
+  /**
+   * Primary skill the section targets
+   */
+  mainSkill?:
+    | (
+        | 'foundations'
+        | 'understanding'
+        | 'algebraicTechnique'
+        | 'orderAndOrganization'
+        | 'processThinking'
+        | 'creativeThinking'
+      )
+    | null;
+  /**
+   * Additional skills the section targets (multi-select)
+   */
+  subSkills?:
+    | (
+        | 'foundations'
+        | 'understanding'
+        | 'algebraicTechnique'
+        | 'orderAndOrganization'
+        | 'processThinking'
+        | 'creativeThinking'
+      )[]
+    | null;
+  /**
+   * What the student should be able to do after completing this section.
+   */
+  objective?: string | null;
+  /**
+   * Ordered blocks stream for this section. Use question_* blocks to add questions, rich_text blocks for instructions/notes between them.
+   */
+  content:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * The exercise this section belongs to
+   */
+  exercise: string | Exercise;
+  /**
+   * Auto-populated from exercise hierarchy. Used for filtering sections by lesson.
+   */
+  lesson?: (string | null) | Lesson;
+  /**
+   * Auto-populated from exercise hierarchy. Used for filtering sections by chapter.
+   */
+  chapter?: (string | null) | Chapter;
+  /**
+   * Auto-populated from exercise hierarchy. Used for filtering sections by course.
+   */
+  course?: (string | null) | Course;
+  /**
+   * Auto-computed display title for admin relationship dropdowns (course / chapter / lesson / exercise / section)
+   */
+  adminTitle?: string | null;
+  /**
+   * URL-friendly identifier (auto-generated from title, unique within exercise)
+   */
+  slug?: string | null;
+  /**
+   * Tenant scope for this document
+   */
+  tenant: string | Tenant;
+  /**
+   * Content language
+   */
+  locale: 'en' | 'he';
+  /**
+   * Source document this was translated from
+   */
+  translatedFrom?: (string | null) | Section;
+  /**
+   * User who created this document
+   */
+  createdBy?: (string | null) | User;
   updatedAt: string;
   createdAt: string;
 }
@@ -3503,6 +3709,10 @@ export interface PayloadLockedDocument {
         value: string | Course;
       } | null)
     | ({
+        relationTo: 'course-selections';
+        value: string | CourseSelection;
+      } | null)
+    | ({
         relationTo: 'chapters';
         value: string | Chapter;
       } | null)
@@ -3525,6 +3735,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'exercises';
         value: string | Exercise;
+      } | null)
+    | ({
+        relationTo: 'sections';
+        value: string | Section;
       } | null)
     | ({
         relationTo: 'extraction-logs';
@@ -4068,6 +4282,21 @@ export interface CoursesSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "course-selections_select".
+ */
+export interface CourseSelectionsSelect<T extends boolean = true> {
+  course?: T;
+  user?: T;
+  guestId?: T;
+  gradeLevel?: T;
+  source?: T;
+  userAgentHash?: T;
+  ipHash?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "chapters_select".
  */
 export interface ChaptersSelect<T extends boolean = true> {
@@ -4093,33 +4322,50 @@ export interface ChaptersSelect<T extends boolean = true> {
  * via the `definition` "lessons_select".
  */
 export interface LessonsSelect<T extends boolean = true> {
+  topic?: T;
+  chapter?: T;
+  title?: T;
+  type?: T;
+  adminTitle?: T;
+  lessonObjective?: T;
+  intro?: T;
+  description?: T;
+  formulas?: T;
+  formulaSheet?: T;
+  examples?: T;
+  commonMistakes?: T;
+  additionalNotes?: T;
+  order?: T;
+  prerequisites?: T;
+  nextLessons?: T;
+  prompt?: T;
+  contentFiles?: T;
+  lessonContextText?: T;
+  blocks?: T;
+  course?: T;
+  status?: T;
+  isActive?: T;
   tenant?: T;
   locale?: T;
   translatedFrom?: T;
-  chapter?: T;
-  course?: T;
-  type?: T;
-  title?: T;
-  adminTitle?: T;
-  intro?: T;
-  description?: T;
-  prerequisites?: T;
-  order?: T;
-  status?: T;
-  isActive?: T;
   accessType?: T;
   visibleRenderers?: T;
-  blocks?: T;
-  contentFiles?: T;
-  lessonContextText?: T;
-  prompt?: T;
   slug?: T;
   contentStatus?: T;
   contentStatusVisible?: T;
   contentStatusExpiresAt?: T;
   contentStatusLabel?: T;
-  formulaSheet?: T;
   createdBy?: T;
+  meta?:
+    | T
+    | {
+        title?: T;
+        image?: T;
+        description?: T;
+        keywords?: T;
+        robots?: T;
+        canonicalUrl?: T;
+      };
   updatedAt?: T;
   createdAt?: T;
 }
@@ -4259,17 +4505,20 @@ export interface ContextExtractionsSelect<T extends boolean = true> {
  * via the `definition` "exercises_select".
  */
 export interface ExercisesSelect<T extends boolean = true> {
+  subject?: T;
+  topic?: T;
+  chapter?: T;
+  title?: T;
+  order?: T;
+  slug?: T;
+  content?: T;
+  blocks?: T;
+  lesson?: T;
+  course?: T;
+  showQuestionNumbering?: T;
   tenant?: T;
   locale?: T;
   translatedFrom?: T;
-  title?: T;
-  order?: T;
-  lesson?: T;
-  chapter?: T;
-  course?: T;
-  slug?: T;
-  showQuestionNumbering?: T;
-  content?: T;
   createdBy?: T;
   origin?: T;
   sourceDoc?: T;
@@ -4285,6 +4534,31 @@ export interface ExercisesSelect<T extends boolean = true> {
   pipelineVersion?: T;
   sourcePageIndex?: T;
   sourceBboxNormalized?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "sections_select".
+ */
+export interface SectionsSelect<T extends boolean = true> {
+  title?: T;
+  order?: T;
+  exerciseType?: T;
+  mainSkill?: T;
+  subSkills?: T;
+  objective?: T;
+  content?: T;
+  exercise?: T;
+  lesson?: T;
+  chapter?: T;
+  course?: T;
+  adminTitle?: T;
+  slug?: T;
+  tenant?: T;
+  locale?: T;
+  translatedFrom?: T;
+  createdBy?: T;
   updatedAt?: T;
   createdAt?: T;
 }

@@ -52,6 +52,40 @@ const STRIPPED_FIELDS = new Set(['_id', 'createdAt', 'updatedAt', 'sizes', 'thum
 // the Vercel Blob plugin from the freshly-uploaded file on the target.
 const STRIPPED_MEDIA_FIELDS = new Set(['url', 'filesize', 'width', 'height'])
 
+/**
+ * Extracts every `exerciseRef.exercise` id from the `blocks` playlist of
+ * each lesson. `blocks` is stored as a `textarea` (JSON-serialized string
+ * — see Lessons.ts field config), so we parse each lesson individually and
+ * ignore ones whose blocks are missing or malformed rather than aborting
+ * the whole export.
+ *
+ * Exported so the pure JSON-string walk is unit-testable without a live
+ * Payload.
+ */
+export function collectExerciseRefsFromLessonBlocks(
+  lessons: Record<string, unknown>[],
+): Set<string> {
+  const ids = new Set<string>()
+  for (const lesson of lessons) {
+    const raw = lesson.blocks
+    if (typeof raw !== 'string' || raw.length === 0) continue
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(raw)
+    } catch {
+      continue
+    }
+    if (!Array.isArray(parsed)) continue
+    for (const block of parsed) {
+      if (!block || typeof block !== 'object') continue
+      const b = block as { blockType?: unknown; exercise?: unknown }
+      if (b.blockType !== 'exerciseRef') continue
+      if (typeof b.exercise === 'string' && b.exercise.length > 0) ids.add(b.exercise)
+    }
+  }
+  return ids
+}
+
 function stripDoc(
   doc: Record<string, unknown>,
   collection: PromotedCollection,
@@ -226,10 +260,44 @@ export async function exportContent(
   const lessonIds = lessonDocs
     .map((l) => (l as { id?: unknown }).id)
     .filter((id): id is string => typeof id === 'string')
-  const exerciseDocs = await fetchDocsByFilter(payload, req, 'exercises', {
+  const exerciseDocsByParent = await fetchDocsByFilter(payload, req, 'exercises', {
     field: 'lesson',
     ids: lessonIds,
   })
+
+  // 1b. Union in any exercises referenced by lesson.blocks playlists but not
+  //     picked up by the `exercise.lesson in [...]` filter above. The
+  //     playlist is what the web renders from, so it is the effective
+  //     source of truth for "which exercises belong to this lesson." When
+  //     an exercise's `lesson` field storage-shape drifts from the parent
+  //     query's expectations (real case: prod exercises 69eb1b87…f545/547/
+  //     549 pointed at the correct lesson but the `in` filter dropped them,
+  //     producing a bundle that rendered 60 on the target while prod
+  //     rendered 63), the playlist union catches them.
+  const playlistExerciseIds = collectExerciseRefsFromLessonBlocks(lessonDocs)
+  const alreadyPulled = new Set(
+    exerciseDocsByParent
+      .map((d) => (d as { id?: unknown }).id)
+      .filter((id): id is string => typeof id === 'string'),
+  )
+  const missingPlaylistIds = [...playlistExerciseIds].filter((id) => !alreadyPulled.has(id))
+  const exerciseDocsFromPlaylist =
+    missingPlaylistIds.length > 0
+      ? await fetchDocsByFilter(payload, req, 'exercises', {
+          field: 'id',
+          ids: missingPlaylistIds,
+        })
+      : []
+  if (exerciseDocsFromPlaylist.length > 0) {
+    payload.logger.info(
+      {
+        recoveredFromPlaylist: exerciseDocsFromPlaylist.length,
+        missingButNotFound: missingPlaylistIds.length - exerciseDocsFromPlaylist.length,
+      },
+      '[content-promotion/export] Recovered exercises referenced by lesson.blocks that the exercise.lesson filter missed',
+    )
+  }
+  const exerciseDocs = [...exerciseDocsByParent, ...exerciseDocsFromPlaylist]
 
   // 2. Walk for media IDs referenced by any of the scoped docs.
   const referencedMediaIds = new Set<string>()

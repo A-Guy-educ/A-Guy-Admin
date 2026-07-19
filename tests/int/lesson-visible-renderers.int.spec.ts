@@ -118,6 +118,7 @@ describe('Lesson visibleRenderers field', () => {
 
   const baseLessonData = (order: number) => ({
     title: `Visible Renderers Lesson ${order}`,
+    topic: `Visible Renderers Topic ${order}`,
     chapter: chapterId,
     type: 'learning' as const,
     order,

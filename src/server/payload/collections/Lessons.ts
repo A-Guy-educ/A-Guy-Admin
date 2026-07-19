@@ -1,4 +1,16 @@
-import type { CollectionAfterReadHook, CollectionBeforeChangeHook, CollectionConfig } from 'payload'
+import type {
+  CollectionAfterReadHook,
+  CollectionBeforeChangeHook,
+  CollectionConfig,
+  Field,
+} from 'payload'
+import {
+  MetaDescriptionField,
+  MetaImageField,
+  MetaTitleField,
+  OverviewField,
+  PreviewField,
+} from '@payloadcms/plugin-seo/fields'
 
 import { DEFAULT_LESSON_ACCESS_TYPE } from '@/server/constants/access-types'
 import { tenantField } from '@/server/payload/fields/tenant'
@@ -35,6 +47,23 @@ type LessonAdminTitleData = {
           | null
       }
     | null
+}
+
+type FieldWithAdminPosition = Field & {
+  admin?: {
+    position?: string
+    [key: string]: unknown
+  }
+}
+
+const withoutSidebarPosition = (field: Field): Field => {
+  const admin = (field as FieldWithAdminPosition).admin
+  if (admin?.position !== 'sidebar') return field
+
+  return {
+    ...field,
+    admin: Object.fromEntries(Object.entries(admin).filter(([key]) => key !== 'position')),
+  } as Field
 }
 
 const VALID_RENDERERS = ['media', 'pdf', 'interactive'] as const
@@ -388,272 +417,386 @@ export const Lessons: CollectionConfig = {
     ],
   },
   fields: [
-    // Tenant
-    tenantField,
-    // Content locale
-    contentLocaleField,
-    // Translation link
-    translatedFromField('lessons'),
     {
-      name: 'chapter',
-      type: 'relationship',
-      relationTo: 'chapters',
-      required: true,
-      index: true,
-      admin: {
-        description: 'The chapter this lesson belongs to',
-      },
-    },
-    {
-      name: 'course',
-      type: 'relationship',
-      relationTo: 'courses',
-      index: true,
-      admin: {
-        hidden: true,
-        description: 'Auto-populated from chapter. Used for filtering lessons by course.',
-      },
-    },
-    {
-      name: 'type',
-      type: 'select',
-      required: true,
-      defaultValue: 'learning',
-      index: true,
-      options: [
+      type: 'tabs',
+      tabs: [
         {
-          label: 'Learning',
-          value: 'learning',
+          label: 'Content',
+          fields: [
+            {
+              name: 'topic',
+              type: 'text',
+              admin: {
+                description: 'Subject area (e.g. Mathematics). Free-text — no taxonomy yet.',
+              },
+            },
+            {
+              name: 'chapter',
+              type: 'relationship',
+              relationTo: 'chapters',
+              required: true,
+              index: true,
+              admin: {
+                description: 'The chapter this lesson belongs to',
+              },
+            },
+            {
+              name: 'title',
+              type: 'text',
+              required: true,
+              index: true,
+              admin: {
+                description: 'Lesson title',
+              },
+            },
+            {
+              name: 'type',
+              type: 'select',
+              required: true,
+              defaultValue: 'learning',
+              index: true,
+              options: [
+                {
+                  label: 'Learning',
+                  value: 'learning',
+                },
+                {
+                  label: 'Practice',
+                  value: 'practice',
+                },
+                {
+                  label: 'Exam',
+                  value: 'exam',
+                },
+              ],
+              admin: {
+                description: 'The type of lesson: Learning content, Practice exercises, or Exam',
+              },
+            },
+            {
+              name: 'adminTitle',
+              type: 'text',
+              index: true,
+              admin: {
+                hidden: true,
+                description: 'Auto-computed display title for admin relationship dropdowns',
+              },
+            },
+            {
+              name: 'lessonObjective',
+              type: 'textarea',
+              admin: {
+                description: 'What the student should know or understand by the end of the lesson.',
+              },
+            },
+            {
+              name: 'intro',
+              type: 'textarea',
+              admin: {
+                description: 'Short intro shown on lesson cards before students start',
+              },
+            },
+            {
+              name: 'description',
+              type: 'textarea',
+              admin: {
+                description: 'Detailed description of the lesson',
+                components: {
+                  Field: '@/ui/admin/QuillField#QuillField',
+                },
+              },
+            },
+            {
+              name: 'formulas',
+              type: 'textarea',
+              admin: {
+                description: 'Formulas relevant to this lesson.',
+              },
+            },
+            {
+              name: 'formulaSheet',
+              type: 'relationship',
+              relationTo: 'formula-sheets',
+              maxDepth: 0,
+              index: true,
+              admin: {
+                description: 'Lesson-specific formula sheet (overrides course default)',
+              },
+            },
+            {
+              name: 'examples',
+              type: 'textarea',
+              admin: {
+                description: 'Illustrative examples for the material.',
+              },
+            },
+            {
+              name: 'commonMistakes',
+              type: 'textarea',
+              admin: {
+                description: 'Common student misconceptions to watch for.',
+              },
+            },
+            {
+              name: 'additionalNotes',
+              type: 'textarea',
+              admin: {
+                description: 'Additional notes for the teacher / system.',
+              },
+            },
+            {
+              name: 'order',
+              type: 'number',
+              required: true,
+              defaultValue: 0,
+              min: 0,
+              index: true,
+              admin: {
+                description: 'Sort order within the course',
+              },
+            },
+            {
+              name: 'prerequisites',
+              type: 'relationship',
+              relationTo: 'lessons',
+              hasMany: true,
+              admin: {
+                description: 'Lessons students should complete before this lesson',
+              },
+            },
+            {
+              name: 'nextLessons',
+              type: 'relationship',
+              relationTo: 'lessons',
+              hasMany: true,
+              admin: {
+                description: 'Recommended follow-up lessons.',
+              },
+            },
+            {
+              name: 'prompt',
+              type: 'relationship',
+              relationTo: 'prompts',
+              index: true,
+              admin: {
+                description: 'AI system prompt for this lesson (uses default if not set)',
+              },
+            },
+            {
+              name: 'contentFiles',
+              type: 'upload',
+              relationTo: 'media',
+              hasMany: true,
+              admin: {
+                description: 'Upload lesson content files (PDFs, videos, images, etc.)',
+              },
+            },
+            {
+              name: 'conversionPanel',
+              type: 'ui',
+              admin: {
+                components: {
+                  Field:
+                    '@/ui/admin/exercise-conversion/LessonConversionPanel#LessonConversionPanel',
+                },
+              },
+            },
+            {
+              name: 'lessonContextText',
+              type: 'textarea',
+              maxLength: 200_000,
+              admin: {
+                description:
+                  'AI context text for this lesson. Injected into chat prompts at runtime. NOT indexed or searchable.',
+              },
+            },
+          ],
         },
         {
-          label: 'Practice',
-          value: 'practice',
+          label: 'Exercises',
+          fields: [
+            {
+              name: 'blocks',
+              type: 'textarea',
+              admin: {
+                description:
+                  'Ordered playlist of exercises and content pages. Defines the lesson flow.',
+                components: {
+                  Field: '@/ui/admin/LessonBlocksField#LessonBlocksField',
+                },
+              },
+            },
+            {
+              name: 'contextExerciseViewer',
+              type: 'ui',
+              admin: {
+                components: {
+                  Field: '@/ui/admin/context-exercise-viewer#ContextExerciseViewer',
+                },
+              },
+            },
+          ],
         },
         {
-          label: 'Exam',
-          value: 'exam',
+          label: 'System',
+          fields: [
+            {
+              name: 'lessonIdDisplay',
+              type: 'ui',
+              admin: {
+                components: {
+                  Field: '@/ui/admin/LessonIdDisplay#LessonIdDisplay',
+                },
+              },
+            },
+            {
+              name: 'course',
+              type: 'relationship',
+              relationTo: 'courses',
+              index: true,
+              admin: {
+                readOnly: true,
+                description: 'Auto-populated from chapter. Used for filtering lessons by course.',
+              },
+            },
+            {
+              name: 'status',
+              type: 'select',
+              required: true,
+              index: true,
+              defaultValue: 'draft',
+              options: [
+                {
+                  label: 'Draft',
+                  value: 'draft',
+                },
+                {
+                  label: 'Published',
+                  value: 'published',
+                },
+                {
+                  label: 'Archived',
+                  value: 'archived',
+                },
+              ],
+              admin: {
+                description: 'Publication status of the lesson',
+              },
+            },
+            {
+              name: 'isActive',
+              type: 'checkbox',
+              required: true,
+              defaultValue: true,
+              admin: {
+                description: 'Whether this lesson is currently active',
+              },
+            },
+            withoutSidebarPosition(tenantField),
+            withoutSidebarPosition(contentLocaleField),
+            withoutSidebarPosition(translatedFromField('lessons')),
+            {
+              name: 'accessType',
+              type: 'select',
+              required: true,
+              defaultValue: DEFAULT_LESSON_ACCESS_TYPE,
+              options: [
+                { label: 'Inherit from Course', value: 'inherit' },
+                { label: 'Free Access', value: 'free' },
+                { label: 'Require Registration', value: 'mandatory' },
+                {
+                  label: 'Gated (5-Minute Delay)',
+                  value: 'gated',
+                },
+                { label: 'Paid (Requires Entitlement)', value: 'paid' },
+              ],
+              admin: {
+                description:
+                  'Access control for this lesson. "Inherit" uses the parent course setting. "Gated" is a client-side nudge, not hard enforcement.',
+              },
+            },
+            {
+              name: 'visibleRenderers',
+              type: 'select',
+              hasMany: true,
+              defaultValue: ['media', 'pdf', 'interactive'],
+              options: [
+                { label: 'Media (attached files)', value: 'media' },
+                { label: 'Scroll view', value: 'pdf' },
+                { label: 'Interactive (exercise pager)', value: 'interactive' },
+              ],
+              admin: {
+                description:
+                  'Which renderers are visible to students. At least one must be selected. Note: Media tab only appears when the lesson has attached files regardless of this toggle.',
+              },
+            },
+            {
+              name: 'slug',
+              type: 'text',
+              required: false,
+              index: true,
+              unique: true,
+              admin: {
+                description: 'URL-friendly identifier (auto-generated from title if empty)',
+              },
+            },
+            ...contentStatusFields.map(withoutSidebarPosition),
+            withoutSidebarPosition(createdByField),
+          ],
+        },
+        {
+          name: 'meta',
+          label: 'SEO',
+          fields: [
+            OverviewField({
+              titlePath: 'meta.title',
+              descriptionPath: 'meta.description',
+              imagePath: 'meta.image',
+            }),
+            MetaTitleField({
+              hasGenerateFn: true,
+            }),
+            MetaImageField({
+              relationTo: 'media',
+            }),
+            MetaDescriptionField({}),
+            PreviewField({
+              hasGenerateFn: true,
+              titlePath: 'meta.title',
+              descriptionPath: 'meta.description',
+            }),
+            {
+              name: 'keywords',
+              type: 'text',
+              admin: {
+                description: 'Comma-separated keywords / tags.',
+              },
+            },
+            {
+              name: 'robots',
+              type: 'select',
+              defaultValue: 'index-follow',
+              options: [
+                { label: 'Index, Follow', value: 'index-follow' },
+                { label: 'NoIndex, Follow', value: 'noindex-follow' },
+                { label: 'NoIndex, NoFollow', value: 'noindex-nofollow' },
+              ],
+              admin: {
+                description: 'Search engine visibility.',
+              },
+            },
+            {
+              name: 'canonicalUrl',
+              type: 'text',
+              admin: {
+                description:
+                  "Leave empty to use the page's default URL. Used to avoid duplicate content.",
+              },
+            },
+          ],
         },
       ],
-      admin: {
-        description: 'The type of lesson: Learning content, Practice exercises, or Exam',
-        position: 'sidebar',
-      },
     },
-    {
-      name: 'title',
-      type: 'text',
-      required: true,
-      index: true,
-      admin: {
-        description: 'Lesson title',
-      },
-    },
-    {
-      name: 'adminTitle',
-      type: 'text',
-      index: true,
-      admin: {
-        hidden: true,
-        description: 'Auto-computed display title for admin relationship dropdowns',
-      },
-    },
-    {
-      name: 'intro',
-      type: 'textarea',
-      admin: {
-        description: 'Short intro shown on lesson cards before students start',
-      },
-    },
-    {
-      name: 'description',
-      type: 'textarea',
-      admin: {
-        description: 'Detailed description of the lesson',
-        components: {
-          Field: '@/ui/admin/QuillField#QuillField',
-        },
-      },
-    },
-    {
-      name: 'prerequisites',
-      type: 'relationship',
-      relationTo: 'lessons',
-      hasMany: true,
-      admin: {
-        description: 'Lessons students should complete before this lesson',
-      },
-    },
-    {
-      name: 'order',
-      type: 'number',
-      required: true,
-      defaultValue: 0,
-      min: 0,
-      index: true,
-      admin: {
-        description: 'Sort order within the course',
-      },
-    },
-    {
-      name: 'status',
-      type: 'select',
-      required: true,
-      index: true,
-      defaultValue: 'draft',
-      options: [
-        {
-          label: 'Draft',
-          value: 'draft',
-        },
-        {
-          label: 'Published',
-          value: 'published',
-        },
-        {
-          label: 'Archived',
-          value: 'archived',
-        },
-      ],
-      admin: {
-        description: 'Publication status of the lesson',
-      },
-    },
-    {
-      name: 'isActive',
-      type: 'checkbox',
-      required: true,
-      defaultValue: true,
-      admin: {
-        description: 'Whether this lesson is currently active',
-      },
-    },
-    {
-      name: 'accessType',
-      type: 'select',
-      required: true,
-      defaultValue: DEFAULT_LESSON_ACCESS_TYPE,
-      options: [
-        { label: 'Inherit from Course', value: 'inherit' },
-        { label: 'Free Access', value: 'free' },
-        { label: 'Require Registration', value: 'mandatory' },
-        {
-          label: 'Gated (5-Minute Delay)',
-          value: 'gated',
-        },
-        { label: 'Paid (Requires Entitlement)', value: 'paid' },
-      ],
-      admin: {
-        position: 'sidebar',
-        description:
-          'Access control for this lesson. "Inherit" uses the parent course setting. "Gated" is a client-side nudge, not hard enforcement.',
-      },
-    },
-    {
-      name: 'visibleRenderers',
-      type: 'select',
-      hasMany: true,
-      defaultValue: ['media', 'pdf', 'interactive'],
-      options: [
-        { label: 'Media (attached files)', value: 'media' },
-        { label: 'Scroll view', value: 'pdf' },
-        { label: 'Interactive (exercise pager)', value: 'interactive' },
-      ],
-      admin: {
-        position: 'sidebar',
-        description:
-          'Which renderers are visible to students. At least one must be selected. Note: Media tab only appears when the lesson has attached files regardless of this toggle.',
-      },
-    },
-    // --- Lesson Blocks (ordered playlist) ---
-    {
-      name: 'blocks',
-      type: 'textarea',
-      admin: {
-        description: 'Ordered playlist of exercises and content pages. Defines the lesson flow.',
-        components: {
-          Field: '@/ui/admin/LessonBlocksField#LessonBlocksField',
-        },
-      },
-    },
-    // Context Exercise Viewer (displays parsed exercises from lessonContextText)
-    {
-      name: 'contextExerciseViewer',
-      type: 'ui',
-      admin: {
-        components: {
-          Field: '@/ui/admin/context-exercise-viewer#ContextExerciseViewer',
-        },
-      },
-    },
-    // --- Lesson Content ---
-    {
-      name: 'contentFiles',
-      type: 'upload',
-      relationTo: 'media',
-      hasMany: true,
-      admin: {
-        description: 'Upload lesson content files (PDFs, videos, images, etc.)',
-      },
-    },
-    // Exercise Conversion Panel (shows for each PDF - admin only)
-    {
-      name: 'conversionPanel',
-      type: 'ui',
-      admin: {
-        components: {
-          Field: '@/ui/admin/exercise-conversion/LessonConversionPanel#LessonConversionPanel',
-        },
-      },
-    },
-    {
-      name: 'lessonContextText',
-      type: 'textarea',
-      maxLength: 200_000, // Match LESSON_CONTEXT_MAX_CHARS in src/infra/llm/lesson-context.ts
-      admin: {
-        description:
-          'AI context text for this lesson. Injected into chat prompts at runtime. NOT indexed or searchable.',
-      },
-      // NOT indexed, NOT required
-    },
-    {
-      name: 'prompt',
-      type: 'relationship',
-      relationTo: 'prompts',
-      index: true,
-      admin: {
-        position: 'sidebar',
-        description: 'AI system prompt for this lesson (uses default if not set)',
-      },
-    },
-    {
-      name: 'slug',
-      type: 'text',
-      required: false,
-      index: true,
-      unique: true,
-      admin: {
-        position: 'sidebar',
-        description: 'URL-friendly identifier (auto-generated from title if empty)',
-      },
-    },
-
-    // Content Status
-    ...contentStatusFields,
-
-    // Formula Sheet (optional)
-    {
-      name: 'formulaSheet',
-      type: 'relationship',
-      relationTo: 'formula-sheets',
-      maxDepth: 0,
-      index: true,
-      admin: {
-        position: 'sidebar',
-        description: 'Lesson-specific formula sheet (overrides course default)',
-      },
-    },
-
-    // Content hierarchy navigation (sidebar)
     {
       name: 'contentNavigation',
       type: 'ui',
@@ -664,8 +807,5 @@ export const Lessons: CollectionConfig = {
         },
       },
     },
-
-    // Created By
-    createdByField,
   ],
 }

@@ -72,6 +72,7 @@ export async function handleLessonTranslation(
         chapter: targetChapterId,
         type: source.type,
         title: translatedTitle,
+        topic: source.topic ?? translatedTitle,
         description: source.description ?? undefined,
         order: source.order,
         status: 'published',

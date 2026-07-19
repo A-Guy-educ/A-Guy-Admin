@@ -14,13 +14,20 @@ interface ParentRecord {
   courseLabel?: string
 }
 
+interface SiblingRecord {
+  id: string
+  title?: string
+}
+
 interface HierarchyData {
   lesson?: ParentRecord | null
   chapter?: ParentRecord | null
   course?: ParentRecord | null
+  exercise?: ParentRecord | null
+  section?: ParentRecord | null
 }
 
-type CollectionContext = 'exercises' | 'lessons'
+type CollectionContext = 'exercises' | 'lessons' | 'sections'
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
@@ -87,6 +94,40 @@ async function fetchRelationshipId(
   }
 }
 
+async function fetchSiblingSections(
+  exerciseId: string,
+  currentId: string | null,
+): Promise<{
+  prev: SiblingRecord | null
+  next: SiblingRecord | null
+}> {
+  try {
+    const res = await fetch(
+      `/api/sections?depth=0&where[exercise][equals]=${encodeURIComponent(
+        exerciseId,
+      )}&limit=1000&sort=createdAt`,
+      { credentials: 'include' },
+    )
+    if (!res.ok) return { prev: null, next: null }
+    const data = (await res.json()) as { docs?: SiblingRecord[] }
+    const docs = (data.docs ?? []).filter((doc) => doc && doc.id)
+    if (docs.length === 0) return { prev: null, next: null }
+
+    if (!currentId) {
+      return { prev: docs[0] ?? null, next: docs[1] ?? docs[0] ?? null }
+    }
+
+    const idx = docs.findIndex((doc) => doc.id === currentId)
+    if (idx === -1) return { prev: null, next: null }
+    return {
+      prev: idx > 0 ? docs[idx - 1] : null,
+      next: idx < docs.length - 1 ? docs[idx + 1] : null,
+    }
+  } catch {
+    return { prev: null, next: null }
+  }
+}
+
 /* ------------------------------------------------------------------ */
 /*  Main component                                                     */
 /* ------------------------------------------------------------------ */
@@ -95,24 +136,32 @@ const ContentNavigation: React.FC<{ context: CollectionContext }> = ({ context }
   const { id: docId } = useDocumentInfo()
 
   // Read the direct parent relationship from form state
-  const parentField = useFormFields(([fields]) =>
-    context === 'exercises' ? fields.lesson : fields.chapter,
-  )
+  const parentField = useFormFields(([fields]) => {
+    if (context === 'exercises') return fields.lesson
+    if (context === 'lessons') return fields.chapter
+    return fields.exercise
+  })
   const parentId = resolveId(parentField?.value)
 
   const [hierarchy, setHierarchy] = useState<HierarchyData>({})
+  const [siblings, setSiblings] = useState<{
+    prev: SiblingRecord | null
+    next: SiblingRecord | null
+  }>({
+    prev: null,
+    next: null,
+  })
   const [loading, setLoading] = useState(false)
 
   const fetchHierarchy = useCallback(async () => {
-    if (!parentId) {
-      setHierarchy({})
-      return
-    }
-
     setLoading(true)
 
     try {
       if (context === 'exercises') {
+        if (!parentId) {
+          setHierarchy({})
+          return
+        }
         const lesson = await fetchRecord('lessons', parentId)
         let chapter: ParentRecord | null = null
         let course: ParentRecord | null = null
@@ -129,7 +178,11 @@ const ContentNavigation: React.FC<{ context: CollectionContext }> = ({ context }
         }
 
         setHierarchy({ lesson, chapter, course })
-      } else {
+      } else if (context === 'lessons') {
+        if (!parentId) {
+          setHierarchy({})
+          return
+        }
         const chapter = await fetchRecord('chapters', parentId)
         let course: ParentRecord | null = null
 
@@ -141,13 +194,53 @@ const ContentNavigation: React.FC<{ context: CollectionContext }> = ({ context }
         }
 
         setHierarchy({ chapter, course })
+      } else {
+        // sections — fetch the full chain course -> chapter -> lesson -> exercise
+        if (!parentId) {
+          setHierarchy({})
+          setSiblings({ prev: null, next: null })
+          return
+        }
+
+        const exercise = await fetchRecord('exercises', parentId)
+        let lesson: ParentRecord | null = null
+        let chapter: ParentRecord | null = null
+        let course: ParentRecord | null = null
+        let section: ParentRecord | null = null
+
+        if (exercise) {
+          // `lesson` may already be a string id on the exercise record; the
+          // generic fetchRecord still surfaces a label via the `title` field
+          // so the breadcrumb stays readable even when the chain is partial.
+          const lessonId = await fetchRelationshipId('exercises', parentId, 'lesson')
+          if (lessonId) {
+            lesson = await fetchRecord('lessons', lessonId)
+            const chapterId = await fetchRelationshipId('lessons', lessonId, 'chapter')
+            if (chapterId) {
+              chapter = await fetchRecord('chapters', chapterId)
+              const courseId = await fetchRelationshipId('chapters', chapterId, 'course')
+              if (courseId) {
+                course = await fetchRecord('courses', courseId)
+              }
+            }
+          }
+        }
+
+        if (docId) {
+          section = await fetchRecord('sections', String(docId))
+        }
+
+        setHierarchy({ exercise, lesson, chapter, course, section })
+
+        const { prev, next } = await fetchSiblingSections(parentId, docId ? String(docId) : null)
+        setSiblings({ prev, next })
       }
     } catch {
       setHierarchy({})
     } finally {
       setLoading(false)
     }
-  }, [parentId, context])
+  }, [parentId, context, docId])
 
   useEffect(() => {
     void fetchHierarchy()
@@ -190,7 +283,7 @@ const ContentNavigation: React.FC<{ context: CollectionContext }> = ({ context }
       collection: 'courses',
       id: hierarchy.course.id,
     })
-  } else if (context === 'exercises' || context === 'lessons') {
+  } else if (context === 'exercises' || context === 'lessons' || context === 'sections') {
     breadcrumbs.push({ label: 'Not assigned', collection: 'courses' })
   }
 
@@ -200,11 +293,11 @@ const ContentNavigation: React.FC<{ context: CollectionContext }> = ({ context }
       collection: 'chapters',
       id: hierarchy.chapter.id,
     })
-  } else if (context === 'exercises' || context === 'lessons') {
+  } else if (context === 'exercises' || context === 'lessons' || context === 'sections') {
     breadcrumbs.push({ label: 'Not assigned', collection: 'chapters' })
   }
 
-  if (context === 'exercises') {
+  if (context === 'exercises' || context === 'sections') {
     if (hierarchy.lesson?.id) {
       breadcrumbs.push({
         label: displayName(hierarchy.lesson),
@@ -213,6 +306,18 @@ const ContentNavigation: React.FC<{ context: CollectionContext }> = ({ context }
       })
     } else {
       breadcrumbs.push({ label: 'Not assigned', collection: 'lessons' })
+    }
+  }
+
+  if (context === 'sections') {
+    if (hierarchy.exercise?.id) {
+      breadcrumbs.push({
+        label: displayName(hierarchy.exercise),
+        collection: 'exercises',
+        id: hierarchy.exercise.id,
+      })
+    } else {
+      breadcrumbs.push({ label: 'Not assigned', collection: 'exercises' })
     }
   }
 
@@ -254,9 +359,33 @@ const ContentNavigation: React.FC<{ context: CollectionContext }> = ({ context }
         {context === 'exercises' && (
           <ParentLink label="Lesson" record={hierarchy.lesson} collection="lessons" />
         )}
+        {context === 'sections' && (
+          <>
+            <ParentLink label="Exercise" record={hierarchy.exercise} collection="exercises" />
+            <ParentLink label="Lesson" record={hierarchy.lesson} collection="lessons" />
+          </>
+        )}
         <ParentLink label="Chapter" record={hierarchy.chapter} collection="chapters" />
         <ParentLink label="Course" record={hierarchy.course} collection="courses" />
       </div>
+
+      {/* Sibling switcher (sections only) */}
+      {context === 'sections' && (siblings.prev || siblings.next) && (
+        <div className="mt-3 flex items-center justify-between gap-2 text-[13px]">
+          <SiblingLink
+            label="Previous section"
+            record={siblings.prev}
+            collection="sections"
+            variant="prev"
+          />
+          <SiblingLink
+            label="Next section"
+            record={siblings.next}
+            collection="sections"
+            variant="next"
+          />
+        </div>
+      )}
     </div>
   )
 }
@@ -293,10 +422,51 @@ const ParentLink: React.FC<{
 }
 
 /* ------------------------------------------------------------------ */
+/*  SiblingLink sub-component                                          */
+/* ------------------------------------------------------------------ */
+
+const SiblingLink: React.FC<{
+  label: string
+  record: SiblingRecord | null | undefined
+  collection: string
+  variant: 'prev' | 'next'
+}> = ({ label, record, collection, variant }) => {
+  const name = record?.title || record?.id
+  const arrow = variant === 'prev' ? '←' : '→'
+
+  return (
+    <div className="flex flex-1 items-baseline gap-1.5 text-[13px]">
+      {variant === 'prev' && (
+        <span className="min-w-[56px] shrink-0 font-semibold text-[var(--theme-elevation-600)]">
+          {arrow} {label}:
+        </span>
+      )}
+      {record?.id ? (
+        <a
+          href={adminUrl(collection, record.id)}
+          className="break-words text-[var(--theme-text)] underline decoration-[var(--theme-elevation-300)] underline-offset-2"
+          title={`Open ${name}`}
+        >
+          {name}
+        </a>
+      ) : (
+        <span className="text-body-xs italic text-[var(--theme-elevation-400)]">—</span>
+      )}
+      {variant === 'next' && (
+        <span className="min-w-[56px] shrink-0 font-semibold text-[var(--theme-elevation-600)]">
+          :{label} {arrow}
+        </span>
+      )}
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------ */
 /*  Exports — named wrappers for each collection                       */
 /* ------------------------------------------------------------------ */
 
 export const ExerciseNavigation: React.FC = () => <ContentNavigation context="exercises" />
 export const LessonNavigation: React.FC = () => <ContentNavigation context="lessons" />
+export const SectionNavigation: React.FC = () => <ContentNavigation context="sections" />
 
 export default ContentNavigation

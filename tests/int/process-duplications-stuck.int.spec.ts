@@ -122,6 +122,7 @@ describe('process-duplications stuck record auto-fail — integration', () => {
       collection: 'lessons',
       data: {
         title: `Stuck Source Lesson With Ex ${ts}`,
+        topic: 'Test Topic',
         chapter: chapterId,
         type: 'practice',
         order: 1,
@@ -206,6 +207,7 @@ describe('process-duplications stuck record auto-fail — integration', () => {
       collection: 'lessons',
       data: {
         title: `Stuck Source Lesson No Ex ${ts}`,
+        topic: 'Test Topic',
         chapter: chapterId,
         type: 'practice',
         order: 2,
