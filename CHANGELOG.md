@@ -1780,6 +1780,7 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- fix(content-promotion/export): union exercises referenced by lesson.blocks playlist ([#242](https://github.com/A-Guy-educ/A-Guy-Admin/pull/242)) — @aguyshayb
 - perf(cascade-delete): bulk-delete descendants via raw driver instead of per-doc loop ([#240](https://github.com/A-Guy-educ/A-Guy-Admin/pull/240)) — @aguyshayb
 - fix(scripts): only chase authoritative parent refs when deleting content orphans ([#237](https://github.com/A-Guy-educ/A-Guy-Admin/pull/237)) — @aguyshayb
 - fix(content-promotion): extend slug remap to per-(slug, locale) unique courses ([#225](https://github.com/A-Guy-educ/A-Guy-Admin/pull/225)) — @aguyshayb
