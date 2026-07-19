@@ -129,8 +129,10 @@ async function seedHierarchy(payload: Payload, tenantId: string, categoryId: str
  * handles this shape end-to-end without AI fallback.
  */
 const TWO_QUESTION_LATEX = String.raw`
+\begin{questions}
 \question Is $2+2=4$?\begin{choices}\choice True \choice False\end{choices}
 \question What is $\sqrt{16}$?\begin{choices}\choice 2 \choice 4 \choice 8\end{choices}
+\end{questions}
 `
 
 /**

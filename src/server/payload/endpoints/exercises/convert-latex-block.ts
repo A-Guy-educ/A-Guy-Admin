@@ -481,6 +481,14 @@ function deriveOrigin(req: PayloadRequest): string {
  * fall through to AI instead of persisting garbage.
  */
 function isScriptOutputMeaningful(sourceLatex: string, parsedBlocks: ContentBlock[]): boolean {
+  // Question blocks (question_select, question_free_response, question_table, etc.)
+  // store their text in nested fields (prompt.value, choices[].value, ...), not at
+  // the top level. The parser only emits them from valid \question markup, so any
+  // question block in the output is meaningful by construction.
+  if (parsedBlocks.some((b) => typeof b.type === 'string' && b.type.startsWith('question_'))) {
+    return true
+  }
+
   const totalContent = parsedBlocks
     .map((b) => {
       if ('value' in b && typeof b.value === 'string') return b.value
