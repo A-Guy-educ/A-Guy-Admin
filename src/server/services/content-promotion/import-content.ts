@@ -715,21 +715,31 @@ export async function importContent(
   // it; see import-context.ts for the rationale.
   markRequestAsContentPromotionImport(req)
 
-  // Small bundles stay on `payload.create` so the Exercises `afterChange`
-  // block-sync hook runs and heals any source-side drift where the parent
-  // lesson.blocks[] didn't already reference the exercise. Large bundles
-  // switch to `bulkCreateExercises` (raw insertMany) because the hook's
-  // per-exercise `findByID` + `update` of the parent lesson (~2s each on
-  // Atlas via Vercel) plus `payload.create`'s own per-doc overhead pushed
-  // real-world 500-exercise imports past Vercel's 5-min function ceiling.
-  // For large bundles the bundle itself already carries lesson.blocks with
-  // the correct refs, so skipping the heal loses nothing in the common case
-  // — export walked parent refs (PR #105) to catch stale denorm fields.
+  // Small bundles stay on `payload.create` for its beforeChange validation
+  // and tenant/locale/origin defaulting. Large bundles switch to
+  // `bulkCreateExercises` (raw insertMany) because `payload.create`'s
+  // per-doc overhead pushed real-world 500-exercise imports past Vercel's
+  // 5-min function ceiling. For those the bundle already carries every
+  // required field verbatim (export walked parent refs — PR #105 — to
+  // catch stale denorm), so `prepareExerciseForBulkInsert` fills the same
+  // role as `beforeChange` on the per-doc path.
   //
-  // Threshold sits well below where the hook-skip path first showed benefit,
-  // trading a small overhead cost on medium bundles for the guarantee that
-  // any bundle we route through the raw driver is provably large enough to
-  // justify bypassing hooks.
+  // NOTE: the Exercises afterChange block-sync hook is skipped for
+  // content-promotion imports at every size (see PR #250 comment on
+  // Exercises/index.ts:afterChange). Bundles carry `lesson.blocks` with
+  // the exerciseRef playlist intact, so re-syncing is redundant — and
+  // actively harmful when the playlist walker (PR #242) pulls in a
+  // cross-course exercise whose `lesson` field points at a lesson not in
+  // this bundle. So the small-bundle path is NOT preserving hook-based
+  // healing; anyone tempted to remove the threshold entirely should know
+  // that healing isn't why we split, and that bulkCreateExercises still
+  // has to keep prepareExerciseForBulkInsert in sync with the Payload
+  // schema.
+  //
+  // Threshold sits well below where the hook-skip path first showed
+  // benefit, trading a small overhead cost on medium bundles for the
+  // guarantee that any bundle we route through the raw driver is provably
+  // large enough to justify bypassing Payload's validation stack.
   const EXERCISE_HOOK_SKIP_THRESHOLD = 50
   const exerciseCount = manifest.counts.exercises ?? 0
   const useBulkInsertForExercises = exerciseCount > EXERCISE_HOOK_SKIP_THRESHOLD
