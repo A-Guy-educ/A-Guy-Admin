@@ -1819,6 +1819,7 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- fix(exercises): skip afterChange/afterDelete block-sync on content-promotion imports ([#250](https://github.com/A-Guy-educ/A-Guy-Admin/pull/250)) — @aguyshayb
 ## [v0.27.0] - 2026-07-19
 
 - promote: dev -> main (v0.27.0) ([#249](https://github.com/A-Guy-educ/A-Guy-Admin/pull/249)) — @aguyshayb
