@@ -5,7 +5,7 @@ import { cleanup, render, screen } from '@testing-library/react'
 
 // Mock the package.json require call — actual version from package.json
 vi.mock('../../../../package.json', () => ({
-  default: { version: '0.26.1' },
+  default: { version: '0.27.0' },
 }))
 
 const originalEnv = { ...process.env }
@@ -27,7 +27,7 @@ describe('VersionInfo', () => {
     vi.resetModules()
     const { VersionInfo } = await import('@/ui/admin/VersionInfo')
     render(<VersionInfo />)
-    expect(screen.getByText('v0.26.1')).toBeTruthy()
+    expect(screen.getByText('v0.27.0')).toBeTruthy()
   })
 
   it('should prefer NEXT_PUBLIC_APP_VERSION over package.json version', async () => {
