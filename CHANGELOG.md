@@ -1,5 +1,44 @@
 # Changelog
 
+## v0.27.0 — 2026-07-19
+
+### Features
+- Add Course Popularity admin page with per-course counts (#246)
+- Create Section docs per source section in lesson-json and text-lesson importers (#243)
+- Partition LaTeX-to-blocks converter output into Sections per question (#241)
+- Bulk-insert exercises during content-promotion import (#218)
+- Wire ExerciseContentEditor and split exercise Content/Blocks tabs (#196)
+- Add Sections tab to Exercises edit view (#194)
+- Reorganize Exercise + Section edit forms with pedagogical metadata tabs (#182)
+- Aggregate child section blocks at read time on exercises (#175)
+- Add sectionRef playlist UI to exercises blocks field (#174)
+- Add Sections collection under Exercises with parent sync (#168)
+- Log course selections server-side via new payload collection (#167)
+- Move formulaSheet field from sidebar into Content tab (#156)
+- Expand lesson edit form with content fields, system ID, and SEO tab (#153)
+- Split lesson edit page into lazy-loaded exercise tabs (#151)
+
+### Fixes
+- Count question blocks as meaningful parser output in LaTeX converter
+- Add CORS handling to /api/course-selections endpoint (#245)
+- Union exercises referenced by lesson.blocks playlist in content-promotion export (#242)
+- Only chase authoritative parent refs when deleting content orphans (#237)
+- Extend content-promotion slug remap to per-(slug,locale) unique courses (#225)
+- Auto-suffix colliding slugs on chapters/lessons content-promotion import (#221)
+- Drop stale $jsonSchema validator on courses collection via onInit migration (#220)
+- Skip exercise slug hooks during content-promotion import (#217)
+- Restore skip-flag after exercise blocks sync on sections
+- Isolate section-sync recursion guard from lesson-sync flag
+- Read only .title in sections adminTitle chain to avoid breadcrumb duplication
+- Make lesson topic field optional to unblock existing factories
+
+### Performance
+- Bulk-delete cascade-delete descendants via raw MongoDB driver instead of per-doc loop (#240)
+- Drop findByID fallbacks in sections adminTitle afterRead
+
+### Refactor
+- Drop typed content fields on sections; block editor is the authoritative source (#211)
+
 ## v0.26.1 — 2026-07-10
 
 ### Fixes
