@@ -1,9 +1,10 @@
 import type { PayloadRequest } from 'payload'
 
 import { ContentSchema } from '@/server/payload/collections/Exercises/schemas'
+import { generateId } from '@/server/payload/collections/Exercises/types'
 import { getDefaultTenantId } from '@/server/repos/tenant/get-default-tenant'
 
-import { buildExerciseTitle, convertExerciseToBlocks } from './convert-exercise'
+import { buildExerciseTitle, convertExerciseToSections } from './convert-exercise'
 import { LessonJsonSchema, parseLessonOrderFromFilename } from './json-schema'
 
 export interface ImportLessonInput {
@@ -38,6 +39,16 @@ export interface ImportLessonNotFoundError {
 }
 
 export type ImportLessonError = ImportLessonValidationError | ImportLessonNotFoundError
+
+function emptyRichTextPlaceholder() {
+  return {
+    id: generateId(),
+    type: 'rich_text' as const,
+    format: 'md-math-v1' as const,
+    value: '',
+    mediaIds: [],
+  }
+}
 
 async function resolveLessonOrder(
   req: PayloadRequest,
@@ -119,11 +130,16 @@ export async function importLessonFromJson(
 
   const exerciseResults: ImportLessonExerciseResult[] = []
   const createdExerciseIds: string[] = []
+  const createdSectionIds: string[] = []
 
   for (let i = 0; i < lessonJson.exercises.length; i++) {
     const ex = lessonJson.exercises[i]
     try {
-      const content = { blocks: convertExerciseToBlocks(ex) }
+      const converted = convertExerciseToSections(ex)
+      const content = {
+        blocks:
+          converted.sharedBlocks.length > 0 ? converted.sharedBlocks : [emptyRichTextPlaceholder()],
+      }
       const contentCheck = ContentSchema.safeParse(content)
       if (!contentCheck.success) {
         exerciseResults.push({
@@ -131,6 +147,24 @@ export async function importLessonFromJson(
           error: contentCheck.error.issues
             .map((iss) => `[${iss.path.join('.')}] ${iss.message}`)
             .join('; '),
+        })
+        continue
+      }
+
+      let sectionValidationError: string | undefined
+      for (let sIdx = 0; sIdx < converted.sections.length; sIdx++) {
+        const sectionCheck = ContentSchema.safeParse({ blocks: converted.sections[sIdx].blocks })
+        if (!sectionCheck.success) {
+          sectionValidationError = `Section ${sIdx + 1}: ${sectionCheck.error.issues
+            .map((iss) => `[${iss.path.join('.')}] ${iss.message}`)
+            .join('; ')}`
+          break
+        }
+      }
+      if (sectionValidationError) {
+        exerciseResults.push({
+          exerciseNumber: ex.exercise_number,
+          error: sectionValidationError,
         })
         continue
       }
@@ -166,8 +200,48 @@ export async function importLessonFromJson(
         // the bottom of this function instead.
         context: { _skipBlockSync: true },
       })
-      exerciseResults.push({ exerciseNumber: ex.exercise_number, id: created.id })
       createdExerciseIds.push(created.id)
+
+      const sectionIds: string[] = []
+      for (let sIdx = 0; sIdx < converted.sections.length; sIdx++) {
+        const section = converted.sections[sIdx]
+        const sectionContent = { blocks: section.blocks }
+        const createdSection = await req.payload.create({
+          collection: 'sections',
+          data: {
+            tenant: tenantId,
+            locale: 'he',
+            title: section.title,
+            exercise: created.id,
+            order: sIdx,
+            exerciseType: 'basic',
+            content: sectionContent,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          } as any,
+          req,
+          overrideAccess: true,
+          user: req.user,
+          context: { _skipExerciseBlockSync: true },
+        })
+        sectionIds.push(createdSection.id)
+        createdSectionIds.push(createdSection.id)
+      }
+
+      const exerciseBlocksPlaylist = sectionIds.map((id) => ({
+        id: Math.random().toString(36).slice(2, 14),
+        blockType: 'sectionRef' as const,
+        section: id,
+      }))
+      await req.payload.update({
+        collection: 'exercises',
+        id: created.id,
+        data: { blocks: JSON.stringify(exerciseBlocksPlaylist) },
+        req,
+        overrideAccess: true,
+        context: { _skipExerciseBlockSync: true },
+      })
+
+      exerciseResults.push({ exerciseNumber: ex.exercise_number, id: created.id })
     } catch (err) {
       exerciseResults.push({
         exerciseNumber: ex.exercise_number,
@@ -183,6 +257,13 @@ export async function importLessonFromJson(
   // some exercises and a confusing "success: false" response. Roll back so the
   // operator only sees clean state and can retry the file after fixing it.
   if (failed.length > 0) {
+    for (const id of createdSectionIds) {
+      try {
+        await req.payload.delete({ collection: 'sections', id, req, overrideAccess: true })
+      } catch {
+        // best-effort — surfaced via error in results below
+      }
+    }
     for (const id of createdExerciseIds) {
       try {
         await req.payload.delete({ collection: 'exercises', id, req, overrideAccess: true })

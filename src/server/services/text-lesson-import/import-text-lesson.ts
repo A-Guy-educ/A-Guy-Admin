@@ -10,10 +10,12 @@
 import type { PayloadRequest } from 'payload'
 
 import { ContentSchema } from '@/server/payload/collections/Exercises/schemas'
+import { generateId } from '@/server/payload/collections/Exercises/types'
+import { getDefaultTenantId } from '@/server/repos/tenant/get-default-tenant'
 
 import {
   buildTextExerciseTitle,
-  convertTextExerciseToBlocks,
+  convertTextExerciseToSections,
   deriveLessonTitle,
 } from './convert-text-exercise'
 import { parseTextLesson } from './parse-text'
@@ -50,6 +52,16 @@ export interface ImportTextLessonNotFoundError {
 }
 
 export type ImportTextLessonError = ImportTextLessonValidationError | ImportTextLessonNotFoundError
+
+function emptyRichTextPlaceholder() {
+  return {
+    id: generateId(),
+    type: 'rich_text' as const,
+    format: 'md-math-v1' as const,
+    value: '',
+    mediaIds: [],
+  }
+}
 
 async function resolveLessonOrder(req: PayloadRequest, chapterId: string): Promise<number> {
   // The text format doesn't carry a per-lesson order on the filename pattern
@@ -93,6 +105,8 @@ export async function importTextLessonFromFile(
   })
   if (!chapter) return { kind: 'not_found', message: 'Chapter not found' }
 
+  const tenantId = await getDefaultTenantId(req.payload)
+
   const lessonTitle = deriveLessonTitle({
     lessonName: parsed.lessonName,
     filename: input.filename,
@@ -121,11 +135,16 @@ export async function importTextLessonFromFile(
 
   const exerciseResults: ImportTextExerciseResult[] = []
   const createdExerciseIds: string[] = []
+  const createdSectionIds: string[] = []
 
   for (let i = 0; i < parsed.exercises.length; i++) {
     const ex = parsed.exercises[i]
     try {
-      const content = { blocks: convertTextExerciseToBlocks(ex) }
+      const converted = convertTextExerciseToSections(ex)
+      const content = {
+        blocks:
+          converted.sharedBlocks.length > 0 ? converted.sharedBlocks : [emptyRichTextPlaceholder()],
+      }
       const check = ContentSchema.safeParse(content)
       if (!check.success) {
         exerciseResults.push({
@@ -133,6 +152,24 @@ export async function importTextLessonFromFile(
           error: check.error.issues
             .map((iss) => `[${iss.path.join('.')}] ${iss.message}`)
             .join('; '),
+        })
+        continue
+      }
+
+      let sectionValidationError: string | undefined
+      for (let sIdx = 0; sIdx < converted.sections.length; sIdx++) {
+        const sectionCheck = ContentSchema.safeParse({ blocks: converted.sections[sIdx].blocks })
+        if (!sectionCheck.success) {
+          sectionValidationError = `Section ${sIdx + 1}: ${sectionCheck.error.issues
+            .map((iss) => `[${iss.path.join('.')}] ${iss.message}`)
+            .join('; ')}`
+          break
+        }
+      }
+      if (sectionValidationError) {
+        exerciseResults.push({
+          exerciseNumber: ex.exerciseNumber,
+          error: sectionValidationError,
         })
         continue
       }
@@ -155,8 +192,48 @@ export async function importTextLessonFromFile(
         user: req.user,
         context: { _skipBlockSync: true },
       })
-      exerciseResults.push({ exerciseNumber: ex.exerciseNumber, id: created.id })
       createdExerciseIds.push(created.id)
+
+      const sectionIds: string[] = []
+      for (let sIdx = 0; sIdx < converted.sections.length; sIdx++) {
+        const section = converted.sections[sIdx]
+        const sectionContent = { blocks: section.blocks }
+        const createdSection = await req.payload.create({
+          collection: 'sections',
+          data: {
+            tenant: tenantId,
+            locale: 'he',
+            title: section.title,
+            exercise: created.id,
+            order: sIdx,
+            exerciseType: 'basic',
+            content: sectionContent,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          } as any,
+          req,
+          overrideAccess: true,
+          user: req.user,
+          context: { _skipExerciseBlockSync: true },
+        })
+        sectionIds.push(createdSection.id)
+        createdSectionIds.push(createdSection.id)
+      }
+
+      const exerciseBlocksPlaylist = sectionIds.map((id) => ({
+        id: Math.random().toString(36).slice(2, 14),
+        blockType: 'sectionRef' as const,
+        section: id,
+      }))
+      await req.payload.update({
+        collection: 'exercises',
+        id: created.id,
+        data: { blocks: JSON.stringify(exerciseBlocksPlaylist) },
+        req,
+        overrideAccess: true,
+        context: { _skipExerciseBlockSync: true },
+      })
+
+      exerciseResults.push({ exerciseNumber: ex.exerciseNumber, id: created.id })
     } catch (err) {
       exerciseResults.push({
         exerciseNumber: ex.exerciseNumber,
@@ -168,6 +245,13 @@ export async function importTextLessonFromFile(
   const failed = exerciseResults.filter((r) => r.error)
 
   if (failed.length > 0) {
+    for (const id of createdSectionIds) {
+      try {
+        await req.payload.delete({ collection: 'sections', id, req, overrideAccess: true })
+      } catch {
+        /* best-effort */
+      }
+    }
     for (const id of createdExerciseIds) {
       try {
         await req.payload.delete({ collection: 'exercises', id, req, overrideAccess: true })

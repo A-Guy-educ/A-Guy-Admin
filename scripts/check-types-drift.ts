@@ -10,9 +10,16 @@
  */
 
 import { execSync } from 'node:child_process'
-import { copyFileSync, readFileSync } from 'node:fs'
+import { copyFileSync, existsSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { config as loadEnv } from 'dotenv'
+
+for (const file of ['.env.test', '.env']) {
+  if (existsSync(file)) {
+    loadEnv({ path: file })
+  }
+}
 
 const TARGET = 'src/payload-types.ts'
 const BACKUP = join(tmpdir(), `payload-types.${process.pid}.bak`)
