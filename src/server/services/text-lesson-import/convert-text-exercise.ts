@@ -128,6 +128,59 @@ function unparsableSectionBlock(section: TextSection, reason: string): RichTextB
   return richTextBlock(lines.join('\n'))
 }
 
+export interface ConvertedExercise {
+  sharedBlocks: ContentBlock[]
+  sections: Array<{ title: string; blocks: ContentBlock[] }>
+}
+
+function buildSectionTitle(section: TextSection, index: number): string {
+  const questionNumber = section.questionNumber?.trim()
+  if (questionNumber) return `סעיף ${questionNumber}`
+
+  const question = section.question?.trim()
+  if (question) return question.slice(0, 60)
+
+  return `סעיף ${index + 1}`
+}
+
+function convertSectionToBlocks(section: TextSection): ContentBlock[] {
+  const wantsMcq = section.type.kind !== 'free_response' && section.options.length >= 2
+
+  if (wantsMcq) {
+    const mcq = tryBuildMcqBlock(section)
+    if (mcq) return [mcq]
+
+    const freeResponse = tryBuildFreeResponseBlock(section)
+    if (freeResponse) return [freeResponse]
+
+    return [
+      unparsableSectionBlock(
+        section,
+        'MCQ source where פתרון נכון does not match any option, and no free-response fallback available',
+      ),
+    ]
+  }
+
+  const freeResponse = tryBuildFreeResponseBlock(section)
+  if (freeResponse) return [freeResponse]
+
+  return [unparsableSectionBlock(section, 'Free-response section is missing פתרון נכון')]
+}
+
+export function convertTextExerciseToSections(exercise: TextExercise): ConvertedExercise {
+  const sharedBlocks: ContentBlock[] = []
+  if (isNonEmpty(exercise.intro)) sharedBlocks.push(richTextBlock(exercise.intro))
+  if (isNonEmpty(exercise.svg)) sharedBlocks.push(svgBlock(exercise.svg))
+
+  return {
+    sharedBlocks,
+    sections: exercise.sections.map((section, index) => ({
+      title: buildSectionTitle(section, index),
+      blocks: convertSectionToBlocks(section),
+    })),
+  }
+}
+
 export function convertTextExerciseToBlocks(exercise: TextExercise): ContentBlock[] {
   const blocks: ContentBlock[] = []
 

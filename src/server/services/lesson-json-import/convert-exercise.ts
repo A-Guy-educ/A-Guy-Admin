@@ -96,6 +96,37 @@ function buildQuestionBlock(section: LessonJsonSection): QuestionSelectMcqBlock 
   return block
 }
 
+export interface ConvertedExercise {
+  sharedBlocks: ContentBlock[]
+  sections: Array<{ title: string; blocks: ContentBlock[] }>
+}
+
+function buildSectionTitle(section: LessonJsonSection, index: number): string {
+  const questionNumber = section.question_number?.trim()
+  if (questionNumber) return `סעיף ${questionNumber}`
+
+  const question = section.question.text?.trim()
+  if (question) return question.slice(0, 60)
+
+  return `סעיף ${index + 1}`
+}
+
+export function convertExerciseToSections(exercise: LessonJsonExercise): ConvertedExercise {
+  return {
+    sharedBlocks: blocksFromContext(exercise.exercise_content.data),
+    sections: exercise.exercise_content.sections.map((section, index) => {
+      const blocks = [...blocksFromContext(section.section_data)]
+      if (isNonEmpty(section.question.svg)) blocks.push(svgBlock(section.question.svg))
+      blocks.push(buildQuestionBlock(section))
+
+      return {
+        title: buildSectionTitle(section, index),
+        blocks,
+      }
+    }),
+  }
+}
+
 export function convertExerciseToBlocks(exercise: LessonJsonExercise): ContentBlock[] {
   const blocks: ContentBlock[] = []
 
