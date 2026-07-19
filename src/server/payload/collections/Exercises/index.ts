@@ -178,10 +178,11 @@ const exerciseHooks: CollectionConfig['hooks'] = {
       // actively harmful: exporter PR #242 pulls in exercises referenced by
       // a lesson's playlist even when their own `lesson` field points at a
       // lesson from a different course. Those cross-course exercises land
-      // pointing at a lesson that isn't in the bundle, and this hook's
-      // `payload.update({ collection: 'lessons', id: <missing> })` throws
-      // "Not Found" — killing the whole per-doc create. Same reasoning as
-      // the beforeChange auto-populate skip above.
+      // pointing at a lesson that isn't in the bundle; the sync helper's
+      // `findByID` on that missing lesson throws "Not Found" (see
+      // `addBlockToLesson`/`removeBlockFromLesson` in syncLessonBlocks.ts)
+      // and kills the whole per-doc create. Same reasoning as the
+      // beforeChange auto-populate skip above.
       if (isContentPromotionImportRequest(req)) return doc
 
       const newLessonId =
