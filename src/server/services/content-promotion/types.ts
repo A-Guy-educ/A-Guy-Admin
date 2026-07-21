@@ -34,6 +34,13 @@ export const BundleManifestSchema = z.object({
     chapters: z.array(BundledDocSchema),
     lessons: z.array(BundledDocSchema),
     exercises: z.array(BundledDocSchema),
+    // Sections were added after the initial bundle format shipped. Older
+    // bundles won't have this key — the array default keeps them parseable
+    // (Zod's `.default([])` sits comfortably in the object schema without
+    // needing a manifest-version bump; import treats a missing sections key
+    // as a zero-section bundle, which is exactly what pre-sections bundles
+    // logically are).
+    sections: z.array(BundledDocSchema).default([]),
   }),
 })
 
