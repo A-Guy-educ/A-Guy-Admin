@@ -128,33 +128,42 @@ function safeParseLesson(json: unknown): {
   return { topic, exerciseCount: exercises.length }
 }
 
-// Kept in sync with HEADER_LINE_RE in parse-text.ts so the preview title
-// matches what the server actually stores. Both sides use a literal single
-// space between the two words of "שם השיעור".
-const TEXT_LESSON_HEADER_RE = /^שם השיעור\s*-\s*(.+)$/m
 const TEXT_EXERCISE_HEADER_RE = /^תרגיל\s+[^\s–-]+\s*[–-]\s*[^:]+:\s*(.*)$/gm
+
+// Mirrors deriveLessonTitle in server/services/text-lesson-import/convert-text-exercise.ts
+// so the preview table shows the same title the server will store.
+const FILENAME_STRIP_PREFIX_RE = /^(כיתה|שיעור)\b/
+
+function deriveTitleFromFilename(filename: string): string {
+  const basename = filename.split(/[/\\]/).pop() ?? filename
+  const withoutExt = basename.replace(/\.[^.]+$/, '')
+  const withSpaces = withoutExt.replace(/_/g, ' ')
+  const kept = withSpaces
+    .split(/\s+-\s+/)
+    .map((p) => p.trim())
+    .filter((p) => p.length > 0 && !FILENAME_STRIP_PREFIX_RE.test(p))
+  return kept.join(' - ') || withSpaces.trim() || 'שיעור ללא שם'
+}
 
 /**
  * Cheap client-side preview for the plain-text format. Server has the real
- * parser; this just counts exercises and lifts the lesson name for the table.
+ * parser; this just counts exercises and derives the lesson name from the
+ * filename for the table.
  */
-function safeParseTextLesson(text: string): {
+function safeParseTextLesson(
+  text: string,
+  filename: string,
+): {
   topic?: string
   exerciseCount?: number
   error?: string
 } {
   if (!text || text.trim() === '') return { error: 'File is empty' }
-  const headerMatch = text.match(TEXT_LESSON_HEADER_RE)
-  let topic = headerMatch ? headerMatch[1].trim() : undefined
-  let exerciseCount = 0
-  for (const m of text.matchAll(TEXT_EXERCISE_HEADER_RE)) {
-    if (!topic) topic = m[1]?.trim() || undefined
-    exerciseCount += 1
-  }
+  const exerciseCount = Array.from(text.matchAll(TEXT_EXERCISE_HEADER_RE)).length
   if (exerciseCount === 0) {
     return { error: 'No "תרגיל N – …:" headers found — does this match the new format?' }
   }
-  return { topic, exerciseCount }
+  return { topic: deriveTitleFromFilename(filename), exerciseCount }
 }
 
 export function LessonJsonImportPage() {
@@ -190,7 +199,7 @@ export function LessonJsonImportPage() {
             exerciseCount: summary.exerciseCount,
           })
         } else {
-          const summary = safeParseTextLesson(raw)
+          const summary = safeParseTextLesson(raw, file.name)
           next.push({
             id,
             filename: file.name,
