@@ -234,14 +234,20 @@ export function buildTextExerciseTitle(exercise: TextExercise): string {
   return `תרגיל ${number}`
 }
 
-export function deriveLessonTitle(args: {
-  lessonName?: string
-  filename: string
-  firstExerciseSubtopic?: string
-}): string {
-  if (isNonEmpty(args.lessonName)) return args.lessonName
-  if (isNonEmpty(args.firstExerciseSubtopic)) return args.firstExerciseSubtopic
-  // Strip the extension and fall back to the bare filename.
-  const base = args.filename.replace(/\.[^.]+$/, '')
-  return base || 'שיעור ללא שם'
+// Curriculum team names files like "כיתה_ט_-_שיעור_1_-_חוקי_חזקות_-_מבוא.txt".
+// The class ("כיתה X") and lesson-number ("שיעור N") segments are metadata that
+// belong on the chapter/order, not in the lesson title — strip them and keep
+// only the topic segments.
+const FILENAME_STRIP_PREFIX_RE = /^(כיתה|שיעור)\b/
+
+export function deriveLessonTitle(args: { filename: string }): string {
+  const basename = args.filename.split(/[/\\]/).pop() ?? args.filename
+  const withoutExt = basename.replace(/\.[^.]+$/, '')
+  const withSpaces = withoutExt.replace(/_/g, ' ')
+  const kept = withSpaces
+    .split(/\s+-\s+/)
+    .map((p) => p.trim())
+    .filter((p) => p.length > 0 && !FILENAME_STRIP_PREFIX_RE.test(p))
+  const title = kept.join(' - ')
+  return title || withSpaces.trim() || 'שיעור ללא שם'
 }
