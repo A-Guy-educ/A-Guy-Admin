@@ -1,6 +1,7 @@
 import type { FieldHook } from 'payload'
 
 import { formatSlug } from '@/server/payload/fields/formatSlug'
+import { isContentPromotionImportRequest } from '@/server/services/content-promotion/import-context'
 
 const MAX_SLUG_ATTEMPTS = 100
 
@@ -12,6 +13,17 @@ export const generateSlug: FieldHook = async ({
   req,
 }) => {
   if (operation === 'delete') {
+    return value
+  }
+
+  // Content-promotion imports carry per-exercise-unique slugs verbatim from
+  // the source (they were enforced by this same hook when the section was
+  // originally authored). Re-checking here costs one Mongo find per section
+  // — sections are typically more numerous than lessons per course, so the
+  // wall-clock hit is worse than the ~30s the Lessons slug hook already
+  // skips over via the same guard (see Lessons.ts:261). Trust the bundle's
+  // slug values during import.
+  if (isContentPromotionImportRequest(req)) {
     return value
   }
 
@@ -69,6 +81,13 @@ export const validateSlugUniqueness: FieldHook = async ({
   req,
 }) => {
   if (operation === 'delete' || !value) {
+    return value
+  }
+
+  // Same rationale as generateSlug above — the bundle's slug was already
+  // unique-per-exercise on the source, and re-validating here doubles the
+  // per-doc round trips.
+  if (isContentPromotionImportRequest(req)) {
     return value
   }
 

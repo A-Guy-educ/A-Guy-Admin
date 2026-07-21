@@ -314,11 +314,43 @@ function applyRemapToDoc(
   const remappedSlug = slugRemap?.get(collection, String(doc.id))
   const newDoc: Record<string, unknown> = { ...rewritten, id: finalId }
   if (remappedSlug !== undefined) newDoc.slug = remappedSlug
+  // Any doc with a `blocks` field storing a JSON-encoded playlist gets its
+  // remapped ids rewritten inside the playlist. Today that's just
+  // lesson.blocks (→ exerciseRefs) and exercise.blocks (→ sectionRefs), but
+  // the call is unconditional — it's a no-op for collections without a
+  // `blocks` field, and if a future collection grows one it'll be handled
+  // automatically. Without this, deepRewriteIds treats the JSON-string
+  // playlist as opaque and remapped ids inside stay stale, so the target's
+  // playlist would reference nothing and web renders would silently drop
+  // those entries.
+  const rewrittenBlocks = rewriteIdsInJsonBlocks(newDoc.blocks, remap)
+  if (rewrittenBlocks !== newDoc.blocks) newDoc.blocks = rewrittenBlocks
   return {
     newDoc,
     finalId,
     wasRemapped: Boolean(remappedId),
   }
+}
+
+/**
+ * If `raw` is a JSON-encoded string (as `lesson.blocks` and
+ * `exercise.blocks` are), parse it, rewrite id-shaped strings inside via
+ * the id remap, and restringify. Returns the input unchanged for anything
+ * that isn't a well-formed JSON string — malformed blocks shouldn't kill
+ * an import.
+ *
+ * Exported for unit-testing.
+ */
+export function rewriteIdsInJsonBlocks(raw: unknown, remap: IdRemap): unknown {
+  if (typeof raw !== 'string' || raw.length === 0) return raw
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    return raw
+  }
+  const rewritten = deepRewriteIds(parsed, remap)
+  return JSON.stringify(rewritten)
 }
 
 async function uploadMediaWithFile(
