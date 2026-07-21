@@ -314,12 +314,15 @@ function applyRemapToDoc(
   const remappedSlug = slugRemap?.get(collection, String(doc.id))
   const newDoc: Record<string, unknown> = { ...rewritten, id: finalId }
   if (remappedSlug !== undefined) newDoc.slug = remappedSlug
-  // `blocks` on lessons/exercises is a textarea storing a JSON-encoded
-  // playlist (lesson.blocks → exerciseRefs, exercise.blocks → sectionRefs).
-  // deepRewriteIds treats it as an opaque string, so remapped exercise or
-  // section ids inside the playlist stay stale — the target's playlist
-  // would then reference nothing and web renders would silently drop those
-  // entries. Parse-walk-restringify so the playlist matches the remap.
+  // Any doc with a `blocks` field storing a JSON-encoded playlist gets its
+  // remapped ids rewritten inside the playlist. Today that's just
+  // lesson.blocks (→ exerciseRefs) and exercise.blocks (→ sectionRefs), but
+  // the call is unconditional — it's a no-op for collections without a
+  // `blocks` field, and if a future collection grows one it'll be handled
+  // automatically. Without this, deepRewriteIds treats the JSON-string
+  // playlist as opaque and remapped ids inside stay stale, so the target's
+  // playlist would reference nothing and web renders would silently drop
+  // those entries.
   const rewrittenBlocks = rewriteIdsInJsonBlocks(newDoc.blocks, remap)
   if (rewrittenBlocks !== newDoc.blocks) newDoc.blocks = rewrittenBlocks
   return {
