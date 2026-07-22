@@ -237,8 +237,9 @@ export function buildTextExerciseTitle(exercise: TextExercise): string {
 // Curriculum team names files like "כיתה_ט_-_שיעור_1_-_חוקי_חזקות_-_מבוא.txt".
 // The class ("כיתה X") and lesson-number ("שיעור N") segments are metadata that
 // belong on the chapter/order, not in the lesson title — strip them and keep
-// only the topic segments.
-const FILENAME_STRIP_PREFIX_RE = /^(כיתה|שיעור)\b/
+// only the topic segments. `\b` is ASCII-only in JS regex and doesn't fire
+// between Hebrew letters and whitespace, so anchor on a literal separator.
+const FILENAME_STRIP_PREFIX_RE = /^(כיתה|שיעור)(?:\s|$)/
 
 export function deriveLessonTitle(args: { filename: string }): string {
   const basename = args.filename.split(/[/\\]/).pop() ?? args.filename
