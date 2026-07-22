@@ -28,9 +28,12 @@
  *
  * Access: admin only.
  */
+import { randomBytes } from 'crypto'
+
 import type { Payload, PayloadRequest, Where } from 'payload'
 
 import { formatSlug } from '@/server/payload/fields/formatSlug'
+import { getSourceExercisesForLesson } from '@/server/services/lesson-duplication/source-exercises'
 
 const CHILD_QUERY_PAGE_SIZE = 200
 
@@ -54,9 +57,14 @@ function stripManagedFields<T extends Record<string, unknown>>(
   return rest
 }
 
-/** Short base36 timestamp used to guarantee slug uniqueness on cloned rows. */
+/**
+ * 6-char hex suffix used to guarantee slug uniqueness on cloned rows.
+ * Uses `crypto.randomBytes` rather than a truncated `Date.now()` so two admins
+ * duplicating the same course within the same millisecond can't collide on a
+ * globally-unique chapter slug.
+ */
 function shortSuffix(): string {
-  return Date.now().toString(36).slice(-6)
+  return randomBytes(3).toString('hex')
 }
 
 /**
@@ -249,8 +257,6 @@ async function deepCloneLessonUnderChapter(
     req,
   })
 
-  const { getSourceExercisesForLesson } =
-    await import('@/server/services/lesson-duplication/source-exercises')
   const exerciseDocs = await getSourceExercisesForLesson(req.payload, sourceLessonId)
 
   const newExerciseIds: string[] = []
