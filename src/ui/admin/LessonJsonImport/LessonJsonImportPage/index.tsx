@@ -132,7 +132,7 @@ const TEXT_EXERCISE_HEADER_RE = /^תרגיל\s+[^\s–-]+\s*[–-]\s*[^:]+:\s*(.
 
 // Mirrors deriveLessonTitle in server/services/text-lesson-import/convert-text-exercise.ts
 // so the preview table shows the same title the server will store.
-const FILENAME_STRIP_PREFIX_RE = /^(כיתה|שיעור)\b/
+const FILENAME_STRIP_PREFIX_RE = /^(כיתה|שיעור)(?:\s|$)/
 
 function deriveTitleFromFilename(filename: string): string {
   const basename = filename.split(/[/\\]/).pop() ?? filename
