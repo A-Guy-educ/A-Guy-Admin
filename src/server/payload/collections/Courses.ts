@@ -26,6 +26,12 @@ import { enforceFieldLocaleUniqueness } from '../hooks/validateLocaleUniqueness'
 
 export const Courses: CollectionConfig = {
   slug: 'courses',
+  // Hide Payload's built-in Duplicate action so admins can only use our
+  // custom modal button. The built-in does a field-level copy that preserves
+  // the source's slug — the `enforceFieldLocaleUniqueness('courses')`
+  // beforeChange hook then rejects the create with
+  // "A document with slug '...' and locale '...' already exists in courses".
+  disableDuplicate: true,
   access: {
     create: adminOnly,
     delete: adminOnly,
@@ -56,6 +62,7 @@ export const Courses: CollectionConfig = {
         beforeDocumentControls: [
           '@/ui/admin/TranslationButton#TranslateCourseAction',
           '@/ui/admin/CascadeDeleteButton#CourseCascadeDelete',
+          '@/ui/admin/CourseDuplicateButton/CourseDuplicateButton#CourseDuplicateAction',
         ],
       },
     },
