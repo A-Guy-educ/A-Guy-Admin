@@ -23,8 +23,9 @@ import configPromise from '@payload-config'
 import { duplicateCourseEndpoint } from '@/server/payload/endpoints/courses/duplicate'
 
 export async function POST(request: NextRequest): Promise<NextResponse | Response> {
+  let payload: Awaited<ReturnType<typeof getPayload>> | undefined
   try {
-    const payload = await getPayload({ config: configPromise })
+    payload = await getPayload({ config: configPromise })
     const { user } = await payload.auth({ headers: request.headers })
 
     const body = await request.json().catch(() => ({}))
@@ -34,14 +35,28 @@ export async function POST(request: NextRequest): Promise<NextResponse | Respons
       user,
       url: request.url,
       headers: request.headers,
+      // `context` is Payload's per-request scratchpad. The endpoint currently
+      // doesn't read it, but downstream hooks passed on this synthetic req
+      // (e.g. anything that toggles `_skipBlockSync`) do — leaving it undefined
+      // would surface as a hard-to-trace `Cannot read properties of undefined`.
+      context: {},
       json: async () => body,
     } as unknown as Parameters<typeof duplicateCourseEndpoint>[0]
 
     return await duplicateCourseEndpoint(payloadRequest)
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error'
+    // Log the full error server-side; return a scrubbed message to the client.
+    // The endpoint is admin-only, so leak risk is low, but raw exception text
+    // can carry field/collection names and stack fragments that make debugging
+    // via the browser noisier than reading server logs.
+    const detail = error instanceof Error ? error.message : String(error)
+    if (payload) {
+      payload.logger.error(`[duplicate-course route] ${detail}`)
+    } else {
+      console.error(`[duplicate-course route] ${detail}`)
+    }
     return NextResponse.json(
-      { error: `Course duplicate endpoint failed: ${message}` },
+      { error: 'Course duplicate failed. Check server logs for details.' },
       { status: 500 },
     )
   }

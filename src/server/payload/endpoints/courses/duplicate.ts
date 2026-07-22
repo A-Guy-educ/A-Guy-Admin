@@ -4,15 +4,21 @@
  * @fileType api-route
  * @domain courses
  * @pattern duplication-deep-clone
- * @ai-summary Deep-clones a course + all chapters + all lessons + all exercises inline. No AI variation.
+ * @ai-summary Deep-clones a course + all chapters + all lessons + all exercises + all sections inline. No AI variation.
  *
  * Body: {} (no options — course duplication is always an exact copy)
  *
  * Uses the same `level: 'none'` semantics the lesson duplication pipeline
  * exposes: every child is copied field-for-field, with slugs stripped so the
- * downstream beforeChange hooks regenerate them, and only inherent references
- * (chapter → course, lesson → chapter, exercise → lesson) are rewired to point
- * at the newly created parents.
+ * downstream beforeChange hooks regenerate them, and inherent references
+ * (chapter → course, lesson → chapter, exercise → lesson, section → exercise)
+ * are rewired to point at the freshly cloned parents.
+ *
+ * Sections carry the actual question content — cloning exercises alone would
+ * leave the new exercise.blocks[].section entries pointing at the ORIGINAL
+ * section rows, so any edit inside the duplicated course would silently mutate
+ * the source course. This endpoint clones sections and rewrites the new
+ * exercise's playlist to reference the new section ids.
  *
  * Path is `/duplicate-course` (not `/duplicate`) to avoid Payload's built-in
  * collection duplicate handler at `/api/courses/:id/duplicate`, which would
@@ -22,9 +28,11 @@
  *
  * Access: admin only.
  */
-import type { PayloadRequest } from 'payload'
+import type { Payload, PayloadRequest, Where } from 'payload'
 
 import { formatSlug } from '@/server/payload/fields/formatSlug'
+
+const CHILD_QUERY_PAGE_SIZE = 200
 
 /** Strip Payload-managed fields from a doc so it can be passed to `create`. */
 function stripManagedFields<T extends Record<string, unknown>>(
@@ -52,17 +60,150 @@ function shortSuffix(): string {
 }
 
 /**
- * Deep-clone a single lesson (+ its exercises) into a new lesson under the
- * given chapter/course. Adapted from `deepCloneLesson` in the lessons endpoint
- * — same field-strip + per-exercise isolation strategy — but with `chapter` +
- * `course` rewired to the freshly cloned parents.
+ * Fetch every doc matching the filter, paging in `CHILD_QUERY_PAGE_SIZE`
+ * chunks. Payload's default `limit` silently truncates — a course with more
+ * chapters/lessons than the cap would report success with partial counts.
+ */
+async function findAllPages<T extends { id: string }>(
+  payload: Payload,
+  req: PayloadRequest,
+  collection: 'chapters' | 'lessons' | 'sections',
+  where: Where,
+): Promise<T[]> {
+  const results: T[] = []
+  let page = 1
+  for (;;) {
+    const res = await payload.find({
+      collection,
+      where,
+      limit: CHILD_QUERY_PAGE_SIZE,
+      page,
+      depth: 0,
+      overrideAccess: true,
+      req,
+    })
+    results.push(...(res.docs as unknown as T[]))
+    if (!res.hasNextPage) break
+    page++
+  }
+  return results
+}
+
+interface SectionRefBlock {
+  id?: string
+  blockType?: string
+  section?: string
+  [key: string]: unknown
+}
+
+/** Parse the exercise `blocks` field (JSON string OR array) into a typed list. */
+function parseSectionRefBlocks(raw: unknown): SectionRefBlock[] {
+  if (Array.isArray(raw)) return raw as SectionRefBlock[]
+  if (typeof raw === 'string' && raw.trim()) {
+    try {
+      const parsed = JSON.parse(raw)
+      if (Array.isArray(parsed)) return parsed as SectionRefBlock[]
+    } catch {
+      // Malformed blocks JSON on the source — treat as empty playlist so we
+      // still create the new exercise instead of aborting the whole clone.
+    }
+  }
+  return []
+}
+
+/**
+ * Clone every section under `sourceExerciseId` into the new exercise. Returns
+ * the id map (old → new) plus a failure count. Uses `_skipExerciseBlockSync`
+ * so the section afterChange hook doesn't append to the new exercise's blocks
+ * one section at a time — we rebuild the whole array atomically once all
+ * sections are in.
+ */
+async function cloneSectionsUnderExercise(
+  req: PayloadRequest,
+  sourceExerciseId: string,
+  newExerciseId: string,
+  newLessonId: string,
+  newCourseId: string,
+): Promise<{ idMap: Map<string, string>; sectionsCloned: number; sectionsFailed: number }> {
+  const sourceSections = await findAllPages<{ id: string }>(req.payload, req, 'sections', {
+    exercise: { equals: sourceExerciseId },
+  })
+
+  const idMap = new Map<string, string>()
+  let failed = 0
+  for (const section of sourceSections) {
+    try {
+      const raw = await req.payload.findByID({
+        collection: 'sections',
+        id: section.id,
+        depth: 0,
+        overrideAccess: true,
+        req,
+      })
+      const sData = stripManagedFields(raw as unknown as Record<string, unknown>)
+      const {
+        slug: _ignoreSlug,
+        translatedFrom: _ignoreTranslatedFrom,
+        createdBy: _ignoreCreatedBy,
+        adminTitle: _ignoreAdminTitle,
+        exercise: _ignoreExercise,
+        lesson: _ignoreLesson,
+        chapter: _ignoreChapter,
+        course: _ignoreCourse,
+        ...restSection
+      } = sData as Record<string, unknown>
+      void _ignoreSlug
+      void _ignoreTranslatedFrom
+      void _ignoreCreatedBy
+      void _ignoreAdminTitle
+      void _ignoreExercise
+      void _ignoreLesson
+      void _ignoreChapter
+      void _ignoreCourse
+
+      const created = await req.payload.create({
+        collection: 'sections',
+        data: {
+          ...restSection,
+          exercise: newExerciseId,
+          lesson: newLessonId,
+          course: newCourseId,
+        } as never,
+        overrideAccess: true,
+        req,
+        context: { _skipExerciseBlockSync: true },
+      })
+      idMap.set(section.id, created.id)
+    } catch (err) {
+      failed++
+      const reason = err instanceof Error ? err.message : 'unknown'
+      req.payload.logger.warn(
+        `[duplicateCourseEndpoint] skipped section ${section.id} under exercise ${sourceExerciseId}: ${reason}`,
+      )
+    }
+  }
+  return { idMap, sectionsCloned: idMap.size, sectionsFailed: failed }
+}
+
+/**
+ * Deep-clone a single lesson (+ its exercises + their sections) into a new
+ * lesson under the given chapter/course. Adapted from `deepCloneLesson` in the
+ * lessons endpoint — same field-strip + per-exercise isolation strategy — but
+ * with `chapter` + `course` rewired to the freshly cloned parents and with
+ * sections cloned too so the two courses don't share section rows.
  */
 async function deepCloneLessonUnderChapter(
   req: PayloadRequest,
   sourceLessonId: string,
   newChapterId: string,
   newCourseId: string,
-): Promise<{ id: string; exercisesCloned: number; exercisesFailed: number }> {
+): Promise<{
+  id: string
+  exercisesCloned: number
+  exercisesFailed: number
+  sectionsCloned: number
+  sectionsFailed: number
+}> {
   const source = await req.payload.findByID({
     collection: 'lessons',
     id: sourceLessonId,
@@ -113,20 +254,62 @@ async function deepCloneLessonUnderChapter(
   const exerciseDocs = await getSourceExercisesForLesson(req.payload, sourceLessonId)
 
   const newExerciseIds: string[] = []
-  let failed = 0
+  let exercisesFailed = 0
+  let sectionsCloned = 0
+  let sectionsFailed = 0
   for (const exercise of exerciseDocs) {
     try {
       const exData = stripManagedFields(exercise as unknown as Record<string, unknown>)
+      const sourceBlocks = parseSectionRefBlocks((exData as { blocks?: unknown }).blocks)
+
+      // Create the new exercise with an empty playlist first — we rewrite it
+      // once sections are cloned so the entries reference the new section ids.
+      const { blocks: _dropBlocks, ...exWithoutBlocks } = exData as Record<string, unknown>
+      void _dropBlocks
       const created = await req.payload.create({
         collection: 'exercises',
-        data: { ...exData, lesson: newLesson.id } as never,
+        data: { ...exWithoutBlocks, lesson: newLesson.id, blocks: JSON.stringify([]) } as never,
         overrideAccess: true,
         req,
         context: { _skipBlockSync: true },
       })
+
+      const {
+        idMap,
+        sectionsCloned: sc,
+        sectionsFailed: sf,
+      } = await cloneSectionsUnderExercise(req, exercise.id, created.id, newLesson.id, newCourseId)
+      sectionsCloned += sc
+      sectionsFailed += sf
+
+      // Rebuild the exercise's playlist in the source order, remapping each
+      // sectionRef.section via the id map. Entries whose section wasn't cloned
+      // (unmapped) are dropped — they'd be dangling refs otherwise.
+      const rebuiltBlocks: SectionRefBlock[] = sourceBlocks
+        .map((block) => {
+          if (block.blockType !== 'sectionRef' || typeof block.section !== 'string') return block
+          const newSectionId = idMap.get(block.section)
+          if (!newSectionId) return null
+          return {
+            ...block,
+            id: Math.random().toString(36).slice(2, 14),
+            section: newSectionId,
+          }
+        })
+        .filter((b): b is SectionRefBlock => b !== null)
+
+      await req.payload.update({
+        collection: 'exercises',
+        id: created.id,
+        data: { blocks: JSON.stringify(rebuiltBlocks) },
+        overrideAccess: true,
+        req,
+        context: { _skipExerciseBlockSync: true, _skipBlockSync: true },
+      })
+
       newExerciseIds.push(created.id)
     } catch (err) {
-      failed++
+      exercisesFailed++
       const reason = err instanceof Error ? err.message : 'unknown'
       req.payload.logger.warn(
         `[duplicateCourseEndpoint] skipped exercise ${exercise.id}: ${reason}`,
@@ -150,12 +333,18 @@ async function deepCloneLessonUnderChapter(
     })
   }
 
-  return { id: newLesson.id, exercisesCloned: newExerciseIds.length, exercisesFailed: failed }
+  return {
+    id: newLesson.id,
+    exercisesCloned: newExerciseIds.length,
+    exercisesFailed,
+    sectionsCloned,
+    sectionsFailed,
+  }
 }
 
 /**
- * Deep-clone a single chapter (+ all its lessons + exercises) under the new
- * course. Chapters have a global `unique: true` index on `slug`, so we
+ * Deep-clone a single chapter (+ all its lessons + exercises + sections) under
+ * the new course. Chapters have a global `unique: true` index on `slug`, so we
  * proactively assign a suffixed slug rather than relying on the hook (which
  * only regenerates when the slug is empty and does not retry on collision).
  */
@@ -170,6 +359,8 @@ async function deepCloneChapterUnderCourse(
   lessonsFailed: number
   exercisesCloned: number
   exercisesFailed: number
+  sectionsCloned: number
+  sectionsFailed: number
 }> {
   const source = await req.payload.findByID({
     collection: 'chapters',
@@ -210,28 +401,24 @@ async function deepCloneChapterUnderCourse(
     req,
   })
 
-  // Find all lessons under this source chapter and clone each into the new
-  // chapter. Lesson slugs are per-lesson-collection-unique, so we let the
-  // lesson's own beforeChange hook handle collision retries.
-  const lessonsRes = await req.payload.find({
-    collection: 'lessons',
-    where: { chapter: { equals: sourceChapterId } },
-    limit: 500,
-    depth: 0,
-    overrideAccess: true,
-    req,
+  const sourceLessons = await findAllPages<{ id: string }>(req.payload, req, 'lessons', {
+    chapter: { equals: sourceChapterId },
   })
 
   let lessonsCloned = 0
   let lessonsFailed = 0
   let exercisesCloned = 0
   let exercisesFailed = 0
-  for (const lesson of lessonsRes.docs) {
+  let sectionsCloned = 0
+  let sectionsFailed = 0
+  for (const lesson of sourceLessons) {
     try {
       const result = await deepCloneLessonUnderChapter(req, lesson.id, newChapter.id, newCourseId)
       lessonsCloned++
       exercisesCloned += result.exercisesCloned
       exercisesFailed += result.exercisesFailed
+      sectionsCloned += result.sectionsCloned
+      sectionsFailed += result.sectionsFailed
     } catch (err) {
       lessonsFailed++
       const reason = err instanceof Error ? err.message : 'unknown'
@@ -247,6 +434,8 @@ async function deepCloneChapterUnderCourse(
     lessonsFailed,
     exercisesCloned,
     exercisesFailed,
+    sectionsCloned,
+    sectionsFailed,
   }
 }
 
@@ -266,16 +455,20 @@ export async function duplicateCourseEndpoint(req: PayloadRequest): Promise<Resp
     return Response.json({ error: 'Course id missing from path' }, { status: 400 })
   }
 
-  let source: Record<string, unknown>
-  try {
-    source = (await req.payload.findByID({
-      collection: 'courses',
-      id: courseId,
-      depth: 0,
-      overrideAccess: true,
-      req,
-    })) as unknown as Record<string, unknown>
-  } catch {
+  // Use `find` instead of `findByID` for the existence check. `findByID`
+  // rejects on any error (not-found, malformed id, access-layer throw) with
+  // the same shape, which used to be reported here as a 404 — hiding real
+  // problems (e.g. bad DB connection) behind a "not found" message.
+  const existsRes = await req.payload.find({
+    collection: 'courses',
+    where: { id: { equals: courseId } },
+    limit: 1,
+    depth: 0,
+    overrideAccess: true,
+    req,
+  })
+  const source = existsRes.docs[0] as unknown as Record<string, unknown> | undefined
+  if (!source) {
     return Response.json({ error: `Course "${courseId}" not found` }, { status: 404 })
   }
 
@@ -320,17 +513,10 @@ export async function duplicateCourseEndpoint(req: PayloadRequest): Promise<Resp
     return Response.json({ error: `Course create failed: ${message}` }, { status: 500 })
   }
 
-  // Load chapters that belong to the source course, then clone each — every
-  // child chapter reuses the same slug suffix so a whole course-copy is easy
-  // to spot after the fact. Chapters are capped at 500 per course, which is
-  // well above realistic content sizes.
-  const chaptersRes = await req.payload.find({
-    collection: 'chapters',
-    where: { course: { equals: courseId } },
-    limit: 500,
-    depth: 0,
-    overrideAccess: true,
-    req,
+  // Load every chapter that belongs to the source course (paginated — no
+  // hard cap that could silently truncate a large course) and clone each.
+  const sourceChapters = await findAllPages<{ id: string }>(req.payload, req, 'chapters', {
+    course: { equals: courseId },
   })
 
   let chaptersCloned = 0
@@ -339,7 +525,9 @@ export async function duplicateCourseEndpoint(req: PayloadRequest): Promise<Resp
   let lessonsFailed = 0
   let exercisesCloned = 0
   let exercisesFailed = 0
-  for (const chapter of chaptersRes.docs) {
+  let sectionsCloned = 0
+  let sectionsFailed = 0
+  for (const chapter of sourceChapters) {
     try {
       const result = await deepCloneChapterUnderCourse(req, chapter.id, newCourseId, suffix)
       chaptersCloned++
@@ -347,6 +535,8 @@ export async function duplicateCourseEndpoint(req: PayloadRequest): Promise<Resp
       lessonsFailed += result.lessonsFailed
       exercisesCloned += result.exercisesCloned
       exercisesFailed += result.exercisesFailed
+      sectionsCloned += result.sectionsCloned
+      sectionsFailed += result.sectionsFailed
     } catch (err) {
       chaptersFailed++
       const reason = err instanceof Error ? err.message : 'unknown'
@@ -363,6 +553,8 @@ export async function duplicateCourseEndpoint(req: PayloadRequest): Promise<Resp
       lessonsFailed,
       exercisesCloned,
       exercisesFailed,
+      sectionsCloned,
+      sectionsFailed,
     },
   })
 }

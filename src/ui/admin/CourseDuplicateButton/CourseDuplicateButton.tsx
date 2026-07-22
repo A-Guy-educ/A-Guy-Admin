@@ -10,9 +10,13 @@
  *
  * Unlike the lesson duplication button, this action has no variation level —
  * course duplication always performs a `none`-level deep clone of the course
- * and every nested chapter / lesson / exercise. The modal exists so admins
- * confirm intent (this can create hundreds of rows) and can see the resulting
- * counts once the clone finishes.
+ * and every nested chapter / lesson / exercise / section. The modal exists so
+ * admins confirm intent (this can create hundreds of rows) and can see the
+ * resulting counts once the clone finishes.
+ *
+ * Modal close is guarded while the fetch is in flight: the request can't be
+ * cancelled server-side, and closing early throws away the result counts + the
+ * "Open the new course" link the admin would need to find the new course.
  */
 import React, { useState } from 'react'
 import { useDocumentInfo } from '@payloadcms/ui'
@@ -28,9 +32,13 @@ interface DuplicateResponse {
     lessonsFailed: number
     exercisesCloned: number
     exercisesFailed: number
+    sectionsCloned: number
+    sectionsFailed: number
   }
   error?: string
 }
+
+const DIALOG_TITLE_ID = 'course-duplicate-modal-title'
 
 export const CourseDuplicateAction: React.FC = () => {
   const { id } = useDocumentInfo()
@@ -48,6 +56,7 @@ export const CourseDuplicateAction: React.FC = () => {
   }
 
   const close = () => {
+    if (status === 'submitting') return
     setOpen(false)
     reset()
   }
@@ -76,6 +85,8 @@ export const CourseDuplicateAction: React.FC = () => {
     }
   }
 
+  const isSubmitting = status === 'submitting'
+
   return (
     <>
       <button
@@ -94,7 +105,7 @@ export const CourseDuplicateAction: React.FC = () => {
           color: 'var(--theme-elevation-1000)',
           cursor: 'pointer',
         }}
-        title="Duplicate this course and all of its chapters, lessons, and exercises"
+        title="Duplicate this course and all of its chapters, lessons, exercises, and sections"
       >
         Duplicate
       </button>
@@ -103,6 +114,7 @@ export const CourseDuplicateAction: React.FC = () => {
         <div
           role="dialog"
           aria-modal="true"
+          aria-labelledby={DIALOG_TITLE_ID}
           style={{
             position: 'fixed',
             inset: 0,
@@ -128,10 +140,12 @@ export const CourseDuplicateAction: React.FC = () => {
               color: 'var(--theme-elevation-1000)',
             }}
           >
-            <h3 style={{ marginTop: 0 }}>Duplicate course</h3>
+            <h3 id={DIALOG_TITLE_ID} style={{ marginTop: 0 }}>
+              Duplicate course
+            </h3>
             <p style={{ fontSize: 13, color: 'var(--theme-elevation-600)' }}>
-              Creates an exact copy of this course and every chapter, lesson, and exercise inside
-              it. The copy is created as a draft — nothing goes live until you publish it.
+              Creates an exact copy of this course and every chapter, lesson, exercise, and section
+              inside it. The copy is created as a draft — nothing goes live until you publish it.
             </p>
             <p style={{ fontSize: 13, color: 'var(--theme-elevation-600)' }}>
               This can take a while for large courses. Please don&apos;t close the modal until it
@@ -168,6 +182,12 @@ export const CourseDuplicateAction: React.FC = () => {
                         ? ` (${result.counts.exercisesFailed} failed)`
                         : ''}
                     </li>
+                    <li>
+                      Sections: {result.counts.sectionsCloned}
+                      {result.counts.sectionsFailed > 0
+                        ? ` (${result.counts.sectionsFailed} failed)`
+                        : ''}
+                    </li>
                   </ul>
                 )}
                 <div style={{ marginTop: 12 }}>
@@ -189,25 +209,25 @@ export const CourseDuplicateAction: React.FC = () => {
                 marginTop: 20,
               }}
             >
-              <button type="button" onClick={close}>
+              <button type="button" onClick={close} disabled={isSubmitting}>
                 {status === 'success' ? 'Close' : 'Cancel'}
               </button>
               {status !== 'success' && (
                 <button
                   type="button"
                   onClick={submit}
-                  disabled={status === 'submitting'}
+                  disabled={isSubmitting}
                   style={{
                     backgroundColor: 'var(--theme-success-500)',
-                    color: '#fff',
+                    color: 'var(--theme-base-0)',
                     border: 'none',
                     borderRadius: 4,
                     padding: '6px 14px',
-                    cursor: status === 'submitting' ? 'not-allowed' : 'pointer',
-                    opacity: status === 'submitting' ? 0.6 : 1,
+                    cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                    opacity: isSubmitting ? 0.6 : 1,
                   }}
                 >
-                  {status === 'submitting' ? 'Duplicating…' : 'Duplicate'}
+                  {isSubmitting ? 'Duplicating…' : 'Duplicate'}
                 </button>
               )}
             </div>
