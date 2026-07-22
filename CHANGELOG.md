@@ -1819,6 +1819,7 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- fix(course-duplication): Deep-clone course + chapters + lessons + exercises ([#257](https://github.com/A-Guy-educ/A-Guy-Admin/pull/257)) — @aguyshayb
 - fix(lesson-import): anchor Hebrew prefix strip on literal separator ([#256](https://github.com/A-Guy-educ/A-Guy-Admin/pull/256)) — @aguyshayb
 - fix(lesson-import): derive lesson title from filename ([#254](https://github.com/A-Guy-educ/A-Guy-Admin/pull/254)) — @aguyshayb
 - feat(content-promotion): wire sections into export and import ([#253](https://github.com/A-Guy-educ/A-Guy-Admin/pull/253)) — @aguyshayb
