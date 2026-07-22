@@ -18,7 +18,7 @@
  * cancelled server-side, and closing early throws away the result counts + the
  * "Open the new course" link the admin would need to find the new course.
  */
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useDocumentInfo } from '@payloadcms/ui'
 
 type Status = 'idle' | 'submitting' | 'success' | 'error'
@@ -46,6 +46,23 @@ export const CourseDuplicateAction: React.FC = () => {
   const [status, setStatus] = useState<Status>('idle')
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<DuplicateResponse | null>(null)
+
+  // Escape-to-close while the modal is open — but only when a request isn't in
+  // flight. Closing mid-submit would drop the result counts + link to the new
+  // course, and the server-side clone can't be cancelled anyway.
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      if (status === 'submitting') return
+      setOpen(false)
+      setStatus('idle')
+      setError(null)
+      setResult(null)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open, status])
 
   if (!id) return null
 

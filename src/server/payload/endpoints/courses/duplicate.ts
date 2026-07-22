@@ -68,6 +68,15 @@ function shortSuffix(): string {
 }
 
 /**
+ * Random 12-char base36 id for playlist blocks (lesson.blocks[].id and
+ * exercise.blocks[].id). Not security-sensitive — these are just per-playlist
+ * keys used to identify entries when the array is edited.
+ */
+function newBlockId(): string {
+  return Math.random().toString(36).slice(2, 14)
+}
+
+/**
  * Fetch every doc matching the filter, paging in `CHILD_QUERY_PAGE_SIZE`
  * chunks. Payload's default `limit` silently truncates — a course with more
  * chapters/lessons than the cap would report success with partial counts.
@@ -133,22 +142,20 @@ async function cloneSectionsUnderExercise(
   newLessonId: string,
   newCourseId: string,
 ): Promise<{ idMap: Map<string, string>; sectionsCloned: number; sectionsFailed: number }> {
-  const sourceSections = await findAllPages<{ id: string }>(req.payload, req, 'sections', {
-    exercise: { equals: sourceExerciseId },
-  })
+  const sourceSections = await findAllPages<Record<string, unknown> & { id: string }>(
+    req.payload,
+    req,
+    'sections',
+    { exercise: { equals: sourceExerciseId } },
+  )
 
   const idMap = new Map<string, string>()
   let failed = 0
   for (const section of sourceSections) {
     try {
-      const raw = await req.payload.findByID({
-        collection: 'sections',
-        id: section.id,
-        depth: 0,
-        overrideAccess: true,
-        req,
-      })
-      const sData = stripManagedFields(raw as unknown as Record<string, unknown>)
+      // `findAllPages` already fetched the full section doc at depth 0 — no
+      // need for a second round-trip per section.
+      const sData = stripManagedFields(section as unknown as Record<string, unknown>)
       const {
         slug: _ignoreSlug,
         translatedFrom: _ignoreTranslatedFrom,
@@ -298,7 +305,7 @@ async function deepCloneLessonUnderChapter(
           if (!newSectionId) return null
           return {
             ...block,
-            id: Math.random().toString(36).slice(2, 14),
+            id: newBlockId(),
             section: newSectionId,
           }
         })
@@ -325,7 +332,7 @@ async function deepCloneLessonUnderChapter(
 
   if (newExerciseIds.length > 0) {
     const blocks = newExerciseIds.map((exId) => ({
-      id: Math.random().toString(36).slice(2, 14),
+      id: newBlockId(),
       blockType: 'exerciseRef' as const,
       exercise: exId,
     }))
@@ -505,19 +512,16 @@ export async function duplicateCourseEndpoint(req: PayloadRequest): Promise<Resp
     status: 'draft',
   }
 
-  let newCourseId: string
-  try {
-    const newCourse = await req.payload.create({
-      collection: 'courses',
-      data: newCourseData as never,
-      overrideAccess: true,
-      req,
-    })
-    newCourseId = newCourse.id
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error'
-    return Response.json({ error: `Course create failed: ${message}` }, { status: 500 })
-  }
+  // Let the Next.js route wrapper handle 500s uniformly — it logs the full
+  // error server-side and returns a scrubbed message. Echoing raw exception
+  // text here bypassed that scrubbing on the course-create branch alone.
+  const newCourse = await req.payload.create({
+    collection: 'courses',
+    data: newCourseData as never,
+    overrideAccess: true,
+    req,
+  })
+  const newCourseId = newCourse.id
 
   // Load every chapter that belongs to the source course (paginated — no
   // hard cap that could silently truncate a large course) and clone each.
