@@ -1860,6 +1860,7 @@
 - promote: dev -> main (v0.26.0) ([#133](https://github.com/A-Guy-educ/A-Guy-Admin/pull/133)) — @aguyshayb
 - chore: release v0.26.0 ([#132](https://github.com/A-Guy-educ/A-Guy-Admin/pull/132)) — @aguyshayb
 - #127: Remove pageAccessType field from Course; always require registrat… ([#128](https://github.com/A-Guy-educ/A-Guy-Admin/pull/128)) — @kodyade[bot]
+- chore: Verify PROD exposes lesson `prerequisites` field — re-deploy production from `main` after commit `30c8a65a` so the admin schema includes the field ([#124](https://github.com/A-Guy-educ/A-Guy-Admin/pull/124)) — @kodyade[bot]
 - #110: Exercise Content Editor toolbar: add RTL align, 4 text sizes, 4 h… ([#111](https://github.com/A-Guy-educ/A-Guy-Admin/pull/111)) — @kodyade[bot]
 - #114: [UI] Align text block editing input to the right (RTL support) ([#115](https://github.com/A-Guy-educ/A-Guy-Admin/pull/115)) — @kodyade[bot]
 - fix: Walk parent refs in content-promotion export instead of denormalized course ([#105](https://github.com/A-Guy-educ/A-Guy-Admin/pull/105)) — @aguyshayb
