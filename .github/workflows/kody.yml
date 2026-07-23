@@ -89,7 +89,7 @@ jobs:
       - name: Mint GitHub App token
         if: env.SHOULD_RUN_KODY_ENGINE == 'true' && env.HAS_KODY_APP_TOKEN == 'true'
         id: app-token
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@v3
         with:
           app-id: ${{ secrets.KODY_APP_ID }}
           private-key: ${{ secrets.KODY_APP_PRIVATE_KEY }}
