@@ -104,7 +104,7 @@ jobs:
           ref: ${{ (github.event.action == 'opened' || github.event.action == 'synchronize') && github.event.pull_request.head.sha || github.event.pull_request.base.ref || github.ref }}
           token: ${{ steps.app-token.outputs.token || github.token }}
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         if: env.SHOULD_RUN_KODY_ENGINE == 'true'
         with:
           node-version: 22
