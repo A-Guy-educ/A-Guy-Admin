@@ -95,7 +95,7 @@ jobs:
           private-key: ${{ secrets.KODY_APP_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         if: env.SHOULD_RUN_KODY_ENGINE == 'true'
         with:
           fetch-depth: 0
