@@ -70,6 +70,7 @@ import { runDropStaleCoursesValidatorOnInit } from '@/server/payload/migrations/
 import { runLocalizeTeacherProfilesOnInit } from '@/server/payload/migrations/localize-teacher-profiles'
 import { runPopulateLessonBlocksOnInit } from '@/server/payload/migrations/populateLessonBlocks'
 import { plugins } from '@/server/payload/plugins'
+import { runSeedAgentBehaviorPromptsOnInit } from '@/server/payload/seed/agent-behavior-prompts-seed'
 import { runSeedFeaturesOnInit } from '@/server/payload/seed/features-seed'
 import { seedTeacherProfiles } from '@/server/payload/seed/teacher-profiles-seed'
 import { Footer } from '@/ui/shared/footer/config'
@@ -459,5 +460,6 @@ export default buildConfig({
     await runLocalizeTeacherProfilesOnInit(payload)
     await seedTeacherProfiles(payload)
     await runSeedFeaturesOnInit(payload)
+    await runSeedAgentBehaviorPromptsOnInit(payload)
   },
 })

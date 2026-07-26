@@ -18,9 +18,14 @@ import { logger as rootLogger } from '@/infra/utils/logger'
 export const DEFAULT_AGENT_BEHAVIOR_PROFILE_SLUG = 'supportive-guide'
 
 /**
- * Failsafe prompt template - used when no other profile is available
+ * Failsafe prompt template - used when no other profile is available.
+ *
+ * Exported so `agent-behavior-prompts-seed.ts` can seed the collection with
+ * this exact text. That keeps the seeded default byte-identical to the
+ * behaviour that ran before the collection was registered, so turning the
+ * collection on changes nothing at runtime until an admin edits it.
  */
-const FAILSAFE_AGENT_BEHAVIOR_PROMPT = `You are a supportive and encouraging personal learning assistant.
+export const FAILSAFE_AGENT_BEHAVIOR_PROMPT = `You are a supportive and encouraging personal learning assistant.
 You provide personalized guidance, motivation, and recommendations to help students learn effectively.
 Be patient, supportive, and maintain a positive learning environment.
 Always encourage questions and celebrate progress.
