@@ -11,82 +11,106 @@
  * index build fail, and Mongo reports that only in the server log. Run this
  * first.
  *
- * Read-only: this script never writes. Deduping is a separate, manual decision
- * because the right row to keep depends on which one carries the grant flags.
+ * Connects with the raw driver rather than booting Payload: this is a
+ * read-only diagnostic and should not depend on blob storage, plugins, or any
+ * other boot-time requirement. It never writes.
  *
  * Exits 0 when clean, 1 when duplicates are found (usable as a CI gate).
  *
  * Usage: pnpm tsx scripts/check-duplicate-transactions.ts
  */
-import { getPayload } from 'payload'
-
-import config from '@payload-config'
+import 'dotenv/config'
+import { MongoClient } from 'mongodb'
 
 interface DuplicateGroup {
   _id: { provider: string | null; providerTransactionId: string | null }
   count: number
-  ids: string[]
-  statuses: string[]
-  grantedAt: (string | null)[]
+  ids: unknown[]
+  statuses: (string | null)[]
+  grantedAt: (Date | string | null)[]
+}
+
+/** Strip credentials so the target is loggable. */
+function describeTarget(uri: string): string {
+  try {
+    const parsed = new URL(uri)
+    return `${parsed.host}${parsed.pathname}`
+  } catch {
+    return '(unparseable connection string)'
+  }
 }
 
 async function main() {
-  const payload = await getPayload({ config })
-
-  process.stdout.write('Scanning transactions for duplicate (provider, providerTransactionId)...\n')
-
-  const collection = payload.db.collections.transactions?.collection
-  if (!collection) {
-    process.stderr.write('Could not reach the transactions collection.\n')
+  const uri = process.env.DATABASE_URL || process.env.DATABASE_URI
+  if (!uri) {
+    process.stderr.write('DATABASE_URL is not set.\n')
     process.exit(2)
   }
 
-  const groups = (await collection
-    .aggregate([
-      {
-        $group: {
-          _id: { provider: '$provider', providerTransactionId: '$providerTransactionId' },
-          count: { $sum: 1 },
-          ids: { $push: '$_id' },
-          statuses: { $push: '$status' },
-          grantedAt: { $push: '$entitlementsGrantedAt' },
+  const client = new MongoClient(uri)
+  await client.connect()
+
+  try {
+    const collection = client.db().collection('transactions')
+
+    process.stdout.write(`Target: ${describeTarget(uri)}\n`)
+    process.stdout.write('Scanning for duplicate (provider, providerTransactionId)...\n')
+
+    const groups = (await collection
+      .aggregate([
+        {
+          $group: {
+            _id: { provider: '$provider', providerTransactionId: '$providerTransactionId' },
+            count: { $sum: 1 },
+            ids: { $push: '$_id' },
+            statuses: { $push: '$status' },
+            grantedAt: { $push: '$entitlementsGrantedAt' },
+          },
         },
-      },
-      { $match: { count: { $gt: 1 } } },
-      { $sort: { count: -1 } },
-    ])
-    .toArray()) as unknown as DuplicateGroup[]
+        { $match: { count: { $gt: 1 } } },
+        { $sort: { count: -1 } },
+      ])
+      .toArray()) as unknown as DuplicateGroup[]
 
-  const total = await collection.countDocuments()
+    const total = await collection.countDocuments()
 
-  if (groups.length === 0) {
-    process.stdout.write(`\n✅ No duplicates across ${total} transactions.\n`)
-    process.stdout.write('Safe to make the (provider, providerTransactionId) index unique:\n')
-    process.stdout.write("  { fields: ['provider', 'providerTransactionId'], unique: true }\n")
-    process.exit(0)
+    if (groups.length === 0) {
+      process.stdout.write(`\n✅ No duplicates across ${total} transactions.\n`)
+      process.stdout.write('Safe to make the (provider, providerTransactionId) index unique:\n')
+      process.stdout.write("  { fields: ['provider', 'providerTransactionId'], unique: true }\n")
+      return 0
+    }
+
+    const affected = groups.reduce((sum, g) => sum + g.count, 0)
+    process.stdout.write(
+      `\n❌ ${groups.length} duplicated provider IDs covering ${affected} of ${total} transactions.\n\n`,
+    )
+
+    for (const group of groups) {
+      const { provider, providerTransactionId } = group._id
+      process.stdout.write(
+        `${provider ?? '(no provider)'} / ${providerTransactionId ?? '(null)'}\n`,
+      )
+      process.stdout.write(`  rows:     ${group.count}\n`)
+      process.stdout.write(`  ids:      ${group.ids.map(String).join(', ')}\n`)
+      process.stdout.write(`  statuses: ${group.statuses.map((s) => s ?? '—').join(', ')}\n`)
+      // The row carrying entitlementsGrantedAt is the one the grant path
+      // already acted on — normally the one to keep.
+      process.stdout.write(
+        `  granted:  ${group.grantedAt.map((d) => (d ? new Date(d).toISOString() : '—')).join(', ')}\n\n`,
+      )
+    }
+
+    process.stdout.write('Resolve these before making the index unique.\n')
+    return 1
+  } finally {
+    await client.close()
   }
-
-  const affected = groups.reduce((sum, g) => sum + g.count, 0)
-  process.stdout.write(
-    `\n❌ ${groups.length} duplicated provider IDs covering ${affected} of ${total} transactions.\n\n`,
-  )
-
-  for (const group of groups) {
-    const { provider, providerTransactionId } = group._id
-    process.stdout.write(`${provider ?? '(no provider)'} / ${providerTransactionId ?? '(null)'}\n`)
-    process.stdout.write(`  rows:     ${group.count}\n`)
-    process.stdout.write(`  ids:      ${group.ids.join(', ')}\n`)
-    process.stdout.write(`  statuses: ${group.statuses.join(', ')}\n`)
-    // The row carrying entitlementsGrantedAt is the one the grant path already
-    // acted on — normally the one to keep.
-    process.stdout.write(`  granted:  ${group.grantedAt.map((d) => d ?? '—').join(', ')}\n\n`)
-  }
-
-  process.stdout.write('Resolve these before making the index unique.\n')
-  process.exit(1)
 }
 
-main().catch((error) => {
-  process.stderr.write(`${error instanceof Error ? error.stack : String(error)}\n`)
-  process.exit(2)
-})
+main()
+  .then((code) => process.exit(code))
+  .catch((error) => {
+    process.stderr.write(`${error instanceof Error ? error.stack : String(error)}\n`)
+    process.exit(2)
+  })
