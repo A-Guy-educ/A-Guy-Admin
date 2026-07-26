@@ -92,6 +92,7 @@ export interface Config {
     'formula-sheets': FormulaSheet;
     interactive_lessons: InteractiveLesson;
     prompts: Prompt;
+    'agent-behavior-prompts': AgentBehaviorPrompt;
     teacher_profiles: TeacherProfile;
     user_settings: UserSetting;
     'exercise-assets': ExerciseAsset;
@@ -104,12 +105,10 @@ export interface Config {
     'chat-assets': ChatAsset;
     'upload-sessions': UploadSession;
     posts: Post;
-    'pricing-plans': PricingPlan;
     features: Feature;
     products: Product;
     'access-codes': AccessCode;
     transactions: Transaction;
-    payment_stats: PaymentStat;
     'webhook-events': WebhookEvent;
     'mcp-audit-logs': McpAuditLog;
     redirects: Redirect;
@@ -149,6 +148,7 @@ export interface Config {
     'formula-sheets': FormulaSheetsSelect<false> | FormulaSheetsSelect<true>;
     interactive_lessons: InteractiveLessonsSelect<false> | InteractiveLessonsSelect<true>;
     prompts: PromptsSelect<false> | PromptsSelect<true>;
+    'agent-behavior-prompts': AgentBehaviorPromptsSelect<false> | AgentBehaviorPromptsSelect<true>;
     teacher_profiles: TeacherProfilesSelect<false> | TeacherProfilesSelect<true>;
     user_settings: UserSettingsSelect<false> | UserSettingsSelect<true>;
     'exercise-assets': ExerciseAssetsSelect<false> | ExerciseAssetsSelect<true>;
@@ -161,12 +161,10 @@ export interface Config {
     'chat-assets': ChatAssetsSelect<false> | ChatAssetsSelect<true>;
     'upload-sessions': UploadSessionsSelect<false> | UploadSessionsSelect<true>;
     posts: PostsSelect<false> | PostsSelect<true>;
-    'pricing-plans': PricingPlansSelect<false> | PricingPlansSelect<true>;
     features: FeaturesSelect<false> | FeaturesSelect<true>;
     products: ProductsSelect<false> | ProductsSelect<true>;
     'access-codes': AccessCodesSelect<false> | AccessCodesSelect<true>;
     transactions: TransactionsSelect<false> | TransactionsSelect<true>;
-    payment_stats: PaymentStatsSelect<false> | PaymentStatsSelect<true>;
     'webhook-events': WebhookEventsSelect<false> | WebhookEventsSelect<true>;
     'mcp-audit-logs': McpAuditLogsSelect<false> | McpAuditLogsSelect<true>;
     redirects: RedirectsSelect<false> | RedirectsSelect<true>;
@@ -2733,6 +2731,55 @@ export interface InteractiveLesson {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "agent-behavior-prompts".
+ */
+export interface AgentBehaviorPrompt {
+  id: string;
+  /**
+   * Machine-readable identifier (e.g., "motivational-guide", "strict-tutor")
+   */
+  slug: string;
+  /**
+   * Human-readable name for admin UI
+   */
+  title: string;
+  /**
+   * Short explanation shown in profile selection (1-2 sentences)
+   */
+  description?: string | null;
+  /**
+   * The behavior prompt text defining communication style, recommendations, proactiveness, tone, and learning strategy
+   */
+  template: string;
+  /**
+   * Set as default behavior prompt for the learning agent
+   */
+  isDefault?: boolean | null;
+  /**
+   * Disabled prompts are not available for selection
+   */
+  isEnabled?: boolean | null;
+  /**
+   * Content language
+   */
+  locale: 'en' | 'he';
+  /**
+   * Tenant scope for this document
+   */
+  tenant: string | Tenant;
+  /**
+   * Only "published" prompts are used at runtime
+   */
+  status: 'draft' | 'published' | 'archived';
+  /**
+   * Higher priority prompts are selected over lower ones when multiple match
+   */
+  priority?: number | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "teacher_profiles".
  */
 export interface TeacherProfile {
@@ -3196,51 +3243,6 @@ export interface Post {
   _status?: ('draft' | 'published') | null;
 }
 /**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "pricing-plans".
- */
-export interface PricingPlan {
-  id: string;
-  /**
-   * The lesson this pricing plan applies to
-   */
-  lesson: string | Lesson;
-  /**
-   * Payment provider for this plan
-   */
-  provider: 'paypal' | 'stripe' | 'manual';
-  /**
-   * Provider-specific plan ID (required for PayPal and Stripe)
-   */
-  providerPlanId?: string | null;
-  /**
-   * Type of billing
-   */
-  billingType: 'one_time' | 'subscription';
-  /**
-   * Billing interval (required for subscription billing)
-   */
-  interval?: ('month' | 'year') | null;
-  /**
-   * Price amount
-   */
-  price: number;
-  /**
-   * Currency code
-   */
-  currency: 'ILS' | 'USD' | 'EUR';
-  /**
-   * Whether this pricing plan is currently active
-   */
-  isActive?: boolean | null;
-  /**
-   * User who created this document
-   */
-  createdBy?: (string | null) | User;
-  updatedAt: string;
-  createdAt: string;
-}
-/**
  * Manage access codes that grant course entitlements
  *
  * This interface was referenced by `Config`'s JSON-Schema
@@ -3280,46 +3282,6 @@ export interface AccessCode {
    * User who created this document
    */
   createdBy?: (string | null) | User;
-  updatedAt: string;
-  createdAt: string;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "payment_stats".
- */
-export interface PaymentStat {
-  id: string;
-  /**
-   * Calendar date in YYYY-MM-DD format (UTC)
-   */
-  date: string;
-  /**
-   * Currency for all amounts on this date
-   */
-  currency: 'ILS' | 'USD' | 'EUR';
-  /**
-   * Sum of succeeded transaction amounts in agorot
-   */
-  totalRevenueAgorot: number;
-  /**
-   * Sum of refunded amounts in agorot
-   */
-  refundedAgorot: number;
-  /**
-   * Sum of failed amounts in agorot
-   */
-  failedAgorot: number;
-  /**
-   * Total number of transactions on this date (all statuses)
-   */
-  transactionCount: number;
-  succeededCount: number;
-  refundedCount: number;
-  failedCount: number;
-  /**
-   * Approximate count of newly-counted succeeded transactions per day — may overcount repeat users on the same date due to simplified deduplication logic
-   */
-  newCustomersCount: number;
   updatedAt: string;
   createdAt: string;
 }
@@ -3757,6 +3719,10 @@ export interface PayloadLockedDocument {
         value: string | Prompt;
       } | null)
     | ({
+        relationTo: 'agent-behavior-prompts';
+        value: string | AgentBehaviorPrompt;
+      } | null)
+    | ({
         relationTo: 'teacher_profiles';
         value: string | TeacherProfile;
       } | null)
@@ -3805,10 +3771,6 @@ export interface PayloadLockedDocument {
         value: string | Post;
       } | null)
     | ({
-        relationTo: 'pricing-plans';
-        value: string | PricingPlan;
-      } | null)
-    | ({
         relationTo: 'features';
         value: string | Feature;
       } | null)
@@ -3823,10 +3785,6 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'transactions';
         value: string | Transaction;
-      } | null)
-    | ({
-        relationTo: 'payment_stats';
-        value: string | PaymentStat;
       } | null)
     | ({
         relationTo: 'webhook-events';
@@ -4644,6 +4602,24 @@ export interface PromptsSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "agent-behavior-prompts_select".
+ */
+export interface AgentBehaviorPromptsSelect<T extends boolean = true> {
+  slug?: T;
+  title?: T;
+  description?: T;
+  template?: T;
+  isDefault?: T;
+  isEnabled?: T;
+  locale?: T;
+  tenant?: T;
+  status?: T;
+  priority?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "teacher_profiles_select".
  */
 export interface TeacherProfilesSelect<T extends boolean = true> {
@@ -4966,23 +4942,6 @@ export interface PostsSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "pricing-plans_select".
- */
-export interface PricingPlansSelect<T extends boolean = true> {
-  lesson?: T;
-  provider?: T;
-  providerPlanId?: T;
-  billingType?: T;
-  interval?: T;
-  price?: T;
-  currency?: T;
-  isActive?: T;
-  createdBy?: T;
-  updatedAt?: T;
-  createdAt?: T;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "features_select".
  */
 export interface FeaturesSelect<T extends boolean = true> {
@@ -5081,24 +5040,6 @@ export interface TransactionsSelect<T extends boolean = true> {
   refundedBy?: T;
   refundedAt?: T;
   createdBy?: T;
-  updatedAt?: T;
-  createdAt?: T;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "payment_stats_select".
- */
-export interface PaymentStatsSelect<T extends boolean = true> {
-  date?: T;
-  currency?: T;
-  totalRevenueAgorot?: T;
-  refundedAgorot?: T;
-  failedAgorot?: T;
-  transactionCount?: T;
-  succeededCount?: T;
-  refundedCount?: T;
-  failedCount?: T;
-  newCustomersCount?: T;
   updatedAt?: T;
   createdAt?: T;
 }

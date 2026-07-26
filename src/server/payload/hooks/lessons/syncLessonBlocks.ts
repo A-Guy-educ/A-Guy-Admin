@@ -14,6 +14,46 @@ interface BlockEntry {
   contentPage?: string
 }
 
+type MutableContext = Record<string, unknown> & { _skipBlockSync?: unknown }
+
+/**
+ * Set `_skipBlockSync` on `req.context` for the duration of the update, then
+ * restore the prior value.
+ *
+ * Payload's `createLocalReq` merges the passed `context` into `req.context` and
+ * does NOT restore it. Without this restore the flag persists on the shared
+ * request and silently skips every subsequent exercise/content-page sync on it —
+ * so a bulk import that creates exercise A then exercise B appends only A to the
+ * playlist. Mirrors `updateExerciseBlocksAndRestoreFlag` in
+ * `hooks/exercises/syncExerciseBlocks.ts` (see issue #166).
+ */
+async function updateLessonBlocksAndRestoreFlag(
+  payload: Payload,
+  req: PayloadRequest,
+  lessonId: string,
+  blocksJson: string,
+): Promise<void> {
+  const ctx = req.context as MutableContext | undefined
+  const hadFlag = ctx ? '_skipBlockSync' in ctx : false
+  const previous = ctx?._skipBlockSync
+  try {
+    await payload.update({
+      collection: 'lessons',
+      id: lessonId,
+      data: { blocks: blocksJson },
+      overrideAccess: true,
+      req,
+      context: { _skipBlockSync: true },
+    })
+  } finally {
+    const after = req.context as MutableContext | undefined
+    if (after) {
+      if (hadFlag) after._skipBlockSync = previous
+      else delete after._skipBlockSync
+    }
+  }
+}
+
 /** Parse the blocks textarea field (JSON string or array) into a typed array */
 function parseBlocks(raw: unknown): BlockEntry[] {
   if (Array.isArray(raw)) return raw as BlockEntry[]
@@ -72,14 +112,7 @@ export async function addBlockToLesson({
 
   const updated = [...blocks, newBlock]
 
-  await payload.update({
-    collection: 'lessons',
-    id: lessonId,
-    data: { blocks: JSON.stringify(updated) },
-    overrideAccess: true,
-    req,
-    context: { _skipBlockSync: true },
-  })
+  await updateLessonBlocksAndRestoreFlag(payload, req, lessonId, JSON.stringify(updated))
 }
 
 /**
@@ -112,12 +145,5 @@ export async function removeBlockFromLesson({
 
   if (filtered.length === blocks.length) return // nothing to remove
 
-  await payload.update({
-    collection: 'lessons',
-    id: lessonId,
-    data: { blocks: JSON.stringify(filtered) },
-    overrideAccess: true,
-    req,
-    context: { _skipBlockSync: true },
-  })
+  await updateLessonBlocksAndRestoreFlag(payload, req, lessonId, JSON.stringify(filtered))
 }

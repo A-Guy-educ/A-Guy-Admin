@@ -22,8 +22,11 @@ export const afterReadDiscountValue = async ({ siblingData, value }: FieldHookAr
   if (typeof value !== 'number') return value
 
   if (siblingData?.discountType === 'fixed') {
-    // Stored in agorot; convert back to shekels for admin display
-    return Math.round(value / 100)
+    // Stored in agorot; convert back to shekels for admin display.
+    // Round to 2dp (not to whole shekels) — rounding here is destructive:
+    // the admin form posts this value straight back, and the beforeChange
+    // hook re-multiplies by 100, so any lost precision is written to the DB.
+    return Math.round(value) / 100
   }
 
   // Percentage — stored as-is

@@ -8,6 +8,7 @@ import { fileURLToPath } from 'url'
 import { getServerSideURL } from '@/infra/utils/getURL'
 import { logger } from '@/infra/utils/logger'
 import { AccessCodes } from '@/server/payload/collections/AccessCodes'
+import { AgentBehaviorPrompts } from '@/server/payload/collections/AgentBehaviorPrompts'
 import { Categories } from '@/server/payload/collections/Categories'
 import { Chapters } from '@/server/payload/collections/Chapters'
 import { ChatAssets } from '@/server/payload/collections/ChatAssets'
@@ -38,13 +39,11 @@ import { Media } from '@/server/payload/collections/Media'
 import { MemoryItems } from '@/server/payload/collections/MemoryItems'
 import { Pages } from '@/server/payload/collections/Pages'
 import { Posts } from '@/server/payload/collections/Posts'
-import { PricingPlans } from '@/server/payload/collections/PricingPlans'
 import { Products } from '@/server/payload/collections/Products'
 import { Prompts } from '@/server/payload/collections/Prompts'
 import { TeacherProfiles } from '@/server/payload/collections/TeacherProfiles'
 import { Tenants } from '@/server/payload/collections/Tenants'
 import { Transactions } from '@/server/payload/collections/Transactions'
-import { PaymentStats } from '@/server/payload/collections/PaymentStats'
 import { WebhookEvents } from '@/server/payload/collections/WebhookEvents'
 import { UploadSessions } from '@/server/payload/collections/UploadSessions'
 import { UserProgress } from '@/server/payload/collections/UserProgress'
@@ -233,6 +232,7 @@ export default buildConfig({
     FormulaSheets,
     InteractiveLessons,
     Prompts,
+    AgentBehaviorPrompts,
     TeacherProfiles,
     UserSettings,
     ExerciseAssets,
@@ -245,12 +245,10 @@ export default buildConfig({
     ChatAssets,
     UploadSessions,
     Posts,
-    PricingPlans,
     Features,
     Products,
     AccessCodes,
     Transactions,
-    PaymentStats,
     WebhookEvents,
     MCPAuditLogs,
   ].map(withIdOnCreateGuard),

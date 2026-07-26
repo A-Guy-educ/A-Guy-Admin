@@ -14,7 +14,6 @@ import { createdByField } from '../fields/createdBy'
 import { tenantField } from '../fields/tenant'
 import { revokeEntitlementsOnRefund } from './Transactions/hooks/revokeEntitlementsOnRefund-hook'
 import { statusTransitionGuard } from './Transactions/hooks/statusTransitionGuard-hook'
-import { syncPaymentStats } from './Transactions/hooks/syncPaymentStats-hook'
 
 export const Transactions: CollectionConfig = {
   slug: 'transactions',
@@ -42,7 +41,7 @@ export const Transactions: CollectionConfig = {
   },
   hooks: {
     beforeChange: [statusTransitionGuard],
-    afterChange: [syncPaymentStats, revokeEntitlementsOnRefund],
+    afterChange: [revokeEntitlementsOnRefund],
   },
   fields: [
     tenantField,
@@ -104,6 +103,7 @@ export const Transactions: CollectionConfig = {
     {
       name: 'paymentIntentId',
       type: 'text',
+      index: true,
       admin: {
         description: 'Stripe PaymentIntent ID (pi_...) — used for refunds and webhook lookup',
       },
@@ -116,6 +116,7 @@ export const Transactions: CollectionConfig = {
     {
       name: 'captureId',
       type: 'text',
+      index: true,
       admin: {
         description: 'PayPal Capture ID — used for refunds and refund webhook lookup',
       },
@@ -266,4 +267,12 @@ export const Transactions: CollectionConfig = {
     createdByField,
   ],
   timestamps: true,
+  indexes: [
+    // Webhook replay lookup: both providers resolve a transaction by
+    // (provider, providerTransactionId). NOT unique yet — existing data must be
+    // checked for duplicates first, otherwise the index build fails silently.
+    { fields: ['provider', 'providerTransactionId'] },
+    // Purchase history / admin list views sort by -createdAt per user.
+    { fields: ['user', 'createdAt'] },
+  ],
 }

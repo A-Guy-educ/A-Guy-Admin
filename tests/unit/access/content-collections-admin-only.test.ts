@@ -5,13 +5,13 @@
  * @ai-summary Reproduction test to verify content collections use adminOnly for write operations
  */
 
+import type { PayloadRequest } from 'payload'
 import { describe, it, expect } from 'vitest'
 
 import { Courses } from '@/server/payload/collections/Courses'
 import { Chapters } from '@/server/payload/collections/Chapters'
 import { Lessons } from '@/server/payload/collections/Lessons'
 import { Categories } from '@/server/payload/collections/Categories'
-import { PricingPlans } from '@/server/payload/collections/PricingPlans'
 import { Media } from '@/server/payload/collections/Media'
 import { adminOnly } from '@/server/payload/access/adminOnly'
 import { anyone } from '@/server/payload/access/anyone'
@@ -101,24 +101,6 @@ describe('Content Collections Access Control - Bug Reproduction', () => {
     })
   })
 
-  describe('PricingPlans collection', () => {
-    it('should use adminOnly for create, update, and delete operations', () => {
-      expect(PricingPlans.access?.create).toBe(adminOnly)
-      expect(PricingPlans.access?.update).toBe(adminOnly)
-      expect(PricingPlans.access?.delete).toBe(adminOnly)
-    })
-
-    it('should use anyone for read operation (unchanged)', () => {
-      expect(PricingPlans.access?.read).toBe(anyone)
-    })
-
-    it('should NOT use authenticated for write operations', () => {
-      expect(PricingPlans.access?.create).not.toBe(authenticated)
-      expect(PricingPlans.access?.update).not.toBe(authenticated)
-      expect(PricingPlans.access?.delete).not.toBe(authenticated)
-    })
-  })
-
   describe('Media collection', () => {
     it('should use adminOnly for create, update, and delete operations', () => {
       expect(Media.access?.create).toBe(adminOnly)
@@ -138,30 +120,21 @@ describe('Content Collections Access Control - Bug Reproduction', () => {
   })
 
   describe('adminOnly access function behavior', () => {
-    it('should reject non-admin users', () => {
-      const mockReq = {
-        user: { id: 'user-1', role: 'student' },
-      } as any
+    const mockReq = (user: { id: string; role: string } | null) =>
+      ({ user }) as unknown as PayloadRequest
 
-      const result = adminOnly({ req: mockReq })
+    it('should reject non-admin users', () => {
+      const result = adminOnly({ req: mockReq({ id: 'user-1', role: 'student' }) })
       expect(result).toBe(false)
     })
 
     it('should accept admin users', () => {
-      const mockReq = {
-        user: { id: 'user-1', role: 'admin' },
-      } as any
-
-      const result = adminOnly({ req: mockReq })
+      const result = adminOnly({ req: mockReq({ id: 'user-1', role: 'admin' }) })
       expect(result).toBe(true)
     })
 
     it('should reject unauthenticated users', () => {
-      const mockReq = {
-        user: null,
-      } as any
-
-      const result = adminOnly({ req: mockReq })
+      const result = adminOnly({ req: mockReq(null) })
       expect(result).toBe(false)
     })
   })

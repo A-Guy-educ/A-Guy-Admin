@@ -29,7 +29,6 @@ export type {
   MemoryItem,
   Page,
   Post,
-  PricingPlan,
   Redirect,
   Search,
   User,
