@@ -716,7 +716,14 @@ async function handleSubscriptionActivated(
     overrideAccess: true,
   })
 
-  // Fire-and-forget receipt
+  // Fire-and-forget receipt — sent in BOTH branches (initial tx present or
+  // fallback path), so the user always gets a confirmation email even when
+  // the subscription is missing its initialTransaction link. Amount/currency
+  // fall back to the product's price when no initial tx is available.
+  const effectiveTxId = initialTxId ?? String(subscription.id)
+  let receiptAmount = 0
+  let receiptCurrency = 'ILS'
+  let receiptProviderTxId = event.resource.id
   if (initialTxId) {
     const tx = await payload.findByID({
       collection: 'transactions',
@@ -724,16 +731,31 @@ async function handleSubscriptionActivated(
       depth: 0,
       overrideAccess: true,
     })
-    void sendPurchaseReceipt(payload, {
-      transactionId: initialTxId,
-      userId,
-      productId,
-      providerTransactionId: (tx as { providerTransactionId?: string }).providerTransactionId ?? '',
-      amount: (tx as { amount?: number }).amount ?? 0,
-      currency: (tx as { currency?: string }).currency ?? 'ILS',
-      appliedCoupon: null,
+    receiptAmount = (tx as { amount?: number }).amount ?? 0
+    receiptCurrency = (tx as { currency?: string }).currency ?? 'ILS'
+    receiptProviderTxId =
+      (tx as { providerTransactionId?: string }).providerTransactionId ?? event.resource.id
+  } else {
+    // Fallback: read the plan's price/currency off the product for a
+    // best-effort receipt when the initial tx is missing.
+    const product = await payload.findByID({
+      collection: 'products',
+      id: productId,
+      depth: 0,
+      overrideAccess: true,
     })
+    receiptAmount = Math.round(((product as { price?: number }).price ?? 0) * 100)
+    receiptCurrency = (product as { currency?: string }).currency ?? 'ILS'
   }
+  void sendPurchaseReceipt(payload, {
+    transactionId: effectiveTxId,
+    userId,
+    productId,
+    providerTransactionId: receiptProviderTxId,
+    amount: receiptAmount,
+    currency: receiptCurrency,
+    appliedCoupon: null,
+  })
 }
 
 async function handleSubscriptionRenewal(
@@ -881,6 +903,13 @@ async function handleSubscriptionRenewal(
   // we need to flip the pending initial transaction to succeeded too — the
   // ACTIVATED handler will short-circuit later on subscription.status ===
   // 'active' and would otherwise leave the initial Tx stuck in pending.
+  //
+  // We also re-run grantProductEntitlements against the initial Tx here so
+  // enrollment.metadata.paymentId points at the initial Tx (matching what
+  // the ACTIVATED path would have set), preserving the invariant that an
+  // admin refund of the initial Tx cleanly revokes access. Passing the
+  // just-computed period end as overrideExpiresAt makes the expiresAt write
+  // a no-op — only the paymentId rotation matters here.
   if (subscription.status === 'pending') {
     const initialTxId = resolveId(subscription.initialTransaction)
     if (initialTxId) {
@@ -891,6 +920,16 @@ async function handleSubscriptionRenewal(
         overrideAccess: true,
       })
       if ((initialTx as { status?: string }).status === 'pending') {
+        const overrideExpiresAt =
+          maxEnrollmentEndMs > 0
+            ? new Date(maxEnrollmentEndMs).toISOString()
+            : addCalendarMonths(new Date(), intervalMonths).toISOString()
+        await grantProductEntitlements(
+          userId,
+          productId,
+          String(initialTxId),
+          overrideExpiresAt,
+        )
         await payload.update({
           collection: 'transactions',
           id: initialTxId,

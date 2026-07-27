@@ -421,7 +421,18 @@ export async function extendProductEntitlements(
  * Extend an Enrollment. Returns the new expiresAt in ms (used by the caller
  * to compute a shared feature-grant anchor across the whole product), or
  * `null` for lifetime enrollments where there's nothing to extend.
+ *
+ * Concurrency: the extension branch uses an optimistic compare-and-swap
+ * against MongoDB — the write only succeeds if the enrollment's expiresAt
+ * still equals the value we observed on read. Without this guard, two
+ * accumulated renewals on the same sub (delivered in parallel or after a
+ * webhook backlog) both read the same expiresAt, both compute the same
+ * +1 month, and both write it — the user gets one period of extension for
+ * two paid sales. On CAS miss we re-read and retry, so each retry anchors
+ * on the winner's fresh value.
  */
+const EXTEND_CAS_MAX_ATTEMPTS = 5
+
 async function extendEnrollment(
   payload: Awaited<ReturnType<typeof getPayload>>,
   userId: string,
@@ -429,89 +440,119 @@ async function extendEnrollment(
   intervalMonths: number,
   transactionId: string,
 ): Promise<number | null> {
-  const existing = await payload.find({
-    collection: 'enrollments',
-    where: { and: [{ user: { equals: userId } }, { course: { equals: courseId } }] },
-    limit: 1,
-    depth: 0,
-    overrideAccess: true,
-  })
-
-  if (existing.docs.length === 0) {
-    // No existing enrollment — fresh grant with expiry anchored at now.
-    const expiresAt = addCalendarMonths(new Date(), intervalMonths)
-    await upsertEnrollment(payload, userId, courseId, expiresAt.toISOString(), transactionId)
-    return expiresAt.getTime()
-  }
-
-  const current = existing.docs[0] as {
-    id: string
-    status: string
-    expiresAt?: string | null
-    metadata?: { paymentId?: string; accessCodeId?: string; grantedBy?: string }
-  }
-
-  // Idempotent replay
-  if (current.metadata?.paymentId === transactionId && current.status === 'active') {
-    return current.expiresAt ? new Date(current.expiresAt).getTime() : null
-  }
-
-  // Lifetime enrollment — no expiresAt to extend, but STILL rotate paymentId
-  // so revoke against the latest paying transaction works. Without this
-  // rotation, EXPIRED webhooks after any renewal fail to match the enrollment
-  // (its paymentId stays pinned to the initial transaction while the revoke
-  // path targets the latest renewal).
-  if (!current.expiresAt) {
-    await payload.update({
+  for (let attempt = 0; attempt < EXTEND_CAS_MAX_ATTEMPTS; attempt++) {
+    const existing = await payload.find({
       collection: 'enrollments',
-      id: current.id,
-      data: {
-        status: 'active',
-        grantMethod: 'payment',
-        cancelledAt: null,
-        metadata: {
-          ...(current.metadata ?? {}),
-          paymentId: transactionId,
-        },
-      },
+      where: { and: [{ user: { equals: userId } }, { course: { equals: courseId } }] },
+      limit: 1,
+      depth: 0,
       overrideAccess: true,
     })
-    return null
+
+    if (existing.docs.length === 0) {
+      // Fresh grant — anchored at now.
+      const expiresAt = addCalendarMonths(new Date(), intervalMonths)
+      await upsertEnrollment(payload, userId, courseId, expiresAt.toISOString(), transactionId)
+      return expiresAt.getTime()
+    }
+
+    const current = existing.docs[0] as {
+      id: string
+      status: string
+      expiresAt?: string | null
+      metadata?: { paymentId?: string; accessCodeId?: string; grantedBy?: string }
+    }
+
+    // Idempotent replay
+    if (current.metadata?.paymentId === transactionId && current.status === 'active') {
+      return current.expiresAt ? new Date(current.expiresAt).getTime() : null
+    }
+
+    // Lifetime enrollment — no expiresAt to extend, but STILL rotate paymentId
+    // so revoke against the latest paying transaction works. Idempotent write,
+    // no CAS needed.
+    if (!current.expiresAt) {
+      await payload.update({
+        collection: 'enrollments',
+        id: current.id,
+        data: {
+          status: 'active',
+          grantMethod: 'payment',
+          cancelledAt: null,
+          metadata: {
+            ...(current.metadata ?? {}),
+            paymentId: transactionId,
+          },
+        },
+        overrideAccess: true,
+      })
+      return null
+    }
+
+    // CAS extension — anchor on the LATER of {current expiresAt, now}.
+    const anchor = new Date(current.expiresAt).getTime()
+    const baseDate = new Date(Math.max(anchor, Date.now()))
+    const extendedDate = addCalendarMonths(baseDate, intervalMonths)
+
+    const enrollmentsCollection = payload.db.collections['enrollments']
+    const result = await enrollmentsCollection.updateOne(
+      {
+        _id: new ObjectId(current.id),
+        // Guard: only write if expiresAt is still the value we observed.
+        // A concurrent renewal that already extended will fail this match
+        // and force us to re-read.
+        expiresAt: new Date(current.expiresAt),
+      },
+      {
+        $set: {
+          expiresAt: extendedDate,
+          status: 'active',
+          grantMethod: 'payment',
+          cancelledAt: null,
+          'metadata.paymentId': transactionId,
+        },
+      },
+    )
+
+    if (result.matchedCount === 1) {
+      return extendedDate.getTime()
+    }
+
+    payload.logger.info(
+      { userId, courseId, transactionId, attempt: attempt + 1 },
+      'extendEnrollment: CAS mismatch, retrying with fresh read',
+    )
   }
 
-  // Anchor on the LATER of {current expiresAt, now} so a long-expired sub
-  // that reactivates doesn't grant a period ending in the past.
-  const anchor = new Date(current.expiresAt).getTime()
-  const baseDate = new Date(Math.max(anchor, Date.now()))
-  const extendedDate = addCalendarMonths(baseDate, intervalMonths)
-
-  await payload.update({
-    collection: 'enrollments',
-    id: current.id,
-    data: {
-      status: 'active',
-      grantMethod: 'payment',
-      expiresAt: extendedDate.toISOString(),
-      cancelledAt: null,
-      metadata: {
-        ...(current.metadata ?? {}),
-        paymentId: transactionId,
-      },
-    },
-    overrideAccess: true,
-  })
-
-  return extendedDate.getTime()
+  // Exhausted retries under sustained concurrent modification. Extremely
+  // unlikely in practice (would require 5+ simultaneous SALE.COMPLETED
+  // deliveries on the same enrollment). Throw so ops can investigate;
+  // the outer webhook 500s and PayPal keeps the sale on file.
+  throw new Error(
+    `extendEnrollment: CAS retries exhausted (user: ${userId}, course: ${courseId}, tx: ${transactionId})`,
+  )
 }
 
 /**
  * Calendar-aware month arithmetic. `d.setMonth(d.getMonth() + n)` handles
  * variable month lengths correctly (Feb, 30/31-day months, leap years)
  * where fixed 30-day math drifts ~5 days/year on annual plans.
+ *
+ * Clamps overflow: `setMonth` normalizes Jan 31 + 1 month to Mar 3 rather
+ * than Feb 28/29. When the resulting day-of-month differs from the input,
+ * roll back to the last day of the intended month, which matches PayPal's
+ * "last day of shorter month" billing rule for subs started on days 29-31.
  */
 export function addCalendarMonths(date: Date, months: number): Date {
   const result = new Date(date)
+  const originalDay = date.getDate()
   result.setMonth(result.getMonth() + months)
+  if (result.getDate() !== originalDay) {
+    // setMonth overflowed into the next month — roll back to last day of the
+    // intended month via setDate(0), which sets to "last day of previous
+    // month" relative to the current (overflowed) month.
+    result.setDate(0)
+  }
   return result
 }
 

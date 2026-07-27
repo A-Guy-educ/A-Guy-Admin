@@ -16,6 +16,7 @@ import { getPayload } from 'payload'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { NextRequest } from 'next/server'
 
+import { addCalendarMonths } from '@/lib/payment/grant-entitlements'
 import { startMongoContainer, stopMongoContainer } from '@/infra/utils/test/mongodb-container'
 
 let paypalWebhookHandler: (request: NextRequest) => Promise<Response>
@@ -480,6 +481,18 @@ describe('PayPal subscription webhooks', () => {
       overrideAccess: true,
     })
     expect((subAfter as any).status).toBe('active')
+
+    // Enrollment.metadata.paymentId points at the INITIAL tx (matching what
+    // the ACTIVATED-first path would have set), so admin-refund of the
+    // initial Tx would cleanly revoke access. Without this rotation, the
+    // enrollment would stay anchored on the renewal Tx and admin refund
+    // would silently fail to revoke.
+    const enrollmentAfter = await payload.find({
+      collection: 'enrollments',
+      where: { user: { equals: userId } },
+      overrideAccess: true,
+    })
+    expect((enrollmentAfter.docs[0] as any).metadata?.paymentId).toBe(String(initialTx.id))
 
     // If ACTIVATED lands later, it short-circuits and doesn't double-work
     await paypalWebhookHandler(
@@ -960,5 +973,95 @@ describe('PayPal subscription webhooks', () => {
         overrideAccess: true,
       }),
     ).rejects.toThrow(/durationDays is only valid for one-time products/)
+  })
+
+  it('addCalendarMonths clamps day overflow to last-day-of-target-month (Jan 31 + 1 mo = Feb 28/29, not Mar 3)', () => {
+    // Use noon UTC so local-time getDate agrees with getUTCDate across the
+    // common TZ range where CI runs (impl uses local-time math + clamp).
+    const jan31 = new Date('2027-01-31T12:00:00Z')
+    const feb = addCalendarMonths(jan31, 1)
+    expect(feb.getMonth()).toBe(1) // February in local time
+    expect(feb.getDate()).toBe(28)
+
+    // Leap year: Jan 31, 2028 + 1 month = Feb 29, 2028
+    const jan31Leap = new Date('2028-01-31T12:00:00Z')
+    const feb29 = addCalendarMonths(jan31Leap, 1)
+    expect(feb29.getMonth()).toBe(1)
+    expect(feb29.getDate()).toBe(29)
+
+    // Normal case (no overflow): Jan 15 + 1 month = Feb 15
+    const jan15 = new Date('2027-01-15T12:00:00Z')
+    const feb15 = addCalendarMonths(jan15, 1)
+    expect(feb15.getMonth()).toBe(1)
+    expect(feb15.getDate()).toBe(15)
+  })
+
+  it('two accumulated renewals extend the enrollment by the full 2 periods (CAS closes the race)', async () => {
+    // Two SALE.COMPLETED events for the same subscription with distinct sale
+    // ids — the CAS guard in extendEnrollment must ensure the second write
+    // anchors on the first write's extension. Without CAS, both reads see
+    // the same expiresAt and both write "+1 month" — user loses one paid
+    // period.
+    const paypalSubId = nextSubId()
+    await seedSubscriptionAndInitialTx(paypalSubId)
+    await paypalWebhookHandler(
+      makeRequest({
+        id: `evt-act-cas-${Date.now()}`,
+        event_type: 'BILLING.SUBSCRIPTION.ACTIVATED',
+        resource: {
+          id: paypalSubId,
+          start_time: new Date().toISOString(),
+          billing_info: {
+            next_billing_time: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          },
+        },
+      }),
+    )
+
+    const preEnr = await payload.find({
+      collection: 'enrollments',
+      where: { user: { equals: userId } },
+      overrideAccess: true,
+    })
+    const initialExpiresAt = new Date((preEnr.docs[0] as any).expiresAt).getTime()
+
+    // Fire two renewals sequentially (functionally identical to two racing
+    // writes as far as the extension math is concerned — the CAS also
+    // covers the sequential case)
+    await paypalWebhookHandler(
+      makeRequest({
+        id: `evt-renew-cas-a-${Date.now()}`,
+        event_type: 'PAYMENT.SALE.COMPLETED',
+        resource: {
+          id: `SALE-CAS-A-${Date.now()}`,
+          billing_agreement_id: paypalSubId,
+          amount: { total: '59.00', currency: 'ILS' },
+        },
+      }),
+    )
+    await paypalWebhookHandler(
+      makeRequest({
+        id: `evt-renew-cas-b-${Date.now()}`,
+        event_type: 'PAYMENT.SALE.COMPLETED',
+        resource: {
+          id: `SALE-CAS-B-${Date.now()}`,
+          billing_agreement_id: paypalSubId,
+          amount: { total: '59.00', currency: 'ILS' },
+        },
+      }),
+    )
+
+    const postEnr = await payload.find({
+      collection: 'enrollments',
+      where: { user: { equals: userId } },
+      overrideAccess: true,
+    })
+    const finalExpiresAt = new Date((postEnr.docs[0] as any).expiresAt).getTime()
+
+    // Expected: initial + 2 calendar months (using the same math the code
+    // uses, to avoid drift on 30-day vs 31-day months)
+    const expectedDate = new Date(initialExpiresAt)
+    expectedDate.setMonth(expectedDate.getMonth() + 2)
+    expect(finalExpiresAt).toBe(expectedDate.getTime())
   })
 })

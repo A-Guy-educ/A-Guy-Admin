@@ -87,15 +87,23 @@ export const Transactions: CollectionConfig = {
     },
 
     // Provider's transaction ID (Stripe session ID, PayPal order ID, or
-    // PayPal sale ID for subscription renewals). A `unique` guard is planned
-    // as a follow-up PR gated on a green production duplicate audit (see
-    // PR #267 discussion). The renewal handler already catches duplicate-key
-    // errors defensively so the constraint can be flipped later without
-    // touching the handler code.
+    // PayPal sale ID for subscription renewals). `unique` is required to
+    // close the race window where two concurrent SALE.COMPLETED events
+    // carrying the same sale id but different event ids both find zero
+    // matches in the pre-insert lookup and both create renewal rows —
+    // extendProductEntitlements would then double-extend under distinct
+    // transactionIds. Handler catches E11000 via isDuplicateKeyError and
+    // treats it as a race resolution.
+    //
+    // Deploy note: pre-merge, verify no duplicate providerTransactionId
+    // values exist in prod (see the preflight aggregation in the PR
+    // discussion). If any exist, dedupe before deploy — otherwise
+    // Mongo will refuse to build the unique index and the guard is dead.
     {
       name: 'providerTransactionId',
       type: 'text',
       required: true,
+      unique: true,
       index: true,
       admin: {
         description: 'Transaction ID from the payment provider',
