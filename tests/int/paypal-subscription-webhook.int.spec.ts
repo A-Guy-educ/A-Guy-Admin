@@ -441,6 +441,174 @@ describe('PayPal subscription webhooks', () => {
     expect((enrollments.docs[0] as any).status).toBe('active')
   })
 
+  it('PAYMENT.SALE.COMPLETED arriving before ACTIVATED flips the pending initial tx to succeeded', async () => {
+    // Out-of-order webhook delivery: SALE lands before ACTIVATED. The renewal
+    // handler must flip the initial pending Tx to succeeded, otherwise
+    // ACTIVATED will later short-circuit on sub.status === 'active' and
+    // leave the initial Tx stuck in pending forever.
+    const paypalSubId = nextSubId()
+    const { initialTx, sub } = await seedSubscriptionAndInitialTx(paypalSubId)
+    expect((sub as any).status).toBe('pending')
+
+    const saleId = `SALE-EARLY-${Date.now()}`
+    const res = await paypalWebhookHandler(
+      makeRequest({
+        id: `evt-early-${Date.now()}`,
+        event_type: 'PAYMENT.SALE.COMPLETED',
+        resource: {
+          id: saleId,
+          billing_agreement_id: paypalSubId,
+          amount: { total: '59.00', currency: 'ILS' },
+        },
+      }),
+    )
+    expect(res.status).toBe(200)
+
+    // Initial Tx flipped to succeeded
+    const initialAfter = await payload.findByID({
+      collection: 'transactions',
+      id: initialTx.id,
+      overrideAccess: true,
+    })
+    expect((initialAfter as any).status).toBe('succeeded')
+    expect((initialAfter as any).entitlementsGrantedAt).toBeTruthy()
+
+    // Sub is active
+    const subAfter = await payload.findByID({
+      collection: 'subscriptions',
+      id: sub.id,
+      overrideAccess: true,
+    })
+    expect((subAfter as any).status).toBe('active')
+
+    // If ACTIVATED lands later, it short-circuits and doesn't double-work
+    await paypalWebhookHandler(
+      makeRequest({
+        id: `evt-late-act-${Date.now()}`,
+        event_type: 'BILLING.SUBSCRIPTION.ACTIVATED',
+        resource: {
+          id: paypalSubId,
+          start_time: new Date().toISOString(),
+          billing_info: {
+            next_billing_time: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          },
+        },
+      }),
+    )
+    const initialFinal = await payload.findByID({
+      collection: 'transactions',
+      id: initialTx.id,
+      overrideAccess: true,
+    })
+    expect((initialFinal as any).status).toBe('succeeded')
+  })
+
+  it('renewal currentPeriodEnd matches enrollment expiresAt (no drift)', async () => {
+    const paypalSubId = nextSubId()
+    const { sub } = await seedSubscriptionAndInitialTx(paypalSubId)
+    await paypalWebhookHandler(
+      makeRequest({
+        id: `evt-act-drift-${Date.now()}`,
+        event_type: 'BILLING.SUBSCRIPTION.ACTIVATED',
+        resource: {
+          id: paypalSubId,
+          start_time: new Date().toISOString(),
+          billing_info: {
+            next_billing_time: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          },
+        },
+      }),
+    )
+
+    await paypalWebhookHandler(
+      makeRequest({
+        id: `evt-renew-drift-${Date.now()}`,
+        event_type: 'PAYMENT.SALE.COMPLETED',
+        resource: {
+          id: `SALE-DRIFT-${Date.now()}`,
+          billing_agreement_id: paypalSubId,
+          amount: { total: '59.00', currency: 'ILS' },
+        },
+      }),
+    )
+
+    const refreshedSub = await payload.findByID({
+      collection: 'subscriptions',
+      id: sub.id,
+      overrideAccess: true,
+    })
+    const enrollments = await payload.find({
+      collection: 'enrollments',
+      where: { user: { equals: userId } },
+      overrideAccess: true,
+    })
+    const subEnd = new Date((refreshedSub as any).currentPeriodEnd).getTime()
+    const enrollmentEnd = new Date((enrollments.docs[0] as any).expiresAt).getTime()
+    expect(subEnd).toBe(enrollmentEnd)
+  })
+
+  it('PAYMENT.SALE.REFUNDED on a renewal does NOT cancel the enrollment', async () => {
+    // A partial refund of one recurring charge should not terminate access.
+    // BILLING.SUBSCRIPTION.CANCELLED / EXPIRED are the source of truth for
+    // subscription access termination — refunds only reverse the sale.
+    const paypalSubId = nextSubId()
+    await seedSubscriptionAndInitialTx(paypalSubId)
+    await paypalWebhookHandler(
+      makeRequest({
+        id: `evt-act-refund-noremove-${Date.now()}`,
+        event_type: 'BILLING.SUBSCRIPTION.ACTIVATED',
+        resource: {
+          id: paypalSubId,
+          start_time: new Date().toISOString(),
+          billing_info: {
+            next_billing_time: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          },
+        },
+      }),
+    )
+    const saleId = `SALE-REFUND-KEEP-${Date.now()}`
+    await paypalWebhookHandler(
+      makeRequest({
+        id: `evt-renew-keep-${Date.now()}`,
+        event_type: 'PAYMENT.SALE.COMPLETED',
+        resource: {
+          id: saleId,
+          billing_agreement_id: paypalSubId,
+          amount: { total: '59.00', currency: 'ILS' },
+        },
+      }),
+    )
+
+    // Refund the renewal
+    await paypalWebhookHandler(
+      makeRequest({
+        id: `evt-refund-keep-${Date.now()}`,
+        event_type: 'PAYMENT.SALE.REFUNDED',
+        resource: {
+          id: `REFUND-${Date.now()}`,
+          parent_payment: saleId,
+          amount: { total: '59.00', currency: 'ILS' },
+        },
+      }),
+    )
+
+    // Renewal Tx is marked refunded
+    const renewalTx = await payload.find({
+      collection: 'transactions',
+      where: { providerTransactionId: { equals: saleId } },
+      overrideAccess: true,
+    })
+    expect((renewalTx.docs[0] as any).status).toBe('refunded')
+
+    // But the enrollment stays active — refunds don't cancel subscription access
+    const enrollments = await payload.find({
+      collection: 'enrollments',
+      where: { user: { equals: userId } },
+      overrideAccess: true,
+    })
+    expect((enrollments.docs[0] as any).status).toBe('active')
+  })
+
   it('PAYMENT.SALE.COMPLETED for an already-EXPIRED subscription is ignored (does not resurrect)', async () => {
     const paypalSubId = nextSubId()
     const { sub } = await seedSubscriptionAndInitialTx(paypalSubId)

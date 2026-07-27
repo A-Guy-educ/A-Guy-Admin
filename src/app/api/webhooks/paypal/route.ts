@@ -620,13 +620,17 @@ async function getProductIntervalMonths(
   if (interval === 'month') return 1
   // Missing/unknown interval on a subscription product is a data-quality bug
   // (schema requires it; a direct-Mongo write could bypass the validator).
-  // Warn loudly and default to monthly so the sub still functions, but the
-  // mismatch is observable in logs instead of silently drifting.
-  payload.logger.warn(
+  // THROW rather than defaulting: an annual PayPal plan silently granting
+  // only one month of access per renewal is a customer-facing bug. Returning
+  // 500 to PayPal triggers webhook retries and surfaces the misconfiguration
+  // in ops alerts instead of degrading access silently.
+  payload.logger.error(
     { productId, interval },
-    'getProductIntervalMonths: subscription product missing/unknown interval — defaulting to monthly. Fix the product row.',
+    'getProductIntervalMonths: subscription product missing/unknown interval — refusing to guess. Fix the product row and PayPal will retry.',
   )
-  return 1
+  throw new Error(
+    `Subscription product ${productId} has missing/unknown interval (${interval ?? 'undefined'}). Cannot compute renewal period.`,
+  )
 }
 
 async function handleSubscriptionActivated(
@@ -779,9 +783,17 @@ async function handleSubscriptionRenewal(
     return
   }
 
-  const amountValue = event.resource.amount?.total
-    ? Math.round(parseFloat(event.resource.amount.total) * 100)
-    : 0
+  // Guard against non-numeric amount strings — a malformed payload would
+  // otherwise pass NaN into payload.create and 500 the whole handler.
+  const rawAmount = event.resource.amount?.total
+  const parsedAmount = rawAmount !== undefined ? parseFloat(rawAmount) : NaN
+  if (rawAmount !== undefined && !Number.isFinite(parsedAmount)) {
+    payload.logger.warn(
+      { paypalSubscriptionId, saleId, rawAmount },
+      'PayPal webhook: PAYMENT.SALE.COMPLETED amount.total is not a valid number — falling back to 0',
+    )
+  }
+  const amountValue = Number.isFinite(parsedAmount) ? Math.round(parsedAmount * 100) : 0
   const currency = event.resource.amount?.currency ?? 'ILS'
 
   // Look up or create the renewal Tx. Idempotency keys on
@@ -847,7 +859,12 @@ async function handleSubscriptionRenewal(
   const intervalMonths = await getProductIntervalMonths(payload, productId)
   // Grant BEFORE flipping to succeeded — if extend throws, the Tx stays
   // pending and the next webhook re-delivery retries the extension.
-  await extendProductEntitlements(userId, productId, String(renewalTx.id), intervalMonths)
+  const { maxEnrollmentEndMs } = await extendProductEntitlements(
+    userId,
+    productId,
+    String(renewalTx.id),
+    intervalMonths,
+  )
 
   const nowIso = new Date().toISOString()
   await payload.update({
@@ -860,7 +877,42 @@ async function handleSubscriptionRenewal(
     overrideAccess: true,
   })
 
-  const nextEndIso = addCalendarMonths(new Date(), intervalMonths).toISOString()
+  // Out-of-order webhook delivery: if SALE.COMPLETED lands before ACTIVATED,
+  // we need to flip the pending initial transaction to succeeded too — the
+  // ACTIVATED handler will short-circuit later on subscription.status ===
+  // 'active' and would otherwise leave the initial Tx stuck in pending.
+  if (subscription.status === 'pending') {
+    const initialTxId = resolveId(subscription.initialTransaction)
+    if (initialTxId) {
+      const initialTx = await payload.findByID({
+        collection: 'transactions',
+        id: initialTxId,
+        depth: 0,
+        overrideAccess: true,
+      })
+      if ((initialTx as { status?: string }).status === 'pending') {
+        await payload.update({
+          collection: 'transactions',
+          id: initialTxId,
+          data: {
+            status: 'succeeded',
+            entitlementsGrantedAt: nowIso,
+          },
+          overrideAccess: true,
+        })
+      }
+    }
+  }
+
+  // Derive currentPeriodEnd from the just-extended enrollment expiries so
+  // Subscription.currentPeriodEnd stays in lockstep with Enrollment.expiresAt.
+  // The ACTIVATED path prefers PayPal's next_billing_time, but SALE events
+  // don't carry it — falling back on the enrollment-derived value keeps the
+  // two rows consistent instead of drifting apart cycle by cycle.
+  const nextEndIso =
+    maxEnrollmentEndMs > 0
+      ? new Date(maxEnrollmentEndMs).toISOString()
+      : addCalendarMonths(new Date(), intervalMonths).toISOString()
   await payload.update({
     collection: 'subscriptions',
     id: subscription.id,
@@ -896,8 +948,10 @@ async function handleSaleRefunded(
   payload: Awaited<ReturnType<typeof getPayload>>,
   event: PayPalWebhookEvent,
 ): Promise<void> {
-  const parentSaleId =
-    event.resource.parent_payment ?? event.resource.sale_id ?? event.resource.id
+  // parent_payment (v1) / sale_id (v2 fallback) point at the ORIGINAL sale
+  // we recorded. Do NOT fall back to event.resource.id — that's the refund's
+  // own id and would never match any providerTransactionId we stored.
+  const parentSaleId = event.resource.parent_payment ?? event.resource.sale_id
   if (!parentSaleId) {
     payload.logger.warn(
       { eventId: event.id },

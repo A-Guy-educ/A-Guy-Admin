@@ -316,7 +316,7 @@ export async function extendProductEntitlements(
   productId: string,
   transactionId: string,
   intervalMonths: number,
-): Promise<void> {
+): Promise<{ maxEnrollmentEndMs: number }> {
   const payload = await getPayload({ config })
 
   // Downgraded from throw to warn+return: a bad intervalMonths is a config
@@ -327,7 +327,7 @@ export async function extendProductEntitlements(
       { userId, productId, transactionId, intervalMonths },
       'extendProductEntitlements: intervalMonths must be positive — skipping',
     )
-    return
+    return { maxEnrollmentEndMs: 0 }
   }
 
   const product = await payload.findByID({
@@ -340,7 +340,7 @@ export async function extendProductEntitlements(
 
   const blocks =
     ((product as { contents?: unknown }).contents as ProductContentBlock[] | undefined) ?? []
-  if (blocks.length === 0) return
+  if (blocks.length === 0) return { maxEnrollmentEndMs: 0 }
 
   // Extend Enrollments for every courseBlock, tracking the maximum resulting
   // expiresAt so feature entitlements can anchor on the same reference point.
@@ -413,6 +413,8 @@ export async function extendProductEntitlements(
   if (featureGrants.length > 0) {
     await pushFeatureEntitlements(payload, userId, featureGrants, transactionId)
   }
+
+  return { maxEnrollmentEndMs }
 }
 
 /**
