@@ -617,7 +617,16 @@ async function getProductIntervalMonths(
   })
   const interval = (product as { interval?: string }).interval
   if (interval === 'year') return 12
-  return 1 // default month
+  if (interval === 'month') return 1
+  // Missing/unknown interval on a subscription product is a data-quality bug
+  // (schema requires it; a direct-Mongo write could bypass the validator).
+  // Warn loudly and default to monthly so the sub still functions, but the
+  // mismatch is observable in logs instead of silently drifting.
+  payload.logger.warn(
+    { productId, interval },
+    'getProductIntervalMonths: subscription product missing/unknown interval — defaulting to monthly. Fix the product row.',
+  )
+  return 1
 }
 
 async function handleSubscriptionActivated(
@@ -970,6 +979,12 @@ async function handleSubscriptionExpired(
   if (initialTxId && !txIds.includes(String(initialTxId))) {
     txIds.push(String(initialTxId))
   }
+  // Also revoke against the subscription's own ID — covers the fallback in
+  // handleSubscriptionActivated where a subscription without an
+  // initialTransaction gets its entitlements granted under `subscription.id`
+  // as a synthetic paymentId. Without this the fallback-granted enrollment
+  // leaks through EXPIRED.
+  txIds.push(String(subscription.id))
 
   for (const txId of txIds) {
     await revokeProductEntitlements({ payload, userId, transactionId: txId })

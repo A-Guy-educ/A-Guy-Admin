@@ -441,6 +441,47 @@ describe('PayPal subscription webhooks', () => {
     expect((enrollments.docs[0] as any).status).toBe('active')
   })
 
+  it('BILLING.SUBSCRIPTION.SUSPENDED sets status=suspended and leaves enrollment active', async () => {
+    const paypalSubId = nextSubId()
+    const { sub } = await seedSubscriptionAndInitialTx(paypalSubId)
+    await paypalWebhookHandler(
+      makeRequest({
+        id: `evt-act-susp-${Date.now()}`,
+        event_type: 'BILLING.SUBSCRIPTION.ACTIVATED',
+        resource: {
+          id: paypalSubId,
+          start_time: new Date().toISOString(),
+          billing_info: {
+            next_billing_time: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          },
+        },
+      }),
+    )
+
+    await paypalWebhookHandler(
+      makeRequest({
+        id: `evt-susp-${Date.now()}`,
+        event_type: 'BILLING.SUBSCRIPTION.SUSPENDED',
+        resource: { id: paypalSubId },
+      }),
+    )
+
+    const refreshedSub = await payload.findByID({
+      collection: 'subscriptions',
+      id: sub.id,
+      overrideAccess: true,
+    })
+    expect((refreshedSub as any).status).toBe('suspended')
+
+    // Enrollment stays active — PayPal retries, so we don't revoke on SUSPENDED.
+    const enrollments = await payload.find({
+      collection: 'enrollments',
+      where: { user: { equals: userId } },
+      overrideAccess: true,
+    })
+    expect((enrollments.docs[0] as any).status).toBe('active')
+  })
+
   it('activate → renew → EXPIRED cancels the enrollment (revokes against renewal tx)', async () => {
     // End-to-end lifecycle proof — the enrollment must end up cancelled even
     // when EXPIRED fires after one or more renewals have rotated

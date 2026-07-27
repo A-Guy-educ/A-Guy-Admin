@@ -24,20 +24,30 @@ export const Products: CollectionConfig = {
   },
   hooks: {
     beforeValidate: [
-      async ({ data, req }) => {
+      async ({ data, req, originalDoc, operation }) => {
         if (!data) return data
 
         // Subscription products draw their access period from the billing
         // `interval` — a durationDays override would silently disagree with
-        // the recurring extension applied on each successful renewal.
+        // the recurring extension applied on each successful renewal. Only
+        // reject when durationDays is being newly set (create) or changed
+        // to a positive value on update; existing rows carrying a legacy
+        // durationDays stay editable so admins can save unrelated fields
+        // and clear the value themselves.
         if (
           data.billingType === 'subscription' &&
           typeof data.durationDays === 'number' &&
           data.durationDays > 0
         ) {
-          throw new Error(
-            'durationDays is only valid for one-time products. Subscription access period is set by the billing interval.',
-          )
+          const isChange =
+            operation !== 'update' ||
+            (originalDoc as { durationDays?: unknown } | undefined)?.durationDays !==
+              data.durationDays
+          if (isChange) {
+            throw new Error(
+              'durationDays is only valid for one-time products. Subscription access period is set by the billing interval.',
+            )
+          }
         }
 
         if (!data.contents || !Array.isArray(data.contents)) return data

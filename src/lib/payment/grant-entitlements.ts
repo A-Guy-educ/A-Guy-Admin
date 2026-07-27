@@ -333,18 +333,31 @@ export async function extendProductEntitlements(
     ((product as { contents?: unknown }).contents as ProductContentBlock[] | undefined) ?? []
   if (blocks.length === 0) return
 
-  // Extend Enrollments for every courseBlock
+  // Extend Enrollments for every courseBlock, tracking the maximum resulting
+  // expiresAt so feature entitlements can anchor on the same reference point.
+  // Without this, features would anchor on `now + intervalMonths` while
+  // enrollments anchor on `max(current, now) + intervalMonths` — a late
+  // webhook would leave features expiring earlier than enrollments for the
+  // same purchase, and the drift compounds over renewals.
+  let maxEnrollmentEndMs = 0
   for (const block of blocks) {
     if (block.blockType !== 'courseBlock' || !block.course) continue
     const courseId = typeof block.course === 'string' ? block.course : block.course.id
-    await extendEnrollment(payload, userId, courseId, intervalMonths, transactionId)
+    const newEndMs = await extendEnrollment(payload, userId, courseId, intervalMonths, transactionId)
+    if (newEndMs !== null) {
+      maxEnrollmentEndMs = Math.max(maxEnrollmentEndMs, newEndMs)
+    }
   }
 
-  // Re-push feature entitlements under the renewal transaction, expiring at
-  // the end of the new period. `pushFeatureEntitlements` is guarded by
-  // (transactionId, key) so a replay of the same sale is a no-op.
+  // Feature grants anchor on the LATEST enrollment expiry produced by this
+  // renewal (or `now + intervalMonths` for pure-feature products with no
+  // courseBlocks). `pushFeatureEntitlements` is guarded by (transactionId,
+  // key) so a replay of the same sale is a no-op.
   const featureGrants: FeatureGrant[] = []
-  const periodEndIso = addCalendarMonths(new Date(), intervalMonths).toISOString()
+  const periodEndIso =
+    maxEnrollmentEndMs > 0
+      ? new Date(maxEnrollmentEndMs).toISOString()
+      : addCalendarMonths(new Date(), intervalMonths).toISOString()
 
   for (const block of blocks) {
     if (block.blockType !== 'featureBlock' || !block.feature) continue
@@ -393,13 +406,18 @@ export async function extendProductEntitlements(
   }
 }
 
+/**
+ * Extend an Enrollment. Returns the new expiresAt in ms (used by the caller
+ * to compute a shared feature-grant anchor across the whole product), or
+ * `null` for lifetime enrollments where there's nothing to extend.
+ */
 async function extendEnrollment(
   payload: Awaited<ReturnType<typeof getPayload>>,
   userId: string,
   courseId: string,
   intervalMonths: number,
   transactionId: string,
-): Promise<void> {
+): Promise<number | null> {
   const existing = await payload.find({
     collection: 'enrollments',
     where: { and: [{ user: { equals: userId } }, { course: { equals: courseId } }] },
@@ -410,9 +428,9 @@ async function extendEnrollment(
 
   if (existing.docs.length === 0) {
     // No existing enrollment — fresh grant with expiry anchored at now.
-    const expiresAt = addCalendarMonths(new Date(), intervalMonths).toISOString()
-    await upsertEnrollment(payload, userId, courseId, expiresAt, transactionId)
-    return
+    const expiresAt = addCalendarMonths(new Date(), intervalMonths)
+    await upsertEnrollment(payload, userId, courseId, expiresAt.toISOString(), transactionId)
+    return expiresAt.getTime()
   }
 
   const current = existing.docs[0] as {
@@ -423,7 +441,9 @@ async function extendEnrollment(
   }
 
   // Idempotent replay
-  if (current.metadata?.paymentId === transactionId && current.status === 'active') return
+  if (current.metadata?.paymentId === transactionId && current.status === 'active') {
+    return current.expiresAt ? new Date(current.expiresAt).getTime() : null
+  }
 
   // Lifetime enrollment — no expiresAt to extend, but STILL rotate paymentId
   // so revoke against the latest paying transaction works. Without this
@@ -445,14 +465,14 @@ async function extendEnrollment(
       },
       overrideAccess: true,
     })
-    return
+    return null
   }
 
   // Anchor on the LATER of {current expiresAt, now} so a long-expired sub
   // that reactivates doesn't grant a period ending in the past.
   const anchor = new Date(current.expiresAt).getTime()
   const baseDate = new Date(Math.max(anchor, Date.now()))
-  const extendedIso = addCalendarMonths(baseDate, intervalMonths).toISOString()
+  const extendedDate = addCalendarMonths(baseDate, intervalMonths)
 
   await payload.update({
     collection: 'enrollments',
@@ -460,7 +480,7 @@ async function extendEnrollment(
     data: {
       status: 'active',
       grantMethod: 'payment',
-      expiresAt: extendedIso,
+      expiresAt: extendedDate.toISOString(),
       cancelledAt: null,
       metadata: {
         ...(current.metadata ?? {}),
@@ -469,6 +489,8 @@ async function extendEnrollment(
     },
     overrideAccess: true,
   })
+
+  return extendedDate.getTime()
 }
 
 /**
