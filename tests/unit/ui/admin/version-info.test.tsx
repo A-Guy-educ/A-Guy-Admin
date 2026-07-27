@@ -2,11 +2,7 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import React from 'react'
 import { cleanup, render, screen } from '@testing-library/react'
-
-// Mock the package.json require call — actual version from package.json
-vi.mock('../../../../package.json', () => ({
-  default: { version: '0.27.0' },
-}))
+import pkg from '../../../../package.json'
 
 const originalEnv = { ...process.env }
 
@@ -27,7 +23,7 @@ describe('VersionInfo', () => {
     vi.resetModules()
     const { VersionInfo } = await import('@/ui/admin/VersionInfo')
     render(<VersionInfo />)
-    expect(screen.getByText('v0.27.0')).toBeTruthy()
+    expect(screen.getByText(`v${pkg.version}`)).toBeTruthy()
   })
 
   it('should prefer NEXT_PUBLIC_APP_VERSION over package.json version', async () => {
