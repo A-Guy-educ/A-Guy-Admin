@@ -467,6 +467,15 @@ const sectionHooks: CollectionConfig['hooks'] = {
   afterChange: [
     async ({ doc, previousDoc, req }) => {
       if (req.context?._skipExerciseBlockSync) return doc
+      // Content-promotion imports carry exercise.blocks (the sectionRef
+      // playlist) verbatim on the parent exercise doc, so re-syncing here
+      // would either duplicate an entry or, worse, throw "Not Found" when
+      // the parent exercise isn't in the bundle (playlist-walker on the
+      // export side can pull in a cross-course section — see
+      // Exercises/index.ts:afterChange for the sibling incident/fix in
+      // PR #250). Same guard rationale as the section beforeChange hooks
+      // above (which already check this flag).
+      if (isContentPromotionImportRequest(req)) return doc
 
       const newExerciseId =
         typeof doc.exercise === 'string' ? doc.exercise : (doc.exercise as { id?: string })?.id
@@ -506,6 +515,8 @@ const sectionHooks: CollectionConfig['hooks'] = {
   afterDelete: [
     async ({ doc, req }) => {
       if (req.context?._skipExerciseBlockSync) return doc
+      // Same content-promotion skip as afterChange above.
+      if (isContentPromotionImportRequest(req)) return doc
 
       const exerciseId =
         typeof doc.exercise === 'string' ? doc.exercise : (doc.exercise as { id?: string })?.id

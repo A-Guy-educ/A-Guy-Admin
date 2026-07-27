@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.28.0 — 2026-07-27
+
+### Features
+- Deep-clone course with chapters, lessons, exercises, and sections (#257)
+- Wire sections into content-promotion export and import (#253)
+
+### Fixes
+- Derive lesson title from imported filename (#254)
+- Anchor Hebrew prefix strip on literal separator in lesson-import (#256)
+- Skip afterChange/afterDelete block-sync on content-promotion imports (#250)
+
+### Docs
+- Fix stale healing rationale and tighten hook-crash attribution for content-promotion (#250)
+
 ## v0.27.0 — 2026-07-19
 
 ### Features
@@ -1819,6 +1833,15 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- chore: Release v0.28.0 ([#264](https://github.com/A-Guy-educ/A-Guy-Admin/pull/264)) — @aguyshayb
+- fix(course-duplication): Deep-clone course + chapters + lessons + exercises ([#257](https://github.com/A-Guy-educ/A-Guy-Admin/pull/257)) — @aguyshayb
+- fix(lesson-import): anchor Hebrew prefix strip on literal separator ([#256](https://github.com/A-Guy-educ/A-Guy-Admin/pull/256)) — @aguyshayb
+- fix(lesson-import): derive lesson title from filename ([#254](https://github.com/A-Guy-educ/A-Guy-Admin/pull/254)) — @aguyshayb
+- feat(content-promotion): wire sections into export and import ([#253](https://github.com/A-Guy-educ/A-Guy-Admin/pull/253)) — @aguyshayb
+- fix(exercises): skip afterChange/afterDelete block-sync on content-promotion imports ([#250](https://github.com/A-Guy-educ/A-Guy-Admin/pull/250)) — @aguyshayb
+## [v0.27.0] - 2026-07-19
+
+- promote: dev -> main (v0.27.0) ([#249](https://github.com/A-Guy-educ/A-Guy-Admin/pull/249)) — @aguyshayb
 - chore: Release v0.27.0 ([#248](https://github.com/A-Guy-educ/A-Guy-Admin/pull/248)) — @aguyshayb
 - #246: Add Course Popularity admin page (counts per course from course-s… ([#247](https://github.com/A-Guy-educ/A-Guy-Admin/pull/247)) — @kodyade[bot]
 - #238: Adjust LaTeX-to-blocks converter to produce Sections ([#241](https://github.com/A-Guy-educ/A-Guy-Admin/pull/241)) — @kodyade[bot]

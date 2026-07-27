@@ -10,7 +10,20 @@ import {
   successBannerStyle,
 } from '@/ui/admin/PdfConversion/styles'
 
-const PROMOTED_COLLECTIONS = ['media', 'courses', 'chapters', 'lessons', 'exercises'] as const
+// Kept in sync with `@/server/services/content-promotion/constants`. Not
+// imported from there directly because that module lives under `@/server`
+// and importing into a `'use client'` file drags server-only types into
+// the client bundle. If you add a promoted collection on the server side,
+// add it here too — otherwise the import-results table below silently
+// drops that collection's per-collection stats.
+const PROMOTED_COLLECTIONS = [
+  'media',
+  'courses',
+  'chapters',
+  'lessons',
+  'exercises',
+  'sections',
+] as const
 type PromotedCollection = (typeof PROMOTED_COLLECTIONS)[number]
 
 interface ImportReport {

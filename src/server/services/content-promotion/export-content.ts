@@ -65,9 +65,32 @@ const STRIPPED_MEDIA_FIELDS = new Set(['url', 'filesize', 'width', 'height'])
 export function collectExerciseRefsFromLessonBlocks(
   lessons: Record<string, unknown>[],
 ): Set<string> {
+  return collectRefsFromBlocksPlaylist(lessons, 'exerciseRef', 'exercise')
+}
+
+/**
+ * Mirror of `collectExerciseRefsFromLessonBlocks` for the exercise-side
+ * playlist: `exercise.blocks` is a JSON-string textarea listing every
+ * child section as `{ blockType: 'sectionRef', section: '<id>' }`. Same
+ * "playlist is the source of truth" rationale — the aggregator hook on
+ * exercises reads this list to concatenate section content, so any section
+ * the playlist references must be in the bundle even if `section.exercise`
+ * points elsewhere (source-side drift).
+ */
+export function collectSectionRefsFromExerciseBlocks(
+  exercises: Record<string, unknown>[],
+): Set<string> {
+  return collectRefsFromBlocksPlaylist(exercises, 'sectionRef', 'section')
+}
+
+function collectRefsFromBlocksPlaylist<K extends string>(
+  parents: Record<string, unknown>[],
+  wantedBlockType: string,
+  refField: K,
+): Set<string> {
   const ids = new Set<string>()
-  for (const lesson of lessons) {
-    const raw = lesson.blocks
+  for (const parent of parents) {
+    const raw = parent.blocks
     if (typeof raw !== 'string' || raw.length === 0) continue
     let parsed: unknown
     try {
@@ -78,9 +101,10 @@ export function collectExerciseRefsFromLessonBlocks(
     if (!Array.isArray(parsed)) continue
     for (const block of parsed) {
       if (!block || typeof block !== 'object') continue
-      const b = block as { blockType?: unknown; exercise?: unknown }
-      if (b.blockType !== 'exerciseRef') continue
-      if (typeof b.exercise === 'string' && b.exercise.length > 0) ids.add(b.exercise)
+      const b = block as Record<string, unknown>
+      if (b.blockType !== wantedBlockType) continue
+      const ref = b[refField]
+      if (typeof ref === 'string' && ref.length > 0) ids.add(ref)
     }
   }
   return ids
@@ -183,8 +207,12 @@ function collectMediaIdsFromDoc(
     pushArr(doc.mediaFiles)
   } else if (collection === 'lessons') {
     pushArr(doc.contentFiles)
-  } else if (collection === 'exercises') {
-    pushId(doc.sourceDoc)
+  } else if (collection === 'exercises' || collection === 'sections') {
+    // Sections use the same ContentSchema as exercises (see
+    // sectionhandoff.md), so `content.blocks` has the same
+    // rich-text/MCQ shape with the same `mediaIds`/`options[].content`
+    // paths — one walk covers both.
+    if (collection === 'exercises') pushId(doc.sourceDoc)
     const content = doc.content as Record<string, unknown> | undefined
     const blocks = (content?.blocks as unknown[]) ?? []
     for (const block of blocks) {
@@ -225,6 +253,7 @@ export async function exportContent(
     chapters: 0,
     lessons: 0,
     exercises: 0,
+    sections: 0,
   }
   const collections: BundleManifest['collections'] = {
     media: [],
@@ -232,6 +261,7 @@ export async function exportContent(
     chapters: [],
     lessons: [],
     exercises: [],
+    sections: [],
   }
 
   // 1. Pull the scoped tree by walking the required parent refs. We used to
@@ -299,12 +329,56 @@ export async function exportContent(
   }
   const exerciseDocs = [...exerciseDocsByParent, ...exerciseDocsFromPlaylist]
 
+  // 1c. Pull sections for every scoped exercise, then union in any sections
+  //     referenced by exercise.blocks playlists but missed by
+  //     `section.exercise in [...]` (same "playlist is the source of truth"
+  //     rationale as the exercise-side union above). Sections were added as
+  //     a new layer between exercises and question content (see
+  //     sectionhandoff.md); the aggregator hook on Exercises reads
+  //     `exercise.blocks` to concatenate section content at read time, so
+  //     the playlist governs what actually renders.
+  const exerciseIds = exerciseDocs
+    .map((e) => (e as { id?: unknown }).id)
+    .filter((id): id is string => typeof id === 'string')
+  const sectionDocsByParent =
+    exerciseIds.length > 0
+      ? await fetchDocsByFilter(payload, req, 'sections', {
+          field: 'exercise',
+          ids: exerciseIds,
+        })
+      : []
+  const playlistSectionIds = collectSectionRefsFromExerciseBlocks(exerciseDocs)
+  const alreadyPulledSections = new Set(
+    sectionDocsByParent
+      .map((d) => (d as { id?: unknown }).id)
+      .filter((id): id is string => typeof id === 'string'),
+  )
+  const missingSectionIds = [...playlistSectionIds].filter((id) => !alreadyPulledSections.has(id))
+  const sectionDocsFromPlaylist =
+    missingSectionIds.length > 0
+      ? await fetchDocsByFilter(payload, req, 'sections', {
+          field: 'id',
+          ids: missingSectionIds,
+        })
+      : []
+  if (sectionDocsFromPlaylist.length > 0) {
+    payload.logger.info(
+      {
+        recoveredFromPlaylist: sectionDocsFromPlaylist.length,
+        missingButNotFound: missingSectionIds.length - sectionDocsFromPlaylist.length,
+      },
+      '[content-promotion/export] Recovered sections referenced by exercise.blocks that the section.exercise filter missed',
+    )
+  }
+  const sectionDocs = [...sectionDocsByParent, ...sectionDocsFromPlaylist]
+
   // 2. Walk for media IDs referenced by any of the scoped docs.
   const referencedMediaIds = new Set<string>()
   for (const doc of courseDocs) collectMediaIdsFromDoc(doc, 'courses', referencedMediaIds)
   for (const doc of chapterDocs) collectMediaIdsFromDoc(doc, 'chapters', referencedMediaIds)
   for (const doc of lessonDocs) collectMediaIdsFromDoc(doc, 'lessons', referencedMediaIds)
   for (const doc of exerciseDocs) collectMediaIdsFromDoc(doc, 'exercises', referencedMediaIds)
+  for (const doc of sectionDocs) collectMediaIdsFromDoc(doc, 'sections', referencedMediaIds)
 
   // 3. Fetch only the media records actually referenced by the scoped tree.
   const mediaDocs = (
@@ -381,6 +455,7 @@ export async function exportContent(
     chapters: chapterDocs,
     lessons: lessonDocs,
     exercises: exerciseDocs,
+    sections: sectionDocs,
   }
   for (const collection of PROMOTED_COLLECTIONS) {
     if (collection === 'media') continue

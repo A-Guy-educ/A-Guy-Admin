@@ -107,11 +107,7 @@ export async function importTextLessonFromFile(
 
   const tenantId = await getDefaultTenantId(req.payload)
 
-  const lessonTitle = deriveLessonTitle({
-    lessonName: parsed.lessonName,
-    filename: input.filename,
-    firstExerciseSubtopic: parsed.exercises[0]?.subtopic,
-  })
+  const lessonTitle = deriveLessonTitle({ filename: input.filename })
   const order = await resolveLessonOrder(req, input.chapterId)
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

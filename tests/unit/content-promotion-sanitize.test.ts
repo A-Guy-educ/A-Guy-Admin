@@ -34,6 +34,7 @@ const baseManifest = (collections: BundleManifest['collections']): BundleManifes
     chapters: collections.chapters.length,
     lessons: collections.lessons.length,
     exercises: collections.exercises.length,
+    sections: collections.sections.length,
   },
   collections,
 })
@@ -46,6 +47,7 @@ describe('parseBundle', () => {
       chapters: [],
       lessons: [],
       exercises: [],
+      sections: [],
     })
     const buffer = await buildBundle(manifest)
     const { manifest: parsed } = await parseBundle(buffer)

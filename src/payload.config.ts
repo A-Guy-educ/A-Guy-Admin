@@ -58,6 +58,7 @@ import { importExerciseFromLatex } from '@/server/payload/endpoints/exercises/im
 import { importExerciseFromLesson } from '@/server/payload/endpoints/exercises/import-from-lesson'
 import { translateContentEndpoint } from '@/server/payload/endpoints/translation/translate-content'
 import { cascadeDeleteEndpoint } from '@/server/payload/endpoints/cascade-delete'
+import { duplicateCourseEndpoint } from '@/server/payload/endpoints/courses/duplicate'
 import { duplicateLessonEndpoint } from '@/server/payload/endpoints/lessons/duplicate'
 import { exportLessonEndpoint } from '@/server/payload/endpoints/lessons/export'
 import { defaultLexical } from '@/server/payload/fields/defaultLexical'
@@ -316,6 +317,11 @@ export default buildConfig({
       path: '/lessons/:id/duplicate-variation',
       method: 'post',
       handler: (req: PayloadRequest) => duplicateLessonEndpoint(req),
+    },
+    {
+      path: '/courses/:id/duplicate-course',
+      method: 'post',
+      handler: (req: PayloadRequest) => duplicateCourseEndpoint(req),
     },
     {
       path: '/lessons/:id/export',

@@ -15,6 +15,7 @@ export const PROMOTED_COLLECTIONS = [
   'chapters',
   'lessons',
   'exercises',
+  'sections',
 ] as const
 
 export type PromotedCollection = (typeof PROMOTED_COLLECTIONS)[number]
@@ -55,5 +56,13 @@ export const REFERENCE_FIELDS: Record<PromotedCollection, ReferenceField[]> = {
     { path: 'chapter', hasMany: false, target: 'chapters' },
     { path: 'course', hasMany: false, target: 'courses' },
     { path: 'sourceDoc', hasMany: false, target: 'media' },
+  ],
+  sections: [
+    { path: 'exercise', hasMany: false, target: 'exercises' },
+    // Denorm caches (mirror the exercise's chain); still declared so the
+    // remap walker rewrites them when a chain doc's id gets remapped.
+    { path: 'lesson', hasMany: false, target: 'lessons' },
+    { path: 'chapter', hasMany: false, target: 'chapters' },
+    { path: 'course', hasMany: false, target: 'courses' },
   ],
 }
