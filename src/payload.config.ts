@@ -41,6 +41,7 @@ import { Posts } from '@/server/payload/collections/Posts'
 import { PricingPlans } from '@/server/payload/collections/PricingPlans'
 import { Products } from '@/server/payload/collections/Products'
 import { Prompts } from '@/server/payload/collections/Prompts'
+import { Subscriptions } from '@/server/payload/collections/Subscriptions'
 import { TeacherProfiles } from '@/server/payload/collections/TeacherProfiles'
 import { Tenants } from '@/server/payload/collections/Tenants'
 import { Transactions } from '@/server/payload/collections/Transactions'
@@ -250,6 +251,7 @@ export default buildConfig({
     Products,
     AccessCodes,
     Transactions,
+    Subscriptions,
     PaymentStats,
     WebhookEvents,
     MCPAuditLogs,

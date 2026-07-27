@@ -21,8 +21,12 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 
 import { serializePaymentError } from '@/lib/payment/error-log'
-import { grantProductEntitlements } from '@/lib/payment/grant-entitlements'
+import {
+  extendProductEntitlements,
+  grantProductEntitlements,
+} from '@/lib/payment/grant-entitlements'
 import { verifyPayPalWebhook } from '@/lib/payment/paypal'
+import { revokeProductEntitlements } from '@/lib/payment/revoke-entitlements'
 import { sendPurchaseReceipt } from '@/server/email/services/purchase-receipt-service'
 
 interface PayPalWebhookResource {
@@ -30,8 +34,27 @@ interface PayPalWebhookResource {
   supplementary_data?: {
     related_ids?: {
       order_id?: string
+      subscription_id?: string
     }
   }
+  // Subscription-specific fields (BILLING.SUBSCRIPTION.*)
+  status?: string
+  plan_id?: string
+  start_time?: string
+  billing_info?: {
+    next_billing_time?: string
+    last_payment?: { time?: string; amount?: { value?: string; currency_code?: string } }
+    cycle_executions?: Array<{
+      tenure_type?: string
+      sequence?: number
+      cycles_completed?: number
+      cycles_remaining?: number
+    }>
+  }
+  // Sale-specific fields (PAYMENT.SALE.COMPLETED)
+  billing_agreement_id?: string
+  amount?: { total?: string; currency?: string }
+  custom?: string
 }
 
 interface PayPalWebhookEvent {
@@ -475,8 +498,370 @@ async function handleEvent(
       break
     }
 
+    case 'BILLING.SUBSCRIPTION.ACTIVATED': {
+      await handleSubscriptionActivated(payload, event)
+      break
+    }
+
+    case 'PAYMENT.SALE.COMPLETED': {
+      await handleSubscriptionRenewal(payload, event)
+      break
+    }
+
+    case 'BILLING.SUBSCRIPTION.CANCELLED': {
+      await updateSubscriptionState(payload, event, {
+        status: 'cancelled',
+        cancelledAt: new Date().toISOString(),
+        cancelAtPeriodEnd: true,
+      })
+      break
+    }
+
+    case 'BILLING.SUBSCRIPTION.SUSPENDED': {
+      await updateSubscriptionState(payload, event, { status: 'suspended' })
+      break
+    }
+
+    case 'BILLING.SUBSCRIPTION.EXPIRED': {
+      await handleSubscriptionExpired(payload, event)
+      break
+    }
+
+    case 'BILLING.SUBSCRIPTION.PAYMENT.FAILED': {
+      await updateSubscriptionState(payload, event, { status: 'past_due' })
+      break
+    }
+
     default:
       // Unhandled event type — acknowledge without processing
       break
   }
+}
+
+/**
+ * Look up a Subscription by its PayPal subscription ID. Returns null (with a
+ * warn log) if not found — most likely a stray webhook for a subscription
+ * created outside our checkout flow, or one that predates this collection.
+ */
+async function findSubscriptionByPaypalId(
+  payload: Awaited<ReturnType<typeof getPayload>>,
+  paypalSubscriptionId: string,
+  eventType: string,
+): Promise<{
+  id: string
+  status: string
+  user: string | { id: string }
+  product: string | { id: string }
+  initialTransaction?: string | { id: string } | null
+  tenant?: string | { id: string } | null
+} | null> {
+  const found = await payload.find({
+    collection: 'subscriptions',
+    where: { paypalSubscriptionId: { equals: paypalSubscriptionId } },
+    limit: 1,
+    depth: 0,
+    overrideAccess: true,
+  })
+  if (found.totalDocs === 0) {
+    payload.logger.warn(
+      { paypalSubscriptionId, eventType },
+      'PayPal webhook: subscription not found — ignoring',
+    )
+    return null
+  }
+  return found.docs[0] as {
+    id: string
+    status: string
+    user: string | { id: string }
+    product: string | { id: string }
+    initialTransaction?: string | { id: string } | null
+    tenant?: string | { id: string } | null
+  }
+}
+
+function resolveId(rel: string | { id: string } | null | undefined): string | null {
+  if (!rel) return null
+  return typeof rel === 'string' ? rel : rel.id
+}
+
+/**
+ * Convert an ISO period-end string from PayPal into an interval-in-months
+ * estimate. We use the product's declared `interval` (`month` / `year`) as
+ * ground truth; the webhook's `next_billing_time` is only used to set the
+ * period boundaries on the Subscription record.
+ */
+async function getProductIntervalMonths(
+  payload: Awaited<ReturnType<typeof getPayload>>,
+  productId: string,
+): Promise<number> {
+  const product = await payload.findByID({
+    collection: 'products',
+    id: productId,
+    depth: 0,
+    overrideAccess: true,
+  })
+  const interval = (product as { interval?: string }).interval
+  if (interval === 'year') return 12
+  return 1 // default month
+}
+
+async function handleSubscriptionActivated(
+  payload: Awaited<ReturnType<typeof getPayload>>,
+  event: PayPalWebhookEvent,
+): Promise<void> {
+  const paypalSubscriptionId = event.resource.id
+  const subscription = await findSubscriptionByPaypalId(
+    payload,
+    paypalSubscriptionId,
+    event.event_type,
+  )
+  if (!subscription) return
+
+  // Idempotency — replayed activation
+  if (subscription.status === 'active') return
+
+  const userId = resolveId(subscription.user)
+  const productId = resolveId(subscription.product)
+  const initialTxId = resolveId(subscription.initialTransaction)
+  if (!userId || !productId) {
+    payload.logger.warn(
+      { paypalSubscriptionId, subscriptionId: subscription.id },
+      'PayPal webhook: subscription missing user/product — cannot activate',
+    )
+    return
+  }
+
+  const periodStart =
+    event.resource.start_time ??
+    event.resource.billing_info?.last_payment?.time ??
+    new Date().toISOString()
+  const periodEnd = event.resource.billing_info?.next_billing_time ?? null
+
+  // Grant entitlements against the initial transaction ID (so revoke can
+  // find the right Enrollment by metadata.paymentId later)
+  if (initialTxId) {
+    await grantProductEntitlements(userId, productId, String(initialTxId))
+    await payload.update({
+      collection: 'transactions',
+      id: initialTxId,
+      data: {
+        status: 'succeeded',
+        entitlementsGrantedAt: new Date().toISOString(),
+      },
+      overrideAccess: true,
+    })
+  } else {
+    payload.logger.warn(
+      { subscriptionId: subscription.id },
+      'PayPal webhook: subscription missing initialTransaction; skipping tx-update but still granting entitlements against subscription.id',
+    )
+    await grantProductEntitlements(userId, productId, String(subscription.id))
+  }
+
+  await payload.update({
+    collection: 'subscriptions',
+    id: subscription.id,
+    data: {
+      status: 'active',
+      currentPeriodStart: periodStart,
+      currentPeriodEnd: periodEnd,
+    },
+    overrideAccess: true,
+  })
+
+  // Fire-and-forget receipt
+  if (initialTxId) {
+    const tx = await payload.findByID({
+      collection: 'transactions',
+      id: initialTxId,
+      depth: 0,
+      overrideAccess: true,
+    })
+    void sendPurchaseReceipt(payload, {
+      transactionId: initialTxId,
+      userId,
+      productId,
+      providerTransactionId: (tx as { providerTransactionId?: string }).providerTransactionId ?? '',
+      amount: (tx as { amount?: number }).amount ?? 0,
+      currency: (tx as { currency?: string }).currency ?? 'ILS',
+      appliedCoupon: null,
+    })
+  }
+}
+
+async function handleSubscriptionRenewal(
+  payload: Awaited<ReturnType<typeof getPayload>>,
+  event: PayPalWebhookEvent,
+): Promise<void> {
+  // Recurring sales carry the parent subscription in billing_agreement_id
+  // (classic v1 name) or supplementary_data.related_ids.subscription_id (v2).
+  // If neither is present this is a non-subscription sale — ignore.
+  const paypalSubscriptionId =
+    event.resource.billing_agreement_id ??
+    event.resource.supplementary_data?.related_ids?.subscription_id ??
+    null
+  if (!paypalSubscriptionId) return
+
+  const saleId = event.resource.id
+  const subscription = await findSubscriptionByPaypalId(
+    payload,
+    paypalSubscriptionId,
+    event.event_type,
+  )
+  if (!subscription) return
+
+  const userId = resolveId(subscription.user)
+  const productId = resolveId(subscription.product)
+  const tenantId = resolveId(subscription.tenant)
+  if (!userId || !productId) {
+    payload.logger.warn(
+      { paypalSubscriptionId, subscriptionId: subscription.id },
+      'PayPal webhook: renewal target subscription missing user/product',
+    )
+    return
+  }
+
+  // Idempotency: skip if we already recorded a renewal Transaction for this sale
+  const existing = await payload.find({
+    collection: 'transactions',
+    where: { providerTransactionId: { equals: saleId } },
+    limit: 1,
+    depth: 0,
+    overrideAccess: true,
+  })
+  if (existing.totalDocs > 0) return
+
+  const amountValue = event.resource.amount?.total
+    ? Math.round(parseFloat(event.resource.amount.total) * 100)
+    : 0
+  const currency = event.resource.amount?.currency ?? 'ILS'
+
+  const renewalTx = await payload.create({
+    collection: 'transactions',
+    data: {
+      tenant: tenantId,
+      user: userId,
+      product: productId,
+      provider: 'paypal',
+      providerTransactionId: saleId,
+      captureId: saleId,
+      status: 'succeeded',
+      amount: amountValue,
+      currency,
+      subscription: subscription.id,
+      isRenewal: true,
+      entitlementsGrantedAt: new Date().toISOString(),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any,
+    overrideAccess: true,
+  })
+
+  const intervalMonths = await getProductIntervalMonths(payload, productId)
+  await extendProductEntitlements(userId, productId, String(renewalTx.id), intervalMonths)
+
+  // Push the Subscription period forward
+  const nowIso = new Date().toISOString()
+  const nextEndIso = new Date(
+    Date.now() + intervalMonths * 30 * 24 * 60 * 60 * 1000,
+  ).toISOString()
+  await payload.update({
+    collection: 'subscriptions',
+    id: subscription.id,
+    data: {
+      status: 'active',
+      currentPeriodStart: nowIso,
+      currentPeriodEnd: nextEndIso,
+    },
+    overrideAccess: true,
+  })
+
+  void sendPurchaseReceipt(payload, {
+    transactionId: renewalTx.id,
+    userId,
+    productId,
+    providerTransactionId: saleId,
+    amount: amountValue,
+    currency,
+    appliedCoupon: null,
+  })
+}
+
+async function updateSubscriptionState(
+  payload: Awaited<ReturnType<typeof getPayload>>,
+  event: PayPalWebhookEvent,
+  update: Record<string, unknown>,
+): Promise<void> {
+  const subscription = await findSubscriptionByPaypalId(
+    payload,
+    event.resource.id,
+    event.event_type,
+  )
+  if (!subscription) return
+  await payload.update({
+    collection: 'subscriptions',
+    id: subscription.id,
+    data: update,
+    overrideAccess: true,
+  })
+}
+
+async function handleSubscriptionExpired(
+  payload: Awaited<ReturnType<typeof getPayload>>,
+  event: PayPalWebhookEvent,
+): Promise<void> {
+  const subscription = await findSubscriptionByPaypalId(
+    payload,
+    event.resource.id,
+    event.event_type,
+  )
+  if (!subscription) return
+
+  const userId = resolveId(subscription.user)
+  if (!userId) {
+    payload.logger.warn(
+      { subscriptionId: subscription.id },
+      'PayPal webhook: expired sub missing user; skipping revoke',
+    )
+    await payload.update({
+      collection: 'subscriptions',
+      id: subscription.id,
+      data: { status: 'expired' },
+      overrideAccess: true,
+    })
+    return
+  }
+
+  // Revoke against the LATEST paying transaction (initial or most recent
+  // renewal) — that's the row whose transactionId matches the Enrollment's
+  // metadata.paymentId in revokeProductEntitlements.
+  const latestTx = await payload.find({
+    collection: 'transactions',
+    where: {
+      and: [{ subscription: { equals: subscription.id } }, { status: { equals: 'succeeded' } }],
+    },
+    sort: '-createdAt',
+    limit: 1,
+    depth: 0,
+    overrideAccess: true,
+  })
+
+  const revokeTxId =
+    latestTx.totalDocs > 0
+      ? (latestTx.docs[0] as { id: string }).id
+      : resolveId(subscription.initialTransaction)
+
+  if (revokeTxId) {
+    await revokeProductEntitlements({
+      payload,
+      userId,
+      transactionId: String(revokeTxId),
+    })
+  }
+
+  await payload.update({
+    collection: 'subscriptions',
+    id: subscription.id,
+    data: { status: 'expired' },
+    overrideAccess: true,
+  })
 }

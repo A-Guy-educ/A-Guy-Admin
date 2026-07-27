@@ -25,7 +25,22 @@ export const Products: CollectionConfig = {
   hooks: {
     beforeValidate: [
       async ({ data, req }) => {
-        if (!data?.contents || !Array.isArray(data.contents)) return data
+        if (!data) return data
+
+        // Subscription products draw their access period from the billing
+        // `interval` — a durationDays override would silently disagree with
+        // the recurring extension applied on each successful renewal.
+        if (
+          data.billingType === 'subscription' &&
+          typeof data.durationDays === 'number' &&
+          data.durationDays > 0
+        ) {
+          throw new Error(
+            'durationDays is only valid for one-time products. Subscription access period is set by the billing interval.',
+          )
+        }
+
+        if (!data.contents || !Array.isArray(data.contents)) return data
         // Validate featureBlock invariants against the referenced Feature row.
         // Numeric features REQUIRE a limit (otherwise the runtime quota
         // checker returns allowed: true / Infinity — a silent unlimited
@@ -225,7 +240,32 @@ export const Products: CollectionConfig = {
       min: 1,
       admin: {
         description:
-          'תקופת גישה בימים מרגע הרכישה (השאר ריק לגישה ללא הגבלת זמן). מוחל אוטומטית על Enrollments בעת רכישה.',
+          'תקופת גישה בימים מרגע הרכישה (השאר ריק לגישה ללא הגבלת זמן). מוחל אוטומטית על Enrollments בעת רכישה. תקף רק לרכישה חד-פעמית — במנוי תקופת הגישה מוכתבת על-ידי מרווח החיוב.',
+        condition: (data) => data.billingType !== 'subscription',
+      },
+    },
+    // PayPal Billing plan cache — populated lazily by the Web checkout route on
+    // first subscription purchase for this product. Do not edit manually — the
+    // route calls PayPal /v1/catalogs/products + /v1/billing/plans and writes
+    // the returned IDs back so subsequent checkouts skip the setup calls.
+    {
+      name: 'paypalProductId',
+      type: 'text',
+      admin: {
+        description: 'PayPal catalog product ID — auto-populated on first subscription checkout',
+        position: 'sidebar',
+        readOnly: true,
+        condition: (data) => data.billingType === 'subscription',
+      },
+    },
+    {
+      name: 'paypalPlanId',
+      type: 'text',
+      admin: {
+        description: 'PayPal billing plan ID — auto-populated on first subscription checkout',
+        position: 'sidebar',
+        readOnly: true,
+        condition: (data) => data.billingType === 'subscription',
       },
     },
     {

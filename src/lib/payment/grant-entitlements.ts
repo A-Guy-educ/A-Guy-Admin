@@ -277,6 +277,171 @@ async function performEnrollmentUpdate(
 }
 
 /**
+ * Extend entitlements for a subscription renewal. Called on
+ * PAYMENT.SALE.COMPLETED events driven by PayPal recurring billing.
+ *
+ * Anchor semantics: each Enrollment's `expiresAt` is pushed forward by
+ * `intervalMonths` from its CURRENT value — not from `Date.now()`. A late
+ * webhook (delivered days after the renewal actually processed) should not
+ * shorten the user's access window.
+ *
+ * If an Enrollment has `expiresAt = null` (lifetime), we leave it alone.
+ *
+ * Idempotency: skipped if the Enrollment's `metadata.paymentId` already
+ * equals `transactionId` (replay of the same PAYMENT.SALE.COMPLETED).
+ *
+ * Feature entitlements are re-pushed under the new `transactionId` so that
+ * revoking a specific renewal (or the whole sub) surgically removes just
+ * the affected grants via the existing `revokeProductEntitlements` code.
+ */
+export async function extendProductEntitlements(
+  userId: string,
+  productId: string,
+  transactionId: string,
+  intervalMonths: number,
+): Promise<void> {
+  if (intervalMonths <= 0) {
+    throw new Error(`extendProductEntitlements: intervalMonths must be positive (got ${intervalMonths})`)
+  }
+
+  const payload = await getPayload({ config })
+
+  const product = await payload.findByID({
+    collection: 'products',
+    id: productId,
+    depth: 2,
+    overrideAccess: true,
+  })
+  if (!product) throw new Error(`Product not found: ${productId}`)
+
+  const blocks =
+    ((product as { contents?: unknown }).contents as ProductContentBlock[] | undefined) ?? []
+  if (blocks.length === 0) return
+
+  // Extend Enrollments for every courseBlock
+  for (const block of blocks) {
+    if (block.blockType !== 'courseBlock' || !block.course) continue
+    const courseId = typeof block.course === 'string' ? block.course : block.course.id
+    await extendEnrollment(payload, userId, courseId, intervalMonths, transactionId)
+  }
+
+  // Re-push feature entitlements under the renewal transaction, expiring at
+  // the end of the new period. `pushFeatureEntitlements` is guarded by
+  // (transactionId, key) so a replay of the same sale is a no-op.
+  const featureGrants: FeatureGrant[] = []
+  const nowMs = Date.now()
+  const periodEndMs = nowMs + intervalMonths * 30 * 24 * 60 * 60 * 1000
+  const periodEndIso = new Date(periodEndMs).toISOString()
+
+  for (const block of blocks) {
+    if (block.blockType !== 'featureBlock' || !block.feature) continue
+    let key: string | null = null
+    let defaultPeriod: string | null = null
+    if (typeof block.feature === 'object') {
+      key = typeof block.feature.key === 'string' ? block.feature.key : null
+      defaultPeriod =
+        typeof block.feature.defaultPeriod === 'string' ? block.feature.defaultPeriod : null
+    }
+    if (!key) {
+      const featureId = typeof block.feature === 'string' ? block.feature : block.feature.id
+      try {
+        const featureDoc = await payload.findByID({
+          collection: 'features',
+          id: featureId,
+          depth: 0,
+          overrideAccess: true,
+        })
+        key = (featureDoc as { key?: string }).key ?? null
+        defaultPeriod = (featureDoc as { defaultPeriod?: string }).defaultPeriod ?? null
+      } catch {
+        continue
+      }
+    }
+    if (!key) continue
+
+    const blockPeriod = block.period
+    const resolvedPeriod: FeaturePeriod =
+      blockPeriod === 'day' || blockPeriod === 'month' || blockPeriod === 'lifetime'
+        ? blockPeriod
+        : defaultPeriod === 'day' || defaultPeriod === 'month' || defaultPeriod === 'lifetime'
+          ? defaultPeriod
+          : 'lifetime'
+
+    featureGrants.push({
+      key,
+      value: typeof block.limit === 'number' ? block.limit : null,
+      period: resolvedPeriod,
+      expiresAt: periodEndIso,
+    })
+  }
+
+  if (featureGrants.length > 0) {
+    await pushFeatureEntitlements(payload, userId, featureGrants, transactionId)
+  }
+}
+
+async function extendEnrollment(
+  payload: Awaited<ReturnType<typeof getPayload>>,
+  userId: string,
+  courseId: string,
+  intervalMonths: number,
+  transactionId: string,
+): Promise<void> {
+  const existing = await payload.find({
+    collection: 'enrollments',
+    where: { and: [{ user: { equals: userId } }, { course: { equals: courseId } }] },
+    limit: 1,
+    depth: 0,
+    overrideAccess: true,
+  })
+
+  if (existing.docs.length === 0) {
+    // No existing enrollment — fall through to a fresh grant with expiry
+    // anchored at now (matches the initial-purchase semantics).
+    const expiresAt = new Date(
+      Date.now() + intervalMonths * 30 * 24 * 60 * 60 * 1000,
+    ).toISOString()
+    await upsertEnrollment(payload, userId, courseId, expiresAt, transactionId)
+    return
+  }
+
+  const current = existing.docs[0] as {
+    id: string
+    status: string
+    expiresAt?: string | null
+    metadata?: { paymentId?: string; accessCodeId?: string; grantedBy?: string }
+  }
+
+  // Idempotent replay
+  if (current.metadata?.paymentId === transactionId && current.status === 'active') return
+
+  // Lifetime — nothing to extend
+  if (!current.expiresAt) return
+
+  const anchor = new Date(current.expiresAt).getTime()
+  // Anchor on the LATER of {current expiresAt, now} so a long-expired sub
+  // that reactivates doesn't grant a period ending in the past.
+  const base = Math.max(anchor, Date.now())
+  const extendedIso = new Date(base + intervalMonths * 30 * 24 * 60 * 60 * 1000).toISOString()
+
+  await payload.update({
+    collection: 'enrollments',
+    id: current.id,
+    data: {
+      status: 'active',
+      grantMethod: 'payment',
+      expiresAt: extendedIso,
+      cancelledAt: null,
+      metadata: {
+        ...(current.metadata ?? {}),
+        paymentId: transactionId,
+      },
+    },
+    overrideAccess: true,
+  })
+}
+
+/**
  * Atomic $push of feature entitlements, one per grant. Each push is guarded
  * by `{ transactionId, key } $not $elemMatch` so a webhook replay can't
  * create duplicates for the same (key, transactionId) pair.

@@ -173,6 +173,27 @@ export const Transactions: CollectionConfig = {
       },
     },
 
+    // Subscription linkage — set for the initial pending transaction AND for
+    // every renewal transaction created by PAYMENT.SALE.COMPLETED webhooks.
+    // One-time (non-subscription) transactions leave this null.
+    {
+      name: 'subscription',
+      type: 'relationship',
+      relationTo: 'subscriptions',
+      index: true,
+      admin: {
+        description: 'Parent subscription (set for initial + renewal transactions of a sub)',
+      },
+    },
+    {
+      name: 'isRenewal',
+      type: 'checkbox',
+      defaultValue: false,
+      admin: {
+        description: 'True when this transaction records a recurring renewal charge, not the initial checkout',
+      },
+    },
+
     // Checkout URLs for reference
     {
       name: 'successUrl',

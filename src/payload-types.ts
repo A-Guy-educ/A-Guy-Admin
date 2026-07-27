@@ -109,6 +109,7 @@ export interface Config {
     products: Product;
     'access-codes': AccessCode;
     transactions: Transaction;
+    subscriptions: Subscription;
     payment_stats: PaymentStat;
     'webhook-events': WebhookEvent;
     'mcp-audit-logs': McpAuditLog;
@@ -166,6 +167,7 @@ export interface Config {
     products: ProductsSelect<false> | ProductsSelect<true>;
     'access-codes': AccessCodesSelect<false> | AccessCodesSelect<true>;
     transactions: TransactionsSelect<false> | TransactionsSelect<true>;
+    subscriptions: SubscriptionsSelect<false> | SubscriptionsSelect<true>;
     payment_stats: PaymentStatsSelect<false> | PaymentStatsSelect<true>;
     'webhook-events': WebhookEventsSelect<false> | WebhookEventsSelect<true>;
     'mcp-audit-logs': McpAuditLogsSelect<false> | McpAuditLogsSelect<true>;
@@ -1958,9 +1960,17 @@ export interface Product {
    */
   currency: 'ILS' | 'USD' | 'EUR';
   /**
-   * תקופת גישה בימים מרגע הרכישה (השאר ריק לגישה ללא הגבלת זמן). מוחל אוטומטית על Enrollments בעת רכישה.
+   * תקופת גישה בימים מרגע הרכישה (השאר ריק לגישה ללא הגבלת זמן). מוחל אוטומטית על Enrollments בעת רכישה. תקף רק לרכישה חד-פעמית — במנוי תקופת הגישה מוכתבת על-ידי מרווח החיוב.
    */
   durationDays?: number | null;
+  /**
+   * PayPal catalog product ID — auto-populated on first subscription checkout
+   */
+  paypalProductId?: string | null;
+  /**
+   * PayPal billing plan ID — auto-populated on first subscription checkout
+   */
+  paypalPlanId?: string | null;
   /**
    * מספר מקסימלי של מכשירים למשתמש (השאר ריק = ללא הגבלה). שדה לתצורה בלבד — האכיפה אינה מיושמת.
    */
@@ -2125,6 +2135,14 @@ export interface Transaction {
     | boolean
     | null;
   /**
+   * Parent subscription (set for initial + renewal transactions of a sub)
+   */
+  subscription?: (string | null) | Subscription;
+  /**
+   * True when this transaction records a recurring renewal charge, not the initial checkout
+   */
+  isRenewal?: boolean | null;
+  /**
    * Original success redirect URL
    */
   successUrl?: string | null;
@@ -2160,6 +2178,65 @@ export interface Transaction {
    * When the refund was processed
    */
   refundedAt?: string | null;
+  /**
+   * User who created this document
+   */
+  createdBy?: (string | null) | User;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Subscriptions are created by the Web checkout route when a user starts a recurring purchase. Status is driven by PayPal webhook events — do not edit `status` or `currentPeriodEnd` by hand.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "subscriptions".
+ */
+export interface Subscription {
+  id: string;
+  /**
+   * Tenant scope for this document
+   */
+  tenant: string | Tenant;
+  /**
+   * User who owns the subscription
+   */
+  user: string | User;
+  /**
+   * Subscription product being purchased
+   */
+  product: string | Product;
+  /**
+   * Payment provider (only PayPal is supported today)
+   */
+  provider: 'paypal';
+  /**
+   * PayPal Billing subscription ID (I-...)
+   */
+  paypalSubscriptionId: string;
+  /**
+   * Current lifecycle state driven by PayPal webhooks
+   */
+  status: 'pending' | 'active' | 'past_due' | 'cancelled' | 'suspended' | 'expired';
+  /**
+   * Start of the current billing period
+   */
+  currentPeriodStart?: string | null;
+  /**
+   * End of the current billing period — access continues until this date even after cancellation
+   */
+  currentPeriodEnd?: string | null;
+  /**
+   * User has cancelled but retains access until currentPeriodEnd
+   */
+  cancelAtPeriodEnd?: boolean | null;
+  /**
+   * When cancellation was received from PayPal
+   */
+  cancelledAt?: string | null;
+  /**
+   * The pending Transaction created at checkout; flipped to succeeded on ACTIVATED
+   */
+  initialTransaction?: (string | null) | Transaction;
   /**
    * User who created this document
    */
@@ -3825,6 +3902,10 @@ export interface PayloadLockedDocument {
         value: string | Transaction;
       } | null)
     | ({
+        relationTo: 'subscriptions';
+        value: string | Subscription;
+      } | null)
+    | ({
         relationTo: 'payment_stats';
         value: string | PaymentStat;
       } | null)
@@ -5012,6 +5093,8 @@ export interface ProductsSelect<T extends boolean = true> {
   price?: T;
   currency?: T;
   durationDays?: T;
+  paypalProductId?: T;
+  paypalPlanId?: T;
   maxDevices?: T;
   contents?:
     | T
@@ -5071,6 +5154,8 @@ export interface TransactionsSelect<T extends boolean = true> {
   amount?: T;
   currency?: T;
   metadata?: T;
+  subscription?: T;
+  isRenewal?: T;
   successUrl?: T;
   cancelUrl?: T;
   errorMessage?: T;
@@ -5080,6 +5165,26 @@ export interface TransactionsSelect<T extends boolean = true> {
   refundedAmount?: T;
   refundedBy?: T;
   refundedAt?: T;
+  createdBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "subscriptions_select".
+ */
+export interface SubscriptionsSelect<T extends boolean = true> {
+  tenant?: T;
+  user?: T;
+  product?: T;
+  provider?: T;
+  paypalSubscriptionId?: T;
+  status?: T;
+  currentPeriodStart?: T;
+  currentPeriodEnd?: T;
+  cancelAtPeriodEnd?: T;
+  cancelledAt?: T;
+  initialTransaction?: T;
   createdBy?: T;
   updatedAt?: T;
   createdAt?: T;
