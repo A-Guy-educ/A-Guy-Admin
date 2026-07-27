@@ -22,6 +22,13 @@ import configPromise from '@payload-config'
 
 import { duplicateCourseEndpoint } from '@/server/payload/endpoints/courses/duplicate'
 
+// Vercel's Fluid Compute default caps route handlers at 300s. Deep-cloning a
+// 50-lesson course is many hundreds of Mongo writes; even after the heavy
+// per-doc hooks were short-circuited via the content-promotion marker, we
+// want the same 800s ceiling the lesson-duplication endpoints use so a big
+// course doesn't hit the platform default halfway through the traversal.
+export const maxDuration = 800
+
 export async function POST(request: NextRequest): Promise<NextResponse | Response> {
   let payload: Awaited<ReturnType<typeof getPayload>> | undefined
   try {

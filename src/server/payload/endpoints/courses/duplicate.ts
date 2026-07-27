@@ -20,6 +20,20 @@
  * the source course. This endpoint clones sections and rewrites the new
  * exercise's playlist to reference the new section ids.
  *
+ * PERFORMANCE — hooks skipped via content-promotion marker.
+ * The heavy per-doc hooks (computeSectionAdminTitle: up to 4 findByIDs, the
+ * section auto-populate lesson/chapter/course walk, the exercise auto-populate
+ * chapter/course walk, computeLessonAdminTitle, the per-collection slug
+ * uniqueness retries) all check `isContentPromotionImportRequest(req)` and
+ * short-circuit when it's true. Without the marker, a 50-lesson course produced
+ * ~10,000+ redundant Mongo round-trips and blew past Vercel's 5-min ceiling
+ * after 10 lessons. The marker is on the whole clone request, so we take
+ * responsibility for the values those hooks would have computed:
+ *   - lesson slugs are pre-computed unique (`{baseSlug}-copy-{suffix}`)
+ *   - chapter / course / lesson denormalized fields are passed explicitly
+ *   - lesson + section `adminTitle` breadcrumbs are pre-computed in-memory
+ *     from titles we already have (no extra reads)
+ *
  * Path is `/duplicate-course` (not `/duplicate`) to avoid Payload's built-in
  * collection duplicate handler at `/api/courses/:id/duplicate`, which would
  * otherwise shadow this endpoint. `Courses` also sets `disableDuplicate: true`
@@ -34,6 +48,7 @@ import type { Payload, PayloadRequest, Where } from 'payload'
 
 import { formatSlug } from '@/server/payload/fields/formatSlug'
 import { getSourceExercisesForLesson } from '@/server/services/lesson-duplication/source-exercises'
+import { markRequestAsContentPromotionImport } from '@/server/services/content-promotion/import-context'
 
 const CHILD_QUERY_PAGE_SIZE = 200
 
@@ -74,6 +89,19 @@ function shortSuffix(): string {
  */
 function newBlockId(): string {
   return Math.random().toString(36).slice(2, 14)
+}
+
+/**
+ * Join non-empty parts with " / " — matches the format
+ * computeLessonAdminTitle / computeSectionAdminTitle would produce, without
+ * doing any Mongo lookups. Used to keep the admin list view readable on the
+ * cloned rows.
+ */
+function joinBreadcrumb(parts: Array<string | null | undefined>): string {
+  return parts
+    .map((p) => (typeof p === 'string' ? p.trim() : ''))
+    .filter(Boolean)
+    .join(' / ')
 }
 
 /**
@@ -128,9 +156,15 @@ function parseSectionRefBlocks(raw: unknown): SectionRefBlock[] {
   return []
 }
 
+interface CloneTitles {
+  newCourseTitle: string
+  chapterTitle: string
+  lessonTitle: string
+}
+
 /**
  * Clone every section under `sourceExerciseId` into the new exercise. Returns
- * the id map (old → new) plus a failure count. Uses `_skipExerciseBlockSync`
+ * the id map (old → new) plus a failure count. Passes `_skipExerciseBlockSync`
  * so the section afterChange hook doesn't append to the new exercise's blocks
  * one section at a time — we rebuild the whole array atomically once all
  * sections are in.
@@ -140,7 +174,10 @@ async function cloneSectionsUnderExercise(
   sourceExerciseId: string,
   newExerciseId: string,
   newLessonId: string,
+  newChapterId: string,
   newCourseId: string,
+  exerciseTitle: string,
+  titles: CloneTitles,
 ): Promise<{ idMap: Map<string, string>; sectionsCloned: number; sectionsFailed: number }> {
   const sourceSections = await findAllPages<Record<string, unknown> & { id: string }>(
     req.payload,
@@ -157,7 +194,6 @@ async function cloneSectionsUnderExercise(
       // need for a second round-trip per section.
       const sData = stripManagedFields(section as unknown as Record<string, unknown>)
       const {
-        slug: _ignoreSlug,
         translatedFrom: _ignoreTranslatedFrom,
         createdBy: _ignoreCreatedBy,
         adminTitle: _ignoreAdminTitle,
@@ -167,7 +203,6 @@ async function cloneSectionsUnderExercise(
         course: _ignoreCourse,
         ...restSection
       } = sData as Record<string, unknown>
-      void _ignoreSlug
       void _ignoreTranslatedFrom
       void _ignoreCreatedBy
       void _ignoreAdminTitle
@@ -176,13 +211,27 @@ async function cloneSectionsUnderExercise(
       void _ignoreChapter
       void _ignoreCourse
 
+      const sectionTitle =
+        typeof (sData as { title?: unknown }).title === 'string'
+          ? ((sData as { title?: string }).title as string)
+          : ''
+      const adminTitle = joinBreadcrumb([
+        titles.newCourseTitle,
+        titles.chapterTitle,
+        titles.lessonTitle,
+        exerciseTitle,
+        sectionTitle,
+      ])
+
       const created = await req.payload.create({
         collection: 'sections',
         data: {
           ...restSection,
           exercise: newExerciseId,
           lesson: newLessonId,
+          chapter: newChapterId,
           course: newCourseId,
+          adminTitle,
         } as never,
         overrideAccess: true,
         req,
@@ -206,12 +255,18 @@ async function cloneSectionsUnderExercise(
  * lessons endpoint — same field-strip + per-exercise isolation strategy — but
  * with `chapter` + `course` rewired to the freshly cloned parents and with
  * sections cloned too so the two courses don't share section rows.
+ *
+ * Because the request is marked as content-promotion (see endpoint header),
+ * the lesson beforeChange slug hook and computeLessonAdminTitle short-circuit
+ * — we pre-compute both here.
  */
 async function deepCloneLessonUnderChapter(
   req: PayloadRequest,
-  sourceLessonId: string,
+  sourceLesson: Record<string, unknown> & { id: string },
   newChapterId: string,
   newCourseId: string,
+  slugSuffix: string,
+  titles: Pick<CloneTitles, 'newCourseTitle' | 'chapterTitle'>,
 ): Promise<{
   id: string
   exercisesCloned: number
@@ -219,41 +274,40 @@ async function deepCloneLessonUnderChapter(
   sectionsCloned: number
   sectionsFailed: number
 }> {
-  const source = await req.payload.findByID({
-    collection: 'lessons',
-    id: sourceLessonId,
-    depth: 0,
-    overrideAccess: true,
-    req,
-  })
-
-  const sourceData = stripManagedFields(source as unknown as Record<string, unknown>)
+  const sourceData = stripManagedFields(sourceLesson as unknown as Record<string, unknown>)
   const {
-    slug: _ignoreSlug,
+    slug: sourceSlug,
     blocks: _ignoreBlocks,
     translatedFrom: _ignoreTranslatedFrom,
     createdBy: _ignoreCreatedBy,
     chapter: _ignoreChapter,
     course: _ignoreCourse,
+    adminTitle: _ignoreAdminTitle,
     ...restSource
   } = sourceData as Record<string, unknown>
-  void _ignoreSlug
   void _ignoreBlocks
   void _ignoreTranslatedFrom
   void _ignoreCreatedBy
   void _ignoreChapter
   void _ignoreCourse
+  void _ignoreAdminTitle
 
-  // Keep the lesson title identical — we're cloning as part of a course-wide
-  // copy, so appending " - Copy" to every lesson would produce noisy titles
-  // like "Lesson 1 - Copy" inside a course that's already called
-  // "Course 8 - Copy". The lesson's slug beforeChange hook has its own
-  // retry-with-counter loop, so slug collisions inside the new course are
-  // handled without us pre-computing suffixes.
+  const lessonTitle =
+    typeof sourceData.title === 'string' ? (sourceData.title as string) : 'Untitled'
+  const baseSlug =
+    typeof sourceSlug === 'string' && sourceSlug.trim() ? sourceSlug : formatSlug(lessonTitle)
+  // Lesson slugs are globally unique. The slug beforeChange retry loop is
+  // skipped (content-promotion marker), so pre-compute a unique slug — same
+  // pattern chapters use above.
+  const newLessonSlug = `${baseSlug}-copy-${slugSuffix}`
+  const adminTitle = joinBreadcrumb([titles.newCourseTitle, titles.chapterTitle, lessonTitle])
+
   const newLessonData = {
     ...restSource,
     chapter: newChapterId,
     course: newCourseId,
+    slug: newLessonSlug,
+    adminTitle,
     status: 'draft',
   }
 
@@ -264,12 +318,17 @@ async function deepCloneLessonUnderChapter(
     req,
   })
 
-  const exerciseDocs = await getSourceExercisesForLesson(req.payload, sourceLessonId)
+  const exerciseDocs = await getSourceExercisesForLesson(req.payload, sourceLesson.id)
 
   const newExerciseIds: string[] = []
   let exercisesFailed = 0
   let sectionsCloned = 0
   let sectionsFailed = 0
+  const lessonTitles: CloneTitles = {
+    newCourseTitle: titles.newCourseTitle,
+    chapterTitle: titles.chapterTitle,
+    lessonTitle,
+  }
   for (const exercise of exerciseDocs) {
     try {
       const exData = stripManagedFields(exercise as unknown as Record<string, unknown>)
@@ -277,21 +336,48 @@ async function deepCloneLessonUnderChapter(
 
       // Create the new exercise with an empty playlist first — we rewrite it
       // once sections are cloned so the entries reference the new section ids.
-      const { blocks: _dropBlocks, ...exWithoutBlocks } = exData as Record<string, unknown>
+      const {
+        blocks: _dropBlocks,
+        chapter: _dropChapter,
+        course: _dropCourse,
+        ...exWithoutBlocks
+      } = exData as Record<string, unknown>
       void _dropBlocks
+      void _dropChapter
+      void _dropCourse
       const created = await req.payload.create({
         collection: 'exercises',
-        data: { ...exWithoutBlocks, lesson: newLesson.id, blocks: JSON.stringify([]) } as never,
+        data: {
+          ...exWithoutBlocks,
+          lesson: newLesson.id,
+          chapter: newChapterId,
+          course: newCourseId,
+          blocks: JSON.stringify([]),
+        } as never,
         overrideAccess: true,
         req,
         context: { _skipBlockSync: true },
       })
 
+      const exerciseTitle =
+        typeof (exData as { title?: unknown }).title === 'string'
+          ? ((exData as { title?: string }).title as string)
+          : ''
+
       const {
         idMap,
         sectionsCloned: sc,
         sectionsFailed: sf,
-      } = await cloneSectionsUnderExercise(req, exercise.id, created.id, newLesson.id, newCourseId)
+      } = await cloneSectionsUnderExercise(
+        req,
+        exercise.id,
+        created.id,
+        newLesson.id,
+        newChapterId,
+        newCourseId,
+        exerciseTitle,
+        lessonTitles,
+      )
       sectionsCloned += sc
       sectionsFailed += sf
 
@@ -363,9 +449,10 @@ async function deepCloneLessonUnderChapter(
  */
 async function deepCloneChapterUnderCourse(
   req: PayloadRequest,
-  sourceChapterId: string,
+  sourceChapter: Record<string, unknown> & { id: string },
   newCourseId: string,
   slugSuffix: string,
+  newCourseTitle: string,
 ): Promise<{
   id: string
   lessonsCloned: number
@@ -375,15 +462,7 @@ async function deepCloneChapterUnderCourse(
   sectionsCloned: number
   sectionsFailed: number
 }> {
-  const source = await req.payload.findByID({
-    collection: 'chapters',
-    id: sourceChapterId,
-    depth: 0,
-    overrideAccess: true,
-    req,
-  })
-
-  const sourceData = stripManagedFields(source as unknown as Record<string, unknown>)
+  const sourceData = stripManagedFields(sourceChapter as unknown as Record<string, unknown>)
   const {
     slug: sourceSlug,
     translatedFrom: _ignoreTranslatedFrom,
@@ -397,10 +476,15 @@ async function deepCloneChapterUnderCourse(
   void _ignoreCourse
   void _ignoreAdminTitle
 
-  const baseTitle = typeof sourceData.title === 'string' ? sourceData.title : 'Untitled'
+  const chapterTitle =
+    typeof sourceData.title === 'string' ? (sourceData.title as string) : 'Untitled'
   const baseSlug =
-    typeof sourceSlug === 'string' && sourceSlug.trim() ? sourceSlug : formatSlug(baseTitle)
+    typeof sourceSlug === 'string' && sourceSlug.trim() ? sourceSlug : formatSlug(chapterTitle)
   const uniqueSlug = `${baseSlug}-copy-${slugSuffix}`
+  // Pre-compute chapter adminTitle in the same "title — course" format that
+  // computeAdminTitle (chapters/computeAdminTitle.ts) would produce, and set
+  // `skipAdminTitleRecompute` so the hook short-circuits its own findByID.
+  const chapterAdminTitle = `${chapterTitle} — ${newCourseTitle}`
 
   const newChapter = await req.payload.create({
     collection: 'chapters',
@@ -409,14 +493,19 @@ async function deepCloneChapterUnderCourse(
       course: newCourseId,
       slug: uniqueSlug,
       status: 'draft',
+      adminTitle: chapterAdminTitle,
     } as never,
     overrideAccess: true,
     req,
+    context: { skipAdminTitleRecompute: true },
   })
 
-  const sourceLessons = await findAllPages<{ id: string }>(req.payload, req, 'lessons', {
-    chapter: { equals: sourceChapterId },
-  })
+  const sourceLessons = await findAllPages<Record<string, unknown> & { id: string }>(
+    req.payload,
+    req,
+    'lessons',
+    { chapter: { equals: sourceChapter.id } },
+  )
 
   let lessonsCloned = 0
   let lessonsFailed = 0
@@ -426,7 +515,14 @@ async function deepCloneChapterUnderCourse(
   let sectionsFailed = 0
   for (const lesson of sourceLessons) {
     try {
-      const result = await deepCloneLessonUnderChapter(req, lesson.id, newChapter.id, newCourseId)
+      const result = await deepCloneLessonUnderChapter(
+        req,
+        lesson,
+        newChapter.id,
+        newCourseId,
+        slugSuffix,
+        { newCourseTitle, chapterTitle },
+      )
       lessonsCloned++
       exercisesCloned += result.exercisesCloned
       exercisesFailed += result.exercisesFailed
@@ -436,7 +532,7 @@ async function deepCloneChapterUnderCourse(
       lessonsFailed++
       const reason = err instanceof Error ? err.message : 'unknown'
       req.payload.logger.warn(
-        `[duplicateCourseEndpoint] skipped lesson ${lesson.id} under chapter ${sourceChapterId}: ${reason}`,
+        `[duplicateCourseEndpoint] skipped lesson ${lesson.id} under chapter ${sourceChapter.id}: ${reason}`,
       )
     }
   }
@@ -467,6 +563,13 @@ export async function duplicateCourseEndpoint(req: PayloadRequest): Promise<Resp
   if (!courseId) {
     return Response.json({ error: 'Course id missing from path' }, { status: 400 })
   }
+
+  // Mark the whole clone as a content-promotion import. Every heavy per-doc
+  // hook (adminTitle compute, denormalized-field walks, slug uniqueness
+  // retries, block-sync afterChange) checks this flag and short-circuits.
+  // Without this, a 50-lesson course took >5min just on redundant Mongo
+  // round-trips. See the endpoint header for the full rationale.
+  markRequestAsContentPromotionImport(req)
 
   // Use `find` instead of `findByID` for the existence check. `findByID`
   // rejects on any error (not-found, malformed id, access-layer throw) with
@@ -525,9 +628,12 @@ export async function duplicateCourseEndpoint(req: PayloadRequest): Promise<Resp
 
   // Load every chapter that belongs to the source course (paginated — no
   // hard cap that could silently truncate a large course) and clone each.
-  const sourceChapters = await findAllPages<{ id: string }>(req.payload, req, 'chapters', {
-    course: { equals: courseId },
-  })
+  const sourceChapters = await findAllPages<Record<string, unknown> & { id: string }>(
+    req.payload,
+    req,
+    'chapters',
+    { course: { equals: courseId } },
+  )
 
   let chaptersCloned = 0
   let chaptersFailed = 0
@@ -539,7 +645,7 @@ export async function duplicateCourseEndpoint(req: PayloadRequest): Promise<Resp
   let sectionsFailed = 0
   for (const chapter of sourceChapters) {
     try {
-      const result = await deepCloneChapterUnderCourse(req, chapter.id, newCourseId, suffix)
+      const result = await deepCloneChapterUnderCourse(req, chapter, newCourseId, suffix, newTitle)
       chaptersCloned++
       lessonsCloned += result.lessonsCloned
       lessonsFailed += result.lessonsFailed
