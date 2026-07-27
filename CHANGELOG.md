@@ -1833,6 +1833,7 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- perf(course-duplication): Skip heavy hooks via content-promotion marker ([#268](https://github.com/A-Guy-educ/A-Guy-Admin/pull/268)) — @aguyshayb
 - promote: dev -> main (v0.28.0) ([#265](https://github.com/A-Guy-educ/A-Guy-Admin/pull/265)) — @aguyshayb
 - chore: Release v0.28.0 ([#264](https://github.com/A-Guy-educ/A-Guy-Admin/pull/264)) — @aguyshayb
 - fix(course-duplication): Deep-clone course + chapters + lessons + exercises ([#257](https://github.com/A-Guy-educ/A-Guy-Admin/pull/257)) — @aguyshayb
