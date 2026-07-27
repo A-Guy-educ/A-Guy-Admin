@@ -441,6 +441,77 @@ describe('PayPal subscription webhooks', () => {
     expect((enrollments.docs[0] as any).status).toBe('active')
   })
 
+  it('PAYMENT.SALE.COMPLETED for an already-EXPIRED subscription is ignored (does not resurrect)', async () => {
+    const paypalSubId = nextSubId()
+    const { sub } = await seedSubscriptionAndInitialTx(paypalSubId)
+    await paypalWebhookHandler(
+      makeRequest({
+        id: `evt-act-term-${Date.now()}`,
+        event_type: 'BILLING.SUBSCRIPTION.ACTIVATED',
+        resource: {
+          id: paypalSubId,
+          start_time: new Date().toISOString(),
+          billing_info: {
+            next_billing_time: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          },
+        },
+      }),
+    )
+    await paypalWebhookHandler(
+      makeRequest({
+        id: `evt-exp-term-${Date.now()}`,
+        event_type: 'BILLING.SUBSCRIPTION.EXPIRED',
+        resource: { id: paypalSubId },
+      }),
+    )
+
+    // Sanity: sub is terminal, enrollment cancelled
+    const preSub = await payload.findByID({
+      collection: 'subscriptions',
+      id: sub.id,
+      overrideAccess: true,
+    })
+    expect((preSub as any).status).toBe('expired')
+
+    // Now a late/stale PAYMENT.SALE.COMPLETED arrives — must NOT resurrect
+    const staleSaleId = `SALE-STALE-${Date.now()}`
+    await paypalWebhookHandler(
+      makeRequest({
+        id: `evt-stale-${Date.now()}`,
+        event_type: 'PAYMENT.SALE.COMPLETED',
+        resource: {
+          id: staleSaleId,
+          billing_agreement_id: paypalSubId,
+          amount: { total: '59.00', currency: 'ILS' },
+        },
+      }),
+    )
+
+    // Sub stays expired
+    const postSub = await payload.findByID({
+      collection: 'subscriptions',
+      id: sub.id,
+      overrideAccess: true,
+    })
+    expect((postSub as any).status).toBe('expired')
+
+    // Enrollment stays cancelled
+    const enrollments = await payload.find({
+      collection: 'enrollments',
+      where: { user: { equals: userId } },
+      overrideAccess: true,
+    })
+    expect((enrollments.docs[0] as any).status).toBe('cancelled')
+
+    // No renewal Tx was created for the stale sale
+    const staleTx = await payload.find({
+      collection: 'transactions',
+      where: { providerTransactionId: { equals: staleSaleId } },
+      overrideAccess: true,
+    })
+    expect(staleTx.totalDocs).toBe(0)
+  })
+
   it('BILLING.SUBSCRIPTION.SUSPENDED sets status=suspended and leaves enrollment active', async () => {
     const paypalSubId = nextSubId()
     const { sub } = await seedSubscriptionAndInitialTx(paypalSubId)

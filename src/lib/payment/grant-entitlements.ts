@@ -60,11 +60,23 @@ type ProductContentBlock = CourseBlock | FeatureBlock
  *    `metadata.paymentId = transactionId`; featureEntitlements use a
  *    `transactionId + key` $not $elemMatch guard so replayed webhooks no-op.
  */
+/**
+ * Sentinel for grantProductEntitlements' `expiresAtOverride` parameter meaning
+ * "compute expiry from product.durationDays" (the one-time-purchase default).
+ * Callers with an explicit expiry (subscriptions) pass an ISO string instead.
+ *
+ * Using a string sentinel — as opposed to `undefined` or an options-bag `in`
+ * check — closes a footgun where a caller chaining `x ?? undefined` could
+ * silently land in the override branch with an undefined value and produce
+ * a lifetime grant instead of the intended durationDays fallback.
+ */
+export const INHERIT_EXPIRY = 'inherit' as const
+
 export async function grantProductEntitlements(
   userId: string,
   productId: string,
   transactionId: string,
-  options?: { overrideExpiresAt?: string | null },
+  expiresAtOverride: string | typeof INHERIT_EXPIRY = INHERIT_EXPIRY,
 ): Promise<void> {
   const payload = await getPayload({ config })
 
@@ -84,14 +96,11 @@ export async function grantProductEntitlements(
       ? (product as { durationDays: number }).durationDays
       : null
   const now = new Date()
-  // Explicit `overrideExpiresAt: null` from the caller means lifetime; passing
-  // any string means "use this exact expiry". Only when the option is entirely
-  // omitted do we fall back to product.durationDays. Subscription flows use
-  // the override because subscription products are forbidden from setting
-  // durationDays (period is dictated by the billing interval, not a fixed span).
+  // `expiresAtOverride === INHERIT_EXPIRY` → fall back to durationDays.
+  // Any other string → use it directly as the ISO expiry.
   const expiresAt: string | null =
-    options && 'overrideExpiresAt' in options
-      ? (options.overrideExpiresAt ?? null)
+    expiresAtOverride !== INHERIT_EXPIRY
+      ? expiresAtOverride
       : durationDays && durationDays > 0
         ? new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000).toISOString()
         : null

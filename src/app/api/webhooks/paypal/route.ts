@@ -678,9 +678,7 @@ async function handleSubscriptionActivated(
   const overrideExpiresAt = periodEnd
 
   if (initialTxId) {
-    await grantProductEntitlements(userId, productId, String(initialTxId), {
-      overrideExpiresAt,
-    })
+    await grantProductEntitlements(userId, productId, String(initialTxId), overrideExpiresAt)
     await payload.update({
       collection: 'transactions',
       id: initialTxId,
@@ -695,9 +693,12 @@ async function handleSubscriptionActivated(
       { subscriptionId: subscription.id },
       'PayPal webhook: subscription missing initialTransaction; skipping tx-update but still granting entitlements against subscription.id',
     )
-    await grantProductEntitlements(userId, productId, String(subscription.id), {
+    await grantProductEntitlements(
+      userId,
+      productId,
+      String(subscription.id),
       overrideExpiresAt,
-    })
+    )
   }
 
   await payload.update({
@@ -751,6 +752,21 @@ async function handleSubscriptionRenewal(
     event.event_type,
   )
   if (!subscription) return
+
+  // Refuse to resurrect terminal subscriptions. A late/stale PAYMENT.SALE.COMPLETED
+  // that lands after EXPIRED/CANCELLED would otherwise re-activate the sub,
+  // extend the (already cancelled) enrollment, and rotate metadata.paymentId —
+  // contradicting the terminal state that handleSubscriptionExpired /
+  // handleSubscriptionCancelled deliberately established. past_due and
+  // suspended are non-terminal (a successful sale legitimately clears them),
+  // so we allow those through.
+  if (subscription.status === 'expired' || subscription.status === 'cancelled') {
+    payload.logger.warn(
+      { paypalSubscriptionId, saleId, subscriptionStatus: subscription.status },
+      'PayPal webhook: PAYMENT.SALE.COMPLETED for terminal subscription — ignoring',
+    )
+    return
+  }
 
   const userId = resolveId(subscription.user)
   const productId = resolveId(subscription.product)
@@ -808,8 +824,13 @@ async function handleSubscriptionRenewal(
         overrideAccess: true,
       })) as { id: string; entitlementsGrantedAt?: string | null }
     } catch (err) {
-      // Concurrent renewal delivery raced us to the insert. The unique index
-      // on providerTransactionId rejected our create — re-find and resume.
+      // Only treat duplicate-key as a legitimate concurrent-renewal race.
+      // Any other error (network flake, validator failure, status guard
+      // rejection) must rethrow — otherwise an unrelated failure that
+      // coincides with a pre-existing matching row would be silently
+      // masked as a successful "resume".
+      if (!isDuplicateKeyError(err)) throw err
+
       const race = await payload.find({
         collection: 'transactions',
         where: { providerTransactionId: { equals: saleId } },
@@ -963,13 +984,17 @@ async function handleSubscriptionExpired(
   // enrollment might still be anchored on the initial tx). Revoking against
   // all of them cleans up regardless. revokeProductEntitlements is idempotent
   // and a no-op for already-cancelled enrollments.
+  // pagination: false — a long-running sub could have >100 renewals (annual
+  // over 10y, monthly over 8y). Silently skipping older rows would leave
+  // pre-cap feature entitlement grants (each pushed under its own renewal
+  // tx id) un-revoked. Matches the same choice in revokeProductEntitlements.
   const succeededTxs = await payload.find({
     collection: 'transactions',
     where: {
       and: [{ subscription: { equals: subscription.id } }, { status: { equals: 'succeeded' } }],
     },
     sort: '-createdAt',
-    limit: 100,
+    pagination: false,
     depth: 0,
     overrideAccess: true,
   })
