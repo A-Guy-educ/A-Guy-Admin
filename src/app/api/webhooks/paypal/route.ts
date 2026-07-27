@@ -22,6 +22,7 @@ import config from '@payload-config'
 
 import { serializePaymentError } from '@/lib/payment/error-log'
 import {
+  addCalendarMonths,
   extendProductEntitlements,
   grantProductEntitlements,
 } from '@/lib/payment/grant-entitlements'
@@ -51,10 +52,14 @@ interface PayPalWebhookResource {
       cycles_remaining?: number
     }>
   }
-  // Sale-specific fields (PAYMENT.SALE.COMPLETED)
+  // Sale-specific fields (PAYMENT.SALE.COMPLETED / PAYMENT.SALE.REFUNDED)
   billing_agreement_id?: string
   amount?: { total?: string; currency?: string }
   custom?: string
+  // PAYMENT.SALE.REFUNDED — the refund event resource is the refund itself;
+  // parent_payment / sale_id point back at the original sale we recorded.
+  parent_payment?: string
+  sale_id?: string
 }
 
 interface PayPalWebhookEvent {
@@ -508,6 +513,11 @@ async function handleEvent(
       break
     }
 
+    case 'PAYMENT.SALE.REFUNDED': {
+      await handleSaleRefunded(payload, event)
+      break
+    }
+
     case 'BILLING.SUBSCRIPTION.CANCELLED': {
       await updateSubscriptionState(payload, event, {
         status: 'cancelled',
@@ -557,7 +567,12 @@ async function findSubscriptionByPaypalId(
 } | null> {
   const found = await payload.find({
     collection: 'subscriptions',
-    where: { paypalSubscriptionId: { equals: paypalSubscriptionId } },
+    where: {
+      and: [
+        { paypalSubscriptionId: { equals: paypalSubscriptionId } },
+        { provider: { equals: 'paypal' } },
+      ],
+    },
     limit: 1,
     depth: 0,
     overrideAccess: true,
@@ -631,16 +646,32 @@ async function handleSubscriptionActivated(
     return
   }
 
+  const intervalMonths = await getProductIntervalMonths(payload, productId)
   const periodStart =
     event.resource.start_time ??
     event.resource.billing_info?.last_payment?.time ??
     new Date().toISOString()
-  const periodEnd = event.resource.billing_info?.next_billing_time ?? null
+  // Prefer PayPal's next_billing_time (authoritative) for the sub period end;
+  // fall back to a calendar-computed value so the Subscription row always has
+  // an end date even when PayPal omits the field.
+  const periodEnd =
+    event.resource.billing_info?.next_billing_time ??
+    addCalendarMonths(new Date(), intervalMonths).toISOString()
 
-  // Grant entitlements against the initial transaction ID (so revoke can
-  // find the right Enrollment by metadata.paymentId later)
+  // Compute the enrollment expiry from the same period-end value. Passing
+  // `overrideExpiresAt` explicitly bypasses grantProductEntitlements' default
+  // durationDays computation, which is not applicable to subscriptions
+  // (durationDays is forbidden on sub products by Products.beforeValidate).
+  // Without this, the enrollment would be created with expiresAt: null
+  // (lifetime), and revoke-on-EXPIRED would fail to find the enrollment
+  // because metadata.paymentId is never rotated on renewals for lifetime
+  // rows the same way.
+  const overrideExpiresAt = periodEnd
+
   if (initialTxId) {
-    await grantProductEntitlements(userId, productId, String(initialTxId))
+    await grantProductEntitlements(userId, productId, String(initialTxId), {
+      overrideExpiresAt,
+    })
     await payload.update({
       collection: 'transactions',
       id: initialTxId,
@@ -655,7 +686,9 @@ async function handleSubscriptionActivated(
       { subscriptionId: subscription.id },
       'PayPal webhook: subscription missing initialTransaction; skipping tx-update but still granting entitlements against subscription.id',
     )
-    await grantProductEntitlements(userId, productId, String(subscription.id))
+    await grantProductEntitlements(userId, productId, String(subscription.id), {
+      overrideExpiresAt,
+    })
   }
 
   await payload.update({
@@ -721,7 +754,15 @@ async function handleSubscriptionRenewal(
     return
   }
 
-  // Idempotency: skip if we already recorded a renewal Transaction for this sale
+  const amountValue = event.resource.amount?.total
+    ? Math.round(parseFloat(event.resource.amount.total) * 100)
+    : 0
+  const currency = event.resource.amount?.currency ?? 'ILS'
+
+  // Look up or create the renewal Tx. Idempotency keys on
+  // `entitlementsGrantedAt` (like the CAPTURE.COMPLETED handler) rather than
+  // Tx-existence, so a webhook re-delivery after a failed extension can
+  // resume from a pending Tx instead of silently short-circuiting.
   const existing = await payload.find({
     collection: 'transactions',
     where: { providerTransactionId: { equals: saleId } },
@@ -729,41 +770,67 @@ async function handleSubscriptionRenewal(
     depth: 0,
     overrideAccess: true,
   })
-  if (existing.totalDocs > 0) return
 
-  const amountValue = event.resource.amount?.total
-    ? Math.round(parseFloat(event.resource.amount.total) * 100)
-    : 0
-  const currency = event.resource.amount?.currency ?? 'ILS'
+  let renewalTx: { id: string; entitlementsGrantedAt?: string | null }
+  if (existing.totalDocs > 0) {
+    renewalTx = existing.docs[0] as { id: string; entitlementsGrantedAt?: string | null }
+    if (renewalTx.entitlementsGrantedAt) {
+      // Fully processed already — no-op.
+      return
+    }
+  } else {
+    try {
+      renewalTx = (await payload.create({
+        collection: 'transactions',
+        data: {
+          tenant: tenantId,
+          user: userId,
+          product: productId,
+          provider: 'paypal',
+          providerTransactionId: saleId,
+          captureId: saleId,
+          status: 'pending',
+          amount: amountValue,
+          currency,
+          subscription: subscription.id,
+          isRenewal: true,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } as any,
+        overrideAccess: true,
+      })) as { id: string; entitlementsGrantedAt?: string | null }
+    } catch (err) {
+      // Concurrent renewal delivery raced us to the insert. The unique index
+      // on providerTransactionId rejected our create — re-find and resume.
+      const race = await payload.find({
+        collection: 'transactions',
+        where: { providerTransactionId: { equals: saleId } },
+        limit: 1,
+        depth: 0,
+        overrideAccess: true,
+      })
+      if (race.totalDocs === 0) throw err
+      renewalTx = race.docs[0] as { id: string; entitlementsGrantedAt?: string | null }
+      if (renewalTx.entitlementsGrantedAt) return
+    }
+  }
 
-  const renewalTx = await payload.create({
+  const intervalMonths = await getProductIntervalMonths(payload, productId)
+  // Grant BEFORE flipping to succeeded — if extend throws, the Tx stays
+  // pending and the next webhook re-delivery retries the extension.
+  await extendProductEntitlements(userId, productId, String(renewalTx.id), intervalMonths)
+
+  const nowIso = new Date().toISOString()
+  await payload.update({
     collection: 'transactions',
+    id: renewalTx.id,
     data: {
-      tenant: tenantId,
-      user: userId,
-      product: productId,
-      provider: 'paypal',
-      providerTransactionId: saleId,
-      captureId: saleId,
       status: 'succeeded',
-      amount: amountValue,
-      currency,
-      subscription: subscription.id,
-      isRenewal: true,
-      entitlementsGrantedAt: new Date().toISOString(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any,
+      entitlementsGrantedAt: nowIso,
+    },
     overrideAccess: true,
   })
 
-  const intervalMonths = await getProductIntervalMonths(payload, productId)
-  await extendProductEntitlements(userId, productId, String(renewalTx.id), intervalMonths)
-
-  // Push the Subscription period forward
-  const nowIso = new Date().toISOString()
-  const nextEndIso = new Date(
-    Date.now() + intervalMonths * 30 * 24 * 60 * 60 * 1000,
-  ).toISOString()
+  const nextEndIso = addCalendarMonths(new Date(), intervalMonths).toISOString()
   await payload.update({
     collection: 'subscriptions',
     id: subscription.id,
@@ -783,6 +850,55 @@ async function handleSubscriptionRenewal(
     amount: amountValue,
     currency,
     appliedCoupon: null,
+  })
+}
+
+/**
+ * PAYMENT.SALE.REFUNDED — PayPal Billing v1 refund event, fired for
+ * refunded subscription renewals. v2 CAPTURE.REFUNDED does not cover
+ * recurring sales.
+ *
+ * Flips the Transaction status to `refunded`; the existing
+ * revokeEntitlementsOnRefund afterChange hook on Transactions handles the
+ * entitlement rollback.
+ */
+async function handleSaleRefunded(
+  payload: Awaited<ReturnType<typeof getPayload>>,
+  event: PayPalWebhookEvent,
+): Promise<void> {
+  const parentSaleId =
+    event.resource.parent_payment ?? event.resource.sale_id ?? event.resource.id
+  if (!parentSaleId) {
+    payload.logger.warn(
+      { eventId: event.id },
+      'PayPal webhook: PAYMENT.SALE.REFUNDED without parent_payment/sale_id — cannot locate transaction',
+    )
+    return
+  }
+
+  const found = await payload.find({
+    collection: 'transactions',
+    where: { providerTransactionId: { equals: parentSaleId } },
+    limit: 1,
+    depth: 0,
+    overrideAccess: true,
+  })
+  if (found.totalDocs === 0) {
+    payload.logger.warn(
+      { parentSaleId, eventId: event.id },
+      'PayPal webhook: PAYMENT.SALE.REFUNDED for unknown transaction — ignoring',
+    )
+    return
+  }
+
+  const tx = found.docs[0] as { id: string; status: string }
+  if (tx.status === 'refunded') return // idempotent
+
+  await payload.update({
+    collection: 'transactions',
+    id: tx.id,
+    data: { status: 'refunded' },
+    overrideAccess: true,
   })
 }
 
@@ -831,31 +947,32 @@ async function handleSubscriptionExpired(
     return
   }
 
-  // Revoke against the LATEST paying transaction (initial or most recent
-  // renewal) — that's the row whose transactionId matches the Enrollment's
-  // metadata.paymentId in revokeProductEntitlements.
-  const latestTx = await payload.find({
+  // Revoke against EVERY succeeded transaction tied to this sub — belt and
+  // suspenders. Different grants may have anchored on different tx IDs
+  // (extendEnrollment rotates metadata.paymentId per renewal for expiring
+  // enrollments; lifetime enrollments also rotate now, but a legacy
+  // enrollment might still be anchored on the initial tx). Revoking against
+  // all of them cleans up regardless. revokeProductEntitlements is idempotent
+  // and a no-op for already-cancelled enrollments.
+  const succeededTxs = await payload.find({
     collection: 'transactions',
     where: {
       and: [{ subscription: { equals: subscription.id } }, { status: { equals: 'succeeded' } }],
     },
     sort: '-createdAt',
-    limit: 1,
+    limit: 100,
     depth: 0,
     overrideAccess: true,
   })
 
-  const revokeTxId =
-    latestTx.totalDocs > 0
-      ? (latestTx.docs[0] as { id: string }).id
-      : resolveId(subscription.initialTransaction)
+  const txIds = succeededTxs.docs.map((t) => String((t as { id: string }).id))
+  const initialTxId = resolveId(subscription.initialTransaction)
+  if (initialTxId && !txIds.includes(String(initialTxId))) {
+    txIds.push(String(initialTxId))
+  }
 
-  if (revokeTxId) {
-    await revokeProductEntitlements({
-      payload,
-      userId,
-      transactionId: String(revokeTxId),
-    })
+  for (const txId of txIds) {
+    await revokeProductEntitlements({ payload, userId, transactionId: txId })
   }
 
   await payload.update({

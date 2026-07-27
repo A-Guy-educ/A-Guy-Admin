@@ -86,11 +86,16 @@ export const Transactions: CollectionConfig = {
       },
     },
 
-    // Provider's transaction ID (Stripe session ID or PayPal order ID)
+    // Provider's transaction ID (Stripe session ID, PayPal order ID, or
+    // PayPal sale ID for subscription renewals). `unique` guards against
+    // race-double-insertions when a webhook re-delivers with a fresh event
+    // id (bypassing the webhook-events dedup gate) and two concurrent
+    // handlers both see 0 matches in a pre-insert check.
     {
       name: 'providerTransactionId',
       type: 'text',
       required: true,
+      unique: true,
       index: true,
       admin: {
         description: 'Transaction ID from the payment provider',
