@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.28.0 — 2026-07-27
+
+### Features
+- Deep-clone course with chapters, lessons, exercises, and sections (#257)
+- Wire sections into content-promotion export and import (#253)
+
+### Fixes
+- Derive lesson title from imported filename (#254)
+- Anchor Hebrew prefix strip on literal separator in lesson-import (#256)
+- Skip afterChange/afterDelete block-sync on content-promotion imports (#250)
+
+### Docs
+- Fix stale healing rationale and tighten hook-crash attribution for content-promotion (#250)
+
 ## v0.27.0 — 2026-07-19
 
 ### Features
