@@ -56,12 +56,16 @@ import { formatSlug } from '@/server/payload/fields/formatSlug'
 import { markRequestAsContentPromotionImport } from '@/server/services/content-promotion/import-context'
 
 /**
- * Sections that carry very large `content` (base64 embedded media) can push a
- * single insertMany batch close to Mongo's 16 MB request limit. Chunking to
- * 500 docs per batch is well under that even for very rich sections while
- * still cutting round-trips ~500x vs per-doc creates.
+ * Batch limits for `insertMany`. `INSERT_MANY_MAX_DOCS` is the doc-count cap;
+ * `INSERT_MANY_MAX_BYTES` is a conservative ceiling well under Mongo's 16 MB
+ * per-request limit. Sections carrying base64-embedded media in `content` can
+ * push individual docs into the MB range, so batching only by doc count would
+ * let a single unlucky batch balloon past 16 MB — and MongoDB rejects the
+ * whole request, marking every doc in the batch as failed even if only one
+ * was oversized. Cap by both.
  */
-const INSERT_MANY_BATCH_SIZE = 500
+const INSERT_MANY_MAX_DOCS = 500
+const INSERT_MANY_MAX_BYTES = 8 * 1024 * 1024
 const FIND_PAGE_SIZE = 500
 
 /** Strip Payload-managed virtual fields from a doc. */
@@ -129,7 +133,15 @@ function toObjectIdRelation(value: unknown): unknown {
   return toObjectIdIfHex(value)
 }
 
-/** Fields on every child collection that must be ObjectId-typed at rest. */
+/**
+ * Fields on child collections that must be ObjectId-typed at rest. Payload's
+ * Mongoose adapter casts these to ObjectId during `payload.create`; raw
+ * `insertMany` doesn't, so a doc left with a 24-hex string here won't match
+ * later `find({ where: { <field>: <someId> } })` queries whose values get
+ * cast to ObjectId. Must include every relationship / upload field across
+ * chapters, lessons, exercises, sections. Adding a field to the schemas
+ * without adding it here silently breaks read-path population.
+ */
 const COMMON_RELATIONSHIP_FIELDS = [
   'tenant',
   'translatedFrom',
@@ -142,7 +154,28 @@ const COMMON_RELATIONSHIP_FIELDS = [
   'prompt',
   'formulaSheet',
   'mediaFiles',
+  // Lesson-only fields
+  'prerequisites',
+  'nextLessons',
+  'contentFiles',
+  // Exercise-only fields
+  'sourceDoc',
 ] as const
+
+/**
+ * Coerce nested relationship fields that don't live at the doc root — e.g.
+ * `meta.image` is a group-nested media upload on lessons. Called from
+ * `coerceRelationshipsAndDates` after the flat-field pass.
+ */
+function coerceNestedRelationships(doc: Record<string, unknown>): void {
+  const meta = doc.meta
+  if (meta && typeof meta === 'object' && !Array.isArray(meta)) {
+    const metaObj = meta as Record<string, unknown>
+    if (metaObj.image !== undefined && metaObj.image !== null) {
+      metaObj.image = toObjectIdRelation(metaObj.image)
+    }
+  }
+}
 
 /**
  * Read every page of docs matching the filter (Payload's default limit
@@ -220,20 +253,70 @@ function collectSectionRefIds(rawBlocks: unknown): string[] {
 interface BulkInsertResult {
   inserted: number
   failed: number
-  failures: Array<{ index: number; message: string }>
+  failures: Array<{ sourceId: string; message: string }>
+  /**
+   * Source doc ids that failed to insert. Used by the caller to filter
+   * downstream collections whose parent didn't land — otherwise the child
+   * would sit with a foreign-key pointing at nothing.
+   */
+  failedSourceIds: Set<string>
+}
+
+interface BulkInsertItem {
+  sourceId: string
+  /**
+   * Source id of the parent doc in the hierarchy (e.g. lesson's chapter,
+   * exercise's parent lesson, section's parent exercise). The sequential
+   * insert pipeline uses this to skip children whose parent didn't land.
+   * Optional because chapters have no parent inside this clone.
+   */
+  parentSourceId?: string
+  doc: Record<string, unknown>
 }
 
 /**
- * Insert `docs` in `INSERT_MANY_BATCH_SIZE` chunks with `ordered: false` so a
- * per-doc failure doesn't kill the rest of the batch. Returns aggregate
- * counts and per-doc failure detail.
+ * Split `items` into batches that respect both `INSERT_MANY_MAX_DOCS` (count)
+ * and `INSERT_MANY_MAX_BYTES` (approx BSON size, measured against the
+ * JSON serialization since Mongo's driver serializes to BSON with roughly the
+ * same magnitude for our shapes). A single doc that on its own exceeds the
+ * byte budget still gets its own batch — that way an oversized section blows
+ * up alone instead of taking 499 healthy siblings with it.
+ */
+function splitByBudget(items: BulkInsertItem[]): BulkInsertItem[][] {
+  const batches: BulkInsertItem[][] = []
+  let current: BulkInsertItem[] = []
+  let currentBytes = 0
+  for (const item of items) {
+    const size = Buffer.byteLength(JSON.stringify(item.doc))
+    if (
+      current.length > 0 &&
+      (current.length >= INSERT_MANY_MAX_DOCS || currentBytes + size > INSERT_MANY_MAX_BYTES)
+    ) {
+      batches.push(current)
+      current = []
+      currentBytes = 0
+    }
+    current.push(item)
+    currentBytes += size
+  }
+  if (current.length > 0) batches.push(current)
+  return batches
+}
+
+/**
+ * Insert `items` with `ordered: false` so a per-doc failure doesn't kill the
+ * rest of the batch. `sourceId` on each item lets the caller filter downstream
+ * collections whose ancestor failed to insert — critical because Mongo doesn't
+ * enforce FKs and we'd otherwise land orphaned children.
  */
 async function bulkInsert(
   payload: Payload,
   collectionSlug: 'chapters' | 'lessons' | 'exercises' | 'sections',
-  docs: Array<Record<string, unknown>>,
+  items: BulkInsertItem[],
 ): Promise<BulkInsertResult> {
-  if (docs.length === 0) return { inserted: 0, failed: 0, failures: [] }
+  if (items.length === 0) {
+    return { inserted: 0, failed: 0, failures: [], failedSourceIds: new Set() }
+  }
 
   const mongoCollection = (
     payload.db as unknown as {
@@ -253,12 +336,15 @@ async function bulkInsert(
 
   let inserted = 0
   let failed = 0
-  const failures: Array<{ index: number; message: string }> = []
+  const failures: Array<{ sourceId: string; message: string }> = []
+  const failedSourceIds = new Set<string>()
 
-  for (let start = 0; start < docs.length; start += INSERT_MANY_BATCH_SIZE) {
-    const batch = docs.slice(start, start + INSERT_MANY_BATCH_SIZE)
+  for (const batch of splitByBudget(items)) {
     try {
-      const res = await mongoCollection.insertMany(batch, { ordered: false })
+      const res = await mongoCollection.insertMany(
+        batch.map((b) => b.doc),
+        { ordered: false },
+      )
       inserted += res.insertedCount ?? batch.length
     } catch (error) {
       const bulkErr = error as {
@@ -270,24 +356,26 @@ async function bulkInsert(
         for (const we of bulkErr.writeErrors) {
           batchFailedIdx.add(we.index)
           failed += 1
-          failures.push({ index: start + we.index, message: we.errmsg ?? 'insert failed' })
+          const src = batch[we.index]?.sourceId ?? '<unknown>'
+          failures.push({ sourceId: src, message: we.errmsg ?? 'insert failed' })
+          failedSourceIds.add(src)
         }
-        // Everything in the batch that wasn't in writeErrors landed successfully.
         for (let i = 0; i < batch.length; i++) {
           if (!batchFailedIdx.has(i)) inserted += 1
         }
       } else {
-        // Not a BulkWriteError — record the whole batch as failed.
-        failed += batch.length
+        // Not a BulkWriteError — treat the whole batch as failed.
         const msg = error instanceof Error ? error.message : 'Unknown bulk insert error'
-        for (let i = 0; i < batch.length; i++) {
-          failures.push({ index: start + i, message: msg })
+        for (const item of batch) {
+          failed += 1
+          failures.push({ sourceId: item.sourceId, message: msg })
+          failedSourceIds.add(item.sourceId)
         }
       }
     }
   }
 
-  return { inserted, failed, failures }
+  return { inserted, failed, failures, failedSourceIds }
 }
 
 /**
@@ -300,6 +388,7 @@ function coerceRelationshipsAndDates(doc: Record<string, unknown>): Record<strin
       doc[field] = toObjectIdRelation(doc[field])
     }
   }
+  coerceNestedRelationships(doc)
   const now = new Date()
   doc.createdAt = coerceToDate(doc.createdAt) ?? now
   doc.updatedAt = coerceToDate(doc.updatedAt) ?? now
@@ -369,7 +458,12 @@ function prepareChapter(
 /**
  * Build an insert-ready lesson doc. `blocks` is rewritten with the new
  * exercise ids from `exerciseIdMap`; entries whose target exercise wasn't
- * cloned (unmapped) are dropped so the new lesson doesn't hold dangling refs.
+ * actually prepared (`preparedExerciseIds`) are dropped so the new lesson
+ * doesn't hold dangling refs. The extra "prepared" guard on top of the id
+ * map matters for cross-course exercises: they get an id assigned during the
+ * step-3a union walk, but if their FK lesson lives outside this course AND
+ * no referencing lesson could be found for re-parenting, they never make it
+ * to the exercise-prep loop.
  */
 function prepareLesson(
   source: Record<string, unknown> & { id: string },
@@ -378,6 +472,7 @@ function prepareLesson(
   slugSuffix: string,
   titles: CourseTitles,
   exerciseIdMap: Map<string, ObjectId>,
+  preparedExerciseIds: Set<string>,
   createdByObjectId: ObjectId | null,
 ): Record<string, unknown> {
   const {
@@ -398,11 +493,15 @@ function prepareLesson(
   const baseSlug = sourceSlug.trim() || formatSlug(lessonTitle)
 
   // Rebuild the lesson.blocks[] playlist with the new exercise ids. Non-
-  // exerciseRef blocks (rich_text, etc.) are preserved verbatim.
+  // exerciseRef blocks (rich_text, etc.) are preserved verbatim. An
+  // exerciseRef whose target ISN'T in preparedExerciseIds is dropped —
+  // otherwise the new lesson would point at an ObjectId that was assigned
+  // but never inserted.
   const rebuiltBlocks: BlockRef[] = parseBlocks(rawBlocks)
     .map((b): BlockRef | null => {
       if (b.blockType !== 'exerciseRef') return { ...b, id: newBlockId() }
       if (typeof b.exercise !== 'string') return null
+      if (!preparedExerciseIds.has(b.exercise)) return null
       const newExId = exerciseIdMap.get(b.exercise)
       if (!newExId) return null
       return { ...b, id: newBlockId(), exercise: newExId.toString() }
@@ -435,6 +534,7 @@ function prepareExercise(
   ctx: ExerciseCtx,
   newCourseObjectId: ObjectId,
   sectionIdMap: Map<string, ObjectId>,
+  preparedSectionIds: Set<string>,
   createdByObjectId: ObjectId | null,
 ): Record<string, unknown> {
   const {
@@ -448,10 +548,15 @@ function prepareExercise(
   void _c
   void _u
 
+  // Same drop-unmapped guard as prepareLesson (see rationale above): even
+  // if `sectionIdMap` has an entry for the referenced section, we only keep
+  // the block if that section was actually prepared. Cross-course sections
+  // whose parent exercise isn't in the clone get an id but no insert.
   const rebuiltBlocks: BlockRef[] = parseBlocks(rawBlocks)
     .map((b): BlockRef | null => {
       if (b.blockType !== 'sectionRef') return { ...b, id: newBlockId() }
       if (typeof b.section !== 'string') return null
+      if (!preparedSectionIds.has(b.section)) return null
       const newSecId = sectionIdMap.get(b.section)
       if (!newSecId) return null
       return { ...b, id: newBlockId(), section: newSecId.toString() }
@@ -610,10 +715,19 @@ export async function duplicateCourseEndpoint(req: PayloadRequest): Promise<Resp
   //     this course (see getSourceExercisesForLesson for the incident that
   //     drove that fallback). Union the FK query results with anything the
   //     playlist references so the duplicated course doesn't lose exercises.
+  //     Also track which source lesson first referenced each such exercise —
+  //     when we prep the exercise, that referencing lesson's newly-generated
+  //     lesson id becomes the exercise's parent (mirrors the old serial-path
+  //     behavior of re-parenting cross-course exercises under the current
+  //     lesson via `payload.create({ ..., lesson: newLesson.id })`).
   const knownExerciseIds = new Set(sourceExercisesFK.map((e) => e.id))
   const missingExerciseIds: string[] = []
+  const firstReferencingLesson = new Map<string, string>()
   for (const lesson of sourceLessonsFK) {
     for (const exId of collectExerciseRefIds(lesson.blocks)) {
+      if (!firstReferencingLesson.has(exId)) {
+        firstReferencingLesson.set(exId, lesson.id)
+      }
       if (!knownExerciseIds.has(exId)) {
         knownExerciseIds.add(exId)
         missingExerciseIds.push(exId)
@@ -633,11 +747,16 @@ export async function duplicateCourseEndpoint(req: PayloadRequest): Promise<Resp
   const sourceExercises = [...sourceExercisesFK, ...extraExercises]
 
   // 3b) Same union pattern for sections referenced from exercise.blocks
-  //     that live outside this course.
+  //     that live outside this course. `firstReferencingExercise` mirrors
+  //     `firstReferencingLesson` above.
   const knownSectionIds = new Set(sourceSectionsFK.map((s) => s.id))
   const missingSectionIds: string[] = []
+  const firstReferencingExercise = new Map<string, string>()
   for (const exercise of sourceExercises) {
     for (const secId of collectSectionRefIds(exercise.blocks)) {
+      if (!firstReferencingExercise.has(secId)) {
+        firstReferencingExercise.set(secId, exercise.id)
+      }
       if (!knownSectionIds.has(secId)) {
         knownSectionIds.add(secId)
         missingSectionIds.push(secId)
@@ -697,32 +816,130 @@ export async function duplicateCourseEndpoint(req: PayloadRequest): Promise<Resp
     })
   }
 
-  // 5) Prepare each collection's docs.
-  const chapterDocs: Array<Record<string, unknown>> = sourceChapters.map((c) => {
-    const newId = chapterIdMap.get(c.id) as ObjectId
-    return prepareChapter(
-      c,
-      { newId, chapterTitle: chapterTitleById.get(c.id) ?? 'Untitled' },
-      newCourseObjectId,
-      suffix,
-      titles,
-      createdByObjectId,
-    )
-  })
+  // 5) Prepare each collection's docs. Order matters: sections first (so we
+  //    know which section ids will be prepared for exercise-block filtering),
+  //    then exercises (so we know which exercise ids for lesson-block filtering),
+  //    then lessons, then chapters. Each item carries `parentSourceId` so the
+  //    insert stage can drop children whose ancestor failed to land.
 
-  const lessonDocs: Array<Record<string, unknown>> = []
+  // 5a) Sections — parented under the exercise their FK points to, OR under
+  //     the exercise that first referenced them (for cross-exercise sections
+  //     pulled in via step 3b). Sections whose parent exercise chain doesn't
+  //     resolve to a lesson we cloned are skipped entirely.
+  const sectionItems: BulkInsertItem[] = []
+  const preparedSectionIds = new Set<string>()
+  for (const s of sourceSections) {
+    const newId = sectionIdMap.get(s.id) as ObjectId
+    let parentExId =
+      typeof s.exercise === 'string' && exerciseMetaById.has(s.exercise) ? s.exercise : null
+    if (!parentExId || !exerciseMetaById.get(parentExId)?.lessonId) {
+      // FK exercise isn't in this course (or has no resolvable lesson).
+      // Fall back to whichever exercise first referenced this section.
+      const referencingExId = firstReferencingExercise.get(s.id)
+      if (referencingExId && exerciseMetaById.has(referencingExId)) {
+        parentExId = referencingExId
+      } else {
+        continue
+      }
+    }
+    const exMeta = exerciseMetaById.get(parentExId)
+    if (!exMeta) continue
+    // Resolve the parent lesson: exercise's own FK lesson if that's in the
+    // course, else the exercise's own first-referencing lesson (already
+    // computed in step 3a).
+    let parentLessonId: string | null = null
+    if (exMeta.lessonId && lessonMetaById.has(exMeta.lessonId)) {
+      parentLessonId = exMeta.lessonId
+    } else {
+      const refLesson = firstReferencingLesson.get(parentExId)
+      if (refLesson && lessonMetaById.has(refLesson)) parentLessonId = refLesson
+    }
+    if (!parentLessonId) continue
+    const lessonMeta = lessonMetaById.get(parentLessonId)
+    if (!lessonMeta || !lessonMeta.chapterId) continue
+    const newExerciseId = exerciseIdMap.get(parentExId)
+    const newLessonId = lessonIdMap.get(parentLessonId)
+    const newChapterId = chapterIdMap.get(lessonMeta.chapterId)
+    if (!newExerciseId || !newLessonId || !newChapterId) continue
+
+    sectionItems.push({
+      sourceId: s.id,
+      parentSourceId: parentExId,
+      doc: prepareSection(
+        s,
+        newId,
+        newExerciseId,
+        newLessonId,
+        newChapterId,
+        newCourseObjectId,
+        titles,
+        lessonMeta.chapterTitle,
+        lessonMeta.title,
+        exMeta.title,
+        createdByObjectId,
+      ),
+    })
+    preparedSectionIds.add(s.id)
+  }
+
+  // 5b) Exercises — parented under the exercise's FK lesson if that lesson
+  //     is in this course, else under the first lesson that referenced this
+  //     exercise via its blocks (cross-course pull-in from step 3a).
+  const exerciseItems: BulkInsertItem[] = []
+  const preparedExerciseIds = new Set<string>()
+  for (const e of sourceExercises) {
+    const newId = exerciseIdMap.get(e.id) as ObjectId
+    const meta = exerciseMetaById.get(e.id)
+    if (!meta) continue
+    let parentLessonId: string | null = null
+    if (meta.lessonId && lessonMetaById.has(meta.lessonId)) {
+      parentLessonId = meta.lessonId
+    } else {
+      const refLesson = firstReferencingLesson.get(e.id)
+      if (refLesson && lessonMetaById.has(refLesson)) parentLessonId = refLesson
+    }
+    if (!parentLessonId) continue
+    const lessonMeta = lessonMetaById.get(parentLessonId)
+    if (!lessonMeta || !lessonMeta.chapterId) continue
+    const newLessonId = lessonIdMap.get(parentLessonId)
+    const newChapterId = chapterIdMap.get(lessonMeta.chapterId)
+    if (!newLessonId || !newChapterId) continue
+
+    exerciseItems.push({
+      sourceId: e.id,
+      parentSourceId: parentLessonId,
+      doc: prepareExercise(
+        e,
+        {
+          newId,
+          newLessonId,
+          newChapterId,
+          chapterTitle: lessonMeta.chapterTitle,
+          lessonTitle: lessonMeta.title,
+          exerciseTitle: meta.title,
+        },
+        newCourseObjectId,
+        sectionIdMap,
+        preparedSectionIds,
+        createdByObjectId,
+      ),
+    })
+    preparedExerciseIds.add(e.id)
+  }
+
+  // 5c) Lessons — parented under their chapter. Lesson.blocks refs are
+  //     filtered by `preparedExerciseIds` inside prepareLesson.
+  const lessonItems: BulkInsertItem[] = []
   for (const l of sourceLessonsFK) {
     const newId = lessonIdMap.get(l.id) as ObjectId
     const meta = lessonMetaById.get(l.id)
-    if (!meta) continue
-    const newChapterId = meta.chapterId ? chapterIdMap.get(meta.chapterId) : undefined
-    if (!newChapterId) {
-      // Lesson references a chapter not in this course — skip. Wouldn't
-      // render correctly under the new course anyway.
-      continue
-    }
-    lessonDocs.push(
-      prepareLesson(
+    if (!meta || !meta.chapterId) continue
+    const newChapterId = chapterIdMap.get(meta.chapterId)
+    if (!newChapterId) continue
+    lessonItems.push({
+      sourceId: l.id,
+      parentSourceId: meta.chapterId,
+      doc: prepareLesson(
         l,
         {
           newId,
@@ -734,76 +951,49 @@ export async function duplicateCourseEndpoint(req: PayloadRequest): Promise<Resp
         suffix,
         titles,
         exerciseIdMap,
+        preparedExerciseIds,
         createdByObjectId,
       ),
-    )
+    })
   }
 
-  const exerciseDocs: Array<Record<string, unknown>> = []
-  for (const e of sourceExercises) {
-    const newId = exerciseIdMap.get(e.id) as ObjectId
-    const meta = exerciseMetaById.get(e.id)
-    if (!meta) continue
-    const newLessonId = meta.lessonId ? lessonIdMap.get(meta.lessonId) : undefined
-    const newChapterId = meta.chapterId ? chapterIdMap.get(meta.chapterId) : undefined
-    if (!newLessonId || !newChapterId) continue
-    const lessonMeta = meta.lessonId ? lessonMetaById.get(meta.lessonId) : undefined
-    exerciseDocs.push(
-      prepareExercise(
-        e,
-        {
-          newId,
-          newLessonId,
-          newChapterId,
-          chapterTitle: lessonMeta?.chapterTitle ?? '',
-          lessonTitle: lessonMeta?.title ?? '',
-          exerciseTitle: meta.title,
-        },
-        newCourseObjectId,
-        sectionIdMap,
-        createdByObjectId,
-      ),
-    )
-  }
+  // 5d) Chapters — top of the child tree, no parent filter.
+  const chapterItems: BulkInsertItem[] = sourceChapters.map((c) => ({
+    sourceId: c.id,
+    doc: prepareChapter(
+      c,
+      {
+        newId: chapterIdMap.get(c.id) as ObjectId,
+        chapterTitle: chapterTitleById.get(c.id) ?? 'Untitled',
+      },
+      newCourseObjectId,
+      suffix,
+      titles,
+      createdByObjectId,
+    ),
+  }))
 
-  const sectionDocs: Array<Record<string, unknown>> = []
-  for (const s of sourceSections) {
-    const newId = sectionIdMap.get(s.id) as ObjectId
-    const exId = typeof s.exercise === 'string' ? s.exercise : null
-    if (!exId) continue
-    const newExerciseId = exerciseIdMap.get(exId)
-    if (!newExerciseId) continue
-    const exMeta = exerciseMetaById.get(exId)
-    if (!exMeta || !exMeta.lessonId) continue
-    const newLessonId = lessonIdMap.get(exMeta.lessonId)
-    const newChapterId = exMeta.chapterId ? chapterIdMap.get(exMeta.chapterId) : undefined
-    if (!newLessonId || !newChapterId) continue
-    const lessonMeta = lessonMetaById.get(exMeta.lessonId)
-    sectionDocs.push(
-      prepareSection(
-        s,
-        newId,
-        newExerciseId,
-        newLessonId,
-        newChapterId,
-        newCourseObjectId,
-        titles,
-        lessonMeta?.chapterTitle ?? '',
-        lessonMeta?.title ?? '',
-        exMeta.title,
-        createdByObjectId,
-      ),
-    )
-  }
+  // 6) Sequential bulk-insert with per-stage filtering. Parent-first order:
+  //    a failed parent means we drop its would-be children instead of
+  //    landing them as orphans with a foreign-key pointing at nothing.
+  //    Insert is fast enough (one round trip per collection per batch) that
+  //    the loss of parallelism is negligible.
+  const chaptersRes = await bulkInsert(req.payload, 'chapters', chapterItems)
 
-  // 6) Parallel bulk-insert. Mongo doesn't enforce FK, so the order doesn't
-  //    matter for correctness; parallel wins on wall time.
-  const [chaptersRes, lessonsRes, exercisesRes, sectionsRes] = await Promise.all([
-    bulkInsert(req.payload, 'chapters', chapterDocs),
-    bulkInsert(req.payload, 'lessons', lessonDocs),
-    bulkInsert(req.payload, 'exercises', exerciseDocs),
-    bulkInsert(req.payload, 'sections', sectionDocs),
-  ])
+  const survivingLessonItems = lessonItems.filter(
+    (it) => !it.parentSourceId || !chaptersRes.failedSourceIds.has(it.parentSourceId),
+  )
+  const lessonsRes = await bulkInsert(req.payload, 'lessons', survivingLessonItems)
+
+  const survivingExerciseItems = exerciseItems.filter(
+    (it) => !it.parentSourceId || !lessonsRes.failedSourceIds.has(it.parentSourceId),
+  )
+  const exercisesRes = await bulkInsert(req.payload, 'exercises', survivingExerciseItems)
+
+  const survivingSectionItems = sectionItems.filter(
+    (it) => !it.parentSourceId || !exercisesRes.failedSourceIds.has(it.parentSourceId),
+  )
+  const sectionsRes = await bulkInsert(req.payload, 'sections', survivingSectionItems)
 
   const anyFailures =
     chaptersRes.failed + lessonsRes.failed + exercisesRes.failed + sectionsRes.failed
