@@ -1833,6 +1833,7 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- promote: dev -> main (v0.28.0) ([#265](https://github.com/A-Guy-educ/A-Guy-Admin/pull/265)) — @aguyshayb
 - chore: Release v0.28.0 ([#264](https://github.com/A-Guy-educ/A-Guy-Admin/pull/264)) — @aguyshayb
 - fix(course-duplication): Deep-clone course + chapters + lessons + exercises ([#257](https://github.com/A-Guy-educ/A-Guy-Admin/pull/257)) — @aguyshayb
 - fix(lesson-import): anchor Hebrew prefix strip on literal separator ([#256](https://github.com/A-Guy-educ/A-Guy-Admin/pull/256)) — @aguyshayb
