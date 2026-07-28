@@ -482,6 +482,21 @@ async function extendEnrollment(
       metadata?: { paymentId?: string; accessCodeId?: string; grantedBy?: string }
     }
 
+    // Refuse to reactivate a cancelled enrollment via extension. A concurrent
+    // handleSubscriptionExpired (or an admin refund) could have cancelled
+    // this enrollment between our webhook's entry and this read; without
+    // this check the CAS on expiresAt still matches and we'd silently
+    // resurrect access, diverging from the terminal subscription state.
+    // Retrying doesn't help — status doesn't change back on its own — so
+    // we log and return.
+    if (current.status === 'cancelled') {
+      payload.logger.warn(
+        { userId, courseId, transactionId, enrollmentId: current.id },
+        'extendEnrollment: refusing to extend a cancelled enrollment (concurrent revoke or terminal sub)',
+      )
+      return null
+    }
+
     // Idempotent replay
     if (current.metadata?.paymentId === transactionId && current.status === 'active') {
       return current.expiresAt ? new Date(current.expiresAt).getTime() : null
@@ -517,10 +532,13 @@ async function extendEnrollment(
     const result = await enrollmentsCollection.updateOne(
       {
         _id: new ObjectId(current.id),
-        // Guard: only write if expiresAt is still the value we observed.
-        // A concurrent renewal that already extended will fail this match
-        // and force us to re-read.
+        // Guard: only write if expiresAt is still the value we observed AND
+        // status is still 'active'. If a concurrent revoke cancelled the
+        // enrollment between our read and this write, matchedCount === 0
+        // and the retry loop's re-read will hit the status='cancelled'
+        // short-circuit above.
         expiresAt: new Date(current.expiresAt),
+        status: 'active',
       },
       {
         $set: {

@@ -659,6 +659,36 @@ async function handleSubscriptionActivated(
       { paypalSubscriptionId, subscriptionStatus: subscription.status },
       'PayPal webhook: BILLING.SUBSCRIPTION.ACTIVATED for terminal subscription — ignoring',
     )
+    // Flip a still-pending initial Tx to failed so it doesn't linger in
+    // Payments admin as a phantom pending charge for a sub that will
+    // never actually activate.
+    const staleInitialTxId = resolveId(subscription.initialTransaction)
+    if (staleInitialTxId) {
+      try {
+        const initialTx = await payload.findByID({
+          collection: 'transactions',
+          id: staleInitialTxId,
+          depth: 0,
+          overrideAccess: true,
+        })
+        if ((initialTx as { status?: string }).status === 'pending') {
+          await payload.update({
+            collection: 'transactions',
+            id: staleInitialTxId,
+            data: {
+              status: 'failed',
+              errorMessage: `Subscription ${paypalSubscriptionId} was in terminal state (${subscription.status}) when ACTIVATED arrived — activation abandoned.`,
+            },
+            overrideAccess: true,
+          })
+        }
+      } catch (err) {
+        payload.logger.error(
+          { err: serializePaymentError(err), initialTxId: staleInitialTxId },
+          'PayPal webhook: failed to flip stranded initial Tx to failed on terminal-ACTIVATED path',
+        )
+      }
+    }
     return
   }
 
@@ -825,17 +855,21 @@ async function handleSubscriptionRenewal(
     return
   }
 
-  // Guard against non-numeric amount strings — a malformed payload would
-  // otherwise pass NaN into payload.create and 500 the whole handler.
+  // Guard against non-numeric amount strings. Persisting a $0 renewal Tx
+  // would silently under-report revenue; better to 500 and let PayPal retry
+  // (and page ops) so the malformed payload is visible in monitoring.
   const rawAmount = event.resource.amount?.total
   const parsedAmount = rawAmount !== undefined ? parseFloat(rawAmount) : NaN
-  if (rawAmount !== undefined && !Number.isFinite(parsedAmount)) {
-    payload.logger.warn(
+  if (rawAmount === undefined || !Number.isFinite(parsedAmount)) {
+    payload.logger.error(
       { paypalSubscriptionId, saleId, rawAmount },
-      'PayPal webhook: PAYMENT.SALE.COMPLETED amount.total is not a valid number — falling back to 0',
+      'PayPal webhook: PAYMENT.SALE.COMPLETED missing or non-numeric amount.total — refusing to record a $0 renewal',
+    )
+    throw new Error(
+      `PAYMENT.SALE.COMPLETED for ${paypalSubscriptionId} has missing/malformed amount.total (${rawAmount ?? 'undefined'})`,
     )
   }
-  const amountValue = Number.isFinite(parsedAmount) ? Math.round(parsedAmount * 100) : 0
+  const amountValue = Math.round(parsedAmount * 100)
   const currency = event.resource.amount?.currency ?? 'ILS'
 
   // Look up or create the renewal Tx. Idempotency keys on
@@ -920,16 +954,17 @@ async function handleSubscriptionRenewal(
   })
 
   // Out-of-order webhook delivery: if SALE.COMPLETED lands before ACTIVATED,
-  // we need to flip the pending initial transaction to succeeded too — the
-  // ACTIVATED handler will short-circuit later on subscription.status ===
-  // 'active' and would otherwise leave the initial Tx stuck in pending.
+  // flip the pending initial transaction to succeeded so it doesn't get
+  // stranded (ACTIVATED will short-circuit later on sub.status === 'active').
   //
-  // We also re-run grantProductEntitlements against the initial Tx here so
-  // enrollment.metadata.paymentId points at the initial Tx (matching what
-  // the ACTIVATED path would have set), preserving the invariant that an
-  // admin refund of the initial Tx cleanly revokes access. Passing the
-  // just-computed period end as overrideExpiresAt makes the expiresAt write
-  // a no-op — only the paymentId rotation matters here.
+  // We deliberately do NOT re-anchor the enrollment on the initial Tx here.
+  // In the normal (ACTIVATED-first) order the enrollment permanently carries
+  // paymentId = renewalTxId after the first renewal, so an admin refund of
+  // the initial Tx no-ops and access is preserved (user paid for the
+  // renewal, so it stays). Re-anchoring in the out-of-order path would flip
+  // that semantic — admin refund of initial would revoke access — making
+  // behavior depend on PayPal's delivery order rather than user actions.
+  // Keep renewalTxId as the enrollment anchor invariant across both orders.
   if (subscription.status === 'pending') {
     const initialTxId = resolveId(subscription.initialTransaction)
     if (initialTxId) {
@@ -940,11 +975,6 @@ async function handleSubscriptionRenewal(
         overrideAccess: true,
       })
       if ((initialTx as { status?: string }).status === 'pending') {
-        const overrideExpiresAt =
-          maxEnrollmentEndMs > 0
-            ? new Date(maxEnrollmentEndMs).toISOString()
-            : addCalendarMonths(new Date(), intervalMonths).toISOString()
-        await grantProductEntitlements(userId, productId, String(initialTxId), overrideExpiresAt)
         await payload.update({
           collection: 'transactions',
           id: initialTxId,
@@ -1069,12 +1099,34 @@ async function updateSubscriptionState(
     event.event_type,
   )
   if (!subscription) return
-  await payload.update({
-    collection: 'subscriptions',
-    id: subscription.id,
-    data: update,
-    overrideAccess: true,
-  })
+  // Status-filtered updateOne — terminal states (cancelled/expired) are
+  // sticky. A late CANCELLED/SUSPENDED/PAYMENT_FAILED landing after an
+  // EXPIRED (best-effort delivery order) must not overwrite the terminal
+  // state. Matches the pattern in handleSubscriptionActivated and
+  // handleSubscriptionRenewal's final writes.
+  const subscriptionsCollection = payload.db.collections['subscriptions']
+  const result = await subscriptionsCollection.updateOne(
+    {
+      _id: new ObjectId(subscription.id),
+      status: { $in: ['pending', 'active', 'past_due', 'suspended'] },
+    },
+    {
+      $set: Object.fromEntries(
+        Object.entries(update).map(([k, v]) => [
+          k,
+          // Convert ISO strings to Date for the Mongo layer (Payload writes
+          // dates as ISODate; raw updateOne expects Date objects to match).
+          typeof v === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(v) ? new Date(v) : v,
+        ]),
+      ),
+    },
+  )
+  if (result.matchedCount === 0) {
+    payload.logger.warn(
+      { subscriptionId: subscription.id, eventType: event.event_type, update },
+      'PayPal webhook: state-update skipped — sub already in a terminal state',
+    )
+  }
 }
 
 async function handleSubscriptionExpired(

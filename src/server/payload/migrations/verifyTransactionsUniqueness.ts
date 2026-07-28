@@ -46,18 +46,45 @@ export async function verifyTransactionsProviderTxIdUniqueness(
     )
     .toArray()
 
-  if (dupes.length === 0) return 'clean'
+  if (dupes.length > 0) {
+    const sample = dupes.slice(0, 5).map((d) => ({
+      providerTransactionId: d._id,
+      count: d.count,
+      sampleTxIds: d.ids.slice(0, 3).map((id) => String(id)),
+    }))
+    payload.logger.error(
+      { duplicateCount: dupes.length, sample },
+      '[migration/verifyTransactionsProviderTxIdUniqueness] DUPLICATE providerTransactionId VALUES FOUND. The unique index on transactions.providerTransactionId will silently fail to build, disabling the race guard in the PayPal renewal handler. Dedupe these rows (keep the succeeded/latest, delete the losers) and redeploy.',
+    )
+    return 'dupes'
+  }
 
-  const sample = dupes.slice(0, 5).map((d) => ({
-    providerTransactionId: d._id,
-    count: d.count,
-    sampleTxIds: d.ids.slice(0, 3).map((id) => String(id)),
-  }))
-  payload.logger.error(
-    { duplicateCount: dupes.length, sample },
-    '[migration/verifyTransactionsProviderTxIdUniqueness] DUPLICATE providerTransactionId VALUES FOUND. The unique index on transactions.providerTransactionId will silently fail to build, disabling the race guard in the PayPal renewal handler. Dedupe these rows (keep the succeeded/latest, delete the losers) and redeploy.',
+  // Positive verification: even without dupes, the unique index may not be
+  // built (Mongoose config drift, historical index that was dropped, or the
+  // index build failing for an unrelated reason). Fetch the live index list
+  // and confirm the guard is actually enforced. On first boot after this
+  // migration ships, Mongoose may not have finished building the index yet
+  // — in that case the log will surface on the next boot when it should be
+  // stable, still catching genuine long-term misconfigurations.
+  const indexes = (await db.collection('transactions').indexes()) as Array<{
+    name?: string
+    key?: Record<string, number>
+    unique?: boolean
+  }>
+  const hasUniqueIndex = indexes.some(
+    (idx) => idx.unique === true && idx.key && idx.key.providerTransactionId === 1,
   )
-  return 'dupes'
+  if (!hasUniqueIndex) {
+    payload.logger.error(
+      {
+        indexNames: indexes.map((idx) => idx.name).filter(Boolean),
+      },
+      '[migration/verifyTransactionsProviderTxIdUniqueness] Data is clean but NO unique index on providerTransactionId exists. The concurrent-renewal race guard in the PayPal handler is inert. If this persists past first-boot, investigate the Mongoose index build (may have failed silently) or the schema flag on Transactions.ts.',
+    )
+    return 'dupes' // treat missing index as a failure state
+  }
+
+  return 'clean'
 }
 
 export async function runVerifyTransactionsUniquenessOnInit(payload: Payload): Promise<void> {
