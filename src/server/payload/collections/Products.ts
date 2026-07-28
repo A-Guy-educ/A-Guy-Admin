@@ -34,8 +34,18 @@ export const Products: CollectionConfig = {
         // to a positive value on update; existing rows carrying a legacy
         // durationDays stay editable so admins can save unrelated fields
         // and clear the value themselves.
+        //
+        // On a partial API update that touches only `durationDays` without
+        // resending `billingType`, `data.billingType` is undefined — fall
+        // back to originalDoc's billingType so a direct API write can't
+        // sneak durationDays onto a subscription product by omitting the
+        // billingType from the payload.
+        const effectiveBillingType =
+          typeof data.billingType === 'string'
+            ? data.billingType
+            : ((originalDoc as { billingType?: string } | undefined)?.billingType ?? undefined)
         if (
-          data.billingType === 'subscription' &&
+          effectiveBillingType === 'subscription' &&
           typeof data.durationDays === 'number' &&
           data.durationDays > 0
         ) {

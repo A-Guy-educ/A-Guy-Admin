@@ -65,7 +65,7 @@ beforeAll(async () => {
     collection: 'courses',
     data: {
       courseLabel: 'S1',
-      title: 'Sub Test Course',
+      title: `Sub Test Course ${Date.now()}`,
       categories: [category.id],
       tenant: tenantId,
     } as any,
@@ -954,6 +954,34 @@ describe('PayPal subscription webhooks', () => {
       overrideAccess: true,
     })
     expect((enrollments.docs[0] as any).status).toBe('active')
+  })
+
+  it('rejects durationDays on a partial API update that omits billingType (originalDoc fallback)', async () => {
+    // Create as one-time so the initial insert doesn't trip the guard, then
+    // flip to subscription, then attempt a partial update setting only
+    // durationDays (billingType omitted). Without the originalDoc fallback,
+    // data.billingType is undefined and the guard would be silently bypassed.
+    const created = await payload.create({
+      collection: 'products',
+      data: {
+        name: `Partial ${Date.now()}`,
+        slug: `partial-${Date.now()}`,
+        billingType: 'subscription',
+        interval: 'month',
+        price: 20,
+        currency: 'ILS',
+        isActive: true,
+      } as any,
+      overrideAccess: true,
+    })
+    await expect(
+      payload.update({
+        collection: 'products',
+        id: created.id,
+        data: { durationDays: 45 } as any, // NO billingType in payload
+        overrideAccess: true,
+      }),
+    ).rejects.toThrow(/durationDays is only valid for one-time products/)
   })
 
   it('rejects durationDays on subscription products at the schema layer', async () => {

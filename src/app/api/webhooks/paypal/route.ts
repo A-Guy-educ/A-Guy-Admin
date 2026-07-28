@@ -716,14 +716,14 @@ async function handleSubscriptionActivated(
     overrideAccess: true,
   })
 
-  // Fire-and-forget receipt — sent in BOTH branches (initial tx present or
-  // fallback path), so the user always gets a confirmation email even when
-  // the subscription is missing its initialTransaction link. Amount/currency
-  // fall back to the product's price when no initial tx is available.
-  const effectiveTxId = initialTxId ?? String(subscription.id)
-  let receiptAmount = 0
-  let receiptCurrency = 'ILS'
-  let receiptProviderTxId = event.resource.id
+  // Fire-and-forget receipt — only sent when we have a valid initial Tx.
+  // sendPurchaseReceipt does an internal findByID on the transactions
+  // collection using the transactionId we pass; the fallback path (no
+  // initialTransaction) has no valid tx to look up and would trigger a
+  // NotFound throw inside the voided call, surfacing as an unhandled
+  // promise rejection. The fallback is a data-integrity anomaly (Web
+  // should always link initialTransaction) — log it so ops can chase
+  // the missing link, and skip the receipt rather than crash silently.
   if (initialTxId) {
     const tx = await payload.findByID({
       collection: 'transactions',
@@ -731,31 +731,22 @@ async function handleSubscriptionActivated(
       depth: 0,
       overrideAccess: true,
     })
-    receiptAmount = (tx as { amount?: number }).amount ?? 0
-    receiptCurrency = (tx as { currency?: string }).currency ?? 'ILS'
-    receiptProviderTxId =
-      (tx as { providerTransactionId?: string }).providerTransactionId ?? event.resource.id
-  } else {
-    // Fallback: read the plan's price/currency off the product for a
-    // best-effort receipt when the initial tx is missing.
-    const product = await payload.findByID({
-      collection: 'products',
-      id: productId,
-      depth: 0,
-      overrideAccess: true,
+    void sendPurchaseReceipt(payload, {
+      transactionId: initialTxId,
+      userId,
+      productId,
+      providerTransactionId:
+        (tx as { providerTransactionId?: string }).providerTransactionId ?? event.resource.id,
+      amount: (tx as { amount?: number }).amount ?? 0,
+      currency: (tx as { currency?: string }).currency ?? 'ILS',
+      appliedCoupon: null,
     })
-    receiptAmount = Math.round(((product as { price?: number }).price ?? 0) * 100)
-    receiptCurrency = (product as { currency?: string }).currency ?? 'ILS'
+  } else {
+    payload.logger.warn(
+      { subscriptionId: subscription.id, userId, productId },
+      'PayPal webhook: fallback activation path skipping receipt — subscription has no initialTransaction to base the email on. Web should always populate initialTransaction; investigate the missing link.',
+    )
   }
-  void sendPurchaseReceipt(payload, {
-    transactionId: effectiveTxId,
-    userId,
-    productId,
-    providerTransactionId: receiptProviderTxId,
-    amount: receiptAmount,
-    currency: receiptCurrency,
-    appliedCoupon: null,
-  })
 }
 
 async function handleSubscriptionRenewal(
@@ -952,16 +943,34 @@ async function handleSubscriptionRenewal(
     maxEnrollmentEndMs > 0
       ? new Date(maxEnrollmentEndMs).toISOString()
       : addCalendarMonths(new Date(), intervalMonths).toISOString()
-  await payload.update({
-    collection: 'subscriptions',
-    id: subscription.id,
-    data: {
-      status: 'active',
-      currentPeriodStart: nowIso,
-      currentPeriodEnd: nextEndIso,
+
+  // Status-filtered update to close the race where a concurrent CANCELLED
+  // webhook lands between our status read (at handler entry) and this final
+  // write. Without the filter, the write would resurrect a cancelled sub to
+  // active. If the sub is now terminal, we skip the update entirely — the
+  // renewal Tx is already succeeded and the enrollment is already extended
+  // (the user paid for the period), but the sub row remains cancelled to
+  // reflect the user's actual state.
+  const subscriptionsCollection = payload.db.collections['subscriptions']
+  const result = await subscriptionsCollection.updateOne(
+    {
+      _id: new ObjectId(subscription.id),
+      status: { $in: ['pending', 'active', 'past_due', 'suspended'] },
     },
-    overrideAccess: true,
-  })
+    {
+      $set: {
+        status: 'active',
+        currentPeriodStart: new Date(nowIso),
+        currentPeriodEnd: new Date(nextEndIso),
+      },
+    },
+  )
+  if (result.matchedCount === 0) {
+    payload.logger.warn(
+      { paypalSubscriptionId, saleId, subscriptionId: subscription.id },
+      'PayPal webhook: concurrent CANCELLED/EXPIRED landed during renewal — leaving sub in terminal state (enrollment still extended, renewal tx still succeeded)',
+    )
+  }
 
   void sendPurchaseReceipt(payload, {
     transactionId: renewalTx.id,
