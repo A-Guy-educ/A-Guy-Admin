@@ -41,6 +41,7 @@ import { Posts } from '@/server/payload/collections/Posts'
 import { PricingPlans } from '@/server/payload/collections/PricingPlans'
 import { Products } from '@/server/payload/collections/Products'
 import { Prompts } from '@/server/payload/collections/Prompts'
+import { Subscriptions } from '@/server/payload/collections/Subscriptions'
 import { TeacherProfiles } from '@/server/payload/collections/TeacherProfiles'
 import { Tenants } from '@/server/payload/collections/Tenants'
 import { Transactions } from '@/server/payload/collections/Transactions'
@@ -70,6 +71,7 @@ import { runBackfillOnInit } from '@/server/payload/migrations/backfillAdminTitl
 import { runDropStaleCoursesValidatorOnInit } from '@/server/payload/migrations/dropStaleCoursesValidator'
 import { runLocalizeTeacherProfilesOnInit } from '@/server/payload/migrations/localize-teacher-profiles'
 import { runPopulateLessonBlocksOnInit } from '@/server/payload/migrations/populateLessonBlocks'
+import { runVerifyTransactionsUniquenessOnInit } from '@/server/payload/migrations/verifyTransactionsUniqueness'
 import { plugins } from '@/server/payload/plugins'
 import { runSeedFeaturesOnInit } from '@/server/payload/seed/features-seed'
 import { seedTeacherProfiles } from '@/server/payload/seed/teacher-profiles-seed'
@@ -250,6 +252,7 @@ export default buildConfig({
     Products,
     AccessCodes,
     Transactions,
+    Subscriptions,
     PaymentStats,
     WebhookEvents,
     MCPAuditLogs,
@@ -419,6 +422,13 @@ export default buildConfig({
     // all. The check itself is a single `listCollections` when the validator
     // is already gone — cheap enough to run on every serverless cold start.
     await runDropStaleCoursesValidatorOnInit(payload)
+
+    // Also runs BEFORE the Vercel-production early-return. Verifies that
+    // Transactions.providerTransactionId has no duplicate values before Mongo
+    // tries to build the unique index; without this check a dirty deploy
+    // would silently disable the race guard in the PayPal renewal handler.
+    // Cheap on clean data (indexed field, empty group result).
+    await runVerifyTransactionsUniquenessOnInit(payload)
 
     // Skip expensive init tasks on Vercel serverless — they run on every cold start
     // and the tenant + seed data already exist in production. These ops are idempotent

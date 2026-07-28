@@ -86,11 +86,24 @@ export const Transactions: CollectionConfig = {
       },
     },
 
-    // Provider's transaction ID (Stripe session ID or PayPal order ID)
+    // Provider's transaction ID (Stripe session ID, PayPal order ID, or
+    // PayPal sale ID for subscription renewals). `unique` is required to
+    // close the race window where two concurrent SALE.COMPLETED events
+    // carrying the same sale id but different event ids both find zero
+    // matches in the pre-insert lookup and both create renewal rows —
+    // extendProductEntitlements would then double-extend under distinct
+    // transactionIds. Handler catches E11000 via isDuplicateKeyError and
+    // treats it as a race resolution.
+    //
+    // Deploy note: pre-merge, verify no duplicate providerTransactionId
+    // values exist in prod (see the preflight aggregation in the PR
+    // discussion). If any exist, dedupe before deploy — otherwise
+    // Mongo will refuse to build the unique index and the guard is dead.
     {
       name: 'providerTransactionId',
       type: 'text',
       required: true,
+      unique: true,
       index: true,
       admin: {
         description: 'Transaction ID from the payment provider',
@@ -170,6 +183,28 @@ export const Transactions: CollectionConfig = {
       type: 'json',
       admin: {
         description: 'Additional metadata (item IDs, lesson IDs, etc.)',
+      },
+    },
+
+    // Subscription linkage — set for the initial pending transaction AND for
+    // every renewal transaction created by PAYMENT.SALE.COMPLETED webhooks.
+    // One-time (non-subscription) transactions leave this null.
+    {
+      name: 'subscription',
+      type: 'relationship',
+      relationTo: 'subscriptions',
+      index: true,
+      admin: {
+        description: 'Parent subscription (set for initial + renewal transactions of a sub)',
+      },
+    },
+    {
+      name: 'isRenewal',
+      type: 'checkbox',
+      defaultValue: false,
+      admin: {
+        description:
+          'True when this transaction records a recurring renewal charge, not the initial checkout',
       },
     },
 

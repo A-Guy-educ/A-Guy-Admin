@@ -39,6 +39,22 @@ export const revokeEntitlementsOnRefund: CollectionAfterChangeHook = async ({
   if (currentStatus !== 'refunded') return doc
   if (operation === 'update' && prevStatus === 'refunded') return doc
 
+  // Subscription renewal refunds are handled differently from one-time
+  // refunds. Revoking against a renewal Tx would either cancel the
+  // enrollment immediately (if this was the latest renewal, whose id is on
+  // metadata.paymentId) OR be a silent no-op (any older renewal, since
+  // paymentId has since rotated). Neither matches the intended semantic —
+  // a partial refund of one recurring charge should not terminate access;
+  // BILLING.SUBSCRIPTION.CANCELLED / EXPIRED remain the source of truth
+  // for subscription access termination.
+  if ((doc as { isRenewal?: boolean }).isRenewal === true) {
+    req.payload.logger.info(
+      { transactionId: doc.id },
+      'revokeEntitlementsOnRefund: skipping revoke for subscription renewal — access ends via subscription lifecycle events, not per-renewal refunds',
+    )
+    return doc
+  }
+
   const userId = typeof doc.user === 'string' ? doc.user : (doc.user as { id?: string })?.id
   if (!userId) {
     req.payload.logger.warn(

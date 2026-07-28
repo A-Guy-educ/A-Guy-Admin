@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.29.0 — 2026-07-28
+
+### Features
+- Wire PayPal subscription lifecycle server-side (#267)
+
+### Performance
+- Use raw insertMany for course duplication instead of payload.create (#269)
+- Skip heavy Payload hooks during course duplication via content-promotion marker (#268)
+
 ## v0.28.0 — 2026-07-27
 
 ### Features
@@ -1833,6 +1842,11 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- chore: Release v0.29.0 ([#271](https://github.com/A-Guy-educ/A-Guy-Admin/pull/271)) — @aguyshayb
+- feat(payments): Wire PayPal subscription lifecycle server-side ([#267](https://github.com/A-Guy-educ/A-Guy-Admin/pull/267)) — @aguyshayb
+- perf(course-duplication): Use raw insertMany instead of payload.create ([#269](https://github.com/A-Guy-educ/A-Guy-Admin/pull/269)) — @aguyshayb
+- perf(course-duplication): Skip heavy hooks via content-promotion marker ([#268](https://github.com/A-Guy-educ/A-Guy-Admin/pull/268)) — @aguyshayb
+- promote: dev -> main (v0.28.0) ([#265](https://github.com/A-Guy-educ/A-Guy-Admin/pull/265)) — @aguyshayb
 - chore: Release v0.28.0 ([#264](https://github.com/A-Guy-educ/A-Guy-Admin/pull/264)) — @aguyshayb
 - fix(course-duplication): Deep-clone course + chapters + lessons + exercises ([#257](https://github.com/A-Guy-educ/A-Guy-Admin/pull/257)) — @aguyshayb
 - fix(lesson-import): anchor Hebrew prefix strip on literal separator ([#256](https://github.com/A-Guy-educ/A-Guy-Admin/pull/256)) — @aguyshayb
