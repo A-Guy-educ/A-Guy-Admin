@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.29.0 — 2026-07-28
+
+### Features
+- Wire PayPal subscription lifecycle server-side (#267)
+
+### Performance
+- Use raw insertMany for course duplication instead of payload.create (#269)
+- Skip heavy Payload hooks during course duplication via content-promotion marker (#268)
+
 ## v0.28.0 — 2026-07-27
 
 ### Features
