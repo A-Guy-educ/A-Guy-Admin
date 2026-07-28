@@ -860,9 +860,7 @@ describe('PayPal subscription webhooks', () => {
       where: { user: { equals: userId } },
       overrideAccess: true,
     })
-    expect((postEnr.docs[0] as any).metadata?.paymentId).toBe(
-      String((renewalTx.docs[0] as any).id),
-    )
+    expect((postEnr.docs[0] as any).metadata?.paymentId).toBe(String((renewalTx.docs[0] as any).id))
   })
 
   it('PAYMENT.SALE.REFUNDED flips the sale transaction to refunded', async () => {

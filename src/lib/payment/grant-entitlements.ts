@@ -365,7 +365,13 @@ export async function extendProductEntitlements(
   for (const block of blocks) {
     if (block.blockType !== 'courseBlock' || !block.course) continue
     const courseId = typeof block.course === 'string' ? block.course : block.course.id
-    const newEndMs = await extendEnrollment(payload, userId, courseId, intervalMonths, transactionId)
+    const newEndMs = await extendEnrollment(
+      payload,
+      userId,
+      courseId,
+      intervalMonths,
+      transactionId,
+    )
     if (newEndMs !== null) {
       maxEnrollmentEndMs = Math.max(maxEnrollmentEndMs, newEndMs)
     }

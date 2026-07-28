@@ -203,7 +203,8 @@ export const Transactions: CollectionConfig = {
       type: 'checkbox',
       defaultValue: false,
       admin: {
-        description: 'True when this transaction records a recurring renewal charge, not the initial checkout',
+        description:
+          'True when this transaction records a recurring renewal charge, not the initial checkout',
       },
     },
 

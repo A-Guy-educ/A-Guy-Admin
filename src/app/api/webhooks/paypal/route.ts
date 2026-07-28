@@ -715,12 +715,7 @@ async function handleSubscriptionActivated(
       { subscriptionId: subscription.id },
       'PayPal webhook: subscription missing initialTransaction; skipping tx-update but still granting entitlements against subscription.id',
     )
-    await grantProductEntitlements(
-      userId,
-      productId,
-      String(subscription.id),
-      overrideExpiresAt,
-    )
+    await grantProductEntitlements(userId, productId, String(subscription.id), overrideExpiresAt)
   }
 
   // Status-filtered updateOne mirrors handleSubscriptionRenewal's final
@@ -949,12 +944,7 @@ async function handleSubscriptionRenewal(
           maxEnrollmentEndMs > 0
             ? new Date(maxEnrollmentEndMs).toISOString()
             : addCalendarMonths(new Date(), intervalMonths).toISOString()
-        await grantProductEntitlements(
-          userId,
-          productId,
-          String(initialTxId),
-          overrideExpiresAt,
-        )
+        await grantProductEntitlements(userId, productId, String(initialTxId), overrideExpiresAt)
         await payload.update({
           collection: 'transactions',
           id: initialTxId,

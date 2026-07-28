@@ -35,14 +35,7 @@ export const Subscriptions: CollectionConfig = {
     description:
       'Subscriptions are created by the Web checkout route when a user starts a recurring purchase. Status is driven by PayPal webhook events — do not edit `status` or `currentPeriodEnd` by hand.',
     useAsTitle: 'paypalSubscriptionId',
-    defaultColumns: [
-      'createdAt',
-      'user',
-      'product',
-      'status',
-      'currentPeriodEnd',
-      'provider',
-    ],
+    defaultColumns: ['createdAt', 'user', 'product', 'status', 'currentPeriodEnd', 'provider'],
     listSearchableFields: ['paypalSubscriptionId'],
     group: 'Payments',
   },
@@ -145,7 +138,8 @@ export const Subscriptions: CollectionConfig = {
       type: 'relationship',
       relationTo: 'transactions',
       admin: {
-        description: 'The pending Transaction created at checkout; flipped to succeeded on ACTIVATED',
+        description:
+          'The pending Transaction created at checkout; flipped to succeeded on ACTIVATED',
       },
     },
     createdByField,
