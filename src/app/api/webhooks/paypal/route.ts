@@ -648,6 +648,20 @@ async function handleSubscriptionActivated(
   // Idempotency — replayed activation
   if (subscription.status === 'active') return
 
+  // Refuse to resurrect terminal subscriptions. A late ACTIVATED landing
+  // after CANCELLED/EXPIRED (backlog after network partition — PayPal's
+  // delivery is best-effort, not causally ordered) would otherwise flip
+  // the sub back to active and, via grantProductEntitlements, silently
+  // reactivate the cancelled enrollment. The performEnrollmentUpdate
+  // guard is a second line of defense against the same-tx replay case.
+  if (subscription.status === 'cancelled' || subscription.status === 'expired') {
+    payload.logger.warn(
+      { paypalSubscriptionId, subscriptionStatus: subscription.status },
+      'PayPal webhook: BILLING.SUBSCRIPTION.ACTIVATED for terminal subscription — ignoring',
+    )
+    return
+  }
+
   const userId = resolveId(subscription.user)
   const productId = resolveId(subscription.product)
   const initialTxId = resolveId(subscription.initialTransaction)
@@ -666,9 +680,13 @@ async function handleSubscriptionActivated(
     new Date().toISOString()
   // Prefer PayPal's next_billing_time (authoritative) for the sub period end;
   // fall back to a calendar-computed value so the Subscription row always has
-  // an end date even when PayPal omits the field.
+  // an end date even when PayPal omits the field. Use `||` (not `??`) so an
+  // empty-string next_billing_time also triggers the fallback — otherwise an
+  // empty string would land as overrideExpiresAt and the enrollment would be
+  // written as lifetime (grant-entitlements skips the write when expiresAt
+  // is falsy).
   const periodEnd =
-    event.resource.billing_info?.next_billing_time ??
+    event.resource.billing_info?.next_billing_time ||
     addCalendarMonths(new Date(), intervalMonths).toISOString()
 
   // Compute the enrollment expiry from the same period-end value. Passing
@@ -705,16 +723,32 @@ async function handleSubscriptionActivated(
     )
   }
 
-  await payload.update({
-    collection: 'subscriptions',
-    id: subscription.id,
-    data: {
-      status: 'active',
-      currentPeriodStart: periodStart,
-      currentPeriodEnd: periodEnd,
+  // Status-filtered updateOne mirrors handleSubscriptionRenewal's final
+  // write. Closes the race where CANCELLED/EXPIRED lands between our
+  // status read at handler entry and this final activate write. If the
+  // sub has become terminal in the interim, we skip the update — the
+  // grant already ran (best-effort), but the sub row correctly reflects
+  // the user's terminal state.
+  const subscriptionsCollection = payload.db.collections['subscriptions']
+  const activateResult = await subscriptionsCollection.updateOne(
+    {
+      _id: new ObjectId(subscription.id),
+      status: { $in: ['pending', 'suspended'] },
     },
-    overrideAccess: true,
-  })
+    {
+      $set: {
+        status: 'active',
+        currentPeriodStart: new Date(periodStart),
+        currentPeriodEnd: new Date(periodEnd),
+      },
+    },
+  )
+  if (activateResult.matchedCount === 0) {
+    payload.logger.warn(
+      { paypalSubscriptionId, subscriptionId: subscription.id },
+      'PayPal webhook: concurrent CANCELLED/EXPIRED landed during ACTIVATED — leaving sub in terminal state',
+    )
+  }
 
   // Fire-and-forget receipt — only sent when we have a valid initial Tx.
   // sendPurchaseReceipt does an internal findByID on the transactions

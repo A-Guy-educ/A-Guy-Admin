@@ -273,7 +273,20 @@ async function performEnrollmentUpdate(
   expiresAt: string | null,
   transactionId: string,
 ): Promise<void> {
-  if (current.metadata?.paymentId === transactionId && current.status === 'active') {
+  if (current.metadata?.paymentId === transactionId) {
+    // Same-tx replay. Two sub-cases:
+    //  - status === 'active' → idempotent no-op
+    //  - status === 'cancelled' → this transaction was already revoked
+    //    (refund, subscription EXPIRED, etc.); a stale webhook re-delivery
+    //    must NOT silently reactivate the enrollment. A legit re-purchase
+    //    uses a NEW transactionId, so the paymentId-match check is safe
+    //    to short-circuit here.
+    if (current.status === 'cancelled') {
+      payload.logger.warn(
+        { enrollmentId: current.id, transactionId },
+        'performEnrollmentUpdate: same-tx replay against cancelled enrollment — refusing to reactivate',
+      )
+    }
     return
   }
   await payload.update({

@@ -1004,21 +1004,24 @@ describe('PayPal subscription webhooks', () => {
   })
 
   it('addCalendarMonths clamps day overflow to last-day-of-target-month (Jan 31 + 1 mo = Feb 28/29, not Mar 3)', () => {
-    // Use noon UTC so local-time getDate agrees with getUTCDate across the
-    // common TZ range where CI runs (impl uses local-time math + clamp).
-    const jan31 = new Date('2027-01-31T12:00:00Z')
+    // Constructs inputs by local-time year/month/day (matching the impl,
+    // which uses setMonth/getDate). Using UTC ISO strings would fail on
+    // runners at UTC+13/+14 where getDate() differs from getUTCDate().
+
+    // Jan 31 + 1 month → Feb 28 in a non-leap year
+    const jan31 = new Date(2027, 0, 31, 12, 0, 0)
     const feb = addCalendarMonths(jan31, 1)
-    expect(feb.getMonth()).toBe(1) // February in local time
+    expect(feb.getMonth()).toBe(1) // February
     expect(feb.getDate()).toBe(28)
 
-    // Leap year: Jan 31, 2028 + 1 month = Feb 29, 2028
-    const jan31Leap = new Date('2028-01-31T12:00:00Z')
+    // Jan 31 + 1 month → Feb 29 in a leap year
+    const jan31Leap = new Date(2028, 0, 31, 12, 0, 0)
     const feb29 = addCalendarMonths(jan31Leap, 1)
     expect(feb29.getMonth()).toBe(1)
     expect(feb29.getDate()).toBe(29)
 
     // Normal case (no overflow): Jan 15 + 1 month = Feb 15
-    const jan15 = new Date('2027-01-15T12:00:00Z')
+    const jan15 = new Date(2027, 0, 15, 12, 0, 0)
     const feb15 = addCalendarMonths(jan15, 1)
     expect(feb15.getMonth()).toBe(1)
     expect(feb15.getDate()).toBe(15)
