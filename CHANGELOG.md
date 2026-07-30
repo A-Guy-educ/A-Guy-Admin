@@ -1851,6 +1851,7 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- promote: dev -> main (v0.29.1) ([#278](https://github.com/A-Guy-educ/A-Guy-Admin/pull/278)) — @aguyshayb
 - chore: Release v0.29.1 ([#277](https://github.com/A-Guy-educ/A-Guy-Admin/pull/277)) — @aguyshayb
 - perf(content-promotion/import): bulk-insert sections above 50-doc threshold ([#276](https://github.com/A-Guy-educ/A-Guy-Admin/pull/276)) — @aguyshayb
 - fix: refresh Kody workflow launcher ([#273](https://github.com/A-Guy-educ/A-Guy-Admin/pull/273)) — @aguyaharonyair
