@@ -706,6 +706,176 @@ async function bulkCreateExercises(
   }
 }
 
+/**
+ * Relationship fields on `sections` — same shape as exercises, but the
+ * authoritative parent is `exercise` (not `lesson`). All must convert to
+ * `ObjectId` for the same reason exercises do: bulk insertMany bypasses
+ * Payload's Mongoose adapter cast, so relationship queries wouldn't match
+ * docs written through the normal admin flow.
+ */
+const SECTION_RELATIONSHIP_FIELDS = [
+  'exercise',
+  'lesson',
+  'chapter',
+  'course',
+  'tenant',
+  'translatedFrom',
+  'createdBy',
+] as const
+
+/**
+ * Sections have fewer required-field surprises than exercises — no `origin`
+ * equivalent, just `locale` (from `contentLocaleField`) and `tenant` (from
+ * `tenantField`, defaulted via caller-resolved id below). `exerciseType`
+ * is required but has no defaultValue — the source must provide it, and
+ * if it doesn't the doc will fail Mongo insert (surfaces in the report).
+ */
+const SECTION_REQUIRED_FIELD_DEFAULTS: Record<string, unknown> = {
+  locale: 'he', // contentLocale.ts:18-29 — required: true, defaultValue 'he'
+}
+
+interface PreparedSection {
+  finalId: string
+  wasRemapped: boolean
+  doc: Record<string, unknown>
+}
+
+/**
+ * Mirror of `prepareExerciseForBulkInsert` for sections. Same responsibility:
+ * take a bundled section doc and produce an insert-ready shape for the raw
+ * MongoDB driver, with content validated via the same ContentSchema
+ * (sections share the schema with exercises — see sectionhandoff.md).
+ *
+ * Pure so it's unit-testable without a live Payload.
+ */
+export function prepareSectionForBulkInsert(
+  doc: Record<string, unknown>,
+  remap: IdRemap,
+  defaultTenant: string | ObjectId | null,
+): { ok: true; prepared: PreparedSection } | { ok: false; finalId: string; message: string } {
+  const { newDoc, finalId, wasRemapped } = applyRemapToDoc(doc, 'sections', remap)
+
+  const parsed = ContentSchema.safeParse((newDoc as { content?: unknown }).content)
+  if (!parsed.success) {
+    const issues = parsed.error.issues.map((i) => `[${i.path.join('.')}] ${i.message}`).join('; ')
+    return { ok: false, finalId, message: `Content validation failed: ${issues}` }
+  }
+
+  let mongoId: ObjectId
+  try {
+    mongoId = new ObjectId(finalId)
+  } catch {
+    return {
+      ok: false,
+      finalId,
+      message: `_id "${finalId}" is not a valid 24-hex ObjectId — refusing to insert with a mismatched storage shape`,
+    }
+  }
+
+  const now = new Date()
+  const insertDoc: Record<string, unknown> = { ...newDoc }
+  delete insertDoc.id
+  insertDoc._id = mongoId
+  insertDoc.content = parsed.data
+  insertDoc.createdAt = coerceToDate(insertDoc.createdAt) ?? now
+  insertDoc.updatedAt = coerceToDate(insertDoc.updatedAt) ?? now
+
+  for (const [field, value] of Object.entries(SECTION_REQUIRED_FIELD_DEFAULTS)) {
+    if (insertDoc[field] === undefined || insertDoc[field] === null) {
+      insertDoc[field] = value
+    }
+  }
+  if ((insertDoc.tenant === undefined || insertDoc.tenant === null) && defaultTenant !== null) {
+    insertDoc.tenant = defaultTenant
+  }
+
+  for (const field of SECTION_RELATIONSHIP_FIELDS) {
+    const value = insertDoc[field]
+    if (Array.isArray(value)) {
+      insertDoc[field] = value.map(toObjectIdIfHex)
+    } else if (value !== undefined && value !== null) {
+      insertDoc[field] = toObjectIdIfHex(value)
+    }
+  }
+
+  return { ok: true, prepared: { finalId, wasRemapped, doc: insertDoc } }
+}
+
+/**
+ * Bulk-insert sections with one Mongo round trip. Same rationale as
+ * `bulkCreateExercises`: 280+ per-doc `payload.create` calls on
+ * Vercel/Atlas push a bundle past the 5-min function ceiling (real
+ * incident: prod import of a 210-exercise / 280-section course
+ * FUNCTION_INVOCATION_TIMEOUT-ed after this collection was added but
+ * before this helper). Preflight in `prepareSectionForBulkInsert`.
+ */
+async function bulkCreateSections(
+  payload: Payload,
+  docs: Array<Record<string, unknown>>,
+  remap: IdRemap,
+  defaultTenant: string | ObjectId | null,
+  report: CollectionReport,
+): Promise<void> {
+  if (docs.length === 0) return
+  const prepared: Array<PreparedSection> = []
+
+  for (const doc of docs) {
+    const result = prepareSectionForBulkInsert(doc, remap, defaultTenant)
+    if (result.ok) prepared.push(result.prepared)
+    else {
+      report.failed += 1
+      report.failures.push({ id: result.finalId, message: result.message })
+    }
+  }
+
+  if (prepared.length === 0) return
+
+  const mongoCollection = (
+    payload.db as unknown as {
+      collections: Record<string, { collection: MongoBulkCollection }>
+    }
+  ).collections.sections.collection
+
+  try {
+    await mongoCollection.insertMany(
+      prepared.map((p) => p.doc),
+      { ordered: false },
+    )
+    for (const p of prepared) {
+      report.created += 1
+      if (p.wasRemapped) report.remapped += 1
+    }
+  } catch (error) {
+    const bulkErr = error as {
+      writeErrors?: Array<{ index: number; errmsg?: string }>
+    }
+    const failedIndices = new Set<number>()
+    if (Array.isArray(bulkErr.writeErrors)) {
+      for (const we of bulkErr.writeErrors) {
+        failedIndices.add(we.index)
+        report.failed += 1
+        report.failures.push({
+          id: prepared[we.index].finalId,
+          message: we.errmsg ?? 'Bulk insert failed',
+        })
+      }
+      for (let i = 0; i < prepared.length; i += 1) {
+        if (failedIndices.has(i)) continue
+        report.created += 1
+        if (prepared[i].wasRemapped) report.remapped += 1
+      }
+      return
+    }
+    for (const p of prepared) {
+      report.failed += 1
+      report.failures.push({
+        id: p.finalId,
+        message: error instanceof Error ? error.message : 'Unknown bulk insert error',
+      })
+    }
+  }
+}
+
 export interface ImportContentInput {
   bundleBuffer: Buffer
 }
@@ -776,6 +946,19 @@ export async function importContent(
   const exerciseCount = manifest.counts.exercises ?? 0
   const useBulkInsertForExercises = exerciseCount > EXERCISE_HOOK_SKIP_THRESHOLD
 
+  // Sections go through the same threshold routing for the same reason —
+  // real incident: a 210-exercise / 280-section prod import
+  // FUNCTION_INVOCATION_TIMEOUT-ed at the 5-min ceiling, with sections
+  // being the bottleneck (per-doc payload.create × 280 = ~2min+ just for
+  // that collection, on top of everything else). Threshold chosen to match
+  // exercises for symmetry — below it the per-doc path still runs so
+  // `beforeChange` validation + defaulting happens; above it bulk insertMany
+  // bypasses hooks (safe because Sections' afterChange/afterDelete already
+  // skip content-promotion imports — see Sections/index.ts).
+  const SECTION_HOOK_SKIP_THRESHOLD = 50
+  const sectionCount = manifest.counts.sections ?? 0
+  const useBulkInsertForSections = sectionCount > SECTION_HOOK_SKIP_THRESHOLD
+
   // Resolve the default tenant once up front — bulk insert bypasses the
   // tenant field's `beforeValidate` backfill, so we pass the id in per-doc.
   // Doing this here (rather than inside `prepareExerciseForBulkInsert`)
@@ -829,6 +1012,20 @@ export async function importContent(
         remap,
         defaultTenant,
         report.perCollection.exercises,
+      )
+      continue
+    }
+    if (collection === 'sections' && useBulkInsertForSections) {
+      payload.logger.info(
+        { sectionCount, threshold: SECTION_HOOK_SKIP_THRESHOLD },
+        '[content-promotion/import] Using bulk insertMany for sections (large bundle); bundle carries exercise.blocks sectionRef playlist',
+      )
+      await bulkCreateSections(
+        payload,
+        manifest.collections.sections as unknown as Array<Record<string, unknown>>,
+        remap,
+        defaultTenant,
+        report.perCollection.sections,
       )
       continue
     }
