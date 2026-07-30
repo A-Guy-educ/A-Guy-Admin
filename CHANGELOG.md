@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.29.1 — 2026-07-30
+
+### Performance
+- Bulk-insert sections above 50-doc threshold in content-promotion import (#276)
+
+### Fixes
+- Keep Kody launcher minimal
+- Refresh Kody workflow launcher (#273)
+
 ## v0.29.0 — 2026-07-28
 
 ### Features
