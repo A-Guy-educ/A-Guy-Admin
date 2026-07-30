@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.29.1 — 2026-07-30
+
+### Performance
+- Bulk-insert sections above 50-doc threshold in content-promotion import (#276)
+
+### Fixes
+- Keep Kody launcher minimal
+- Refresh Kody workflow launcher (#273)
+
 ## v0.29.0 — 2026-07-28
 
 ### Features
@@ -1842,6 +1851,10 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- chore: Release v0.29.1 ([#277](https://github.com/A-Guy-educ/A-Guy-Admin/pull/277)) — @aguyshayb
+- perf(content-promotion/import): bulk-insert sections above 50-doc threshold ([#276](https://github.com/A-Guy-educ/A-Guy-Admin/pull/276)) — @aguyshayb
+- fix: refresh Kody workflow launcher ([#273](https://github.com/A-Guy-educ/A-Guy-Admin/pull/273)) — @aguyaharonyair
+- promote: dev -> main (v0.29.0) ([#272](https://github.com/A-Guy-educ/A-Guy-Admin/pull/272)) — @aguyshayb
 - chore: Release v0.29.0 ([#271](https://github.com/A-Guy-educ/A-Guy-Admin/pull/271)) — @aguyshayb
 - feat(payments): Wire PayPal subscription lifecycle server-side ([#267](https://github.com/A-Guy-educ/A-Guy-Admin/pull/267)) — @aguyshayb
 - perf(course-duplication): Use raw insertMany instead of payload.create ([#269](https://github.com/A-Guy-educ/A-Guy-Admin/pull/269)) — @aguyshayb
