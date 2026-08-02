@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.29.2 — 2026-08-02
+
+### Fixes
+- Sweep expired enrollments to `status=expired` via hourly Vercel cron and let renewals reactivate them (#282)
+
 ## v0.29.1 — 2026-07-30
 
 ### Performance
