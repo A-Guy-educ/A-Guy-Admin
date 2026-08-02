@@ -47,7 +47,10 @@ export async function sweepExpiredEnrollments(payload: Payload): Promise<SweepRe
       expiresAt: { $exists: true, $ne: null, $lte: now },
     },
     {
-      $set: { status: 'expired' },
+      // updatedAt refreshed here because the raw updateMany bypasses
+      // Payload's timestamp hook — without this, swept rows keep the
+      // updatedAt from the original grant and audit trails go stale.
+      $set: { status: 'expired', updatedAt: now },
     },
   )
 
