@@ -5,95 +5,75 @@
  * Nothing else changes the status when time-limited access lapses, so without
  * this sweep the web-side paywall keeps letting expired users through
  * (its query excludes only `status: 'cancelled'`).
+ *
+ * Uses Payload's bulk `update({ where, data })` so all matching enrollments
+ * are flipped in one query — no manual pagination loop, no risk of a failed
+ * row being re-selected and re-attempted indefinitely.
  */
 
 import type { PayloadRequest } from 'payload'
-import type { Logger } from 'pino'
 
 import { withCronMiddleware, type CronResult } from './cron-middleware'
 
-interface SweepResult {
-  expiredCount: number
-  failedCount: number
-  errors: string[]
+interface UpdateError {
+  message: string
+  id?: string | number
 }
 
-async function sweepExpiredEnrollments({
-  payload,
-  reqLogger,
-}: {
-  payload: PayloadRequest['payload']
-  reqLogger: Logger
-}): Promise<SweepResult> {
-  const result: SweepResult = { expiredCount: 0, failedCount: 0, errors: [] }
+async function sweepExpiredEnrollments(
+  payload: PayloadRequest['payload'],
+): Promise<{ expiredCount: number; errors: UpdateError[] }> {
   const nowIso = new Date().toISOString()
 
-  let hasMore = true
-  while (hasMore) {
-    const { docs } = await payload.find({
-      collection: 'enrollments',
-      where: {
-        and: [
-          { status: { equals: 'active' } },
-          { expiresAt: { exists: true } },
-          { expiresAt: { not_equals: null } },
-          { expiresAt: { less_than_equal: nowIso } },
-        ],
-      },
-      limit: 100,
-      depth: 0,
-      overrideAccess: true,
-    })
+  const result = await payload.update({
+    collection: 'enrollments',
+    where: {
+      and: [
+        { status: { equals: 'active' } },
+        { expiresAt: { exists: true } },
+        { expiresAt: { not_equals: null } },
+        { expiresAt: { less_than_equal: nowIso } },
+      ],
+    },
+    data: { status: 'expired' },
+    overrideAccess: true,
+  })
 
-    hasMore = docs.length === 100
+  const errors = (result.errors ?? []).map((e) => ({
+    message: e.message,
+    id: e.id as string | number | undefined,
+  }))
 
-    for (const enrollment of docs) {
-      try {
-        await payload.update({
-          collection: 'enrollments',
-          id: enrollment.id,
-          data: { status: 'expired' },
-          overrideAccess: true,
-        })
-        result.expiredCount++
-        reqLogger.info(
-          { enrollmentId: enrollment.id, expiresAt: enrollment.expiresAt },
-          '[enrollments-expiry] Flipped enrollment to expired',
-        )
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error)
-        result.failedCount++
-        result.errors.push(`Enrollment ${enrollment.id}: ${errorMessage}`)
-        reqLogger.error(
-          { enrollmentId: enrollment.id, error: errorMessage },
-          '[enrollments-expiry] Failed to expire enrollment',
-        )
-      }
-    }
+  return {
+    expiredCount: result.docs.length,
+    errors,
   }
-
-  return result
 }
 
 export const enrollmentsExpiryEndpoint = {
   path: '/cron/enrollments-expiry',
   method: 'post' as const,
   handler: withCronMiddleware(async ({ payload, reqLogger }): Promise<CronResult> => {
-    const result = await sweepExpiredEnrollments({ payload, reqLogger })
+    const { expiredCount, errors } = await sweepExpiredEnrollments(payload)
 
-    if (result.errors.length > 0) {
-      return {
-        success: false,
-        error: `Completed with ${result.errors.length} errors`,
-        statusCode: 207,
-      }
+    reqLogger.info(
+      { expiredCount, failedCount: errors.length },
+      '[enrollments-expiry] Sweep complete',
+    )
+
+    for (const err of errors) {
+      reqLogger.error(
+        { enrollmentId: err.id, error: err.message },
+        '[enrollments-expiry] Failed to expire enrollment',
+      )
     }
 
     return {
       success: true,
       data: {
-        expiredCount: result.expiredCount,
-        failedCount: result.failedCount,
+        expiredCount,
+        failedCount: errors.length,
+        errors: errors.length > 0 ? errors : undefined,
       },
     }
   }),
