@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.29.2 — 2026-08-02
+
+### Fixes
+- Sweep expired enrollments to `status=expired` via hourly Vercel cron and let renewals reactivate them (#282)
+
 ## v0.29.1 — 2026-07-30
 
 ### Performance
@@ -1851,6 +1856,9 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- chore: Release v0.29.2 ([#289](https://github.com/A-Guy-educ/A-Guy-Admin/pull/289)) — @aguyshayb
+- fix: Sweep expired enrollments to expired status ([#282](https://github.com/A-Guy-educ/A-Guy-Admin/pull/282)) — @aguyshayb
+- promote: dev -> main (v0.29.1) ([#278](https://github.com/A-Guy-educ/A-Guy-Admin/pull/278)) — @aguyshayb
 - chore: Release v0.29.1 ([#277](https://github.com/A-Guy-educ/A-Guy-Admin/pull/277)) — @aguyshayb
 - perf(content-promotion/import): bulk-insert sections above 50-doc threshold ([#276](https://github.com/A-Guy-educ/A-Guy-Admin/pull/276)) — @aguyshayb
 - fix: refresh Kody workflow launcher ([#273](https://github.com/A-Guy-educ/A-Guy-Admin/pull/273)) — @aguyaharonyair
