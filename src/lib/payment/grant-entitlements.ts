@@ -533,12 +533,15 @@ async function extendEnrollment(
       {
         _id: new ObjectId(current.id),
         // Guard: only write if expiresAt is still the value we observed AND
-        // status is still 'active'. If a concurrent revoke cancelled the
-        // enrollment between our read and this write, matchedCount === 0
-        // and the retry loop's re-read will hit the status='cancelled'
-        // short-circuit above.
+        // status is not terminal. Accepts both 'active' and 'expired' —
+        // the expiry sweeper flips lapsed 'active' rows to 'expired', so
+        // a late-delivered renewal (PayPal retry, past_due recovery)
+        // must be able to reactivate an expired enrollment. Cancelled is
+        // still excluded here and short-circuited above; matchedCount === 0
+        // on a concurrent cancel leaves the retry loop to re-read and hit
+        // the status='cancelled' branch.
         expiresAt: new Date(current.expiresAt),
-        status: 'active',
+        status: { $in: ['active', 'expired'] },
       },
       {
         $set: {

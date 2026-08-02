@@ -186,5 +186,7 @@ export const Enrollments: CollectionConfig = {
     { fields: ['status', 'enrolledAt'] },
     // Access checks
     { fields: ['user', 'status'] },
+    // Expiry sweeper: hourly cron filters on status + expiresAt
+    { fields: ['status', 'expiresAt'] },
   ],
 }
