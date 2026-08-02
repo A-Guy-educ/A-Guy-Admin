@@ -1856,6 +1856,7 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- chore: Release v0.29.2 ([#289](https://github.com/A-Guy-educ/A-Guy-Admin/pull/289)) — @aguyshayb
 - fix: Sweep expired enrollments to expired status ([#282](https://github.com/A-Guy-educ/A-Guy-Admin/pull/282)) — @aguyshayb
 - promote: dev -> main (v0.29.1) ([#278](https://github.com/A-Guy-educ/A-Guy-Admin/pull/278)) — @aguyshayb
 - chore: Release v0.29.1 ([#277](https://github.com/A-Guy-educ/A-Guy-Admin/pull/277)) — @aguyshayb
