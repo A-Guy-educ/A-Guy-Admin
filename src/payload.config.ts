@@ -62,6 +62,7 @@ import { cascadeDeleteEndpoint } from '@/server/payload/endpoints/cascade-delete
 import { duplicateCourseEndpoint } from '@/server/payload/endpoints/courses/duplicate'
 import { duplicateLessonEndpoint } from '@/server/payload/endpoints/lessons/duplicate'
 import { exportLessonEndpoint } from '@/server/payload/endpoints/lessons/export'
+import { lessonTreeEndpoint } from '@/server/payload/endpoints/studio/lesson-tree'
 import { defaultLexical } from '@/server/payload/fields/defaultLexical'
 import { lessonDuplicationTask } from '@/server/payload/jobs/lesson-duplication-task'
 import { pdfToExercisesTask } from '@/server/payload/jobs/pdf-to-exercises-task'
@@ -330,6 +331,11 @@ export default buildConfig({
       path: '/lessons/:id/export',
       method: 'get',
       handler: (req: PayloadRequest) => exportLessonEndpoint(req),
+    },
+    {
+      path: '/studio/lessons/:id/tree',
+      method: 'get',
+      handler: (req: PayloadRequest) => lessonTreeEndpoint(req),
     },
   ],
   jobs: {
