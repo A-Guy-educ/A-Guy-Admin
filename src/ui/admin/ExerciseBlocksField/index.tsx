@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useField, useForm } from '@payloadcms/ui'
 import { useRouter } from 'next/navigation'
 import { GripVertical, ChevronUp, ChevronDown, FileText, Trash2, Pencil } from 'lucide-react'
+import { InlineSectionEditor } from '../LessonBlocksField/InlineSectionEditor'
 
 function generateBlockId(): string {
   return Math.random().toString(36).slice(2, 14)
@@ -76,13 +77,18 @@ function parseBlocks(val: unknown): RawBlock[] {
   return []
 }
 
+type BlocksMode = 'full' | 'quick'
+
 /**
  * Custom Payload admin field for exercise blocks.
  * Shows a flat sortable list of section titles instead of the default
  * expandable blocks UI. Mirrors `LessonBlocksField` but with `sectionRef`
  * as the only supported block type.
+ *
+ * `mode='full'` — renders each section's content.blocks inline below its row.
+ * `mode='quick'` — links only, no inline editors.
  */
-export const ExerciseBlocksField: React.FC<{ path: string }> = ({ path }) => {
+const ExerciseBlocksList: React.FC<{ path: string; mode: BlocksMode }> = ({ path, mode }) => {
   const { value, setValue } = useField<string>({ path })
   const { setModified } = useForm()
   const router = useRouter()
@@ -285,7 +291,7 @@ export const ExerciseBlocksField: React.FC<{ path: string }> = ({ path }) => {
           color: 'var(--theme-text)',
         }}
       >
-        Section Playlist
+        {mode === 'full' ? 'Sections' : 'Section Playlist'}
       </label>
       <p
         style={{
@@ -295,8 +301,9 @@ export const ExerciseBlocksField: React.FC<{ path: string }> = ({ path }) => {
           marginTop: -4,
         }}
       >
-        Ordered playlist of sections belonging to this exercise. Reorder or remove sections here.
-        New sections created against this exercise are appended automatically.
+        {mode === 'full'
+          ? 'Each section expanded with its content blocks. Reorder or remove sections here; new sections created against this exercise are appended automatically.'
+          : 'Ordered playlist of sections belonging to this exercise. Reorder or remove sections here. New sections created against this exercise are appended automatically.'}
       </p>
 
       {/* Block list — reorder/delete controls */}
@@ -336,153 +343,171 @@ export const ExerciseBlocksField: React.FC<{ path: string }> = ({ path }) => {
 
         {hasBeenActivated &&
           rows.map((row, idx) => (
-            <div
-              key={`${row.blockType}-${row.refId}-${idx}`}
-              draggable
-              onDragStart={(e) => handleDragStart(e, idx)}
-              onDragOver={(e) => handleDragOver(e, idx)}
-              onDragLeave={handleDragLeave}
-              onDrop={(e) => handleDrop(e, idx)}
-              onDragEnd={handleDragEnd}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                padding: '6px 12px',
-                borderBottom: '1px solid var(--theme-elevation-100)',
-                background:
-                  dropTarget === idx
-                    ? 'var(--theme-elevation-100)'
-                    : dragIndex === idx
-                      ? 'var(--theme-elevation-50)'
-                      : 'var(--theme-elevation-50)',
-                opacity: dragIndex === idx ? 0.5 : 1,
-                borderTop:
-                  dropTarget === idx ? '2px solid var(--theme-success-500, #22c55e)' : 'none',
-                transition: 'background 0.15s, opacity 0.15s',
-                cursor: 'grab',
-              }}
-            >
-              <span style={{ color: 'var(--theme-elevation-300)', flexShrink: 0 }}>
-                <GripVertical size={16} />
-              </span>
-
-              <span
+            <div key={`${row.blockType}-${row.refId}-${idx}`}>
+              <div
+                draggable
+                onDragStart={(e) => handleDragStart(e, idx)}
+                onDragOver={(e) => handleDragOver(e, idx)}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => handleDrop(e, idx)}
+                onDragEnd={handleDragEnd}
                 style={{
-                  fontSize: 11,
-                  fontWeight: 700,
-                  color: 'var(--theme-elevation-400)',
-                  minWidth: 20,
-                  textAlign: 'center',
-                  flexShrink: 0,
-                }}
-              >
-                {idx + 1}
-              </span>
-
-              <span
-                style={{
-                  display: 'inline-flex',
+                  display: 'flex',
                   alignItems: 'center',
-                  gap: 4,
-                  padding: '2px 8px',
-                  borderRadius: 4,
-                  fontSize: 11,
-                  fontWeight: 600,
-                  flexShrink: 0,
-                  background: 'var(--theme-warning-100, #fef3c7)',
-                  color: 'var(--theme-warning-600, #ca8a04)',
+                  gap: 8,
+                  padding: '6px 12px',
+                  borderBottom: '1px solid var(--theme-elevation-100)',
+                  background:
+                    dropTarget === idx
+                      ? 'var(--theme-elevation-100)'
+                      : dragIndex === idx
+                        ? 'var(--theme-elevation-50)'
+                        : 'var(--theme-elevation-50)',
+                  opacity: dragIndex === idx ? 0.5 : 1,
+                  borderTop:
+                    dropTarget === idx ? '2px solid var(--theme-success-500, #22c55e)' : 'none',
+                  transition: 'background 0.15s, opacity 0.15s',
+                  cursor: 'grab',
                 }}
               >
-                <FileText size={12} /> Section
-              </span>
+                <span style={{ color: 'var(--theme-elevation-300)', flexShrink: 0 }}>
+                  <GripVertical size={16} />
+                </span>
 
-              <span
-                style={{
-                  flex: 1,
-                  fontSize: 14,
-                  color: 'var(--theme-text)',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {row.loading ? (
-                  <span style={{ color: 'var(--theme-elevation-400)' }}>Loading...</span>
-                ) : (
-                  row.title || (
-                    <span style={{ color: 'var(--theme-elevation-400)', fontStyle: 'italic' }}>
-                      Untitled
-                    </span>
-                  )
-                )}
-              </span>
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: 'var(--theme-elevation-400)',
+                    minWidth: 20,
+                    textAlign: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  {idx + 1}
+                </span>
 
-              <button
-                type="button"
-                onClick={() => moveBlock(row.index, row.index - 1)}
-                disabled={idx === 0}
-                style={{
-                  padding: 4,
-                  border: 'none',
-                  background: 'transparent',
-                  cursor: idx === 0 ? 'not-allowed' : 'pointer',
-                  opacity: idx === 0 ? 0.2 : 0.6,
-                  color: 'var(--theme-text)',
-                }}
-                title="Move up"
-              >
-                <ChevronUp size={14} />
-              </button>
-              <button
-                type="button"
-                onClick={() => moveBlock(row.index, row.index + 1)}
-                disabled={idx === rows.length - 1}
-                style={{
-                  padding: 4,
-                  border: 'none',
-                  background: 'transparent',
-                  cursor: idx === rows.length - 1 ? 'not-allowed' : 'pointer',
-                  opacity: idx === rows.length - 1 ? 0.2 : 0.6,
-                  color: 'var(--theme-text)',
-                }}
-                title="Move down"
-              >
-                <ChevronDown size={14} />
-              </button>
-              <button
-                type="button"
-                onClick={() => editBlock(row.refId)}
-                style={{
-                  padding: 4,
-                  border: 'none',
-                  background: 'transparent',
-                  cursor: 'pointer',
-                  opacity: 0.6,
-                  color: 'var(--theme-text)',
-                }}
-                title="Edit"
-              >
-                <Pencil size={14} />
-              </button>
-              <button
-                type="button"
-                onClick={() => deleteBlock(row.index)}
-                style={{
-                  padding: 4,
-                  border: 'none',
-                  background: 'transparent',
-                  cursor: 'pointer',
-                  opacity: 0.6,
-                  color: 'var(--theme-error-500, #ef4444)',
-                }}
-                title="Delete"
-              >
-                <Trash2 size={14} />
-              </button>
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    padding: '2px 8px',
+                    borderRadius: 4,
+                    fontSize: 11,
+                    fontWeight: 600,
+                    flexShrink: 0,
+                    background: 'var(--theme-warning-100, #fef3c7)',
+                    color: 'var(--theme-warning-600, #ca8a04)',
+                  }}
+                >
+                  <FileText size={12} /> Section
+                </span>
+
+                <span
+                  style={{
+                    flex: 1,
+                    fontSize: 14,
+                    color: 'var(--theme-text)',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {row.loading ? (
+                    <span style={{ color: 'var(--theme-elevation-400)' }}>Loading...</span>
+                  ) : (
+                    row.title || (
+                      <span style={{ color: 'var(--theme-elevation-400)', fontStyle: 'italic' }}>
+                        Untitled
+                      </span>
+                    )
+                  )}
+                </span>
+
+                <button
+                  type="button"
+                  onClick={() => moveBlock(row.index, row.index - 1)}
+                  disabled={idx === 0}
+                  style={{
+                    padding: 4,
+                    border: 'none',
+                    background: 'transparent',
+                    cursor: idx === 0 ? 'not-allowed' : 'pointer',
+                    opacity: idx === 0 ? 0.2 : 0.6,
+                    color: 'var(--theme-text)',
+                  }}
+                  title="Move up"
+                >
+                  <ChevronUp size={14} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => moveBlock(row.index, row.index + 1)}
+                  disabled={idx === rows.length - 1}
+                  style={{
+                    padding: 4,
+                    border: 'none',
+                    background: 'transparent',
+                    cursor: idx === rows.length - 1 ? 'not-allowed' : 'pointer',
+                    opacity: idx === rows.length - 1 ? 0.2 : 0.6,
+                    color: 'var(--theme-text)',
+                  }}
+                  title="Move down"
+                >
+                  <ChevronDown size={14} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => editBlock(row.refId)}
+                  style={{
+                    padding: 4,
+                    border: 'none',
+                    background: 'transparent',
+                    cursor: 'pointer',
+                    opacity: 0.6,
+                    color: 'var(--theme-text)',
+                  }}
+                  title="Edit"
+                >
+                  <Pencil size={14} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => deleteBlock(row.index)}
+                  style={{
+                    padding: 4,
+                    border: 'none',
+                    background: 'transparent',
+                    cursor: 'pointer',
+                    opacity: 0.6,
+                    color: 'var(--theme-error-500, #ef4444)',
+                  }}
+                  title="Delete"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+
+              {mode === 'full' && row.refId && (
+                <InlineSectionEditor
+                  key={`inline-${row.refId}`}
+                  sectionId={row.refId}
+                  sectionTitle={row.loading ? undefined : row.title}
+                />
+              )}
             </div>
           ))}
       </div>
     </div>
   )
 }
+
+export const ExerciseBlocksField: React.FC<{ path: string }> = ({ path }) => (
+  <ExerciseBlocksList path={path} mode="quick" />
+)
+
+/** Full-view variant: renders each section's content.blocks inline below its row. */
+export const ExerciseBlocksFullField: React.FC = () => (
+  <ExerciseBlocksList path="blocks" mode="full" />
+)

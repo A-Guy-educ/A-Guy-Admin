@@ -638,6 +638,20 @@ export const Lessons: CollectionConfig = {
           ],
         },
         {
+          label: 'Exercises Quick',
+          fields: [
+            {
+              name: 'blocksQuickView',
+              type: 'ui',
+              admin: {
+                components: {
+                  Field: '@/ui/admin/LessonBlocksField#LessonBlocksQuickField',
+                },
+              },
+            },
+          ],
+        },
+        {
           label: 'System',
           fields: [
             {

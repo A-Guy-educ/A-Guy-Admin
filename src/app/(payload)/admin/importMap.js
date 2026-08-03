@@ -31,6 +31,7 @@ import { ChapterCascadeDelete as ChapterCascadeDelete_8b707dd02fbf8886630a64bffc
 import { LessonConversionPanel as LessonConversionPanel_057daf3b86f654d90edf003b44c43703 } from '@/ui/admin/exercise-conversion/LessonConversionPanel'
 import { LessonBlocksField as LessonBlocksField_c3ff48da65f411ef372b497cb7c724ee } from '@/ui/admin/LessonBlocksField'
 import { ContextExerciseViewer as ContextExerciseViewer_00433017acccf596fc613f093ab15a2d } from '@/ui/admin/context-exercise-viewer'
+import { LessonBlocksQuickField as LessonBlocksQuickField_c3ff48da65f411ef372b497cb7c724ee } from '@/ui/admin/LessonBlocksField'
 import { LessonIdDisplay as LessonIdDisplay_05dba386507b0a4f994ff6eb8b0cb22c } from '@/ui/admin/LessonIdDisplay'
 import { MetaImageComponent as MetaImageComponent_a8a977ebc872c5d5ea7ee689724c0860 } from '@payloadcms/plugin-seo/client'
 import { LessonNavigation as LessonNavigation_3633cb4a281c7c581bfc453746b3dc60 } from '@/ui/admin/ContentNavigation'
@@ -45,6 +46,7 @@ import { IntroGeometrySpecField as IntroGeometrySpecField_c2c1761cbe819b0609cad9
 import { IntroGraphSpecField as IntroGraphSpecField_8d1eea97d57da5692323d9664ac06d67 } from '@/ui/admin/IntroGraphField'
 import { ExerciseContentEditor as ExerciseContentEditor_d0c5d070052b5cabcf602f1e9878afd8 } from '@/ui/admin/ExerciseContentEditor'
 import { ExerciseBlocksField as ExerciseBlocksField_a178cb45a583b7c7ac6ac3ec84dfb752 } from '@/ui/admin/ExerciseBlocksField'
+import { ExerciseBlocksFullField as ExerciseBlocksFullField_a178cb45a583b7c7ac6ac3ec84dfb752 } from '@/ui/admin/ExerciseBlocksField'
 import { ExerciseIdDisplay as ExerciseIdDisplay_644cbbe3ecc84c7d57eb8fd9f96ff348 } from '@/ui/admin/ExerciseIdDisplay'
 import { ExerciseNavigation as ExerciseNavigation_3633cb4a281c7c581bfc453746b3dc60 } from '@/ui/admin/ContentNavigation'
 import { ConvertLatexBlockButton as ConvertLatexBlockButton_d913e8ffad94b4f98328d710b349e10d } from '@/ui/admin/exercise-conversion/ConvertLatexBlockButton'
@@ -110,6 +112,7 @@ export const importMap = {
   "@/ui/admin/exercise-conversion/LessonConversionPanel#LessonConversionPanel": LessonConversionPanel_057daf3b86f654d90edf003b44c43703,
   "@/ui/admin/LessonBlocksField#LessonBlocksField": LessonBlocksField_c3ff48da65f411ef372b497cb7c724ee,
   "@/ui/admin/context-exercise-viewer#ContextExerciseViewer": ContextExerciseViewer_00433017acccf596fc613f093ab15a2d,
+  "@/ui/admin/LessonBlocksField#LessonBlocksQuickField": LessonBlocksQuickField_c3ff48da65f411ef372b497cb7c724ee,
   "@/ui/admin/LessonIdDisplay#LessonIdDisplay": LessonIdDisplay_05dba386507b0a4f994ff6eb8b0cb22c,
   "@payloadcms/plugin-seo/client#MetaImageComponent": MetaImageComponent_a8a977ebc872c5d5ea7ee689724c0860,
   "@/ui/admin/ContentNavigation#LessonNavigation": LessonNavigation_3633cb4a281c7c581bfc453746b3dc60,
@@ -124,6 +127,7 @@ export const importMap = {
   "@/ui/admin/IntroGraphField#IntroGraphSpecField": IntroGraphSpecField_8d1eea97d57da5692323d9664ac06d67,
   "@/ui/admin/ExerciseContentEditor#ExerciseContentEditor": ExerciseContentEditor_d0c5d070052b5cabcf602f1e9878afd8,
   "@/ui/admin/ExerciseBlocksField#ExerciseBlocksField": ExerciseBlocksField_a178cb45a583b7c7ac6ac3ec84dfb752,
+  "@/ui/admin/ExerciseBlocksField#ExerciseBlocksFullField": ExerciseBlocksFullField_a178cb45a583b7c7ac6ac3ec84dfb752,
   "@/ui/admin/ExerciseIdDisplay#ExerciseIdDisplay": ExerciseIdDisplay_644cbbe3ecc84c7d57eb8fd9f96ff348,
   "@/ui/admin/ContentNavigation#ExerciseNavigation": ExerciseNavigation_3633cb4a281c7c581bfc453746b3dc60,
   "@/ui/admin/exercise-conversion/ConvertLatexBlockButton#ConvertLatexBlockButton": ConvertLatexBlockButton_d913e8ffad94b4f98328d710b349e10d,

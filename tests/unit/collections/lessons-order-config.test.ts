@@ -107,11 +107,17 @@ describe('Lessons Collection Config', () => {
   })
 
   describe('admin edit tabs', () => {
-    it('should show Content, Exercises, System, and SEO tabs with Content first', () => {
+    it('should show Content, Exercises, Exercises Quick, System, and SEO tabs with Content first', () => {
       const tabs = getLessonTabs()
 
-      expect(tabs.map((tab) => tab.label)).toEqual(['Content', 'Exercises', 'System', 'SEO'])
-      expect(tabs[3].name).toBe('meta')
+      expect(tabs.map((tab) => tab.label)).toEqual([
+        'Content',
+        'Exercises',
+        'Exercises Quick',
+        'System',
+        'SEO',
+      ])
+      expect(tabs[4].name).toBe('meta')
     })
 
     it('should keep only contentNavigation in the sidebar', () => {
@@ -188,8 +194,20 @@ describe('Lessons Collection Config', () => {
       )
     })
 
+    it('should render the Exercises Quick tab via LessonBlocksQuickField', () => {
+      const [, , exercisesQuickTab] = getLessonTabs()
+
+      expect(exercisesQuickTab.label).toBe('Exercises Quick')
+      expect(fieldNames(exercisesQuickTab.fields)).toEqual(['blocksQuickView'])
+      const uiField = findField(exercisesQuickTab.fields, 'blocksQuickView')
+      expect(uiField?.type).toBe('ui')
+      expect(uiField?.admin?.components?.Field).toBe(
+        '@/ui/admin/LessonBlocksField#LessonBlocksQuickField',
+      )
+    })
+
     it('should place read-only identity and system fields in the requested order', () => {
-      const [, , systemTab] = getLessonTabs()
+      const [, , , systemTab] = getLessonTabs()
 
       expect(fieldNames(systemTab.fields)).toEqual([
         'lessonIdDisplay',
@@ -231,7 +249,7 @@ describe('Lessons Collection Config', () => {
     })
 
     it('should compose the SEO tab inline with plugin fields and lesson-specific metadata', () => {
-      const [, , , seoTab] = getLessonTabs()
+      const [, , , , seoTab] = getLessonTabs()
 
       expect(fieldNames(seoTab.fields)).toEqual([
         'overview',
