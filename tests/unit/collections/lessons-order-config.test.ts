@@ -286,6 +286,7 @@ describe('Lessons Collection Config', () => {
 
     it('should keep global lesson actions available outside individual tabs', () => {
       expect(Lessons.admin?.components?.edit?.beforeDocumentControls).toEqual([
+        '@/ui/admin/LessonStudio/StudioLauncherButton#StudioLauncherAction',
         '@/ui/admin/TranslationButton#TranslateLessonAction',
         '@/ui/admin/CascadeDeleteButton#LessonCascadeDelete',
         '@/ui/admin/LessonExportButton/LessonExportButton#LessonExportAction',
