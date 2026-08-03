@@ -357,6 +357,20 @@ export const Exercises: CollectionConfig = {
           label: 'Sections',
           fields: [
             {
+              name: 'blocksFullView',
+              type: 'ui',
+              admin: {
+                components: {
+                  Field: '@/ui/admin/ExerciseBlocksField#ExerciseBlocksFullField',
+                },
+              },
+            },
+          ],
+        },
+        {
+          label: 'Sections Quick',
+          fields: [
+            {
               name: 'blocks',
               type: 'textarea',
               admin: {

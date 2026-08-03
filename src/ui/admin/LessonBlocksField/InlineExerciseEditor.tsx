@@ -2,15 +2,8 @@
 
 import React, { useCallback, useEffect, useState } from 'react'
 import type { ContentBlock } from '@/server/payload/collections/Exercises/types'
-import { InlineRichTextEditor } from '../ExerciseContentEditor/editors/InlineRichTextEditor'
-import { TrueFalseEditor } from '../ExerciseContentEditor/editors/TrueFalseEditor'
-import { McqEditor } from '../ExerciseContentEditor/editors/McqEditor'
-import { FreeResponseEditor } from '../ExerciseContentEditor/editors/FreeResponseEditor'
-import { TableEditor } from '../ExerciseContentEditor/editors/TableEditor'
-import { MatchingEditor } from '../ExerciseContentEditor/editors/MatchingEditor'
-import { SvgEditor } from '../ExerciseContentEditor/editors/SvgEditor'
-import { HtmlBlockEditor } from '../ExerciseContentEditor/editors/HtmlBlockEditor'
-import { MediaBlockEditor } from '../ExerciseContentEditor/editors/MediaBlockEditor'
+import { InlineBlockRenderer } from './InlineBlockRenderer'
+import { InlineSectionEditor } from './InlineSectionEditor'
 import '../ExerciseContentEditor/index.css'
 
 interface InlineExerciseEditorProps {
@@ -20,165 +13,55 @@ interface InlineExerciseEditorProps {
   onSave?: () => void
 }
 
-/** Deep-clone a ContentBlock for immutability */
+interface SectionSummary {
+  id: string
+  title: string | null
+  blocks: ContentBlock[]
+}
+
 function cloneBlock(block: ContentBlock): ContentBlock {
   return JSON.parse(JSON.stringify(block))
 }
 
-function getBlockTypeLabel(block: ContentBlock): string {
-  const variant = (block as { variant?: string }).variant
-  if (block.type === 'question_select' && variant === 'true_false') return 'True / False'
-  if (block.type === 'question_select' && variant === 'mcq') return 'Multiple Choice'
-  if (block.type === 'question_free_response') return 'Free Response'
-  if (block.type === 'question_table') return 'Table Question'
-  if (block.type === 'html') return 'HTML Block'
-  if (block.type === 'question_matching') return 'Matching'
-  if (block.type === 'svg') return 'SVG Image'
-  if (block.type === 'media') return 'Media'
-  if (block.type === 'latex') return 'LaTeX'
-  if (block.type === 'question_geometry') return 'Geometry'
-  if (block.type === 'question_axis') return 'Axis Graph'
-  if (block.type === 'question_multi_axis') return 'Multi Axis Graph'
-  return block.type
+/** Parse the exercise's blocks playlist (sectionRef entries) */
+function parseSectionRefIds(raw: unknown): string[] {
+  const list: unknown[] = Array.isArray(raw)
+    ? raw
+    : typeof raw === 'string' && raw.trim()
+      ? (() => {
+          try {
+            const parsed = JSON.parse(raw)
+            return Array.isArray(parsed) ? parsed : []
+          } catch {
+            return []
+          }
+        })()
+      : []
+
+  const ids: string[] = []
+  for (const entry of list) {
+    if (!entry || typeof entry !== 'object') continue
+    const e = entry as { blockType?: string; section?: unknown }
+    if (e.blockType !== 'sectionRef') continue
+    if (typeof e.section === 'string' && e.section.length > 0) {
+      ids.push(e.section)
+    } else if (e.section && typeof e.section === 'object' && 'id' in e.section) {
+      const nested = (e.section as { id: unknown }).id
+      if (typeof nested === 'string' && nested.length > 0) ids.push(nested)
+    }
+  }
+  return ids
 }
-
-function InlineBlockRenderer({
-  block,
-  onChange,
-}: {
-  block: ContentBlock
-  onChange: (updated: ContentBlock) => void
-}) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- loose dispatch to per-type editor components
-  const b = block as any
-
-  if (block.type === 'rich_text') {
-    return (
-      <div className="block-card">
-        <div className="block-card-header">
-          <div className="block-card-title">Rich Text</div>
-        </div>
-        <div className="block-card-content">
-          <InlineRichTextEditor value={b} onChange={(val) => onChange({ ...b, ...val })} />
-        </div>
-      </div>
-    )
-  }
-
-  if (block.type === 'question_select' && b.variant === 'true_false') {
-    return (
-      <div className="question-block-wrapper">
-        <TrueFalseEditor block={b} onChange={(updated) => onChange(updated)} />
-      </div>
-    )
-  }
-
-  if (block.type === 'question_select' && b.variant === 'mcq') {
-    return (
-      <div className="question-block-wrapper">
-        <McqEditor block={b} onChange={(updated) => onChange(updated)} />
-      </div>
-    )
-  }
-
-  if (block.type === 'question_free_response') {
-    return (
-      <div className="question-block-wrapper">
-        <FreeResponseEditor block={b} onChange={(updated) => onChange(updated)} />
-      </div>
-    )
-  }
-
-  if (block.type === 'question_table') {
-    return (
-      <div className="question-block-wrapper">
-        <TableEditor block={b} onChange={(updated) => onChange(updated)} />
-      </div>
-    )
-  }
-
-  if (block.type === 'question_matching') {
-    return (
-      <div className="question-block-wrapper">
-        <MatchingEditor block={b} onChange={(updated) => onChange(updated)} />
-      </div>
-    )
-  }
-
-  if (block.type === 'svg') {
-    return (
-      <div className="question-block-wrapper">
-        <SvgEditor block={b} onChange={(updated) => onChange(updated)} />
-      </div>
-    )
-  }
-
-  if (block.type === 'html') {
-    return (
-      <div className="question-block-wrapper">
-        <HtmlBlockEditor block={b} onChange={(updated) => onChange(updated)} />
-      </div>
-    )
-  }
-
-  if (block.type === 'media') {
-    return (
-      <div className="question-block-wrapper">
-        <MediaBlockEditor block={b} onChange={(updated) => onChange(updated)} />
-      </div>
-    )
-  }
-
-  // Geometry, Axis, MultiAxis - load dynamically to avoid bundle bloat
-  if (
-    block.type === 'question_geometry' ||
-    block.type === 'question_axis' ||
-    block.type === 'question_multi_axis'
-  ) {
-    return (
-      <div className="question-block-wrapper">
-        <DynamicGraphBlock block={block} onChange={onChange} />
-      </div>
-    )
-  }
-
-  // Fallback for unknown block types - show JSON
-  return (
-    <div className="block-card">
-      <div className="block-card-header">
-        <div className="block-card-title">{getBlockTypeLabel(block)}</div>
-      </div>
-      <div className="block-card-content">
-        <pre style={{ fontSize: 12, whiteSpace: 'pre-wrap' }}>{JSON.stringify(block, null, 2)}</pre>
-      </div>
-    </div>
-  )
-}
-
-// Lazy-load geometry/axis editors
-const DynamicGraphBlock = React.lazy(() =>
-  import('../ExerciseContentEditor/editors/GeometryEditor').then((m) => ({
-    default: ({
-      block,
-      onChange,
-    }: {
-      block: ContentBlock
-      onChange: (b: ContentBlock) => void
-    }) => (
-      <m.GeometryEditor
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- GeometryEditor expects narrowed block type
-        block={block as any}
-        onChange={(updated: ContentBlock) => onChange(updated)}
-      />
-    ),
-  })),
-)
 
 /**
- * InlineExerciseEditor — renders an exercise's content blocks inline within
- * the LessonBlocksField, with per-exercise dirty tracking and save.
+ * InlineExerciseEditor — renders an exercise's content inline within the
+ * LessonBlocksField.
  *
- * Saves directly to the exercise document via the Payload REST API,
+ * - If the exercise has child sections, each section is rendered as its own
+ *   nested `InlineSectionEditor` (with per-section save).
+ * - If not, falls back to editing the legacy `exercise.content.blocks`.
+ *
+ * Saves happen directly against the exercise/section REST endpoints,
  * independent of the lesson form.
  */
 export const InlineExerciseEditor: React.FC<InlineExerciseEditorProps> = ({
@@ -186,13 +69,13 @@ export const InlineExerciseEditor: React.FC<InlineExerciseEditorProps> = ({
   exerciseTitle,
   onSave,
 }) => {
-  const [localBlocks, setLocalBlocks] = useState<ContentBlock[] | null>(null)
+  const [sections, setSections] = useState<SectionSummary[] | null>(null)
+  const [legacyBlocks, setLegacyBlocks] = useState<ContentBlock[] | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
 
-  // Fetch exercise content
   useEffect(() => {
     if (!exerciseId) return
 
@@ -200,18 +83,70 @@ export const InlineExerciseEditor: React.FC<InlineExerciseEditorProps> = ({
     setLoading(true)
     setError(null)
 
-    fetch(`/api/exercises/${exerciseId}?depth=0`, {
-      credentials: 'include',
-      signal: controller.signal,
-    })
-      .then((res) => {
+    Promise.all([
+      fetch(`/api/exercises/${exerciseId}?depth=0`, {
+        credentials: 'include',
+        signal: controller.signal,
+      }).then((res) => {
         if (!res.ok) throw new Error(`Failed to fetch exercise: ${res.status}`)
         return res.json()
-      })
-      .then((data) => {
-        const doc = data.doc || data
-        const blocks = doc?.content?.blocks || []
-        setLocalBlocks(blocks.map(cloneBlock))
+      }),
+      // Do NOT swallow section-fetch errors: a transient failure here would
+      // otherwise fall through to the legacy content.blocks branch below,
+      // where `aggregateChildSectionContent`'s in-memory flattened output
+      // would then be PATCHed back onto the exercise as if it were the
+      // exercise's own content — silently freezing a stale snapshot that
+      // ignores future section edits.
+      fetch(
+        `/api/sections?where[exercise][equals]=${encodeURIComponent(exerciseId)}&depth=0&limit=1000&sort=order`,
+        { credentials: 'include', signal: controller.signal },
+      ).then((res) => {
+        if (!res.ok) throw new Error(`Failed to fetch sections: ${res.status}`)
+        return res.json()
+      }),
+    ])
+      .then(([exerciseData, sectionsData]) => {
+        const doc = exerciseData.doc || exerciseData
+        type RawSection = {
+          id: string
+          title?: string | null
+          content?: { blocks?: ContentBlock[] | null } | null
+        }
+        const rawSections: RawSection[] = Array.isArray(sectionsData?.docs) ? sectionsData.docs : []
+
+        // Reorder sections to match the exercise's `blocks` playlist when present.
+        const playlistIds = parseSectionRefIds(doc?.blocks)
+        const byId = new Map(rawSections.map((s) => [s.id, s]))
+        const toSummary = (s: RawSection): SectionSummary => ({
+          id: s.id,
+          title: s.title ?? null,
+          blocks: Array.isArray(s.content?.blocks) ? s.content.blocks : [],
+        })
+        const ordered: SectionSummary[] = []
+        const seen = new Set<string>()
+        for (const id of playlistIds) {
+          const match = byId.get(id)
+          if (match && !seen.has(id)) {
+            ordered.push(toSummary(match))
+            seen.add(id)
+          }
+        }
+        for (const s of rawSections) {
+          if (!seen.has(s.id)) ordered.push(toSummary(s))
+        }
+
+        setSections(ordered)
+
+        // Only surface legacy blocks when there are NO sections — otherwise the
+        // `aggregateChildSectionContent` read hook has already flattened section
+        // content into `doc.content.blocks`, and rendering it again would
+        // duplicate everything we're about to show per-section.
+        if (ordered.length === 0) {
+          const blocks = doc?.content?.blocks || []
+          setLegacyBlocks(blocks.map(cloneBlock))
+        } else {
+          setLegacyBlocks(null)
+        }
         setLoading(false)
       })
       .catch((err) => {
@@ -223,8 +158,8 @@ export const InlineExerciseEditor: React.FC<InlineExerciseEditorProps> = ({
     return () => controller.abort()
   }, [exerciseId])
 
-  const handleBlockChange = useCallback((index: number, updated: ContentBlock) => {
-    setLocalBlocks((prev) => {
+  const handleLegacyBlockChange = useCallback((index: number, updated: ContentBlock) => {
+    setLegacyBlocks((prev) => {
       if (!prev) return prev
       const next = [...prev]
       next[index] = updated
@@ -233,8 +168,8 @@ export const InlineExerciseEditor: React.FC<InlineExerciseEditorProps> = ({
     setHasUnsavedChanges(true)
   }, [])
 
-  const handleSave = useCallback(async () => {
-    if (!exerciseId || !localBlocks || saving) return
+  const handleSaveLegacy = useCallback(async () => {
+    if (!exerciseId || !legacyBlocks || saving) return
 
     setSaving(true)
     setError(null)
@@ -244,7 +179,7 @@ export const InlineExerciseEditor: React.FC<InlineExerciseEditorProps> = ({
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ content: { blocks: localBlocks } }),
+        body: JSON.stringify({ content: { blocks: legacyBlocks } }),
       })
 
       if (!res.ok) {
@@ -259,7 +194,7 @@ export const InlineExerciseEditor: React.FC<InlineExerciseEditorProps> = ({
     } finally {
       setSaving(false)
     }
-  }, [exerciseId, localBlocks, saving, onSave])
+  }, [exerciseId, legacyBlocks, saving, onSave])
 
   if (loading) {
     return (
@@ -276,21 +211,36 @@ export const InlineExerciseEditor: React.FC<InlineExerciseEditorProps> = ({
     )
   }
 
-  if (error && !localBlocks) {
+  if (error && !sections && !legacyBlocks) {
     return (
-      <div
-        style={{
-          padding: '16px',
-          color: 'var(--theme-error-500)',
-          fontSize: 13,
-        }}
-      >
-        {error}
+      <div style={{ padding: '16px', color: 'var(--theme-error-500)', fontSize: 13 }}>{error}</div>
+    )
+  }
+
+  // Case 1: exercise has child sections — render each section inline
+  if (sections && sections.length > 0) {
+    return (
+      <div className="inline-exercise-editor">
+        <div className="inline-exercise-header">
+          <div className="inline-exercise-title">{exerciseTitle || 'Untitled Exercise'}</div>
+        </div>
+        <div className="inline-exercise-blocks">
+          {sections.map((section) => (
+            <InlineSectionEditor
+              key={section.id}
+              sectionId={section.id}
+              sectionTitle={section.title ?? undefined}
+              preloadedBlocks={section.blocks}
+              onSave={onSave}
+            />
+          ))}
+        </div>
       </div>
     )
   }
 
-  if (!localBlocks || localBlocks.length === 0) {
+  // Case 2: legacy exercise with inline content.blocks
+  if (!legacyBlocks || legacyBlocks.length === 0) {
     return (
       <div
         style={{
@@ -300,25 +250,18 @@ export const InlineExerciseEditor: React.FC<InlineExerciseEditorProps> = ({
           fontSize: 13,
         }}
       >
-        No content blocks in this exercise.
+        No content blocks or sections in this exercise.
       </div>
     )
   }
 
   return (
     <div className="inline-exercise-editor">
-      {/* Exercise header */}
       <div className="inline-exercise-header">
         <div className="inline-exercise-title">{exerciseTitle || 'Untitled Exercise'}</div>
         <div className="inline-exercise-actions">
           {error && (
-            <span
-              style={{
-                fontSize: 12,
-                color: 'var(--theme-error-500)',
-                marginRight: 8,
-              }}
-            >
+            <span style={{ fontSize: 12, color: 'var(--theme-error-500)', marginRight: 8 }}>
               {error}
             </span>
           )}
@@ -326,7 +269,7 @@ export const InlineExerciseEditor: React.FC<InlineExerciseEditorProps> = ({
             <button
               type="button"
               className="editor-save-button"
-              onClick={handleSave}
+              onClick={handleSaveLegacy}
               disabled={saving}
             >
               {saving ? 'Saving...' : 'Save'}
@@ -338,13 +281,12 @@ export const InlineExerciseEditor: React.FC<InlineExerciseEditorProps> = ({
         </div>
       </div>
 
-      {/* Block list */}
       <div className="inline-exercise-blocks">
-        {localBlocks.map((block, index) => (
+        {legacyBlocks.map((block, index) => (
           <div key={block.id || `block-${index}`} className="inline-exercise-block-item">
             <InlineBlockRenderer
               block={block}
-              onChange={(updated) => handleBlockChange(index, updated)}
+              onChange={(updated) => handleLegacyBlockChange(index, updated)}
             />
           </div>
         ))}

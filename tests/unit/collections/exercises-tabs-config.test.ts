@@ -2,9 +2,10 @@
  * @fileType unit-test
  * @domain collections
  * @pattern schema-validation
- * @ai-summary Verifies the Exercises collection admin config exposes three
- *             top-level tabs (Content, Sections, System) and that the
- *             sectionRef playlist field `blocks` lives in the Sections tab.
+ * @ai-summary Verifies the Exercises collection admin config exposes the
+ *             expected top-level tabs (Content, Sections, Sections Quick,
+ *             System) and that the sectionRef playlist field `blocks` lives
+ *             in the Sections Quick tab.
  */
 import type { Field } from 'payload'
 import { describe, expect, it } from 'vitest'
@@ -44,17 +45,35 @@ const getTabs = (fields: Field[]) => {
 const fieldNames = (fields: Field[]) => fields.map((field) => asInspectableField(field).name)
 
 describe('Exercises Collection Config — admin tabs', () => {
-  it('should render three tabs in the order Content, Sections, System', () => {
+  it('should render four tabs in the order Content, Sections, Sections Quick, System', () => {
     const tabs = getTabs(Exercises.fields as Field[])
 
-    expect(tabs.map((tab) => tab.label)).toEqual(['Content', 'Sections', 'System'])
+    expect(tabs.map((tab) => tab.label)).toEqual([
+      'Content',
+      'Sections',
+      'Sections Quick',
+      'System',
+    ])
   })
 
-  it('should place the sectionRef playlist (blocks) in the Sections tab', () => {
+  it('should render the full-view Sections tab via ExerciseBlocksFullField', () => {
     const [, sectionsTab] = getTabs(Exercises.fields as Field[])
 
-    expect(fieldNames(sectionsTab.fields)).toEqual(['blocks'])
-    const blocks = asInspectableField(sectionsTab.fields[0])
+    expect(sectionsTab.label).toBe('Sections')
+    expect(fieldNames(sectionsTab.fields)).toEqual(['blocksFullView'])
+    const uiField = asInspectableField(sectionsTab.fields[0])
+    expect(uiField.type).toBe('ui')
+    expect(uiField.admin?.components?.Field).toBe(
+      '@/ui/admin/ExerciseBlocksField#ExerciseBlocksFullField',
+    )
+  })
+
+  it('should place the sectionRef playlist (blocks) in the Sections Quick tab', () => {
+    const [, , quickTab] = getTabs(Exercises.fields as Field[])
+
+    expect(quickTab.label).toBe('Sections Quick')
+    expect(fieldNames(quickTab.fields)).toEqual(['blocks'])
+    const blocks = asInspectableField(quickTab.fields[0])
     expect(blocks).toMatchObject({
       name: 'blocks',
       type: 'textarea',
@@ -75,11 +94,23 @@ describe('Exercises Collection Config — admin tabs', () => {
     expect(fieldNames(systemTab.fields)).toContain('showQuestionNumbering')
   })
 
-  it('should keep the Lessons Exercises tab structure unchanged (regression check)', () => {
+  it('should expose the Exercises and Exercises Quick tabs on Lessons', () => {
     const lessonTabs = getTabs(Lessons.fields as Field[])
 
-    expect(lessonTabs.map((tab) => tab.label)).toEqual(['Content', 'Exercises', 'System', 'SEO'])
-    const [, exercisesTab] = lessonTabs
+    expect(lessonTabs.map((tab) => tab.label)).toEqual([
+      'Content',
+      'Exercises',
+      'Exercises Quick',
+      'System',
+      'SEO',
+    ])
+    const [, exercisesTab, exercisesQuickTab] = lessonTabs
     expect(fieldNames(exercisesTab.fields)).toEqual(['blocks', 'contextExerciseViewer'])
+    expect(fieldNames(exercisesQuickTab.fields)).toEqual(['blocksQuickView'])
+    const quickField = asInspectableField(exercisesQuickTab.fields[0])
+    expect(quickField.type).toBe('ui')
+    expect(quickField.admin?.components?.Field).toBe(
+      '@/ui/admin/LessonBlocksField#LessonBlocksQuickField',
+    )
   })
 })
