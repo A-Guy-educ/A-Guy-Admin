@@ -354,6 +354,20 @@ export const Exercises: CollectionConfig = {
           ],
         },
         {
+          label: 'Sections',
+          fields: [
+            {
+              name: 'blocksFullView',
+              type: 'ui',
+              admin: {
+                components: {
+                  Field: '@/ui/admin/ExerciseBlocksField#ExerciseBlocksFullField',
+                },
+              },
+            },
+          ],
+        },
+        {
           label: 'Sections Quick',
           fields: [
             {
@@ -364,20 +378,6 @@ export const Exercises: CollectionConfig = {
                   'Ordered playlist of sections. Populated automatically by the Sections collection hooks and editable from this side via the playlist UI.',
                 components: {
                   Field: '@/ui/admin/ExerciseBlocksField#ExerciseBlocksField',
-                },
-              },
-            },
-          ],
-        },
-        {
-          label: 'Sections',
-          fields: [
-            {
-              name: 'blocksFullView',
-              type: 'ui',
-              admin: {
-                components: {
-                  Field: '@/ui/admin/ExerciseBlocksField#ExerciseBlocksFullField',
                 },
               },
             },

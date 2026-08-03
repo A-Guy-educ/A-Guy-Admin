@@ -8,6 +8,8 @@ import '../ExerciseContentEditor/index.css'
 interface InlineSectionEditorProps {
   sectionId: string
   sectionTitle?: string
+  /** Preloaded section content.blocks — when provided, skips the initial fetch. */
+  preloadedBlocks?: ContentBlock[] | null
   onSave?: () => void
 }
 
@@ -16,23 +18,32 @@ function cloneBlock(block: ContentBlock): ContentBlock {
 }
 
 /**
- * InlineSectionEditor — fetches a section and renders its `content.blocks`
- * inline with per-section dirty tracking + save. Saves via PATCH to
- * `/api/sections/{id}`, independent of any parent form.
+ * InlineSectionEditor — renders a section's `content.blocks` inline with
+ * per-section dirty tracking + save. Saves via PATCH to `/api/sections/{id}`,
+ * independent of any parent form.
+ *
+ * If `preloadedBlocks` is provided the initial fetch is skipped. Callers
+ * batch-fetch all sections for an exercise once (see `ExerciseBlocksList`
+ * full mode and `InlineExerciseEditor`) to avoid N+1 same-origin GETs that
+ * would otherwise saturate the browser's HTTP/1.1 connection budget.
  */
 export const InlineSectionEditor: React.FC<InlineSectionEditorProps> = ({
   sectionId,
   sectionTitle,
+  preloadedBlocks,
   onSave,
 }) => {
-  const [localBlocks, setLocalBlocks] = useState<ContentBlock[] | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [localBlocks, setLocalBlocks] = useState<ContentBlock[] | null>(
+    preloadedBlocks ? preloadedBlocks.map(cloneBlock) : null,
+  )
+  const [loading, setLoading] = useState(preloadedBlocks === undefined)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
 
   useEffect(() => {
     if (!sectionId) return
+    if (preloadedBlocks !== undefined) return
 
     const controller = new AbortController()
     setLoading(true)
@@ -59,7 +70,7 @@ export const InlineSectionEditor: React.FC<InlineSectionEditorProps> = ({
       })
 
     return () => controller.abort()
-  }, [sectionId])
+  }, [sectionId, preloadedBlocks])
 
   const handleBlockChange = useCallback((index: number, updated: ContentBlock) => {
     setLocalBlocks((prev) => {

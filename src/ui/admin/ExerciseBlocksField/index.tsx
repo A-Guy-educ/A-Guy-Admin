@@ -1,9 +1,10 @@
 'use client'
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useField, useForm } from '@payloadcms/ui'
+import { useDocumentInfo, useField, useForm } from '@payloadcms/ui'
 import { useRouter } from 'next/navigation'
 import { GripVertical, ChevronUp, ChevronDown, FileText, Trash2, Pencil } from 'lucide-react'
+import type { ContentBlock } from '@/server/payload/collections/Exercises/types'
 import { InlineSectionEditor } from '../LessonBlocksField/InlineSectionEditor'
 
 function generateBlockId(): string {
@@ -92,6 +93,8 @@ const ExerciseBlocksList: React.FC<{ path: string; mode: BlocksMode }> = ({ path
   const { value, setValue } = useField<string>({ path })
   const { setModified } = useForm()
   const router = useRouter()
+  const { id: docId } = useDocumentInfo()
+  const exerciseId = typeof docId === 'string' ? docId : null
 
   const blocks: RawBlock[] = useMemo(() => parseBlocks(value), [value])
   const activationRef = useRef<HTMLDivElement>(null)
@@ -104,6 +107,13 @@ const ExerciseBlocksList: React.FC<{ path: string; mode: BlocksMode }> = ({ path
   // Title cache (refId -> title)
   const [titleCache, setTitleCache] = useState<Record<string, string>>({})
   const [loadingIds, setLoadingIds] = useState<Set<string>>(new Set())
+  // Body cache (refId -> content.blocks) — populated by the full-mode batch
+  // fetch below and passed to InlineSectionEditor so each editor skips its own
+  // /api/sections/{id} GET. Undefined value means "not yet loaded".
+  const [sectionBodyCache, setSectionBodyCache] = useState<
+    Record<string, ContentBlock[] | undefined>
+  >({})
+  const [batchLoaded, setBatchLoaded] = useState(false)
 
   useEffect(() => {
     if (hasBeenActivated) return
@@ -146,9 +156,60 @@ const ExerciseBlocksList: React.FC<{ path: string; mode: BlocksMode }> = ({ path
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [blocks, hasBeenActivated])
 
+  // Full-mode batch fetch: single query returns every section for this
+  // exercise (title + content.blocks) in one round trip. Without it, the
+  // parent-list per-id title fetch + each mounted InlineSectionEditor's own
+  // fetch would produce 2N same-origin GETs, saturating the browser's
+  // HTTP/1.1 connection budget on section-heavy exercises.
+  useEffect(() => {
+    if (mode !== 'full') return
+    if (!hasBeenActivated) return
+    if (!exerciseId) return
+    if (batchLoaded) return
+
+    const controller = new AbortController()
+    fetch(
+      `/api/sections?where[exercise][equals]=${encodeURIComponent(exerciseId)}&depth=0&limit=1000&sort=order`,
+      { credentials: 'include', signal: controller.signal },
+    )
+      .then((res) => {
+        if (!res.ok) throw new Error(`Failed to fetch sections: ${res.status}`)
+        return res.json()
+      })
+      .then((data) => {
+        const docs: Array<{
+          id: string
+          title?: string | null
+          content?: { blocks?: ContentBlock[] | null } | null
+        }> = Array.isArray(data?.docs) ? data.docs : []
+
+        const titles: Record<string, string> = {}
+        const bodies: Record<string, ContentBlock[]> = {}
+        for (const doc of docs) {
+          titles[doc.id] = doc.title || `(${doc.id.slice(0, 8)}...)`
+          bodies[doc.id] = Array.isArray(doc.content?.blocks) ? doc.content.blocks : []
+        }
+        setTitleCache((prev) => ({ ...prev, ...titles }))
+        setSectionBodyCache((prev) => ({ ...prev, ...bodies }))
+        setBatchLoaded(true)
+      })
+      .catch((err) => {
+        if (err.name === 'AbortError') return
+        // Fall back to per-id fetch on batch failure — better than showing
+        // nothing. The per-id effect below will pick up the missing titles.
+        setBatchLoaded(true)
+      })
+
+    return () => controller.abort()
+  }, [mode, hasBeenActivated, exerciseId, batchLoaded])
+
   // Fetch titles for IDs not in cache
   useEffect(() => {
     if (!hasBeenActivated) return
+    // In full mode the batch effect above already populated the caches (or
+    // failed and marked itself done); until it resolves we don't want to race
+    // it with N per-id GETs.
+    if (mode === 'full' && !batchLoaded) return
 
     const idsToFetch: Array<{ id: string }> = []
 
@@ -494,6 +555,7 @@ const ExerciseBlocksList: React.FC<{ path: string; mode: BlocksMode }> = ({ path
                   key={`inline-${row.refId}`}
                   sectionId={row.refId}
                   sectionTitle={row.loading ? undefined : row.title}
+                  preloadedBlocks={sectionBodyCache[row.refId]}
                 />
               )}
             </div>

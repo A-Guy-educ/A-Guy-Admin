@@ -16,6 +16,7 @@ interface InlineExerciseEditorProps {
 interface SectionSummary {
   id: string
   title: string | null
+  blocks: ContentBlock[]
 }
 
 function cloneBlock(block: ContentBlock): ContentBlock {
@@ -90,35 +91,48 @@ export const InlineExerciseEditor: React.FC<InlineExerciseEditorProps> = ({
         if (!res.ok) throw new Error(`Failed to fetch exercise: ${res.status}`)
         return res.json()
       }),
+      // Do NOT swallow section-fetch errors: a transient failure here would
+      // otherwise fall through to the legacy content.blocks branch below,
+      // where `aggregateChildSectionContent`'s in-memory flattened output
+      // would then be PATCHed back onto the exercise as if it were the
+      // exercise's own content — silently freezing a stale snapshot that
+      // ignores future section edits.
       fetch(
         `/api/sections?where[exercise][equals]=${encodeURIComponent(exerciseId)}&depth=0&limit=1000&sort=order`,
         { credentials: 'include', signal: controller.signal },
-      )
-        .then((res) => (res.ok ? res.json() : { docs: [] }))
-        .catch(() => ({ docs: [] })),
+      ).then((res) => {
+        if (!res.ok) throw new Error(`Failed to fetch sections: ${res.status}`)
+        return res.json()
+      }),
     ])
       .then(([exerciseData, sectionsData]) => {
         const doc = exerciseData.doc || exerciseData
-        const rawSections: Array<{ id: string; title?: string | null }> = Array.isArray(
-          sectionsData?.docs,
-        )
-          ? sectionsData.docs
-          : []
+        type RawSection = {
+          id: string
+          title?: string | null
+          content?: { blocks?: ContentBlock[] | null } | null
+        }
+        const rawSections: RawSection[] = Array.isArray(sectionsData?.docs) ? sectionsData.docs : []
 
         // Reorder sections to match the exercise's `blocks` playlist when present.
         const playlistIds = parseSectionRefIds(doc?.blocks)
         const byId = new Map(rawSections.map((s) => [s.id, s]))
+        const toSummary = (s: RawSection): SectionSummary => ({
+          id: s.id,
+          title: s.title ?? null,
+          blocks: Array.isArray(s.content?.blocks) ? s.content.blocks : [],
+        })
         const ordered: SectionSummary[] = []
         const seen = new Set<string>()
         for (const id of playlistIds) {
           const match = byId.get(id)
           if (match && !seen.has(id)) {
-            ordered.push({ id: match.id, title: match.title ?? null })
+            ordered.push(toSummary(match))
             seen.add(id)
           }
         }
         for (const s of rawSections) {
-          if (!seen.has(s.id)) ordered.push({ id: s.id, title: s.title ?? null })
+          if (!seen.has(s.id)) ordered.push(toSummary(s))
         }
 
         setSections(ordered)
@@ -216,6 +230,7 @@ export const InlineExerciseEditor: React.FC<InlineExerciseEditorProps> = ({
               key={section.id}
               sectionId={section.id}
               sectionTitle={section.title ?? undefined}
+              preloadedBlocks={section.blocks}
               onSave={onSave}
             />
           ))}

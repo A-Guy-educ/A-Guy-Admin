@@ -45,8 +45,8 @@ import { IntroTableRowsField as IntroTableRowsField_7c6162afec623d7dc5ec436565e3
 import { IntroGeometrySpecField as IntroGeometrySpecField_c2c1761cbe819b0609cad9be299e1fc7 } from '@/ui/admin/IntroGeometryField'
 import { IntroGraphSpecField as IntroGraphSpecField_8d1eea97d57da5692323d9664ac06d67 } from '@/ui/admin/IntroGraphField'
 import { ExerciseContentEditor as ExerciseContentEditor_d0c5d070052b5cabcf602f1e9878afd8 } from '@/ui/admin/ExerciseContentEditor'
-import { ExerciseBlocksField as ExerciseBlocksField_a178cb45a583b7c7ac6ac3ec84dfb752 } from '@/ui/admin/ExerciseBlocksField'
 import { ExerciseBlocksFullField as ExerciseBlocksFullField_a178cb45a583b7c7ac6ac3ec84dfb752 } from '@/ui/admin/ExerciseBlocksField'
+import { ExerciseBlocksField as ExerciseBlocksField_a178cb45a583b7c7ac6ac3ec84dfb752 } from '@/ui/admin/ExerciseBlocksField'
 import { ExerciseIdDisplay as ExerciseIdDisplay_644cbbe3ecc84c7d57eb8fd9f96ff348 } from '@/ui/admin/ExerciseIdDisplay'
 import { ExerciseNavigation as ExerciseNavigation_3633cb4a281c7c581bfc453746b3dc60 } from '@/ui/admin/ContentNavigation'
 import { ConvertLatexBlockButton as ConvertLatexBlockButton_d913e8ffad94b4f98328d710b349e10d } from '@/ui/admin/exercise-conversion/ConvertLatexBlockButton'
@@ -126,8 +126,8 @@ export const importMap = {
   "@/ui/admin/IntroGeometryField#IntroGeometrySpecField": IntroGeometrySpecField_c2c1761cbe819b0609cad9be299e1fc7,
   "@/ui/admin/IntroGraphField#IntroGraphSpecField": IntroGraphSpecField_8d1eea97d57da5692323d9664ac06d67,
   "@/ui/admin/ExerciseContentEditor#ExerciseContentEditor": ExerciseContentEditor_d0c5d070052b5cabcf602f1e9878afd8,
-  "@/ui/admin/ExerciseBlocksField#ExerciseBlocksField": ExerciseBlocksField_a178cb45a583b7c7ac6ac3ec84dfb752,
   "@/ui/admin/ExerciseBlocksField#ExerciseBlocksFullField": ExerciseBlocksFullField_a178cb45a583b7c7ac6ac3ec84dfb752,
+  "@/ui/admin/ExerciseBlocksField#ExerciseBlocksField": ExerciseBlocksField_a178cb45a583b7c7ac6ac3ec84dfb752,
   "@/ui/admin/ExerciseIdDisplay#ExerciseIdDisplay": ExerciseIdDisplay_644cbbe3ecc84c7d57eb8fd9f96ff348,
   "@/ui/admin/ContentNavigation#ExerciseNavigation": ExerciseNavigation_3633cb4a281c7c581bfc453746b3dc60,
   "@/ui/admin/exercise-conversion/ConvertLatexBlockButton#ConvertLatexBlockButton": ConvertLatexBlockButton_d913e8ffad94b4f98328d710b349e10d,
