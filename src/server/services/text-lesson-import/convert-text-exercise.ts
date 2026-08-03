@@ -146,14 +146,18 @@ function buildSectionTitle(section: TextSection, index: number): string {
 function convertSectionToBlocks(section: TextSection): ContentBlock[] {
   const wantsMcq = section.type.kind !== 'free_response' && section.options.length >= 2
 
+  const leading: ContentBlock[] = []
+  if (isNonEmpty(section.svg)) leading.push(svgBlock(section.svg))
+
   if (wantsMcq) {
     const mcq = tryBuildMcqBlock(section)
-    if (mcq) return [mcq]
+    if (mcq) return [...leading, mcq]
 
     const freeResponse = tryBuildFreeResponseBlock(section)
-    if (freeResponse) return [freeResponse]
+    if (freeResponse) return [...leading, freeResponse]
 
     return [
+      ...leading,
       unparsableSectionBlock(
         section,
         'MCQ source where פתרון נכון does not match any option, and no free-response fallback available',
@@ -162,9 +166,12 @@ function convertSectionToBlocks(section: TextSection): ContentBlock[] {
   }
 
   const freeResponse = tryBuildFreeResponseBlock(section)
-  if (freeResponse) return [freeResponse]
+  if (freeResponse) return [...leading, freeResponse]
 
-  return [unparsableSectionBlock(section, 'Free-response section is missing פתרון נכון')]
+  return [
+    ...leading,
+    unparsableSectionBlock(section, 'Free-response section is missing פתרון נכון'),
+  ]
 }
 
 export function convertTextExerciseToSections(exercise: TextExercise): ConvertedExercise {
@@ -188,6 +195,8 @@ export function convertTextExerciseToBlocks(exercise: TextExercise): ContentBloc
   if (isNonEmpty(exercise.svg)) blocks.push(svgBlock(exercise.svg))
 
   for (const section of exercise.sections) {
+    if (isNonEmpty(section.svg)) blocks.push(svgBlock(section.svg))
+
     const wantsMcq = section.type.kind !== 'free_response' && section.options.length >= 2
 
     if (wantsMcq) {

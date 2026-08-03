@@ -70,6 +70,24 @@ describe('convertTextExerciseToSections', () => {
     ])
   })
 
+  it('prepends a per-section svg block when the source section carries its own diagram', () => {
+    const sectionSvg = '<svg width="10" height="10"><rect/></svg>'
+    const exercise = makeExercise({
+      intro: '',
+      svg: undefined,
+      sections: [makeSection({ svg: sectionSvg })],
+    })
+
+    const converted = convertTextExerciseToSections(exercise)
+
+    expect(converted.sharedBlocks).toEqual([])
+    expect(converted.sections[0].blocks.map((block) => block.type)).toEqual([
+      'svg',
+      'question_select',
+    ])
+    expect(converted.sections[0].blocks[0]).toMatchObject({ type: 'svg', value: sectionSvg })
+  })
+
   it('keeps an unparsable warning in its own section with an index title fallback', () => {
     const exercise = makeExercise({
       intro: '',
