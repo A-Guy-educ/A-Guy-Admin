@@ -1,0 +1,239 @@
+.studio-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: var(--theme-elevation-50);
+}
+
+.studio-message {
+  padding: 32px;
+  color: var(--theme-elevation-500);
+  font-size: 14px;
+  text-align: center;
+}
+
+.studio-message-error {
+  color: var(--theme-error-500);
+}
+
+/* ---------- Toolbar ---------- */
+.studio-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 24px;
+  background: var(--theme-elevation-0);
+  border-bottom: 1px solid var(--theme-elevation-150);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.studio-toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+
+.studio-toolbar-back {
+  color: var(--theme-elevation-600);
+  text-decoration: none;
+  font-size: 13px;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.studio-toolbar-back:hover {
+  background: var(--theme-elevation-100);
+}
+
+.studio-toolbar-title {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.studio-toolbar-eyebrow {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--theme-elevation-500);
+}
+
+.studio-toolbar-lesson {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--theme-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.studio-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.studio-toolbar-status {
+  font-size: 12px;
+  color: var(--theme-elevation-500);
+}
+
+.studio-toolbar-errors {
+  font-size: 12px;
+  color: var(--theme-error-500);
+  cursor: help;
+}
+
+.studio-toolbar-save {
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid var(--theme-success-500, #22c55e);
+  border-radius: 4px;
+  background: var(--theme-success-500, #22c55e);
+  color: white;
+  cursor: pointer;
+}
+
+.studio-toolbar-save:disabled {
+  background: var(--theme-elevation-100);
+  border-color: var(--theme-elevation-200);
+  color: var(--theme-elevation-500);
+  cursor: not-allowed;
+}
+
+/* ---------- Content stack ---------- */
+.studio-content {
+  flex: 1;
+  padding: 24px;
+  max-width: 1100px;
+  width: 100%;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.studio-empty {
+  padding: 16px;
+  text-align: center;
+  color: var(--theme-elevation-500);
+  font-size: 13px;
+  font-style: italic;
+}
+
+.studio-empty-big {
+  padding: 48px;
+  font-size: 15px;
+}
+
+/* ---------- Exercise card ---------- */
+.studio-exercise-card {
+  background: var(--theme-elevation-0);
+  border: 1px solid var(--theme-elevation-150);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.studio-exercise-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--theme-elevation-100);
+  background: var(--theme-elevation-50);
+}
+
+.studio-exercise-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--theme-elevation-150);
+  color: var(--theme-text);
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.studio-exercise-title {
+  flex: 1;
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--theme-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.studio-exercise-openlink {
+  font-size: 12px;
+  color: var(--theme-elevation-600);
+  text-decoration: none;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.studio-exercise-openlink:hover {
+  background: var(--theme-elevation-100);
+  color: var(--theme-text);
+}
+
+.studio-exercise-body {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------- Section ---------- */
+.studio-section {
+  border-top: 1px solid var(--theme-elevation-100);
+}
+
+.studio-section:first-child {
+  border-top: none;
+}
+
+.studio-section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: var(--theme-elevation-25, var(--theme-elevation-50));
+}
+
+.studio-section-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--theme-elevation-700);
+  font-style: italic;
+}
+
+.studio-dirty-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--theme-warning-500, #f59e0b);
+}
+
+.studio-section-blocks {
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.studio-block-item {
+  /* Inherits block-card styles from ExerciseContentEditor/index.css */
+}

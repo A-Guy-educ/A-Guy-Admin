@@ -396,6 +396,7 @@ export const Lessons: CollectionConfig = {
     components: {
       edit: {
         beforeDocumentControls: [
+          '@/ui/admin/LessonStudio/StudioLauncherButton#StudioLauncherAction',
           '@/ui/admin/TranslationButton#TranslateLessonAction',
           '@/ui/admin/CascadeDeleteButton#LessonCascadeDelete',
           '@/ui/admin/LessonExportButton/LessonExportButton#LessonExportAction',
