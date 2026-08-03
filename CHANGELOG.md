@@ -1856,6 +1856,7 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- feat: Lesson studio for in-place editing of exercises and sections ([#294](https://github.com/A-Guy-educ/A-Guy-Admin/pull/294)) — @aguyshayb
 - feat: Exercise-quick tab and recursive section unfolding ([#293](https://github.com/A-Guy-educ/A-Guy-Admin/pull/293)) — @aguyshayb
 - fix: Capture SVG inside a text-lesson section ([#292](https://github.com/A-Guy-educ/A-Guy-Admin/pull/292)) — @aguyshayb
 ## [v0.29.2] - 2026-08-02
