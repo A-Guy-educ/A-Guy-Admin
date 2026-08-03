@@ -7,6 +7,7 @@ import { StudioExerciseCard } from './StudioExerciseCard'
 import { StudioToolbar } from './StudioToolbar'
 import { useStudioSave } from './useStudioSave'
 import { useStudioTree } from './useStudioTree'
+import { EditorChromeProvider } from '../ExerciseContentEditor/EditorChromeContext'
 import '../LessonBlocksField/inline-exercise-editor.css'
 import '../ExerciseContentEditor/index.css'
 import './lesson-studio.css'
@@ -115,32 +116,34 @@ export const LessonStudioPage: React.FC<LessonStudioPageProps> = ({ lessonId }) 
   if (!tree) return <div className="studio-message">Lesson not found.</div>
 
   return (
-    <div className="studio-page">
-      <StudioToolbar
-        lessonTitle={tree.lesson.title || 'Untitled Lesson'}
-        lessonId={tree.lesson.id}
-        dirtyCount={dirtyIds.size}
-        saving={saving}
-        errors={errors}
-        onSave={handleSaveAll}
-      />
+    <EditorChromeProvider mode="compact" defaultRichTextView="view">
+      <div className="studio-page">
+        <StudioToolbar
+          lessonTitle={tree.lesson.title || 'Untitled Lesson'}
+          lessonId={tree.lesson.id}
+          dirtyCount={dirtyIds.size}
+          saving={saving}
+          errors={errors}
+          onSave={handleSaveAll}
+        />
 
-      <main className="studio-content">
-        {tree.exercises.length === 0 ? (
-          <div className="studio-empty studio-empty-big">This lesson has no exercises yet.</div>
-        ) : (
-          tree.exercises.map((exercise, index) => (
-            <StudioExerciseCard
-              key={exercise.id}
-              index={index}
-              exercise={exercise}
-              sectionBlocksById={sectionBlocks}
-              dirtySectionIds={dirtyIds}
-              onBlockChange={handleBlockChange}
-            />
-          ))
-        )}
-      </main>
-    </div>
+        <main className="studio-content">
+          {tree.exercises.length === 0 ? (
+            <div className="studio-empty studio-empty-big">This lesson has no exercises yet.</div>
+          ) : (
+            tree.exercises.map((exercise, index) => (
+              <StudioExerciseCard
+                key={exercise.id}
+                index={index}
+                exercise={exercise}
+                sectionBlocksById={sectionBlocks}
+                dirtySectionIds={dirtyIds}
+                onBlockChange={handleBlockChange}
+              />
+            ))
+          )}
+        </main>
+      </div>
+    </EditorChromeProvider>
   )
 }

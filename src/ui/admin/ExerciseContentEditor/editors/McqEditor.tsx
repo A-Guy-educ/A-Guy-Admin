@@ -13,6 +13,7 @@ import {
   updateOptionAndNormalize,
 } from './normalizers'
 import { Plus, Trash2, MoveUp, MoveDown } from 'lucide-react'
+import { useEditorChrome } from '../EditorChromeContext'
 
 interface McqEditorProps {
   block: QuestionSelectMcqBlock
@@ -20,6 +21,9 @@ interface McqEditorProps {
 }
 
 export const McqEditor: React.FC<McqEditorProps> = ({ block, onChange }) => {
+  const { mode: chromeMode } = useEditorChrome()
+  const isCompact = chromeMode === 'compact'
+
   const handleSelectionModeChange = (mode: 'single' | 'multiple') => {
     onChange(changeSelectionMode(block, mode))
   }
@@ -69,8 +73,27 @@ export const McqEditor: React.FC<McqEditorProps> = ({ block, onChange }) => {
     })
   }
 
+  const selectionModeControls = (
+    <div className="mcq-selection-mode">
+      <button
+        type="button"
+        className={`mcq-mode-btn ${block.selectionMode === 'single' ? 'mcq-mode-btn--selected' : ''}`}
+        onClick={() => handleSelectionModeChange('single')}
+      >
+        Single Answer
+      </button>
+      <button
+        type="button"
+        className={`mcq-mode-btn ${block.selectionMode === 'multiple' ? 'mcq-mode-btn--selected' : ''}`}
+        onClick={() => handleSelectionModeChange('multiple')}
+      >
+        Multiple Answers
+      </button>
+    </div>
+  )
+
   return (
-    <div className="mcq-editor">
+    <div className={`mcq-editor${isCompact ? ' mcq-editor--compact' : ''}`}>
       <div className="question-editor-section">
         <label className="question-editor-label">Prompt</label>
         <InlineRichTextEditor
@@ -80,25 +103,17 @@ export const McqEditor: React.FC<McqEditorProps> = ({ block, onChange }) => {
         />
       </div>
 
-      <div className="question-editor-section">
-        <label className="question-editor-label">Selection Mode</label>
-        <div className="mcq-selection-mode">
-          <button
-            type="button"
-            className={`mcq-mode-btn ${block.selectionMode === 'single' ? 'mcq-mode-btn--selected' : ''}`}
-            onClick={() => handleSelectionModeChange('single')}
-          >
-            Single Answer
-          </button>
-          <button
-            type="button"
-            className={`mcq-mode-btn ${block.selectionMode === 'multiple' ? 'mcq-mode-btn--selected' : ''}`}
-            onClick={() => handleSelectionModeChange('multiple')}
-          >
-            Multiple Answers
-          </button>
+      {isCompact ? (
+        <details className="mcq-settings-fold question-editor-section">
+          <summary>Answer mode: {block.selectionMode === 'single' ? 'single' : 'multiple'}</summary>
+          {selectionModeControls}
+        </details>
+      ) : (
+        <div className="question-editor-section">
+          <label className="question-editor-label">Selection Mode</label>
+          {selectionModeControls}
         </div>
-      </div>
+      )}
 
       <div className="question-editor-section">
         <label className="question-editor-label">Options</label>
