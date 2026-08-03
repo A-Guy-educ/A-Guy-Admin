@@ -75,10 +75,7 @@ function extractRefId(val: unknown): string | null {
 }
 
 /** Order children by parent's playlist, then append any orphans deterministically. */
-function orderByPlaylist<T extends { id: string }>(
-  children: T[],
-  playlistIds: string[],
-): T[] {
+function orderByPlaylist<T extends { id: string }>(children: T[], playlistIds: string[]): T[] {
   const byId = new Map(children.map((c) => [c.id, c]))
   const seen = new Set<string>()
   const ordered: T[] = []
@@ -156,9 +153,7 @@ export async function lessonTreeEndpoint(req: PayloadRequest): Promise<Response>
   // Group sections by their parent exercise ID.
   const sectionsByExercise = new Map<string, SectionDoc[]>()
   for (const section of sections) {
-    const parentId = extractRefId(
-      (section as unknown as { exercise?: unknown }).exercise,
-    )
+    const parentId = extractRefId((section as unknown as { exercise?: unknown }).exercise)
     if (!parentId) continue
     const list = sectionsByExercise.get(parentId) ?? []
     list.push(section)

@@ -127,9 +127,7 @@ export const LessonStudioPage: React.FC<LessonStudioPageProps> = ({ lessonId }) 
 
       <main className="studio-content">
         {tree.exercises.length === 0 ? (
-          <div className="studio-empty studio-empty-big">
-            This lesson has no exercises yet.
-          </div>
+          <div className="studio-empty studio-empty-big">This lesson has no exercises yet.</div>
         ) : (
           tree.exercises.map((exercise, index) => (
             <StudioExerciseCard

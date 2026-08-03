@@ -91,9 +91,8 @@ export function useStudioSave(): UseStudioSaveResult {
         }
       }
 
-      const workers = Array.from(
-        { length: Math.min(SAVE_CONCURRENCY, dirtySections.length) },
-        () => worker(),
+      const workers = Array.from({ length: Math.min(SAVE_CONCURRENCY, dirtySections.length) }, () =>
+        worker(),
       )
       await Promise.all(workers)
 

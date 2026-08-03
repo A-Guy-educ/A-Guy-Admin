@@ -51,12 +51,7 @@ export const StudioToolbar: React.FC<StudioToolbarProps> = ({
               ? 'All changes saved'
               : `${dirtyCount} unsaved section${dirtyCount === 1 ? '' : 's'}`}
         </span>
-        <button
-          type="button"
-          className="editor-save-button"
-          onClick={onSave}
-          disabled={disabled}
-        >
+        <button type="button" className="editor-save-button" onClick={onSave} disabled={disabled}>
           {saving ? 'Saving…' : `Save all${dirtyCount > 0 ? ` (${dirtyCount})` : ''}`}
         </button>
       </div>
