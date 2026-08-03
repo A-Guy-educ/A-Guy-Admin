@@ -16,6 +16,26 @@
   color: var(--theme-error-500);
 }
 
+/* ---------- Launcher (on lesson doc header) ---------- */
+.studio-launcher-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid var(--theme-success-500);
+  border-radius: 4px;
+  background: var(--theme-success-500);
+  color: var(--theme-base-0);
+  text-decoration: none;
+}
+
+.studio-launcher-button:hover {
+  background: var(--theme-success-600);
+  border-color: var(--theme-success-600);
+}
+
 /* ---------- Toolbar ---------- */
 .studio-toolbar {
   position: sticky;
@@ -28,7 +48,6 @@
   padding: 12px 24px;
   background: var(--theme-elevation-0);
   border-bottom: 1px solid var(--theme-elevation-150);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .studio-toolbar-left {
@@ -92,18 +111,14 @@
   cursor: help;
 }
 
-.studio-toolbar-save {
+/* Toolbar save button reuses the shared `.editor-save-button` style from
+   ExerciseContentEditor/index.css and just tweaks size/spacing. */
+.studio-toolbar .editor-save-button {
   padding: 8px 16px;
-  font-size: 13px;
   font-weight: 600;
-  border: 1px solid var(--theme-success-500, #22c55e);
-  border-radius: 4px;
-  background: var(--theme-success-500, #22c55e);
-  color: white;
-  cursor: pointer;
 }
 
-.studio-toolbar-save:disabled {
+.studio-toolbar .editor-save-button:disabled {
   background: var(--theme-elevation-100);
   border-color: var(--theme-elevation-200);
   color: var(--theme-elevation-500);
@@ -224,7 +239,7 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--theme-warning-500, #f59e0b);
+  background: var(--theme-warning-500);
 }
 
 .studio-section-blocks {

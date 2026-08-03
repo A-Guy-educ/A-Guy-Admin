@@ -53,7 +53,7 @@ export const StudioToolbar: React.FC<StudioToolbarProps> = ({
         </span>
         <button
           type="button"
-          className="studio-toolbar-save"
+          className="editor-save-button"
           onClick={onSave}
           disabled={disabled}
         >

@@ -10,13 +10,25 @@ export interface SaveError {
   message: string
 }
 
+/**
+ * A successful save reports the *reference* of the blocks array we actually
+ * PATCHed. The caller compares that reference to the current in-memory blocks
+ * to decide whether it's safe to clear the section's dirty flag — if the user
+ * edited during the in-flight save, the reference will have moved on and the
+ * dirty flag must stay set so those edits aren't silently dropped.
+ */
+export interface SaveSuccess {
+  id: string
+  savedBlocks: ContentBlock[]
+}
+
 interface UseStudioSaveResult {
   saving: boolean
   errors: SaveError[]
   savedCount: number
   saveAll: (
     dirtySections: Array<{ id: string; blocks: ContentBlock[] }>,
-  ) => Promise<{ succeeded: string[]; failed: SaveError[] }>
+  ) => Promise<{ succeeded: SaveSuccess[]; failed: SaveError[] }>
   clearErrors: () => void
 }
 
@@ -63,7 +75,7 @@ export function useStudioSave(): UseStudioSaveResult {
 
       const queue = [...dirtySections]
       const failed: SaveError[] = []
-      const succeeded: string[] = []
+      const succeeded: SaveSuccess[] = []
 
       const worker = async () => {
         while (queue.length > 0) {
@@ -73,7 +85,7 @@ export function useStudioSave(): UseStudioSaveResult {
           if (err) {
             failed.push(err)
           } else {
-            succeeded.push(next.id)
+            succeeded.push({ id: next.id, savedBlocks: next.blocks })
             setSavedCount((prev) => prev + 1)
           }
         }

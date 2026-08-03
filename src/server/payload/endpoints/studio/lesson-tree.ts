@@ -111,13 +111,18 @@ export async function lessonTreeEndpoint(req: PayloadRequest): Promise<Response>
     return Response.json({ error: 'Lesson id missing from path' }, { status: 400 })
   }
 
+  // NOTE: we intentionally do NOT pass `overrideAccess: true` on any of these
+  // reads. Payload's per-collection access rules already let admins through
+  // (lessons: publishedAndActive → true for any authenticated user; exercises
+  // and sections: read=anyone). Leaving access enforcement on means any
+  // future tenant scoping applied to admins will keep working here instead
+  // of silently leaking cross-tenant docs.
   let lesson: { id: string; title?: string | null; blocks?: unknown }
   try {
     lesson = (await req.payload.findByID({
       collection: 'lessons',
       id: lessonId,
       depth: 0,
-      overrideAccess: true,
       req,
     })) as { id: string; title?: string | null; blocks?: unknown }
   } catch {
@@ -130,7 +135,6 @@ export async function lessonTreeEndpoint(req: PayloadRequest): Promise<Response>
     where: { lesson: { equals: lessonId } },
     depth: 0,
     limit: 500,
-    overrideAccess: true,
     req,
   })
   const exercises = exercisesResult.docs as unknown as ExerciseDoc[]
@@ -144,7 +148,6 @@ export async function lessonTreeEndpoint(req: PayloadRequest): Promise<Response>
       where: { exercise: { in: exerciseIds } },
       depth: 0,
       limit: 5000,
-      overrideAccess: true,
       req,
     })
     sections = sectionsResult.docs as unknown as SectionDoc[]

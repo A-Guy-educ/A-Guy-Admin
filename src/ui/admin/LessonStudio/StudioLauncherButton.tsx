@@ -8,6 +8,8 @@ import React from 'react'
 import Link from 'next/link'
 import { useDocumentInfo } from '@payloadcms/ui'
 
+import './lesson-studio.css'
+
 export const StudioLauncherAction: React.FC = () => {
   const { id } = useDocumentInfo()
   if (!id) return null
@@ -15,19 +17,7 @@ export const StudioLauncherAction: React.FC = () => {
   return (
     <Link
       href={`/admin/studio/lessons/${id}`}
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 6,
-        padding: '6px 12px',
-        fontSize: 13,
-        fontWeight: 500,
-        border: '1px solid var(--theme-success-500, #22c55e)',
-        borderRadius: 4,
-        backgroundColor: 'var(--theme-success-500, #22c55e)',
-        color: 'white',
-        textDecoration: 'none',
-      }}
+      className="studio-launcher-button"
       title="Open this lesson in the Studio to edit all exercises/sections on one page"
     >
       Open in Studio

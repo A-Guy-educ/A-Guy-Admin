@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ContentBlock } from '@/server/payload/collections/Exercises/types'
 
 import { StudioExerciseCard } from './StudioExerciseCard'
@@ -29,6 +29,14 @@ export const LessonStudioPage: React.FC<LessonStudioPageProps> = ({ lessonId }) 
   // once loaded; edits mutate only the changed section's entry.
   const [sectionBlocks, setSectionBlocks] = useState<Record<string, ContentBlock[]>>({})
   const [dirtyIds, setDirtyIds] = useState<Set<string>>(new Set())
+
+  // Ref mirror of sectionBlocks so the save-completion handler can compare the
+  // *current* in-memory blocks against the reference we PATCHed, even if the
+  // user edited during the in-flight save.
+  const sectionBlocksRef = useRef(sectionBlocks)
+  useEffect(() => {
+    sectionBlocksRef.current = sectionBlocks
+  }, [sectionBlocks])
 
   useEffect(() => {
     if (!tree) return
@@ -74,13 +82,21 @@ export const LessonStudioPage: React.FC<LessonStudioPageProps> = ({ lessonId }) 
   const handleSaveAll = useCallback(async () => {
     if (dirtyPayload.length === 0) return
     const { succeeded } = await saveAll(dirtyPayload)
-    if (succeeded.length > 0) {
-      setDirtyIds((prev) => {
-        const next = new Set(prev)
-        for (const id of succeeded) next.delete(id)
-        return next
-      })
-    }
+    if (succeeded.length === 0) return
+
+    // Only clear a section from dirtyIds when its in-memory blocks are still
+    // the exact reference we PATCHed. If the user edited during the in-flight
+    // save, handleBlockChange replaced sectionBlocks[id] with a new array;
+    // clearing dirty in that case would silently discard those newer edits
+    // on the next reload.
+    const current = sectionBlocksRef.current
+    setDirtyIds((prev) => {
+      const next = new Set(prev)
+      for (const { id, savedBlocks } of succeeded) {
+        if (current[id] === savedBlocks) next.delete(id)
+      }
+      return next
+    })
   }, [dirtyPayload, saveAll])
 
   // Warn before nav-away if there are unsaved changes.
