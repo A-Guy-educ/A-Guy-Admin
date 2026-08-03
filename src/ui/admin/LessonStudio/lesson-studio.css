@@ -2,7 +2,7 @@
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  background: var(--theme-elevation-50);
+  background: var(--theme-elevation-0);
 }
 
 .studio-message {
@@ -111,8 +111,6 @@
   cursor: help;
 }
 
-/* Toolbar save button reuses the shared `.editor-save-button` style from
-   ExerciseContentEditor/index.css and just tweaks size/spacing. */
 .studio-toolbar .editor-save-button {
   padding: 8px 16px;
   font-weight: 600;
@@ -125,68 +123,79 @@
   cursor: not-allowed;
 }
 
-/* ---------- Content stack ---------- */
+/* ---------- Document surface ----------
+   The studio is meant to feel like one long Word-style document rather than
+   a stack of admin cards. Content sits on a single page background, exercises
+   and sections use typographic hierarchy instead of card chrome, and the
+   reused block editors (`.block-card`, `.question-block-wrapper`) have their
+   admin-form styling neutralised so text flows and structured questions get
+   only a subtle margin cue. */
 .studio-content {
   flex: 1;
-  padding: 24px;
-  max-width: 1100px;
+  padding: 32px 48px 96px;
+  max-width: 860px;
   width: 100%;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 0;
 }
 
 .studio-empty {
-  padding: 16px;
-  text-align: center;
+  padding: 12px 0;
   color: var(--theme-elevation-500);
-  font-size: 13px;
+  font-size: 14px;
   font-style: italic;
 }
 
 .studio-empty-big {
-  padding: 48px;
+  padding: 48px 0;
   font-size: 15px;
+  text-align: center;
 }
 
-/* ---------- Exercise card ---------- */
+/* ---------- Exercise (chapter-style heading) ---------- */
 .studio-exercise-card {
-  background: var(--theme-elevation-0);
-  border: 1px solid var(--theme-elevation-150);
-  border-radius: 8px;
-  overflow: hidden;
+  padding: 32px 0 8px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+.studio-exercise-card:first-child {
+  padding-top: 8px;
 }
 
 .studio-exercise-header {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 12px;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--theme-elevation-100);
-  background: var(--theme-elevation-50);
+  padding: 0 0 4px 0;
+  background: transparent;
+  border-bottom: 1px solid var(--theme-elevation-150);
+  margin-bottom: 16px;
 }
 
 .studio-exercise-number {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: var(--theme-elevation-150);
-  color: var(--theme-text);
-  font-size: 12px;
-  font-weight: 700;
-  flex-shrink: 0;
+  display: inline;
+  width: auto;
+  height: auto;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--theme-elevation-500);
+  font-size: 20px;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
 }
 
 .studio-exercise-title {
   flex: 1;
   margin: 0;
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 22px;
+  font-weight: 700;
   color: var(--theme-text);
+  line-height: 1.3;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -194,10 +203,11 @@
 
 .studio-exercise-openlink {
   font-size: 12px;
-  color: var(--theme-elevation-600);
+  color: var(--theme-elevation-500);
   text-decoration: none;
-  padding: 4px 8px;
+  padding: 2px 6px;
   border-radius: 4px;
+  align-self: center;
 }
 
 .studio-exercise-openlink:hover {
@@ -210,45 +220,108 @@
   flex-direction: column;
 }
 
-/* ---------- Section ---------- */
+/* ---------- Section (sub-heading) ---------- */
 .studio-section {
-  border-top: 1px solid var(--theme-elevation-100);
-}
-
-.studio-section:first-child {
-  border-top: none;
+  padding: 16px 0 8px;
+  border: none;
 }
 
 .studio-section-header {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 8px;
-  padding: 8px 16px;
-  background: var(--theme-elevation-25, var(--theme-elevation-50));
+  padding: 0 0 4px 0;
+  background: transparent;
 }
 
 .studio-section-title {
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 15px;
+  font-weight: 600;
   color: var(--theme-elevation-700);
-  font-style: italic;
+  font-style: normal;
+  letter-spacing: 0.01em;
 }
 
 .studio-dirty-dot {
   display: inline-block;
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background: var(--theme-warning-500);
+  margin-left: 2px;
 }
 
 .studio-section-blocks {
-  padding: 12px 16px;
+  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 4px;
 }
 
-.studio-block-item {
-  /* Inherits block-card styles from ExerciseContentEditor/index.css */
+/* ---------- Neutralised block chrome ----------
+   Rich-text blocks lose the dashed card + "RICH TEXT" caption entirely so
+   they flow like paragraphs. Question blocks keep a soft left border so the
+   editor can still tell "this is structured" at a glance. */
+.studio-section-blocks .block-card {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  overflow: visible;
+  transition: none;
+}
+
+.studio-section-blocks .block-card:hover {
+  border-color: transparent;
+}
+
+.studio-section-blocks .block-card-header {
+  display: none;
+}
+
+.studio-section-blocks .block-card-content {
+  padding: 0;
+}
+
+.studio-section-blocks .inline-rich-text-editor {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+.studio-section-blocks .inline-rich-text-toolbar {
+  border-bottom: none;
+  background: transparent;
+  padding: 2px 0;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.studio-section-blocks .inline-rich-text-editor:hover .inline-rich-text-toolbar,
+.studio-section-blocks .inline-rich-text-editor:focus-within .inline-rich-text-toolbar {
+  opacity: 1;
+}
+
+.studio-section-blocks .inline-rich-text-textarea {
+  padding: 6px 2px;
+  font-family: inherit;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--theme-text);
+  background: transparent;
+  border: none;
+}
+
+.studio-section-blocks .inline-rich-text-textarea:focus {
+  outline: none;
+  background: var(--theme-elevation-50);
+}
+
+.studio-section-blocks .question-block-wrapper {
+  padding: 8px 0 8px 14px;
+  border-left: 2px solid var(--theme-elevation-150);
+  margin: 4px 0;
+}
+
+.studio-section-blocks .question-block-wrapper:focus-within {
+  border-left-color: var(--theme-success-500);
 }

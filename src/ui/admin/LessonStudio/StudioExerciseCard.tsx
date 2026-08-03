@@ -23,8 +23,10 @@ export const StudioExerciseCard: React.FC<StudioExerciseCardProps> = ({
   return (
     <section className="studio-exercise-card">
       <header className="studio-exercise-header">
-        <span className="studio-exercise-number">{index + 1}</span>
-        <h2 className="studio-exercise-title">{exercise.title || 'Untitled Exercise'}</h2>
+        <h2 className="studio-exercise-title">
+          <span className="studio-exercise-number">{index + 1}.</span>{' '}
+          {exercise.title || 'Untitled Exercise'}
+        </h2>
         <a
           href={`/admin/collections/exercises/${exercise.id}`}
           className="studio-exercise-openlink"

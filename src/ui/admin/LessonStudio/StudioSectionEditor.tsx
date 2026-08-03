@@ -25,10 +25,10 @@ export const StudioSectionEditor: React.FC<StudioSectionEditorProps> = ({
 }) => {
   return (
     <div className="studio-section">
-      <div className="studio-section-header">
-        <div className="studio-section-title">{title || 'Untitled Section'}</div>
+      <header className="studio-section-header">
+        <h3 className="studio-section-title">{title || 'Untitled Section'}</h3>
         {dirty && <span className="studio-dirty-dot" title="Unsaved changes" />}
-      </div>
+      </header>
 
       {blocks.length === 0 ? (
         <div className="studio-empty">No content blocks in this section.</div>
