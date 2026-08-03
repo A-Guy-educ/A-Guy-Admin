@@ -156,6 +156,15 @@ const ExerciseBlocksList: React.FC<{ path: string; mode: BlocksMode }> = ({ path
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [blocks, hasBeenActivated])
 
+  // If Payload ever re-uses this list instance across two exercise docs
+  // (route swap without remount), clear the batch flag and caches so the
+  // second exercise doesn't render with stale sections from the first.
+  useEffect(() => {
+    setBatchLoaded(false)
+    setTitleCache({})
+    setSectionBodyCache({})
+  }, [exerciseId])
+
   // Full-mode batch fetch: single query returns every section for this
   // exercise (title + content.blocks) in one round trip. Without it, the
   // parent-list per-id title fetch + each mounted InlineSectionEditor's own
@@ -550,7 +559,11 @@ const ExerciseBlocksList: React.FC<{ path: string; mode: BlocksMode }> = ({ path
                 </button>
               </div>
 
-              {mode === 'full' && row.refId && (
+              {mode === 'full' && row.refId && batchLoaded && (
+                // Defer mount until the batch resolves so each editor gets
+                // its preloadedBlocks synchronously — otherwise it would
+                // fire its own /api/sections/{id} at mount time and race
+                // with the batch, defeating the N+1 optimization.
                 <InlineSectionEditor
                   key={`inline-${row.refId}`}
                   sectionId={row.refId}

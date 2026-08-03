@@ -33,7 +33,9 @@ export const InlineSectionEditor: React.FC<InlineSectionEditorProps> = ({
   preloadedBlocks,
   onSave,
 }) => {
-  const [localBlocks, setLocalBlocks] = useState<ContentBlock[] | null>(
+  // Lazy init so the clone only runs on mount, not on every parent re-render
+  // (drag-hover events on the parent list re-render this whole subtree).
+  const [localBlocks, setLocalBlocks] = useState<ContentBlock[] | null>(() =>
     preloadedBlocks ? preloadedBlocks.map(cloneBlock) : null,
   )
   const [loading, setLoading] = useState(preloadedBlocks === undefined)
@@ -43,7 +45,19 @@ export const InlineSectionEditor: React.FC<InlineSectionEditorProps> = ({
 
   useEffect(() => {
     if (!sectionId) return
-    if (preloadedBlocks !== undefined) return
+
+    // Preloaded (or newly preloaded after a batch race): seed local state
+    // synchronously and skip the per-section fetch. Preserve any in-flight
+    // local edits with `prev ?? …` — in practice the "loading" gate below
+    // prevents editing before this seeds, but keeping the guard makes the
+    // hook safe for future callers. `null` = batch completed but this section
+    // wasn't in the response; treat as empty.
+    if (preloadedBlocks !== undefined) {
+      const seed = preloadedBlocks ? preloadedBlocks.map(cloneBlock) : []
+      setLocalBlocks((prev) => prev ?? seed)
+      setLoading(false)
+      return
+    }
 
     const controller = new AbortController()
     setLoading(true)
