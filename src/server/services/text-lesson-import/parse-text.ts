@@ -43,6 +43,8 @@ export interface TextSection {
   hint?: string
   fullSolution?: string
   type: TextExerciseType
+  /** Raw inline SVG markup embedded inside this section, if present. */
+  svg?: string
 }
 
 export interface TextExercise {
@@ -102,6 +104,8 @@ interface MutableSection {
   questionNumber: string
   fields: Record<string, string[]>
   options: string[]
+  svgLines: string[]
+  inSvg: boolean
 }
 
 interface MutableExercise {
@@ -125,7 +129,7 @@ function newExercise(num: string, subtopic: string): MutableExercise {
 }
 
 function newSection(num: string): MutableSection {
-  return { questionNumber: num, fields: {}, options: [] }
+  return { questionNumber: num, fields: {}, options: [], svgLines: [], inSvg: false }
 }
 
 function appendField(section: MutableSection, name: string, value: string) {
@@ -144,6 +148,7 @@ function finalizeSection(ms: MutableSection): TextSection {
     hint: get('רמז') || undefined,
     fullSolution: get('פתרון מלא') || undefined,
     type: classifyType(get('סוג תרגיל')),
+    svg: ms.svgLines.length > 0 ? ms.svgLines.join('\n').trim() : undefined,
   }
 }
 
@@ -262,6 +267,34 @@ export function parseTextLesson(raw: string): TextLesson {
 
     // Inside a section
     if (phase === 'section' && currentSection) {
+      // SVG blocks may appear inline within a section (e.g. right after
+      // `* תוכן השאלה:` when the shape varies per question). They must be
+      // detected BEFORE the continuation-line fallback below, otherwise the
+      // raw `<svg …>` markup gets appended to the current field's value.
+      if (currentSection.inSvg) {
+        currentSection.svgLines.push(line)
+        if (SVG_END_RE.test(line)) {
+          currentSection.inSvg = false
+          // The SVG "closes" whatever field was being read; require the next
+          // non-blank content to be an explicit `* field:` before appending.
+          currentField = null
+        }
+        continue
+      }
+
+      if (SVG_START_RE.test(line.trim())) {
+        currentSection.inSvg = true
+        currentSection.svgLines.push(line)
+        if (SVG_END_RE.test(line)) {
+          currentSection.inSvg = false
+          currentField = null
+        }
+        continue
+      }
+
+      // "* שרטוט:" marker — ignore, the SVG block follows
+      if (line.trim() === '* שרטוט:') continue
+
       const fm = line.match(FIELD_RE)
       if (fm) {
         currentField = fm[1].trim()
