@@ -66,7 +66,7 @@ const withoutSidebarPosition = (field: Field): Field => {
   } as Field
 }
 
-const VALID_RENDERERS = ['media', 'pdf', 'interactive'] as const
+const VALID_RENDERERS = ['media', 'pdf', 'interactive', 'chat'] as const
 
 const getRelationshipId = (value: unknown): string | null => {
   if (typeof value === 'string') return value
@@ -739,10 +739,11 @@ export const Lessons: CollectionConfig = {
                 { label: 'Media (attached files)', value: 'media' },
                 { label: 'Scroll view', value: 'pdf' },
                 { label: 'Interactive (exercise pager)', value: 'interactive' },
+                { label: 'Chat', value: 'chat' },
               ],
               admin: {
                 description:
-                  'Which renderers are visible to students. At least one must be selected. Note: Media tab only appears when the lesson has attached files regardless of this toggle.',
+                  'Which renderers are visible to students. At least one must be selected. Note: Media tab only appears when the lesson has attached files regardless of this toggle. Chat is opt-in per lesson.',
               },
             },
             {
