@@ -12,6 +12,7 @@ import type { CollectionConfig } from 'payload'
 import { adminOnly } from '../../access/adminOnly'
 import { publishedAndActive } from '../../access/publishedAndActive'
 import { contentLocaleField } from '@/server/payload/fields/contentLocale'
+import { contentStatusFields } from '@/server/payload/fields/contentStatus'
 import { tenantField } from '@/server/payload/fields/tenant'
 import { chatLessonStepBlocks } from './blocks'
 import { validateChatLessonSteps } from './validate-steps'
@@ -29,7 +30,7 @@ export const ChatLessons: CollectionConfig = {
   },
   admin: {
     useAsTitle: 'lesson',
-    defaultColumns: ['lesson', 'locale', 'status', 'isActive', 'updatedAt'],
+    defaultColumns: ['lesson', 'locale', 'status', 'isActive', 'contentStatus', 'updatedAt'],
     group: 'Content',
     description: 'Authored scripts powering the Chat tab of a lesson.',
   },
@@ -98,6 +99,12 @@ export const ChatLessons: CollectionConfig = {
         description: 'Whether this chat script is currently active.',
       },
     },
+    // Standard content-visibility fields — required so the Web-side
+    // `visibleContentFilter` (status + isActive + contentStatus/Visible) can
+    // resolve chat scripts the same way it resolves lessons and chapters.
+    // Without these, the Web query never matches and the Chat tab falls back
+    // to the bundled demo. Mirrors the pattern in Lessons.ts / Chapters.ts.
+    ...contentStatusFields,
     tenantField,
     contentLocaleField,
   ],

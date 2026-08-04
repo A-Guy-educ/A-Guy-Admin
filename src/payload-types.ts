@@ -3195,6 +3195,22 @@ export interface ChatLesson {
    */
   isActive: boolean;
   /**
+   * Content status badge displayed to students
+   */
+  contentStatus: 'none' | 'soon' | 'justAdded' | 'custom';
+  /**
+   * When unchecked, "Soon" content is completely hidden from student listings
+   */
+  contentStatusVisible?: boolean | null;
+  /**
+   * Badge auto-expires after this date (leave empty for permanent badge)
+   */
+  contentStatusExpiresAt?: string | null;
+  /**
+   * Custom badge text (e.g. "מותאם לבגרות")
+   */
+  contentStatusLabel?: string | null;
+  /**
    * Tenant scope for this document
    */
   tenant: string | Tenant;
@@ -5182,6 +5198,10 @@ export interface ChatLessonsSelect<T extends boolean = true> {
       };
   status?: T;
   isActive?: T;
+  contentStatus?: T;
+  contentStatusVisible?: T;
+  contentStatusExpiresAt?: T;
+  contentStatusLabel?: T;
   tenant?: T;
   locale?: T;
   updatedAt?: T;
