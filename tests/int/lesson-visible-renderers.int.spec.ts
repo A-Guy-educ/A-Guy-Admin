@@ -169,6 +169,32 @@ describe('Lesson visibleRenderers field', () => {
     expect(lesson.visibleRenderers).toEqual(['media', 'interactive'])
   })
 
+  it('accepts chat as a renderer on create', async () => {
+    const lesson = await payload.create({
+      collection: 'lessons',
+      data: {
+        ...baseLessonData(10),
+        visibleRenderers: ['chat'],
+      },
+      draft: false,
+    })
+    lessonIds.push(lesson.id)
+    expect(lesson.visibleRenderers).toEqual(['chat'])
+  })
+
+  it('accepts pdf + chat together on create', async () => {
+    const lesson = await payload.create({
+      collection: 'lessons',
+      data: {
+        ...baseLessonData(11),
+        visibleRenderers: ['pdf', 'chat'],
+      },
+      draft: false,
+    })
+    lessonIds.push(lesson.id)
+    expect(lesson.visibleRenderers).toEqual(['pdf', 'chat'])
+  })
+
   it('rejects an empty renderers array on create', async () => {
     await expect(
       payload.create({

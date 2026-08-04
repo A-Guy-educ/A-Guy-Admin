@@ -1586,9 +1586,9 @@ export interface Lesson {
    */
   accessType: 'inherit' | 'free' | 'mandatory' | 'gated' | 'paid';
   /**
-   * Which renderers are visible to students. At least one must be selected. Note: Media tab only appears when the lesson has attached files regardless of this toggle.
+   * Which renderers are visible to students. At least one must be selected. Note: Media tab only appears when the lesson has attached files regardless of this toggle. Chat is opt-in per lesson.
    */
-  visibleRenderers?: ('media' | 'pdf' | 'interactive')[] | null;
+  visibleRenderers?: ('media' | 'pdf' | 'interactive' | 'chat')[] | null;
   /**
    * URL-friendly identifier (auto-generated from title if empty)
    */
