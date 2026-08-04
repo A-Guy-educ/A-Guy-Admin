@@ -204,6 +204,59 @@ describe('chat-lessons collection', () => {
     expect(updated.highlights).toBe('Updated')
   })
 
+  it('allows a partial update that omits steps', async () => {
+    const lessonId = await createLesson(10)
+
+    const created = await payload.create({
+      collection: 'chat-lessons',
+      data: {
+        lesson: lessonId,
+        locale: 'he',
+        steps: validSteps() as never,
+        tenant: tenantId,
+        status: 'draft',
+        isActive: true,
+      },
+      overrideAccess: true,
+    })
+    chatLessonIds.push(created.id)
+
+    const toggled = await payload.update({
+      collection: 'chat-lessons',
+      id: created.id,
+      data: { isActive: false, status: 'archived' },
+      overrideAccess: true,
+    })
+    expect(toggled.isActive).toBe(false)
+    expect(toggled.status).toBe('archived')
+    expect(toggled.steps).toHaveLength(3)
+  })
+
+  it('trims whitespace on nextStepId references before checking them', async () => {
+    const lessonId = await createLesson(11)
+    const steps = validSteps()
+    ;(steps[0] as StepInput).nextStepId = 'q1 '
+    ;(steps[1] as StepInput).options = [
+      { text: 'A', isCorrect: true, nextStepId: ' done' },
+      { text: 'B', isCorrect: false, nextStepId: 'done' },
+    ]
+
+    const created = await payload.create({
+      collection: 'chat-lessons',
+      data: {
+        lesson: lessonId,
+        locale: 'he',
+        steps: steps as never,
+        tenant: tenantId,
+        status: 'draft',
+        isActive: true,
+      },
+      overrideAccess: true,
+    })
+    chatLessonIds.push(created.id)
+    expect(created.steps).toHaveLength(3)
+  })
+
   it('rejects duplicate stepId within the same doc', async () => {
     const lessonId = await createLesson(2)
     const steps = validSteps()

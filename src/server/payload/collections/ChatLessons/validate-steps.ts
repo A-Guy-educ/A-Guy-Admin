@@ -27,10 +27,10 @@ type ChatLessonData = {
 }
 
 const collectOutgoing = (step: Step): Array<string | null | undefined> => {
-  const edges: Array<string | null | undefined> = [step.nextStepId]
+  const edges: Array<string | null | undefined> = [step.nextStepId?.trim() || null]
   if (step.blockType === 'multipleChoice' && Array.isArray(step.options)) {
     for (const option of step.options) {
-      edges.push(option?.nextStepId)
+      edges.push(option?.nextStepId?.trim() || null)
     }
   }
   return edges
@@ -50,10 +50,17 @@ const isGradedMultipleChoice = (step: Step): boolean => {
 export const validateChatLessonSteps: CollectionBeforeChangeHook = async ({ data, operation }) => {
   if (operation !== 'create' && operation !== 'update') return data
 
-  const steps = (data as ChatLessonData | null)?.steps
-  if (!Array.isArray(steps) || steps.length === 0) {
+  // Payload passes the raw incoming patch to collection beforeChange hooks —
+  // on a partial update (e.g. toggling `isActive`), `data.steps` is undefined
+  // and there is nothing for us to validate. `required: true` on the field
+  // still enforces "steps must exist" at create time.
+  const rawSteps = (data as ChatLessonData | null)?.steps
+  if (rawSteps === undefined) return data
+
+  if (!Array.isArray(rawSteps) || rawSteps.length === 0) {
     throw new Error('A chat lesson must have at least one step.')
   }
+  const steps = rawSteps
 
   const stepIds = new Set<string>()
   let finishCount = 0
