@@ -92,17 +92,13 @@ export const validateChatLessonSteps: CollectionBeforeChangeHook = async ({ data
   }
 
   if (finishCount !== 1) {
-    throw new Error(
-      `A chat lesson must have exactly one finish step (found ${finishCount}).`,
-    )
+    throw new Error(`A chat lesson must have exactly one finish step (found ${finishCount}).`)
   }
 
   for (const step of steps) {
     for (const edge of collectOutgoing(step)) {
       if (edge && !stepIds.has(edge)) {
-        throw new Error(
-          `Step "${step.stepId}" references unknown nextStepId "${edge}".`,
-        )
+        throw new Error(`Step "${step.stepId}" references unknown nextStepId "${edge}".`)
       }
     }
   }
@@ -132,9 +128,7 @@ export const validateChatLessonSteps: CollectionBeforeChangeHook = async ({ data
 
   const unreachable = [...stepIds].filter((id) => !reachable.has(id))
   if (unreachable.length > 0) {
-    throw new Error(
-      `Unreachable steps from "${startId}": ${unreachable.join(', ')}.`,
-    )
+    throw new Error(`Unreachable steps from "${startId}": ${unreachable.join(', ')}.`)
   }
 
   return data
