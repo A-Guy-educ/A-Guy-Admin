@@ -1856,6 +1856,7 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- feat: Add chat-lessons collection for authored chat scripts ([#299](https://github.com/A-Guy-educ/A-Guy-Admin/pull/299)) — @aguyshayb
 - feat: Fold MCQ chrome and render rich text as prose in the studio ([#296](https://github.com/A-Guy-educ/A-Guy-Admin/pull/296)) — @aguyshayb
 - feat: Add chat as a valid visibleRenderers option on lessons ([#298](https://github.com/A-Guy-educ/A-Guy-Admin/pull/298)) — @aguyshayb
 - feat: Make studio feel like a document, not admin cards ([#295](https://github.com/A-Guy-educ/A-Guy-Admin/pull/295)) — @aguyshayb
