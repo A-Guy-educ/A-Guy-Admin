@@ -181,12 +181,18 @@ async function main() {
     overrideAccess: true,
   })
 
+  // Explicitly set contentStatus fields even though the collection defaults
+  // are 'none' / true — Payload defaults only apply to CREATE, so this UPDATE
+  // path must set them so an already-seeded doc (before contentStatusFields
+  // were added to the collection) gets the values the Web filter needs.
   const data = {
     lesson: LESSON_ID,
     locale: LOCALE,
     tenant: tenantId,
     status: 'published' as const,
     isActive: true,
+    contentStatus: 'none' as const,
+    contentStatusVisible: true,
     ...chatScript,
   }
 
