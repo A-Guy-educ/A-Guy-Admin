@@ -20,12 +20,15 @@ import {
 } from 'lucide-react'
 import Image from 'next/image'
 import { MathMarkdown } from '@/ui/shared/primitives/MathMarkdown'
+import { useEditorChrome } from '../EditorChromeContext'
 
 interface InlineRichTextEditorProps {
   value: InlineRichText
   onChange: (value: InlineRichText) => void
   placeholder?: string
   minHeight?: string
+  /** Initial view mode. When omitted, falls back to EditorChromeContext's default. */
+  defaultViewMode?: 'edit' | 'view'
 }
 
 type HighlightToken = 'text-wine-red' | 'text-blue' | 'text-green' | 'text-dark-orange'
@@ -57,12 +60,16 @@ export const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
   onChange,
   placeholder = 'Enter text...',
   minHeight = '80px',
+  defaultViewMode,
 }) => {
+  const chrome = useEditorChrome()
   const textareaRef = React.useRef<HTMLTextAreaElement>(null)
   const [mediaItems, setMediaItems] = React.useState<Media[]>([])
   const [loadingMedia, setLoadingMedia] = React.useState(false)
   const [showColorPicker, setShowColorPicker] = React.useState(false)
-  const [viewMode, setViewMode] = React.useState<'edit' | 'view'>('edit')
+  const [viewMode, setViewMode] = React.useState<'edit' | 'view'>(
+    defaultViewMode ?? chrome.defaultRichTextView,
+  )
   const colorPickerRef = React.useRef<HTMLDivElement>(null)
 
   const [ListDrawer, ListDrawerToggler, { openDrawer, closeDrawer }] = useListDrawer({

@@ -1471,6 +1471,68 @@
   margin-top: 1rem;
 }
 
+/* ---------- Compact chrome (opt-in via EditorChromeContext mode="compact") ----------
+   Fades secondary controls out until the user hovers/focuses them, hides the
+   redundant field labels, and dresses down the Add Option button + Selection
+   Mode fold. Nothing here activates for stock admin — the default context
+   returns `mode: 'expanded'` and this whole block is a no-op there. */
+.mcq-editor--compact .question-editor-label {
+  display: none;
+}
+
+.mcq-editor--compact .mcq-option-actions {
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.mcq-editor--compact .mcq-option-row:hover .mcq-option-actions,
+.mcq-editor--compact .mcq-option-row:focus-within .mcq-option-actions {
+  opacity: 1;
+}
+
+.mcq-editor--compact .mcq-add-option-btn {
+  opacity: 0.5;
+  font-size: 12px;
+  padding: 4px 8px;
+  transition: opacity 0.15s;
+}
+
+.mcq-editor--compact .mcq-add-option-btn:hover {
+  opacity: 1;
+}
+
+.mcq-editor--compact .mcq-settings-fold {
+  padding: 4px 0 0;
+}
+
+.mcq-editor--compact .mcq-settings-fold > summary {
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--theme-elevation-500);
+  padding: 2px 0;
+  user-select: none;
+  list-style: none;
+}
+
+.mcq-editor--compact .mcq-settings-fold > summary::-webkit-details-marker {
+  display: none;
+}
+
+.mcq-editor--compact .mcq-settings-fold > summary::before {
+  content: '▸';
+  display: inline-block;
+  margin-right: 4px;
+  transition: transform 0.15s;
+}
+
+.mcq-editor--compact .mcq-settings-fold[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.mcq-editor--compact .mcq-settings-fold[open] > summary {
+  margin-bottom: 6px;
+}
+
 /* Inline Rich Text Editor (shorter variant) */
 .inline-rich-text-editor {
   border: 1px solid var(--theme-elevation-200);
