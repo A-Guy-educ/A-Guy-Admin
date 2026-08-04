@@ -11,6 +11,7 @@ import { AccessCodes } from '@/server/payload/collections/AccessCodes'
 import { Categories } from '@/server/payload/collections/Categories'
 import { Chapters } from '@/server/payload/collections/Chapters'
 import { ChatAssets } from '@/server/payload/collections/ChatAssets'
+import { ChatLessons } from '@/server/payload/collections/ChatLessons'
 import { ConfigAuditLogs } from '@/server/payload/collections/ConfigAuditLogs'
 import { ConfigSecrets } from '@/server/payload/collections/ConfigSecrets'
 import { Coupons } from '@/server/payload/collections/Coupons'
@@ -246,6 +247,7 @@ export default buildConfig({
     UserStats,
     Media,
     ChatAssets,
+    ChatLessons,
     UploadSessions,
     Posts,
     PricingPlans,
