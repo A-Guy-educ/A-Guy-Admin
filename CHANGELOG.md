@@ -1856,6 +1856,7 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- chore: Remove chat-lessons collection ([#302](https://github.com/A-Guy-educ/A-Guy-Admin/pull/302)) — @aguyshayb
 - fix: Add content-visibility fields to chat-lessons collection ([#300](https://github.com/A-Guy-educ/A-Guy-Admin/pull/300)) — @aguyshayb
 - feat: Add chat-lessons collection for authored chat scripts ([#299](https://github.com/A-Guy-educ/A-Guy-Admin/pull/299)) — @aguyshayb
 - feat: Fold MCQ chrome and render rich text as prose in the studio ([#296](https://github.com/A-Guy-educ/A-Guy-Admin/pull/296)) — @aguyshayb
