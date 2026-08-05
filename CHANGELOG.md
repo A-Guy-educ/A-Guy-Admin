@@ -1874,6 +1874,8 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+## [v0.30.0] - 2026-08-05
+
 - promote: dev -> main (v0.30.0) ([#304](https://github.com/A-Guy-educ/A-Guy-Admin/pull/304)) — @aguyshayb
 - chore: Release v0.30.0 ([#303](https://github.com/A-Guy-educ/A-Guy-Admin/pull/303)) — @aguyshayb
 - chore: Remove chat-lessons collection ([#302](https://github.com/A-Guy-educ/A-Guy-Admin/pull/302)) — @aguyshayb
