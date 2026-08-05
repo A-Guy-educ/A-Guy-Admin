@@ -102,7 +102,6 @@ export interface Config {
     'user-stats': UserStat;
     media: Media;
     'chat-assets': ChatAsset;
-    'chat-lessons': ChatLesson;
     'upload-sessions': UploadSession;
     posts: Post;
     'pricing-plans': PricingPlan;
@@ -161,7 +160,6 @@ export interface Config {
     'user-stats': UserStatsSelect<false> | UserStatsSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
     'chat-assets': ChatAssetsSelect<false> | ChatAssetsSelect<true>;
-    'chat-lessons': ChatLessonsSelect<false> | ChatLessonsSelect<true>;
     'upload-sessions': UploadSessionsSelect<false> | UploadSessionsSelect<true>;
     posts: PostsSelect<false> | PostsSelect<true>;
     'pricing-plans': PricingPlansSelect<false> | PricingPlansSelect<true>;
@@ -3162,188 +3160,6 @@ export interface UserStat {
   createdAt: string;
 }
 /**
- * Authored scripts powering the Chat tab of a lesson.
- *
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "chat-lessons".
- */
-export interface ChatLesson {
-  id: string;
-  /**
-   * The lesson this chat script belongs to.
-   */
-  lesson: string | Lesson;
-  /**
-   * Optional short blurb shown on the start card.
-   */
-  highlights?: string | null;
-  /**
-   * Ordered list of steps that make up the chat script. Must contain exactly one `finish` step, reachable from the first step.
-   */
-  steps: (
-    | ChatLessonTeacherIntroBlock
-    | ChatLessonMultipleChoiceBlock
-    | ChatLessonTextAnswerBlock
-    | ChatLessonFinishBlock
-  )[];
-  /**
-   * Publication status of the chat script.
-   */
-  status: 'draft' | 'published' | 'archived';
-  /**
-   * Whether this chat script is currently active.
-   */
-  isActive: boolean;
-  /**
-   * Content status badge displayed to students
-   */
-  contentStatus: 'none' | 'soon' | 'justAdded' | 'custom';
-  /**
-   * When unchecked, "Soon" content is completely hidden from student listings
-   */
-  contentStatusVisible?: boolean | null;
-  /**
-   * Badge auto-expires after this date (leave empty for permanent badge)
-   */
-  contentStatusExpiresAt?: string | null;
-  /**
-   * Custom badge text (e.g. "מותאם לבגרות")
-   */
-  contentStatusLabel?: string | null;
-  /**
-   * Tenant scope for this document
-   */
-  tenant: string | Tenant;
-  /**
-   * Content language
-   */
-  locale: 'en' | 'he';
-  updatedAt: string;
-  createdAt: string;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "ChatLessonTeacherIntroBlock".
- */
-export interface ChatLessonTeacherIntroBlock {
-  /**
-   * Author-supplied unique identifier for this step (referenced by `nextStepId`). Use a short slug like `intro_ex1`.
-   */
-  stepId: string;
-  /**
-   * Teacher line rendered as the chat bubble. Supports inline `$...$` math.
-   */
-  text: string;
-  /**
-   * Optional HTML rendered under the teacher line via dangerouslySetInnerHTML. Author must ensure it is valid, safe HTML.
-   */
-  contentHtml?: string | null;
-  /**
-   * stepId of the next step. Leave empty on terminal steps.
-   */
-  nextStepId?: string | null;
-  id?: string | null;
-  blockName?: string | null;
-  blockType: 'teacherIntro';
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "ChatLessonMultipleChoiceBlock".
- */
-export interface ChatLessonMultipleChoiceBlock {
-  /**
-   * Author-supplied unique identifier for this step (referenced by `nextStepId`). Use a short slug like `intro_ex1`.
-   */
-  stepId: string;
-  /**
-   * Teacher line rendered as the chat bubble. Supports inline `$...$` math.
-   */
-  text: string;
-  /**
-   * Answer options. Mark at least one with `isCorrect` for graded questions; leave all unmarked for opinion / branching prompts.
-   */
-  options: {
-    /**
-     * Button label. Supports inline `$...$` math.
-     */
-    text: string;
-    /**
-     * Short reply the teacher gives after this option is picked.
-     */
-    feedback?: string | null;
-    /**
-     * Marks this option as the correct answer. Leave every option unchecked for opinion questions.
-     */
-    isCorrect?: boolean | null;
-    /**
-     * Per-option branch. Falls back to the step's own `nextStepId`.
-     */
-    nextStepId?: string | null;
-    id?: string | null;
-  }[];
-  /**
-   * Long-form explanation shown when the student picks a wrong option.
-   */
-  correctionText?: string | null;
-  id?: string | null;
-  blockName?: string | null;
-  blockType: 'multipleChoice';
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "ChatLessonTextAnswerBlock".
- */
-export interface ChatLessonTextAnswerBlock {
-  /**
-   * Author-supplied unique identifier for this step (referenced by `nextStepId`). Use a short slug like `intro_ex1`.
-   */
-  stepId: string;
-  /**
-   * Teacher line rendered as the chat bubble. Supports inline `$...$` math.
-   */
-  text: string;
-  /**
-   * Expected answer. Graded via trim + lowercase + whitespace-strip equality on the Web runtime.
-   */
-  expected: string;
-  /**
-   * Teacher reply when the student answers correctly.
-   */
-  correctFeedback?: string | null;
-  /**
-   * Explanation shown after a wrong answer.
-   */
-  correctionText?: string | null;
-  /**
-   * stepId of the next step. Leave empty on terminal steps.
-   */
-  nextStepId?: string | null;
-  id?: string | null;
-  blockName?: string | null;
-  blockType: 'textAnswer';
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "ChatLessonFinishBlock".
- */
-export interface ChatLessonFinishBlock {
-  /**
-   * Author-supplied unique identifier for this step (referenced by `nextStepId`). Use a short slug like `intro_ex1`.
-   */
-  stepId: string;
-  /**
-   * Teacher line rendered as the chat bubble. Supports inline `$...$` math.
-   */
-  text: string;
-  /**
-   * Optional HTML rendered under the closing teacher line via dangerouslySetInnerHTML.
-   */
-  contentHtml?: string | null;
-  id?: string | null;
-  blockName?: string | null;
-  blockType: 'finish';
-}
-/**
  * Upload session tracking for direct-to-Blob uploads
  *
  * This interface was referenced by `Config`'s JSON-Schema
@@ -4056,10 +3872,6 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'chat-assets';
         value: string | ChatAsset;
-      } | null)
-    | ({
-        relationTo: 'chat-lessons';
-        value: string | ChatLesson;
       } | null)
     | ({
         relationTo: 'upload-sessions';
@@ -5180,89 +4992,6 @@ export interface ChatAssetsSelect<T extends boolean = true> {
   uploadSessionId?: T;
   updatedAt?: T;
   createdAt?: T;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "chat-lessons_select".
- */
-export interface ChatLessonsSelect<T extends boolean = true> {
-  lesson?: T;
-  highlights?: T;
-  steps?:
-    | T
-    | {
-        teacherIntro?: T | ChatLessonTeacherIntroBlockSelect<T>;
-        multipleChoice?: T | ChatLessonMultipleChoiceBlockSelect<T>;
-        textAnswer?: T | ChatLessonTextAnswerBlockSelect<T>;
-        finish?: T | ChatLessonFinishBlockSelect<T>;
-      };
-  status?: T;
-  isActive?: T;
-  contentStatus?: T;
-  contentStatusVisible?: T;
-  contentStatusExpiresAt?: T;
-  contentStatusLabel?: T;
-  tenant?: T;
-  locale?: T;
-  updatedAt?: T;
-  createdAt?: T;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "ChatLessonTeacherIntroBlock_select".
- */
-export interface ChatLessonTeacherIntroBlockSelect<T extends boolean = true> {
-  stepId?: T;
-  text?: T;
-  contentHtml?: T;
-  nextStepId?: T;
-  id?: T;
-  blockName?: T;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "ChatLessonMultipleChoiceBlock_select".
- */
-export interface ChatLessonMultipleChoiceBlockSelect<T extends boolean = true> {
-  stepId?: T;
-  text?: T;
-  options?:
-    | T
-    | {
-        text?: T;
-        feedback?: T;
-        isCorrect?: T;
-        nextStepId?: T;
-        id?: T;
-      };
-  correctionText?: T;
-  id?: T;
-  blockName?: T;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "ChatLessonTextAnswerBlock_select".
- */
-export interface ChatLessonTextAnswerBlockSelect<T extends boolean = true> {
-  stepId?: T;
-  text?: T;
-  expected?: T;
-  correctFeedback?: T;
-  correctionText?: T;
-  nextStepId?: T;
-  id?: T;
-  blockName?: T;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "ChatLessonFinishBlock_select".
- */
-export interface ChatLessonFinishBlockSelect<T extends boolean = true> {
-  stepId?: T;
-  text?: T;
-  contentHtml?: T;
-  id?: T;
-  blockName?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
