@@ -78,6 +78,9 @@ interface ResolvedRow {
  * Custom Payload admin field for lesson blocks.
  * Shows a flat sortable list of exercise/content page titles
  * instead of the default expandable blocks UI.
+ *
+ * `mode='full'` — renders each exercise expanded inline (recursively shows
+ * its sections). `mode='quick'` — links only, no inline editors.
  */
 /** Parse blocks from the textarea value (string or array) */
 function parseBlocks(val: unknown): RawBlock[] {
@@ -93,7 +96,9 @@ function parseBlocks(val: unknown): RawBlock[] {
   return []
 }
 
-export const LessonBlocksField: React.FC<{ path: string }> = ({ path }) => {
+type BlocksMode = 'full' | 'quick'
+
+const LessonBlocksList: React.FC<{ path: string; mode: BlocksMode }> = ({ path, mode }) => {
   const { value, setValue } = useField<string>({ path })
   const { setModified } = useForm()
   const router = useRouter()
@@ -303,7 +308,7 @@ export const LessonBlocksField: React.FC<{ path: string }> = ({ path }) => {
           color: 'var(--theme-text)',
         }}
       >
-        Lesson Blocks
+        {mode === 'quick' ? 'Exercises (quick view)' : 'Lesson Blocks'}
       </label>
       <p
         style={{
@@ -313,7 +318,9 @@ export const LessonBlocksField: React.FC<{ path: string }> = ({ path }) => {
           marginTop: -4,
         }}
       >
-        Ordered playlist of exercises and content pages. Defines the lesson flow.
+        {mode === 'quick'
+          ? 'Ordered links to exercises and content pages. Use the Exercises tab to edit content inline.'
+          : 'Ordered playlist of exercises and content pages. Defines the lesson flow.'}
       </p>
 
       {/* Block list — reorder/delete controls + inline exercise editors */}
@@ -514,8 +521,8 @@ export const LessonBlocksField: React.FC<{ path: string }> = ({ path }) => {
                 </button>
               </div>
 
-              {/* Inline exercise editor (only for exercise blocks) */}
-              {row.blockType === 'exerciseRef' && row.refId && (
+              {/* Inline exercise editor (only for exercise blocks, and only in full mode) */}
+              {mode === 'full' && row.blockType === 'exerciseRef' && row.refId && (
                 <InlineExerciseEditor
                   key={`inline-${row.refId}`}
                   exerciseId={row.refId}
@@ -528,3 +535,12 @@ export const LessonBlocksField: React.FC<{ path: string }> = ({ path }) => {
     </div>
   )
 }
+
+export const LessonBlocksField: React.FC<{ path: string }> = ({ path }) => (
+  <LessonBlocksList path={path} mode="full" />
+)
+
+/** Quick-view variant: same reorder/delete controls, no inline exercise editors. */
+export const LessonBlocksQuickField: React.FC = () => (
+  <LessonBlocksList path="blocks" mode="quick" />
+)

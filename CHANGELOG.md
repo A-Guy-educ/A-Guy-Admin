@@ -1,5 +1,23 @@
 # Changelog
 
+## v0.30.0 — 2026-08-05
+
+### Features
+- Add lesson studio for in-place editing of exercises and sections (#294)
+- Make studio surface feel like a document instead of admin cards (#295)
+- Fold MCQ chrome and render rich text as prose in the studio (#296)
+- Add exercise-quick tab and recursive section unfolding (#293)
+- Add `chat` as a valid `visibleRenderers` option on lessons (#298)
+
+### Fixes
+- Address studio review feedback on save-race, tokens, and access (#294)
+- Fix batch/per-section fetch race in ExerciseBlocksField full mode (#293)
+- Do not swallow sections-fetch errors in InlineExerciseEditor (#293)
+- Capture SVG inside a text-lesson section (#292)
+
+### Chore
+- Introduce and then remove the short-lived chat-lessons collection after Web pivoted to the Interactive-tab + AI chat channel flow (#299, #300, #302)
+
 ## v0.29.2 — 2026-08-02
 
 ### Fixes
@@ -1856,6 +1874,19 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- chore: Release v0.30.0 ([#303](https://github.com/A-Guy-educ/A-Guy-Admin/pull/303)) — @aguyshayb
+- chore: Remove chat-lessons collection ([#302](https://github.com/A-Guy-educ/A-Guy-Admin/pull/302)) — @aguyshayb
+- fix: Add content-visibility fields to chat-lessons collection ([#300](https://github.com/A-Guy-educ/A-Guy-Admin/pull/300)) — @aguyshayb
+- feat: Add chat-lessons collection for authored chat scripts ([#299](https://github.com/A-Guy-educ/A-Guy-Admin/pull/299)) — @aguyshayb
+- feat: Fold MCQ chrome and render rich text as prose in the studio ([#296](https://github.com/A-Guy-educ/A-Guy-Admin/pull/296)) — @aguyshayb
+- feat: Add chat as a valid visibleRenderers option on lessons ([#298](https://github.com/A-Guy-educ/A-Guy-Admin/pull/298)) — @aguyshayb
+- feat: Make studio feel like a document, not admin cards ([#295](https://github.com/A-Guy-educ/A-Guy-Admin/pull/295)) — @aguyshayb
+- feat: Lesson studio for in-place editing of exercises and sections ([#294](https://github.com/A-Guy-educ/A-Guy-Admin/pull/294)) — @aguyshayb
+- feat: Exercise-quick tab and recursive section unfolding ([#293](https://github.com/A-Guy-educ/A-Guy-Admin/pull/293)) — @aguyshayb
+- fix: Capture SVG inside a text-lesson section ([#292](https://github.com/A-Guy-educ/A-Guy-Admin/pull/292)) — @aguyshayb
+## [v0.29.2] - 2026-08-02
+
+- promote: dev -> main (v0.29.2) ([#290](https://github.com/A-Guy-educ/A-Guy-Admin/pull/290)) — @aguyshayb
 - chore: Release v0.29.2 ([#289](https://github.com/A-Guy-educ/A-Guy-Admin/pull/289)) — @aguyshayb
 - fix: Sweep expired enrollments to expired status ([#282](https://github.com/A-Guy-educ/A-Guy-Admin/pull/282)) — @aguyshayb
 - promote: dev -> main (v0.29.1) ([#278](https://github.com/A-Guy-educ/A-Guy-Admin/pull/278)) — @aguyshayb

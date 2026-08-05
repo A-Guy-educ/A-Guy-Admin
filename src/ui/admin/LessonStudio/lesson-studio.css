@@ -1,0 +1,352 @@
+.studio-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: var(--theme-elevation-0);
+}
+
+.studio-message {
+  padding: 32px;
+  color: var(--theme-elevation-500);
+  font-size: 14px;
+  text-align: center;
+}
+
+.studio-message-error {
+  color: var(--theme-error-500);
+}
+
+/* ---------- Launcher (on lesson doc header) ---------- */
+.studio-launcher-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid var(--theme-success-500);
+  border-radius: 4px;
+  background: var(--theme-success-500);
+  color: var(--theme-base-0);
+  text-decoration: none;
+}
+
+.studio-launcher-button:hover {
+  background: var(--theme-success-600);
+  border-color: var(--theme-success-600);
+}
+
+/* ---------- Toolbar ---------- */
+.studio-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 24px;
+  background: var(--theme-elevation-0);
+  border-bottom: 1px solid var(--theme-elevation-150);
+}
+
+.studio-toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+
+.studio-toolbar-back {
+  color: var(--theme-elevation-600);
+  text-decoration: none;
+  font-size: 13px;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.studio-toolbar-back:hover {
+  background: var(--theme-elevation-100);
+}
+
+.studio-toolbar-title {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.studio-toolbar-eyebrow {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--theme-elevation-500);
+}
+
+.studio-toolbar-lesson {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--theme-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.studio-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.studio-toolbar-status {
+  font-size: 12px;
+  color: var(--theme-elevation-500);
+}
+
+.studio-toolbar-errors {
+  font-size: 12px;
+  color: var(--theme-error-500);
+  cursor: help;
+}
+
+.studio-toolbar .editor-save-button {
+  padding: 8px 16px;
+  font-weight: 600;
+}
+
+.studio-toolbar .editor-save-button:disabled {
+  background: var(--theme-elevation-100);
+  border-color: var(--theme-elevation-200);
+  color: var(--theme-elevation-500);
+  cursor: not-allowed;
+}
+
+/* ---------- Document surface ----------
+   The studio is meant to feel like one long Word-style document rather than
+   a stack of admin cards. Content sits on a single page background, exercises
+   and sections use typographic hierarchy instead of card chrome, and the
+   reused block editors (`.block-card`, `.question-block-wrapper`) have their
+   admin-form styling neutralised so text flows and structured questions get
+   only a subtle margin cue. */
+.studio-content {
+  flex: 1;
+  padding: 32px 48px 96px;
+  max-width: 860px;
+  width: 100%;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.studio-empty {
+  padding: 12px 0;
+  color: var(--theme-elevation-500);
+  font-size: 14px;
+  font-style: italic;
+}
+
+.studio-empty-big {
+  padding: 48px 0;
+  font-size: 15px;
+  text-align: center;
+}
+
+/* ---------- Exercise (chapter-style heading) ---------- */
+.studio-exercise-card {
+  padding: 32px 0 8px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+.studio-exercise-card:first-child {
+  padding-top: 8px;
+}
+
+.studio-exercise-header {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 0 0 4px 0;
+  background: transparent;
+  border-bottom: 1px solid var(--theme-elevation-150);
+  margin-bottom: 16px;
+}
+
+.studio-exercise-number {
+  display: inline;
+  width: auto;
+  height: auto;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--theme-elevation-500);
+  font-size: 20px;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
+.studio-exercise-title {
+  flex: 1;
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--theme-text);
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.studio-exercise-openlink {
+  font-size: 12px;
+  color: var(--theme-elevation-500);
+  text-decoration: none;
+  padding: 2px 6px;
+  border-radius: 4px;
+  align-self: center;
+}
+
+.studio-exercise-openlink:hover {
+  background: var(--theme-elevation-100);
+  color: var(--theme-text);
+}
+
+.studio-exercise-body {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------- Section (sub-heading) ---------- */
+.studio-section {
+  padding: 16px 0 8px;
+  border: none;
+}
+
+.studio-section-header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 0 0 4px 0;
+  background: transparent;
+}
+
+.studio-section-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--theme-elevation-700);
+  font-style: normal;
+  letter-spacing: 0.01em;
+}
+
+.studio-dirty-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--theme-warning-500);
+  margin-left: 2px;
+}
+
+.studio-section-blocks {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* ---------- Neutralised block chrome ----------
+   Rich-text blocks lose the dashed card + "RICH TEXT" caption entirely so
+   they flow like paragraphs. Question blocks keep a soft left border so the
+   editor can still tell "this is structured" at a glance. */
+.studio-section-blocks .block-card {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  overflow: visible;
+  transition: none;
+}
+
+.studio-section-blocks .block-card:hover {
+  border-color: transparent;
+}
+
+.studio-section-blocks .block-card-header {
+  display: none;
+}
+
+.studio-section-blocks .block-card-content {
+  padding: 0;
+}
+
+.studio-section-blocks .inline-rich-text-editor {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+.studio-section-blocks .inline-rich-text-toolbar {
+  border-bottom: none;
+  background: transparent;
+  padding: 2px 0;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.studio-section-blocks .inline-rich-text-editor:hover .inline-rich-text-toolbar,
+.studio-section-blocks .inline-rich-text-editor:focus-within .inline-rich-text-toolbar {
+  opacity: 1;
+}
+
+.studio-section-blocks .inline-rich-text-textarea {
+  padding: 6px 2px;
+  font-family: inherit;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--theme-text);
+  background: transparent;
+  border: none;
+}
+
+.studio-section-blocks .inline-rich-text-textarea:focus {
+  outline: none;
+  background: var(--theme-elevation-50);
+}
+
+.studio-section-blocks .question-block-wrapper {
+  padding: 8px 0 8px 14px;
+  border-left: 2px solid var(--theme-elevation-150);
+  margin: 4px 0;
+}
+
+.studio-section-blocks .question-block-wrapper:focus-within {
+  border-left-color: var(--theme-success-500);
+}
+
+/* Rich-text preview renders as document prose by default. Toolbar's Eye/Pencil
+   button still toggles into the source textarea when the user needs to edit. */
+.studio-section-blocks .inline-rich-text-preview {
+  padding: 4px 2px;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--theme-text);
+  background: transparent;
+  border: none;
+  min-height: auto;
+}
+
+.studio-section-blocks .inline-rich-text-preview-empty {
+  color: var(--theme-elevation-400);
+  font-style: italic;
+}
+
+/* Inside an MCQ option, the rich-text preview should read as a single line of
+   answer text — smaller and tighter than a top-level paragraph. */
+.studio-section-blocks .mcq-option-content .inline-rich-text-preview,
+.studio-section-blocks .mcq-option-content .inline-rich-text-textarea {
+  font-size: 14px;
+  padding: 2px 4px;
+}
