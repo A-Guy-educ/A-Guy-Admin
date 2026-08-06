@@ -5,7 +5,7 @@ import type { ContentBlock } from '@/server/payload/collections/Exercises/types'
 
 import { StudioExerciseCard } from './StudioExerciseCard'
 import { StudioToolbar } from './StudioToolbar'
-import { useStudioSave } from './useStudioSave'
+import { useStudioSave, type DirtyEntry } from './useStudioSave'
 import { useStudioTree } from './useStudioTree'
 import { EditorChromeProvider } from '../ExerciseContentEditor/EditorChromeContext'
 import '../LessonBlocksField/inline-exercise-editor.css'
@@ -21,38 +21,57 @@ interface LessonStudioPageProps {
  * admins edit every section's content blocks in place. Loads the full tree
  * (lesson + exercises + sections) in one server round-trip and saves dirty
  * sections in one bounded-concurrency batch when the admin clicks "Save all".
+ *
+ * Exercise-level content: legacy exercises store blocks directly on
+ * `exercise.content.blocks` (no child sections). The tree endpoint surfaces
+ * those blocks so they render inline here and save via PATCH /api/exercises/:id
+ * alongside section edits.
  */
 export const LessonStudioPage: React.FC<LessonStudioPageProps> = ({ lessonId }) => {
   const { tree, loading, error } = useStudioTree(lessonId)
   const { saving, errors, saveAll } = useStudioSave()
 
-  // Section blocks live in a flat map keyed by section id. Seed from tree
-  // once loaded; edits mutate only the changed section's entry.
+  // Section blocks live in a flat map keyed by section id. Exercise-level
+  // content blocks live in a separate map keyed by exercise id (legacy
+  // exercises without child sections). Both are seeded from the tree once
+  // loaded; edits mutate only the changed entry.
   const [sectionBlocks, setSectionBlocks] = useState<Record<string, ContentBlock[]>>({})
-  const [dirtyIds, setDirtyIds] = useState<Set<string>>(new Set())
+  const [exerciseBlocks, setExerciseBlocks] = useState<Record<string, ContentBlock[]>>({})
+  const [dirtySectionIds, setDirtySectionIds] = useState<Set<string>>(new Set())
+  const [dirtyExerciseIds, setDirtyExerciseIds] = useState<Set<string>>(new Set())
 
-  // Ref mirror of sectionBlocks so the save-completion handler can compare the
-  // *current* in-memory blocks against the reference we PATCHed, even if the
-  // user edited during the in-flight save.
+  // Ref mirrors so the save-completion handler can compare the *current*
+  // in-memory blocks against the reference we PATCHed, even if the user edited
+  // during the in-flight save.
   const sectionBlocksRef = useRef(sectionBlocks)
+  const exerciseBlocksRef = useRef(exerciseBlocks)
   useEffect(() => {
     sectionBlocksRef.current = sectionBlocks
   }, [sectionBlocks])
+  useEffect(() => {
+    exerciseBlocksRef.current = exerciseBlocks
+  }, [exerciseBlocks])
 
   useEffect(() => {
     if (!tree) return
-    const seeded: Record<string, ContentBlock[]> = {}
+    const seededSections: Record<string, ContentBlock[]> = {}
+    const seededExercises: Record<string, ContentBlock[]> = {}
     for (const exercise of tree.exercises) {
-      for (const section of exercise.sections) {
+      if (exercise.blocks.length > 0) {
         // Deep clone so edits don't leak back into the tree response.
-        seeded[section.id] = JSON.parse(JSON.stringify(section.blocks))
+        seededExercises[exercise.id] = JSON.parse(JSON.stringify(exercise.blocks))
+      }
+      for (const section of exercise.sections) {
+        seededSections[section.id] = JSON.parse(JSON.stringify(section.blocks))
       }
     }
-    setSectionBlocks(seeded)
-    setDirtyIds(new Set())
+    setSectionBlocks(seededSections)
+    setExerciseBlocks(seededExercises)
+    setDirtySectionIds(new Set())
+    setDirtyExerciseIds(new Set())
   }, [tree])
 
-  const handleBlockChange = useCallback(
+  const handleSectionBlockChange = useCallback(
     (sectionId: string, index: number, updated: ContentBlock) => {
       setSectionBlocks((prev) => {
         const current = prev[sectionId]
@@ -61,7 +80,7 @@ export const LessonStudioPage: React.FC<LessonStudioPageProps> = ({ lessonId }) 
         next[index] = updated
         return { ...prev, [sectionId]: next }
       })
-      setDirtyIds((prev) => {
+      setDirtySectionIds((prev) => {
         if (prev.has(sectionId)) return prev
         const next = new Set(prev)
         next.add(sectionId)
@@ -71,45 +90,78 @@ export const LessonStudioPage: React.FC<LessonStudioPageProps> = ({ lessonId }) 
     [],
   )
 
-  const dirtyPayload = useMemo(
-    () =>
-      Array.from(dirtyIds).map((id) => ({
-        id,
-        blocks: sectionBlocks[id] ?? [],
-      })),
-    [dirtyIds, sectionBlocks],
+  const handleExerciseBlockChange = useCallback(
+    (exerciseId: string, index: number, updated: ContentBlock) => {
+      setExerciseBlocks((prev) => {
+        const current = prev[exerciseId]
+        if (!current) return prev
+        const next = [...current]
+        next[index] = updated
+        return { ...prev, [exerciseId]: next }
+      })
+      setDirtyExerciseIds((prev) => {
+        if (prev.has(exerciseId)) return prev
+        const next = new Set(prev)
+        next.add(exerciseId)
+        return next
+      })
+    },
+    [],
   )
 
+  const dirtyEntries = useMemo<DirtyEntry[]>(() => {
+    const list: DirtyEntry[] = []
+    for (const id of dirtySectionIds) {
+      list.push({ kind: 'section', id, blocks: sectionBlocks[id] ?? [] })
+    }
+    for (const id of dirtyExerciseIds) {
+      list.push({ kind: 'exercise', id, blocks: exerciseBlocks[id] ?? [] })
+    }
+    return list
+  }, [dirtySectionIds, dirtyExerciseIds, sectionBlocks, exerciseBlocks])
+
+  const totalDirtyCount = dirtySectionIds.size + dirtyExerciseIds.size
+
   const handleSaveAll = useCallback(async () => {
-    if (dirtyPayload.length === 0) return
-    const { succeeded } = await saveAll(dirtyPayload)
+    if (dirtyEntries.length === 0) return
+    const { succeeded } = await saveAll(dirtyEntries)
     if (succeeded.length === 0) return
 
-    // Only clear a section from dirtyIds when its in-memory blocks are still
-    // the exact reference we PATCHed. If the user edited during the in-flight
-    // save, handleBlockChange replaced sectionBlocks[id] with a new array;
+    // Only clear an entry from the dirty set when its in-memory blocks are
+    // still the exact reference we PATCHed. If the user edited during the
+    // in-flight save, the change handler replaced the array with a new one;
     // clearing dirty in that case would silently discard those newer edits
     // on the next reload.
-    const current = sectionBlocksRef.current
-    setDirtyIds((prev) => {
+    const currentSections = sectionBlocksRef.current
+    const currentExercises = exerciseBlocksRef.current
+    setDirtySectionIds((prev) => {
       const next = new Set(prev)
-      for (const { id, savedBlocks } of succeeded) {
-        if (current[id] === savedBlocks) next.delete(id)
+      for (const { kind, id, savedBlocks } of succeeded) {
+        if (kind !== 'section') continue
+        if (currentSections[id] === savedBlocks) next.delete(id)
       }
       return next
     })
-  }, [dirtyPayload, saveAll])
+    setDirtyExerciseIds((prev) => {
+      const next = new Set(prev)
+      for (const { kind, id, savedBlocks } of succeeded) {
+        if (kind !== 'exercise') continue
+        if (currentExercises[id] === savedBlocks) next.delete(id)
+      }
+      return next
+    })
+  }, [dirtyEntries, saveAll])
 
   // Warn before nav-away if there are unsaved changes.
   useEffect(() => {
-    if (dirtyIds.size === 0) return
+    if (totalDirtyCount === 0) return
     const handler = (e: BeforeUnloadEvent) => {
       e.preventDefault()
       e.returnValue = ''
     }
     window.addEventListener('beforeunload', handler)
     return () => window.removeEventListener('beforeunload', handler)
-  }, [dirtyIds])
+  }, [totalDirtyCount])
 
   if (loading) return <div className="studio-message">Loading lesson…</div>
   if (error) return <div className="studio-message studio-message-error">{error}</div>
@@ -121,7 +173,7 @@ export const LessonStudioPage: React.FC<LessonStudioPageProps> = ({ lessonId }) 
         <StudioToolbar
           lessonTitle={tree.lesson.title || 'Untitled Lesson'}
           lessonId={tree.lesson.id}
-          dirtyCount={dirtyIds.size}
+          dirtyCount={totalDirtyCount}
           saving={saving}
           errors={errors}
           onSave={handleSaveAll}
@@ -137,8 +189,11 @@ export const LessonStudioPage: React.FC<LessonStudioPageProps> = ({ lessonId }) 
                 index={index}
                 exercise={exercise}
                 sectionBlocksById={sectionBlocks}
-                dirtySectionIds={dirtyIds}
-                onBlockChange={handleBlockChange}
+                exerciseBlocksById={exerciseBlocks}
+                dirtySectionIds={dirtySectionIds}
+                dirtyExerciseIds={dirtyExerciseIds}
+                onSectionBlockChange={handleSectionBlockChange}
+                onExerciseBlockChange={handleExerciseBlockChange}
               />
             ))
           )}
