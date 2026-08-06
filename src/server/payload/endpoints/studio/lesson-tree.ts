@@ -33,6 +33,7 @@ interface ExerciseDoc {
   id: string
   title?: string | null
   blocks?: unknown
+  content?: { blocks?: ContentBlock[] | null } | null
 }
 
 export interface StudioTreeSection {
@@ -44,6 +45,13 @@ export interface StudioTreeSection {
 export interface StudioTreeExercise {
   id: string
   title: string | null
+  /**
+   * Exercise-level content blocks (from `exercise.content.blocks`). Populated
+   * only when the exercise has NO child sections — otherwise the sections carry
+   * the content and the `aggregateChildSectionContent` afterRead hook would
+   * duplicate them into `content.blocks`, so we skip it in that case.
+   */
+  blocks: ContentBlock[]
   sections: StudioTreeSection[]
 }
 
@@ -179,9 +187,14 @@ export async function lessonTreeEndpoint(req: PayloadRequest): Promise<Response>
       if (id) playlistIds.push(id)
     }
     const ordered = orderByPlaylist(rawSections, playlistIds)
+    const exerciseBlocks =
+      rawSections.length === 0 && Array.isArray(exercise.content?.blocks)
+        ? exercise.content!.blocks!
+        : []
     return {
       id: exercise.id,
       title: exercise.title ?? null,
+      blocks: exerciseBlocks,
       sections: ordered.map((s) => ({
         id: s.id,
         title: s.title ?? null,
