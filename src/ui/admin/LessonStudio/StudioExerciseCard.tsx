@@ -59,10 +59,7 @@ export const StudioExerciseCard: React.FC<StudioExerciseCardProps> = ({
             <div className="studio-section studio-section-exercise-inline">
               <div className="studio-section-blocks">
                 {exerciseBlocks.map((block, blockIndex) => (
-                  <div
-                    key={block.id || `block-${blockIndex}`}
-                    className="studio-block-item"
-                  >
+                  <div key={block.id || `block-${blockIndex}`} className="studio-block-item">
                     <InlineBlockRenderer
                       block={block}
                       onChange={(updated) =>
