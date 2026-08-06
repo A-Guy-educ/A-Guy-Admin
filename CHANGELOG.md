@@ -1874,6 +1874,7 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- fix: Render exercise-level content blocks in lesson studio ([#306](https://github.com/A-Guy-educ/A-Guy-Admin/pull/306)) — @aguyshayb
 ## [v0.30.0] - 2026-08-05
 
 - promote: dev -> main (v0.30.0) ([#304](https://github.com/A-Guy-educ/A-Guy-Admin/pull/304)) — @aguyshayb
