@@ -50,7 +50,9 @@ describe('parseFunctionDsl', () => {
 
     expect(spec.grid.enabled).toBe(true)
     expect(spec.viewportMode).toBe('manual')
-    expect(spec.viewport).toEqual({ xMin: -1, xMax: 9, yMin: 0, yMax: 20 })
+    // Stated x:[-1,9] → span 10, padded 15% each side → [-2.5, 10.5].
+    // Stated y:[0,20] → span 20, padded 15% each side → [-3, 23].
+    expect(spec.viewport).toEqual({ xMin: -2.5, xMax: 10.5, yMin: -3, yMax: 23 })
 
     // Two `f(x)=` graphs make it to `graphs`; `$x=5$` is not a function
     // of x so it becomes a geometric locus with its color/style preserved.
@@ -112,5 +114,40 @@ describe('parseFunctionDsl', () => {
     const source = ['%%%', '$f(x) = x$', '%%%', 'x:hello', '%%%'].join('\n')
     const { errors } = parseFunctionDsl(source)
     expect(errors.some((e) => e.includes('Invalid range for x'))).toBe(true)
+  })
+
+  it('parses fraction literals like 5/6 inside point and line coordinates', () => {
+    // Regression: authors write `p (2/3, 0)` to match the fraction notation
+    // they use elsewhere in the lesson. Number("2/3") is NaN, so the old
+    // parser silently dropped the point.
+    const source = [
+      '%%%',
+      'p (2/3, 0)',
+      'color: #de1e64',
+      'type: point',
+      '',
+      'l (0,0) (5, 5/6)',
+      'color: #333333',
+      '%%%',
+      'x:[0,6]',
+      'y:[0,1]',
+      '%%%',
+    ].join('\n')
+
+    const { spec, errors } = parseFunctionDsl(source)
+    expect(errors).toEqual([])
+    expect(spec.elements.points).toEqual([
+      expect.objectContaining({ x: 2 / 3, y: 0, color: '#de1e64' }),
+    ])
+    expect(spec.elements.lineBetweenPoints).toEqual([
+      expect.objectContaining({ a: { x: 0, y: 0 }, b: { x: 5, y: 5 / 6 } }),
+    ])
+  })
+
+  it('pads the viewport 15% on each side so boundary points remain visible', () => {
+    const source = ['%%%', 'p (0,0)', '%%%', 'x:[0,1]', 'y:[0,1]', '%%%'].join('\n')
+    const { spec } = parseFunctionDsl(source)
+    // Boundary point at (0,0) would sit exactly on the axis without padding.
+    expect(spec.viewport).toEqual({ xMin: -0.15, xMax: 1.15, yMin: -0.15, yMax: 1.15 })
   })
 })
