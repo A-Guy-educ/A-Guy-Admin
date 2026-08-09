@@ -1874,6 +1874,7 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- fix: Dispatch axis/multi-axis blocks to their own editors ([#314](https://github.com/A-Guy-educ/A-Guy-Admin/pull/314)) — @aguyshayb
 - fix: Render geometricLoci in axis blocks ([#313](https://github.com/A-Guy-educ/A-Guy-Admin/pull/313)) — @aguyshayb
 - fix: Parse fractions and pad viewport in function DSL ([#312](https://github.com/A-Guy-educ/A-Guy-Admin/pull/312)) — @aguyshayb
 - feat: Support function-graph blocks in text lesson import ([#311](https://github.com/A-Guy-educ/A-Guy-Admin/pull/311)) — @aguyshayb
