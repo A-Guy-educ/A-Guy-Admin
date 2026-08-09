@@ -52,10 +52,16 @@ export interface ParsedFunctionDsl {
 const DEFAULT_LINE_THICKNESS = 2
 const DEFAULT_POINT_TYPE = 'point' as const
 const DEFAULT_STYLE: LineStyle = 'solid'
+// Fraction of the stated viewport span padded on each side. Small enough
+// that authors still get roughly the range they asked for, big enough that
+// a point on the boundary (e.g. p (0,0) with x:[0,1]) is comfortably
+// inside the drawable area instead of sitting on the axis line.
+const VIEWPORT_PAD_RATIO = 0.15
 
 const SECTION_SEP_RE = /^\s*%%%\s*$/
 const KV_RE = /^\s*([A-Za-z_][A-Za-z0-9_]*)\s*:\s*(.*)$/
-const RANGE_RE = /^\[\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*\]$/
+const NUMBER_TOKEN = String.raw`-?\d+(?:\.\d+)?(?:\/-?\d+(?:\.\d+)?)?`
+const RANGE_RE = new RegExp(`^\\[\\s*(${NUMBER_TOKEN})\\s*,\\s*(${NUMBER_TOKEN})\\s*\\]$`)
 const POINT_HEADER_RE = /^p\s+\(([^)]*)\)\s*$/i
 const LINE_HEADER_RE = /^l\s+\(([^)]*)\)\s*\(([^)]*)\)\s*$/i
 const LATEX_HEADER_RE = /^\$(.+)\$\s*$/
@@ -125,6 +131,26 @@ function parseElementBlocks(elementsText: string): ElementBlock[] {
   return out
 }
 
+/**
+ * Parses a single numeric token. Accepts plain decimals (`1`, `-2.5`) and
+ * fraction literals (`5/6`, `-3/4`). The fraction form matters because
+ * curriculum authors write coordinates in the same notation they use in
+ * the accompanying markdown (`p (2/3, 0)`), and `Number("2/3")` is NaN.
+ */
+function parseNumberToken(raw: string): number | null {
+  const trimmed = raw.trim()
+  if (trimmed === '') return null
+  const frac = trimmed.match(/^(-?\d+(?:\.\d+)?)\/(-?\d+(?:\.\d+)?)$/)
+  if (frac) {
+    const num = Number(frac[1])
+    const den = Number(frac[2])
+    if (!Number.isFinite(num) || !Number.isFinite(den) || den === 0) return null
+    return num / den
+  }
+  const n = Number(trimmed)
+  return Number.isFinite(n) ? n : null
+}
+
 function parseNumberPair(raw: string): { x: number; y: number } | null {
   // Accepts `x,y`, `x, y`, and forgives a trailing `,` from author typos
   // like `(0,0,)` — that pattern appears in the reference spec file.
@@ -133,9 +159,9 @@ function parseNumberPair(raw: string): { x: number; y: number } | null {
     .map((p) => p.trim())
     .filter((p) => p.length > 0)
   if (parts.length < 2) return null
-  const x = Number(parts[0])
-  const y = Number(parts[1])
-  if (!Number.isFinite(x) || !Number.isFinite(y)) return null
+  const x = parseNumberToken(parts[0])
+  const y = parseNumberToken(parts[1])
+  if (x === null || y === null) return null
   return { x, y }
 }
 
@@ -261,16 +287,29 @@ function applySettings(spec: AxisSpecV1, errors: string[], text: string): void {
         errors.push(`Invalid range for ${key}: "${value}" (expected [min,max])`)
         continue
       }
-      const min = Number(range[1])
-      const max = Number(range[2])
+      const rawMin = parseNumberToken(range[1])
+      const rawMax = parseNumberToken(range[2])
+      if (rawMin === null || rawMax === null) {
+        errors.push(`Invalid range for ${key}: "${value}" (unparseable numbers)`)
+        continue
+      }
+      // Pad the stated bounds so points/lines that land on the boundary are
+      // visible instead of clipped to the axis line. Authors were writing
+      // `x:[0,1]` with `p (0,0)` expecting the point to render, then
+      // reporting "point missing" — this widens the viewport by
+      // VIEWPORT_PAD_RATIO on each side.
+      const lo = Math.min(rawMin, rawMax)
+      const hi = Math.max(rawMin, rawMax)
+      const span = hi - lo
+      const pad = span * VIEWPORT_PAD_RATIO
       spec.viewport ??= {}
       spec.viewportMode = 'manual'
       if (key === 'x') {
-        spec.viewport.xMin = Math.min(min, max)
-        spec.viewport.xMax = Math.max(min, max)
+        spec.viewport.xMin = lo - pad
+        spec.viewport.xMax = hi + pad
       } else {
-        spec.viewport.yMin = Math.min(min, max)
-        spec.viewport.yMax = Math.max(min, max)
+        spec.viewport.yMin = lo - pad
+        spec.viewport.yMax = hi + pad
       }
       continue
     }
