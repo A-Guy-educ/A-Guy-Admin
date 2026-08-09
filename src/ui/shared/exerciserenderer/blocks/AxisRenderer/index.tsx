@@ -31,17 +31,25 @@ interface AxisRendererProps {
 }
 
 export function AxisRenderer({ blockId, spec, displaySize = 'full' }: AxisRendererProps) {
+  // Guard against callers that pass an axis block with a missing `axis` field.
+  // Previously `renderAxisSpec(board, undefined)` threw `Cannot read
+  // properties of undefined (reading 'elements')` and crashed the whole
+  // exercise page.
+  const hasSpec = !!spec && !!spec.elements
+
   const handleBoardReady = useCallback(
     (board: JXG.Board) => {
+      if (!hasSpec) return
       renderAxisSpec(board, spec)
     },
-    [spec],
+    [spec, hasSpec],
   )
 
   const boundingBox = useMemo<[number, number, number, number]>(() => {
+    if (!hasSpec) return [-5, 5, 5, -5]
     const resolved = resolveViewport(spec)
     return [resolved.xMin, resolved.yMax, resolved.xMax, resolved.yMin]
-  }, [spec])
+  }, [spec, hasSpec])
 
   // Container ref for responsive sizing
   const containerRef = useRef<HTMLDivElement>(null)
