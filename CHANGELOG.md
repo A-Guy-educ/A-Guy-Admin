@@ -1874,6 +1874,7 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- fix: Parse fractions and pad viewport in function DSL ([#312](https://github.com/A-Guy-educ/A-Guy-Admin/pull/312)) — @aguyshayb
 - feat: Support function-graph blocks in text lesson import ([#311](https://github.com/A-Guy-educ/A-Guy-Admin/pull/311)) — @aguyshayb
 - feat: Support function-graph blocks in lesson JSON import ([#310](https://github.com/A-Guy-educ/A-Guy-Admin/pull/310)) — @aguyshayb
 - fix: Render exercise-level content blocks in lesson studio ([#306](https://github.com/A-Guy-educ/A-Guy-Admin/pull/306)) — @aguyshayb
