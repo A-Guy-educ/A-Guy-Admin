@@ -45,6 +45,9 @@ export interface TextSection {
   type: TextExerciseType
   /** Raw inline SVG markup embedded inside this section, if present. */
   svg?: string
+  /** Raw function-graph DSL between <function>…</function> tags, if present.
+   * See lesson-json-import/parse-function-dsl.ts for the format spec. */
+  function?: string
 }
 
 export interface TextExercise {
@@ -56,6 +59,8 @@ export interface TextExercise {
   intro: string
   /** Raw inline SVG markup if present. */
   svg?: string
+  /** Raw function-graph DSL for the exercise-level graphic, if present. */
+  function?: string
   sections: TextSection[]
 }
 
@@ -78,6 +83,12 @@ const FIELD_RE = /^\*\s*([^:]+):\s*(.*)$/
 const OPTION_RE = /^\s+-\s+(.+)$/
 const SVG_START_RE = /^<svg\b/i
 const SVG_END_RE = /<\/svg>\s*$/i
+// Function-graph blocks use a tag pair analogous to <svg>…</svg>. The DSL
+// between the tags carries its own `%%%` separators (parsed later by
+// parse-function-dsl.ts) so we cannot use `%%%` as the outer delimiter
+// without ambiguity.
+const FUNCTION_START_RE = /^<function>\s*$/i
+const FUNCTION_END_RE = /^<\/function>\s*$/i
 const HEADER_LINE_RE = /^(קורס|פרק|שם השיעור)\s*-\s*(.+)$/
 
 const isSeparator = (line: string, ch: string) => {
@@ -106,6 +117,8 @@ interface MutableSection {
   options: string[]
   svgLines: string[]
   inSvg: boolean
+  functionLines: string[]
+  inFunction: boolean
 }
 
 interface MutableExercise {
@@ -114,6 +127,8 @@ interface MutableExercise {
   introLines: string[]
   svgLines: string[]
   inSvg: boolean
+  functionLines: string[]
+  inFunction: boolean
   sections: MutableSection[]
 }
 
@@ -124,12 +139,22 @@ function newExercise(num: string, subtopic: string): MutableExercise {
     introLines: [],
     svgLines: [],
     inSvg: false,
+    functionLines: [],
+    inFunction: false,
     sections: [],
   }
 }
 
 function newSection(num: string): MutableSection {
-  return { questionNumber: num, fields: {}, options: [], svgLines: [], inSvg: false }
+  return {
+    questionNumber: num,
+    fields: {},
+    options: [],
+    svgLines: [],
+    inSvg: false,
+    functionLines: [],
+    inFunction: false,
+  }
 }
 
 function appendField(section: MutableSection, name: string, value: string) {
@@ -149,6 +174,7 @@ function finalizeSection(ms: MutableSection): TextSection {
     fullSolution: get('פתרון מלא') || undefined,
     type: classifyType(get('סוג תרגיל')),
     svg: ms.svgLines.length > 0 ? ms.svgLines.join('\n').trim() : undefined,
+    function: ms.functionLines.length > 0 ? ms.functionLines.join('\n').trim() : undefined,
   }
 }
 
@@ -158,6 +184,7 @@ function finalizeExercise(me: MutableExercise): TextExercise {
     subtopic: me.subtopic.trim(),
     intro: me.introLines.join('\n').trim(),
     svg: me.svgLines.length > 0 ? me.svgLines.join('\n').trim() : undefined,
+    function: me.functionLines.length > 0 ? me.functionLines.join('\n').trim() : undefined,
     sections: me.sections.map(finalizeSection),
   }
 }
@@ -237,6 +264,25 @@ export function parseTextLesson(raw: string): TextLesson {
     if (phase === 'exercise_intro' || phase === 'svg') {
       if (!currentEx) continue
 
+      // Function-block detection sits BEFORE svg so `<function>…</function>`
+      // never leaks into the narrative even if authors put it between the
+      // intro and the first section.
+      if (currentEx.inFunction) {
+        if (FUNCTION_END_RE.test(line)) {
+          currentEx.inFunction = false
+          phase = 'exercise_intro'
+          continue
+        }
+        currentEx.functionLines.push(line)
+        continue
+      }
+
+      if (FUNCTION_START_RE.test(line)) {
+        currentEx.inFunction = true
+        phase = 'svg' // reuse the "in-block" phase — nothing SVG-specific here
+        continue
+      }
+
       if (currentEx.inSvg) {
         currentEx.svgLines.push(line)
         if (SVG_END_RE.test(line)) {
@@ -257,6 +303,9 @@ export function parseTextLesson(raw: string): TextLesson {
       // "* שרטוט:" marker — ignore, the SVG block follows
       if (line.trim() === '* שרטוט:') continue
 
+      // "* פונקציה:" marker — ignore, the <function>…</function> block follows
+      if (line.trim() === '* פונקציה:') continue
+
       // "ענו על הסעיפים הבאים:" — ignore
       if (line.trim() === 'ענו על הסעיפים הבאים:') continue
 
@@ -267,6 +316,25 @@ export function parseTextLesson(raw: string): TextLesson {
 
     // Inside a section
     if (phase === 'section' && currentSection) {
+      // Function-block detection sits BEFORE svg for the same reason as at
+      // the exercise level — the raw DSL lines must not be swept into
+      // whatever field was previously being read.
+      if (currentSection.inFunction) {
+        if (FUNCTION_END_RE.test(line)) {
+          currentSection.inFunction = false
+          currentField = null
+          continue
+        }
+        currentSection.functionLines.push(line)
+        continue
+      }
+
+      if (FUNCTION_START_RE.test(line)) {
+        currentSection.inFunction = true
+        currentField = null
+        continue
+      }
+
       // SVG blocks may appear inline within a section (e.g. right after
       // `* תוכן השאלה:` when the shape varies per question). They must be
       // detected BEFORE the continuation-line fallback below, otherwise the
@@ -294,6 +362,9 @@ export function parseTextLesson(raw: string): TextLesson {
 
       // "* שרטוט:" marker — ignore, the SVG block follows
       if (line.trim() === '* שרטוט:') continue
+
+      // "* פונקציה:" marker — ignore, the <function>…</function> block follows
+      if (line.trim() === '* פונקציה:') continue
 
       const fm = line.match(FIELD_RE)
       if (fm) {
