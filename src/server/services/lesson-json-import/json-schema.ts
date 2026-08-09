@@ -11,6 +11,12 @@ const ContentBlockSchema = z
       .optional(),
     PNG: z.string().optional(),
     svg: z.string().optional(),
+    // Function-graph DSL. See parse-function-dsl.ts for the format spec.
+    // The importer parses this text into an AxisSpecV1 and emits a
+    // question_axis block. Left as `z.string()` here so the JSON schema
+    // stays permissive — parse errors surface at conversion time with a
+    // human-readable message on the exercise result.
+    function: z.string().optional(),
   })
   .passthrough()
 
