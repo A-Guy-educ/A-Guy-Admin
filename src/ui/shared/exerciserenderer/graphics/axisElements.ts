@@ -1,9 +1,12 @@
+import { parse as parseMath } from 'mathjs'
+
 import type { AxisSpecV1 } from '@/infra/contracts'
 import { getDefaultTextColor } from '@/infra/contracts/graphics/textColors'
 import { parseMathExpression } from '../utils/safeMathEval'
 
 type GraphSpec = AxisSpecV1['elements']['graphs'][number]
 type PointSpec = AxisSpecV1['elements']['points'][number]
+type LocusSpec = NonNullable<AxisSpecV1['elements']['geometricLoci']>[number]
 
 function renderGraphs(
   board: JXG.Board,
@@ -123,6 +126,112 @@ function renderLineBetweenPoints(
 }
 
 /**
+ * Compile an implicit equation `LHS = RHS` into a `(x, y) => number` function
+ * that returns zero on the curve. Used as the fallback for geometricLoci that
+ * aren't trivial vertical/horizontal lines.
+ */
+function compileImplicit(equation: string): ((x: number, y: number) => number) | null {
+  const eq = equation.trim()
+  const eqIndex = eq.indexOf('=')
+  if (eqIndex < 0) return null
+  const lhs = eq.slice(0, eqIndex).trim()
+  const rhs = eq.slice(eqIndex + 1).trim()
+  if (!lhs || !rhs) return null
+  try {
+    const compiled = parseMath(`(${lhs}) - (${rhs})`).compile()
+    const scope = {
+      sin: Math.sin,
+      cos: Math.cos,
+      tan: Math.tan,
+      sqrt: Math.sqrt,
+      abs: Math.abs,
+      log: Math.log,
+      exp: Math.exp,
+      PI: Math.PI,
+      E: Math.E,
+    }
+    return (x: number, y: number) => {
+      try {
+        const r = compiled.evaluate({ ...scope, x, y })
+        return typeof r === 'number' ? r : NaN
+      } catch {
+        return NaN
+      }
+    }
+  } catch {
+    return null
+  }
+}
+
+function dashFromStyle(style: LocusSpec['style']): number {
+  // JSXGraph dash levels: 0 (solid), 1 (small dots), 2 (dashes), 3 (mixed).
+  if (style === 'dashed') return 2
+  if (style === 'dotted') return 1
+  return 0
+}
+
+function renderGeometricLoci(board: JXG.Board, loci: LocusSpec[]) {
+  for (const locus of loci) {
+    const attrs: Record<string, unknown> = {
+      strokeWidth: locus.thickness,
+      dash: dashFromStyle(locus.style),
+      fixed: true,
+    }
+    if (locus.color) attrs.strokeColor = locus.color
+
+    const eq = locus.equation.replace(/\s+/g, '')
+
+    // Fast paths — `$x=c$` / `$y=c$` are the overwhelmingly common curriculum
+    // authoring shape (vertical/horizontal reference lines). Handling them as
+    // proper JSXGraph `line` primitives is cheaper and looks crisper than
+    // routing them through the implicit-curve marching-squares path.
+    const vert = eq.match(/^x=(-?\d+(?:\.\d+)?)$/)
+    if (vert) {
+      const x = Number(vert[1])
+      board.create(
+        'line',
+        [
+          [x, 0],
+          [x, 1],
+        ],
+        {
+          ...attrs,
+          straightFirst: true,
+          straightLast: true,
+        },
+      )
+      continue
+    }
+    const horz = eq.match(/^y=(-?\d+(?:\.\d+)?)$/)
+    if (horz) {
+      const y = Number(horz[1])
+      board.create(
+        'line',
+        [
+          [0, y],
+          [1, y],
+        ],
+        {
+          ...attrs,
+          straightFirst: true,
+          straightLast: true,
+        },
+      )
+      continue
+    }
+
+    const fn = compileImplicit(locus.equation)
+    if (!fn) continue
+    try {
+      board.create('implicitcurve', [fn], attrs)
+    } catch {
+      // Implicit-curve rendering can throw on degenerate specs. Skip silently
+      // rather than tanking the whole axis block.
+    }
+  }
+}
+
+/**
  * Render all axis elements from an AxisSpecV1 onto a JSXGraph board.
  */
 export function renderAxisSpec(board: JXG.Board, spec: AxisSpecV1): void {
@@ -137,5 +246,8 @@ export function renderAxisSpec(board: JXG.Board, spec: AxisSpecV1): void {
   }
   if (spec.elements.lineBetweenPoints?.length) {
     renderLineBetweenPoints(board, spec.elements.lineBetweenPoints)
+  }
+  if (spec.elements.geometricLoci?.length) {
+    renderGeometricLoci(board, spec.elements.geometricLoci)
   }
 }
