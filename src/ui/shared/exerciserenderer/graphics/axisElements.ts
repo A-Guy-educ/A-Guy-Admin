@@ -170,6 +170,31 @@ function dashFromStyle(style: LocusSpec['style']): number {
   return 0
 }
 
+/**
+ * Detect the curriculum team's most common non-linear locus: an origin- or
+ * point-centered circle, `x^2 + y^2 = r^2` (optionally with (x-a)^2 / (y-b)^2
+ * shifts). Falling through to JSXGraph's marching-squares implicit renderer
+ * for circles was silently producing empty output in some builds — a proper
+ * `board.create('circle', ...)` is more reliable and looks crisper.
+ *
+ * Returns { cx, cy, r } if the equation matches, otherwise null.
+ */
+function tryParseCircle(equation: string): { cx: number; cy: number; r: number } | null {
+  const eq = equation.replace(/\s+/g, '').toLowerCase()
+  // x^2+y^2=r_squared, with optional (x-a)^2 / (y-b)^2 shifts
+  const m = eq.match(
+    /^(?:\(x([+-]\d+(?:\.\d+)?)\)|x)\^2\+(?:\(y([+-]\d+(?:\.\d+)?)\)|y)\^2=(-?\d+(?:\.\d+)?)$/,
+  )
+  if (!m) return null
+  const [, xShift, yShift, rSquaredStr] = m
+  const rSquared = Number(rSquaredStr)
+  if (!Number.isFinite(rSquared) || rSquared <= 0) return null
+  // `x - a` means center at +a; capture is `-a`, so cx = -capture.
+  const cx = xShift ? -Number(xShift) : 0
+  const cy = yShift ? -Number(yShift) : 0
+  return { cx, cy, r: Math.sqrt(rSquared) }
+}
+
 function renderGeometricLoci(board: JXG.Board, loci: LocusSpec[]) {
   for (const locus of loci) {
     const attrs: Record<string, unknown> = {
@@ -220,13 +245,27 @@ function renderGeometricLoci(board: JXG.Board, loci: LocusSpec[]) {
       continue
     }
 
+    const circle = tryParseCircle(locus.equation)
+    if (circle) {
+      board.create('circle', [[circle.cx, circle.cy], circle.r], {
+        ...attrs,
+        fillColor: 'none',
+      })
+      continue
+    }
+
     const fn = compileImplicit(locus.equation)
-    if (!fn) continue
+    if (!fn) {
+      console.warn(`[AxisRenderer] Could not compile locus equation: ${locus.equation}`)
+      continue
+    }
     try {
       board.create('implicitcurve', [fn], attrs)
-    } catch {
-      // Implicit-curve rendering can throw on degenerate specs. Skip silently
-      // rather than tanking the whole axis block.
+    } catch (err) {
+      // Surface implicit-curve failures instead of swallowing them silently —
+      // most "blank axis" reports trace back to a specific equation the
+      // marching-squares renderer couldn't handle.
+      console.error(`[AxisRenderer] implicitcurve failed for "${locus.equation}":`, err)
     }
   }
 }
