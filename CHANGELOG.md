@@ -1874,6 +1874,7 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- fix: Render geometric loci in admin axis canvas preview ([#317](https://github.com/A-Guy-educ/A-Guy-Admin/pull/317)) — @aguyshayb
 - fix: Render circle loci via board.create('circle') ([#315](https://github.com/A-Guy-educ/A-Guy-Admin/pull/315)) — @aguyshayb
 - fix: Dispatch axis/multi-axis blocks to their own editors ([#314](https://github.com/A-Guy-educ/A-Guy-Admin/pull/314)) — @aguyshayb
 - fix: Render geometricLoci in axis blocks ([#313](https://github.com/A-Guy-educ/A-Guy-Admin/pull/313)) — @aguyshayb
