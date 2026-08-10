@@ -5,6 +5,7 @@ import type { AxisSpecV1 } from '@/infra/contracts/graphics/axis.v1'
 import type { JXGBoard, JXGElement } from 'jsxgraph'
 import { JSXGraphBoard } from '../shared/JSXGraphBoard'
 import { resolveViewport } from '@/infra/utils/graphics/viewport-utils'
+import { createLocusOnBoard } from '@/ui/shared/exerciserenderer/graphics/axisElements'
 
 interface AxisCanvasProps {
   id: string
@@ -168,6 +169,20 @@ export const AxisCanvas: React.FC<AxisCanvasProps> = ({ id, axis, onPointMoved }
           },
         )
         elementsRef.current.set(elemId, el)
+      })
+
+      // Sync geometric loci (implicit curves: x^2+y^2=1, x=c, y=c, etc.)
+      const loci = axis.elements.geometricLoci || []
+      loci.forEach((locus, index) => {
+        const elemId = `locus-${index}`
+        newIds.add(elemId)
+        const existing = elementsRef.current.get(elemId)
+        if (existing) {
+          board.removeObject(existing)
+          elementsRef.current.delete(elemId)
+        }
+        const el = createLocusOnBoard(board as unknown as JXG.Board, locus)
+        if (el) elementsRef.current.set(elemId, el as unknown as JXGElement)
       })
 
       // Remove stale elements

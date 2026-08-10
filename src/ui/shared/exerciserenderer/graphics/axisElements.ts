@@ -195,78 +195,89 @@ function tryParseCircle(equation: string): { cx: number; cy: number; r: number }
   return { cx, cy, r: Math.sqrt(rSquared) }
 }
 
+/**
+ * Create the JSXGraph primitive(s) for a single locus and return the created
+ * element (or null on failure). Extracted so the admin canvas (which tracks
+ * elements by id for incremental sync) can render loci with the exact same
+ * fast paths and fallback as the published exercise renderer.
+ */
+export function createLocusOnBoard(
+  board: JXG.Board,
+  locus: LocusSpec,
+): JXG.GeometryElement | null {
+  const attrs: Record<string, unknown> = {
+    strokeWidth: locus.thickness,
+    dash: dashFromStyle(locus.style),
+    fixed: true,
+  }
+  if (locus.color) attrs.strokeColor = locus.color
+
+  const eq = locus.equation.replace(/\s+/g, '')
+
+  // Fast paths — `$x=c$` / `$y=c$` are the overwhelmingly common curriculum
+  // authoring shape (vertical/horizontal reference lines). Handling them as
+  // proper JSXGraph `line` primitives is cheaper and looks crisper than
+  // routing them through the implicit-curve marching-squares path.
+  const vert = eq.match(/^x=(-?\d+(?:\.\d+)?)$/)
+  if (vert) {
+    const x = Number(vert[1])
+    return board.create(
+      'line',
+      [
+        [x, 0],
+        [x, 1],
+      ],
+      {
+        ...attrs,
+        straightFirst: true,
+        straightLast: true,
+      },
+    ) as JXG.GeometryElement
+  }
+  const horz = eq.match(/^y=(-?\d+(?:\.\d+)?)$/)
+  if (horz) {
+    const y = Number(horz[1])
+    return board.create(
+      'line',
+      [
+        [0, y],
+        [1, y],
+      ],
+      {
+        ...attrs,
+        straightFirst: true,
+        straightLast: true,
+      },
+    ) as JXG.GeometryElement
+  }
+
+  const circle = tryParseCircle(locus.equation)
+  if (circle) {
+    return board.create('circle', [[circle.cx, circle.cy], circle.r], {
+      ...attrs,
+      fillColor: 'none',
+    }) as JXG.GeometryElement
+  }
+
+  const fn = compileImplicit(locus.equation)
+  if (!fn) {
+    console.warn(`[AxisRenderer] Could not compile locus equation: ${locus.equation}`)
+    return null
+  }
+  try {
+    return board.create('implicitcurve', [fn], attrs) as JXG.GeometryElement
+  } catch (err) {
+    // Surface implicit-curve failures instead of swallowing them silently —
+    // most "blank axis" reports trace back to a specific equation the
+    // marching-squares renderer couldn't handle.
+    console.error(`[AxisRenderer] implicitcurve failed for "${locus.equation}":`, err)
+    return null
+  }
+}
+
 function renderGeometricLoci(board: JXG.Board, loci: LocusSpec[]) {
   for (const locus of loci) {
-    const attrs: Record<string, unknown> = {
-      strokeWidth: locus.thickness,
-      dash: dashFromStyle(locus.style),
-      fixed: true,
-    }
-    if (locus.color) attrs.strokeColor = locus.color
-
-    const eq = locus.equation.replace(/\s+/g, '')
-
-    // Fast paths — `$x=c$` / `$y=c$` are the overwhelmingly common curriculum
-    // authoring shape (vertical/horizontal reference lines). Handling them as
-    // proper JSXGraph `line` primitives is cheaper and looks crisper than
-    // routing them through the implicit-curve marching-squares path.
-    const vert = eq.match(/^x=(-?\d+(?:\.\d+)?)$/)
-    if (vert) {
-      const x = Number(vert[1])
-      board.create(
-        'line',
-        [
-          [x, 0],
-          [x, 1],
-        ],
-        {
-          ...attrs,
-          straightFirst: true,
-          straightLast: true,
-        },
-      )
-      continue
-    }
-    const horz = eq.match(/^y=(-?\d+(?:\.\d+)?)$/)
-    if (horz) {
-      const y = Number(horz[1])
-      board.create(
-        'line',
-        [
-          [0, y],
-          [1, y],
-        ],
-        {
-          ...attrs,
-          straightFirst: true,
-          straightLast: true,
-        },
-      )
-      continue
-    }
-
-    const circle = tryParseCircle(locus.equation)
-    if (circle) {
-      board.create('circle', [[circle.cx, circle.cy], circle.r], {
-        ...attrs,
-        fillColor: 'none',
-      })
-      continue
-    }
-
-    const fn = compileImplicit(locus.equation)
-    if (!fn) {
-      console.warn(`[AxisRenderer] Could not compile locus equation: ${locus.equation}`)
-      continue
-    }
-    try {
-      board.create('implicitcurve', [fn], attrs)
-    } catch (err) {
-      // Surface implicit-curve failures instead of swallowing them silently —
-      // most "blank axis" reports trace back to a specific equation the
-      // marching-squares renderer couldn't handle.
-      console.error(`[AxisRenderer] implicitcurve failed for "${locus.equation}":`, err)
-    }
+    createLocusOnBoard(board, locus)
   }
 }
 
