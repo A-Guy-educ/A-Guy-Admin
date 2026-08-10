@@ -201,10 +201,7 @@ function tryParseCircle(equation: string): { cx: number; cy: number; r: number }
  * elements by id for incremental sync) can render loci with the exact same
  * fast paths and fallback as the published exercise renderer.
  */
-export function createLocusOnBoard(
-  board: JXG.Board,
-  locus: LocusSpec,
-): JXG.GeometryElement | null {
+export function createLocusOnBoard(board: JXG.Board, locus: LocusSpec): JXG.GeometryElement | null {
   const attrs: Record<string, unknown> = {
     strokeWidth: locus.thickness,
     dash: dashFromStyle(locus.style),
