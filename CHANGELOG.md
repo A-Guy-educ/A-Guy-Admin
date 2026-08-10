@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.31.0 — 2026-08-10
+
+### Features
+- Support function-graph blocks in lesson JSON import (#310)
+- Support function-graph blocks in text lesson import (#311)
+
+### Fixes
+- Parse fraction literals and pad viewport in function DSL (#312)
+- Render geometricLoci in axis blocks (#313)
+- Dispatch axis and multi-axis blocks to their own editors (#314)
+- Render circle loci and surface implicit-curve failures (#315)
+- Render geometric loci in admin axis canvas preview (#317)
+- Render exercise-level content blocks in lesson studio (#306)
+- Render exercise-level blocks alongside sections in lesson studio (#318)
+
 ## v0.30.0 — 2026-08-05
 
 ### Features
