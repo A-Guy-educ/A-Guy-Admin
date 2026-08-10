@@ -1889,6 +1889,7 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- chore: Release v0.31.0 ([#320](https://github.com/A-Guy-educ/A-Guy-Admin/pull/320)) — @aguyshayb
 - fix: Render exercise-level blocks alongside sections in lesson studio ([#318](https://github.com/A-Guy-educ/A-Guy-Admin/pull/318)) — @aguyshayb
 - fix: Render geometric loci in admin axis canvas preview ([#317](https://github.com/A-Guy-educ/A-Guy-Admin/pull/317)) — @aguyshayb
 - fix: Render circle loci via board.create('circle') ([#315](https://github.com/A-Guy-educ/A-Guy-Admin/pull/315)) — @aguyshayb
