@@ -1889,6 +1889,8 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+## [v0.31.0] - 2026-08-10
+
 - promote: dev -> main (v0.31.0) ([#321](https://github.com/A-Guy-educ/A-Guy-Admin/pull/321)) — @aguyshayb
 - chore: Release v0.31.0 ([#320](https://github.com/A-Guy-educ/A-Guy-Admin/pull/320)) — @aguyshayb
 - fix: Render exercise-level blocks alongside sections in lesson studio ([#318](https://github.com/A-Guy-educ/A-Guy-Admin/pull/318)) — @aguyshayb
