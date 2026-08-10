@@ -30,7 +30,7 @@ function getBlockTypeLabel(block: ContentBlock): string {
 }
 
 // Lazy-load geometry/axis editors to avoid bundle bloat.
-const DynamicGraphBlock = React.lazy(() =>
+const DynamicGeometryBlock = React.lazy(() =>
   import('../ExerciseContentEditor/editors/GeometryEditor').then((m) => ({
     default: ({
       block,
@@ -41,6 +41,42 @@ const DynamicGraphBlock = React.lazy(() =>
     }) => (
       <m.GeometryEditor
         // eslint-disable-next-line @typescript-eslint/no-explicit-any -- GeometryEditor expects narrowed block type
+        block={block as any}
+        onChange={(updated: ContentBlock) => onChange(updated)}
+      />
+    ),
+  })),
+)
+
+const DynamicAxisBlock = React.lazy(() =>
+  import('../ExerciseContentEditor/editors/AxisEditor').then((m) => ({
+    default: ({
+      block,
+      onChange,
+    }: {
+      block: ContentBlock
+      onChange: (b: ContentBlock) => void
+    }) => (
+      <m.AxisEditor
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- AxisEditor expects narrowed block type
+        block={block as any}
+        onChange={(updated: ContentBlock) => onChange(updated)}
+      />
+    ),
+  })),
+)
+
+const DynamicMultiAxisBlock = React.lazy(() =>
+  import('../ExerciseContentEditor/editors/MultiAxisEditor').then((m) => ({
+    default: ({
+      block,
+      onChange,
+    }: {
+      block: ContentBlock
+      onChange: (b: ContentBlock) => void
+    }) => (
+      <m.MultiAxisEditor
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- MultiAxisEditor expects narrowed block type
         block={block as any}
         onChange={(updated: ContentBlock) => onChange(updated)}
       />
@@ -132,14 +168,30 @@ export const InlineBlockRenderer: React.FC<{
     )
   }
 
-  if (
-    block.type === 'question_geometry' ||
-    block.type === 'question_axis' ||
-    block.type === 'question_multi_axis'
-  ) {
+  // Each of these needs its own editor — GeometryEditor reads `block.geometry`,
+  // AxisEditor reads `block.axis`, MultiAxisEditor reads `block.graphs`. A
+  // shared dispatcher was crashing axis/multi-axis blocks with
+  // `Cannot read properties of undefined (reading 'elements')`.
+  if (block.type === 'question_geometry') {
     return (
       <div className="question-block-wrapper">
-        <DynamicGraphBlock block={block} onChange={onChange} />
+        <DynamicGeometryBlock block={block} onChange={onChange} />
+      </div>
+    )
+  }
+
+  if (block.type === 'question_axis') {
+    return (
+      <div className="question-block-wrapper">
+        <DynamicAxisBlock block={block} onChange={onChange} />
+      </div>
+    )
+  }
+
+  if (block.type === 'question_multi_axis') {
+    return (
+      <div className="question-block-wrapper">
+        <DynamicMultiAxisBlock block={block} onChange={onChange} />
       </div>
     )
   }

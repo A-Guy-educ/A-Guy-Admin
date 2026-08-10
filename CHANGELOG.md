@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.31.0 — 2026-08-10
+
+### Features
+- Support function-graph blocks in lesson JSON import (#310)
+- Support function-graph blocks in text lesson import (#311)
+
+### Fixes
+- Parse fraction literals and pad viewport in function DSL (#312)
+- Render geometricLoci in axis blocks (#313)
+- Dispatch axis and multi-axis blocks to their own editors (#314)
+- Render circle loci and surface implicit-curve failures (#315)
+- Render geometric loci in admin axis canvas preview (#317)
+- Render exercise-level content blocks in lesson studio (#306)
+- Render exercise-level blocks alongside sections in lesson studio (#318)
+
 ## v0.30.0 — 2026-08-05
 
 ### Features
@@ -1874,6 +1889,19 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- chore: Release v0.31.0 ([#320](https://github.com/A-Guy-educ/A-Guy-Admin/pull/320)) — @aguyshayb
+- fix: Render exercise-level blocks alongside sections in lesson studio ([#318](https://github.com/A-Guy-educ/A-Guy-Admin/pull/318)) — @aguyshayb
+- fix: Render geometric loci in admin axis canvas preview ([#317](https://github.com/A-Guy-educ/A-Guy-Admin/pull/317)) — @aguyshayb
+- fix: Render circle loci via board.create('circle') ([#315](https://github.com/A-Guy-educ/A-Guy-Admin/pull/315)) — @aguyshayb
+- fix: Dispatch axis/multi-axis blocks to their own editors ([#314](https://github.com/A-Guy-educ/A-Guy-Admin/pull/314)) — @aguyshayb
+- fix: Render geometricLoci in axis blocks ([#313](https://github.com/A-Guy-educ/A-Guy-Admin/pull/313)) — @aguyshayb
+- fix: Parse fractions and pad viewport in function DSL ([#312](https://github.com/A-Guy-educ/A-Guy-Admin/pull/312)) — @aguyshayb
+- feat: Support function-graph blocks in text lesson import ([#311](https://github.com/A-Guy-educ/A-Guy-Admin/pull/311)) — @aguyshayb
+- feat: Support function-graph blocks in lesson JSON import ([#310](https://github.com/A-Guy-educ/A-Guy-Admin/pull/310)) — @aguyshayb
+- fix: Render exercise-level content blocks in lesson studio ([#306](https://github.com/A-Guy-educ/A-Guy-Admin/pull/306)) — @aguyshayb
+## [v0.30.0] - 2026-08-05
+
+- promote: dev -> main (v0.30.0) ([#304](https://github.com/A-Guy-educ/A-Guy-Admin/pull/304)) — @aguyshayb
 - chore: Release v0.30.0 ([#303](https://github.com/A-Guy-educ/A-Guy-Admin/pull/303)) — @aguyshayb
 - chore: Remove chat-lessons collection ([#302](https://github.com/A-Guy-educ/A-Guy-Admin/pull/302)) — @aguyshayb
 - fix: Add content-visibility fields to chat-lessons collection ([#300](https://github.com/A-Guy-educ/A-Guy-Admin/pull/300)) — @aguyshayb

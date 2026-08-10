@@ -1,6 +1,7 @@
 import type {
   ContentBlock,
   InlineRichText,
+  QuestionAxisBlock,
   QuestionSelectMcqBlock,
   RichTextBlock,
   SvgBlock,
@@ -8,6 +9,7 @@ import type {
 import { generateId } from '@/server/payload/collections/Exercises/types'
 
 import type { LessonJsonContentBlock, LessonJsonExercise, LessonJsonSection } from './json-schema'
+import { parseFunctionDsl } from './parse-function-dsl'
 
 const isNonEmpty = (s: string | undefined): s is string => typeof s === 'string' && s.trim() !== ''
 
@@ -38,10 +40,27 @@ function svgBlock(value: string): SvgBlock {
   }
 }
 
+function functionBlock(source: string): QuestionAxisBlock {
+  // Malformed DSL surfaces at exercise-level validation via ContentSchema.
+  // The parser always returns a spec, so even a partially-broken input
+  // renders as an axis with whatever it could recover, which is more
+  // useful for the author than silently dropping the block.
+  const { spec } = parseFunctionDsl(source)
+  return {
+    id: generateId(),
+    type: 'question_axis',
+    prompt: inlineRichText(''),
+    layout: 'textRight',
+    axis: spec,
+    displaySize: 'full',
+  }
+}
+
 function blocksFromContext(block: LessonJsonContentBlock | undefined): ContentBlock[] {
   if (!block) return []
   const out: ContentBlock[] = []
   if (isNonEmpty(block.svg)) out.push(svgBlock(block.svg))
+  if (isNonEmpty(block.function)) out.push(functionBlock(block.function))
   if (isNonEmpty(block.text)) out.push(richTextBlock(block.text))
   return out
 }
@@ -117,6 +136,8 @@ export function convertExerciseToSections(exercise: LessonJsonExercise): Convert
     sections: exercise.exercise_content.sections.map((section, index) => {
       const blocks = [...blocksFromContext(section.section_data)]
       if (isNonEmpty(section.question.svg)) blocks.push(svgBlock(section.question.svg))
+      if (isNonEmpty(section.question.function))
+        blocks.push(functionBlock(section.question.function))
       blocks.push(buildQuestionBlock(section))
 
       return {
@@ -135,6 +156,8 @@ export function convertExerciseToBlocks(exercise: LessonJsonExercise): ContentBl
   for (const section of exercise.exercise_content.sections) {
     blocks.push(...blocksFromContext(section.section_data))
     if (isNonEmpty(section.question.svg)) blocks.push(svgBlock(section.question.svg!))
+    if (isNonEmpty(section.question.function))
+      blocks.push(functionBlock(section.question.function!))
     blocks.push(buildQuestionBlock(section))
   }
 

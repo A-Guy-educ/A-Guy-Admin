@@ -33,6 +33,7 @@ interface ExerciseDoc {
   id: string
   title?: string | null
   blocks?: unknown
+  content?: { blocks?: ContentBlock[] | null } | null
 }
 
 export interface StudioTreeSection {
@@ -44,6 +45,14 @@ export interface StudioTreeSection {
 export interface StudioTreeExercise {
   id: string
   title: string | null
+  /**
+   * Exercise-level content blocks (the exercise's own `content.blocks`). The
+   * endpoint bypasses `aggregateChildSectionContent` on the exercises read so
+   * these are always the raw own blocks, never the flattened section content.
+   * Rendered alongside sections when both are present (e.g. an intro block on
+   * an exercise that also has structured child sections).
+   */
+  blocks: ContentBlock[]
   sections: StudioTreeSection[]
 }
 
@@ -126,13 +135,19 @@ export async function lessonTreeEndpoint(req: PayloadRequest): Promise<Response>
     return Response.json({ error: 'Lesson not found' }, { status: 404 })
   }
 
-  // Fetch all exercises for this lesson in ONE query.
+  // Fetch all exercises for this lesson in ONE query. We skip
+  // `aggregateChildSectionContent` here so `exercise.content.blocks` stays as
+  // the exercise's own blocks — otherwise we can't distinguish "the exercise
+  // has intro blocks of its own" from "the hook flattened section content
+  // into content.blocks," and the studio would either drop the former or
+  // render the latter twice.
   const exercisesResult = await req.payload.find({
     collection: 'exercises',
     where: { lesson: { equals: lessonId } },
     depth: 0,
     limit: 500,
     req,
+    context: { _skipAggregateChildSectionContent: true },
   })
   const exercises = exercisesResult.docs as unknown as ExerciseDoc[]
 
@@ -179,9 +194,11 @@ export async function lessonTreeEndpoint(req: PayloadRequest): Promise<Response>
       if (id) playlistIds.push(id)
     }
     const ordered = orderByPlaylist(rawSections, playlistIds)
+    const exerciseBlocks = Array.isArray(exercise.content?.blocks) ? exercise.content.blocks : []
     return {
       id: exercise.id,
       title: exercise.title ?? null,
+      blocks: exerciseBlocks,
       sections: ordered.map((s) => ({
         id: s.id,
         title: s.title ?? null,

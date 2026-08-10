@@ -13,12 +13,14 @@
 import type {
   ContentBlock,
   InlineRichText,
+  QuestionAxisBlock,
   QuestionFreeResponseBlock,
   QuestionSelectMcqBlock,
   RichTextBlock,
   SvgBlock,
 } from '@/server/payload/collections/Exercises/types'
 import { generateId } from '@/server/payload/collections/Exercises/types'
+import { parseFunctionDsl } from '@/server/services/lesson-json-import/parse-function-dsl'
 
 import type { TextExercise, TextSection } from './parse-text'
 
@@ -34,6 +36,22 @@ function richTextBlock(value: string): RichTextBlock {
 
 function svgBlock(value: string): SvgBlock {
   return { id: generateId(), type: 'svg', value }
+}
+
+function functionBlock(source: string): QuestionAxisBlock {
+  // Mirrors lesson-json-import/convert-exercise.ts — the parser always
+  // returns a spec, so partially-broken input still renders as an axis
+  // with whatever it could recover. That's more useful for the author
+  // than silently dropping the block.
+  const { spec } = parseFunctionDsl(source)
+  return {
+    id: generateId(),
+    type: 'question_axis',
+    prompt: inlineRichText(''),
+    layout: 'textRight',
+    axis: spec,
+    displaySize: 'full',
+  }
 }
 
 function buildPrompt(section: TextSection): InlineRichText {
@@ -148,6 +166,7 @@ function convertSectionToBlocks(section: TextSection): ContentBlock[] {
 
   const leading: ContentBlock[] = []
   if (isNonEmpty(section.svg)) leading.push(svgBlock(section.svg))
+  if (isNonEmpty(section.function)) leading.push(functionBlock(section.function))
 
   if (wantsMcq) {
     const mcq = tryBuildMcqBlock(section)
@@ -178,6 +197,7 @@ export function convertTextExerciseToSections(exercise: TextExercise): Converted
   const sharedBlocks: ContentBlock[] = []
   if (isNonEmpty(exercise.intro)) sharedBlocks.push(richTextBlock(exercise.intro))
   if (isNonEmpty(exercise.svg)) sharedBlocks.push(svgBlock(exercise.svg))
+  if (isNonEmpty(exercise.function)) sharedBlocks.push(functionBlock(exercise.function))
 
   return {
     sharedBlocks,
@@ -193,9 +213,11 @@ export function convertTextExerciseToBlocks(exercise: TextExercise): ContentBloc
 
   if (isNonEmpty(exercise.intro)) blocks.push(richTextBlock(exercise.intro))
   if (isNonEmpty(exercise.svg)) blocks.push(svgBlock(exercise.svg))
+  if (isNonEmpty(exercise.function)) blocks.push(functionBlock(exercise.function))
 
   for (const section of exercise.sections) {
     if (isNonEmpty(section.svg)) blocks.push(svgBlock(section.svg))
+    if (isNonEmpty(section.function)) blocks.push(functionBlock(section.function))
 
     const wantsMcq = section.type.kind !== 'free_response' && section.options.length >= 2
 
