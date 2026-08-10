@@ -94,6 +94,17 @@ export const aggregateChildSectionContent: CollectionAfterReadHook = async ({ do
   const request = req as PayloadRequest | undefined
   if (!request?.user) return doc
   if (isContentPromotionImportRequest(request)) return doc
+  // The Lesson Studio needs the raw, unaggregated `content.blocks` so it can
+  // tell "the exercise's own intro blocks" apart from "blocks flattened up
+  // from child sections." Without the escape hatch the studio would double-
+  // render section content (once as sections, once as aggregated exercise
+  // blocks) or silently drop the exercise's own blocks when sections exist.
+  if (
+    (request.context as { _skipAggregateChildSectionContent?: boolean } | undefined)
+      ?._skipAggregateChildSectionContent
+  ) {
+    return doc
+  }
 
   const d = doc as {
     id: string
