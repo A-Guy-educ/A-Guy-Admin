@@ -39,8 +39,7 @@ export const StudioSectionEditor: React.FC<StudioSectionEditorProps> = ({
       ) : (
         <div className="studio-section-blocks">
           {blocks.map((block, index) => {
-            const handleChange = (updated: ContentBlock) =>
-              onBlockChange(sectionId, index, updated)
+            const handleChange = (updated: ContentBlock) => onBlockChange(sectionId, index, updated)
             return (
               <div key={block.id || `block-${index}`} className="studio-block-item">
                 {viewMode === 'document' ? (
