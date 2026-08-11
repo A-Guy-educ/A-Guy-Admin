@@ -29,3 +29,24 @@ export function tokenForClass(className: string): AllToken | null {
 export function isAlignToken(token: AllToken): token is AlignToken {
   return (ALIGN_TOKENS as readonly string[]).includes(token)
 }
+
+export type TokenCategory = 'color' | 'size' | 'align'
+
+export function tokenCategory(token: AllToken): TokenCategory {
+  if ((COLOR_TOKENS as readonly string[]).includes(token)) return 'color'
+  if ((SIZE_TOKENS as readonly string[]).includes(token)) return 'size'
+  return 'align'
+}
+
+export function categoryOfElement(el: Element): TokenCategory | null {
+  const tokenAttr = el.getAttribute('data-aguy-token')
+  if (tokenAttr && (ALL_TOKENS as readonly string[]).includes(tokenAttr)) {
+    return tokenCategory(tokenAttr as AllToken)
+  }
+  const cls = el.getAttribute('class') ?? ''
+  for (const c of cls.split(/\s+/)) {
+    const token = tokenForClass(c)
+    if (token) return tokenCategory(token)
+  }
+  return null
+}

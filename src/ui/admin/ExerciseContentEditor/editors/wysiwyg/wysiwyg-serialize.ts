@@ -36,13 +36,28 @@ function serializeNode(node: Node): string {
   return serializeElement(node as Element)
 }
 
+function blockToken(el: Element): string | null {
+  const dataToken = el.getAttribute('data-aguy-token')
+  if (dataToken) return dataToken
+  const cls = el.getAttribute('class')
+  if (!cls) return null
+  for (const c of cls.split(/\s+/)) {
+    const token = tokenForClass(c)
+    if (token) return token
+  }
+  return null
+}
+
+function isEffectivelyEmpty(inner: string): boolean {
+  return inner === '' || inner === '\n'
+}
+
 /**
  * Serialize a contentEditable root back to md-math-v1 source.
  *
- * Block-level nodes (`<p>`, `<div>`, `<h1>`) become paragraph lines separated
- * by `\n`. Inline nodes (`<strong>`, `<em>`, tokened spans) become their
- * markdown/directive equivalents. Empty paragraphs render as blank lines so
- * users can compose multi-line prose with obvious separation.
+ * Empty paragraphs (`<p><br></p>`) serialize to blank lines rather than a
+ * literal `\n` child — otherwise every save loop would double the blank-line
+ * count (child `\n` plus `lines.join('\n')` separator) and drift stored md.
  */
 export function serializeDomToMd(root: Element): string {
   const lines: string[] = []
@@ -59,13 +74,12 @@ export function serializeDomToMd(root: Element): string {
     const tag = el.tagName.toLowerCase()
 
     if (tag === 'p' || tag === 'div') {
-      // Preserve empty paragraphs as blank lines so line breaks survive round-trips.
       const inner = serializeChildren(el)
-      const dataToken = el.getAttribute('data-aguy-token')
-      if (dataToken) {
-        lines.push(`::${dataToken}{${inner}}`)
+      const token = blockToken(el)
+      if (token) {
+        lines.push(`::${token}{${isEffectivelyEmpty(inner) ? '' : inner}}`)
       } else {
-        lines.push(inner)
+        lines.push(isEffectivelyEmpty(inner) ? '' : inner)
       }
       return
     }

@@ -1,4 +1,6 @@
-import { ALL_TOKENS, classForToken, isAlignToken, type AllToken } from './wysiwyg-tokens'
+import { ALL_TOKENS, classForToken, type AllToken } from './wysiwyg-tokens'
+
+const WHOLE_LINE_ALIGN_RE = /^::(text-align-right)\{([\s\S]*)\}$/
 
 const DIRECTIVE_RE =
   /::(text-(?:wine-red|blue|green|dark-orange|size-(?:small|normal|large|xlarge)|align-right))\{([^}]*)\}/
@@ -40,14 +42,22 @@ function renderMatch(m: { kind: 'bold' | 'italic' | 'directive'; inner: string; 
   if (m.kind === 'italic') return `<em>${parseInline(m.inner)}</em>`
   const token = m.token!
   if (!(ALL_TOKENS as readonly string[]).includes(token)) return escapeHtml(m.inner)
-  const tag = isAlignToken(token) ? 'div' : 'span'
-  return `<${tag} class="${classForToken(token)}" data-aguy-token="${token}">${parseInline(m.inner)}</${tag}>`
+  // Always emit a <span> for inline directives — a <div> inside a <p> is
+  // invalid HTML and browsers auto-split it. Whole-line align tokens are
+  // hoisted to a class on the enclosing <p> in parseBlock instead.
+  return `<span class="${classForToken(token)}" data-aguy-token="${token}">${parseInline(m.inner)}</span>`
 }
 
 function parseBlock(line: string): string {
   const trimmed = line.trimStart()
   if (trimmed.startsWith('# ')) {
     return `<h1>${parseInline(trimmed.slice(2))}</h1>`
+  }
+  const alignMatch = trimmed.match(WHOLE_LINE_ALIGN_RE)
+  if (alignMatch) {
+    const token = alignMatch[1] as AllToken
+    const inner = parseInline(alignMatch[2]) || '<br>'
+    return `<p class="${classForToken(token)}" data-aguy-token="${token}">${inner}</p>`
   }
   return `<p>${parseInline(line) || '<br>'}</p>`
 }

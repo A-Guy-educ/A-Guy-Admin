@@ -1,49 +1,94 @@
-import { classForToken, tokenForClass, isAlignToken, type AllToken } from './wysiwyg-tokens'
+import {
+  classForToken,
+  tokenForClass,
+  isAlignToken,
+  categoryOfElement,
+  tokenCategory,
+  type AllToken,
+  type TokenCategory,
+} from './wysiwyg-tokens'
+import {
+  currentRange,
+  unwrap,
+  findAncestor,
+  stripDescendants,
+  selectContents,
+  findEnclosingBlock,
+} from './wysiwyg-dom'
 
-function currentRange(root: HTMLElement): Range | null {
-  const sel = window.getSelection()
-  if (!sel || sel.rangeCount === 0) return null
-  const range = sel.getRangeAt(0)
-  if (!root.contains(range.commonAncestorContainer)) return null
-  return range
-}
-
-function wrapRange(range: Range, wrapper: HTMLElement): void {
-  const contents = range.extractContents()
-  wrapper.appendChild(contents)
-  range.insertNode(wrapper)
-
-  const sel = window.getSelection()
-  if (!sel) return
-  sel.removeAllRanges()
-  const newRange = document.createRange()
-  newRange.selectNodeContents(wrapper)
-  sel.addRange(newRange)
-}
-
+/**
+ * Wrap the current selection in `<strong>` or `<em>`. If the selection is
+ * already inside a same-tag ancestor we toggle it off — two clicks on Bold
+ * mustn't produce `<strong><strong>`, which would serialize to `****text****`
+ * and parse ambiguously on reload.
+ */
 export function applyInlineMark(root: HTMLElement, tag: 'strong' | 'em'): void {
   const range = currentRange(root)
   if (!range || range.collapsed) return
-  wrapRange(range, document.createElement(tag))
+
+  const matchTag = (el: Element) => el.tagName.toLowerCase() === tag
+  const ancestor = findAncestor(range, root, matchTag)
+  if (ancestor) {
+    unwrap(ancestor)
+    return
+  }
+
+  const contents = range.extractContents()
+  stripDescendants(contents, matchTag)
+  const wrapper = document.createElement(tag)
+  wrapper.appendChild(contents)
+  range.insertNode(wrapper)
+  selectContents(wrapper)
 }
 
+function applyAlignToBlock(root: HTMLElement, range: Range, token: AllToken): void {
+  const block = findEnclosingBlock(range, root)
+  if (!block) return
+  // Align is a single-slot property on the block; strip any prior align class
+  // before setting the new one so re-clicking replaces instead of nesting.
+  for (const c of Array.from(block.classList)) {
+    const tok = tokenForClass(c)
+    if (tok && tokenCategory(tok) === 'align') block.classList.remove(c)
+  }
+  block.classList.add(classForToken(token))
+  block.setAttribute('data-aguy-token', token)
+}
+
+/**
+ * Wrap the current selection in a tokened `<span>`. Same-category ancestors
+ * (color-in-color, size-in-size) are absorbed by expanding the range and
+ * stripping the old wrapper — picking a new color for the same range replaces
+ * the previous one instead of nesting `::green{::blue{...}}`, which would
+ * corrupt storage because the outer directive regex closes on the inner `}`.
+ * Align tokens are applied as a class on the enclosing block instead, since a
+ * `<div>` inside a `<p>` is invalid HTML and browsers auto-split it.
+ */
 export function applyToken(root: HTMLElement, token: AllToken): void {
   const range = currentRange(root)
   if (!range || range.collapsed) return
 
-  const tagName = isAlignToken(token) ? 'div' : 'span'
-  const wrapper = document.createElement(tagName)
+  if (isAlignToken(token)) {
+    applyAlignToBlock(root, range, token)
+    return
+  }
+
+  const category: TokenCategory = tokenCategory(token)
+  const sameCategory = (el: Element) => categoryOfElement(el) === category
+
+  const ancestor = findAncestor(range, root, sameCategory)
+  if (ancestor) range.selectNode(ancestor)
+
+  const contents = range.extractContents()
+  stripDescendants(contents, sameCategory)
+
+  const wrapper = document.createElement('span')
   wrapper.className = classForToken(token)
   wrapper.setAttribute('data-aguy-token', token)
-  wrapRange(range, wrapper)
+  wrapper.appendChild(contents)
+  range.insertNode(wrapper)
+  selectContents(wrapper)
 }
 
-/**
- * Insert literal `before + selection + after` at the current caret. Used for
- * source-only constructs (math `$...$`, code `` `...` ``, links) that don't
- * have a WYSIWYG representation in this first cut — users see and edit them
- * inline as text.
- */
 export function insertAround(root: HTMLElement, before: string, after: string): void {
   const range = currentRange(root)
   if (!range) return
@@ -65,61 +110,27 @@ export function insertAround(root: HTMLElement, before: string, after: string): 
 export function insertHeading(root: HTMLElement): void {
   const range = currentRange(root)
   if (!range) return
+  const block = findEnclosingBlock(range, root)
+  if (!block) return
 
-  let block: Node | null = range.startContainer
-  while (block && block !== root && block.nodeType !== Node.ELEMENT_NODE) {
-    block = block.parentNode
-  }
-  while (block && block.parentNode !== root) {
-    block = block.parentNode
-  }
-  if (!block || block === root) return
-
-  const el = block as Element
   const heading = document.createElement('h1')
-  heading.innerHTML = el.innerHTML
-  el.replaceWith(heading)
-
+  heading.innerHTML = block.innerHTML
+  block.replaceWith(heading)
+  selectContents(heading)
   const sel = window.getSelection()
-  if (!sel) return
-  sel.removeAllRanges()
-  const newRange = document.createRange()
-  newRange.selectNodeContents(heading)
-  newRange.collapse(false)
-  sel.addRange(newRange)
+  sel?.getRangeAt(0).collapse(false)
 }
 
-/**
- * Strip tokened/inline formatting from the current selection. Walks up from
- * text nodes and unwraps any known formatting element (strong, em, or a
- * tokened span/div) so the selected text collapses back to plain prose.
- */
 export function clearFormatting(root: HTMLElement): void {
   const range = currentRange(root)
   if (!range || range.collapsed) return
 
   const contents = range.extractContents()
-  const walker = document.createTreeWalker(contents, NodeFilter.SHOW_ELEMENT)
-  const toUnwrap: Element[] = []
-
-  let current = walker.nextNode() as Element | null
-  while (current) {
-    const tag = current.tagName.toLowerCase()
-    const cls = current.getAttribute('class') ?? ''
-    const isMark = tag === 'strong' || tag === 'em' || tag === 'b' || tag === 'i'
-    const isToken =
-      current.hasAttribute('data-aguy-token') ||
-      cls.split(/\s+/).some((c) => tokenForClass(c) !== null)
-    if (isMark || isToken) toUnwrap.push(current)
-    current = walker.nextNode() as Element | null
-  }
-
-  for (const el of toUnwrap) {
-    const parent = el.parentNode
-    if (!parent) continue
-    while (el.firstChild) parent.insertBefore(el.firstChild, el)
-    parent.removeChild(el)
-  }
-
+  stripDescendants(contents, (el) => {
+    const tag = el.tagName.toLowerCase()
+    if (tag === 'strong' || tag === 'em' || tag === 'b' || tag === 'i') return true
+    const cat = categoryOfElement(el)
+    return cat !== null && cat !== 'align'
+  })
   range.insertNode(contents)
 }

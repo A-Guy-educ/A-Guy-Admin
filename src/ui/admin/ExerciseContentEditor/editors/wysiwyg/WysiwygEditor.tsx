@@ -43,19 +43,21 @@ export const WysiwygEditor = React.forwardRef<WysiwygEditorHandle, WysiwygEditor
     const rootRef = React.useRef<HTMLDivElement>(null)
     const lastEmittedRef = React.useRef<string>(value)
 
-    React.useEffect(() => {
+    const hydrate = React.useCallback((source: string) => {
       const root = rootRef.current
       if (!root) return
-      if (value === lastEmittedRef.current) return
-      root.innerHTML = parseMdToHtml(value)
-      lastEmittedRef.current = value
-    }, [value])
+      root.innerHTML = parseMdToHtml(source)
+      lastEmittedRef.current = source
+      root.setAttribute('data-empty', source.trim() === '' ? 'true' : 'false')
+    }, [])
 
     React.useEffect(() => {
-      const root = rootRef.current
-      if (!root) return
-      root.innerHTML = parseMdToHtml(value)
-      lastEmittedRef.current = value
+      if (value === lastEmittedRef.current) return
+      hydrate(value)
+    }, [value, hydrate])
+
+    React.useEffect(() => {
+      hydrate(value)
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
@@ -64,6 +66,7 @@ export const WysiwygEditor = React.forwardRef<WysiwygEditorHandle, WysiwygEditor
       if (!root) return
       const md = serializeDomToMd(root)
       lastEmittedRef.current = md
+      root.setAttribute('data-empty', md.trim() === '' ? 'true' : 'false')
       onChange(md)
     }, [onChange])
 

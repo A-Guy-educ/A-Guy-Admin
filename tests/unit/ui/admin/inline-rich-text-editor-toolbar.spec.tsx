@@ -264,6 +264,97 @@ describe('InlineRichTextEditor toolbar (Issue #110)', () => {
     expect(screen.getByTestId('rte-preview').textContent).toContain('Enter text')
   })
 
+  it('replaces (does not nest) when a second color is applied to the same range', async () => {
+    const { onChange } = renderEditor({ value: 'abc' })
+
+    selectTextInEditor('abc')
+    fireEvent.click(screen.getByTestId('rte-color-toggle'))
+    await screen.findByTestId('rte-color-picker')
+    fireEvent.click(screen.getByTestId('rte-color-text-wine-red'))
+    await waitFor(() => expect(onChange).toHaveBeenCalled())
+
+    selectTextInEditor('abc')
+    fireEvent.click(screen.getByTestId('rte-color-toggle'))
+    await screen.findByTestId('rte-color-picker')
+    fireEvent.click(screen.getByTestId('rte-color-text-blue'))
+
+    await waitFor(() => {
+      const last = onChange.mock.calls.at(-1)?.[0]?.value
+      // Must NOT be `::text-wine-red{::text-blue{abc}}` — nested directives
+      // corrupt on reload because the outer regex closes on the inner `}`.
+      expect(last).toBe('::text-blue{abc}')
+    })
+  })
+
+  it('replaces (does not nest) when a second size is applied to the same range', async () => {
+    const { onChange } = renderEditor({ value: 'abc' })
+
+    selectTextInEditor('abc')
+    fireEvent.click(screen.getByTestId('rte-size-text-size-small'))
+    await waitFor(() => expect(onChange).toHaveBeenCalled())
+
+    selectTextInEditor('abc')
+    fireEvent.click(screen.getByTestId('rte-size-text-size-large'))
+
+    await waitFor(() => {
+      const last = onChange.mock.calls.at(-1)?.[0]?.value
+      expect(last).toBe('::text-size-large{abc}')
+    })
+  })
+
+  it('toggles bold off when applied twice to the same selection', async () => {
+    const { onChange } = renderEditor({ value: 'abc' })
+
+    selectTextInEditor('abc')
+    fireEvent.click(screen.getByTestId('rte-bold'))
+    await waitFor(() => expect(onChange).toHaveBeenCalled())
+    expect(onChange.mock.calls.at(-1)?.[0]?.value).toBe('**abc**')
+
+    selectTextInEditor('abc')
+    fireEvent.click(screen.getByTestId('rte-bold'))
+    await waitFor(() => {
+      const last = onChange.mock.calls.at(-1)?.[0]?.value
+      expect(last).toBe('abc')
+    })
+  })
+
+  it('applies align-right as a class on the enclosing <p>, not a nested <div>', async () => {
+    const { onChange } = renderEditor({ value: 'abc' })
+    selectTextInEditor('abc')
+
+    fireEvent.click(screen.getByTestId('rte-align-right'))
+
+    await waitFor(() => expect(onChange).toHaveBeenCalled())
+    const wysiwyg = screen.getByTestId('rte-wysiwyg')
+    // No <div> inside a <p> — a browser will silently split that.
+    expect(wysiwyg.querySelector('p > div')).toBeNull()
+    // The <p> itself carries the align-right marker.
+    const p = wysiwyg.querySelector('p')!
+    expect(p.getAttribute('data-aguy-token')).toBe('text-align-right')
+    expect(p.classList.contains('aguy-text-align-right')).toBe(true)
+    expect(onChange.mock.calls.at(-1)?.[0]?.value).toBe('::text-align-right{abc}')
+  })
+
+  it('does not double blank lines on round-trip of empty paragraphs', async () => {
+    // Empty initial value → contentEditable renders <p><br></p>. Simulating an
+    // input event serializes that back to md and must NOT emit `\n` per empty
+    // paragraph, otherwise every save loop would grow the blank-line count.
+    const { onChange } = renderEditor({ value: '' })
+    const wysiwyg = screen.getByTestId('rte-wysiwyg')
+    fireEvent.input(wysiwyg)
+
+    await waitFor(() => expect(onChange).toHaveBeenCalled())
+    const emitted = onChange.mock.calls.at(-1)?.[0]?.value
+    expect(emitted).toBe('')
+  })
+
+  it('shows the placeholder overlay while the editor is empty', () => {
+    renderEditor({ value: '' })
+    const wysiwyg = screen.getByTestId('rte-wysiwyg')
+    expect(wysiwyg.getAttribute('data-empty')).toBe('true')
+    expect(wysiwyg.getAttribute('data-placeholder')).toBe('Enter text...')
+  })
+
   it('renders wine red swatch background via the toolbar-color-swatch--wine-red class', () => {
     renderEditor()
     const swatch = document.querySelector('.toolbar-color-swatch--wine-red')
