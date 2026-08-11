@@ -1889,6 +1889,7 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- fix: Show inline rich-text toolbar by default in Lesson Studio ([#325](https://github.com/A-Guy-educ/A-Guy-Admin/pull/325)) — @aguyshayb
 - feat: Studio doc view - graphs, SVG, LaTeX + RTL fix ([#324](https://github.com/A-Guy-educ/A-Guy-Admin/pull/324)) — @aguyshayb
 - feat: Lesson studio document-mode demo ([#323](https://github.com/A-Guy-educ/A-Guy-Admin/pull/323)) — @aguyshayb
 ## [v0.31.0] - 2026-08-10
