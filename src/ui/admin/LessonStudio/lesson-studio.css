@@ -565,3 +565,37 @@
   color: var(--theme-elevation-500);
   font-style: italic;
 }
+
+/* ---------- Graph / SVG / LaTeX previews ----------
+   These wrap the live runtime renderers (`AxisRenderer`, `GeometryRenderer`,
+   `MultiAxisRenderer`, `SvgRenderer`, `LatexBlockRenderer`). Interactive
+   surfaces inside them are neutralised so the StudioDocBlock wrapper's click
+   handler wins — otherwise a JSXGraph board would swallow the click and the
+   admin couldn't enter edit mode by clicking the graph itself. */
+.studio-doc-graph-canvas,
+.studio-doc-svg,
+.studio-doc-graph .jxgbox {
+  pointer-events: none;
+}
+
+.studio-doc-graph {
+  margin-top: 8px;
+}
+
+.studio-doc-graph-canvas {
+  padding: 8px 0;
+}
+
+.studio-doc-svg {
+  padding: 8px 0;
+  max-width: 100%;
+}
+
+.studio-doc-svg svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.studio-doc-latex {
+  padding: 4px 0;
+}

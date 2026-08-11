@@ -5,6 +5,11 @@ import type { ContentBlock } from '@/server/payload/collections/Exercises/types'
 import { InlineBlockRenderer } from '../LessonBlocksField/InlineBlockRenderer'
 import { RichTextDocView } from './docViews/RichTextDocView'
 import { QuestionDocView } from './docViews/QuestionDocView'
+import { LatexDocView } from './docViews/LatexDocView'
+import { SvgDocView } from './docViews/SvgDocView'
+import { AxisDocView } from './docViews/AxisDocView'
+import { GeometryDocView } from './docViews/GeometryDocView'
+import { MultiAxisDocView } from './docViews/MultiAxisDocView'
 
 interface StudioDocBlockProps {
   block: ContentBlock
@@ -73,6 +78,21 @@ function DocView({ block }: { block: ContentBlock }) {
   if (block.type === 'question_select' || block.type === 'question_free_response') {
     return <QuestionDocView block={block} />
   }
+  if (block.type === 'latex') {
+    return <LatexDocView block={block} />
+  }
+  if (block.type === 'svg') {
+    return <SvgDocView block={block} />
+  }
+  if (block.type === 'question_axis') {
+    return <AxisDocView block={block} />
+  }
+  if (block.type === 'question_geometry') {
+    return <GeometryDocView block={block} />
+  }
+  if (block.type === 'question_multi_axis') {
+    return <MultiAxisDocView block={block} />
+  }
   return <UnsupportedDocView block={block} />
 }
 
@@ -92,20 +112,10 @@ function describeBlock(block: ContentBlock): string {
       return 'Table question'
     case 'question_matching':
       return 'Matching question'
-    case 'question_geometry':
-      return 'Geometry question'
-    case 'question_axis':
-      return 'Axis question'
-    case 'question_multi_axis':
-      return 'Multi-axis question'
-    case 'svg':
-      return 'SVG image'
     case 'html':
       return 'HTML block'
     case 'media':
       return 'Media'
-    case 'latex':
-      return 'LaTeX block'
     default:
       return block.type
   }
