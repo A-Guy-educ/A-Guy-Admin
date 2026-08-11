@@ -1,4 +1,21 @@
-export const COLOR_TOKENS = ['text-wine-red', 'text-blue', 'text-green', 'text-dark-orange'] as const
+// text-highlight-1..8 are the legacy 8-color palette. Not offered in the
+// toolbar anymore, but stored content from older lessons still contains them
+// and remark-color-syntax renders them — keep them recognised so admins can
+// see and clear them in the wysiwyg surface.
+export const COLOR_TOKENS = [
+  'text-wine-red',
+  'text-blue',
+  'text-green',
+  'text-dark-orange',
+  'text-highlight-1',
+  'text-highlight-2',
+  'text-highlight-3',
+  'text-highlight-4',
+  'text-highlight-5',
+  'text-highlight-6',
+  'text-highlight-7',
+  'text-highlight-8',
+] as const
 
 export const SIZE_TOKENS = [
   'text-size-small',

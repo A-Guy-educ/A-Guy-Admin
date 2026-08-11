@@ -3,7 +3,7 @@ import { ALL_TOKENS, classForToken, type AllToken } from './wysiwyg-tokens'
 const WHOLE_LINE_ALIGN_RE = /^::(text-align-right)\{([\s\S]*)\}$/
 
 const DIRECTIVE_RE =
-  /::(text-(?:wine-red|blue|green|dark-orange|size-(?:small|normal|large|xlarge)|align-right))\{([^}]*)\}/
+  /::(text-(?:highlight-[1-8]|wine-red|blue|green|dark-orange|size-(?:small|normal|large|xlarge)|align-right))\{([^}]*)\}/
 const BOLD_RE = /\*\*([^*\n]+)\*\*/
 const ITALIC_RE = /(?<!\*)\*(?!\*)([^*\n]+?)\*(?!\*)/
 

@@ -355,6 +355,104 @@ describe('InlineRichTextEditor toolbar (Issue #110)', () => {
     expect(wysiwyg.getAttribute('data-placeholder')).toBe('Enter text...')
   })
 
+  it('clears formatting when the selection sits inside a color span (double-click gesture)', async () => {
+    const { onChange } = renderEditor({ value: '::text-wine-red{colored}' })
+    // Simulate double-click: select the text INSIDE the wrapper span.
+    selectTextInEditor('colored')
+
+    fireEvent.click(screen.getByTestId('rte-clear'))
+
+    await waitFor(() => expect(onChange).toHaveBeenCalled())
+    const last = onChange.mock.calls.at(-1)?.[0]?.value
+    expect(last).toBe('colored')
+  })
+
+  it('clears formatting when the selection sits inside a bold span', async () => {
+    const { onChange } = renderEditor({ value: '**bold**' })
+    selectTextInEditor('bold')
+
+    fireEvent.click(screen.getByTestId('rte-clear'))
+
+    await waitFor(() => expect(onChange).toHaveBeenCalled())
+    const last = onChange.mock.calls.at(-1)?.[0]?.value
+    expect(last).toBe('bold')
+  })
+
+  it('applies align-right on a bare caret (no selection required)', async () => {
+    const { onChange } = renderEditor({ value: 'abc' })
+    // Collapsed caret inside the paragraph
+    const wysiwyg = screen.getByTestId('rte-wysiwyg')
+    const textNode = wysiwyg.querySelector('p')!.firstChild as Text
+    const range = document.createRange()
+    range.setStart(textNode, 1)
+    range.setEnd(textNode, 1)
+    const sel = window.getSelection()!
+    sel.removeAllRanges()
+    sel.addRange(range)
+
+    fireEvent.click(screen.getByTestId('rte-align-right'))
+
+    await waitFor(() => expect(onChange).toHaveBeenCalled())
+    const last = onChange.mock.calls.at(-1)?.[0]?.value
+    expect(last).toBe('::text-align-right{abc}')
+  })
+
+  it('preserves alignment when converting an aligned paragraph to a heading', async () => {
+    const { onChange } = renderEditor({ value: '::text-align-right{title}' })
+    selectTextInEditor('title')
+
+    fireEvent.click(screen.getByTestId('rte-heading'))
+
+    await waitFor(() => expect(onChange).toHaveBeenCalled())
+    const last = onChange.mock.calls.at(-1)?.[0]?.value
+    // The paragraph became an <h1> but the align-right marker survives.
+    expect(last).toBe('# title')
+    const wysiwyg = screen.getByTestId('rte-wysiwyg')
+    const h1 = wysiwyg.querySelector('h1')!
+    expect(h1.getAttribute('data-aguy-token')).toBe('text-align-right')
+    expect(h1.classList.contains('aguy-text-align-right')).toBe(true)
+  })
+
+  it('parses legacy text-highlight-1..8 directives from stored content', () => {
+    renderEditor({ value: '::text-highlight-3{legacy}' })
+    const wysiwyg = screen.getByTestId('rte-wysiwyg')
+    // The legacy palette is not offered in the toolbar anymore, but stored
+    // content must still render as a span (not as literal `::text-highlight-…` text).
+    expect(wysiwyg.querySelector('.aguy-text-highlight-3')).not.toBeNull()
+    expect(wysiwyg.textContent).toContain('legacy')
+    expect(wysiwyg.textContent).not.toContain('::text-highlight-3')
+  })
+
+  it('coerces pasted HTML to plain text (no arbitrary DOM injection)', async () => {
+    const { onChange } = renderEditor({ value: '' })
+    const wysiwyg = screen.getByTestId('rte-wysiwyg')
+
+    // Put a caret in the empty paragraph.
+    const p = wysiwyg.querySelector('p')!
+    const range = document.createRange()
+    range.selectNodeContents(p)
+    range.collapse(true)
+    const sel = window.getSelection()!
+    sel.removeAllRanges()
+    sel.addRange(range)
+
+    // Simulate a paste with dangerous HTML + a plain-text fallback. jsdom
+    // has no DataTransfer, so shim the shape the handler reads.
+    const store: Record<string, string> = {
+      'text/plain': 'hello world',
+      'text/html': '<img src="x" onerror="window.__pwned=true">',
+    }
+    fireEvent.paste(wysiwyg, {
+      clipboardData: { getData: (t: string) => store[t] ?? '' },
+    })
+
+    await waitFor(() => expect(onChange).toHaveBeenCalled())
+    // The DOM must contain the plain text, no <img>, and no side effect fired.
+    expect(wysiwyg.querySelector('img')).toBeNull()
+    expect(wysiwyg.textContent).toContain('hello world')
+    expect((globalThis as { __pwned?: boolean }).__pwned).toBeUndefined()
+  })
+
   it('renders wine red swatch background via the toolbar-color-swatch--wine-red class', () => {
     renderEditor()
     const swatch = document.querySelector('.toolbar-color-swatch--wine-red')

@@ -16,12 +16,7 @@ import {
   findEnclosingBlock,
 } from './wysiwyg-dom'
 
-/**
- * Wrap the current selection in `<strong>` or `<em>`. If the selection is
- * already inside a same-tag ancestor we toggle it off — two clicks on Bold
- * mustn't produce `<strong><strong>`, which would serialize to `****text****`
- * and parse ambiguously on reload.
- */
+/** Toggle bold/italic on selection. Same-tag ancestor unwraps (Word-style). */
 export function applyInlineMark(root: HTMLElement, tag: 'strong' | 'em'): void {
   const range = currentRange(root)
   if (!range || range.collapsed) return
@@ -55,22 +50,24 @@ function applyAlignToBlock(root: HTMLElement, range: Range, token: AllToken): vo
 }
 
 /**
- * Wrap the current selection in a tokened `<span>`. Same-category ancestors
- * (color-in-color, size-in-size) are absorbed by expanding the range and
- * stripping the old wrapper — picking a new color for the same range replaces
- * the previous one instead of nesting `::green{::blue{...}}`, which would
- * corrupt storage because the outer directive regex closes on the inner `}`.
- * Align tokens are applied as a class on the enclosing block instead, since a
- * `<div>` inside a `<p>` is invalid HTML and browsers auto-split it.
+ * Wrap selection in a tokened <span>. Same-category ancestors are absorbed
+ * (picking a new color replaces the old one; nesting `::green{::blue{...}}`
+ * would corrupt storage since the outer regex closes on the inner `}`).
+ * Align tokens land as a class on the enclosing block — <div>-in-<p> is
+ * invalid and browsers auto-split it.
  */
 export function applyToken(root: HTMLElement, token: AllToken): void {
   const range = currentRange(root)
-  if (!range || range.collapsed) return
+  if (!range) return
 
+  // Align is a block-level property, so applying it with just a caret
+  // (no text selected) is the natural gesture — no need to require a range.
   if (isAlignToken(token)) {
     applyAlignToBlock(root, range, token)
     return
   }
+
+  if (range.collapsed) return
 
   const category: TokenCategory = tokenCategory(token)
   const sameCategory = (el: Element) => categoryOfElement(el) === category
@@ -115,6 +112,12 @@ export function insertHeading(root: HTMLElement): void {
 
   const heading = document.createElement('h1')
   heading.innerHTML = block.innerHTML
+  // Preserve block-level attrs like align-right — otherwise turning a right-
+  // aligned <p> into a heading silently drops the alignment.
+  const cls = block.getAttribute('class')
+  if (cls) heading.setAttribute('class', cls)
+  const dataToken = block.getAttribute('data-aguy-token')
+  if (dataToken) heading.setAttribute('data-aguy-token', dataToken)
   block.replaceWith(heading)
   selectContents(heading)
   const sel = window.getSelection()
@@ -125,12 +128,22 @@ export function clearFormatting(root: HTMLElement): void {
   const range = currentRange(root)
   if (!range || range.collapsed) return
 
-  const contents = range.extractContents()
-  stripDescendants(contents, (el) => {
+  const isFormatting = (el: Element) => {
     const tag = el.tagName.toLowerCase()
     if (tag === 'strong' || tag === 'em' || tag === 'b' || tag === 'i') return true
     const cat = categoryOfElement(el)
     return cat !== null && cat !== 'align'
-  })
+  }
+
+  // Double-click a colored word → the wrapper is an ancestor of the range,
+  // not a descendant of the extracted fragment. Unwrap those first.
+  let ancestor = findAncestor(range, root, isFormatting)
+  while (ancestor) {
+    unwrap(ancestor)
+    ancestor = findAncestor(range, root, isFormatting)
+  }
+
+  const contents = range.extractContents()
+  stripDescendants(contents, isFormatting)
   range.insertNode(contents)
 }

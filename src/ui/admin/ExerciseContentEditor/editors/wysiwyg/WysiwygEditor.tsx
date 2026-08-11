@@ -103,6 +103,25 @@ export const WysiwygEditor = React.forwardRef<WysiwygEditorHandle, WysiwygEditor
       [emitChange],
     )
 
+    // Force paste to insert as plain text. A contentEditable would otherwise
+    // accept arbitrary HTML from the clipboard, including `<img onerror=…>`
+    // which fires JS in the admin origin before we ever get a chance to
+    // serialize the DOM back to md.
+    const handlePaste = React.useCallback(
+      (e: React.ClipboardEvent<HTMLDivElement>) => {
+        e.preventDefault()
+        const text = e.clipboardData.getData('text/plain')
+        if (!text) return
+        const range = window.getSelection()?.getRangeAt(0)
+        if (!range) return
+        range.deleteContents()
+        range.insertNode(document.createTextNode(text))
+        range.collapse(false)
+        emitChange()
+      },
+      [emitChange],
+    )
+
     return (
       <div
         ref={rootRef}
@@ -114,6 +133,7 @@ export const WysiwygEditor = React.forwardRef<WysiwygEditorHandle, WysiwygEditor
         data-testid="rte-wysiwyg"
         dir="auto"
         onInput={emitChange}
+        onPaste={handlePaste}
       />
     )
   },
