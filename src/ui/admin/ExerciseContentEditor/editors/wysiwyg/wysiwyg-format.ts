@@ -1,11 +1,4 @@
-import {
-  classForToken,
-  isAlignToken,
-  categoryOfElement,
-  tokenCategory,
-  type AllToken,
-  type TokenCategory,
-} from './wysiwyg-tokens'
+import { isAlignToken, categoryOfElement, tokenCategory, type AllToken } from './wysiwyg-tokens'
 import {
   currentRange,
   unwrap,
@@ -13,12 +6,14 @@ import {
   stripDescendants,
   selectContents,
   findEnclosingBlock,
+  blocksInRange,
 } from './wysiwyg-dom'
 import { applyAlignToBlock, removeAlignFromBlock } from './wysiwyg-align'
+import { forEachBlockRange, wrapMark, wrapToken } from './wysiwyg-per-block'
 
 // Every action returns `true` when it mutated the DOM so the WysiwygEditor
-// can skip a spurious onChange on no-op clicks (Bold with a bare caret would
-// otherwise emit the same value and wake up autosave / dirty-flag).
+// can skip a spurious onChange on no-op clicks (Bold with a bare caret
+// otherwise wakes autosave / dirty-flag).
 
 /** Toggle bold/italic on selection. Same-tag ancestor unwraps (Word-style). */
 export function applyInlineMark(root: HTMLElement, tag: 'strong' | 'em'): boolean {
@@ -31,45 +26,37 @@ export function applyInlineMark(root: HTMLElement, tag: 'strong' | 'em'): boolea
     unwrap(ancestor)
     return true
   }
-
-  const contents = range.extractContents()
-  stripDescendants(contents, matchTag)
-  const wrapper = document.createElement(tag)
-  wrapper.appendChild(contents)
-  range.insertNode(wrapper)
-  selectContents(wrapper)
-  return true
+  return forEachBlockRange(range, root, (r) => wrapMark(r, tag))
 }
 
 // Wrap selection in a tokened <span>. Same-category ancestors are absorbed
 // (green→blue replaces instead of nesting `::green{::blue{...}}`, which the
-// outer regex would truncate at the inner `}`). Align tokens go on the
-// enclosing block — <div>-in-<p> is invalid and browsers auto-split it.
+// outer regex would truncate at `}`). Align tokens go on the block — <div>
+// inside <p> is invalid HTML.
 export function applyToken(root: HTMLElement, token: AllToken): boolean {
   const range = currentRange(root)
   if (!range) return false
 
-  // Align is a block property — bare caret is fine, no selection required.
-  if (isAlignToken(token)) return applyAlignToBlock(root, range, token)
+  if (isAlignToken(token)) {
+    const blocks = blocksInRange(range, root)
+    if (blocks.length === 0) return applyAlignToBlock(root, range, token)
+    let any = false
+    for (const b of blocks) {
+      const r = document.createRange()
+      r.selectNodeContents(b)
+      if (applyAlignToBlock(root, r, token)) any = true
+    }
+    return any
+  }
 
   if (range.collapsed) return false
 
-  const category: TokenCategory = tokenCategory(token)
+  const category = tokenCategory(token)
   const sameCategory = (el: Element) => categoryOfElement(el) === category
-
   const ancestor = findAncestor(range, root, sameCategory)
   if (ancestor) range.selectNode(ancestor)
 
-  const contents = range.extractContents()
-  stripDescendants(contents, sameCategory)
-
-  const wrapper = document.createElement('span')
-  wrapper.className = classForToken(token)
-  wrapper.setAttribute('data-aguy-token', token)
-  wrapper.appendChild(contents)
-  range.insertNode(wrapper)
-  selectContents(wrapper)
-  return true
+  return forEachBlockRange(range, root, (r) => wrapToken(r, token, category))
 }
 
 export function insertAround(root: HTMLElement, before: string, after: string): boolean {
@@ -111,12 +98,13 @@ export function clearFormatting(root: HTMLElement): boolean {
   const range = currentRange(root)
   if (!range) return false
 
-  // Block-level align is cleared regardless of whether text is selected — it
-  // sits on the enclosing paragraph, not on the range itself.
-  const block = findEnclosingBlock(range, root)
-  const alignCleared = block ? removeAlignFromBlock(block) : false
+  // Block-level align sits on the paragraph, not the range — clear on every
+  // block the range touches (Ctrl+A + Clear must unalign all of them).
+  const blocks = blocksInRange(range, root)
+  let mutated = false
+  for (const b of blocks) if (removeAlignFromBlock(b)) mutated = true
 
-  if (range.collapsed) return alignCleared
+  if (range.collapsed) return mutated
 
   const isFormatting = (el: Element) => {
     const tag = el.tagName.toLowerCase()
@@ -125,9 +113,8 @@ export function clearFormatting(root: HTMLElement): boolean {
     return cat !== null && cat !== 'align'
   }
 
-  let mutated = alignCleared
-  // Double-click a colored word → the wrapper is an ancestor of the range,
-  // not a descendant of the extracted fragment. Unwrap those first.
+  // Double-click a colored word → wrapper is an ancestor of the range, not a
+  // descendant of the extracted fragment. Unwrap those first.
   let ancestor = findAncestor(range, root, isFormatting)
   while (ancestor) {
     unwrap(ancestor)

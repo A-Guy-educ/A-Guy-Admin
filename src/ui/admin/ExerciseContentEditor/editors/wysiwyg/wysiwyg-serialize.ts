@@ -14,7 +14,9 @@ function serializeElement(el: Element): string {
   if (tag === 'br') return '\n'
   if (tag === 'strong' || tag === 'b') return `**${serializeChildren(el)}**`
   if (tag === 'em' || tag === 'i') return `*${serializeChildren(el)}*`
-  if (tag === 'h1' || tag === 'h2' || tag === 'h3') return `# ${serializeChildren(el)}`
+  // Only h1 has a UI + parser path. Narrow to h1 so an unexpected h2/h3 falls
+  // through to serializeChildren rather than silently downgrading to `# `.
+  if (tag === 'h1') return `# ${serializeChildren(el)}`
 
   const dataToken = el.getAttribute('data-aguy-token')
   if (dataToken) return `::${dataToken}{${serializeChildren(el)}}`

@@ -526,6 +526,58 @@ describe('InlineRichTextEditor toolbar (Issue #110)', () => {
     expect(onChange.mock.calls.at(-1)?.[0]?.value).toBe('abc')
   })
 
+  it('applies bold per paragraph on a multi-block selection (Ctrl+A + Bold)', async () => {
+    const { onChange } = renderEditor({ value: 'hello\nworld' })
+    // Simulate Ctrl+A: select from first char to last char of the surface.
+    const wysiwyg = screen.getByTestId('rte-wysiwyg')
+    const range = document.createRange()
+    range.selectNodeContents(wysiwyg)
+    const sel = window.getSelection()!
+    sel.removeAllRanges()
+    sel.addRange(range)
+
+    fireEvent.click(screen.getByTestId('rte-bold'))
+
+    await waitFor(() => expect(onChange).toHaveBeenCalled())
+    const last = onChange.mock.calls.at(-1)?.[0]?.value
+    // Must preserve the paragraph break — the old bug produced `**helloworld**`.
+    expect(last).toBe('**hello**\n**world**')
+  })
+
+  it('applies color per paragraph on a multi-block selection', async () => {
+    const { onChange } = renderEditor({ value: 'hello\nworld' })
+    const wysiwyg = screen.getByTestId('rte-wysiwyg')
+    const range = document.createRange()
+    range.selectNodeContents(wysiwyg)
+    const sel = window.getSelection()!
+    sel.removeAllRanges()
+    sel.addRange(range)
+
+    fireEvent.click(screen.getByTestId('rte-color-toggle'))
+    await screen.findByTestId('rte-color-picker')
+    fireEvent.click(screen.getByTestId('rte-color-text-blue'))
+
+    await waitFor(() => expect(onChange).toHaveBeenCalled())
+    const last = onChange.mock.calls.at(-1)?.[0]?.value
+    expect(last).toBe('::text-blue{hello}\n::text-blue{world}')
+  })
+
+  it('aligns every paragraph on a multi-block selection', async () => {
+    const { onChange } = renderEditor({ value: 'hello\nworld' })
+    const wysiwyg = screen.getByTestId('rte-wysiwyg')
+    const range = document.createRange()
+    range.selectNodeContents(wysiwyg)
+    const sel = window.getSelection()!
+    sel.removeAllRanges()
+    sel.addRange(range)
+
+    fireEvent.click(screen.getByTestId('rte-align-right'))
+
+    await waitFor(() => expect(onChange).toHaveBeenCalled())
+    const last = onChange.mock.calls.at(-1)?.[0]?.value
+    expect(last).toBe('::text-align-right{hello}\n::text-align-right{world}')
+  })
+
   it('renders wine red swatch background via the toolbar-color-swatch--wine-red class', () => {
     renderEditor()
     const swatch = document.querySelector('.toolbar-color-swatch--wine-red')

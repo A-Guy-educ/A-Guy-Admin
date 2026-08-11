@@ -55,11 +55,67 @@ export function selectContents(el: Element): void {
   sel.addRange(r)
 }
 
-export function findEnclosingBlock(range: Range, root: HTMLElement): Element | null {
-  let block: Node | null = range.commonAncestorContainer
-  while (block && block !== root) {
-    if (block.parentNode === root && block.nodeType === Node.ELEMENT_NODE) return block as Element
-    block = block.parentNode
+function blockContaining(node: Node, offset: number, root: HTMLElement, atEnd: boolean): Element | null {
+  // Range endpoint IS the root (Ctrl+A on the wysiwyg): resolve to the child
+  // block at `offset`. atEnd biases past the collection when offset points
+  // one past the last child, so the end block still lands on the last block.
+  if (node === root) {
+    const idx = atEnd ? Math.max(0, offset - 1) : offset
+    const child = root.childNodes[idx] ?? root.lastChild
+    return child && child.nodeType === Node.ELEMENT_NODE ? (child as Element) : null
   }
-  return null
+  let cur: Node | null = node
+  while (cur && cur.parentNode && cur.parentNode !== root) cur = cur.parentNode
+  if (!cur || cur.parentNode !== root || cur.nodeType !== Node.ELEMENT_NODE) return null
+  return cur as Element
+}
+
+export function findEnclosingBlock(range: Range, root: HTMLElement): Element | null {
+  return blockContaining(range.startContainer, range.startOffset, root, false)
+}
+
+/**
+ * Every top-level block the range touches — walk from the block containing
+ * the start through next-siblings to the block containing the end. Used by
+ * format actions so a Ctrl+A + Bold applies the mark to each paragraph
+ * separately, instead of wrapping the block-level <p>s inside one <strong>
+ * (which would silently mash paragraphs into a single line on serialize).
+ */
+export function blocksInRange(range: Range, root: HTMLElement): Element[] {
+  const startBlock = blockContaining(range.startContainer, range.startOffset, root, false)
+  const endBlock = blockContaining(range.endContainer, range.endOffset, root, true)
+  if (!startBlock || !endBlock) return []
+  if (startBlock === endBlock) return [startBlock]
+
+  const out: Element[] = [startBlock]
+  let cur: Node | null = startBlock.nextSibling
+  while (cur && cur !== endBlock) {
+    if (cur.nodeType === Node.ELEMENT_NODE) out.push(cur as Element)
+    cur = cur.nextSibling
+  }
+  out.push(endBlock)
+  return out
+}
+
+/**
+ * Build a per-block sub-range for each block the outer range touches. The
+ * first/last blocks preserve the outer range's start/end; middle blocks are
+ * covered wholesale via selectNodeContents.
+ */
+export function subRangesPerBlock(range: Range, blocks: Element[]): Range[] {
+  return blocks.map((block, i) => {
+    const r = document.createRange()
+    r.selectNodeContents(block)
+    // Only borrow the outer range's endpoint when it actually falls inside
+    // this block — a Ctrl+A range's endpoints reference the root, not the
+    // per-block nodes, and setStart/End to those would extend the sub-range
+    // past its block and produce wrong extractContents output.
+    if (i === 0 && block.contains(range.startContainer)) {
+      r.setStart(range.startContainer, range.startOffset)
+    }
+    if (i === blocks.length - 1 && block.contains(range.endContainer)) {
+      r.setEnd(range.endContainer, range.endOffset)
+    }
+    return r
+  })
 }
