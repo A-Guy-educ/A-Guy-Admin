@@ -536,7 +536,8 @@
 
 .studio-doc-option--correct {
   background: var(--theme-success-50, var(--theme-elevation-50));
-  box-shadow: inset 2px 0 0 var(--theme-success-500);
+  border-inline-start: 2px solid var(--theme-success-500);
+  padding-inline-start: 4px;
 }
 
 .studio-doc-option--correct .studio-doc-option-marker {
