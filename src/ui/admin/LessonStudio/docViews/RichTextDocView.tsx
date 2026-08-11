@@ -18,13 +18,15 @@ export const RichTextDocView: React.FC<RichTextDocViewProps> = ({ block, placeho
     return <span className="studio-doc-placeholder">{placeholder ?? 'Empty text'}</span>
   }
   return (
-    <RichTextRenderer
-      block={{
-        type: 'rich_text',
-        format: 'md-math-v1',
-        value: block.value,
-        mediaIds: block.mediaIds ?? [],
-      }}
-    />
+    <div dir="auto">
+      <RichTextRenderer
+        block={{
+          type: 'rich_text',
+          format: 'md-math-v1',
+          value: block.value,
+          mediaIds: block.mediaIds ?? [],
+        }}
+      />
+    </div>
   )
 }
