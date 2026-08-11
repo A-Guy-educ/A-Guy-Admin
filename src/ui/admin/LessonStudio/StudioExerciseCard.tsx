@@ -4,7 +4,9 @@ import React from 'react'
 import type { ContentBlock } from '@/server/payload/collections/Exercises/types'
 import type { StudioTreeExercise } from '@/server/payload/endpoints/studio/lesson-tree'
 import { InlineBlockRenderer } from '../LessonBlocksField/InlineBlockRenderer'
+import { StudioDocBlock } from './StudioDocBlock'
 import { StudioSectionEditor } from './StudioSectionEditor'
+import type { StudioViewMode } from './viewMode'
 
 interface StudioExerciseCardProps {
   index: number
@@ -15,6 +17,7 @@ interface StudioExerciseCardProps {
   dirtyExerciseIds: Set<string>
   onSectionBlockChange: (sectionId: string, index: number, updated: ContentBlock) => void
   onExerciseBlockChange: (exerciseId: string, index: number, updated: ContentBlock) => void
+  viewMode: StudioViewMode
 }
 
 export const StudioExerciseCard: React.FC<StudioExerciseCardProps> = ({
@@ -26,6 +29,7 @@ export const StudioExerciseCard: React.FC<StudioExerciseCardProps> = ({
   dirtyExerciseIds,
   onSectionBlockChange,
   onExerciseBlockChange,
+  viewMode,
 }) => {
   const exerciseBlocks = exerciseBlocksById[exercise.id] ?? exercise.blocks
   const hasSections = exercise.sections.length > 0
@@ -58,16 +62,19 @@ export const StudioExerciseCard: React.FC<StudioExerciseCardProps> = ({
           {hasExerciseBlocks && (
             <div className="studio-section studio-section-exercise-inline">
               <div className="studio-section-blocks">
-                {exerciseBlocks.map((block, blockIndex) => (
-                  <div key={block.id || `block-${blockIndex}`} className="studio-block-item">
-                    <InlineBlockRenderer
-                      block={block}
-                      onChange={(updated) =>
-                        onExerciseBlockChange(exercise.id, blockIndex, updated)
-                      }
-                    />
-                  </div>
-                ))}
+                {exerciseBlocks.map((block, blockIndex) => {
+                  const handleChange = (updated: ContentBlock) =>
+                    onExerciseBlockChange(exercise.id, blockIndex, updated)
+                  return (
+                    <div key={block.id || `block-${blockIndex}`} className="studio-block-item">
+                      {viewMode === 'document' ? (
+                        <StudioDocBlock block={block} onChange={handleChange} />
+                      ) : (
+                        <InlineBlockRenderer block={block} onChange={handleChange} />
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             </div>
           )}
@@ -79,6 +86,7 @@ export const StudioExerciseCard: React.FC<StudioExerciseCardProps> = ({
               blocks={sectionBlocksById[section.id] ?? section.blocks}
               dirty={dirtySectionIds.has(section.id)}
               onBlockChange={onSectionBlockChange}
+              viewMode={viewMode}
             />
           ))}
         </div>
