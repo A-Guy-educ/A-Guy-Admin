@@ -16,16 +16,20 @@ import {
   findEnclosingBlock,
 } from './wysiwyg-dom'
 
+// Every action returns `true` when it mutated the DOM so the WysiwygEditor
+// can skip a spurious onChange on no-op clicks (Bold with a bare caret would
+// otherwise emit the same value and wake up autosave / dirty-flag).
+
 /** Toggle bold/italic on selection. Same-tag ancestor unwraps (Word-style). */
-export function applyInlineMark(root: HTMLElement, tag: 'strong' | 'em'): void {
+export function applyInlineMark(root: HTMLElement, tag: 'strong' | 'em'): boolean {
   const range = currentRange(root)
-  if (!range || range.collapsed) return
+  if (!range || range.collapsed) return false
 
   const matchTag = (el: Element) => el.tagName.toLowerCase() === tag
   const ancestor = findAncestor(range, root, matchTag)
   if (ancestor) {
     unwrap(ancestor)
-    return
+    return true
   }
 
   const contents = range.extractContents()
@@ -34,40 +38,35 @@ export function applyInlineMark(root: HTMLElement, tag: 'strong' | 'em'): void {
   wrapper.appendChild(contents)
   range.insertNode(wrapper)
   selectContents(wrapper)
+  return true
 }
 
-function applyAlignToBlock(root: HTMLElement, range: Range, token: AllToken): void {
+function applyAlignToBlock(root: HTMLElement, range: Range, token: AllToken): boolean {
   const block = findEnclosingBlock(range, root)
-  if (!block) return
-  // Align is a single-slot property on the block; strip any prior align class
-  // before setting the new one so re-clicking replaces instead of nesting.
+  if (!block) return false
+  // Align is single-slot on the block; strip prior align class so re-clicking replaces.
   for (const c of Array.from(block.classList)) {
     const tok = tokenForClass(c)
     if (tok && tokenCategory(tok) === 'align') block.classList.remove(c)
   }
   block.classList.add(classForToken(token))
   block.setAttribute('data-aguy-token', token)
+  return true
 }
 
-/**
- * Wrap selection in a tokened <span>. Same-category ancestors are absorbed
- * (picking a new color replaces the old one; nesting `::green{::blue{...}}`
- * would corrupt storage since the outer regex closes on the inner `}`).
- * Align tokens land as a class on the enclosing block — <div>-in-<p> is
- * invalid and browsers auto-split it.
- */
-export function applyToken(root: HTMLElement, token: AllToken): void {
+// Wrap selection in a tokened <span>. Same-category ancestors are absorbed
+// (green→blue replaces instead of nesting `::green{::blue{...}}`, which the
+// outer regex would truncate at the inner `}`). Align tokens go on the
+// enclosing block — <div>-in-<p> is invalid and browsers auto-split it.
+export function applyToken(root: HTMLElement, token: AllToken): boolean {
   const range = currentRange(root)
-  if (!range) return
+  if (!range) return false
 
   // Align is a block-level property, so applying it with just a caret
   // (no text selected) is the natural gesture — no need to require a range.
-  if (isAlignToken(token)) {
-    applyAlignToBlock(root, range, token)
-    return
-  }
+  if (isAlignToken(token)) return applyAlignToBlock(root, range, token)
 
-  if (range.collapsed) return
+  if (range.collapsed) return false
 
   const category: TokenCategory = tokenCategory(token)
   const sameCategory = (el: Element) => categoryOfElement(el) === category
@@ -84,11 +83,12 @@ export function applyToken(root: HTMLElement, token: AllToken): void {
   wrapper.appendChild(contents)
   range.insertNode(wrapper)
   selectContents(wrapper)
+  return true
 }
 
-export function insertAround(root: HTMLElement, before: string, after: string): void {
+export function insertAround(root: HTMLElement, before: string, after: string): boolean {
   const range = currentRange(root)
-  if (!range) return
+  if (!range) return false
 
   const selected = range.toString()
   range.deleteContents()
@@ -96,37 +96,34 @@ export function insertAround(root: HTMLElement, before: string, after: string): 
   range.insertNode(wrapped)
 
   const sel = window.getSelection()
-  if (!sel) return
+  if (!sel) return true
   sel.removeAllRanges()
   const newRange = document.createRange()
   newRange.setStart(wrapped, before.length)
   newRange.setEnd(wrapped, before.length + selected.length)
   sel.addRange(newRange)
+  return true
 }
 
-export function insertHeading(root: HTMLElement): void {
+export function insertHeading(root: HTMLElement): boolean {
   const range = currentRange(root)
-  if (!range) return
+  if (!range) return false
   const block = findEnclosingBlock(range, root)
-  if (!block) return
+  if (!block) return false
+  if (block.tagName.toLowerCase() === 'h1') return false
 
   const heading = document.createElement('h1')
   heading.innerHTML = block.innerHTML
-  // Preserve block-level attrs like align-right — otherwise turning a right-
-  // aligned <p> into a heading silently drops the alignment.
-  const cls = block.getAttribute('class')
-  if (cls) heading.setAttribute('class', cls)
-  const dataToken = block.getAttribute('data-aguy-token')
-  if (dataToken) heading.setAttribute('data-aguy-token', dataToken)
   block.replaceWith(heading)
   selectContents(heading)
   const sel = window.getSelection()
   sel?.getRangeAt(0).collapse(false)
+  return true
 }
 
-export function clearFormatting(root: HTMLElement): void {
+export function clearFormatting(root: HTMLElement): boolean {
   const range = currentRange(root)
-  if (!range || range.collapsed) return
+  if (!range || range.collapsed) return false
 
   const isFormatting = (el: Element) => {
     const tag = el.tagName.toLowerCase()
@@ -138,12 +135,17 @@ export function clearFormatting(root: HTMLElement): void {
   // Double-click a colored word → the wrapper is an ancestor of the range,
   // not a descendant of the extracted fragment. Unwrap those first.
   let ancestor = findAncestor(range, root, isFormatting)
+  let mutated = false
   while (ancestor) {
     unwrap(ancestor)
+    mutated = true
     ancestor = findAncestor(range, root, isFormatting)
   }
 
   const contents = range.extractContents()
+  const before = contents.querySelectorAll('*').length
   stripDescendants(contents, isFormatting)
+  const stripped = contents.querySelectorAll('*').length !== before
   range.insertNode(contents)
+  return mutated || stripped
 }

@@ -397,7 +397,11 @@ describe('InlineRichTextEditor toolbar (Issue #110)', () => {
     expect(last).toBe('::text-align-right{abc}')
   })
 
-  it('preserves alignment when converting an aligned paragraph to a heading', async () => {
+  it('converts an aligned paragraph to a plain heading (alignment intentionally dropped)', async () => {
+    // Alignment on a heading has no representation that round-trips through
+    // md-math-v1 (`# title` has no way to carry an align token), so we lock in
+    // the "drop alignment on heading convert" behavior rather than pretend it
+    // survives and lose it on the next reload.
     const { onChange } = renderEditor({ value: '::text-align-right{title}' })
     selectTextInEditor('title')
 
@@ -405,12 +409,51 @@ describe('InlineRichTextEditor toolbar (Issue #110)', () => {
 
     await waitFor(() => expect(onChange).toHaveBeenCalled())
     const last = onChange.mock.calls.at(-1)?.[0]?.value
-    // The paragraph became an <h1> but the align-right marker survives.
     expect(last).toBe('# title')
     const wysiwyg = screen.getByTestId('rte-wysiwyg')
     const h1 = wysiwyg.querySelector('h1')!
-    expect(h1.getAttribute('data-aguy-token')).toBe('text-align-right')
-    expect(h1.classList.contains('aguy-text-align-right')).toBe(true)
+    expect(h1.getAttribute('data-aguy-token')).toBeNull()
+    expect(h1.classList.contains('aguy-text-align-right')).toBe(false)
+  })
+
+  it('does not fire onChange when a format action is a no-op (bare caret)', async () => {
+    const { onChange } = renderEditor({ value: 'abc' })
+    // Collapsed caret in the paragraph — no selection.
+    const wysiwyg = screen.getByTestId('rte-wysiwyg')
+    const textNode = wysiwyg.querySelector('p')!.firstChild as Text
+    const range = document.createRange()
+    range.setStart(textNode, 1)
+    range.setEnd(textNode, 1)
+    const sel = window.getSelection()!
+    sel.removeAllRanges()
+    sel.addRange(range)
+
+    // Bold / italic / color / size all early-return on a collapsed range;
+    // none of them should reach the onChange callback and dirty the form.
+    fireEvent.click(screen.getByTestId('rte-bold'))
+    fireEvent.click(screen.getByTestId('rte-italic'))
+    fireEvent.click(screen.getByTestId('rte-size-text-size-large'))
+    fireEvent.click(screen.getByTestId('rte-color-toggle'))
+    await screen.findByTestId('rte-color-picker')
+    fireEvent.click(screen.getByTestId('rte-color-text-blue'))
+
+    await new Promise((r) => setTimeout(r, 10))
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
+  it('does not serialize during an IME composition', () => {
+    const { onChange } = renderEditor({ value: 'abc' })
+    const wysiwyg = screen.getByTestId('rte-wysiwyg')
+
+    fireEvent.compositionStart(wysiwyg)
+    // Simulate the composition writing intermediate text.
+    wysiwyg.querySelector('p')!.textContent = 'abc x'
+    fireEvent.input(wysiwyg, { nativeEvent: { isComposing: true } })
+
+    expect(onChange).not.toHaveBeenCalled()
+
+    fireEvent.compositionEnd(wysiwyg)
+    expect(onChange).toHaveBeenCalled()
   })
 
   it('parses legacy text-highlight-1..8 directives from stored content', () => {

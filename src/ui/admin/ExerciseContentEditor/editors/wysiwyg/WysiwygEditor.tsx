@@ -4,6 +4,7 @@ import React from 'react'
 import type { AllToken } from './wysiwyg-tokens'
 import { parseMdToHtml } from './wysiwyg-parse'
 import { serializeDomToMd } from './wysiwyg-serialize'
+import { currentRange } from './wysiwyg-dom'
 import {
   applyInlineMark,
   applyToken,
@@ -28,20 +29,22 @@ interface WysiwygEditorProps {
   minHeight?: string
 }
 
+// Sentinel so the first render always hydrates and a single effect handles
+// both mount and subsequent external value changes.
+const UNHYDRATED: unique symbol = Symbol('unhydrated')
+
 /**
  * Contenteditable surface that renders md-math-v1 as live-formatted HTML.
- * Users see bold/italic/color/size applied inline as they type; toolbar
- * operations mutate the DOM directly through the imperative handle and the
- * component re-serializes on `input` back to md-math-v1 storage format.
- *
- * We only re-hydrate innerHTML when the *external* value changes to a value
- * that doesn't match what we just serialized — otherwise every keystroke would
- * reset the caret to the top of the div.
+ * Toolbar actions mutate the DOM via the imperative handle; input events
+ * serialize back to md. We only re-hydrate innerHTML when the external value
+ * diverges from what we last emitted — otherwise every keystroke would reset
+ * the caret to the top.
  */
 export const WysiwygEditor = React.forwardRef<WysiwygEditorHandle, WysiwygEditorProps>(
   ({ value, onChange, placeholder, minHeight = '80px' }, ref) => {
     const rootRef = React.useRef<HTMLDivElement>(null)
-    const lastEmittedRef = React.useRef<string>(value)
+    const lastEmittedRef = React.useRef<string | typeof UNHYDRATED>(UNHYDRATED)
+    const composingRef = React.useRef(false)
 
     const hydrate = React.useCallback((source: string) => {
       const root = rootRef.current
@@ -56,11 +59,6 @@ export const WysiwygEditor = React.forwardRef<WysiwygEditorHandle, WysiwygEditor
       hydrate(value)
     }, [value, hydrate])
 
-    React.useEffect(() => {
-      hydrate(value)
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [])
-
     const emitChange = React.useCallback(() => {
       const root = rootRef.current
       if (!root) return
@@ -70,53 +68,56 @@ export const WysiwygEditor = React.forwardRef<WysiwygEditorHandle, WysiwygEditor
       onChange(md)
     }, [onChange])
 
-    React.useImperativeHandle(
-      ref,
-      () => ({
-        applyMark: (tag) => {
-          if (!rootRef.current) return
-          applyInlineMark(rootRef.current, tag)
-          emitChange()
-        },
-        applyToken: (token) => {
-          if (!rootRef.current) return
-          applyToken(rootRef.current, token)
-          emitChange()
-        },
-        insertHeading: () => {
-          if (!rootRef.current) return
-          insertHeading(rootRef.current)
-          emitChange()
-        },
-        clearFormatting: () => {
-          if (!rootRef.current) return
-          clearFormatting(rootRef.current)
-          emitChange()
-        },
-        insertAround: (before, after) => {
-          if (!rootRef.current) return
-          insertAround(rootRef.current, before, after)
-          emitChange()
-        },
-        focus: () => rootRef.current?.focus(),
-      }),
+    const runAction = React.useCallback(
+      (action: (root: HTMLElement) => boolean) => {
+        const root = rootRef.current
+        if (!root) return
+        // Skip the onChange (and dirty-flag flip) if the action was a no-op
+        // — clicking Bold with a bare caret shouldn't wake up autosave.
+        if (action(root)) emitChange()
+      },
       [emitChange],
     )
 
-    // Force paste to insert as plain text. A contentEditable would otherwise
-    // accept arbitrary HTML from the clipboard, including `<img onerror=…>`
-    // which fires JS in the admin origin before we ever get a chance to
-    // serialize the DOM back to md.
+    React.useImperativeHandle(
+      ref,
+      () => ({
+        applyMark: (tag) => runAction((r) => applyInlineMark(r, tag)),
+        applyToken: (token) => runAction((r) => applyToken(r, token)),
+        insertHeading: () => runAction((r) => insertHeading(r)),
+        clearFormatting: () => runAction((r) => clearFormatting(r)),
+        insertAround: (before, after) => runAction((r) => insertAround(r, before, after)),
+        focus: () => rootRef.current?.focus(),
+      }),
+      [runAction],
+    )
+
+    // Force paste to plain text — a contentEditable otherwise accepts HTML
+    // like `<img onerror=…>` which runs JS in the admin origin before we get
+    // to serialize the DOM back to md.
     const handlePaste = React.useCallback(
       (e: React.ClipboardEvent<HTMLDivElement>) => {
         e.preventDefault()
+        const root = rootRef.current
+        if (!root) return
         const text = e.clipboardData.getData('text/plain')
         if (!text) return
-        const range = window.getSelection()?.getRangeAt(0)
+        const range = currentRange(root)
         if (!range) return
         range.deleteContents()
         range.insertNode(document.createTextNode(text))
         range.collapse(false)
+        emitChange()
+      },
+      [emitChange],
+    )
+
+    // Suppress serialize during IME composition (Hebrew nikud, CJK) — the
+    // browser is still writing intermediate text and re-serializing mid-
+    // stream causes visible flicker and caret jumps.
+    const handleInput = React.useCallback(
+      (e: React.FormEvent<HTMLDivElement>) => {
+        if (composingRef.current || (e.nativeEvent as InputEvent).isComposing) return
         emitChange()
       },
       [emitChange],
@@ -132,8 +133,15 @@ export const WysiwygEditor = React.forwardRef<WysiwygEditorHandle, WysiwygEditor
         data-placeholder={placeholder}
         data-testid="rte-wysiwyg"
         dir="auto"
-        onInput={emitChange}
+        onInput={handleInput}
         onPaste={handlePaste}
+        onCompositionStart={() => {
+          composingRef.current = true
+        }}
+        onCompositionEnd={() => {
+          composingRef.current = false
+          emitChange()
+        }}
       />
     )
   },
