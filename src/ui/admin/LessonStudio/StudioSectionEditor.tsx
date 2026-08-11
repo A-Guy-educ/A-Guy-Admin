@@ -3,6 +3,8 @@
 import React from 'react'
 import type { ContentBlock } from '@/server/payload/collections/Exercises/types'
 import { InlineBlockRenderer } from '../LessonBlocksField/InlineBlockRenderer'
+import { StudioDocBlock } from './StudioDocBlock'
+import type { StudioViewMode } from './viewMode'
 
 interface StudioSectionEditorProps {
   sectionId: string
@@ -10,6 +12,7 @@ interface StudioSectionEditorProps {
   blocks: ContentBlock[]
   dirty: boolean
   onBlockChange: (sectionId: string, index: number, updated: ContentBlock) => void
+  viewMode: StudioViewMode
 }
 
 /**
@@ -22,6 +25,7 @@ export const StudioSectionEditor: React.FC<StudioSectionEditorProps> = ({
   blocks,
   dirty,
   onBlockChange,
+  viewMode,
 }) => {
   return (
     <div className="studio-section">
@@ -34,14 +38,18 @@ export const StudioSectionEditor: React.FC<StudioSectionEditorProps> = ({
         <div className="studio-empty">No content blocks in this section.</div>
       ) : (
         <div className="studio-section-blocks">
-          {blocks.map((block, index) => (
-            <div key={block.id || `block-${index}`} className="studio-block-item">
-              <InlineBlockRenderer
-                block={block}
-                onChange={(updated) => onBlockChange(sectionId, index, updated)}
-              />
-            </div>
-          ))}
+          {blocks.map((block, index) => {
+            const handleChange = (updated: ContentBlock) => onBlockChange(sectionId, index, updated)
+            return (
+              <div key={block.id || `block-${index}`} className="studio-block-item">
+                {viewMode === 'document' ? (
+                  <StudioDocBlock block={block} onChange={handleChange} />
+                ) : (
+                  <InlineBlockRenderer block={block} onChange={handleChange} />
+                )}
+              </div>
+            )
+          })}
         </div>
       )}
     </div>
