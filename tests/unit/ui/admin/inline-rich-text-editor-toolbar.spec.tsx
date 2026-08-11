@@ -51,6 +51,33 @@ function renderEditor(overrides: Partial<typeof baseValue> = {}) {
   return { onChange, ...utils }
 }
 
+/**
+ * Select the first text node inside the wysiwyg surface whose text contains
+ * the given substring. Mirrors the "user selected these characters" gesture
+ * for jsdom Selection/Range tests.
+ */
+function selectTextInEditor(substring: string): void {
+  const wysiwyg = screen.getByTestId('rte-wysiwyg')
+  const walker = document.createTreeWalker(wysiwyg, NodeFilter.SHOW_TEXT)
+  let node = walker.nextNode() as Text | null
+  while (node) {
+    const idx = node.textContent?.indexOf(substring) ?? -1
+    if (idx !== -1) {
+      const range = document.createRange()
+      range.setStart(node, idx)
+      range.setEnd(node, idx + substring.length)
+      const sel = window.getSelection()
+      if (sel) {
+        sel.removeAllRanges()
+        sel.addRange(range)
+      }
+      return
+    }
+    node = walker.nextNode() as Text | null
+  }
+  throw new Error(`Could not find text "${substring}" in wysiwyg`)
+}
+
 afterEach(() => {
   cleanup()
 })
@@ -109,8 +136,7 @@ describe('InlineRichTextEditor toolbar (Issue #110)', () => {
 
   it('wraps selection with ::text-wine-red{...} when swatch is clicked', async () => {
     const { onChange } = renderEditor({ value: 'abc' })
-    const textarea = screen.getByTestId('rte-textarea') as HTMLTextAreaElement
-    textarea.setSelectionRange(0, 3)
+    selectTextInEditor('abc')
 
     fireEvent.click(screen.getByTestId('rte-color-toggle'))
     await screen.findByTestId('rte-color-picker')
@@ -123,8 +149,7 @@ describe('InlineRichTextEditor toolbar (Issue #110)', () => {
 
   it('wraps selection with ::text-size-large{...} when L button is clicked', async () => {
     const { onChange } = renderEditor({ value: 'abc' })
-    const textarea = screen.getByTestId('rte-textarea') as HTMLTextAreaElement
-    textarea.setSelectionRange(0, 3)
+    selectTextInEditor('abc')
 
     fireEvent.click(screen.getByTestId('rte-size-text-size-large'))
 
@@ -135,8 +160,7 @@ describe('InlineRichTextEditor toolbar (Issue #110)', () => {
 
   it('wraps selection with ::text-align-right{...} when right-align is clicked', async () => {
     const { onChange } = renderEditor({ value: 'abc' })
-    const textarea = screen.getByTestId('rte-textarea') as HTMLTextAreaElement
-    textarea.setSelectionRange(0, 3)
+    selectTextInEditor('abc')
 
     fireEvent.click(screen.getByTestId('rte-align-right'))
 
@@ -147,8 +171,7 @@ describe('InlineRichTextEditor toolbar (Issue #110)', () => {
 
   it('inserts ** around selection when bold is clicked', async () => {
     const { onChange } = renderEditor({ value: 'abc' })
-    const textarea = screen.getByTestId('rte-textarea') as HTMLTextAreaElement
-    textarea.setSelectionRange(0, 3)
+    selectTextInEditor('abc')
 
     fireEvent.click(screen.getByTestId('rte-bold'))
 
@@ -157,15 +180,21 @@ describe('InlineRichTextEditor toolbar (Issue #110)', () => {
     expect(updated).toBe('**abc**')
   })
 
-  it('strips inline directives from selected range when Clear format is clicked', async () => {
+  it('strips inline formatting from selected range when Clear format is clicked', async () => {
     const { onChange } = renderEditor({
       value: 'pre ::text-wine-red{colored} ::text-size-large{big} post',
     })
-    const textarea = screen.getByTestId('rte-textarea') as HTMLTextAreaElement
-    // Select the entire middle "::text-wine-red{colored} ::text-size-large{big}" portion
-    const start = textarea.value.indexOf('::text-wine-red')
-    const end = textarea.value.indexOf('big}') + 'big}'.length
-    textarea.setSelectionRange(start, end)
+    // WYSIWYG rendered spans wrap "colored" and "big"; select from the first
+    // colored span through the last big span (including the space between).
+    const wysiwyg = screen.getByTestId('rte-wysiwyg')
+    const colored = wysiwyg.querySelector('.aguy-text-wine-red')!
+    const big = wysiwyg.querySelector('.aguy-text-size-large')!
+    const range = document.createRange()
+    range.setStartBefore(colored)
+    range.setEndAfter(big)
+    const sel = window.getSelection()!
+    sel.removeAllRanges()
+    sel.addRange(range)
 
     fireEvent.click(screen.getByTestId('rte-clear'))
 
@@ -174,22 +203,30 @@ describe('InlineRichTextEditor toolbar (Issue #110)', () => {
     expect(updated).toBe('pre colored big post')
   })
 
-  it('does not call onChange when Clear format is clicked on an empty selection', async () => {
+  it('does not mutate content when Clear format is clicked on an empty selection', async () => {
     const { onChange } = renderEditor({ value: 'abc' })
-    const textarea = screen.getByTestId('rte-textarea') as HTMLTextAreaElement
-    textarea.setSelectionRange(1, 1)
+    // Collapsed selection at position 1 inside the "abc" text node
+    const wysiwyg = screen.getByTestId('rte-wysiwyg')
+    const textNode = wysiwyg.querySelector('p')!.firstChild as Text
+    const range = document.createRange()
+    range.setStart(textNode, 1)
+    range.setEnd(textNode, 1)
+    const sel = window.getSelection()!
+    sel.removeAllRanges()
+    sel.addRange(range)
 
     fireEvent.click(screen.getByTestId('rte-clear'))
 
-    // Allow microtasks; should still not have been called
     await new Promise((r) => setTimeout(r, 10))
-    expect(onChange).not.toHaveBeenCalled()
+    // Either not called, or called with the same value — the DOM is unchanged.
+    const lastValue = onChange.mock.calls.at(-1)?.[0]?.value
+    if (lastValue !== undefined) expect(lastValue).toBe('abc')
   })
 
-  it('toggles to view mode and shows rendered preview instead of textarea', async () => {
+  it('toggles to view mode and shows rendered preview instead of the wysiwyg surface', async () => {
     const { onChange: _onChange } = renderEditor({ value: '::text-wine-red{colored} text' })
 
-    expect(screen.getByTestId('rte-textarea')).toBeInTheDocument()
+    expect(screen.getByTestId('rte-wysiwyg')).toBeInTheDocument()
     expect(screen.queryByTestId('rte-preview')).toBeNull()
 
     fireEvent.click(screen.getByTestId('rte-toggle-view'))
@@ -197,14 +234,14 @@ describe('InlineRichTextEditor toolbar (Issue #110)', () => {
     await waitFor(() => {
       expect(screen.getByTestId('rte-preview')).toBeInTheDocument()
     })
-    expect(screen.queryByTestId('rte-textarea')).toBeNull()
+    expect(screen.queryByTestId('rte-wysiwyg')).toBeNull()
     // Edit-mode controls are gone
     expect(screen.queryByTestId('rte-bold')).toBeNull()
     // The Edit toggle is now visible
     expect(screen.getByTestId('rte-toggle-edit')).toBeInTheDocument()
   })
 
-  it('toggles back to edit mode and restores the textarea', async () => {
+  it('toggles back to edit mode and restores the wysiwyg surface', async () => {
     renderEditor({ value: 'some content' })
 
     fireEvent.click(screen.getByTestId('rte-toggle-view'))
@@ -213,7 +250,7 @@ describe('InlineRichTextEditor toolbar (Issue #110)', () => {
     fireEvent.click(screen.getByTestId('rte-toggle-edit'))
 
     await waitFor(() => {
-      expect(screen.getByTestId('rte-textarea')).toBeInTheDocument()
+      expect(screen.getByTestId('rte-wysiwyg')).toBeInTheDocument()
     })
     expect(screen.queryByTestId('rte-preview')).toBeNull()
   })
