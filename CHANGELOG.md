@@ -1889,6 +1889,7 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- feat: Lesson studio document-mode demo ([#323](https://github.com/A-Guy-educ/A-Guy-Admin/pull/323)) — @aguyshayb
 ## [v0.31.0] - 2026-08-10
 
 - promote: dev -> main (v0.31.0) ([#321](https://github.com/A-Guy-educ/A-Guy-Admin/pull/321)) — @aguyshayb
