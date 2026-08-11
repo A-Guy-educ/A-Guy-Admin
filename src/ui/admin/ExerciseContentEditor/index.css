@@ -1548,23 +1548,6 @@
   background: var(--theme-elevation-50);
 }
 
-.inline-rich-text-textarea {
-  width: 100%;
-  min-height: 80px;
-  padding: 0.75rem;
-  border: none;
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-  font-size: 0.875rem;
-  line-height: 1.5;
-  color: var(--theme-elevation-1000);
-  background: transparent;
-  resize: vertical;
-}
-
-.inline-rich-text-textarea:focus {
-  outline: none;
-}
-
 .inline-rich-text-wysiwyg {
   width: 100%;
   min-height: 80px;

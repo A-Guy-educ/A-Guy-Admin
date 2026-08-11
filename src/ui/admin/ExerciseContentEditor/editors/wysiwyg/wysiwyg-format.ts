@@ -1,6 +1,5 @@
 import {
   classForToken,
-  tokenForClass,
   isAlignToken,
   categoryOfElement,
   tokenCategory,
@@ -15,6 +14,7 @@ import {
   selectContents,
   findEnclosingBlock,
 } from './wysiwyg-dom'
+import { applyAlignToBlock, removeAlignFromBlock } from './wysiwyg-align'
 
 // Every action returns `true` when it mutated the DOM so the WysiwygEditor
 // can skip a spurious onChange on no-op clicks (Bold with a bare caret would
@@ -41,19 +41,6 @@ export function applyInlineMark(root: HTMLElement, tag: 'strong' | 'em'): boolea
   return true
 }
 
-function applyAlignToBlock(root: HTMLElement, range: Range, token: AllToken): boolean {
-  const block = findEnclosingBlock(range, root)
-  if (!block) return false
-  // Align is single-slot on the block; strip prior align class so re-clicking replaces.
-  for (const c of Array.from(block.classList)) {
-    const tok = tokenForClass(c)
-    if (tok && tokenCategory(tok) === 'align') block.classList.remove(c)
-  }
-  block.classList.add(classForToken(token))
-  block.setAttribute('data-aguy-token', token)
-  return true
-}
-
 // Wrap selection in a tokened <span>. Same-category ancestors are absorbed
 // (green→blue replaces instead of nesting `::green{::blue{...}}`, which the
 // outer regex would truncate at the inner `}`). Align tokens go on the
@@ -62,8 +49,7 @@ export function applyToken(root: HTMLElement, token: AllToken): boolean {
   const range = currentRange(root)
   if (!range) return false
 
-  // Align is a block-level property, so applying it with just a caret
-  // (no text selected) is the natural gesture — no need to require a range.
+  // Align is a block property — bare caret is fine, no selection required.
   if (isAlignToken(token)) return applyAlignToBlock(root, range, token)
 
   if (range.collapsed) return false
@@ -123,7 +109,14 @@ export function insertHeading(root: HTMLElement): boolean {
 
 export function clearFormatting(root: HTMLElement): boolean {
   const range = currentRange(root)
-  if (!range || range.collapsed) return false
+  if (!range) return false
+
+  // Block-level align is cleared regardless of whether text is selected — it
+  // sits on the enclosing paragraph, not on the range itself.
+  const block = findEnclosingBlock(range, root)
+  const alignCleared = block ? removeAlignFromBlock(block) : false
+
+  if (range.collapsed) return alignCleared
 
   const isFormatting = (el: Element) => {
     const tag = el.tagName.toLowerCase()
@@ -132,10 +125,10 @@ export function clearFormatting(root: HTMLElement): boolean {
     return cat !== null && cat !== 'align'
   }
 
+  let mutated = alignCleared
   // Double-click a colored word → the wrapper is an ancestor of the range,
   // not a descendant of the extracted fragment. Unwrap those first.
   let ancestor = findAncestor(range, root, isFormatting)
-  let mutated = false
   while (ancestor) {
     unwrap(ancestor)
     mutated = true

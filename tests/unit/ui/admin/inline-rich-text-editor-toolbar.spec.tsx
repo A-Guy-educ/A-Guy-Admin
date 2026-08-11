@@ -496,6 +496,36 @@ describe('InlineRichTextEditor toolbar (Issue #110)', () => {
     expect((globalThis as { __pwned?: boolean }).__pwned).toBeUndefined()
   })
 
+  it('toggles align-right off when applied twice to the same paragraph', async () => {
+    const { onChange } = renderEditor({ value: 'abc' })
+    selectTextInEditor('abc')
+
+    fireEvent.click(screen.getByTestId('rte-align-right'))
+    await waitFor(() => expect(onChange).toHaveBeenCalled())
+    expect(onChange.mock.calls.at(-1)?.[0]?.value).toBe('::text-align-right{abc}')
+
+    // Re-click removes alignment — otherwise there's no UI path to un-align.
+    fireEvent.click(screen.getByTestId('rte-align-right'))
+    await waitFor(() => {
+      const last = onChange.mock.calls.at(-1)?.[0]?.value
+      expect(last).toBe('abc')
+    })
+    const wysiwyg = screen.getByTestId('rte-wysiwyg')
+    const p = wysiwyg.querySelector('p')!
+    expect(p.getAttribute('data-aguy-token')).toBeNull()
+    expect(p.classList.contains('aguy-text-align-right')).toBe(false)
+  })
+
+  it('clear format also strips block alignment', async () => {
+    const { onChange } = renderEditor({ value: '::text-align-right{abc}' })
+    selectTextInEditor('abc')
+
+    fireEvent.click(screen.getByTestId('rte-clear'))
+
+    await waitFor(() => expect(onChange).toHaveBeenCalled())
+    expect(onChange.mock.calls.at(-1)?.[0]?.value).toBe('abc')
+  })
+
   it('renders wine red swatch background via the toolbar-color-swatch--wine-red class', () => {
     renderEditor()
     const swatch = document.querySelector('.toolbar-color-swatch--wine-red')

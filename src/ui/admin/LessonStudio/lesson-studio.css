@@ -338,7 +338,7 @@
   opacity: 1;
 }
 
-.studio-section-blocks .inline-rich-text-textarea {
+.studio-section-blocks .inline-rich-text-wysiwyg {
   padding: 6px 2px;
   font-family: inherit;
   font-size: 15px;
@@ -348,7 +348,7 @@
   border: none;
 }
 
-.studio-section-blocks .inline-rich-text-textarea:focus {
+.studio-section-blocks .inline-rich-text-wysiwyg:focus {
   outline: none;
   background: var(--theme-elevation-50);
 }
@@ -363,8 +363,7 @@
   border-left-color: var(--theme-success-500);
 }
 
-/* Rich-text preview renders as document prose by default. Toolbar's Eye/Pencil
-   button still toggles into the source textarea when the user needs to edit. */
+/* Preview shape when the toolbar's Eye toggle is flipped into view mode. */
 .studio-section-blocks .inline-rich-text-preview {
   padding: 4px 2px;
   font-size: 15px;
@@ -383,7 +382,7 @@
 /* Inside an MCQ option, the rich-text preview should read as a single line of
    answer text — smaller and tighter than a top-level paragraph. */
 .studio-section-blocks .mcq-option-content .inline-rich-text-preview,
-.studio-section-blocks .mcq-option-content .inline-rich-text-textarea {
+.studio-section-blocks .mcq-option-content .inline-rich-text-wysiwyg {
   font-size: 14px;
   padding: 2px 4px;
 }
