@@ -1,4 +1,9 @@
-import { classForToken, categoryOfElement, type AllToken, type TokenCategory } from './wysiwyg-tokens'
+import {
+  classForToken,
+  categoryOfElement,
+  type AllToken,
+  type TokenCategory,
+} from './wysiwyg-tokens'
 import { stripDescendants, selectContents, blocksInRange, subRangesPerBlock } from './wysiwyg-dom'
 
 /**

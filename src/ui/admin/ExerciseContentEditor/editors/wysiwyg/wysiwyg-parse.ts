@@ -21,9 +21,25 @@ function parseInline(text: string): string {
   const directiveMatch = text.match(DIRECTIVE_RE)
 
   const matches = [
-    boldMatch && { index: boldMatch.index!, length: boldMatch[0].length, kind: 'bold' as const, inner: boldMatch[1] },
-    italicMatch && { index: italicMatch.index!, length: italicMatch[0].length, kind: 'italic' as const, inner: italicMatch[1] },
-    directiveMatch && { index: directiveMatch.index!, length: directiveMatch[0].length, kind: 'directive' as const, token: directiveMatch[1] as AllToken, inner: directiveMatch[2] },
+    boldMatch && {
+      index: boldMatch.index!,
+      length: boldMatch[0].length,
+      kind: 'bold' as const,
+      inner: boldMatch[1],
+    },
+    italicMatch && {
+      index: italicMatch.index!,
+      length: italicMatch[0].length,
+      kind: 'italic' as const,
+      inner: italicMatch[1],
+    },
+    directiveMatch && {
+      index: directiveMatch.index!,
+      length: directiveMatch[0].length,
+      kind: 'directive' as const,
+      token: directiveMatch[1] as AllToken,
+      inner: directiveMatch[2],
+    },
   ].filter((m): m is NonNullable<typeof m> => m !== null)
 
   if (matches.length === 0) return escapeHtml(text)
@@ -37,7 +53,11 @@ function parseInline(text: string): string {
   return escapeHtml(before) + middle + parseInline(after)
 }
 
-function renderMatch(m: { kind: 'bold' | 'italic' | 'directive'; inner: string; token?: AllToken }): string {
+function renderMatch(m: {
+  kind: 'bold' | 'italic' | 'directive'
+  inner: string
+  token?: AllToken
+}): string {
   if (m.kind === 'bold') return `<strong>${parseInline(m.inner)}</strong>`
   if (m.kind === 'italic') return `<em>${parseInline(m.inner)}</em>`
   const token = m.token!

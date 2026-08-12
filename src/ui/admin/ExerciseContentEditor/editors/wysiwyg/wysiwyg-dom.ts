@@ -55,7 +55,12 @@ export function selectContents(el: Element): void {
   sel.addRange(r)
 }
 
-function blockContaining(node: Node, offset: number, root: HTMLElement, atEnd: boolean): Element | null {
+function blockContaining(
+  node: Node,
+  offset: number,
+  root: HTMLElement,
+  atEnd: boolean,
+): Element | null {
   // Range endpoint IS the root (Ctrl+A on the wysiwyg): resolve to the child
   // block at `offset`. atEnd biases past the collection when offset points
   // one past the last child, so the end block still lands on the last block.

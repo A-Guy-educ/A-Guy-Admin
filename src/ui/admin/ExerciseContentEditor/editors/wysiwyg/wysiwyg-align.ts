@@ -1,9 +1,4 @@
-import {
-  classForToken,
-  tokenForClass,
-  tokenCategory,
-  type AllToken,
-} from './wysiwyg-tokens'
+import { classForToken, tokenForClass, tokenCategory, type AllToken } from './wysiwyg-tokens'
 import { findEnclosingBlock } from './wysiwyg-dom'
 
 export function removeAlignFromBlock(block: Element): boolean {

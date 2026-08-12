@@ -1,4 +1,10 @@
-import { isAlignToken, categoryOfElement, tokenCategory, classForToken, type AllToken } from './wysiwyg-tokens'
+import {
+  isAlignToken,
+  categoryOfElement,
+  tokenCategory,
+  classForToken,
+  type AllToken,
+} from './wysiwyg-tokens'
 import {
   currentRange,
   unwrap,
