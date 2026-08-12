@@ -2,6 +2,7 @@
 
 import React from 'react'
 import type { SaveError } from './useStudioSave'
+import type { StudioViewMode } from './viewMode'
 
 interface StudioToolbarProps {
   lessonTitle: string
@@ -10,6 +11,8 @@ interface StudioToolbarProps {
   saving: boolean
   errors: SaveError[]
   onSave: () => void
+  viewMode: StudioViewMode
+  onViewModeChange: (mode: StudioViewMode) => void
 }
 
 export const StudioToolbar: React.FC<StudioToolbarProps> = ({
@@ -19,6 +22,8 @@ export const StudioToolbar: React.FC<StudioToolbarProps> = ({
   saving,
   errors,
   onSave,
+  viewMode,
+  onViewModeChange,
 }) => {
   const disabled = saving || dirtyCount === 0
 
@@ -39,6 +44,26 @@ export const StudioToolbar: React.FC<StudioToolbarProps> = ({
       </div>
 
       <div className="studio-toolbar-right">
+        <div className="studio-view-toggle" role="tablist" aria-label="View mode">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={viewMode === 'edit'}
+            className={`studio-view-toggle-btn${viewMode === 'edit' ? ' studio-view-toggle-btn--active' : ''}`}
+            onClick={() => onViewModeChange('edit')}
+          >
+            Edit
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={viewMode === 'document'}
+            className={`studio-view-toggle-btn${viewMode === 'document' ? ' studio-view-toggle-btn--active' : ''}`}
+            onClick={() => onViewModeChange('document')}
+          >
+            Document
+          </button>
+        </div>
         {errors.length > 0 && (
           <span className="studio-toolbar-errors" title={errors.map((e) => e.message).join('\n')}>
             {errors.length} save error{errors.length === 1 ? '' : 's'}

@@ -7,6 +7,7 @@ import { StudioExerciseCard } from './StudioExerciseCard'
 import { StudioToolbar } from './StudioToolbar'
 import { useStudioSave, type DirtyEntry } from './useStudioSave'
 import { useStudioTree } from './useStudioTree'
+import type { StudioViewMode } from './viewMode'
 import { EditorChromeProvider } from '../ExerciseContentEditor/EditorChromeContext'
 import '../LessonBlocksField/inline-exercise-editor.css'
 import '../ExerciseContentEditor/index.css'
@@ -30,6 +31,7 @@ interface LessonStudioPageProps {
 export const LessonStudioPage: React.FC<LessonStudioPageProps> = ({ lessonId }) => {
   const { tree, loading, error } = useStudioTree(lessonId)
   const { saving, errors, saveAll } = useStudioSave()
+  const [viewMode, setViewMode] = useState<StudioViewMode>('edit')
 
   // Section blocks live in a flat map keyed by section id. Exercise-level
   // content blocks live in a separate map keyed by exercise id (legacy
@@ -168,8 +170,8 @@ export const LessonStudioPage: React.FC<LessonStudioPageProps> = ({ lessonId }) 
   if (!tree) return <div className="studio-message">Lesson not found.</div>
 
   return (
-    <EditorChromeProvider mode="compact" defaultRichTextView="view">
-      <div className="studio-page">
+    <EditorChromeProvider mode="compact" defaultRichTextView="edit">
+      <div className={`studio-page studio-page--${viewMode}`}>
         <StudioToolbar
           lessonTitle={tree.lesson.title || 'Untitled Lesson'}
           lessonId={tree.lesson.id}
@@ -177,6 +179,8 @@ export const LessonStudioPage: React.FC<LessonStudioPageProps> = ({ lessonId }) 
           saving={saving}
           errors={errors}
           onSave={handleSaveAll}
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
         />
 
         <main className="studio-content">
@@ -194,6 +198,7 @@ export const LessonStudioPage: React.FC<LessonStudioPageProps> = ({ lessonId }) 
                 dirtyExerciseIds={dirtyExerciseIds}
                 onSectionBlockChange={handleSectionBlockChange}
                 onExerciseBlockChange={handleExerciseBlockChange}
+                viewMode={viewMode}
               />
             ))
           )}

@@ -1548,21 +1548,45 @@
   background: var(--theme-elevation-50);
 }
 
-.inline-rich-text-textarea {
+.inline-rich-text-wysiwyg {
   width: 100%;
   min-height: 80px;
   padding: 0.75rem;
   border: none;
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-  font-size: 0.875rem;
-  line-height: 1.5;
+  font-size: 0.9375rem;
+  line-height: 1.55;
   color: var(--theme-elevation-1000);
   background: transparent;
-  resize: vertical;
+  outline: none;
+  white-space: pre-wrap;
+  word-break: break-word;
+  position: relative;
 }
 
-.inline-rich-text-textarea:focus {
+.inline-rich-text-wysiwyg:focus {
   outline: none;
+}
+
+.inline-rich-text-wysiwyg[data-empty='true']::before {
+  content: attr(data-placeholder);
+  color: var(--theme-elevation-400);
+  font-style: italic;
+  pointer-events: none;
+  position: absolute;
+}
+
+.inline-rich-text-wysiwyg p {
+  margin: 0 0 0.5em 0;
+}
+
+.inline-rich-text-wysiwyg p:last-child {
+  margin-bottom: 0;
+}
+
+.inline-rich-text-wysiwyg h1 {
+  font-size: 1.5em;
+  font-weight: 600;
+  margin: 0.25em 0 0.5em 0;
 }
 
 .inline-rich-text-footer {

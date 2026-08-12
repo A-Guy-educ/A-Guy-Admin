@@ -123,6 +123,43 @@
   cursor: not-allowed;
 }
 
+/* ---------- View-mode toggle (Edit / Document) ---------- */
+.studio-view-toggle {
+  display: inline-flex;
+  border: 1px solid var(--theme-elevation-200);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--theme-elevation-50);
+}
+
+.studio-view-toggle-btn {
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--theme-elevation-600);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition:
+    background 0.12s,
+    color 0.12s;
+}
+
+.studio-view-toggle-btn:hover {
+  background: var(--theme-elevation-100);
+  color: var(--theme-text);
+}
+
+.studio-view-toggle-btn--active {
+  background: var(--theme-elevation-0);
+  color: var(--theme-text);
+  box-shadow: inset 0 -2px 0 var(--theme-success-500);
+}
+
+.studio-view-toggle-btn--active:hover {
+  background: var(--theme-elevation-0);
+}
+
 /* ---------- Document surface ----------
    The studio is meant to feel like one long Word-style document rather than
    a stack of admin cards. Content sits on a single page background, exercises
@@ -301,7 +338,7 @@
   opacity: 1;
 }
 
-.studio-section-blocks .inline-rich-text-textarea {
+.studio-section-blocks .inline-rich-text-wysiwyg {
   padding: 6px 2px;
   font-family: inherit;
   font-size: 15px;
@@ -311,7 +348,7 @@
   border: none;
 }
 
-.studio-section-blocks .inline-rich-text-textarea:focus {
+.studio-section-blocks .inline-rich-text-wysiwyg:focus {
   outline: none;
   background: var(--theme-elevation-50);
 }
@@ -326,8 +363,7 @@
   border-left-color: var(--theme-success-500);
 }
 
-/* Rich-text preview renders as document prose by default. Toolbar's Eye/Pencil
-   button still toggles into the source textarea when the user needs to edit. */
+/* Preview shape when the toolbar's Eye toggle is flipped into view mode. */
 .studio-section-blocks .inline-rich-text-preview {
   padding: 4px 2px;
   font-size: 15px;
@@ -346,7 +382,219 @@
 /* Inside an MCQ option, the rich-text preview should read as a single line of
    answer text — smaller and tighter than a top-level paragraph. */
 .studio-section-blocks .mcq-option-content .inline-rich-text-preview,
-.studio-section-blocks .mcq-option-content .inline-rich-text-textarea {
+.studio-section-blocks .mcq-option-content .inline-rich-text-wysiwyg {
   font-size: 14px;
   padding: 2px 4px;
+}
+
+/* ==========================================================================
+   Document mode — Word-style read view with click-to-edit affordance.
+   Only applies when the studio root has `studio-page--document`.
+   ========================================================================== */
+
+.studio-page--document .studio-content {
+  max-width: 780px;
+  padding-top: 40px;
+  padding-bottom: 120px;
+  font-size: 16px;
+  line-height: 1.7;
+}
+
+.studio-page--document .studio-exercise-title {
+  font-size: 26px;
+}
+
+.studio-page--document .studio-section-title {
+  font-size: 17px;
+  color: var(--theme-elevation-800);
+}
+
+.studio-page--document .studio-section-blocks {
+  gap: 12px;
+}
+
+/* ---------- StudioDocBlock wrapper ---------- */
+.studio-doc-block {
+  position: relative;
+  padding: 6px 10px;
+  border-radius: 4px;
+  cursor: text;
+  transition:
+    background 0.12s,
+    box-shadow 0.12s;
+}
+
+.studio-doc-block:hover {
+  background: var(--theme-elevation-50);
+  box-shadow: inset 0 0 0 1px var(--theme-elevation-150);
+}
+
+.studio-doc-block:focus-visible {
+  outline: none;
+  background: var(--theme-elevation-50);
+  box-shadow: inset 0 0 0 2px var(--theme-success-500);
+}
+
+.studio-doc-block--editing {
+  background: var(--theme-elevation-50);
+  box-shadow: inset 0 0 0 2px var(--theme-success-500);
+  cursor: default;
+  padding: 12px 14px;
+}
+
+.studio-doc-block-editing-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 6px;
+}
+
+.studio-doc-done-btn {
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--theme-base-0);
+  background: var(--theme-success-500);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.studio-doc-done-btn:hover {
+  background: var(--theme-success-600);
+}
+
+/* ---------- Placeholders / unsupported ---------- */
+.studio-doc-placeholder {
+  color: var(--theme-elevation-400);
+  font-style: italic;
+}
+
+.studio-doc-unsupported {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border: 1px dashed var(--theme-elevation-200);
+  border-radius: 4px;
+  background: var(--theme-elevation-50);
+  color: var(--theme-elevation-600);
+  font-size: 13px;
+}
+
+.studio-doc-unsupported-badge {
+  font-weight: 600;
+  color: var(--theme-text);
+}
+
+.studio-doc-unsupported-hint {
+  color: var(--theme-elevation-500);
+  font-style: italic;
+}
+
+/* ---------- Question read view ---------- */
+.studio-doc-question {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.studio-doc-question-prompt {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--theme-text);
+}
+
+.studio-doc-options {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.studio-doc-option {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 4px 6px;
+  border-radius: 4px;
+}
+
+.studio-doc-option-marker {
+  flex-shrink: 0;
+  min-width: 1.5em;
+  font-variant-numeric: tabular-nums;
+  color: var(--theme-elevation-500);
+  font-weight: 500;
+}
+
+.studio-doc-option-body {
+  flex: 1;
+}
+
+.studio-doc-option--correct {
+  background: var(--theme-success-50, var(--theme-elevation-50));
+  border-inline-start: 2px solid var(--theme-success-500);
+  padding-inline-start: 4px;
+}
+
+.studio-doc-option--correct .studio-doc-option-marker {
+  color: var(--theme-success-600, var(--theme-success-500));
+  font-weight: 700;
+}
+
+/* ---------- Free-response answer line ---------- */
+.studio-doc-answer-line {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.studio-doc-answer-blank {
+  flex: 1;
+  height: 0;
+  min-width: 120px;
+  border-bottom: 1px solid var(--theme-elevation-300);
+}
+
+.studio-doc-answer-key {
+  font-size: 12px;
+  color: var(--theme-elevation-500);
+  font-style: italic;
+}
+
+/* ---------- Graph / SVG / LaTeX previews ----------
+   These wrap the live runtime renderers (`AxisRenderer`, `GeometryRenderer`,
+   `MultiAxisRenderer`, `SvgRenderer`, `LatexBlockRenderer`). Interactive
+   surfaces inside them are neutralised so the StudioDocBlock wrapper's click
+   handler wins — otherwise a JSXGraph board would swallow the click and the
+   admin couldn't enter edit mode by clicking the graph itself. */
+.studio-doc-graph-canvas,
+.studio-doc-svg,
+.studio-doc-graph .jxgbox {
+  pointer-events: none;
+}
+
+.studio-doc-graph {
+  margin-top: 8px;
+}
+
+.studio-doc-graph-canvas {
+  padding: 8px 0;
+}
+
+.studio-doc-svg {
+  padding: 8px 0;
+  max-width: 100%;
+}
+
+.studio-doc-svg svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.studio-doc-latex {
+  padding: 4px 0;
 }

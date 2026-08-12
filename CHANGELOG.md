@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.32.0 — 2026-08-12
+
+### Features
+- Word-like WYSIWYG editing for inline rich text (#326)
+- Doc-view previews for graphs, SVG and LaTeX blocks in lesson studio (#324)
+- RTL support in studio document mode (#324)
+- Lesson studio document-mode demo (#323)
+
+### Fixes
+- Show inline rich-text toolbar by default in Lesson Studio (#325)
+
 ## v0.31.0 — 2026-08-10
 
 ### Features
@@ -1889,6 +1900,14 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- chore: Release v0.32.0 ([#328](https://github.com/A-Guy-educ/A-Guy-Admin/pull/328)) — @aguyshayb
+- feat: Word-like WYSIWYG editing for inline rich text ([#326](https://github.com/A-Guy-educ/A-Guy-Admin/pull/326)) — @aguyshayb
+- fix: Show inline rich-text toolbar by default in Lesson Studio ([#325](https://github.com/A-Guy-educ/A-Guy-Admin/pull/325)) — @aguyshayb
+- feat: Studio doc view - graphs, SVG, LaTeX + RTL fix ([#324](https://github.com/A-Guy-educ/A-Guy-Admin/pull/324)) — @aguyshayb
+- feat: Lesson studio document-mode demo ([#323](https://github.com/A-Guy-educ/A-Guy-Admin/pull/323)) — @aguyshayb
+## [v0.31.0] - 2026-08-10
+
+- promote: dev -> main (v0.31.0) ([#321](https://github.com/A-Guy-educ/A-Guy-Admin/pull/321)) — @aguyshayb
 - chore: Release v0.31.0 ([#320](https://github.com/A-Guy-educ/A-Guy-Admin/pull/320)) — @aguyshayb
 - fix: Render exercise-level blocks alongside sections in lesson studio ([#318](https://github.com/A-Guy-educ/A-Guy-Admin/pull/318)) — @aguyshayb
 - fix: Render geometric loci in admin axis canvas preview ([#317](https://github.com/A-Guy-educ/A-Guy-Admin/pull/317)) — @aguyshayb
