@@ -55,14 +55,19 @@ describe('RichTextEditor textarea supports RTL via dir="auto" (#114)', () => {
   })
 })
 
-describe('InlineRichTextEditor textarea supports RTL via dir="auto" (#114)', () => {
-  it('source file declares dir="auto" on the inline-rich-text-textarea element', () => {
-    const content = readFileSync(inlineRichTextEditorPath, 'utf-8')
-
-    // The <textarea className="inline-rich-text-textarea" .../> block should
-    // declare dir="auto" for the same RTL auto-detection behavior.
-    expect(content).toMatch(
-      /<textarea[\s\S]*?className="inline-rich-text-textarea"[\s\S]*?dir="auto"/,
+describe('InlineRichTextEditor surface supports RTL via dir="auto" (#114)', () => {
+  it('source file forwards dir="auto" onto the wysiwyg edit surface', () => {
+    const inlineContent = readFileSync(inlineRichTextEditorPath, 'utf-8')
+    const wysiwygPath = path.resolve(
+      process.cwd(),
+      'src/ui/admin/ExerciseContentEditor/editors/wysiwyg/WysiwygEditor.tsx',
     )
+    const wysiwygContent = readFileSync(wysiwygPath, 'utf-8')
+
+    // InlineRichTextEditor now renders <WysiwygEditor .../> in edit mode. The
+    // WysiwygEditor itself owns the contentEditable div and must set
+    // dir="auto" so Hebrew content auto-aligns right without an explicit prop.
+    expect(inlineContent).toMatch(/<WysiwygEditor[\s\S]*?\/>/)
+    expect(wysiwygContent).toMatch(/contentEditable[\s\S]*?dir="auto"/)
   })
 })

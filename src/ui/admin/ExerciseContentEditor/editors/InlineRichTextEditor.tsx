@@ -21,6 +21,7 @@ import {
 import Image from 'next/image'
 import { MathMarkdown } from '@/ui/shared/primitives/MathMarkdown'
 import { useEditorChrome } from '../EditorChromeContext'
+import { WysiwygEditor, type WysiwygEditorHandle } from './wysiwyg/WysiwygEditor'
 
 interface InlineRichTextEditorProps {
   value: InlineRichText
@@ -52,9 +53,6 @@ const SIZE_OPTIONS: ReadonlyArray<{ token: SizeToken; label: string; ariaLabel: 
   { token: 'text-size-xlarge', label: 'XL', ariaLabel: 'Extra large' },
 ]
 
-const DIRECTIVE_PATTERN =
-  /::(text-(?:highlight-[1-8]|wine-red|blue|green|dark-orange|size-(?:small|normal|large|xlarge)|align-right))\{([^}]*)\}/g
-
 export const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
   value,
   onChange,
@@ -63,7 +61,7 @@ export const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
   defaultViewMode,
 }) => {
   const chrome = useEditorChrome()
-  const textareaRef = React.useRef<HTMLTextAreaElement>(null)
+  const wysiwygRef = React.useRef<WysiwygEditorHandle>(null)
   const [mediaItems, setMediaItems] = React.useState<Media[]>([])
   const [loadingMedia, setLoadingMedia] = React.useState(false)
   const [showColorPicker, setShowColorPicker] = React.useState(false)
@@ -83,82 +81,13 @@ export const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
     [value, onChange],
   )
 
-  const insertText = (before: string, after: string = '') => {
-    const textarea = textareaRef.current
-    if (!textarea) return
-
-    const start = textarea.selectionStart
-    const end = textarea.selectionEnd
-    const text = textarea.value
-    const selection = text.substring(start, end)
-
-    const newValue = text.substring(0, start) + before + selection + after + text.substring(end)
-
-    updateValue(newValue)
-
-    setTimeout(() => {
-      textarea.focus()
-      textarea.setSelectionRange(start + before.length, end + before.length)
-    }, 0)
-  }
-
-  const wrapSelection = (marker: string) => {
-    const textarea = textareaRef.current
-    if (!textarea) return
-
-    const start = textarea.selectionStart
-    const end = textarea.selectionEnd
-    const text = textarea.value
-    const selection = text.substring(start, end)
-    const before = `::${marker}{`
-    const after = `}`
-
-    const wrapped = selection.length > 0 ? `${before}${selection}${after}` : `${before}${after}`
-    const newValue = text.substring(0, start) + wrapped + text.substring(end)
-
-    updateValue(newValue)
-
-    setTimeout(() => {
-      textarea.focus()
-      if (selection.length > 0) {
-        textarea.setSelectionRange(start + before.length, end + before.length)
-      } else {
-        textarea.setSelectionRange(start + before.length, start + before.length)
-      }
-    }, 0)
-  }
-
-  const clearFormat = () => {
-    const textarea = textareaRef.current
-    if (!textarea) return
-
-    const start = textarea.selectionStart
-    const end = textarea.selectionEnd
-    const text = textarea.value
-
-    if (start === end) return
-
-    const selection = text.substring(start, end)
-    const stripped = selection.replace(DIRECTIVE_PATTERN, '$2')
-
-    if (stripped === selection) return
-
-    const newValue = text.substring(0, start) + stripped + text.substring(end)
-    updateValue(newValue)
-
-    setTimeout(() => {
-      textarea.focus()
-      textarea.setSelectionRange(start, start + stripped.length)
-    }, 0)
-  }
-
   const insertHighlight = (token: HighlightToken) => {
-    wrapSelection(token)
+    wysiwygRef.current?.applyToken(token)
     setShowColorPicker(false)
   }
 
   const insertSize = (token: SizeToken) => {
-    wrapSelection(token)
+    wysiwygRef.current?.applyToken(token)
   }
 
   React.useEffect(() => {
@@ -221,12 +150,19 @@ export const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
         className={`inline-rich-text-toolbar ${isEditMode ? '' : 'inline-rich-text-toolbar--view'}`}
         role="toolbar"
         aria-label="Rich text formatting"
+        // Prevent mousedown on any toolbar control from stealing focus out of
+        // the contentEditable. Otherwise clicking Bold moves focus into the
+        // button, collapses the selection, and typing stops working until the
+        // user clicks back into the editor.
+        onMouseDown={(e) => {
+          if ((e.target as HTMLElement).closest('button')) e.preventDefault()
+        }}
       >
         {isEditMode ? (
           <>
             <button
               className="toolbar-button"
-              onClick={() => insertText('**', '**')}
+              onClick={() => wysiwygRef.current?.applyMark('strong')}
               title="Bold"
               type="button"
               aria-label="Bold"
@@ -236,7 +172,7 @@ export const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
             </button>
             <button
               className="toolbar-button"
-              onClick={() => insertText('*', '*')}
+              onClick={() => wysiwygRef.current?.applyMark('em')}
               title="Italic"
               type="button"
               aria-label="Italic"
@@ -247,7 +183,7 @@ export const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
             <div className="toolbar-divider" />
             <button
               className="toolbar-button"
-              onClick={() => insertText('# ')}
+              onClick={() => wysiwygRef.current?.insertHeading()}
               title="Heading"
               type="button"
               aria-label="Heading"
@@ -257,7 +193,7 @@ export const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
             </button>
             <button
               className="toolbar-button"
-              onClick={() => insertText('`', '`')}
+              onClick={() => wysiwygRef.current?.insertAround('`', '`')}
               title="Code"
               type="button"
               aria-label="Code"
@@ -267,7 +203,7 @@ export const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
             </button>
             <button
               className="toolbar-button"
-              onClick={() => insertText('$', '$')}
+              onClick={() => wysiwygRef.current?.insertAround('$', '$')}
               title="Math (Inline)"
               type="button"
               aria-label="Math"
@@ -278,7 +214,7 @@ export const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
             <div className="toolbar-divider" />
             <button
               className="toolbar-button"
-              onClick={() => insertText('[', '](url)')}
+              onClick={() => wysiwygRef.current?.insertAround('[', '](url)')}
               title="Link"
               type="button"
               aria-label="Link"
@@ -288,7 +224,7 @@ export const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
             </button>
             <button
               className="toolbar-button"
-              onClick={() => wrapSelection('text-align-right')}
+              onClick={() => wysiwygRef.current?.applyToken('text-align-right')}
               title="Align right (RTL-friendly)"
               type="button"
               aria-label="Align right"
@@ -349,7 +285,7 @@ export const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
             </div>
             <button
               className="toolbar-button"
-              onClick={clearFormat}
+              onClick={() => wysiwygRef.current?.clearFormatting()}
               title="Clear format"
               type="button"
               aria-label="Clear format"
@@ -402,15 +338,12 @@ export const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
       </div>
 
       {isEditMode ? (
-        <textarea
-          ref={textareaRef}
-          className="inline-rich-text-textarea"
-          style={{ minHeight }}
+        <WysiwygEditor
+          ref={wysiwygRef}
           value={value.value}
-          onChange={(e) => updateValue(e.target.value)}
+          onChange={updateValue}
           placeholder={placeholder}
-          dir="auto"
-          data-testid="rte-textarea"
+          minHeight={minHeight}
         />
       ) : (
         <div
