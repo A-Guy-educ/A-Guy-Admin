@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.32.0 — 2026-08-12
+
+### Features
+- Word-like WYSIWYG editing for inline rich text (#326)
+- Doc-view previews for graphs, SVG and LaTeX blocks in lesson studio (#324)
+- RTL support in studio document mode (#324)
+- Lesson studio document-mode demo (#323)
+
+### Fixes
+- Show inline rich-text toolbar by default in Lesson Studio (#325)
+
 ## v0.31.0 — 2026-08-10
 
 ### Features
