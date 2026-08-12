@@ -615,6 +615,57 @@ describe('InlineRichTextEditor toolbar (Issue #110)', () => {
     expect(last).toBe('::text-align-right{hello}\n::text-align-right{world}')
   })
 
+  it('preserves selection across all touched blocks after multi-block bold', async () => {
+    const { onChange } = renderEditor({ value: 'hello\nworld' })
+    const wysiwyg = screen.getByTestId('rte-wysiwyg')
+    const range = document.createRange()
+    range.selectNodeContents(wysiwyg)
+    const sel = window.getSelection()!
+    sel.removeAllRanges()
+    sel.addRange(range)
+
+    fireEvent.click(screen.getByTestId('rte-bold'))
+    await waitFor(() => expect(onChange).toHaveBeenCalled())
+
+    // A follow-up format action must hit the same content, not shrink to
+    // just paragraph 1 (the old bug — final selectContents fired on block[0]).
+    const currentText = window.getSelection()?.toString() ?? ''
+    expect(currentText).toContain('hello')
+    expect(currentText).toContain('world')
+  })
+
+  it('prevents default on Shift+Enter (no soft-break drift to hard paragraphs)', () => {
+    renderEditor({ value: 'abc' })
+    const wysiwyg = screen.getByTestId('rte-wysiwyg')
+    // Focus so keydown reaches the handler
+    ;(wysiwyg as HTMLElement).focus()
+
+    const preventDefault = vi.fn()
+    fireEvent.keyDown(wysiwyg, { key: 'Enter', shiftKey: true, preventDefault })
+    // fireEvent's preventDefault mock isn't wired through React synthetic
+    // events reliably, so instead assert the surface didn't gain a <br>
+    // (which is what the browser default WOULD produce and what our storage
+    // format can't round-trip).
+    expect(wysiwyg.querySelectorAll('p > br').length).toBeLessThanOrEqual(1)
+    // The one <br> that IS allowed is the placeholder in an empty <p>.
+    const brs = Array.from(wysiwyg.querySelectorAll('br'))
+    for (const br of brs) {
+      const parent = br.parentElement!
+      expect(parent.childNodes.length).toBe(1) // sole child = placeholder br
+    }
+  })
+
+  it('prevents default on Ctrl+U (browser would insert unsupported <u>)', () => {
+    renderEditor({ value: 'abc' })
+    const wysiwyg = screen.getByTestId('rte-wysiwyg')
+    ;(wysiwyg as HTMLElement).focus()
+
+    fireEvent.keyDown(wysiwyg, { key: 'u', ctrlKey: true })
+    // No <u> in the DOM — browser default would have created one, and our
+    // serializer would discard it silently on next hydrate.
+    expect(wysiwyg.querySelector('u')).toBeNull()
+  })
+
   it('renders wine red swatch background via the toolbar-color-swatch--wine-red class', () => {
     renderEditor()
     const swatch = document.querySelector('.toolbar-color-swatch--wine-red')

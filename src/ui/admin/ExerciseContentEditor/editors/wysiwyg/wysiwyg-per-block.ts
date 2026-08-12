@@ -23,6 +23,20 @@ export function forEachBlockRange(
   const subs = subRangesPerBlock(range, blocks)
   let mutated = false
   for (let i = subs.length - 1; i >= 0; i--) if (fn(subs[i])) mutated = true
+  // Each per-block wrap called selectContents on its own wrapper; the last
+  // one to fire is block[0], so the visible selection would collapse to just
+  // paragraph 1. Restore a range spanning every touched block so a follow-up
+  // format click (Italic after Bold) hits the same content as the original.
+  if (mutated) {
+    const sel = window.getSelection()
+    if (sel) {
+      sel.removeAllRanges()
+      const r = document.createRange()
+      r.setStart(blocks[0], 0)
+      r.setEnd(blocks[blocks.length - 1], blocks[blocks.length - 1].childNodes.length)
+      sel.addRange(r)
+    }
+  }
   return mutated
 }
 

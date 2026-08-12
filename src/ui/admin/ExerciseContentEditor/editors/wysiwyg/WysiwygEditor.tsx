@@ -4,7 +4,6 @@ import React from 'react'
 import type { AllToken } from './wysiwyg-tokens'
 import { parseMdToHtml } from './wysiwyg-parse'
 import { serializeDomToMd } from './wysiwyg-serialize'
-import { currentRange } from './wysiwyg-dom'
 import {
   applyInlineMark,
   applyToken,
@@ -12,6 +11,7 @@ import {
   clearFormatting,
   insertAround,
 } from './wysiwyg-format'
+import { useEditorHandlers } from './use-editor-handlers'
 
 export interface WysiwygEditorHandle {
   applyMark: (tag: 'strong' | 'em') => void
@@ -32,13 +32,10 @@ interface WysiwygEditorProps {
 // Sentinel so the first render always hydrates (one effect covers mount + updates).
 const UNHYDRATED: unique symbol = Symbol('unhydrated')
 
-/**
- * Contenteditable surface that renders md-math-v1 as live-formatted HTML.
- * Toolbar actions mutate the DOM via the imperative handle; input events
- * serialize back to md. We only re-hydrate innerHTML when the external value
- * diverges from what we last emitted — otherwise every keystroke would reset
- * the caret to the top.
- */
+// Contenteditable that renders md-math-v1 as live-formatted HTML. Toolbar
+// actions mutate the DOM through the handle; input events serialize back to
+// md. Re-hydrate only when the external value diverges from what we last
+// emitted, otherwise every keystroke would reset the caret to the top.
 export const WysiwygEditor = React.forwardRef<WysiwygEditorHandle, WysiwygEditorProps>(
   ({ value, onChange, placeholder, minHeight = '80px' }, ref) => {
     const rootRef = React.useRef<HTMLDivElement>(null)
@@ -67,13 +64,12 @@ export const WysiwygEditor = React.forwardRef<WysiwygEditorHandle, WysiwygEditor
       onChange(md)
     }, [onChange])
 
+    // Skip the onChange if the action was a no-op — Bold with a bare caret
+    // shouldn't dirty the form or wake autosave.
     const runAction = React.useCallback(
       (action: (root: HTMLElement) => boolean) => {
         const root = rootRef.current
-        if (!root) return
-        // Skip the onChange (and dirty-flag flip) if the action was a no-op
-        // — clicking Bold with a bare caret shouldn't wake up autosave.
-        if (action(root)) emitChange()
+        if (root && action(root)) emitChange()
       },
       [emitChange],
     )
@@ -91,37 +87,7 @@ export const WysiwygEditor = React.forwardRef<WysiwygEditorHandle, WysiwygEditor
       [runAction],
     )
 
-    // Force paste to plain text — a contentEditable otherwise accepts HTML
-    // like `<img onerror=…>` which runs JS in the admin origin before we get
-    // to serialize the DOM back to md.
-    const handlePaste = React.useCallback(
-      (e: React.ClipboardEvent<HTMLDivElement>) => {
-        e.preventDefault()
-        if (composingRef.current) return
-        const root = rootRef.current
-        if (!root) return
-        const text = e.clipboardData.getData('text/plain')
-        if (!text) return
-        const range = currentRange(root)
-        if (!range) return
-        range.deleteContents()
-        range.insertNode(document.createTextNode(text))
-        range.collapse(false)
-        emitChange()
-      },
-      [emitChange],
-    )
-
-    // Suppress serialize during IME composition (Hebrew nikud, CJK) — the
-    // browser is still writing intermediate text and re-serializing mid-
-    // stream causes visible flicker and caret jumps.
-    const handleInput = React.useCallback(
-      (e: React.FormEvent<HTMLDivElement>) => {
-        if (composingRef.current || (e.nativeEvent as InputEvent).isComposing) return
-        emitChange()
-      },
-      [emitChange],
-    )
+    const handlers = useEditorHandlers(rootRef, composingRef, emitChange)
 
     return (
       <div
@@ -133,15 +99,11 @@ export const WysiwygEditor = React.forwardRef<WysiwygEditorHandle, WysiwygEditor
         data-placeholder={placeholder}
         data-testid="rte-wysiwyg"
         dir="auto"
-        onInput={handleInput}
-        onPaste={handlePaste}
-        onCompositionStart={() => {
-          composingRef.current = true
-        }}
-        onCompositionEnd={() => {
-          composingRef.current = false
-          emitChange()
-        }}
+        onInput={handlers.handleInput}
+        onPaste={handlers.handlePaste}
+        onKeyDown={handlers.handleKeyDown}
+        onCompositionStart={handlers.handleCompositionStart}
+        onCompositionEnd={handlers.handleCompositionEnd}
       />
     )
   },
