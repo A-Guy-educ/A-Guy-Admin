@@ -562,6 +562,43 @@ describe('InlineRichTextEditor toolbar (Issue #110)', () => {
     expect(last).toBe('::text-blue{hello}\n::text-blue{world}')
   })
 
+  it('aligns all paragraphs on Ctrl+A when the selection is mixed-alignment', async () => {
+    // First paragraph unaligned, second already right-aligned. The natural
+    // gesture is "align everything now" — per-block toggling used to swap
+    // them (align a, un-align b) which silently made layout worse.
+    const { onChange } = renderEditor({ value: 'hello\n::text-align-right{world}' })
+    const wysiwyg = screen.getByTestId('rte-wysiwyg')
+    const range = document.createRange()
+    range.selectNodeContents(wysiwyg)
+    const sel = window.getSelection()!
+    sel.removeAllRanges()
+    sel.addRange(range)
+
+    fireEvent.click(screen.getByTestId('rte-align-right'))
+
+    await waitFor(() => expect(onChange).toHaveBeenCalled())
+    const last = onChange.mock.calls.at(-1)?.[0]?.value
+    expect(last).toBe('::text-align-right{hello}\n::text-align-right{world}')
+  })
+
+  it('un-aligns all paragraphs on Ctrl+A when every paragraph is already aligned', async () => {
+    const { onChange } = renderEditor({
+      value: '::text-align-right{hello}\n::text-align-right{world}',
+    })
+    const wysiwyg = screen.getByTestId('rte-wysiwyg')
+    const range = document.createRange()
+    range.selectNodeContents(wysiwyg)
+    const sel = window.getSelection()!
+    sel.removeAllRanges()
+    sel.addRange(range)
+
+    fireEvent.click(screen.getByTestId('rte-align-right'))
+
+    await waitFor(() => expect(onChange).toHaveBeenCalled())
+    const last = onChange.mock.calls.at(-1)?.[0]?.value
+    expect(last).toBe('hello\nworld')
+  })
+
   it('aligns every paragraph on a multi-block selection', async () => {
     const { onChange } = renderEditor({ value: 'hello\nworld' })
     const wysiwyg = screen.getByTestId('rte-wysiwyg')

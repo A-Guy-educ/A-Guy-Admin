@@ -29,8 +29,7 @@ interface WysiwygEditorProps {
   minHeight?: string
 }
 
-// Sentinel so the first render always hydrates and a single effect handles
-// both mount and subsequent external value changes.
+// Sentinel so the first render always hydrates (one effect covers mount + updates).
 const UNHYDRATED: unique symbol = Symbol('unhydrated')
 
 /**
@@ -98,6 +97,7 @@ export const WysiwygEditor = React.forwardRef<WysiwygEditorHandle, WysiwygEditor
     const handlePaste = React.useCallback(
       (e: React.ClipboardEvent<HTMLDivElement>) => {
         e.preventDefault()
+        if (composingRef.current) return
         const root = rootRef.current
         if (!root) return
         const text = e.clipboardData.getData('text/plain')

@@ -1,4 +1,4 @@
-import { isAlignToken, categoryOfElement, tokenCategory, type AllToken } from './wysiwyg-tokens'
+import { isAlignToken, categoryOfElement, tokenCategory, classForToken, type AllToken } from './wysiwyg-tokens'
 import {
   currentRange,
   unwrap,
@@ -40,11 +40,20 @@ export function applyToken(root: HTMLElement, token: AllToken): boolean {
   if (isAlignToken(token)) {
     const blocks = blocksInRange(range, root)
     if (blocks.length === 0) return applyAlignToBlock(root, range, token)
+    // On multi-block, decide add-all vs strip-all up front — per-block toggle
+    // silently swaps mixed selections (aligned+unaligned → unaligned+aligned).
+    // Only strip if every touched block already carries this exact token.
+    const allAligned = blocks.every((b) => b.getAttribute('data-aguy-token') === token)
     let any = false
     for (const b of blocks) {
-      const r = document.createRange()
-      r.selectNodeContents(b)
-      if (applyAlignToBlock(root, r, token)) any = true
+      if (allAligned) {
+        if (removeAlignFromBlock(b)) any = true
+      } else if (b.getAttribute('data-aguy-token') !== token) {
+        removeAlignFromBlock(b)
+        b.classList.add(classForToken(token))
+        b.setAttribute('data-aguy-token', token)
+        any = true
+      }
     }
     return any
   }
