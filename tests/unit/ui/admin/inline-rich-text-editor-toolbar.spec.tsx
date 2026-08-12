@@ -666,6 +666,49 @@ describe('InlineRichTextEditor toolbar (Issue #110)', () => {
     expect(wysiwyg.querySelector('u')).toBeNull()
   })
 
+  it('toolbar buttons preventDefault on mousedown so the editor keeps focus', () => {
+    renderEditor()
+    // Every button inside the toolbar should have its focus-stealing default
+    // suppressed via the toolbar-level mousedown handler.
+    const bold = screen.getByTestId('rte-bold')
+    const preventDefault = vi.fn()
+    fireEvent.mouseDown(bold, { preventDefault })
+    // React's synthetic event fires the toolbar-level handler; verify by
+    // inspecting: the handler calls preventDefault on the event object, which
+    // fireEvent's default event does have. Post-event, defaultPrevented === true.
+    const event = new MouseEvent('mousedown', { bubbles: true, cancelable: true })
+    bold.dispatchEvent(event)
+    expect(event.defaultPrevented).toBe(true)
+  })
+
+  it('coerces dropped HTML to plain text (mirrors paste XSS guard)', async () => {
+    const { onChange } = renderEditor({ value: '' })
+    const wysiwyg = screen.getByTestId('rte-wysiwyg')
+    const p = wysiwyg.querySelector('p')!
+    const range = document.createRange()
+    range.selectNodeContents(p)
+    range.collapse(true)
+    const sel = window.getSelection()!
+    sel.removeAllRanges()
+    sel.addRange(range)
+
+    // Simulate a drop with dangerous HTML + a plain-text fallback.
+    const store: Record<string, string> = {
+      'text/plain': 'dropped',
+      'text/html': '<img src="x" onerror="window.__dropped_pwned=true">',
+    }
+    fireEvent.drop(wysiwyg, {
+      clientX: 0,
+      clientY: 0,
+      dataTransfer: { getData: (t: string) => store[t] ?? '' },
+    })
+
+    await waitFor(() => expect(onChange).toHaveBeenCalled())
+    expect(wysiwyg.querySelector('img')).toBeNull()
+    expect(wysiwyg.textContent).toContain('dropped')
+    expect((globalThis as { __dropped_pwned?: boolean }).__dropped_pwned).toBeUndefined()
+  })
+
   it('renders wine red swatch background via the toolbar-color-swatch--wine-red class', () => {
     renderEditor()
     const swatch = document.querySelector('.toolbar-color-swatch--wine-red')

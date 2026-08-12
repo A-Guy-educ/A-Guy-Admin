@@ -150,6 +150,13 @@ export const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
         className={`inline-rich-text-toolbar ${isEditMode ? '' : 'inline-rich-text-toolbar--view'}`}
         role="toolbar"
         aria-label="Rich text formatting"
+        // Prevent mousedown on any toolbar control from stealing focus out of
+        // the contentEditable. Otherwise clicking Bold moves focus into the
+        // button, collapses the selection, and typing stops working until the
+        // user clicks back into the editor.
+        onMouseDown={(e) => {
+          if ((e.target as HTMLElement).closest('button')) e.preventDefault()
+        }}
       >
         {isEditMode ? (
           <>

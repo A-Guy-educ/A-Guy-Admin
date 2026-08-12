@@ -101,6 +101,8 @@ export const WysiwygEditor = React.forwardRef<WysiwygEditorHandle, WysiwygEditor
         dir="auto"
         onInput={handlers.handleInput}
         onPaste={handlers.handlePaste}
+        onDrop={handlers.handleDrop}
+        onDragOver={(e) => e.preventDefault()}
         onKeyDown={handlers.handleKeyDown}
         onCompositionStart={handlers.handleCompositionStart}
         onCompositionEnd={handlers.handleCompositionEnd}

@@ -4,6 +4,7 @@ import { currentRange } from './wysiwyg-dom'
 interface HandlerBundle {
   handleInput: (e: React.FormEvent<HTMLDivElement>) => void
   handlePaste: (e: React.ClipboardEvent<HTMLDivElement>) => void
+  handleDrop: (e: React.DragEvent<HTMLDivElement>) => void
   handleKeyDown: (e: React.KeyboardEvent<HTMLDivElement>) => void
   handleCompositionStart: () => void
   handleCompositionEnd: () => void
@@ -17,6 +18,8 @@ interface HandlerBundle {
  *   CJK) so intermediate text doesn't flicker and jump the caret.
  * - handlePaste coerces clipboard to plain text — an `<img onerror=…>` would
  *   otherwise fire in the admin origin before we serialize the DOM away.
+ * - handleDrop is the same guard for drag-and-drop: a fragment dragged from
+ *   a malicious page bypasses the paste handler otherwise.
  * - handleKeyDown routes Shift+Enter to a hard paragraph split (md-math-v1
  *   has no soft-break marker, so a <br> would drift to a paragraph on the
  *   next hydrate) and swallows Ctrl+U (serializer would discard the <u>).
@@ -52,6 +55,28 @@ export function useEditorHandlers(
     [rootRef, composingRef, emitChange],
   )
 
+  const handleDrop = React.useCallback(
+    (e: React.DragEvent<HTMLDivElement>) => {
+      e.preventDefault()
+      const root = rootRef.current
+      if (!root) return
+      const text = e.dataTransfer.getData('text/plain')
+      if (!text) return
+      // Place the caret at the drop point, then insert the plain-text payload.
+      const doc = root.ownerDocument
+      const range =
+        typeof doc.caretRangeFromPoint === 'function'
+          ? doc.caretRangeFromPoint(e.clientX, e.clientY)
+          : currentRange(root)
+      if (!range || !root.contains(range.commonAncestorContainer)) return
+      range.deleteContents()
+      range.insertNode(doc.createTextNode(text))
+      range.collapse(false)
+      emitChange()
+    },
+    [rootRef, emitChange],
+  )
+
   const handleKeyDown = React.useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key === 'Enter' && e.shiftKey) {
       e.preventDefault()
@@ -70,5 +95,12 @@ export function useEditorHandlers(
     emitChange()
   }, [composingRef, emitChange])
 
-  return { handleInput, handlePaste, handleKeyDown, handleCompositionStart, handleCompositionEnd }
+  return {
+    handleInput,
+    handlePaste,
+    handleDrop,
+    handleKeyDown,
+    handleCompositionStart,
+    handleCompositionEnd,
+  }
 }
