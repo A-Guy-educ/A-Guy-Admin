@@ -1900,6 +1900,7 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- chore: Release v0.32.0 ([#328](https://github.com/A-Guy-educ/A-Guy-Admin/pull/328)) — @aguyshayb
 - feat: Word-like WYSIWYG editing for inline rich text ([#326](https://github.com/A-Guy-educ/A-Guy-Admin/pull/326)) — @aguyshayb
 - fix: Show inline rich-text toolbar by default in Lesson Studio ([#325](https://github.com/A-Guy-educ/A-Guy-Admin/pull/325)) — @aguyshayb
 - feat: Studio doc view - graphs, SVG, LaTeX + RTL fix ([#324](https://github.com/A-Guy-educ/A-Guy-Admin/pull/324)) — @aguyshayb
