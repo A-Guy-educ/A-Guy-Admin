@@ -1909,6 +1909,7 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- feat: Track current course and last login on user doc ([#341](https://github.com/A-Guy-educ/A-Guy-Admin/pull/341)) — @aguyshayb
 ## [v0.33.0] - 2026-08-18
 
 - promote: dev -> main (v0.33.0) ([#339](https://github.com/A-Guy-educ/A-Guy-Admin/pull/339)) — @aguyshayb
