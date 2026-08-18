@@ -1900,6 +1900,7 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- feat: Add LLM token accounting fields to users collection ([#337](https://github.com/A-Guy-educ/A-Guy-Admin/pull/337)) — @aguyshayb
 ## [v0.32.0] - 2026-08-12
 
 - promote: dev -> main (v0.32.0) ([#329](https://github.com/A-Guy-educ/A-Guy-Admin/pull/329)) — @aguyshayb
