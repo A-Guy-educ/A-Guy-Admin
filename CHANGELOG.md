@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.34.0 — 2026-08-18
+
+### Features
+- Track current course and last login on user doc (#341)
+
+### Fixes
+- Stamp `lastLoginAt` server-side and stop leaking errors (#341)
+
 ## v0.33.0 — 2026-08-18
 
 ### Features
