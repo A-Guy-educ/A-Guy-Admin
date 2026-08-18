@@ -47,9 +47,7 @@ async function latestSelectionCourseId(
   return { courseId, at: new Date(doc.createdAt) }
 }
 
-function latestEntitlementCourseId(
-  entitlements: unknown,
-): { courseId: string; at: Date } | null {
+function latestEntitlementCourseId(entitlements: unknown): { courseId: string; at: Date } | null {
   if (!Array.isArray(entitlements) || entitlements.length === 0) return null
 
   let best: { courseId: string; at: Date } | null = null
@@ -99,15 +97,15 @@ async function main() {
 
     const [fromSelection, fromEntitlement] = await Promise.all([
       latestSelectionCourseId(payload, user.id),
-      Promise.resolve(latestEntitlementCourseId((user as { courseEntitlements?: unknown }).courseEntitlements)),
+      Promise.resolve(
+        latestEntitlementCourseId((user as { courseEntitlements?: unknown }).courseEntitlements),
+      ),
     ])
 
     let pick: { courseId: string; at: Date } | null = null
     if (fromSelection && fromEntitlement) {
       pick =
-        fromSelection.at.getTime() >= fromEntitlement.at.getTime()
-          ? fromSelection
-          : fromEntitlement
+        fromSelection.at.getTime() >= fromEntitlement.at.getTime() ? fromSelection : fromEntitlement
     } else {
       pick = fromSelection ?? fromEntitlement
     }
@@ -138,10 +136,7 @@ async function main() {
       populated++
     } catch (err) {
       failed++
-      console.error(
-        `  Failed to update user ${user.id}:`,
-        err instanceof Error ? err.message : err,
-      )
+      console.error(`  Failed to update user ${user.id}:`, err instanceof Error ? err.message : err)
     }
   }
 

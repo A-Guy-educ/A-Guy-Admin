@@ -330,10 +330,10 @@ export const Users: CollectionConfig = {
       },
     },
     // Current course the user is working on. Single value (users can only be
-     // on one course at a time). Written server-side by the Web app via
-     // PATCH /api/users/me/course-state on login and lesson open. Blocked from
-     // client-side create/update so the admin-panel and unauthenticated signup
-     // POSTs can't reset it.
+    // on one course at a time). Written server-side by the Web app via
+    // PATCH /api/users/me/course-state on login and lesson open. Blocked from
+    // client-side create/update so the admin-panel and unauthenticated signup
+    // POSTs can't reset it.
     {
       name: 'currentCourse',
       type: 'relationship',
@@ -349,7 +349,7 @@ export const Users: CollectionConfig = {
       },
     },
     // Last time the user was seen active. Written server-side by the Web app
-     // via PATCH /api/users/me/course-state (on login and lesson open).
+    // via PATCH /api/users/me/course-state (on login and lesson open).
     {
       name: 'lastLoginAt',
       type: 'date',

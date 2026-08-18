@@ -11,6 +11,7 @@ import type { PayloadRequest } from 'payload'
 import config from '@payload-config'
 
 import { applyCorsHeaders, createPreflightResponse } from '@/lib/http/cors'
+import { logger } from '@/infra/utils/logger'
 import { updateCourseState } from '@/server/payload/endpoints/users-me-course-state/update-course-state'
 
 export async function OPTIONS(request: NextRequest) {
@@ -37,12 +38,12 @@ export async function PATCH(request: NextRequest) {
     const res = await updateCourseState(payloadRequest)
     return applyCorsHeaders(res, request)
   } catch (error) {
+    logger.error(
+      { err: error instanceof Error ? error.message : String(error) },
+      'PATCH /api/users/me/course-state failed',
+    )
     const errorResponse = Response.json(
-      {
-        success: false,
-        error: 'Internal server error',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
+      { success: false, error: 'Internal server error' },
       { status: 500 },
     )
     return applyCorsHeaders(errorResponse, request)

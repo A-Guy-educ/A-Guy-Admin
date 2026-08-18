@@ -6,17 +6,20 @@
  * `req.user.id` — never accepts a target user id — so the surface can't be
  * abused to overwrite another user's state.
  *
+ * `lastLoginAt` is always stamped server-side (`new Date().toISOString()`),
+ * never taken from the request, so an authenticated user cannot forge a past
+ * activity timestamp and corrupt admin analytics.
+ *
  * @fileType api-route
  * @domain users
  * @pattern self-write, authenticated-only, server-side-only-fields
  *
- * Body (zod-validated, both optional but at least one required):
+ * Body (zod-validated, all fields optional — empty body = pure heartbeat):
  *   - currentCourse  string  — courses id; verified to exist before writing
- *   - lastLoginAt    string  — ISO 8601 date; rejected if unparseable or in the future
  *
  * Response: 200 { success: true, data: { currentCourse, lastLoginAt } }
  * Errors:
- *   400 — invalid body, missing course, non-existent course, future date
+ *   400 — invalid body, non-existent course
  *   401 — unauthenticated
  *   500 — unexpected
  */
@@ -27,18 +30,11 @@ import { z } from 'zod'
 
 import { logger } from '@/infra/utils/logger'
 
-const requestSchema = z
-  .object({
-    currentCourse: z.string().min(1).optional(),
-    lastLoginAt: z.string().datetime().optional(),
-  })
-  .refine((data) => data.currentCourse !== undefined || data.lastLoginAt !== undefined, {
-    message: 'At least one of currentCourse or lastLoginAt is required',
-  })
+const requestSchema = z.object({
+  currentCourse: z.string().min(1).optional(),
+})
 
-export async function updateCourseState(
-  req: PayloadRequest & { json?: () => Promise<unknown> },
-) {
+export async function updateCourseState(req: PayloadRequest & { json?: () => Promise<unknown> }) {
   const requestId = crypto.randomUUID()
   const reqLogger = logger.child({ requestId })
 
@@ -53,7 +49,9 @@ export async function updateCourseState(
     return Response.json({ success: false, error: 'Invalid JSON body' }, { status: 400 })
   }
 
-  const parsed = requestSchema.safeParse(body)
+  // Empty/null body is valid — this endpoint doubles as a "user is active now"
+  // heartbeat that only refreshes lastLoginAt.
+  const parsed = requestSchema.safeParse(body ?? {})
   if (!parsed.success) {
     return Response.json(
       { success: false, error: 'Validation failed', details: parsed.error.flatten() },
@@ -61,17 +59,7 @@ export async function updateCourseState(
     )
   }
 
-  const { currentCourse, lastLoginAt } = parsed.data
-
-  if (lastLoginAt) {
-    const parsedDate = Date.parse(lastLoginAt)
-    if (Number.isNaN(parsedDate)) {
-      return Response.json({ success: false, error: 'Invalid lastLoginAt' }, { status: 400 })
-    }
-    if (parsedDate > Date.now() + 60_000) {
-      return Response.json({ success: false, error: 'lastLoginAt is in the future' }, { status: 400 })
-    }
-  }
+  const { currentCourse } = parsed.data
 
   if (currentCourse) {
     try {
@@ -93,9 +81,10 @@ export async function updateCourseState(
     }
   }
 
-  const data: Record<string, unknown> = {}
+  const data: Record<string, unknown> = {
+    lastLoginAt: new Date().toISOString(),
+  }
   if (currentCourse !== undefined) data.currentCourse = currentCourse
-  if (lastLoginAt !== undefined) data.lastLoginAt = lastLoginAt
 
   try {
     const updated = await req.payload.update({
