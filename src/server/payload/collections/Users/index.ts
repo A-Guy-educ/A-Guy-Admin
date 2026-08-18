@@ -247,8 +247,10 @@ export const Users: CollectionConfig = {
       type: 'number',
       defaultValue: 0,
       // Server-only: written by A-Guy-Web via raw MongoDB $inc. Blocking REST/
-      // GraphQL updates prevents a self-PATCH from resetting a user's counter.
+      // GraphQL create+update prevents signup POSTs from seeding a negative
+      // starting balance and PATCHes from resetting the counter.
       access: {
+        create: () => false,
         update: () => false,
       },
       admin: {
@@ -259,9 +261,12 @@ export const Users: CollectionConfig = {
     {
       name: 'llmTokensLimit',
       type: 'number',
-      // Admin-only: managers set per-user caps. Without this, adminOrSelf at
-      // the collection level would let a student raise their own limit.
+      // Admin-only for both create and update: managers set per-user caps.
+      // Without the create guard, `create: anyone` at the collection level
+      // would let a signup POST inject an unbounded limit.
       access: {
+        create: ({ req: { user } }) =>
+          isUsersCollectionUser(user) && user.role === AccountRole.Admin,
         update: ({ req: { user } }) =>
           isUsersCollectionUser(user) && user.role === AccountRole.Admin,
       },
@@ -274,6 +279,7 @@ export const Users: CollectionConfig = {
       type: 'date',
       // Server-only: rolled forward by Web on first increment of a new month.
       access: {
+        create: () => false,
         update: () => false,
       },
       admin: {
