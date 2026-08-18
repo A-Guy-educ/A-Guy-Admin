@@ -239,6 +239,34 @@ export const Users: CollectionConfig = {
         description: 'When the current chat quota window started',
       },
     },
+    // LLM token accounting (month-boundary reset). Written by A-Guy-Web via
+    // the raw MongoDB driver ($inc). Declared here so Payload's full-doc save
+    // on admin edits does not wipe the counters.
+    {
+      name: 'llmTokensUsed',
+      type: 'number',
+      defaultValue: 0,
+      admin: {
+        readOnly: true,
+        description: 'LLM tokens consumed in the current reset window',
+      },
+    },
+    {
+      name: 'llmTokensLimit',
+      type: 'number',
+      admin: {
+        description: 'Per-window token cap. Null / undefined = no limit.',
+      },
+    },
+    {
+      name: 'llmTokensResetAt',
+      type: 'date',
+      admin: {
+        readOnly: true,
+        description:
+          'When llmTokensUsed rolls back to 0. Web sets this to first-of-next-month on first increment of a new month.',
+      },
+    },
     // Feature-quota counters (Asia/Jerusalem calendar day). One bucket pair
     // per enforceable feature key. Bucket strings are YYYY-MM-DD in IL time;
     // counter resets when the bucket changes.
