@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.34.0 — 2026-08-18
+
+### Features
+- Track current course and last login on user doc (#341)
+
+### Fixes
+- Stamp `lastLoginAt` server-side and stop leaking errors (#341)
+
 ## v0.33.0 — 2026-08-18
 
 ### Features
@@ -1909,6 +1917,11 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- chore: Release v0.34.0 ([#342](https://github.com/A-Guy-educ/A-Guy-Admin/pull/342)) — @aguyshayb
+- feat: Track current course and last login on user doc ([#341](https://github.com/A-Guy-educ/A-Guy-Admin/pull/341)) — @aguyshayb
+## [v0.33.0] - 2026-08-18
+
+- promote: dev -> main (v0.33.0) ([#339](https://github.com/A-Guy-educ/A-Guy-Admin/pull/339)) — @aguyshayb
 - chore: Release v0.33.0 ([#338](https://github.com/A-Guy-educ/A-Guy-Admin/pull/338)) — @aguyshayb
 - feat: Add LLM token accounting fields to users collection ([#337](https://github.com/A-Guy-educ/A-Guy-Admin/pull/337)) — @aguyshayb
 ## [v0.32.0] - 2026-08-12

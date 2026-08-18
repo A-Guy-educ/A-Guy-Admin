@@ -44,7 +44,7 @@ export function buildCorsHeaders(origin: string | null | undefined): Record<stri
   return {
     'Access-Control-Allow-Origin': origin as string,
     'Access-Control-Allow-Credentials': 'true',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Methods': 'POST, PATCH, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
     'Access-Control-Max-Age': '86400',
     Vary: 'Origin',

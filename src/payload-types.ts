@@ -573,6 +573,14 @@ export interface User {
    * YYYY-MM-DD bucket (Asia/Jerusalem) for chatLimitUsedDay
    */
   chatLimitBucketDay?: string | null;
+  /**
+   * Course the user is currently on. Written by Web via /api/users/me/course-state.
+   */
+  currentCourse?: (string | null) | Course;
+  /**
+   * Last time the user logged in or opened a lesson.
+   */
+  lastLoginAt?: string | null;
   oauthLoginSecretEnc?: string | null;
   updatedAt: string;
   createdAt: string;
@@ -4863,6 +4871,8 @@ export interface UsersSelect<T extends boolean = true> {
   aiQuestionsBucketDay?: T;
   chatLimitUsedDay?: T;
   chatLimitBucketDay?: T;
+  currentCourse?: T;
+  lastLoginAt?: T;
   oauthLoginSecretEnc?: T;
   updatedAt?: T;
   createdAt?: T;

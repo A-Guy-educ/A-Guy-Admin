@@ -329,6 +329,39 @@ export const Users: CollectionConfig = {
         readOnly: true,
       },
     },
+    // Current course the user is working on. Single value (users can only be
+    // on one course at a time). Written server-side by the Web app via
+    // PATCH /api/users/me/course-state on login and lesson open. Blocked from
+    // client-side create/update so the admin-panel and unauthenticated signup
+    // POSTs can't reset it.
+    {
+      name: 'currentCourse',
+      type: 'relationship',
+      relationTo: 'courses',
+      access: {
+        create: () => false,
+        update: () => false,
+      },
+      admin: {
+        readOnly: true,
+        description:
+          'Course the user is currently on. Written by Web via /api/users/me/course-state.',
+      },
+    },
+    // Last time the user was seen active. Written server-side by the Web app
+    // via PATCH /api/users/me/course-state (on login and lesson open).
+    {
+      name: 'lastLoginAt',
+      type: 'date',
+      access: {
+        create: () => false,
+        update: () => false,
+      },
+      admin: {
+        readOnly: true,
+        description: 'Last time the user logged in or opened a lesson.',
+      },
+    },
     {
       name: 'oauthLoginSecretEnc',
       type: 'text',
