@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.33.0 — 2026-08-18
+
+### Features
+- Add LLM token accounting fields to users collection (#337)
+
+### Fixes
+- Lock LLM token fields against self-PATCH bypass (#337)
+- Block LLM token field seeding on signup POST (#337)
+
 ## v0.32.0 — 2026-08-12
 
 ### Features
@@ -1900,6 +1909,11 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- chore: Release v0.33.0 ([#338](https://github.com/A-Guy-educ/A-Guy-Admin/pull/338)) — @aguyshayb
+- feat: Add LLM token accounting fields to users collection ([#337](https://github.com/A-Guy-educ/A-Guy-Admin/pull/337)) — @aguyshayb
+## [v0.32.0] - 2026-08-12
+
+- promote: dev -> main (v0.32.0) ([#329](https://github.com/A-Guy-educ/A-Guy-Admin/pull/329)) — @aguyshayb
 - chore: Release v0.32.0 ([#328](https://github.com/A-Guy-educ/A-Guy-Admin/pull/328)) — @aguyshayb
 - feat: Word-like WYSIWYG editing for inline rich text ([#326](https://github.com/A-Guy-educ/A-Guy-Admin/pull/326)) — @aguyshayb
 - fix: Show inline rich-text toolbar by default in Lesson Studio ([#325](https://github.com/A-Guy-educ/A-Guy-Admin/pull/325)) — @aguyshayb

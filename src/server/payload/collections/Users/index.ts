@@ -239,6 +239,55 @@ export const Users: CollectionConfig = {
         description: 'When the current chat quota window started',
       },
     },
+    // LLM token accounting (month-boundary reset). Written by A-Guy-Web via
+    // the raw MongoDB driver ($inc). Declared here so Payload's full-doc save
+    // on admin edits does not wipe the counters.
+    {
+      name: 'llmTokensUsed',
+      type: 'number',
+      defaultValue: 0,
+      // Server-only: written by A-Guy-Web via raw MongoDB $inc. Blocking REST/
+      // GraphQL create+update prevents signup POSTs from seeding a negative
+      // starting balance and PATCHes from resetting the counter.
+      access: {
+        create: () => false,
+        update: () => false,
+      },
+      admin: {
+        readOnly: true,
+        description: 'LLM tokens consumed in the current reset window',
+      },
+    },
+    {
+      name: 'llmTokensLimit',
+      type: 'number',
+      // Admin-only for both create and update: managers set per-user caps.
+      // Without the create guard, `create: anyone` at the collection level
+      // would let a signup POST inject an unbounded limit.
+      access: {
+        create: ({ req: { user } }) =>
+          isUsersCollectionUser(user) && user.role === AccountRole.Admin,
+        update: ({ req: { user } }) =>
+          isUsersCollectionUser(user) && user.role === AccountRole.Admin,
+      },
+      admin: {
+        description: 'Per-window token cap. Null / undefined = no limit.',
+      },
+    },
+    {
+      name: 'llmTokensResetAt',
+      type: 'date',
+      // Server-only: rolled forward by Web on first increment of a new month.
+      access: {
+        create: () => false,
+        update: () => false,
+      },
+      admin: {
+        readOnly: true,
+        description:
+          'When llmTokensUsed rolls back to 0. Web sets this to first-of-next-month on first increment of a new month.',
+      },
+    },
     // Feature-quota counters (Asia/Jerusalem calendar day). One bucket pair
     // per enforceable feature key. Bucket strings are YYYY-MM-DD in IL time;
     // counter resets when the bucket changes.

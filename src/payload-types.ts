@@ -546,6 +546,18 @@ export interface User {
    */
   chatWindowStart?: string | null;
   /**
+   * LLM tokens consumed in the current reset window
+   */
+  llmTokensUsed?: number | null;
+  /**
+   * Per-window token cap. Null / undefined = no limit.
+   */
+  llmTokensLimit?: number | null;
+  /**
+   * When llmTokensUsed rolls back to 0. Web sets this to first-of-next-month on first increment of a new month.
+   */
+  llmTokensResetAt?: string | null;
+  /**
    * AI questions used in the current Asia/Jerusalem day
    */
   aiQuestionsUsedDay?: number | null;
@@ -4844,6 +4856,9 @@ export interface UsersSelect<T extends boolean = true> {
       };
   chatQuestionsUsed?: T;
   chatWindowStart?: T;
+  llmTokensUsed?: T;
+  llmTokensLimit?: T;
+  llmTokensResetAt?: T;
   aiQuestionsUsedDay?: T;
   aiQuestionsBucketDay?: T;
   chatLimitUsedDay?: T;
