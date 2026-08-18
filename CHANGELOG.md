@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.33.0 — 2026-08-18
+
+### Features
+- Add LLM token accounting fields to users collection (#337)
+
+### Fixes
+- Lock LLM token fields against self-PATCH bypass (#337)
+- Block LLM token field seeding on signup POST (#337)
+
 ## v0.32.0 — 2026-08-12
 
 ### Features
