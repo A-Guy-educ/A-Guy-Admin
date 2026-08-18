@@ -246,6 +246,11 @@ export const Users: CollectionConfig = {
       name: 'llmTokensUsed',
       type: 'number',
       defaultValue: 0,
+      // Server-only: written by A-Guy-Web via raw MongoDB $inc. Blocking REST/
+      // GraphQL updates prevents a self-PATCH from resetting a user's counter.
+      access: {
+        update: () => false,
+      },
       admin: {
         readOnly: true,
         description: 'LLM tokens consumed in the current reset window',
@@ -254,6 +259,12 @@ export const Users: CollectionConfig = {
     {
       name: 'llmTokensLimit',
       type: 'number',
+      // Admin-only: managers set per-user caps. Without this, adminOrSelf at
+      // the collection level would let a student raise their own limit.
+      access: {
+        update: ({ req: { user } }) =>
+          isUsersCollectionUser(user) && user.role === AccountRole.Admin,
+      },
       admin: {
         description: 'Per-window token cap. Null / undefined = no limit.',
       },
@@ -261,6 +272,10 @@ export const Users: CollectionConfig = {
     {
       name: 'llmTokensResetAt',
       type: 'date',
+      // Server-only: rolled forward by Web on first increment of a new month.
+      access: {
+        update: () => false,
+      },
       admin: {
         readOnly: true,
         description:
