@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.35.0 — 2026-08-19
+
+### Features
+- Accept `ADMIN_SERVICE_TOKEN` as a second auth path on the course-state endpoint (#345)
+
 ## v0.34.0 — 2026-08-18
 
 ### Features
