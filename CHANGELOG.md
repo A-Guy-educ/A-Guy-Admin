@@ -1917,6 +1917,7 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- feat: Accept service token as second auth path on course-state ([#345](https://github.com/A-Guy-educ/A-Guy-Admin/pull/345)) — @aguyshayb
 ## [v0.34.0] - 2026-08-18
 
 - promote: dev -> main (v0.34.0) ([#343](https://github.com/A-Guy-educ/A-Guy-Admin/pull/343)) — @aguyshayb
