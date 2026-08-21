@@ -2,7 +2,7 @@ name: Build & Deploy to Vercel
 
 on:
   push:
-    branches: [main, dev]
+    branches: [main]
     paths:
       - 'src/**'
       - 'public/**'
@@ -17,13 +17,13 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: vercel-deploy-${{ github.ref_name }}
+  group: vercel-deploy-production
   cancel-in-progress: true
 
 jobs:
   deploy:
-    name: Deploy ${{ github.ref_name == 'main' && 'Production' || 'Preview' }}
-    if: github.ref_name == 'main' || github.ref_name == 'dev'
+    name: Deploy Production
+    if: github.ref_name == 'main'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
@@ -56,41 +56,10 @@ jobs:
       - name: Install Vercel CLI
         run: pnpm add -g vercel
 
-      - name: Pull Vercel Preview Settings
-        if: github.ref_name == 'dev'
-        run: vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_ACCESS_TOKEN }}
-
-      - name: Build Preview
-        if: github.ref_name == 'dev'
-        run: vercel build --token=${{ secrets.VERCEL_ACCESS_TOKEN }}
-        env:
-          BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN }}
-          DATABASE_URL: ${{ secrets.DATABASE_URL_PREVIEW }}
-          NEXT_PUBLIC_SERVER_URL: https://a-guy-admin-git-dev-aguy.vercel.app
-          PAYLOAD_SECRET: ${{ secrets.PAYLOAD_SECRET }}
-
-      - name: Deploy Preview
-        if: github.ref_name == 'dev'
-        run: |
-          deployment_url="$(
-            vercel deploy --prebuilt --token=${{ secrets.VERCEL_ACCESS_TOKEN }} \
-              -m githubDeployment=1 \
-              -m githubCommitRef=${{ github.ref_name }} \
-              -m githubCommitSha=${{ github.sha }} \
-              -m githubCommitOrg=${{ github.repository_owner }} \
-              -m githubCommitRepo=${{ github.event.repository.name }} \
-              -m githubOrg=${{ github.repository_owner }} \
-              -m githubRepo=${{ github.event.repository.name }}
-          )"
-          echo "$deployment_url"
-          vercel alias set "$deployment_url" a-guy-admin-git-dev-aguy.vercel.app --token=${{ secrets.VERCEL_ACCESS_TOKEN }} --scope=${{ secrets.VERCEL_ORG_ID }}
-
       - name: Pull Vercel Production Settings
-        if: github.ref_name == 'main'
         run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_ACCESS_TOKEN }}
 
       - name: Build Production
-        if: github.ref_name == 'main'
         run: vercel build --prod --token=${{ secrets.VERCEL_ACCESS_TOKEN }}
         env:
           BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN }}
@@ -99,7 +68,6 @@ jobs:
           PAYLOAD_SECRET: ${{ secrets.PAYLOAD_SECRET }}
 
       - name: Deploy Production
-        if: github.ref_name == 'main'
         run: >
           vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_ACCESS_TOKEN }}
           -m githubDeployment=1
