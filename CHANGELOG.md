@@ -1922,6 +1922,7 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- perf: Trust stored lesson adminTitle in afterRead (kill N+1) ([#355](https://github.com/A-Guy-educ/A-Guy-Admin/pull/355)) — @aguyshayb
 - perf: Lazy-load exercise block editors ([#354](https://github.com/A-Guy-educ/A-Guy-Admin/pull/354)) — @aguyshayb
 - promote: dev -> main (v0.35.0) ([#347](https://github.com/A-Guy-educ/A-Guy-Admin/pull/347)) — @aguyshayb
 - chore: release v0.35.0 ([#346](https://github.com/A-Guy-educ/A-Guy-Admin/pull/346)) — @aguyshayb
