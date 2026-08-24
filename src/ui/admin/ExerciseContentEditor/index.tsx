@@ -9,42 +9,65 @@ import dynamic from 'next/dynamic'
 import { BlockTypeSelector } from './BlockTypeSelector'
 import { FullJsonEditor } from './FullJsonEditor'
 import { JSONInspector } from './JSONInspector'
-import { FreeResponseEditor } from './editors/FreeResponseEditor'
-import { HtmlBlockEditor } from './editors/HtmlBlockEditor'
 import { LatexBlockEditor } from './editors/LatexBlockEditor'
-import { InlineRichTextEditor } from './editors/InlineRichTextEditor'
-import { MatchingEditor } from './editors/MatchingEditor'
-import { McqEditor } from './editors/McqEditor'
-import { MediaBlockEditor } from './editors/MediaBlockEditor'
 import { QuestionBlockWrapper } from './editors/QuestionBlockWrapper'
-import { SvgEditor } from './editors/SvgEditor'
-import { TableEditor } from './editors/TableEditor'
-import { TrueFalseEditor } from './editors/TrueFalseEditor'
 import './index.css'
 import { deepCloneBlock } from './utils'
 
-// Lazy-load heavy editors that use jsxgraph to reduce initial client bundle size
+// Lazy-load per-block editors so only the ones matching the exercise's block
+// types ship on first render. Each block type renders one editor at a time,
+// so the loading placeholder only ever appears once per type per session.
+const loading = (label: string) => (
+  <div className="p-card-padding text-muted-foreground">Loading {label} editor...</div>
+)
+
+const FreeResponseEditor = dynamic(
+  () => import('./editors/FreeResponseEditor').then((m) => m.FreeResponseEditor),
+  { ssr: false, loading: () => loading('free response') },
+)
+const HtmlBlockEditor = dynamic(
+  () => import('./editors/HtmlBlockEditor').then((m) => m.HtmlBlockEditor),
+  { ssr: false, loading: () => loading('HTML') },
+)
+const InlineRichTextEditor = dynamic(
+  () => import('./editors/InlineRichTextEditor').then((m) => m.InlineRichTextEditor),
+  { ssr: false, loading: () => loading('rich text') },
+)
+const MatchingEditor = dynamic(
+  () => import('./editors/MatchingEditor').then((m) => m.MatchingEditor),
+  { ssr: false, loading: () => loading('matching') },
+)
+const McqEditor = dynamic(() => import('./editors/McqEditor').then((m) => m.McqEditor), {
+  ssr: false,
+  loading: () => loading('multiple choice'),
+})
+const MediaBlockEditor = dynamic(
+  () => import('./editors/MediaBlockEditor').then((m) => m.MediaBlockEditor),
+  { ssr: false, loading: () => loading('media') },
+)
+const SvgEditor = dynamic(() => import('./editors/SvgEditor').then((m) => m.SvgEditor), {
+  ssr: false,
+  loading: () => loading('SVG'),
+})
+const TableEditor = dynamic(() => import('./editors/TableEditor').then((m) => m.TableEditor), {
+  ssr: false,
+  loading: () => loading('table'),
+})
+const TrueFalseEditor = dynamic(
+  () => import('./editors/TrueFalseEditor').then((m) => m.TrueFalseEditor),
+  { ssr: false, loading: () => loading('true/false') },
+)
 const GeometryEditor = dynamic(
   () => import('./editors/GeometryEditor').then((m) => m.GeometryEditor),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="p-card-padding text-muted-foreground">Loading geometry editor...</div>
-    ),
-  },
+  { ssr: false, loading: () => loading('geometry') },
 )
 const AxisEditor = dynamic(() => import('./editors/AxisEditor').then((m) => m.AxisEditor), {
   ssr: false,
-  loading: () => <div className="p-card-padding text-muted-foreground">Loading axis editor...</div>,
+  loading: () => loading('axis'),
 })
 const MultiAxisEditor = dynamic(
   () => import('./editors/MultiAxisEditor').then((m) => m.MultiAxisEditor),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="p-card-padding text-muted-foreground">Loading multi-axis editor...</div>
-    ),
-  },
+  { ssr: false, loading: () => loading('multi-axis') },
 )
 
 /**
