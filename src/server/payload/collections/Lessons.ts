@@ -155,11 +155,22 @@ const computeLessonAdminTitle: CollectionBeforeChangeHook = async ({ data, origi
   return data
 }
 
-const populateLessonAdminTitle: CollectionAfterReadHook = async ({ doc, req }) => {
+export const populateLessonAdminTitle: CollectionAfterReadHook = async ({ doc, req }) => {
   const lessonData = doc as LessonAdminTitleData
   const title = lessonData?.title
 
   if (!title) return doc
+
+  // Trust the stored adminTitle when it exists — beforeChange already
+  // computed it (with fresh chapter/course lookups) on the last save.
+  // Skipping the recompute here removes an N+1 findByID that fires on every
+  // list-view row and every edit-page open, which was the dominant source of
+  // admin panel slowness. Legacy docs with no stored adminTitle still fall
+  // through to the compute path below and self-heal on their next save.
+  // Trade-off: chapter/course renames won't reflect in stored lesson titles
+  // until each lesson is re-saved. Course rename already cascades to
+  // chapters via cascadeAdminTitle; a follow-up can extend that to lessons.
+  if (lessonData.adminTitle) return doc
 
   const chapterValue = lessonData?.chapter
   const chapterId = getRelationshipId(chapterValue)
