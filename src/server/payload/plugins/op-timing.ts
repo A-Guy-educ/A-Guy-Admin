@@ -16,23 +16,28 @@
 import type { CollectionConfig, Config, Plugin } from 'payload'
 
 /**
- * Per-request timing store keyed by opId. Using a Map (not a scalar slot on
- * req.context) lets concurrent reads within the same request — Payload
- * relationship population at depth > 0, RSC pages fanning parallel finds,
- * dataloader batches — each keep their own start time without stomping each
- * other. Without this, the second concurrent `beforeOperation` would
- * overwrite the first op's start, and the first `afterOperation` would then
- * measure against the wrong start → wrong ms + mismatched opId.
+ * Per-request pending-op store. Payload's `payload.auth()` (and possibly
+ * other internal call sites) invokes reads via a code path that DOES call
+ * beforeOperation but does NOT preserve args mutations through to
+ * afterOperation — so our `args._diagOpId` marker vanishes for those pairs
+ * and afterOperation can't find its Map entry by opId. To recover, we also
+ * stash the slug on the entry and, on missing opId, fall back to popping
+ * the oldest pending entry for the same slug. Approximate for concurrent
+ * ops on the same collection but strictly better than losing the pair.
  */
+interface OpTimingEntry {
+  start: number
+  slug: string
+}
 interface OpTimingContext {
-  _opTimings?: Map<string, number>
+  _opTimings?: Map<string, OpTimingEntry>
 }
 
 /**
  * Threading the opId from `beforeOperation` to `afterOperation`. Payload
  * passes the args object modified by beforeOperation through to the actual
- * operation and then to afterOperation, so a private field on args survives
- * the pair reliably regardless of async concurrency.
+ * operation and then to afterOperation for most read paths — but see the
+ * comment above for the auth-path exception, handled by the slug fallback.
  */
 interface OpTimingArgs {
   _diagOpId?: string
@@ -42,6 +47,29 @@ interface OpTimingArgs {
 
 const opLog = (msg: string, fields: Record<string, unknown>): void => {
   console.log(JSON.stringify({ msg: `[op] ${msg}`, ...fields }))
+}
+
+/**
+ * Fallback: find the oldest pending entry for this slug (arg-mutation was
+ * stripped, so we can't look up by opId directly). Returns the entry AND
+ * its key so the caller can remove it from the Map.
+ */
+const popOldestForSlug = (
+  timings: Map<string, OpTimingEntry>,
+  slug: string,
+): { opId: string; entry: OpTimingEntry } | null => {
+  let oldestId: string | undefined
+  let oldestEntry: OpTimingEntry | undefined
+  for (const [id, entry] of timings) {
+    if (entry.slug !== slug) continue
+    if (!oldestEntry || entry.start < oldestEntry.start) {
+      oldestId = id
+      oldestEntry = entry
+    }
+  }
+  if (!oldestId || !oldestEntry) return null
+  timings.delete(oldestId)
+  return { opId: oldestId, entry: oldestEntry }
 }
 
 const buildOpTimingHooks = (
@@ -56,8 +84,8 @@ const buildOpTimingHooks = (
       const start = Date.now()
       const opId = crypto.randomUUID().slice(0, 8)
       const ctx = (req.context ??= {}) as OpTimingContext
-      if (!ctx._opTimings) ctx._opTimings = new Map<string, number>()
-      ctx._opTimings.set(opId, start)
+      if (!ctx._opTimings) ctx._opTimings = new Map<string, OpTimingEntry>()
+      ctx._opTimings.set(opId, { start, slug })
       const opArgs = args as unknown as OpTimingArgs
       opArgs._diagOpId = opId
       opLog(`${slug}.read start`, {
@@ -73,29 +101,52 @@ const buildOpTimingHooks = (
       // Don't filter on `operation`: Payload passes 'read' to beforeOperation
       // (via operationToHookOperation) but the raw operation name — 'find',
       // 'findByID', 'findVersions', 'findVersionByID' — to afterOperation. So
-      // `operation !== 'read'` would always early-return here and no `end`
-      // line would ever log. Instead, key off `args._diagOpId`: it's only set
-      // by our own beforeOperation, so its presence uniquely identifies "this
-      // is the matching afterOperation for a read we started timing."
+      // `operation !== 'read'` would always early-return here. Instead we
+      // gate on the presence of a pending entry (either matched via
+      // `_diagOpId` in args, or via the slug fallback below).
       const opArgs = args as unknown as OpTimingArgs
-      const opId = opArgs._diagOpId
-      if (!opId) return result
       const ctx = req.context as OpTimingContext | undefined
-      const start = ctx?._opTimings?.get(opId)
-      if (start === undefined) return result
-      ctx?._opTimings?.delete(opId)
+      const timings = ctx?._opTimings
+      if (!timings) return result
+
+      const explicitOpId = opArgs._diagOpId
+      let opId: string | undefined
+      let entry: OpTimingEntry | undefined
+      let approx = false
+
+      if (explicitOpId && timings.has(explicitOpId)) {
+        // Fast path — args survived the round trip.
+        opId = explicitOpId
+        entry = timings.get(explicitOpId)
+        timings.delete(explicitOpId)
+      } else {
+        // Fallback — args._diagOpId was stripped by Payload's internal code
+        // path (observed on `payload.auth()`'s user read). Pop the oldest
+        // pending entry for this slug. Concurrent ops on the same slug will
+        // pair approximately, which is why `approx: true` is logged.
+        const popped = popOldestForSlug(timings, slug)
+        if (popped) {
+          opId = popped.opId
+          entry = popped.entry
+          approx = true
+        }
+      }
+
+      if (!entry) return result
+
       const docs =
         result && typeof result === 'object' && 'docs' in result && Array.isArray(result.docs)
           ? result.docs.length
           : result
             ? 1
             : 0
-      opLog(`${slug}.read end`, {
+      opLog(`${entry.slug}.read end`, {
         opId,
-        ms: Date.now() - start,
+        ms: Date.now() - entry.start,
         docs,
         depth: opArgs.depth,
         limit: opArgs.limit,
+        approx: approx || undefined,
       })
       return result
     },
