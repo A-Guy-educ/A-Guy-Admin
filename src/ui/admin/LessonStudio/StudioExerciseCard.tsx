@@ -3,7 +3,7 @@
 import React from 'react'
 import type { ContentBlock } from '@/server/payload/collections/Exercises/types'
 import type { StudioTreeExercise } from '@/server/payload/endpoints/studio/lesson-tree'
-import { InlineBlockRenderer } from '../LessonBlocksField/InlineBlockRenderer'
+import { LazyInlineBlockEditor, prefetchInlineBlockEditor } from './LazyInlineBlockEditor'
 import { StudioDocBlock } from './StudioDocBlock'
 import { StudioSectionEditor } from './StudioSectionEditor'
 import type { StudioViewMode } from './viewMode'
@@ -35,6 +35,12 @@ export const StudioExerciseCard: React.FC<StudioExerciseCardProps> = ({
   const hasSections = exercise.sections.length > 0
   const hasExerciseBlocks = exerciseBlocks.length > 0
   const exerciseDirty = dirtyExerciseIds.has(exercise.id)
+
+  // In edit mode every exercise-level block mounts the editor immediately, so
+  // trigger the chunk download once per card render instead of waiting on hover.
+  React.useEffect(() => {
+    if (viewMode === 'edit' && hasExerciseBlocks) prefetchInlineBlockEditor()
+  }, [viewMode, hasExerciseBlocks])
 
   return (
     <section className="studio-exercise-card">
@@ -70,7 +76,7 @@ export const StudioExerciseCard: React.FC<StudioExerciseCardProps> = ({
                       {viewMode === 'document' ? (
                         <StudioDocBlock block={block} onChange={handleChange} />
                       ) : (
-                        <InlineBlockRenderer block={block} onChange={handleChange} />
+                        <LazyInlineBlockEditor block={block} onChange={handleChange} />
                       )}
                     </div>
                   )

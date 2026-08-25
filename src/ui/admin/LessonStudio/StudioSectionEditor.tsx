@@ -2,7 +2,7 @@
 
 import React from 'react'
 import type { ContentBlock } from '@/server/payload/collections/Exercises/types'
-import { InlineBlockRenderer } from '../LessonBlocksField/InlineBlockRenderer'
+import { LazyInlineBlockEditor, prefetchInlineBlockEditor } from './LazyInlineBlockEditor'
 import { StudioDocBlock } from './StudioDocBlock'
 import type { StudioViewMode } from './viewMode'
 
@@ -27,6 +27,12 @@ export const StudioSectionEditor: React.FC<StudioSectionEditorProps> = ({
   onBlockChange,
   viewMode,
 }) => {
+  // In edit mode we mount the editor for every block, so kick off the chunk
+  // download as soon as the section renders instead of waiting for interaction.
+  React.useEffect(() => {
+    if (viewMode === 'edit') prefetchInlineBlockEditor()
+  }, [viewMode])
+
   return (
     <div className="studio-section">
       <header className="studio-section-header">
@@ -45,7 +51,7 @@ export const StudioSectionEditor: React.FC<StudioSectionEditorProps> = ({
                 {viewMode === 'document' ? (
                   <StudioDocBlock block={block} onChange={handleChange} />
                 ) : (
-                  <InlineBlockRenderer block={block} onChange={handleChange} />
+                  <LazyInlineBlockEditor block={block} onChange={handleChange} />
                 )}
               </div>
             )

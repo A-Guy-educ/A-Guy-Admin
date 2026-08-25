@@ -598,3 +598,39 @@
 .studio-doc-latex {
   padding: 4px 0;
 }
+
+/* ---------- Editor loading skeleton ----------
+   Rendered while the InlineBlockRenderer chunk downloads on first click. Sized
+   so it doesn't cause layout shift compared to the doc-view height it replaces. */
+.studio-doc-editor-skeleton {
+  padding: 12px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.studio-doc-editor-skeleton-line {
+  height: 14px;
+  border-radius: 4px;
+  background: linear-gradient(
+    90deg,
+    var(--theme-elevation-100),
+    var(--theme-elevation-150),
+    var(--theme-elevation-100)
+  );
+  background-size: 200% 100%;
+  animation: studio-doc-skeleton-pulse 1.2s ease-in-out infinite;
+}
+
+.studio-doc-editor-skeleton-line--short {
+  width: 60%;
+}
+
+@keyframes studio-doc-skeleton-pulse {
+  0% {
+    background-position: 0% 0%;
+  }
+  100% {
+    background-position: -200% 0%;
+  }
+}
