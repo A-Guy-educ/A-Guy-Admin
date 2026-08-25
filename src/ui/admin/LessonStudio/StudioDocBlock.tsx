@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import type { ContentBlock } from '@/server/payload/collections/Exercises/types'
-import { InlineBlockRenderer } from '../LessonBlocksField/InlineBlockRenderer'
+import { LazyInlineBlockEditor, prefetchInlineBlockEditor } from './LazyInlineBlockEditor'
 import { RichTextDocView } from './docViews/RichTextDocView'
 import { QuestionDocView } from './docViews/QuestionDocView'
 import { LatexDocView } from './docViews/LatexDocView'
@@ -47,7 +47,7 @@ export const StudioDocBlock: React.FC<StudioDocBlockProps> = ({ block, onChange 
             Done
           </button>
         </div>
-        <InlineBlockRenderer block={block} onChange={onChange} />
+        <LazyInlineBlockEditor block={block} onChange={onChange} />
       </div>
     )
   }
@@ -59,6 +59,8 @@ export const StudioDocBlock: React.FC<StudioDocBlockProps> = ({ block, onChange 
       role="button"
       tabIndex={0}
       onClick={() => setEditing(true)}
+      onMouseEnter={prefetchInlineBlockEditor}
+      onFocus={prefetchInlineBlockEditor}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault()
