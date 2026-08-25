@@ -15,9 +15,29 @@
 
 import type { CollectionConfig, Config, Plugin } from 'payload'
 
+/**
+ * Per-request timing store keyed by opId. Using a Map (not a scalar slot on
+ * req.context) lets concurrent reads within the same request — Payload
+ * relationship population at depth > 0, RSC pages fanning parallel finds,
+ * dataloader batches — each keep their own start time without stomping each
+ * other. Without this, the second concurrent `beforeOperation` would
+ * overwrite the first op's start, and the first `afterOperation` would then
+ * measure against the wrong start → wrong ms + mismatched opId.
+ */
 interface OpTimingContext {
-  _opStart?: number
-  _opId?: string
+  _opTimings?: Map<string, number>
+}
+
+/**
+ * Threading the opId from `beforeOperation` to `afterOperation`. Payload
+ * passes the args object modified by beforeOperation through to the actual
+ * operation and then to afterOperation, so a private field on args survives
+ * the pair reliably regardless of async concurrency.
+ */
+interface OpTimingArgs {
+  _diagOpId?: string
+  depth?: number
+  limit?: number
 }
 
 const opLog = (msg: string, fields: Record<string, unknown>): void => {
@@ -36,12 +56,14 @@ const buildOpTimingHooks = (
       const start = Date.now()
       const opId = crypto.randomUUID().slice(0, 8)
       const ctx = (req.context ??= {}) as OpTimingContext
-      ctx._opStart = start
-      ctx._opId = opId
+      if (!ctx._opTimings) ctx._opTimings = new Map<string, number>()
+      ctx._opTimings.set(opId, start)
+      const opArgs = args as unknown as OpTimingArgs
+      opArgs._diagOpId = opId
       opLog(`${slug}.read start`, {
         opId,
-        depth: (args as { depth?: number })?.depth,
-        limit: (args as { limit?: number })?.limit,
+        depth: opArgs.depth,
+        limit: opArgs.limit,
       })
       return args
     },
@@ -49,10 +71,12 @@ const buildOpTimingHooks = (
   afterOperation: [
     async ({ args, operation, result, req }) => {
       if (operation !== 'read') return result
+      const opArgs = args as unknown as OpTimingArgs
+      const opId = opArgs._diagOpId
       const ctx = req.context as OpTimingContext | undefined
-      const start = ctx?._opStart
-      const opId = ctx?._opId
-      if (!start) return result
+      const start = opId ? ctx?._opTimings?.get(opId) : undefined
+      if (start === undefined || !opId) return result
+      ctx?._opTimings?.delete(opId)
       const docs =
         result && typeof result === 'object' && 'docs' in result && Array.isArray(result.docs)
           ? result.docs.length
@@ -63,8 +87,8 @@ const buildOpTimingHooks = (
         opId,
         ms: Date.now() - start,
         docs,
-        depth: (args as { depth?: number })?.depth,
-        limit: (args as { limit?: number })?.limit,
+        depth: opArgs.depth,
+        limit: opArgs.limit,
       })
       return result
     },
