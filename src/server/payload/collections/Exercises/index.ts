@@ -1,6 +1,7 @@
 import type { Access, CollectionConfig, Field } from 'payload'
 
 import { AccountRole, isAdvancedContentEditor } from '@/infra/auth/roles'
+import { timedAfterRead } from '@/infra/utils/collection-diagnostics'
 import type { User } from '@/payload-types'
 import { contentLocaleField } from '@/server/payload/fields/contentLocale'
 import { tenantField } from '@/server/payload/fields/tenant'
@@ -126,7 +127,7 @@ const exerciseHooks: CollectionConfig['hooks'] = {
     // persists `course` on every save, so legacy docs get backfilled the next
     // time they're edited.
     // Skipped during build/seed (no req.user) to avoid slow static generation.
-    async ({ doc, req }) => {
+    timedAfterRead('exercises.backfillChain', async ({ doc, req }) => {
       if (!doc?.lesson) return doc
       if (doc.course && doc.chapter) return doc
       if (!req.user) return doc
@@ -159,7 +160,7 @@ const exerciseHooks: CollectionConfig['hooks'] = {
       }
 
       return doc
-    },
+    }),
     // Read-time compat shim: if the exercise has no `content.blocks` of its
     // own but has child sections, concatenate each section's `content.blocks`
     // into `doc.content.blocks` in memory. The sibling A-Guy-Web repo still
@@ -168,7 +169,7 @@ const exerciseHooks: CollectionConfig['hooks'] = {
     // transparently. Skipped during build/seed (no req.user) and during
     // content-promotion imports (the bundle already carries the full
     // `content.blocks` payload and must not be reshuffled).
-    aggregateChildSectionContent,
+    timedAfterRead('exercises.aggregateChildSectionContent', aggregateChildSectionContent),
   ],
   afterChange: [
     async ({ doc, previousDoc, req }) => {
