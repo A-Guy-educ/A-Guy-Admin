@@ -1922,6 +1922,7 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- chore: Instrument Payload boot for cold-start diagnostics ([#358](https://github.com/A-Guy-educ/A-Guy-Admin/pull/358)) — @aguyshayb
 - perf: Warm /admin lambda + bump function memory to 3008MB ([#357](https://github.com/A-Guy-educ/A-Guy-Admin/pull/357)) — @aguyshayb
 - perf: Trust stored lesson adminTitle in afterRead (kill N+1) ([#355](https://github.com/A-Guy-educ/A-Guy-Admin/pull/355)) — @aguyshayb
 - perf: Lazy-load exercise block editors ([#354](https://github.com/A-Guy-educ/A-Guy-Admin/pull/354)) — @aguyshayb
