@@ -89,11 +89,22 @@ function hasOwnBlocks(blocks: unknown): boolean {
   return Array.isArray(blocks) && blocks.length > 0
 }
 
-export const aggregateChildSectionContent: CollectionAfterReadHook = async ({ doc, req }) => {
+export const aggregateChildSectionContent: CollectionAfterReadHook = async ({
+  doc,
+  req,
+  findMany,
+}) => {
   if (!doc) return doc
   const request = req as PayloadRequest | undefined
   if (!request?.user) return doc
   if (isContentPromotionImportRequest(request)) return doc
+  // Skip on list reads. This aggregation is a read-time compat shim for
+  // A-Guy-Web, which only ever fetches a single exercise by ID. Admin list
+  // views (Exercises collection page) hit N docs and would pay an extra
+  // sections `find()` per row for data that admin never renders. Callers
+  // that genuinely need the aggregation on a list can call `findByID` per
+  // doc, or we can add an opt-in context flag if a real use case emerges.
+  if (findMany) return doc
   // The Lesson Studio needs the raw, unaggregated `content.blocks` so it can
   // tell "the exercise's own intro blocks" apart from "blocks flattened up
   // from child sections." Without the escape hatch the studio would double-
