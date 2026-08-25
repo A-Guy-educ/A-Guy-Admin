@@ -23,7 +23,7 @@
     },
     {
       "path": "/api/cron/verify-tx-indexes",
-      "schedule": "0 6 * * *"
+      "schedule": "13 6 * * *"
     }
   ]
 }
