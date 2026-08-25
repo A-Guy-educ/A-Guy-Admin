@@ -69,13 +69,20 @@ const buildOpTimingHooks = (
     },
   ],
   afterOperation: [
-    async ({ args, operation, result, req }) => {
-      if (operation !== 'read') return result
+    async ({ args, result, req }) => {
+      // Don't filter on `operation`: Payload passes 'read' to beforeOperation
+      // (via operationToHookOperation) but the raw operation name — 'find',
+      // 'findByID', 'findVersions', 'findVersionByID' — to afterOperation. So
+      // `operation !== 'read'` would always early-return here and no `end`
+      // line would ever log. Instead, key off `args._diagOpId`: it's only set
+      // by our own beforeOperation, so its presence uniquely identifies "this
+      // is the matching afterOperation for a read we started timing."
       const opArgs = args as unknown as OpTimingArgs
       const opId = opArgs._diagOpId
+      if (!opId) return result
       const ctx = req.context as OpTimingContext | undefined
-      const start = opId ? ctx?._opTimings?.get(opId) : undefined
-      if (start === undefined || !opId) return result
+      const start = ctx?._opTimings?.get(opId)
+      if (start === undefined) return result
       ctx?._opTimings?.delete(opId)
       const docs =
         result && typeof result === 'object' && 'docs' in result && Array.isArray(result.docs)
