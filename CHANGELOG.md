@@ -1922,6 +1922,7 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- diag: Add slug-based fallback pairing for [op] afterOperation ([#367](https://github.com/A-Guy-educ/A-Guy-Admin/pull/367)) — @aguyshayb
 - perf: Cap Users.courseEntitlements + currentCourse to maxDepth=0 ([#366](https://github.com/A-Guy-educ/A-Guy-Admin/pull/366)) — @aguyshayb
 - chore: Add [op] operation-level timing across all collections ([#365](https://github.com/A-Guy-educ/A-Guy-Admin/pull/365)) — @aguyshayb
 - chore: Add [coll] timing to afterRead hooks on Lessons/Exercises/Sections ([#364](https://github.com/A-Guy-educ/A-Guy-Admin/pull/364)) — @aguyshayb
