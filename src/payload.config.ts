@@ -82,6 +82,25 @@ import { Header } from '@/ui/shared/header/config'
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
 
+// Boot instrumentation — grep Vercel Runtime Logs for `[boot]` to see the
+// full cold-start timeline. Captured at module load so every downstream log
+// can report elapsed-since-boot and pinpoint which step dominates a slow
+// cold start (module import vs Mongo handshake vs onInit tasks).
+const BOOT_START = Date.now()
+logger.info({ ts: BOOT_START }, '[boot] payload.config.ts module loaded')
+
+async function timedInit<T>(name: string, task: () => Promise<T>): Promise<T> {
+  const start = Date.now()
+  try {
+    const result = await task()
+    logger.info({ task: name, ms: Date.now() - start }, `[boot] onInit: ${name}`)
+    return result
+  } catch (err) {
+    logger.error({ task: name, ms: Date.now() - start, err }, `[boot] onInit failed: ${name}`)
+    throw err
+  }
+}
+
 /**
  * Helper to check if user is admin
  * Safely handles union type (User | PayloadMcpApiKey)
@@ -208,7 +227,10 @@ export default buildConfig({
     },
     afterOpenConnection: async () => {
       const maxPoolSize = process.env.MONGODB_MAX_POOL_SIZE ?? (process.env.VITEST ? '5' : '3')
-      logger.info({ maxPoolSize: parseInt(maxPoolSize, 10) }, '[MongoDB] Connection pool opened')
+      logger.info(
+        { maxPoolSize: parseInt(maxPoolSize, 10), msSinceBoot: Date.now() - BOOT_START },
+        '[boot] MongoDB connection pool opened',
+      )
     },
   }),
   collections: [
@@ -421,61 +443,79 @@ export default buildConfig({
     }),
   },
   onInit: async (payload) => {
+    const onInitStart = Date.now()
+    logger.info({ msSinceBoot: onInitStart - BOOT_START }, '[boot] onInit start')
+
     // Runs BEFORE the Vercel-production early-return: this migration is the
     // single fix for a Mongo-side validator that blocks legitimate courses
     // inserts (see the migration's JSDoc). Content-promotion's whole reason
     // to exist is dev→prod imports, so a fix that skips prod is no fix at
     // all. The check itself is a single `listCollections` when the validator
     // is already gone — cheap enough to run on every serverless cold start.
-    await runDropStaleCoursesValidatorOnInit(payload)
+    await timedInit('dropStaleCoursesValidator', () => runDropStaleCoursesValidatorOnInit(payload))
 
     // Also runs BEFORE the Vercel-production early-return. Verifies that
     // Transactions.providerTransactionId has no duplicate values before Mongo
     // tries to build the unique index; without this check a dirty deploy
     // would silently disable the race guard in the PayPal renewal handler.
     // Cheap on clean data (indexed field, empty group result).
-    await runVerifyTransactionsUniquenessOnInit(payload)
+    await timedInit('verifyTransactionsUniqueness', () =>
+      runVerifyTransactionsUniquenessOnInit(payload),
+    )
 
     // Skip expensive init tasks on Vercel serverless — they run on every cold start
     // and the tenant + seed data already exist in production. These ops are idempotent
     // but waste ~500ms+ per new serverless instance spinning up.
     const isVercelProduction = process.env.VERCEL === '1' && process.env.NODE_ENV === 'production'
     if (isVercelProduction) {
-      payload.logger.info('[onInit] Skipping expensive init tasks on Vercel production')
+      logger.info(
+        { msSinceBoot: Date.now() - BOOT_START, onInitMs: Date.now() - onInitStart },
+        '[boot] onInit complete (Vercel prod fast path)',
+      )
       return
     }
     // Ensure default tenant exists BEFORE seedTeacherProfiles runs
     // This is required because TeacherProfilesSeed needs a tenant to link prompts to
-    const defaultTenantSlug = process.env.DEFAULT_TENANT_SLUG || 'default'
-    const existingTenant = await payload.find({
-      collection: 'tenants',
-      where: { slug: { equals: defaultTenantSlug } },
-      limit: 1,
-      overrideAccess: true,
-    })
-
-    if (existingTenant.totalDocs === 0) {
-      await payload.create({
+    await timedInit('ensureDefaultTenant', async () => {
+      const defaultTenantSlug = process.env.DEFAULT_TENANT_SLUG || 'default'
+      const existingTenant = await payload.find({
         collection: 'tenants',
-        data: {
-          name: 'Default',
-          slug: defaultTenantSlug,
-          status: 'active',
-        },
+        where: { slug: { equals: defaultTenantSlug } },
+        limit: 1,
         overrideAccess: true,
       })
-      payload.logger.info(`[onInit] Created default tenant "${defaultTenantSlug}"`)
-    }
+
+      if (existingTenant.totalDocs === 0) {
+        await payload.create({
+          collection: 'tenants',
+          data: {
+            name: 'Default',
+            slug: defaultTenantSlug,
+            status: 'active',
+          },
+          overrideAccess: true,
+        })
+        payload.logger.info(`[onInit] Created default tenant "${defaultTenantSlug}"`)
+      }
+    })
 
     if (process.env.SKIP_BUILD === 'true') {
-      payload.logger.info('[onInit] Skipping expensive init tasks')
+      logger.info(
+        { msSinceBoot: Date.now() - BOOT_START, onInitMs: Date.now() - onInitStart },
+        '[boot] onInit complete (SKIP_BUILD fast path)',
+      )
       return
     }
 
-    await runBackfillOnInit(payload)
-    await runPopulateLessonBlocksOnInit(payload)
-    await runLocalizeTeacherProfilesOnInit(payload)
-    await seedTeacherProfiles(payload)
-    await runSeedFeaturesOnInit(payload)
+    await timedInit('backfillAdminTitle', () => runBackfillOnInit(payload))
+    await timedInit('populateLessonBlocks', () => runPopulateLessonBlocksOnInit(payload))
+    await timedInit('localizeTeacherProfiles', () => runLocalizeTeacherProfilesOnInit(payload))
+    await timedInit('seedTeacherProfiles', () => seedTeacherProfiles(payload))
+    await timedInit('seedFeatures', () => runSeedFeaturesOnInit(payload))
+
+    logger.info(
+      { msSinceBoot: Date.now() - BOOT_START, onInitMs: Date.now() - onInitStart },
+      '[boot] onInit complete',
+    )
   },
 })
