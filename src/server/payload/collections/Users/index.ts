@@ -7,7 +7,7 @@
  * @ai-summary Users collection with authentication, RBAC roles, and audit hooks
  */
 
-import type { CollectionConfig, Field } from 'payload'
+import type { CollectionConfig, RelationshipField } from 'payload'
 
 import { adminOnly } from '../../access/adminOnly'
 import { adminOrContentEditor } from '../../access/adminOrContentEditor'
@@ -78,9 +78,9 @@ export const Users: CollectionConfig = {
     // zero hits across src/). Auth flows and multi-tenant scoping only
     // ever need the tenant ID, which is what the raw string return gives us.
     // Cast is needed because `optionalTenantField` is typed as the wide
-    // `Field` union; the underlying object is a relationship field, which
+    // `Field` union; the underlying object is a `RelationshipField`, which
     // supports `maxDepth`.
-    { ...optionalTenantField, maxDepth: 0 } as Field,
+    { ...optionalTenantField, maxDepth: 0 } as RelationshipField,
     // OAuth fields
     {
       name: 'googleSub',
