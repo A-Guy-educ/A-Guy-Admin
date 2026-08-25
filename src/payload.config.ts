@@ -86,17 +86,32 @@ const dirname = path.dirname(filename)
 // full cold-start timeline. Captured at module load so every downstream log
 // can report elapsed-since-boot and pinpoint which step dominates a slow
 // cold start (module import vs Mongo handshake vs onInit tasks).
+//
+// Uses console.log instead of the shared pino logger: Vercel's log
+// ingestion coalesces pino stdout writes during the cold-init burst and
+// drops every intermediate line, leaving only the final flush before the
+// response. Verified 2026-08-25 — dashboard filter for `[boot]` only
+// returned the "onInit complete" line, missing module-loaded, pool-opened,
+// onInit-start, and per-task lines. console.log writes synchronously with
+// no buffering, so every line reaches Vercel intact.
 const BOOT_START = Date.now()
-logger.info({ ts: BOOT_START }, '[boot] payload.config.ts module loaded')
+const bootLog = (msg: string, fields: Record<string, unknown> = {}): void => {
+  console.log(JSON.stringify({ msg: `[boot] ${msg}`, ...fields }))
+}
+bootLog('payload.config.ts module loaded', { ts: BOOT_START })
 
 async function timedInit<T>(name: string, task: () => Promise<T>): Promise<T> {
   const start = Date.now()
   try {
     const result = await task()
-    logger.info({ task: name, ms: Date.now() - start }, `[boot] onInit: ${name}`)
+    bootLog(`onInit: ${name}`, { task: name, ms: Date.now() - start })
     return result
   } catch (err) {
-    logger.error({ task: name, ms: Date.now() - start, err }, `[boot] onInit failed: ${name}`)
+    bootLog(`onInit failed: ${name}`, {
+      task: name,
+      ms: Date.now() - start,
+      err: err instanceof Error ? { message: err.message, stack: err.stack } : String(err),
+    })
     throw err
   }
 }
@@ -227,10 +242,10 @@ export default buildConfig({
     },
     afterOpenConnection: async () => {
       const maxPoolSize = process.env.MONGODB_MAX_POOL_SIZE ?? (process.env.VITEST ? '5' : '3')
-      logger.info(
-        { maxPoolSize: parseInt(maxPoolSize, 10), msSinceBoot: Date.now() - BOOT_START },
-        '[boot] MongoDB connection pool opened',
-      )
+      bootLog('MongoDB connection pool opened', {
+        maxPoolSize: parseInt(maxPoolSize, 10),
+        msSinceBoot: Date.now() - BOOT_START,
+      })
     },
   }),
   collections: [
@@ -444,7 +459,7 @@ export default buildConfig({
   },
   onInit: async (payload) => {
     const onInitStart = Date.now()
-    logger.info({ msSinceBoot: onInitStart - BOOT_START }, '[boot] onInit start')
+    bootLog('onInit start', { msSinceBoot: onInitStart - BOOT_START })
 
     // Runs BEFORE the Vercel-production early-return: this migration is the
     // single fix for a Mongo-side validator that blocks legitimate courses
@@ -468,10 +483,10 @@ export default buildConfig({
     // but waste ~500ms+ per new serverless instance spinning up.
     const isVercelProduction = process.env.VERCEL === '1' && process.env.NODE_ENV === 'production'
     if (isVercelProduction) {
-      logger.info(
-        { msSinceBoot: Date.now() - BOOT_START, onInitMs: Date.now() - onInitStart },
-        '[boot] onInit complete (Vercel prod fast path)',
-      )
+      bootLog('onInit complete (Vercel prod fast path)', {
+        msSinceBoot: Date.now() - BOOT_START,
+        onInitMs: Date.now() - onInitStart,
+      })
       return
     }
     // Ensure default tenant exists BEFORE seedTeacherProfiles runs
@@ -500,10 +515,10 @@ export default buildConfig({
     })
 
     if (process.env.SKIP_BUILD === 'true') {
-      logger.info(
-        { msSinceBoot: Date.now() - BOOT_START, onInitMs: Date.now() - onInitStart },
-        '[boot] onInit complete (SKIP_BUILD fast path)',
-      )
+      bootLog('onInit complete (SKIP_BUILD fast path)', {
+        msSinceBoot: Date.now() - BOOT_START,
+        onInitMs: Date.now() - onInitStart,
+      })
       return
     }
 
@@ -513,9 +528,9 @@ export default buildConfig({
     await timedInit('seedTeacherProfiles', () => seedTeacherProfiles(payload))
     await timedInit('seedFeatures', () => runSeedFeaturesOnInit(payload))
 
-    logger.info(
-      { msSinceBoot: Date.now() - BOOT_START, onInitMs: Date.now() - onInitStart },
-      '[boot] onInit complete',
-    )
+    bootLog('onInit complete', {
+      msSinceBoot: Date.now() - BOOT_START,
+      onInitMs: Date.now() - onInitStart,
+    })
   },
 })
