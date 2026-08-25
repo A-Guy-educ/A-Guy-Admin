@@ -1922,6 +1922,7 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- chore: Add [coll] timing to afterRead hooks on Lessons/Exercises/Sections ([#364](https://github.com/A-Guy-educ/A-Guy-Admin/pull/364)) — @aguyshayb
 - perf: Move verifyTransactionsUniqueness from onInit to daily cron ([#362](https://github.com/A-Guy-educ/A-Guy-Admin/pull/362)) — @aguyshayb
 - feat: Default studio to document mode and persist choice ([#361](https://github.com/A-Guy-educ/A-Guy-Admin/pull/361)) — @aguyshayb
 - chore: Switch [boot] logs to console.log to bypass pino drop ([#360](https://github.com/A-Guy-educ/A-Guy-Admin/pull/360)) — @aguyshayb
