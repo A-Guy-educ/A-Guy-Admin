@@ -33,7 +33,13 @@ const redirects = async () => {
     permanent: false,
   }
 
-  const redirects = [internetExplorerRedirect, codyRedirect]
+  const adminRootRedirect = {
+    source: '/',
+    destination: '/admin',
+    permanent: false,
+  }
+
+  const redirects = [internetExplorerRedirect, adminRootRedirect, codyRedirect]
 
   // Media CDN redirects — serve files directly from Vercel Blob CDN
   // instead of proxying through serverless functions.
