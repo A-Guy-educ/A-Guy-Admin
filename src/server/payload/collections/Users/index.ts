@@ -133,6 +133,16 @@ export const Users: CollectionConfig = {
           type: 'relationship',
           relationTo: 'courses',
           required: true,
+          // Cap population to ID only. Without this, any users.read at
+          // depth >= 1 cascades into a courses.read per entitlement, and
+          // each Course further populates its own tenant + related fields
+          // (2-3s per Course in prod). All known consumers of
+          // `courseEntitlements[i].course` access it as an ID (or handle
+          // both forms defensively) — see system-events-subscriber.ts:665
+          // and UserIdentificationTracker.tsx:90. No admin UI needs the
+          // populated Course object on user-fetch either; the entitlement
+          // widget resolves the display value with its own lookup.
+          maxDepth: 0,
           admin: { readOnly: true },
         },
         {
@@ -338,6 +348,11 @@ export const Users: CollectionConfig = {
       name: 'currentCourse',
       type: 'relationship',
       relationTo: 'courses',
+      // Same rationale as courseEntitlements[].course above: capping to ID
+      // avoids a cascading courses.read (and its nested tenant read) on
+      // every users.read. The only consumer accesses it as `.id` and
+      // handles both forms — see update-course-state.ts:110-112.
+      maxDepth: 0,
       access: {
         create: () => false,
         update: () => false,
