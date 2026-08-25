@@ -7,7 +7,7 @@ import { StudioExerciseCard } from './StudioExerciseCard'
 import { StudioToolbar } from './StudioToolbar'
 import { useStudioSave, type DirtyEntry } from './useStudioSave'
 import { useStudioTree } from './useStudioTree'
-import type { StudioViewMode } from './viewMode'
+import { readStoredViewMode, writeStoredViewMode, type StudioViewMode } from './viewMode'
 import { EditorChromeProvider } from '../ExerciseContentEditor/EditorChromeContext'
 import '../LessonBlocksField/inline-exercise-editor.css'
 import '../ExerciseContentEditor/index.css'
@@ -31,7 +31,20 @@ interface LessonStudioPageProps {
 export const LessonStudioPage: React.FC<LessonStudioPageProps> = ({ lessonId }) => {
   const { tree, loading, error } = useStudioTree(lessonId)
   const { saving, errors, saveAll } = useStudioSave()
-  const [viewMode, setViewMode] = useState<StudioViewMode>('edit')
+  const [viewMode, setViewMode] = useState<StudioViewMode>('document')
+
+  // Rehydrate the admin's last-used view mode after mount. Kept out of the
+  // useState initializer so this works under SSR/Next-client-boundary rules
+  // where localStorage is only reachable client-side.
+  useEffect(() => {
+    const stored = readStoredViewMode()
+    if (stored) setViewMode(stored)
+  }, [])
+
+  const handleViewModeChange = useCallback((next: StudioViewMode) => {
+    setViewMode(next)
+    writeStoredViewMode(next)
+  }, [])
 
   // Section blocks live in a flat map keyed by section id. Exercise-level
   // content blocks live in a separate map keyed by exercise id (legacy
@@ -180,7 +193,7 @@ export const LessonStudioPage: React.FC<LessonStudioPageProps> = ({ lessonId }) 
           errors={errors}
           onSave={handleSaveAll}
           viewMode={viewMode}
-          onViewModeChange={setViewMode}
+          onViewModeChange={handleViewModeChange}
         />
 
         <main className="studio-content">
