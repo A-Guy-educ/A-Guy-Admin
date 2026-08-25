@@ -6,7 +6,6 @@ import sharp from 'sharp'
 import { fileURLToPath } from 'url'
 
 import { getServerSideURL } from '@/infra/utils/getURL'
-import { logger } from '@/infra/utils/logger'
 import { AccessCodes } from '@/server/payload/collections/AccessCodes'
 import { Categories } from '@/server/payload/collections/Categories'
 import { Chapters } from '@/server/payload/collections/Chapters'
