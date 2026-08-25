@@ -1922,6 +1922,7 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- chore: Switch [boot] logs to console.log to bypass pino drop ([#360](https://github.com/A-Guy-educ/A-Guy-Admin/pull/360)) — @aguyshayb
 - perf: Lazy-load studio inline editor with hover prefetch ([#359](https://github.com/A-Guy-educ/A-Guy-Admin/pull/359)) — @aguyshayb
 - chore: Instrument Payload boot for cold-start diagnostics ([#358](https://github.com/A-Guy-educ/A-Guy-Admin/pull/358)) — @aguyshayb
 - perf: Warm /admin lambda + bump function memory to 3008MB ([#357](https://github.com/A-Guy-educ/A-Guy-Admin/pull/357)) — @aguyshayb
