@@ -37,14 +37,15 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Dummy PAYLOAD_SECRET for build only. payload.config.ts throws at
-# module-load if PAYLOAD_SECRET is unset, and `pnpm generate:types`
-# has to import the module (with PAYLOAD_GENERATE_TYPES=true) to
-# generate types. The value here is never used at runtime — the runner
-# stage below inherits from `base`, not `builder`, so this ENV does
-# NOT leak to the running container. Real secret is injected via
-# Render's env vars at runtime.
+# Dummy env vars for build only. Several plugins/configs throw at
+# module-load if their required env vars are missing, and the various
+# generate:* scripts have to import payload.config.ts / plugins/index.ts
+# to introspect the schema. The values here are never used at runtime —
+# the runner stage below inherits from `base`, not `builder`, so these
+# ENVs do NOT leak to the running container. Real secrets are injected
+# via Render's env vars at runtime.
 ENV PAYLOAD_SECRET=build-time-dummy-not-used-at-runtime
+ENV BLOB_READ_WRITE_TOKEN=vercel_blob_rw_dummy_for_build
 
 # Next.js collects completely anonymous telemetry data about general usage.
 # Learn more here: https://nextjs.org/telemetry
