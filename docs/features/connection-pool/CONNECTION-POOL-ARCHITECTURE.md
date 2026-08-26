@@ -76,7 +76,8 @@ The warmup cron (`/api/cron/warmup`, every 4 min) additionally runs a cheap DB q
 1. **Source code scan**: Fails if production `maxPoolSize` default exceeds 5
 2. **Capacity math**: Verifies 100+ instances fit under 80% of Atlas limit
 3. **Concurrency scan**: Scans all `src/` files for `CONCURRENCY_LIMIT` constants and fails if any exceed `maxPoolSize`
-4. **Timeout check**: Verifies `serverSelectionTimeoutMS` and `waitQueueTimeoutMS` are configured
+4. **Timeout check**: Verifies `serverSelectionTimeoutMS` and `waitQueueTimeoutMS` are NOT configured (removed 2026-04-27 — see history note in `src/payload.config.ts`)
+5. **Min <= Max check**: Verifies `minPoolSize` default does not exceed `maxPoolSize` default (invalid Mongoose state)
 
 ## Health Endpoint
 
