@@ -141,10 +141,10 @@ async function deepCloneLesson(req: PayloadRequest, sourceLessonId: string): Pro
   for (const exercise of exerciseDocs) {
     try {
       const exData = stripManagedFields(exercise as unknown as Record<string, unknown>)
-      const { blocks: sourceBlocks, ..._restEx } = exData as Record<string, unknown>
+      const { blocks: sourceBlocks, ...restEx } = exData as Record<string, unknown>
       const created = await req.payload.create({
         collection: 'exercises',
-        data: { ..._restEx, lesson: newLesson.id, blocks: '[]' } as never,
+        data: { ...restEx, lesson: newLesson.id, blocks: '[]' } as never,
         overrideAccess: true,
         req,
         context: { _skipBlockSync: true },

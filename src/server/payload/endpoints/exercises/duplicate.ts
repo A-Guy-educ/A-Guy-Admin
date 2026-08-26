@@ -23,10 +23,14 @@
  * regardless of the source's status; the section clones inherit
  * lesson/chapter/course FKs from the source exercise's stored FKs.
  *
- * Access: authenticated. The `create` permission on exercises is enforced by
- * `payload.create` under `overrideAccess: true` — matching the courses and
- * lessons duplicate endpoints, which run under admin/authenticated access
- * checked at the endpoint entry.
+ * Access: admin only. Matches the sibling course/lesson duplicate endpoints
+ * (`duplicateCourseEndpoint`, `duplicateLessonEndpoint`), which also enforce
+ * an explicit admin check at entry. Payload's built-in duplicate we're
+ * replacing was gated by the collection's `update: isAdminOrOwner` access;
+ * we tighten that to admin-only here to keep parity with the other two
+ * duplicate endpoints (and because `payload.create` is called with
+ * `overrideAccess: true` for the section-clone step, which would otherwise
+ * bypass every access rule downstream).
  */
 import type { PayloadRequest } from 'payload'
 
@@ -69,6 +73,9 @@ export async function duplicateExerciseEndpoint(req: PayloadRequest): Promise<Re
   const user = req.user
   if (!user) {
     return Response.json({ error: 'Authentication required' }, { status: 401 })
+  }
+  if (!('role' in user) || user.role !== 'admin') {
+    return Response.json({ error: 'Admin access required' }, { status: 403 })
   }
 
   const url = new URL(req.url || 'http://localhost')
