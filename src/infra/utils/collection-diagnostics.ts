@@ -11,6 +11,8 @@
 
 import type { CollectionAfterReadHook } from 'payload'
 
+import { pushDiagEvent } from '@/infra/utils/diagnostics-buffer'
+
 interface CollLogFields {
   ms: number
   findMany: boolean
@@ -19,7 +21,9 @@ interface CollLogFields {
 }
 
 const collLog = (msg: string, fields: CollLogFields): void => {
-  console.log(JSON.stringify({ msg: `[coll] ${msg}`, ...fields }))
+  const prefixed = `[coll] ${msg}`
+  console.log(JSON.stringify({ msg: prefixed, ...fields }))
+  pushDiagEvent(prefixed, fields as unknown as Record<string, unknown>)
 }
 
 /**
