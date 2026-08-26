@@ -230,14 +230,22 @@ export default buildConfig({
         process.env.MONGODB_MAX_POOL_SIZE ?? (process.env.VITEST ? '5' : '3'),
         10,
       ),
-      // Warm the ENTIRE pool at boot instead of just 1 slot. Measured
-      // 2026-08-26 via [op] diagnostic: on cold hits, users.read took
-      // 3-5 seconds because Payload had to lazily create pool slots 2 and
-      // 3 mid-request (each slot creation = ~3s TLS+auth handshake to
-      // Atlas). Once slots warm up, users.read drops to ~95ms. Setting
-      // minPoolSize = maxPoolSize forces all handshakes to happen upfront
-      // in afterOpenConnection, adding ~1-2s to boot but eliminating the
-      // multi-second cold-slot cost from every subsequent request.
+      // Warm the pool up to `minPoolSize` slots so cold `users.read`
+      // requests don't pay a ~3s Atlas TLS+auth handshake to create the
+      // slot on-demand. Measured 2026-08-26 via [op] diagnostic: cold
+      // hits saw 3-5s users.read; once slots warm up, users.read drops
+      // to ~95ms.
+      //
+      // Timing note: setting minPoolSize does NOT block boot. Mongoose's
+      // `createConnection().asPromise()` (called in @payloadcms/db-mongodb
+      // connect.js) resolves after just the initial handshake, so
+      // `afterOpenConnection` fires with only 1 warm slot. The MongoDB
+      // driver's ensureMinPoolSize() then runs a background setTimeout
+      // loop (default every 100ms) that opens the remaining slots one at
+      // a time — the pool converges to `minPoolSize` within a few hundred
+      // ms of boot. Requests arriving in that narrow window can still hit
+      // a cold slot; requests after it are fast.
+      //
       // Override via MONGODB_MIN_POOL_SIZE env var for quick rollback if
       // Atlas connection budget becomes a concern.
       minPoolSize: parseInt(

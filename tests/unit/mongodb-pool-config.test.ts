@@ -141,6 +141,35 @@ describe('MongoDB Connection Pool Guardrail', () => {
       process.env.MONGODB_MAX_POOL_SIZE = '7'
       expect(resolvePoolSize()).toBe(7)
     })
+
+    /** Mirrors the exact expression for minPoolSize in payload.config.ts */
+    function resolveMinPoolSize(): number {
+      return parseInt(process.env.MONGODB_MIN_POOL_SIZE ?? (process.env.VITEST ? '5' : '3'), 10)
+    }
+
+    it('min uses 3 for production default', () => {
+      delete process.env.VITEST
+      delete process.env.MONGODB_MIN_POOL_SIZE
+      expect(resolveMinPoolSize()).toBe(3)
+    })
+
+    it('min uses 5 for test environment', () => {
+      process.env.VITEST = 'true'
+      delete process.env.MONGODB_MIN_POOL_SIZE
+      expect(resolveMinPoolSize()).toBe(5)
+    })
+
+    it('MONGODB_MIN_POOL_SIZE overrides all defaults', () => {
+      delete process.env.VITEST
+      process.env.MONGODB_MIN_POOL_SIZE = '2'
+      expect(resolveMinPoolSize()).toBe(2)
+    })
+
+    it('MONGODB_MIN_POOL_SIZE takes precedence over VITEST', () => {
+      process.env.VITEST = 'true'
+      process.env.MONGODB_MIN_POOL_SIZE = '1'
+      expect(resolveMinPoolSize()).toBe(1)
+    })
   })
 
   describe('concurrency limits must not exceed pool size', () => {

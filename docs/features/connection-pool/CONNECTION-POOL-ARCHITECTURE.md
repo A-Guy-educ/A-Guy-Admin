@@ -23,14 +23,14 @@ Connection pool settings are in `src/payload.config.ts`:
 | Setting | Value | Purpose |
 |---------|-------|---------|
 | `maxPoolSize` | 3 (prod), 5 (test) | Max connections per instance. At 3, supports ~166 instances |
-| `minPoolSize` | 0 | Pool drains to zero when idle |
-| `maxIdleTimeMS` | 10,000ms | Idle connections closed after 10 seconds |
+| `minPoolSize` | 3 (prod), 5 (test) | Warm slots kept open — eliminates ~3s Atlas TLS+auth handshake on cold user reads |
+| `maxIdleTimeMS` | 270,000ms | Idle connections closed after 4.5 minutes (must exceed warmup cron cadence) |
 | `connectTimeoutMS` | 5,000ms | Fail fast if Atlas is unreachable |
-| `serverSelectionTimeoutMS` | 5,000ms | Fail fast when no server available |
-| `waitQueueTimeoutMS` | 3,000ms | Fail fast when pool is saturated |
 | `socketTimeoutMS` | 30,000ms | Timeout for long-running operations |
 
-Override via environment variable: `MONGODB_MAX_POOL_SIZE=N`
+Note: `serverSelectionTimeoutMS` and `waitQueueTimeoutMS` were intentionally REMOVED (2026-04-27) — see the history comment in `src/payload.config.ts`. Driver defaults are used.
+
+Override via environment variables: `MONGODB_MAX_POOL_SIZE=N`, `MONGODB_MIN_POOL_SIZE=N`
 
 ## Incident History
 
@@ -56,16 +56,18 @@ Even with `maxPoolSize=3`, code paths ran more parallel operations than the pool
 ### 3. No fail-fast timeouts (fixed in PR #1271)
 Without `serverSelectionTimeoutMS` and `waitQueueTimeoutMS`, saturated pools caused requests to queue indefinitely, leading to cascading timeouts in serverless functions.
 
-## How Idle Draining Works
+## How Pool Warm-up and Idle Draining Interact
 
-The MongoDB Node.js driver (v6.18+) runs a background timer that prunes idle connections:
+The MongoDB Node.js driver (v6.18+) manages two competing processes on the pool:
 
-1. Connection finishes a query and is returned to the pool
-2. After `maxIdleTimeMS` (10s) with no new queries, the connection is destroyed
-3. With `minPoolSize=0`, the pool drains to zero connections
-4. New queries create fresh connections on demand
+1. **Prune loop**: after `maxIdleTimeMS` (4.5 min) with no queries, the driver destroys idle connections.
+2. **`ensureMinPoolSize` loop**: a background `setTimeout` (default every 100ms) opens new connections one at a time until the pool reaches `minPoolSize`.
 
-The warmup cron (`/api/cron/warmup`, every 4 min) keeps function instances alive but does NOT touch the database, so idle connections still drain.
+Because `minPoolSize=3` matches `maxPoolSize=3`, the pool steady-state holds 3 warm connections. Any single connection that gets pruned for idleness is replaced within ~100ms by the ensure loop — the pool never drains below 3 in a live instance.
+
+At boot, `afterOpenConnection` fires after just the FIRST handshake, not after all `minPoolSize` slots are open. The ensure loop then opens the remaining slots serially. On cold hits arriving in the first ~300ms after boot, requests may still hit a cold slot; requests arriving after convergence get warm slots.
+
+The warmup cron (`/api/cron/warmup`, every 4 min) additionally runs a cheap DB query to keep the initial connection actively used and reset its idle timer.
 
 ## Guardrail Tests
 
