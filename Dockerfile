@@ -59,16 +59,26 @@ ENV PAYLOAD_SECRET=build-time-dummy-not-used-at-runtime
 # regex in @payloadcms/storage-vercel-blob's token parser. Just enough
 # structure to pass the format check; not a real credential.
 ENV BLOB_READ_WRITE_TOKEN=vercel_blob_rw_dummystoreid_dummyrandomstring
+# Render's Docker builders cap at 8GB RAM. Next + Payload compilation
+# alone comes close, and the Sentry webpack plugin's in-memory source
+# map processing puts it over. next.config.js honors SKIP_SENTRY=true
+# and returns the raw Next config, skipping the withSentryConfig wrapper.
+# Vercel builds don't set this env, so telemetry is unaffected there.
+ENV SKIP_SENTRY=true
 
 # Next.js collects completely anonymous telemetry data about general usage.
 # Learn more here: https://nextjs.org/telemetry
 # Uncomment the following line in case you want to disable telemetry during the build.
 # ENV NEXT_TELEMETRY_DISABLED 1
 
+# Use build:docker (4096MB heap) instead of build (6144MB) — the package.json
+# build script hardcodes NODE_OPTIONS via cross-env, so an ENV here would be
+# overridden. The docker variant leaves ~4GB headroom for RSS/native buffers
+# before Render's 8GB OOM kicks in.
 RUN \
   if [ -f yarn.lock ]; then yarn run build; \
   elif [ -f package-lock.json ]; then npm run build; \
-  elif [ -f pnpm-lock.yaml ]; then pnpm run build; \
+  elif [ -f pnpm-lock.yaml ]; then pnpm run build:docker; \
   else echo "Lockfile not found." && exit 1; \
   fi
 
