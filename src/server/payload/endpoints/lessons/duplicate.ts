@@ -23,6 +23,10 @@ import {
   type DuplicationLevel,
   type DuplicationSubject,
 } from '@/server/payload/collections/LessonDuplications'
+import {
+  cloneSectionsAndRewireExercises,
+  type ExerciseClonePair,
+} from '@/server/services/duplication/clone-sections-for-exercises'
 
 interface DuplicateBody {
   level?: unknown
@@ -125,19 +129,40 @@ async function deepCloneLesson(req: PayloadRequest, sourceLessonId: string): Pro
   // promises get killed, leaving only the first one's lesson update committed
   // (lost-update bug observed on 44-exercise geometry clone: 43 FK exercises
   // created, but only 1 entry in lesson.blocks[]).
+  //
+  // We also strip the source `blocks` textarea on create — those blocks
+  // still reference the SOURCE sections by id, and rewriting them in a
+  // second pass (below, via cloneSectionsAndRewireExercises) is the only
+  // way to hand the new exercise its own section graph. Leaving them
+  // untouched here would let a caller reading the exercise in the sub-second
+  // gap between `create` and section-rewire see stale section refs.
   const cloneFailures: Array<{ id: string; reason: string }> = []
-  const newExerciseIds: string[] = []
+  const clonePairs: ExerciseClonePair[] = []
   for (const exercise of exerciseDocs) {
     try {
       const exData = stripManagedFields(exercise as unknown as Record<string, unknown>)
+      const { blocks: sourceBlocks, ..._restEx } = exData as Record<string, unknown>
       const created = await req.payload.create({
         collection: 'exercises',
-        data: { ...exData, lesson: newLesson.id } as never,
+        data: { ..._restEx, lesson: newLesson.id, blocks: '[]' } as never,
         overrideAccess: true,
         req,
         context: { _skipBlockSync: true },
       })
-      newExerciseIds.push(created.id)
+      clonePairs.push({
+        sourceExerciseId: exercise.id,
+        sourceBlocks,
+        newExerciseId: created.id,
+        newLessonId: newLesson.id,
+        newChapterId:
+          typeof newLesson.chapter === 'string'
+            ? newLesson.chapter
+            : ((newLesson.chapter as { id?: string } | null | undefined)?.id ?? null),
+        newCourseId:
+          typeof newLesson.course === 'string'
+            ? newLesson.course
+            : ((newLesson.course as { id?: string } | null | undefined)?.id ?? null),
+      })
     } catch (err) {
       const reason = err instanceof Error ? err.message : 'unknown'
       cloneFailures.push({ id: exercise.id, reason })
@@ -152,14 +177,26 @@ async function deepCloneLesson(req: PayloadRequest, sourceLessonId: string): Pro
     )
   }
 
+  // Clone every section referenced from the cloned exercises' block
+  // playlists, and rewrite each new exercise's `blocks` so its sectionRef
+  // entries point at the newly-created section docs. Without this, admin
+  // edits on a "duplicated" section would silently mutate the source
+  // lesson's section — that's the bug this call closes.
+  const sectionResult = await cloneSectionsAndRewireExercises(req.payload, req, clonePairs)
+  if (sectionResult.sectionsFailed > 0) {
+    req.payload.logger.warn(
+      `[deepCloneLesson] ${sectionResult.sectionsFailed} section(s) failed to clone for lesson ${sourceLessonId}`,
+    )
+  }
+
   // Final batched write: build the full blocks[] array from the cloned ids
   // and persist in a single lesson update. `_skipBlockSync` prevents the
   // resulting lesson afterChange from triggering further block-sync churn.
-  if (newExerciseIds.length > 0) {
-    const blocks = newExerciseIds.map((exId) => ({
+  if (clonePairs.length > 0) {
+    const blocks = clonePairs.map((pair) => ({
       id: Math.random().toString(36).slice(2, 14),
       blockType: 'exerciseRef' as const,
-      exercise: exId,
+      exercise: pair.newExerciseId,
     }))
     await req.payload.update({
       collection: 'lessons',

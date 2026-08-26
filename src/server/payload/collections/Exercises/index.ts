@@ -256,12 +256,23 @@ export const Exercises: CollectionConfig = {
   },
   hooks: exerciseHooks,
 
+  // Payload's built-in duplicate is a shallow field copy — it copies the
+  // exercise's `blocks` textarea verbatim, so `sectionRef` entries still
+  // point at the SOURCE sections. Editing a "duplicated" section then
+  // silently mutates the source. Disable it and route admins through
+  // /api/exercises/:id/duplicate-exercise via ExerciseDuplicateButton,
+  // which deep-clones the section graph too. Mirrors Courses.ts and
+  // Lessons.ts, which disabled the built-in for the same reason.
+  disableDuplicate: true,
   admin: {
     useAsTitle: 'title',
     defaultColumns: ['order', 'title', 'lesson', 'updatedAt'],
     components: {
       edit: {
-        beforeDocumentControls: ['@/ui/admin/TranslationButton#TranslateExerciseAction'],
+        beforeDocumentControls: [
+          '@/ui/admin/TranslationButton#TranslateExerciseAction',
+          '@/ui/admin/ExerciseDuplicateButton/ExerciseDuplicateButton#ExerciseDuplicateAction',
+        ],
       },
     },
   },

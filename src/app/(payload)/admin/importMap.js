@@ -53,6 +53,7 @@ import { ExerciseNavigation as ExerciseNavigation_3633cb4a281c7c581bfc453746b3dc
 import { ConvertLatexBlockButton as ConvertLatexBlockButton_d913e8ffad94b4f98328d710b349e10d } from '@/ui/admin/exercise-conversion/ConvertLatexBlockButton'
 import { ExercisePreview as ExercisePreview_79d54f4a9901df303ad8ae2cc7d44435 } from '@/ui/admin/ExercisePreview'
 import { TranslateExerciseAction as TranslateExerciseAction_5e03fe73ee4379dfd96d492849856d43 } from '@/ui/admin/TranslationButton'
+import { ExerciseDuplicateAction as ExerciseDuplicateAction_5624d64dc38dd43f1c5b027dce4bb9d2 } from '@/ui/admin/ExerciseDuplicateButton/ExerciseDuplicateButton'
 import { SectionIdDisplay as SectionIdDisplay_7ef67555ed09efa1ad0f6e5f11651ef5 } from '@/ui/admin/SectionIdDisplay'
 import { SectionNavigation as SectionNavigation_3633cb4a281c7c581bfc453746b3dc60 } from '@/ui/admin/ContentNavigation'
 import { MediaPreview as MediaPreview_4b980c9a407724ef7c1755e3482d0258 } from '@/ui/admin/MediaPreview'
@@ -135,6 +136,7 @@ export const importMap = {
   "@/ui/admin/exercise-conversion/ConvertLatexBlockButton#ConvertLatexBlockButton": ConvertLatexBlockButton_d913e8ffad94b4f98328d710b349e10d,
   "@/ui/admin/ExercisePreview#ExercisePreview": ExercisePreview_79d54f4a9901df303ad8ae2cc7d44435,
   "@/ui/admin/TranslationButton#TranslateExerciseAction": TranslateExerciseAction_5e03fe73ee4379dfd96d492849856d43,
+  "@/ui/admin/ExerciseDuplicateButton/ExerciseDuplicateButton#ExerciseDuplicateAction": ExerciseDuplicateAction_5624d64dc38dd43f1c5b027dce4bb9d2,
   "@/ui/admin/SectionIdDisplay#SectionIdDisplay": SectionIdDisplay_7ef67555ed09efa1ad0f6e5f11651ef5,
   "@/ui/admin/ContentNavigation#SectionNavigation": SectionNavigation_3633cb4a281c7c581bfc453746b3dc60,
   "@/ui/admin/MediaPreview#MediaPreview": MediaPreview_4b980c9a407724ef7c1755e3482d0258,
