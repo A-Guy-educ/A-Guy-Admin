@@ -30,6 +30,11 @@ import { pushDiagEvent } from '@/infra/utils/diagnostics-buffer'
 interface OpTimingEntry {
   start: number
   slug: string
+  // Pathname of the HTTP request that triggered this op. Used to group
+  // operations by the originating request in the diagnostics timeline —
+  // essential for correlating "which server-side reads happened as part
+  // of which admin page load."
+  reqPath?: string
 }
 interface OpTimingContext {
   _opTimings?: Map<string, OpTimingEntry>
@@ -87,15 +92,28 @@ const buildOpTimingHooks = (
       if (operation !== 'read') return args
       const start = Date.now()
       const opId = crypto.randomUUID().slice(0, 8)
+      // Extract the pathname of the originating HTTP request. `req.url`
+      // may be a full URL or a pathname depending on the code path;
+      // parse defensively.
+      let reqPath: string | undefined
+      const rawUrl = (req as { url?: string }).url
+      if (typeof rawUrl === 'string' && rawUrl.length > 0) {
+        try {
+          reqPath = new URL(rawUrl, 'http://x').pathname
+        } catch {
+          reqPath = rawUrl
+        }
+      }
       const ctx = (req.context ??= {}) as OpTimingContext
       if (!ctx._opTimings) ctx._opTimings = new Map<string, OpTimingEntry>()
-      ctx._opTimings.set(opId, { start, slug })
+      ctx._opTimings.set(opId, { start, slug, reqPath })
       const opArgs = args as unknown as OpTimingArgs
       opArgs._diagOpId = opId
       opLog(`${slug}.read start`, {
         opId,
         depth: opArgs.depth,
         limit: opArgs.limit,
+        reqPath,
       })
       return args
     },
@@ -150,6 +168,7 @@ const buildOpTimingHooks = (
         docs,
         depth: opArgs.depth,
         limit: opArgs.limit,
+        reqPath: entry.reqPath,
         approx: approx || undefined,
       })
       return result
