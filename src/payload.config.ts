@@ -172,13 +172,15 @@ export default buildConfig({
         '@/ui/admin/ContentPromotion/SidebarLink',
         '@/ui/admin/CourseSelectionsPopularity/SidebarLink',
       ],
-      afterNavLinks: [
-        '@/ui/admin/UserEmail',
-        // Diagnostics: renders nothing but polls the admin diagnostics
-        // endpoint for admin users and console.logs new [boot]/[op]/[coll]
-        // events. Silent no-op for non-admins.
-        '@/ui/admin/DiagnosticsAutoLog',
-      ],
+      // NOTE: DiagnosticsAutoLog was removed from afterNavLinks 2026-08-27
+      // (component file kept for manual/dev use). The 5s polling fired
+      // payload.auth() → users.read on every admin page for every open
+      // tab, contributing observable load to the Mongo pool during cold
+      // starts (5 of the top 20 slowest requests in a captured HAR were
+      // the diagnostic endpoint itself, 5-12s each). Admins can still hit
+      // /api/admin/diagnostics/recent-events manually when they want a
+      // snapshot without the polling overhead.
+      afterNavLinks: ['@/ui/admin/UserEmail'],
     },
     importMap: {
       baseDir: path.resolve(dirname),
@@ -496,21 +498,52 @@ export default buildConfig({
     const onInitStart = Date.now()
     bootLog('onInit start', { msSinceBoot: onInitStart - BOOT_START })
 
-    // NOTE: PR #374's warmMongoPool step was REVERTED here. It fired
-    // db.command({ping: 1}) × (minPoolSize-1) at boot to try to force
-    // synchronous Atlas TLS+auth handshakes for all pool slots.
-    // Measured 2026-08-27 post-deploy: pings completed in 99ms (too fast
-    // to force slot creation — the same warm slot was reused for both),
-    // AND dropStaleCoursesValidator regressed from ~100ms to ~3.8s
-    // (adverse interaction with the driver's ensureMinPoolSize background
-    // loop). Net effect: cold users.read stayed at 4-5s, boot got +3.7s
-    // slower. Zero benefit, real cost.
+    // Warm the payload.find(users) code path at boot.
     //
-    // The 4-5s cold users.read cost may not be Mongo handshake at all —
-    // it warms up progressively over ~60s of traffic in a pattern that
-    // doesn't match a simple pool-slot theory. Investigating end-to-end
-    // via requestPath tagging on [op]/[coll] events (this PR) before
-    // shipping another guess-based fix.
+    // Data (2026-08-27, verified via Compass explain on Atlas):
+    //   `db.users.findOne({_id})` executes in 0ms server-side (EXPRESS_IXSCAN
+    //   on the _id index). Plus network RTT to Atlas, real cost is ~50-100ms.
+    //
+    // But observed cold users.read via [op] diagnostic: 4-5s each on the
+    // first N invocations, warming to ~95ms over ~60s of traffic. Since
+    // MongoDB is 0ms, that 4900ms is entirely CLIENT-SIDE — some mix of:
+    //   - Cold Mongo pool slot creation (~3s TLS+auth per new slot)
+    //   - Mongoose model compilation for the Users schema
+    //   - Payload's find code path JIT warmup
+    //   - Any hook / access-control middleware first-call cost
+    //
+    // PR #374 tried raw `db.command({ping})` — didn't help because pings
+    // bypass Payload entirely and complete too fast to force slot
+    // creation. This is different: firing an actual `payload.find` runs
+    // through the same code path a real users.read uses, warming ALL of
+    // it (pool + Mongoose + Payload + hooks + JIT) in one shot.
+    //
+    // Warmup scope caveats (intentional simplifications):
+    //   - `depth: 0` skips relation-population branches. Real admin reads
+    //     often run at depth >= 1. Users.tenant/currentCourse/entitlements
+    //     have `maxDepth: 0` (PRs #366, #368) so the branch is a fast
+    //     early-return there, but the code path itself isn't warmed by
+    //     this call.
+    //   - `overrideAccess: true` skips the `adminOrSelf` resolver — that
+    //     code path is NOT warmed either. Cost is small; skip is fine.
+    //   - `limit: 1` — smallest possible payload; empty Users collection
+    //     safely returns `{docs: [], totalDocs: 0}` without throwing.
+    // Best-effort: any failure is logged and swallowed so a transient
+    // Atlas hiccup can't crash boot.
+    await timedInit('warmUsersReadPath', async () => {
+      try {
+        await payload.find({
+          collection: 'users',
+          limit: 1,
+          depth: 0,
+          overrideAccess: true,
+        })
+      } catch (err) {
+        bootLog('warmUsersReadPath failure', {
+          err: err instanceof Error ? { message: err.message } : String(err),
+        })
+      }
+    })
 
     // Runs BEFORE the Vercel-production early-return: this migration is the
     // single fix for a Mongo-side validator that blocks legitimate courses
