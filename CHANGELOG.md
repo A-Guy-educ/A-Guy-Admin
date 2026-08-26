@@ -1922,6 +1922,7 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- chore: Revert warmMongoPool + tag [op]/[coll] events with reqPath ([#375](https://github.com/A-Guy-educ/A-Guy-Admin/pull/375)) — @aguyshayb
 - perf: Synchronously warm Mongo pool in onInit ([#374](https://github.com/A-Guy-educ/A-Guy-Admin/pull/374)) — @aguyshayb
 - perf: Warm entire Mongo pool at boot (minPoolSize = maxPoolSize) ([#373](https://github.com/A-Guy-educ/A-Guy-Admin/pull/373)) — @aguyshayb
 - diag: In-memory event buffer + admin endpoint + client auto-log ([#372](https://github.com/A-Guy-educ/A-Guy-Admin/pull/372)) — @aguyshayb
