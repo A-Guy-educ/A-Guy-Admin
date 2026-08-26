@@ -55,7 +55,10 @@ COPY . .
 # (not generate:importmap or next build), so a dummy is safest.
 ENV CI=true
 ENV PAYLOAD_SECRET=build-time-dummy-not-used-at-runtime
-ENV BLOB_READ_WRITE_TOKEN=vercel_blob_rw_dummy_for_build
+# Format: vercel_blob_rw_<alphanumeric>_<alphanumeric> — matches the
+# regex in @payloadcms/storage-vercel-blob's token parser. Just enough
+# structure to pass the format check; not a real credential.
+ENV BLOB_READ_WRITE_TOKEN=vercel_blob_rw_dummystoreid_dummyrandomstring
 
 # Next.js collects completely anonymous telemetry data about general usage.
 # Learn more here: https://nextjs.org/telemetry
