@@ -230,8 +230,20 @@ export default buildConfig({
         process.env.MONGODB_MAX_POOL_SIZE ?? (process.env.VITEST ? '5' : '3'),
         10,
       ),
-      // Keep at least 1 connection warm to avoid cold-handshake on every request
-      minPoolSize: 1,
+      // Warm the ENTIRE pool at boot instead of just 1 slot. Measured
+      // 2026-08-26 via [op] diagnostic: on cold hits, users.read took
+      // 3-5 seconds because Payload had to lazily create pool slots 2 and
+      // 3 mid-request (each slot creation = ~3s TLS+auth handshake to
+      // Atlas). Once slots warm up, users.read drops to ~95ms. Setting
+      // minPoolSize = maxPoolSize forces all handshakes to happen upfront
+      // in afterOpenConnection, adding ~1-2s to boot but eliminating the
+      // multi-second cold-slot cost from every subsequent request.
+      // Override via MONGODB_MIN_POOL_SIZE env var for quick rollback if
+      // Atlas connection budget becomes a concern.
+      minPoolSize: parseInt(
+        process.env.MONGODB_MIN_POOL_SIZE ?? (process.env.VITEST ? '5' : '3'),
+        10,
+      ),
       // Close idle connections after 4.5 minutes (keeps warm between sparse traffic)
       maxIdleTimeMS: 270000,
       // Fail fast if MongoDB is unreachable — don't hang serverless functions
@@ -250,8 +262,10 @@ export default buildConfig({
     },
     afterOpenConnection: async () => {
       const maxPoolSize = process.env.MONGODB_MAX_POOL_SIZE ?? (process.env.VITEST ? '5' : '3')
+      const minPoolSize = process.env.MONGODB_MIN_POOL_SIZE ?? (process.env.VITEST ? '5' : '3')
       bootLog('MongoDB connection pool opened', {
         maxPoolSize: parseInt(maxPoolSize, 10),
+        minPoolSize: parseInt(minPoolSize, 10),
         msSinceBoot: Date.now() - BOOT_START,
       })
     },
