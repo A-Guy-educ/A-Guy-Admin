@@ -15,6 +15,8 @@
 
 import type { CollectionConfig, Config, Plugin } from 'payload'
 
+import { pushDiagEvent } from '@/infra/utils/diagnostics-buffer'
+
 /**
  * Per-request pending-op store. Payload's `payload.auth()` (and possibly
  * other internal call sites) invokes reads via a code path that DOES call
@@ -46,7 +48,9 @@ interface OpTimingArgs {
 }
 
 const opLog = (msg: string, fields: Record<string, unknown>): void => {
-  console.log(JSON.stringify({ msg: `[op] ${msg}`, ...fields }))
+  const prefixed = `[op] ${msg}`
+  console.log(JSON.stringify({ msg: prefixed, ...fields }))
+  pushDiagEvent(prefixed, fields)
 }
 
 /**

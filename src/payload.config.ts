@@ -6,6 +6,7 @@ import sharp from 'sharp'
 import { fileURLToPath } from 'url'
 
 import { getServerSideURL } from '@/infra/utils/getURL'
+import { pushDiagEvent } from '@/infra/utils/diagnostics-buffer'
 import { AccessCodes } from '@/server/payload/collections/AccessCodes'
 import { Categories } from '@/server/payload/collections/Categories'
 import { Chapters } from '@/server/payload/collections/Chapters'
@@ -94,7 +95,9 @@ const dirname = path.dirname(filename)
 // no buffering, so every line reaches Vercel intact.
 const BOOT_START = Date.now()
 const bootLog = (msg: string, fields: Record<string, unknown> = {}): void => {
-  console.log(JSON.stringify({ msg: `[boot] ${msg}`, ...fields }))
+  const prefixed = `[boot] ${msg}`
+  console.log(JSON.stringify({ msg: prefixed, ...fields }))
+  pushDiagEvent(prefixed, fields)
 }
 bootLog('payload.config.ts module loaded', { ts: BOOT_START })
 
@@ -168,7 +171,13 @@ export default buildConfig({
         '@/ui/admin/ContentPromotion/SidebarLink',
         '@/ui/admin/CourseSelectionsPopularity/SidebarLink',
       ],
-      afterNavLinks: ['@/ui/admin/UserEmail'],
+      afterNavLinks: [
+        '@/ui/admin/UserEmail',
+        // Diagnostics: renders nothing but polls the admin diagnostics
+        // endpoint for admin users and console.logs new [boot]/[op]/[coll]
+        // events. Silent no-op for non-admins.
+        '@/ui/admin/DiagnosticsAutoLog',
+      ],
     },
     importMap: {
       baseDir: path.resolve(dirname),
