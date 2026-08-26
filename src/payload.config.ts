@@ -512,6 +512,15 @@ export default buildConfig({
     // pool slot → forces synchronous slot creation up to minPoolSize.
     // Cost: one round of handshakes in parallel (~3s wall-clock), paid
     // once at boot instead of many times on each first request.
+    //
+    // Warmup ceiling: the MongoDB driver caps concurrent slot creation at
+    // `maxConnecting` (default 2), so the synchronous warmup here covers
+    // up to `1 + maxConnecting = 3` slots. That matches our default
+    // `minPoolSize=3`. If an operator raises MONGODB_MIN_POOL_SIZE above
+    // 3, this fires more pings but only 2 will open in parallel — the
+    // rest reuse the freed slot once the first pings complete (ping is
+    // instant after handshake). The background ensureMinPoolSize loop
+    // still fills any residual gap.
     await timedInit('warmMongoPool', async () => {
       const db = payload.db.connection.db
       if (!db) return
