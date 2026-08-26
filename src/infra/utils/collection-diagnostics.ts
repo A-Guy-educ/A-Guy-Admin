@@ -17,7 +17,25 @@ interface CollLogFields {
   ms: number
   findMany: boolean
   docId?: string
+  // Pathname of the HTTP request that triggered this read — used to
+  // group events by originating request in the diagnostics timeline.
+  reqPath?: string
   err?: { message: string; stack?: string } | string
+}
+
+/**
+ * Extract the pathname of the originating HTTP request from a Payload req
+ * object. `req.url` may be a full URL or a bare pathname depending on the
+ * code path; parse defensively.
+ */
+function extractReqPath(req: unknown): string | undefined {
+  const rawUrl = (req as { url?: string } | undefined)?.url
+  if (typeof rawUrl !== 'string' || rawUrl.length === 0) return undefined
+  try {
+    return new URL(rawUrl, 'http://x').pathname
+  } catch {
+    return rawUrl
+  }
 }
 
 const collLog = (msg: string, fields: CollLogFields): void => {
@@ -45,6 +63,7 @@ export function timedAfterRead(
 ): CollectionAfterReadHook {
   return async (args) => {
     const start = Date.now()
+    const reqPath = extractReqPath(args.req)
     try {
       const result = await hook(args)
       const doc = result as { id?: string } | null | undefined
@@ -52,12 +71,14 @@ export function timedAfterRead(
         ms: Date.now() - start,
         findMany: args.findMany === true,
         docId: doc?.id,
+        reqPath,
       })
       return result
     } catch (err) {
       collLog(`${name} FAILED`, {
         ms: Date.now() - start,
         findMany: args.findMany === true,
+        reqPath,
         err: err instanceof Error ? { message: err.message, stack: err.stack } : String(err),
       })
       throw err

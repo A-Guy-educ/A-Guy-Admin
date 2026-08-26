@@ -496,51 +496,21 @@ export default buildConfig({
     const onInitStart = Date.now()
     bootLog('onInit start', { msSinceBoot: onInitStart - BOOT_START })
 
-    // Synchronous Mongo pool warmup.
+    // NOTE: PR #374's warmMongoPool step was REVERTED here. It fired
+    // db.command({ping: 1}) × (minPoolSize-1) at boot to try to force
+    // synchronous Atlas TLS+auth handshakes for all pool slots.
+    // Measured 2026-08-27 post-deploy: pings completed in 99ms (too fast
+    // to force slot creation — the same warm slot was reused for both),
+    // AND dropStaleCoursesValidator regressed from ~100ms to ~3.8s
+    // (adverse interaction with the driver's ensureMinPoolSize background
+    // loop). Net effect: cold users.read stayed at 4-5s, boot got +3.7s
+    // slower. Zero benefit, real cost.
     //
-    // Rationale: PR #373 set `minPoolSize: 3` but that only tells the
-    // driver to grow to 3 connections in a background 100ms loop AFTER
-    // `afterOpenConnection` fires with 1 warm slot. On Vercel, real
-    // requests arrive immediately after boot — they contend with the
-    // background loop for handshake bandwidth, and the first N requests
-    // pay the ~3s Atlas TLS+auth cost anyway. Measured 2026-08-26 via
-    // [op] diagnostic: even with minPoolSize=3, first 7 users.read
-    // events on a cold hit still took 4-5s each.
-    //
-    // Fix: fire (min-1) concurrent pings here, before we return from
-    // onInit and Payload starts serving requests. Each ping needs a
-    // pool slot → forces synchronous slot creation up to minPoolSize.
-    // Cost: one round of handshakes in parallel (~3s wall-clock), paid
-    // once at boot instead of many times on each first request.
-    //
-    // Warmup ceiling: the MongoDB driver caps concurrent slot creation at
-    // `maxConnecting` (default 2), so the synchronous warmup here covers
-    // up to `1 + maxConnecting = 3` slots. That matches our default
-    // `minPoolSize=3`. If an operator raises MONGODB_MIN_POOL_SIZE above
-    // 3, this fires more pings but only 2 will open in parallel — the
-    // rest reuse the freed slot once the first pings complete (ping is
-    // instant after handshake). The background ensureMinPoolSize loop
-    // still fills any residual gap.
-    await timedInit('warmMongoPool', async () => {
-      const db = payload.db.connection.db
-      if (!db) return
-      const minPoolSize = parseInt(
-        process.env.MONGODB_MIN_POOL_SIZE ?? (process.env.VITEST ? '5' : '3'),
-        10,
-      )
-      const pingsNeeded = Math.max(0, minPoolSize - 1)
-      if (pingsNeeded === 0) return
-      // Best-effort — a failed ping (e.g. transient Atlas hiccup) should
-      // never crash boot. Log and move on; the driver will lazily create
-      // any missing slots on demand as before.
-      try {
-        await Promise.all(Array.from({ length: pingsNeeded }, () => db.command({ ping: 1 })))
-      } catch (err) {
-        bootLog('warmMongoPool ping failure', {
-          err: err instanceof Error ? { message: err.message } : String(err),
-        })
-      }
-    })
+    // The 4-5s cold users.read cost may not be Mongo handshake at all —
+    // it warms up progressively over ~60s of traffic in a pattern that
+    // doesn't match a simple pool-slot theory. Investigating end-to-end
+    // via requestPath tagging on [op]/[coll] events (this PR) before
+    // shipping another guess-based fix.
 
     // Runs BEFORE the Vercel-production early-return: this migration is the
     // single fix for a Mongo-side validator that blocks legitimate courses
