@@ -9,6 +9,12 @@ const NEXT_PUBLIC_SERVER_URL = process.env.VERCEL_PROJECT_PRODUCTION_URL
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Produce a self-contained Node runtime bundle at `.next/standalone/`.
+  // Required for the Dockerfile's runner stage (which COPYs from that
+  // path and runs `node server.js`). Ignored by Vercel builds (Vercel
+  // does its own build pipeline), so adding this is harmless there.
+  output: 'standalone',
+
   // Externalize server-only packages to skip webpack bundling — loaded from node_modules at runtime.
   // This reduces build time and memory by removing ~55 MB from the compilation graph.
   serverExternalPackages: [
