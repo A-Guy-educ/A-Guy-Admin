@@ -1922,6 +1922,7 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- fix: Deep-clone sections in lesson and exercise duplicate paths ([#371](https://github.com/A-Guy-educ/A-Guy-Admin/pull/371)) — @aguyshayb
 - fix: Studio tree endpoint resolves sections via each exercise's forward playlist ([#369](https://github.com/A-Guy-educ/A-Guy-Admin/pull/369)) — @aguyshayb
 - perf: Cap Users.tenant to maxDepth=0 ([#368](https://github.com/A-Guy-educ/A-Guy-Admin/pull/368)) — @aguyshayb
 - diag: Add slug-based fallback pairing for [op] afterOperation ([#367](https://github.com/A-Guy-educ/A-Guy-Admin/pull/367)) — @aguyshayb
