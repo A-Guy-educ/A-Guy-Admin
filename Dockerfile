@@ -37,13 +37,23 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Dummy env vars for build only. Several plugins/configs throw at
-# module-load if their required env vars are missing, and the various
-# generate:* scripts have to import payload.config.ts / plugins/index.ts
-# to introspect the schema. The values here are never used at runtime —
-# the runner stage below inherits from `base`, not `builder`, so these
-# ENVs do NOT leak to the running container. Real secrets are injected
-# via Render's env vars at runtime.
+# Build-time env vars needed to satisfy validations that throw at
+# module-load. None of these leak to the running container — the runner
+# stage below inherits from `base`, not `builder`, so real values from
+# Render's env are used at runtime.
+#
+# CI=true — payload.config.ts and other module-load validators already
+# skip DB / infra checks when CI=true (existing bypass). Cleanest way to
+# tell the codebase "we're not running real requests, skip runtime env
+# checks that need real infrastructure."
+#
+# PAYLOAD_SECRET dummy — no bypass exists at payload.config.ts:350;
+# module import throws unconditionally if missing.
+#
+# BLOB_READ_WRITE_TOKEN dummy — plugins/index.ts gates its check on
+# PAYLOAD_GENERATE_TYPES=true, but that's only set for generate:types
+# (not generate:importmap or next build), so a dummy is safest.
+ENV CI=true
 ENV PAYLOAD_SECRET=build-time-dummy-not-used-at-runtime
 ENV BLOB_READ_WRITE_TOKEN=vercel_blob_rw_dummy_for_build
 
