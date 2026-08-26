@@ -230,8 +230,28 @@ export default buildConfig({
         process.env.MONGODB_MAX_POOL_SIZE ?? (process.env.VITEST ? '5' : '3'),
         10,
       ),
-      // Keep at least 1 connection warm to avoid cold-handshake on every request
-      minPoolSize: 1,
+      // Warm the pool up to `minPoolSize` slots so cold `users.read`
+      // requests don't pay a ~3s Atlas TLS+auth handshake to create the
+      // slot on-demand. Measured 2026-08-26 via [op] diagnostic: cold
+      // hits saw 3-5s users.read; once slots warm up, users.read drops
+      // to ~95ms.
+      //
+      // Timing note: setting minPoolSize does NOT block boot. Mongoose's
+      // `createConnection().asPromise()` (called in @payloadcms/db-mongodb
+      // connect.js) resolves after just the initial handshake, so
+      // `afterOpenConnection` fires with only 1 warm slot. The MongoDB
+      // driver's ensureMinPoolSize() then runs a background setTimeout
+      // loop (default every 100ms) that opens the remaining slots one at
+      // a time — the pool converges to `minPoolSize` within a few hundred
+      // ms of boot. Requests arriving in that narrow window can still hit
+      // a cold slot; requests after it are fast.
+      //
+      // Override via MONGODB_MIN_POOL_SIZE env var for quick rollback if
+      // Atlas connection budget becomes a concern.
+      minPoolSize: parseInt(
+        process.env.MONGODB_MIN_POOL_SIZE ?? (process.env.VITEST ? '5' : '3'),
+        10,
+      ),
       // Close idle connections after 4.5 minutes (keeps warm between sparse traffic)
       maxIdleTimeMS: 270000,
       // Fail fast if MongoDB is unreachable — don't hang serverless functions
@@ -250,8 +270,10 @@ export default buildConfig({
     },
     afterOpenConnection: async () => {
       const maxPoolSize = process.env.MONGODB_MAX_POOL_SIZE ?? (process.env.VITEST ? '5' : '3')
+      const minPoolSize = process.env.MONGODB_MIN_POOL_SIZE ?? (process.env.VITEST ? '5' : '3')
       bootLog('MongoDB connection pool opened', {
         maxPoolSize: parseInt(maxPoolSize, 10),
+        minPoolSize: parseInt(minPoolSize, 10),
         msSinceBoot: Date.now() - BOOT_START,
       })
     },

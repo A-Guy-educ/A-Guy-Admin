@@ -47,9 +47,34 @@ describe('MongoDB Connection Pool Guardrail', () => {
     it('production default matches recommended value', () => {
       const configPath = resolve(__dirname, '../../src/payload.config.ts')
       const configSource = readFileSync(configPath, 'utf-8')
+      // First occurrence of the VITEST?'5':'N' pattern is the max pool size
+      // (the min pool size uses the same shape but appears further down).
       const match = configSource.match(/VITEST\s*\?\s*'5'\s*:\s*'(\d+)'/)
       expect(match).not.toBeNull()
       expect(parseInt(match![1], 10)).toBe(RECOMMENDED_DEFAULT)
+    })
+
+    it('minPoolSize must not exceed maxPoolSize', () => {
+      // Warming the pool at boot (minPoolSize = maxPoolSize) is safe and
+      // eliminates cold-slot handshake cost per request. Configuring
+      // minPoolSize > maxPoolSize would be an invalid Mongoose state.
+      const configPath = resolve(__dirname, '../../src/payload.config.ts')
+      const configSource = readFileSync(configPath, 'utf-8')
+      // Two-step: first grab each env-var line, then extract the
+      // production default (the false-branch of the VITEST ternary). Simpler
+      // than a single mega-regex and robust to trailing punctuation.
+      const maxLine = configSource.match(/process\.env\.MONGODB_MAX_POOL_SIZE[^\n]*/)?.[0] ?? ''
+      const minLine = configSource.match(/process\.env\.MONGODB_MIN_POOL_SIZE[^\n]*/)?.[0] ?? ''
+      const maxMatch = maxLine.match(/VITEST\s*\?\s*'\d+'\s*:\s*'(\d+)'/)
+      const minMatch = minLine.match(/VITEST\s*\?\s*'\d+'\s*:\s*'(\d+)'/)
+      expect(maxMatch, 'Could not find maxPoolSize parseInt config').not.toBeNull()
+      expect(minMatch, 'Could not find minPoolSize parseInt config').not.toBeNull()
+      const maxDefault = parseInt(maxMatch![1], 10)
+      const minDefault = parseInt(minMatch![1], 10)
+      expect(
+        minDefault,
+        `minPoolSize default (${minDefault}) must not exceed maxPoolSize default (${maxDefault})`,
+      ).toBeLessThanOrEqual(maxDefault)
     })
   })
 
@@ -115,6 +140,35 @@ describe('MongoDB Connection Pool Guardrail', () => {
       process.env.VITEST = 'true'
       process.env.MONGODB_MAX_POOL_SIZE = '7'
       expect(resolvePoolSize()).toBe(7)
+    })
+
+    /** Mirrors the exact expression for minPoolSize in payload.config.ts */
+    function resolveMinPoolSize(): number {
+      return parseInt(process.env.MONGODB_MIN_POOL_SIZE ?? (process.env.VITEST ? '5' : '3'), 10)
+    }
+
+    it('min uses 3 for production default', () => {
+      delete process.env.VITEST
+      delete process.env.MONGODB_MIN_POOL_SIZE
+      expect(resolveMinPoolSize()).toBe(3)
+    })
+
+    it('min uses 5 for test environment', () => {
+      process.env.VITEST = 'true'
+      delete process.env.MONGODB_MIN_POOL_SIZE
+      expect(resolveMinPoolSize()).toBe(5)
+    })
+
+    it('MONGODB_MIN_POOL_SIZE overrides all defaults', () => {
+      delete process.env.VITEST
+      process.env.MONGODB_MIN_POOL_SIZE = '2'
+      expect(resolveMinPoolSize()).toBe(2)
+    })
+
+    it('MONGODB_MIN_POOL_SIZE takes precedence over VITEST', () => {
+      process.env.VITEST = 'true'
+      process.env.MONGODB_MIN_POOL_SIZE = '1'
+      expect(resolveMinPoolSize()).toBe(1)
     })
   })
 
