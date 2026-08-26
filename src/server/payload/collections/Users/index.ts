@@ -7,7 +7,7 @@
  * @ai-summary Users collection with authentication, RBAC roles, and audit hooks
  */
 
-import type { CollectionConfig } from 'payload'
+import type { CollectionConfig, RelationshipField } from 'payload'
 
 import { adminOnly } from '../../access/adminOnly'
 import { adminOrContentEditor } from '../../access/adminOrContentEditor'
@@ -70,7 +70,17 @@ export const Users: CollectionConfig = {
       },
     },
     // Tenant
-    optionalTenantField,
+    // Cap tenant population to ID only. Without this, every users.read at
+    // depth >= 1 fires a cascading tenants.read (measured 3s+ per doc on
+    // cold hits — captured on 2026-08-25 via the [op] diagnostic). No
+    // consumer of `user.tenant` reads any populated field on the returned
+    // Tenant object (grep for `user.tenant.` and `user?.tenant?.` returned
+    // zero hits across src/). Auth flows and multi-tenant scoping only
+    // ever need the tenant ID, which is what the raw string return gives us.
+    // Cast is needed because `optionalTenantField` is typed as the wide
+    // `Field` union; the underlying object is a `RelationshipField`, which
+    // supports `maxDepth`.
+    { ...optionalTenantField, maxDepth: 0 } as RelationshipField,
     // OAuth fields
     {
       name: 'googleSub',
