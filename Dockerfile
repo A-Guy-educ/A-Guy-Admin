@@ -19,9 +19,16 @@ COPY package.json yarn.lock* package-lock.json* pnpm-lock.yaml* ./
 RUN \
   if [ -f yarn.lock ]; then yarn --frozen-lockfile; \
   elif [ -f package-lock.json ]; then npm ci; \
-  elif [ -f pnpm-lock.yaml ]; then pnpm i --frozen-lockfile; \
+  elif [ -f pnpm-lock.yaml ]; then pnpm i --frozen-lockfile --ignore-scripts; \
   else echo "Lockfile not found." && exit 1; \
   fi
+# --ignore-scripts skips the postinstall that runs `pnpm generate:types`.
+# At the deps stage only package.json + lockfile are copied, so tsconfig
+# and source aren't available — payload generate:types fails with
+# "Cannot read properties of null (reading 'config')" trying to find
+# tsconfig. The build stage below has the full source and re-runs
+# `pnpm run build` (which chains through `pnpm generate` → generate:types
+# + generate:importmap), so nothing is lost.
 
 
 # Rebuild the source code only when needed
