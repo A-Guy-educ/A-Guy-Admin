@@ -172,7 +172,6 @@ export default buildConfig({
         '@/ui/admin/ContentPromotion/SidebarLink',
         '@/ui/admin/CourseSelectionsPopularity/SidebarLink',
       ],
-      afterNavLinks: ['@/ui/admin/UserEmail'],
       // NOTE: DiagnosticsAutoLog was removed from afterNavLinks 2026-08-27
       // (component file kept for manual/dev use). The 5s polling fired
       // payload.auth() → users.read on every admin page for every open
@@ -181,6 +180,7 @@ export default buildConfig({
       // the diagnostic endpoint itself, 5-12s each). Admins can still hit
       // /api/admin/diagnostics/recent-events manually when they want a
       // snapshot without the polling overhead.
+      afterNavLinks: ['@/ui/admin/UserEmail'],
     },
     importMap: {
       baseDir: path.resolve(dirname),
@@ -518,10 +518,18 @@ export default buildConfig({
     // through the same code path a real users.read uses, warming ALL of
     // it (pool + Mongoose + Payload + hooks + JIT) in one shot.
     //
-    // overrideAccess: true — skip access-control (we're not testing auth,
-    // just warming the code path). limit: 1 depth: 0 — smallest possible
-    // payload. Best-effort: any failure is logged and swallowed so a
-    // transient Atlas hiccup can't crash boot.
+    // Warmup scope caveats (intentional simplifications):
+    //   - `depth: 0` skips relation-population branches. Real admin reads
+    //     often run at depth >= 1. Users.tenant/currentCourse/entitlements
+    //     have `maxDepth: 0` (PRs #366, #368) so the branch is a fast
+    //     early-return there, but the code path itself isn't warmed by
+    //     this call.
+    //   - `overrideAccess: true` skips the `adminOrSelf` resolver — that
+    //     code path is NOT warmed either. Cost is small; skip is fine.
+    //   - `limit: 1` — smallest possible payload; empty Users collection
+    //     safely returns `{docs: [], totalDocs: 0}` without throwing.
+    // Best-effort: any failure is logged and swallowed so a transient
+    // Atlas hiccup can't crash boot.
     await timedInit('warmUsersReadPath', async () => {
       try {
         await payload.find({
