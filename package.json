@@ -1,12 +1,13 @@
 {
   "name": "a-guy",
-  "version": "0.35.0",
+  "version": "0.36.0",
   "description": "Website template for Payload",
   "license": "MIT",
   "type": "module",
   "scripts": {
     "kody": "npx @kody-ade/kody-engine serve",
     "build": "pnpm generate && cross-env NEXT_TELEMETRY_DISABLED=1 NODE_OPTIONS='--no-deprecation --max-old-space-size=6144' next build",
+    "build:docker": "pnpm generate && cross-env NEXT_TELEMETRY_DISABLED=1 NODE_OPTIONS='--no-deprecation --max-old-space-size=4096' next build",
     "build:analyze": "cross-env ANALYZE=true pnpm build",
     "dev": "pnpm generate && cross-env NODE_OPTIONS=--no-deprecation next dev",
     "dev:fast": "pnpm generate && cross-env NEXT_TURBOPACK_DEV=0 NODE_OPTIONS=--no-deprecation next dev",

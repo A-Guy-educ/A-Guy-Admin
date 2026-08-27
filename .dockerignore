@@ -1,0 +1,69 @@
+# === Never send to the Docker build context ===
+# Each entry below is either (a) built inside the container,
+# (b) never needed in the container, or (c) sensitive.
+
+# Node deps — installed fresh inside the deps stage
+node_modules
+**/node_modules
+
+# Build outputs — created inside the builder stage
+.next
+.turbo
+dist
+build
+out
+
+# Version control
+.git
+.gitignore
+.gitattributes
+
+# Secrets — NEVER ship into the container
+.env
+.env.*
+!.env.example
+
+# Vercel-specific — irrelevant on Render
+.vercel
+
+# Local dev / editor tooling
+.vscode
+.idea
+.cursor
+.cursor-tutor
+.claude
+.agents
+
+# Test artifacts and configs
+tests
+test-results
+playwright-report
+coverage
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+vitest.config.*.mts
+playwright.config.ts
+
+# Documentation
+docs
+*.md
+!README.md
+
+# Local scratch / one-off scripts (comment out any that ARE needed at runtime)
+scripts/backups
+
+# Logs / OS junk
+*.log
+.DS_Store
+Thumbs.db
+
+# CI config
+.github
+
+# Random local files that have crept into the repo root
+1.svg
+sectionhandoff.md
+functions_import_schema.md
+"how *"

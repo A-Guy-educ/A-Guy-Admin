@@ -7,6 +7,7 @@ import type {
 } from 'payload'
 
 import { AccountRole, isAdvancedContentEditor } from '@/infra/auth/roles'
+import { timedAfterRead } from '@/infra/utils/collection-diagnostics'
 import type { User } from '@/payload-types'
 import { contentLocaleField } from '@/server/payload/fields/contentLocale'
 import { tenantField } from '@/server/payload/fields/tenant'
@@ -400,14 +401,14 @@ const sectionHooks: CollectionConfig['hooks'] = {
     },
   ],
   afterRead: [
-    populateSectionAdminTitle,
+    timedAfterRead('sections.populateAdminTitle', populateSectionAdminTitle),
     // In-memory backfill: when a section is read and its denormalized
     // lesson/chapter/course fields are empty, resolve them from the parent
     // exercise (or the lesson → chapter → course chain). The `beforeChange`
     // hook above already persists these on every save, so this only fires
     // for legacy docs read before they've been edited. Skipped during
     // build/seed (no req.user) to avoid slowing static generation.
-    async ({ doc, req }) => {
+    timedAfterRead('sections.inlineBackfill', async ({ doc, req }) => {
       if (!doc?.exercise) return doc
       if (doc.lesson && doc.chapter && doc.course) return doc
       if (!req.user) return doc
@@ -462,7 +463,7 @@ const sectionHooks: CollectionConfig['hooks'] = {
       }
 
       return doc
-    },
+    }),
   ],
   afterChange: [
     async ({ doc, previousDoc, req }) => {

@@ -9,6 +9,12 @@ const NEXT_PUBLIC_SERVER_URL = process.env.VERCEL_PROJECT_PRODUCTION_URL
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Produce a self-contained Node runtime bundle at `.next/standalone/`.
+  // Required for the Dockerfile's runner stage (which COPYs from that
+  // path and runs `node server.js`). Ignored by Vercel builds (Vercel
+  // does its own build pipeline), so adding this is harmless there.
+  output: 'standalone',
+
   // Externalize server-only packages to skip webpack bundling — loaded from node_modules at runtime.
   // This reduces build time and memory by removing ~55 MB from the compilation graph.
   serverExternalPackages: [
@@ -187,24 +193,33 @@ const nextConfig = {
 
 const configWithPayload = withPayload(nextConfig, { devBundleServerPackages: true })
 
-export default withSentryConfig(configWithPayload, {
-  org: process.env.SENTRY_ORG,
-  project: process.env.SENTRY_PROJECT,
-  silent: !process.env.CI,
-  widenClientFileUpload: false,
-  tunnelRoute: '/monitoring',
-  hideSourceMaps: true,
-  sourcemaps: {
-    deleteSourcemapsAfterUpload: true,
-  },
-  webpack: {
-    treeshake: {
-      removeDebugLogging: true,
-    },
-    // Disable react component annotation to avoid prerender errors with Client Components
-    reactComponentAnnotation: {
-      enabled: false,
-    },
-    automaticVercelMonitors: true,
-  },
-})
+// Skip Sentry entirely when SKIP_SENTRY=true (used by Docker builds on
+// memory-constrained hosts like Render, whose 8GB build cap can't fit
+// Next + Payload compilation + the Sentry webpack plugin's in-memory
+// source-map processing simultaneously). Vercel builds don't set this
+// and continue to run Sentry as before.
+const skipSentry = process.env.SKIP_SENTRY === 'true'
+
+export default skipSentry
+  ? configWithPayload
+  : withSentryConfig(configWithPayload, {
+      org: process.env.SENTRY_ORG,
+      project: process.env.SENTRY_PROJECT,
+      silent: !process.env.CI,
+      widenClientFileUpload: false,
+      tunnelRoute: '/monitoring',
+      hideSourceMaps: true,
+      sourcemaps: {
+        deleteSourcemapsAfterUpload: true,
+      },
+      webpack: {
+        treeshake: {
+          removeDebugLogging: true,
+        },
+        // Disable react component annotation to avoid prerender errors with Client Components
+        reactComponentAnnotation: {
+          enabled: false,
+        },
+        automaticVercelMonitors: true,
+      },
+    })

@@ -1,5 +1,37 @@
 # Changelog
 
+## v0.36.0 — 2026-08-27
+
+### Features
+- Default studio to document mode and persist choice (#361)
+
+### Fixes
+- Deep-clone sections in lesson and exercise duplicate paths; restrict exercise duplicate to admin (#371)
+- Studio tree endpoint resolves sections via each exercise's forward playlist (#369)
+- Redirect Admin root to dashboard (#361)
+
+### Performance
+- Warm `payload.find(users)` at boot to eliminate cold TTFB spike on first user reads (#376)
+- Synchronously warm Mongo pool in `onInit` (#374)
+- Warm entire Mongo pool at boot (`minPoolSize = maxPoolSize`) (#373)
+- Cap `Users.tenant` to `maxDepth=0` (#368)
+- Cap `Users.courseEntitlements` and `Users.currentCourse` to `maxDepth=0` (#366)
+- Move `verifyTransactionsUniqueness` from `onInit` to a daily cron (#362)
+- Lazy-load studio inline editor with hover prefetch (#359)
+- Warm `/admin` lambda + bump function memory to 3008 MB (scoped to `(payload)` route group) (#357)
+- Trust stored lesson `adminTitle` in `afterRead` (kill N+1) (#355)
+- Lazy-load exercise block editors (#354)
+
+### Chore
+- Add Dockerfile with standalone output for Render deploys (#377)
+- Revert `warmMongoPool`; tag `[op]`/`[coll]` events with `reqPath` (#375)
+- In-memory event buffer + admin endpoint + client auto-log (#372)
+- Add slug-based fallback pairing for `[op]` `afterOperation` (#367)
+- Add `[op]` operation-level timing across all collections (#365)
+- Add `[coll]` timing to `afterRead` hooks on Lessons / Exercises / Sections (#364)
+- Switch `[boot]` logs to `console.log` to bypass pino drop (#360)
+- Instrument Payload boot for cold-start diagnostics (#358)
+
 ## v0.35.0 — 2026-08-19
 
 ### Features
@@ -1922,6 +1954,29 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- chore: release v0.36.0 ([#378](https://github.com/A-Guy-educ/A-Guy-Admin/pull/378)) — @aguyshayb
+- chore(infra): Dockerfile + standalone output for Render deploys ([#377](https://github.com/A-Guy-educ/A-Guy-Admin/pull/377)) — @aguyshayb
+- perf: Warm payload.find(users) at boot + remove diagnostic auto-log ([#376](https://github.com/A-Guy-educ/A-Guy-Admin/pull/376)) — @aguyshayb
+- chore: Revert warmMongoPool + tag [op]/[coll] events with reqPath ([#375](https://github.com/A-Guy-educ/A-Guy-Admin/pull/375)) — @aguyshayb
+- perf: Synchronously warm Mongo pool in onInit ([#374](https://github.com/A-Guy-educ/A-Guy-Admin/pull/374)) — @aguyshayb
+- perf: Warm entire Mongo pool at boot (minPoolSize = maxPoolSize) ([#373](https://github.com/A-Guy-educ/A-Guy-Admin/pull/373)) — @aguyshayb
+- diag: In-memory event buffer + admin endpoint + client auto-log ([#372](https://github.com/A-Guy-educ/A-Guy-Admin/pull/372)) — @aguyshayb
+- fix: Deep-clone sections in lesson and exercise duplicate paths ([#371](https://github.com/A-Guy-educ/A-Guy-Admin/pull/371)) — @aguyshayb
+- fix: Studio tree endpoint resolves sections via each exercise's forward playlist ([#369](https://github.com/A-Guy-educ/A-Guy-Admin/pull/369)) — @aguyshayb
+- perf: Cap Users.tenant to maxDepth=0 ([#368](https://github.com/A-Guy-educ/A-Guy-Admin/pull/368)) — @aguyshayb
+- diag: Add slug-based fallback pairing for [op] afterOperation ([#367](https://github.com/A-Guy-educ/A-Guy-Admin/pull/367)) — @aguyshayb
+- perf: Cap Users.courseEntitlements + currentCourse to maxDepth=0 ([#366](https://github.com/A-Guy-educ/A-Guy-Admin/pull/366)) — @aguyshayb
+- chore: Add [op] operation-level timing across all collections ([#365](https://github.com/A-Guy-educ/A-Guy-Admin/pull/365)) — @aguyshayb
+- chore: Add [coll] timing to afterRead hooks on Lessons/Exercises/Sections ([#364](https://github.com/A-Guy-educ/A-Guy-Admin/pull/364)) — @aguyshayb
+- perf: Move verifyTransactionsUniqueness from onInit to daily cron ([#362](https://github.com/A-Guy-educ/A-Guy-Admin/pull/362)) — @aguyshayb
+- feat: Default studio to document mode and persist choice ([#361](https://github.com/A-Guy-educ/A-Guy-Admin/pull/361)) — @aguyshayb
+- chore: Switch [boot] logs to console.log to bypass pino drop ([#360](https://github.com/A-Guy-educ/A-Guy-Admin/pull/360)) — @aguyshayb
+- perf: Lazy-load studio inline editor with hover prefetch ([#359](https://github.com/A-Guy-educ/A-Guy-Admin/pull/359)) — @aguyshayb
+- chore: Instrument Payload boot for cold-start diagnostics ([#358](https://github.com/A-Guy-educ/A-Guy-Admin/pull/358)) — @aguyshayb
+- perf: Warm /admin lambda + bump function memory to 3008MB ([#357](https://github.com/A-Guy-educ/A-Guy-Admin/pull/357)) — @aguyshayb
+- perf: Trust stored lesson adminTitle in afterRead (kill N+1) ([#355](https://github.com/A-Guy-educ/A-Guy-Admin/pull/355)) — @aguyshayb
+- perf: Lazy-load exercise block editors ([#354](https://github.com/A-Guy-educ/A-Guy-Admin/pull/354)) — @aguyshayb
+- promote: dev -> main (v0.35.0) ([#347](https://github.com/A-Guy-educ/A-Guy-Admin/pull/347)) — @aguyshayb
 - chore: release v0.35.0 ([#346](https://github.com/A-Guy-educ/A-Guy-Admin/pull/346)) — @aguyshayb
 - feat: Accept service token as second auth path on course-state ([#345](https://github.com/A-Guy-educ/A-Guy-Admin/pull/345)) — @aguyshayb
 ## [v0.34.0] - 2026-08-18

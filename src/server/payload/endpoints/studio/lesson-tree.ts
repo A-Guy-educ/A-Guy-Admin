@@ -7,7 +7,10 @@
  * for a 20-exercise lesson).
  *
  * Access: admin only.
- * Query cost: 3 Payload calls — lesson, exercises-by-lesson, sections-by-exercise.
+ * Query cost: 3 Payload calls — lesson, exercises-by-lesson, sections-by-id
+ * (resolved from each exercise's `blocks` playlist so duplicated data whose
+ * `section.exercise` back-reference still points at the original exercise
+ * still shows up correctly, matching the web renderer's resolution path).
  *
  * @fileType api-route
  * @domain admin-studio
@@ -151,28 +154,45 @@ export async function lessonTreeEndpoint(req: PayloadRequest): Promise<Response>
   })
   const exercises = exercisesResult.docs as unknown as ExerciseDoc[]
 
-  // Build exercise ID list to fetch all sections in ONE query.
-  const exerciseIds = exercises.map((e) => e.id)
-  let sections: SectionDoc[] = []
-  if (exerciseIds.length > 0) {
-    const sectionsResult = await req.payload.find({
-      collection: 'sections',
-      where: { exercise: { in: exerciseIds } },
-      depth: 0,
-      limit: 5000,
-      req,
-    })
-    sections = sectionsResult.docs as unknown as SectionDoc[]
+  // Walk each exercise's `blocks` playlist to gather the section IDs it
+  // references. This is the SAME resolution path the web renderer uses
+  // (playlist is source of truth) instead of the back-reference `section.exercise`.
+  //
+  // Why: duplicated lessons can leave section documents whose back-reference
+  // still points at the ORIGINAL exercise even though the duplicate's playlist
+  // references them correctly. A back-reference query
+  // (`sections.find({ exercise: { in: exerciseIds } })`) returns zero for
+  // those sections, so the studio would render an exercise as if it had no
+  // sections while the web renderer shows them just fine. Following the
+  // forward playlist matches the web renderer and works for both duplicated
+  // and non-duplicated data.
+  const sectionIdsByExercise = new Map<string, string[]>()
+  const allSectionIds = new Set<string>()
+  for (const exercise of exercises) {
+    const playlistIds: string[] = []
+    for (const entry of parseBlocks(exercise.blocks)) {
+      if (entry.blockType !== 'sectionRef') continue
+      const id = extractRefId(entry.section)
+      if (id) {
+        playlistIds.push(id)
+        allSectionIds.add(id)
+      }
+    }
+    sectionIdsByExercise.set(exercise.id, playlistIds)
   }
 
-  // Group sections by their parent exercise ID.
-  const sectionsByExercise = new Map<string, SectionDoc[]>()
-  for (const section of sections) {
-    const parentId = extractRefId((section as unknown as { exercise?: unknown }).exercise)
-    if (!parentId) continue
-    const list = sectionsByExercise.get(parentId) ?? []
-    list.push(section)
-    sectionsByExercise.set(parentId, list)
+  const sectionById = new Map<string, SectionDoc>()
+  if (allSectionIds.size > 0) {
+    const sectionsResult = await req.payload.find({
+      collection: 'sections',
+      where: { id: { in: Array.from(allSectionIds) } },
+      depth: 0,
+      limit: allSectionIds.size,
+      req,
+    })
+    for (const s of sectionsResult.docs as unknown as SectionDoc[]) {
+      sectionById.set(s.id, s)
+    }
   }
 
   // Order exercises by the lesson's blocks playlist.
@@ -184,16 +204,20 @@ export async function lessonTreeEndpoint(req: PayloadRequest): Promise<Response>
   }
   const orderedExercises = orderByPlaylist(exercises, lessonPlaylistIds)
 
-  // For each exercise, order its sections by the exercise's blocks playlist.
+  // For each exercise, iterate its playlist in order and pick sections by ID.
+  // Playlist entries referencing a missing section are silently dropped
+  // (same as the web renderer); duplicates in the playlist are de-duped.
   const treeExercises: StudioTreeExercise[] = orderedExercises.map((exercise) => {
-    const rawSections = sectionsByExercise.get(exercise.id) ?? []
-    const playlistIds: string[] = []
-    for (const entry of parseBlocks(exercise.blocks)) {
-      if (entry.blockType !== 'sectionRef') continue
-      const id = extractRefId(entry.section)
-      if (id) playlistIds.push(id)
+    const playlistIds = sectionIdsByExercise.get(exercise.id) ?? []
+    const ordered: SectionDoc[] = []
+    const seen = new Set<string>()
+    for (const sectionId of playlistIds) {
+      const section = sectionById.get(sectionId)
+      if (section && !seen.has(sectionId)) {
+        ordered.push(section)
+        seen.add(sectionId)
+      }
     }
-    const ordered = orderByPlaylist(rawSections, playlistIds)
     const exerciseBlocks = Array.isArray(exercise.content?.blocks) ? exercise.content.blocks : []
     return {
       id: exercise.id,

@@ -13,6 +13,7 @@ import {
 } from '@payloadcms/plugin-seo/fields'
 
 import { DEFAULT_LESSON_ACCESS_TYPE } from '@/server/constants/access-types'
+import { timedAfterRead } from '@/infra/utils/collection-diagnostics'
 import { tenantField } from '@/server/payload/fields/tenant'
 import { contentLocaleField } from '@/server/payload/fields/contentLocale'
 import { adminOnly } from '../access/adminOnly'
@@ -155,11 +156,22 @@ const computeLessonAdminTitle: CollectionBeforeChangeHook = async ({ data, origi
   return data
 }
 
-const populateLessonAdminTitle: CollectionAfterReadHook = async ({ doc, req }) => {
+export const populateLessonAdminTitle: CollectionAfterReadHook = async ({ doc, req }) => {
   const lessonData = doc as LessonAdminTitleData
   const title = lessonData?.title
 
   if (!title) return doc
+
+  // Trust the stored adminTitle when it exists — beforeChange already
+  // computed it (with fresh chapter/course lookups) on the last save.
+  // Skipping the recompute here removes an N+1 findByID that fires on every
+  // list-view row and every edit-page open, which was the dominant source of
+  // admin panel slowness. Legacy docs with no stored adminTitle still fall
+  // through to the compute path below and self-heal on their next save.
+  // Trade-off: chapter/course renames won't reflect in stored lesson titles
+  // until each lesson is re-saved. Course rename already cascades to
+  // chapters via cascadeAdminTitle; a follow-up can extend that to lessons.
+  if (lessonData.adminTitle) return doc
 
   const chapterValue = lessonData?.chapter
   const chapterId = getRelationshipId(chapterValue)
@@ -344,7 +356,7 @@ export const Lessons: CollectionConfig = {
       validateVisibleRenderers,
     ],
     afterRead: [
-      populateLessonAdminTitle,
+      timedAfterRead('lessons.populateAdminTitle', populateLessonAdminTitle),
       // In-memory population: when a lesson is read and its denormalized course
       // field is empty, resolve it from chapter -> course for the current request
       // so the UI displays correctly. The DB write that previously lived here
@@ -352,7 +364,7 @@ export const Lessons: CollectionConfig = {
       // connection pool; the `beforeChange` hook above already persists `course`
       // on every save, so legacy docs get backfilled the next time they're edited.
       // Skipped during build/seed (no req.user) to avoid slow static generation.
-      async ({ doc, req }) => {
+      timedAfterRead('lessons.backfillCourse', async ({ doc, req }) => {
         if (!doc?.chapter) return doc
         if (doc.course) return doc
         if (!req.user) return doc
@@ -379,7 +391,7 @@ export const Lessons: CollectionConfig = {
         }
 
         return doc
-      },
+      }),
     ],
   },
   // Hide Payload's built-in Duplicate action so admins can only use our

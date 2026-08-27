@@ -1,6 +1,7 @@
 import type { Access, CollectionConfig, Field } from 'payload'
 
 import { AccountRole, isAdvancedContentEditor } from '@/infra/auth/roles'
+import { timedAfterRead } from '@/infra/utils/collection-diagnostics'
 import type { User } from '@/payload-types'
 import { contentLocaleField } from '@/server/payload/fields/contentLocale'
 import { tenantField } from '@/server/payload/fields/tenant'
@@ -126,7 +127,7 @@ const exerciseHooks: CollectionConfig['hooks'] = {
     // persists `course` on every save, so legacy docs get backfilled the next
     // time they're edited.
     // Skipped during build/seed (no req.user) to avoid slow static generation.
-    async ({ doc, req }) => {
+    timedAfterRead('exercises.backfillChain', async ({ doc, req }) => {
       if (!doc?.lesson) return doc
       if (doc.course && doc.chapter) return doc
       if (!req.user) return doc
@@ -159,7 +160,7 @@ const exerciseHooks: CollectionConfig['hooks'] = {
       }
 
       return doc
-    },
+    }),
     // Read-time compat shim: if the exercise has no `content.blocks` of its
     // own but has child sections, concatenate each section's `content.blocks`
     // into `doc.content.blocks` in memory. The sibling A-Guy-Web repo still
@@ -168,7 +169,7 @@ const exerciseHooks: CollectionConfig['hooks'] = {
     // transparently. Skipped during build/seed (no req.user) and during
     // content-promotion imports (the bundle already carries the full
     // `content.blocks` payload and must not be reshuffled).
-    aggregateChildSectionContent,
+    timedAfterRead('exercises.aggregateChildSectionContent', aggregateChildSectionContent),
   ],
   afterChange: [
     async ({ doc, previousDoc, req }) => {
@@ -255,12 +256,23 @@ export const Exercises: CollectionConfig = {
   },
   hooks: exerciseHooks,
 
+  // Payload's built-in duplicate is a shallow field copy — it copies the
+  // exercise's `blocks` textarea verbatim, so `sectionRef` entries still
+  // point at the SOURCE sections. Editing a "duplicated" section then
+  // silently mutates the source. Disable it and route admins through
+  // /api/exercises/:id/duplicate-exercise via ExerciseDuplicateButton,
+  // which deep-clones the section graph too. Mirrors Courses.ts and
+  // Lessons.ts, which disabled the built-in for the same reason.
+  disableDuplicate: true,
   admin: {
     useAsTitle: 'title',
     defaultColumns: ['order', 'title', 'lesson', 'updatedAt'],
     components: {
       edit: {
-        beforeDocumentControls: ['@/ui/admin/TranslationButton#TranslateExerciseAction'],
+        beforeDocumentControls: [
+          '@/ui/admin/TranslationButton#TranslateExerciseAction',
+          '@/ui/admin/ExerciseDuplicateButton/ExerciseDuplicateButton#ExerciseDuplicateAction',
+        ],
       },
     },
   },

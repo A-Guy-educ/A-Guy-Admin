@@ -15,6 +15,7 @@ import { getServerSideURL } from '@/infra/utils/getURL'
 import { Page } from '@/payload-types'
 
 import { mcp as mcpPlugin } from './mcp'
+import { opTimingPlugin } from './op-timing'
 
 // MCP plugin - conditionally enabled based on env var or default
 // Order: env var 'false' → env var 'true' → default to true
@@ -137,4 +138,7 @@ export const plugins: Plugin[] = [
   ...(vercelBlobPlugin ? [vercelBlobPlugin] : []),
   // Only include MCP plugin when explicitly enabled
   ...(mcp ? [mcp] : []),
+  // Diagnostic-only: emits [op] <collection>.read timing to stdout. Remove
+  // once the collection-load perf investigation is done. See op-timing.ts.
+  opTimingPlugin,
 ]

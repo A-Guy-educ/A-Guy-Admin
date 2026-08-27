@@ -1,8 +1,16 @@
 {
   "ignoreCommand": "if [ \"$VERCEL_ENV\" = \"production\" ] || [ \"$VERCEL_GIT_COMMIT_REF\" = \"dev\" ]; then exit 1; else exit 0; fi",
+  "functions": {
+    "src/app/(payload)/**/*.tsx": { "memory": 3008 },
+    "src/app/(payload)/**/*.ts": { "memory": 3008 }
+  },
   "crons": [
     {
       "path": "/api/cron/warmup",
+      "schedule": "*/4 * * * *"
+    },
+    {
+      "path": "/admin/login",
       "schedule": "*/4 * * * *"
     },
     {
@@ -12,6 +20,10 @@
     {
       "path": "/api/cron/enrollments-expiry",
       "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/verify-tx-indexes",
+      "schedule": "13 6 * * *"
     }
   ]
 }

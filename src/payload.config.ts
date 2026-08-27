@@ -6,7 +6,7 @@ import sharp from 'sharp'
 import { fileURLToPath } from 'url'
 
 import { getServerSideURL } from '@/infra/utils/getURL'
-import { logger } from '@/infra/utils/logger'
+import { pushDiagEvent } from '@/infra/utils/diagnostics-buffer'
 import { AccessCodes } from '@/server/payload/collections/AccessCodes'
 import { Categories } from '@/server/payload/collections/Categories'
 import { Chapters } from '@/server/payload/collections/Chapters'
@@ -60,6 +60,7 @@ import { importExerciseFromLesson } from '@/server/payload/endpoints/exercises/i
 import { translateContentEndpoint } from '@/server/payload/endpoints/translation/translate-content'
 import { cascadeDeleteEndpoint } from '@/server/payload/endpoints/cascade-delete'
 import { duplicateCourseEndpoint } from '@/server/payload/endpoints/courses/duplicate'
+import { duplicateExerciseEndpoint } from '@/server/payload/endpoints/exercises/duplicate'
 import { duplicateLessonEndpoint } from '@/server/payload/endpoints/lessons/duplicate'
 import { exportLessonEndpoint } from '@/server/payload/endpoints/lessons/export'
 import { lessonTreeEndpoint } from '@/server/payload/endpoints/studio/lesson-tree'
@@ -72,7 +73,6 @@ import { runBackfillOnInit } from '@/server/payload/migrations/backfillAdminTitl
 import { runDropStaleCoursesValidatorOnInit } from '@/server/payload/migrations/dropStaleCoursesValidator'
 import { runLocalizeTeacherProfilesOnInit } from '@/server/payload/migrations/localize-teacher-profiles'
 import { runPopulateLessonBlocksOnInit } from '@/server/payload/migrations/populateLessonBlocks'
-import { runVerifyTransactionsUniquenessOnInit } from '@/server/payload/migrations/verifyTransactionsUniqueness'
 import { plugins } from '@/server/payload/plugins'
 import { runSeedFeaturesOnInit } from '@/server/payload/seed/features-seed'
 import { seedTeacherProfiles } from '@/server/payload/seed/teacher-profiles-seed'
@@ -81,6 +81,42 @@ import { Header } from '@/ui/shared/header/config'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
+
+// Boot instrumentation — grep Vercel Runtime Logs for `[boot]` to see the
+// full cold-start timeline. Captured at module load so every downstream log
+// can report elapsed-since-boot and pinpoint which step dominates a slow
+// cold start (module import vs Mongo handshake vs onInit tasks).
+//
+// Uses console.log instead of the shared pino logger: Vercel's log
+// ingestion coalesces pino stdout writes during the cold-init burst and
+// drops every intermediate line, leaving only the final flush before the
+// response. Verified 2026-08-25 — dashboard filter for `[boot]` only
+// returned the "onInit complete" line, missing module-loaded, pool-opened,
+// onInit-start, and per-task lines. console.log writes synchronously with
+// no buffering, so every line reaches Vercel intact.
+const BOOT_START = Date.now()
+const bootLog = (msg: string, fields: Record<string, unknown> = {}): void => {
+  const prefixed = `[boot] ${msg}`
+  console.log(JSON.stringify({ msg: prefixed, ...fields }))
+  pushDiagEvent(prefixed, fields)
+}
+bootLog('payload.config.ts module loaded', { ts: BOOT_START })
+
+async function timedInit<T>(name: string, task: () => Promise<T>): Promise<T> {
+  const start = Date.now()
+  try {
+    const result = await task()
+    bootLog(`onInit: ${name}`, { task: name, ms: Date.now() - start })
+    return result
+  } catch (err) {
+    bootLog(`onInit failed: ${name}`, {
+      task: name,
+      ms: Date.now() - start,
+      err: err instanceof Error ? { message: err.message, stack: err.stack } : String(err),
+    })
+    throw err
+  }
+}
 
 /**
  * Helper to check if user is admin
@@ -136,6 +172,14 @@ export default buildConfig({
         '@/ui/admin/ContentPromotion/SidebarLink',
         '@/ui/admin/CourseSelectionsPopularity/SidebarLink',
       ],
+      // NOTE: DiagnosticsAutoLog was removed from afterNavLinks 2026-08-27
+      // (component file kept for manual/dev use). The 5s polling fired
+      // payload.auth() → users.read on every admin page for every open
+      // tab, contributing observable load to the Mongo pool during cold
+      // starts (5 of the top 20 slowest requests in a captured HAR were
+      // the diagnostic endpoint itself, 5-12s each). Admins can still hit
+      // /api/admin/diagnostics/recent-events manually when they want a
+      // snapshot without the polling overhead.
       afterNavLinks: ['@/ui/admin/UserEmail'],
     },
     importMap: {
@@ -188,8 +232,28 @@ export default buildConfig({
         process.env.MONGODB_MAX_POOL_SIZE ?? (process.env.VITEST ? '5' : '3'),
         10,
       ),
-      // Keep at least 1 connection warm to avoid cold-handshake on every request
-      minPoolSize: 1,
+      // Warm the pool up to `minPoolSize` slots so cold `users.read`
+      // requests don't pay a ~3s Atlas TLS+auth handshake to create the
+      // slot on-demand. Measured 2026-08-26 via [op] diagnostic: cold
+      // hits saw 3-5s users.read; once slots warm up, users.read drops
+      // to ~95ms.
+      //
+      // Timing note: setting minPoolSize does NOT block boot. Mongoose's
+      // `createConnection().asPromise()` (called in @payloadcms/db-mongodb
+      // connect.js) resolves after just the initial handshake, so
+      // `afterOpenConnection` fires with only 1 warm slot. The MongoDB
+      // driver's ensureMinPoolSize() then runs a background setTimeout
+      // loop (default every 100ms) that opens the remaining slots one at
+      // a time — the pool converges to `minPoolSize` within a few hundred
+      // ms of boot. Requests arriving in that narrow window can still hit
+      // a cold slot; requests after it are fast.
+      //
+      // Override via MONGODB_MIN_POOL_SIZE env var for quick rollback if
+      // Atlas connection budget becomes a concern.
+      minPoolSize: parseInt(
+        process.env.MONGODB_MIN_POOL_SIZE ?? (process.env.VITEST ? '5' : '3'),
+        10,
+      ),
       // Close idle connections after 4.5 minutes (keeps warm between sparse traffic)
       maxIdleTimeMS: 270000,
       // Fail fast if MongoDB is unreachable — don't hang serverless functions
@@ -208,7 +272,12 @@ export default buildConfig({
     },
     afterOpenConnection: async () => {
       const maxPoolSize = process.env.MONGODB_MAX_POOL_SIZE ?? (process.env.VITEST ? '5' : '3')
-      logger.info({ maxPoolSize: parseInt(maxPoolSize, 10) }, '[MongoDB] Connection pool opened')
+      const minPoolSize = process.env.MONGODB_MIN_POOL_SIZE ?? (process.env.VITEST ? '5' : '3')
+      bootLog('MongoDB connection pool opened', {
+        maxPoolSize: parseInt(maxPoolSize, 10),
+        minPoolSize: parseInt(minPoolSize, 10),
+        msSinceBoot: Date.now() - BOOT_START,
+      })
     },
   }),
   collections: [
@@ -328,6 +397,11 @@ export default buildConfig({
       handler: (req: PayloadRequest) => duplicateCourseEndpoint(req),
     },
     {
+      path: '/exercises/:id/duplicate-exercise',
+      method: 'post',
+      handler: (req: PayloadRequest) => duplicateExerciseEndpoint(req),
+    },
+    {
       path: '/lessons/:id/export',
       method: 'get',
       handler: (req: PayloadRequest) => exportLessonEndpoint(req),
@@ -421,61 +495,124 @@ export default buildConfig({
     }),
   },
   onInit: async (payload) => {
+    const onInitStart = Date.now()
+    bootLog('onInit start', { msSinceBoot: onInitStart - BOOT_START })
+
+    // Warm the payload.find(users) code path at boot.
+    //
+    // Data (2026-08-27, verified via Compass explain on Atlas):
+    //   `db.users.findOne({_id})` executes in 0ms server-side (EXPRESS_IXSCAN
+    //   on the _id index). Plus network RTT to Atlas, real cost is ~50-100ms.
+    //
+    // But observed cold users.read via [op] diagnostic: 4-5s each on the
+    // first N invocations, warming to ~95ms over ~60s of traffic. Since
+    // MongoDB is 0ms, that 4900ms is entirely CLIENT-SIDE — some mix of:
+    //   - Cold Mongo pool slot creation (~3s TLS+auth per new slot)
+    //   - Mongoose model compilation for the Users schema
+    //   - Payload's find code path JIT warmup
+    //   - Any hook / access-control middleware first-call cost
+    //
+    // PR #374 tried raw `db.command({ping})` — didn't help because pings
+    // bypass Payload entirely and complete too fast to force slot
+    // creation. This is different: firing an actual `payload.find` runs
+    // through the same code path a real users.read uses, warming ALL of
+    // it (pool + Mongoose + Payload + hooks + JIT) in one shot.
+    //
+    // Warmup scope caveats (intentional simplifications):
+    //   - `depth: 0` skips relation-population branches. Real admin reads
+    //     often run at depth >= 1. Users.tenant/currentCourse/entitlements
+    //     have `maxDepth: 0` (PRs #366, #368) so the branch is a fast
+    //     early-return there, but the code path itself isn't warmed by
+    //     this call.
+    //   - `overrideAccess: true` skips the `adminOrSelf` resolver — that
+    //     code path is NOT warmed either. Cost is small; skip is fine.
+    //   - `limit: 1` — smallest possible payload; empty Users collection
+    //     safely returns `{docs: [], totalDocs: 0}` without throwing.
+    // Best-effort: any failure is logged and swallowed so a transient
+    // Atlas hiccup can't crash boot.
+    await timedInit('warmUsersReadPath', async () => {
+      try {
+        await payload.find({
+          collection: 'users',
+          limit: 1,
+          depth: 0,
+          overrideAccess: true,
+        })
+      } catch (err) {
+        bootLog('warmUsersReadPath failure', {
+          err: err instanceof Error ? { message: err.message } : String(err),
+        })
+      }
+    })
+
     // Runs BEFORE the Vercel-production early-return: this migration is the
     // single fix for a Mongo-side validator that blocks legitimate courses
     // inserts (see the migration's JSDoc). Content-promotion's whole reason
     // to exist is dev→prod imports, so a fix that skips prod is no fix at
     // all. The check itself is a single `listCollections` when the validator
     // is already gone — cheap enough to run on every serverless cold start.
-    await runDropStaleCoursesValidatorOnInit(payload)
+    await timedInit('dropStaleCoursesValidator', () => runDropStaleCoursesValidatorOnInit(payload))
 
-    // Also runs BEFORE the Vercel-production early-return. Verifies that
-    // Transactions.providerTransactionId has no duplicate values before Mongo
-    // tries to build the unique index; without this check a dirty deploy
-    // would silently disable the race guard in the PayPal renewal handler.
-    // Cheap on clean data (indexed field, empty group result).
-    await runVerifyTransactionsUniquenessOnInit(payload)
+    // NOTE: verifyTransactionsUniqueness was moved out of onInit into a
+    // daily Vercel cron (`/api/cron/verify-tx-indexes`, see vercel.json).
+    // It was blocking cold starts for ~6s because the aggregation grew with
+    // the transactions collection. The check is diagnostic-only (logs
+    // ERROR if the unique index is missing) and doesn't need to gate every
+    // cold start — daily is plenty of freshness for drift detection.
 
     // Skip expensive init tasks on Vercel serverless — they run on every cold start
     // and the tenant + seed data already exist in production. These ops are idempotent
     // but waste ~500ms+ per new serverless instance spinning up.
     const isVercelProduction = process.env.VERCEL === '1' && process.env.NODE_ENV === 'production'
     if (isVercelProduction) {
-      payload.logger.info('[onInit] Skipping expensive init tasks on Vercel production')
+      bootLog('onInit complete (Vercel prod fast path)', {
+        msSinceBoot: Date.now() - BOOT_START,
+        onInitMs: Date.now() - onInitStart,
+      })
       return
     }
     // Ensure default tenant exists BEFORE seedTeacherProfiles runs
     // This is required because TeacherProfilesSeed needs a tenant to link prompts to
-    const defaultTenantSlug = process.env.DEFAULT_TENANT_SLUG || 'default'
-    const existingTenant = await payload.find({
-      collection: 'tenants',
-      where: { slug: { equals: defaultTenantSlug } },
-      limit: 1,
-      overrideAccess: true,
-    })
-
-    if (existingTenant.totalDocs === 0) {
-      await payload.create({
+    await timedInit('ensureDefaultTenant', async () => {
+      const defaultTenantSlug = process.env.DEFAULT_TENANT_SLUG || 'default'
+      const existingTenant = await payload.find({
         collection: 'tenants',
-        data: {
-          name: 'Default',
-          slug: defaultTenantSlug,
-          status: 'active',
-        },
+        where: { slug: { equals: defaultTenantSlug } },
+        limit: 1,
         overrideAccess: true,
       })
-      payload.logger.info(`[onInit] Created default tenant "${defaultTenantSlug}"`)
-    }
+
+      if (existingTenant.totalDocs === 0) {
+        await payload.create({
+          collection: 'tenants',
+          data: {
+            name: 'Default',
+            slug: defaultTenantSlug,
+            status: 'active',
+          },
+          overrideAccess: true,
+        })
+        payload.logger.info(`[onInit] Created default tenant "${defaultTenantSlug}"`)
+      }
+    })
 
     if (process.env.SKIP_BUILD === 'true') {
-      payload.logger.info('[onInit] Skipping expensive init tasks')
+      bootLog('onInit complete (SKIP_BUILD fast path)', {
+        msSinceBoot: Date.now() - BOOT_START,
+        onInitMs: Date.now() - onInitStart,
+      })
       return
     }
 
-    await runBackfillOnInit(payload)
-    await runPopulateLessonBlocksOnInit(payload)
-    await runLocalizeTeacherProfilesOnInit(payload)
-    await seedTeacherProfiles(payload)
-    await runSeedFeaturesOnInit(payload)
+    await timedInit('backfillAdminTitle', () => runBackfillOnInit(payload))
+    await timedInit('populateLessonBlocks', () => runPopulateLessonBlocksOnInit(payload))
+    await timedInit('localizeTeacherProfiles', () => runLocalizeTeacherProfilesOnInit(payload))
+    await timedInit('seedTeacherProfiles', () => seedTeacherProfiles(payload))
+    await timedInit('seedFeatures', () => runSeedFeaturesOnInit(payload))
+
+    bootLog('onInit complete', {
+      msSinceBoot: Date.now() - BOOT_START,
+      onInitMs: Date.now() - onInitStart,
+    })
   },
 })
