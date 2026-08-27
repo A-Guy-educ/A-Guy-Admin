@@ -1954,6 +1954,7 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- chore: release v0.36.0 ([#378](https://github.com/A-Guy-educ/A-Guy-Admin/pull/378)) — @aguyshayb
 - chore(infra): Dockerfile + standalone output for Render deploys ([#377](https://github.com/A-Guy-educ/A-Guy-Admin/pull/377)) — @aguyshayb
 - perf: Warm payload.find(users) at boot + remove diagnostic auto-log ([#376](https://github.com/A-Guy-educ/A-Guy-Admin/pull/376)) — @aguyshayb
 - chore: Revert warmMongoPool + tag [op]/[coll] events with reqPath ([#375](https://github.com/A-Guy-educ/A-Guy-Admin/pull/375)) — @aguyshayb
