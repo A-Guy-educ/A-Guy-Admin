@@ -1922,6 +1922,7 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- chore(infra): Dockerfile + standalone output for Render deploys ([#377](https://github.com/A-Guy-educ/A-Guy-Admin/pull/377)) — @aguyshayb
 - perf: Warm payload.find(users) at boot + remove diagnostic auto-log ([#376](https://github.com/A-Guy-educ/A-Guy-Admin/pull/376)) — @aguyshayb
 - chore: Revert warmMongoPool + tag [op]/[coll] events with reqPath ([#375](https://github.com/A-Guy-educ/A-Guy-Admin/pull/375)) — @aguyshayb
 - perf: Synchronously warm Mongo pool in onInit ([#374](https://github.com/A-Guy-educ/A-Guy-Admin/pull/374)) — @aguyshayb
