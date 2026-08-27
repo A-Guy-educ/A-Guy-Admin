@@ -1,5 +1,37 @@
 # Changelog
 
+## v0.36.0 — 2026-08-27
+
+### Features
+- Default studio to document mode and persist choice (#361)
+
+### Fixes
+- Deep-clone sections in lesson and exercise duplicate paths; restrict exercise duplicate to admin (#371)
+- Studio tree endpoint resolves sections via each exercise's forward playlist (#369)
+- Redirect Admin root to dashboard (#361)
+
+### Performance
+- Warm `payload.find(users)` at boot to eliminate cold TTFB spike on first user reads (#376)
+- Synchronously warm Mongo pool in `onInit` (#374)
+- Warm entire Mongo pool at boot (`minPoolSize = maxPoolSize`) (#373)
+- Cap `Users.tenant` to `maxDepth=0` (#368)
+- Cap `Users.courseEntitlements` and `Users.currentCourse` to `maxDepth=0` (#366)
+- Move `verifyTransactionsUniqueness` from `onInit` to a daily cron (#362)
+- Lazy-load studio inline editor with hover prefetch (#359)
+- Warm `/admin` lambda + bump function memory to 3008 MB (scoped to `(payload)` route group) (#357)
+- Trust stored lesson `adminTitle` in `afterRead` (kill N+1) (#355)
+- Lazy-load exercise block editors (#354)
+
+### Chore
+- Add Dockerfile with standalone output for Render deploys (#377)
+- Revert `warmMongoPool`; tag `[op]`/`[coll]` events with `reqPath` (#375)
+- In-memory event buffer + admin endpoint + client auto-log (#372)
+- Add slug-based fallback pairing for `[op]` `afterOperation` (#367)
+- Add `[op]` operation-level timing across all collections (#365)
+- Add `[coll]` timing to `afterRead` hooks on Lessons / Exercises / Sections (#364)
+- Switch `[boot]` logs to `console.log` to bypass pino drop (#360)
+- Instrument Payload boot for cold-start diagnostics (#358)
+
 ## v0.35.0 — 2026-08-19
 
 ### Features
