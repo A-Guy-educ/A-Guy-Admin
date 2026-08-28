@@ -5,13 +5,13 @@ import type { StudioTreeResponse } from '@/server/payload/endpoints/studio/lesso
 
 interface UseStudioTreeResult {
   tree: StudioTreeResponse | null
-  loading: boolean
   /**
-   * `true` while a background refetch is in flight (e.g. after +Add section).
-   * Callers can render a subtle indicator without unmounting the studio like
-   * they would if the top-level `loading` gate were used.
+   * `true` only during the initial fetch or a lesson-id change. Parent gates
+   * its full-screen "Loading lesson…" UI on this. Background refetches (via
+   * `refetch()`) never flip this — the tree stays mounted and any refetch
+   * failure surfaces via `refetchError` instead.
    */
-  refetching: boolean
+  loading: boolean
   /**
    * Populated only when the INITIAL fetch fails. Consumed by the parent's
    * error gate — a value here unmounts the studio, which is correct for
@@ -26,10 +26,11 @@ interface UseStudioTreeResult {
    */
   refetchError: string | null
   /**
-   * Re-fetches the tree from the server. Does NOT flip `loading` — using
-   * `refetching` instead so the parent's `if (loading) return <Loader/>`
-   * gate doesn't unmount the studio subtree, blowing away child editor
-   * state, cursor position, and any expanded AddChildButton.
+   * Re-fetches the tree from the server. Does NOT flip `loading` so the
+   * parent's `if (loading) return <Loader/>` gate doesn't unmount the studio
+   * subtree, blowing away child editor state, cursor position, and any
+   * expanded AddChildButton. Errors go into `refetchError` rather than
+   * throwing.
    */
   refetch: () => Promise<void>
 }
@@ -38,23 +39,20 @@ interface UseStudioTreeResult {
  * Fetches the full lesson tree (lesson + exercises + sections) in one round-trip.
  * Backed by /api/studio/lessons/:id/tree.
  *
- * Two loading signals:
- *   - `loading` — initial mount / lesson-id change. Parent uses this to
- *      render the full-screen "Loading lesson…" gate.
- *   - `refetching` — a post-mutation refetch. Parent should NOT unmount on
- *      this; the tree is still valid, just about to be replaced.
+ * Two failure signals:
+ *   - `error` — initial load couldn't produce a tree; parent unmounts.
+ *   - `refetchError` — background refresh failed; parent shows an inline
+ *      warning and keeps the studio mounted so in-progress edits survive.
  */
 export function useStudioTree(lessonId: string): UseStudioTreeResult {
   const [tree, setTree] = useState<StudioTreeResponse | null>(null)
   const [loading, setLoading] = useState(true)
-  const [refetching, setRefetching] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [refetchError, setRefetchError] = useState<string | null>(null)
 
   const fetchTree = useCallback(
     async ({ silent, signal }: { silent: boolean; signal?: AbortSignal }) => {
       if (silent) {
-        setRefetching(true)
         setRefetchError(null)
       } else {
         setLoading(true)
@@ -80,8 +78,7 @@ export function useStudioTree(lessonId: string): UseStudioTreeResult {
         if (silent) setRefetchError((err as Error).message)
         else setError((err as Error).message)
       } finally {
-        if (silent) setRefetching(false)
-        else setLoading(false)
+        if (!silent) setLoading(false)
       }
     },
     [lessonId],
@@ -98,5 +95,5 @@ export function useStudioTree(lessonId: string): UseStudioTreeResult {
     await fetchTree({ silent: true })
   }, [fetchTree])
 
-  return { tree, loading, refetching, error, refetchError, refetch }
+  return { tree, loading, error, refetchError, refetch }
 }

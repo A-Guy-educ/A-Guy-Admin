@@ -18,6 +18,7 @@
  */
 import type { PayloadRequest } from 'payload'
 
+import { AccountRole, isAdvancedContentEditor } from '@/infra/auth/roles'
 import type { ContentBlock } from '@/server/payload/collections/Exercises/types'
 
 interface BlockEntry {
@@ -109,8 +110,18 @@ export async function lessonTreeEndpoint(req: PayloadRequest): Promise<Response>
   if (!user) {
     return Response.json({ error: 'Authentication required' }, { status: 401 })
   }
-  if (!('role' in user) || user.role !== 'admin') {
-    return Response.json({ error: 'Admin access required' }, { status: 403 })
+  // Matches create-section.ts / create-exercise.ts. AdvancedContentEditor
+  // can update/delete sections and exercises via the collections' own
+  // isAdminOrOwner rule, so they must also be able to load the tree that
+  // surfaces the studio's +Add affordances — otherwise the create endpoints
+  // are permissive but unreachable for that role.
+  const role = 'role' in user ? (user.role as AccountRole) : null
+  const allowed = role === AccountRole.Admin || (role !== null && isAdvancedContentEditor(role))
+  if (!allowed) {
+    return Response.json(
+      { error: 'Admin or advanced content editor access required' },
+      { status: 403 },
+    )
   }
 
   const url = new URL(req.url || 'http://localhost')
