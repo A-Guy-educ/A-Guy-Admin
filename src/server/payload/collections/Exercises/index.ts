@@ -271,6 +271,7 @@ export const Exercises: CollectionConfig = {
       edit: {
         beforeDocumentControls: [
           '@/ui/admin/TranslationButton#TranslateExerciseAction',
+          '@/ui/admin/CascadeDeleteButton#ExerciseCascadeDelete',
           '@/ui/admin/ExerciseDuplicateButton/ExerciseDuplicateButton#ExerciseDuplicateAction',
         ],
       },

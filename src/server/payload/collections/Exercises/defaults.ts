@@ -97,7 +97,14 @@ const DEFAULT_FREE_RESPONSE_ANSWER: QuestionFreeResponseBlock['answer'] = {
 // ---------------------------------
 // Block Factories (for admin UI Add Block menu)
 // ---------------------------------
-export const ExerciseBlockDefaults: Record<string, () => ContentBlock> = {
+//
+// Type note: written as a literal object followed by `satisfies` (instead of
+// the plain `Record<string, () => ContentBlock>` annotation this used to
+// carry) so that `keyof typeof ExerciseBlockDefaults` narrows to the actual
+// factory keys — not to plain `string`. Callers doing `defaults[key]()` or
+// building a menu from `keyof typeof` now get compile-time protection against
+// a typo silently returning `undefined`.
+export const ExerciseBlockDefaults = {
   rich_text: (): RichTextBlock => ({
     id: generateId(),
     type: 'rich_text',
@@ -377,4 +384,4 @@ export const ExerciseBlockDefaults: Record<string, () => ContentBlock> = {
       },
     ],
   }),
-}
+} satisfies Record<string, () => ContentBlock>
