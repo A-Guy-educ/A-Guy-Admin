@@ -53,11 +53,9 @@ import { ExerciseNavigation as ExerciseNavigation_3633cb4a281c7c581bfc453746b3dc
 import { ConvertLatexBlockButton as ConvertLatexBlockButton_d913e8ffad94b4f98328d710b349e10d } from '@/ui/admin/exercise-conversion/ConvertLatexBlockButton'
 import { ExercisePreview as ExercisePreview_79d54f4a9901df303ad8ae2cc7d44435 } from '@/ui/admin/ExercisePreview'
 import { TranslateExerciseAction as TranslateExerciseAction_5e03fe73ee4379dfd96d492849856d43 } from '@/ui/admin/TranslationButton'
-import { ExerciseCascadeDelete as ExerciseCascadeDelete_8b707dd02fbf8886630a64bffcae6998 } from '@/ui/admin/CascadeDeleteButton'
 import { ExerciseDuplicateAction as ExerciseDuplicateAction_5624d64dc38dd43f1c5b027dce4bb9d2 } from '@/ui/admin/ExerciseDuplicateButton/ExerciseDuplicateButton'
 import { SectionIdDisplay as SectionIdDisplay_7ef67555ed09efa1ad0f6e5f11651ef5 } from '@/ui/admin/SectionIdDisplay'
 import { SectionNavigation as SectionNavigation_3633cb4a281c7c581bfc453746b3dc60 } from '@/ui/admin/ContentNavigation'
-import { SectionDuplicateAction as SectionDuplicateAction_365919545535acb3f7c60d7769f6feda } from '@/ui/admin/SectionDuplicateButton/SectionDuplicateButton'
 import { MediaPreview as MediaPreview_4b980c9a407724ef7c1755e3482d0258 } from '@/ui/admin/MediaPreview'
 import { HorizontalRuleFeatureClient as HorizontalRuleFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { BlocksFeatureClient as BlocksFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
@@ -138,11 +136,9 @@ export const importMap = {
   "@/ui/admin/exercise-conversion/ConvertLatexBlockButton#ConvertLatexBlockButton": ConvertLatexBlockButton_d913e8ffad94b4f98328d710b349e10d,
   "@/ui/admin/ExercisePreview#ExercisePreview": ExercisePreview_79d54f4a9901df303ad8ae2cc7d44435,
   "@/ui/admin/TranslationButton#TranslateExerciseAction": TranslateExerciseAction_5e03fe73ee4379dfd96d492849856d43,
-  "@/ui/admin/CascadeDeleteButton#ExerciseCascadeDelete": ExerciseCascadeDelete_8b707dd02fbf8886630a64bffcae6998,
   "@/ui/admin/ExerciseDuplicateButton/ExerciseDuplicateButton#ExerciseDuplicateAction": ExerciseDuplicateAction_5624d64dc38dd43f1c5b027dce4bb9d2,
   "@/ui/admin/SectionIdDisplay#SectionIdDisplay": SectionIdDisplay_7ef67555ed09efa1ad0f6e5f11651ef5,
   "@/ui/admin/ContentNavigation#SectionNavigation": SectionNavigation_3633cb4a281c7c581bfc453746b3dc60,
-  "@/ui/admin/SectionDuplicateButton/SectionDuplicateButton#SectionDuplicateAction": SectionDuplicateAction_365919545535acb3f7c60d7769f6feda,
   "@/ui/admin/MediaPreview#MediaPreview": MediaPreview_4b980c9a407724ef7c1755e3482d0258,
   "@payloadcms/richtext-lexical/client#HorizontalRuleFeatureClient": HorizontalRuleFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "@payloadcms/richtext-lexical/client#BlocksFeatureClient": BlocksFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
