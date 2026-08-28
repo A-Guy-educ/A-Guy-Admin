@@ -1961,6 +1961,7 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- chore: release v0.37.0 ([#386](https://github.com/A-Guy-educ/A-Guy-Admin/pull/386)) — @aguyshayb
 - feat(studio): Add-between + Delete + Duplicate for sections & exercises ([#385](https://github.com/A-Guy-educ/A-Guy-Admin/pull/385)) — @aguyshayb
 - feat: Section duplicate, exercise cascade delete, sections in cascade ([#384](https://github.com/A-Guy-educ/A-Guy-Admin/pull/384)) — @aguyshayb
 - feat: Create exercises, sections and blocks from the lesson studio ([#381](https://github.com/A-Guy-educ/A-Guy-Admin/pull/381)) — @aguyshayb
