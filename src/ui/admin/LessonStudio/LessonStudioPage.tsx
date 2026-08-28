@@ -3,8 +3,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ContentBlock } from '@/server/payload/collections/Exercises/types'
 
+import { AddChildButton } from './AddChildButton'
 import { StudioExerciseCard } from './StudioExerciseCard'
 import { StudioToolbar } from './StudioToolbar'
+import { createExerciseUnderLesson, createSectionUnderExercise } from './studioCreateApi'
 import { useStudioSave, type DirtyEntry } from './useStudioSave'
 import { useStudioTree } from './useStudioTree'
 import { readStoredViewMode, writeStoredViewMode, type StudioViewMode } from './viewMode'
@@ -29,7 +31,7 @@ interface LessonStudioPageProps {
  * alongside section edits.
  */
 export const LessonStudioPage: React.FC<LessonStudioPageProps> = ({ lessonId }) => {
-  const { tree, loading, error } = useStudioTree(lessonId)
+  const { tree, loading, error, refetch } = useStudioTree(lessonId)
   const { saving, errors, saveAll } = useStudioSave()
   const [viewMode, setViewMode] = useState<StudioViewMode>('document')
 
@@ -124,6 +126,50 @@ export const LessonStudioPage: React.FC<LessonStudioPageProps> = ({ lessonId }) 
     [],
   )
 
+  const handleAddSectionBlock = useCallback((sectionId: string, block: ContentBlock) => {
+    // Seed an empty array first if the section wasn't in the map (edge case
+    // for a section that had zero blocks at load time).
+    setSectionBlocks((prev) => {
+      const current = prev[sectionId] ?? []
+      return { ...prev, [sectionId]: [...current, block] }
+    })
+    setDirtySectionIds((prev) => {
+      if (prev.has(sectionId)) return prev
+      const next = new Set(prev)
+      next.add(sectionId)
+      return next
+    })
+  }, [])
+
+  const handleAddExerciseBlock = useCallback((exerciseId: string, block: ContentBlock) => {
+    setExerciseBlocks((prev) => {
+      const current = prev[exerciseId] ?? []
+      return { ...prev, [exerciseId]: [...current, block] }
+    })
+    setDirtyExerciseIds((prev) => {
+      if (prev.has(exerciseId)) return prev
+      const next = new Set(prev)
+      next.add(exerciseId)
+      return next
+    })
+  }, [])
+
+  const handleAddSection = useCallback(
+    async (exerciseId: string, title: string) => {
+      await createSectionUnderExercise(exerciseId, title)
+      await refetch()
+    },
+    [refetch],
+  )
+
+  const handleAddExercise = useCallback(
+    async (title: string) => {
+      await createExerciseUnderLesson(lessonId, title)
+      await refetch()
+    },
+    [lessonId, refetch],
+  )
+
   const dirtyEntries = useMemo<DirtyEntry[]>(() => {
     const list: DirtyEntry[] = []
     for (const id of dirtySectionIds) {
@@ -200,21 +246,33 @@ export const LessonStudioPage: React.FC<LessonStudioPageProps> = ({ lessonId }) 
           {tree.exercises.length === 0 ? (
             <div className="studio-empty studio-empty-big">This lesson has no exercises yet.</div>
           ) : (
-            tree.exercises.map((exercise, index) => (
-              <StudioExerciseCard
-                key={exercise.id}
-                index={index}
-                exercise={exercise}
-                sectionBlocksById={sectionBlocks}
-                exerciseBlocksById={exerciseBlocks}
-                dirtySectionIds={dirtySectionIds}
-                dirtyExerciseIds={dirtyExerciseIds}
-                onSectionBlockChange={handleSectionBlockChange}
-                onExerciseBlockChange={handleExerciseBlockChange}
-                viewMode={viewMode}
-              />
-            ))
+            <>
+              {tree.exercises.map((exercise, index) => (
+                <StudioExerciseCard
+                  key={exercise.id}
+                  index={index}
+                  exercise={exercise}
+                  sectionBlocksById={sectionBlocks}
+                  exerciseBlocksById={exerciseBlocks}
+                  dirtySectionIds={dirtySectionIds}
+                  dirtyExerciseIds={dirtyExerciseIds}
+                  onSectionBlockChange={handleSectionBlockChange}
+                  onExerciseBlockChange={handleExerciseBlockChange}
+                  onAddSectionBlock={handleAddSectionBlock}
+                  onAddExerciseBlock={handleAddExerciseBlock}
+                  onAddSection={handleAddSection}
+                  viewMode={viewMode}
+                />
+              ))}
+            </>
           )}
+          <div className="studio-add-exercise-row">
+            <AddChildButton
+              label="Add exercise"
+              placeholder="Exercise title"
+              onSubmit={handleAddExercise}
+            />
+          </div>
         </main>
       </div>
     </EditorChromeProvider>

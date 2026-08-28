@@ -1,12 +1,19 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { StudioTreeResponse } from '@/server/payload/endpoints/studio/lesson-tree'
 
 interface UseStudioTreeResult {
   tree: StudioTreeResponse | null
   loading: boolean
   error: string | null
+  /**
+   * Re-fetches the tree from the server. Used after mutations (create
+   * exercise / create section) so the studio picks up newly-created rows
+   * (and any playlist-append side effects from Payload afterChange hooks)
+   * without a full page reload.
+   */
+  refetch: () => Promise<void>
 }
 
 /**
@@ -18,35 +25,41 @@ export function useStudioTree(lessonId: string): UseStudioTreeResult {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (!lessonId) return
-    const controller = new AbortController()
-    setLoading(true)
-    setError(null)
-
-    fetch(`/api/studio/lessons/${lessonId}/tree`, {
-      credentials: 'include',
-      signal: controller.signal,
-    })
-      .then(async (res) => {
+  const fetchTree = useCallback(
+    async (signal?: AbortSignal) => {
+      setLoading(true)
+      setError(null)
+      try {
+        const res = await fetch(`/api/studio/lessons/${lessonId}/tree`, {
+          credentials: 'include',
+          signal,
+        })
         if (!res.ok) {
           const data = await res.json().catch(() => ({}))
           throw new Error(data.error || `Failed to load tree: ${res.status}`)
         }
-        return res.json() as Promise<StudioTreeResponse>
-      })
-      .then((data) => {
+        const data = (await res.json()) as StudioTreeResponse
         setTree(data)
         setLoading(false)
-      })
-      .catch((err: Error) => {
-        if (err.name === 'AbortError') return
-        setError(err.message)
+      } catch (err) {
+        if ((err as Error).name === 'AbortError') return
+        setError((err as Error).message)
         setLoading(false)
-      })
+      }
+    },
+    [lessonId],
+  )
 
+  useEffect(() => {
+    if (!lessonId) return
+    const controller = new AbortController()
+    void fetchTree(controller.signal)
     return () => controller.abort()
-  }, [lessonId])
+  }, [lessonId, fetchTree])
 
-  return { tree, loading, error }
+  const refetch = useCallback(async () => {
+    await fetchTree()
+  }, [fetchTree])
+
+  return { tree, loading, error, refetch }
 }
