@@ -142,8 +142,12 @@ async function collectDescendants(
     return { chapterIds: [], lessonIds: [], exerciseIds, sectionIds }
   }
 
-  // exercises — sections keyed by their `exercise` FK point at the target
-  // directly (no intermediate exercise level to gather).
+  // exercises — the target is itself an exercise, so we skip straight to
+  // sections keyed by `exercise` FK. Sections are single-parent (Sections
+  // collection defines `exercise` as a single required relationship, and no
+  // other collection has `relationTo: 'sections'`), so deleting by FK is
+  // safe: a section returned here cannot legitimately "belong to" some
+  // other live exercise.
   sectionIds = await findIds(sectionsCol, { exercise: { $in: targetForms } })
   return { chapterIds: [], lessonIds: [], exerciseIds: [], sectionIds }
 }
@@ -184,6 +188,14 @@ async function bulkCascadeDelete(
   // accepts both.
   const idIn = (ids: IdForm[]): Record<string, unknown> => ({ _id: { $in: ids } })
   const counts: DescendantCounts = { chapters: 0, lessons: 0, exercises: 0, sections: 0 }
+  // Sections `deleteMany` bypasses the Sections afterDelete hook (which
+  // strips the corresponding `sectionRef` from the parent exercise's
+  // `blocks` playlist). Safe because the owning exercise is deleted in the
+  // same call (via `exercisesCol.deleteMany` below) or IS the target being
+  // deleted a few lines later — either way, no live doc is left pointing
+  // at a deleted section. If the data model ever grows shared sections
+  // (multi-parent), this invariant breaks and we'd need to re-run the
+  // playlist cleanup manually.
   if (sectionIds.length > 0) {
     const r = await sectionsCol.deleteMany(idIn(sectionIds))
     counts.sections = r.deletedCount ?? 0

@@ -1,6 +1,6 @@
 'use client'
 
-import { useDocumentInfo } from '@payloadcms/ui'
+import { useAuth, useDocumentInfo } from '@payloadcms/ui'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 
@@ -22,6 +22,7 @@ const DESCENDANT_DESCRIPTIONS: Record<CollectionSlug, string> = {
 
 const CascadeDeleteButton: React.FC<{ collection: CollectionSlug }> = ({ collection }) => {
   const { id } = useDocumentInfo()
+  const { user } = useAuth()
   const router = useRouter()
   const [isDeleting, setIsDeleting] = useState(false)
   const [result, setResult] = useState<{ success: boolean; message: string } | null>(null)
@@ -68,6 +69,12 @@ const CascadeDeleteButton: React.FC<{ collection: CollectionSlug }> = ({ collect
   }, [id, collection, router])
 
   if (!id) return null
+  // The endpoint itself is admin-only (see cascade-delete.ts). Hiding the
+  // button for non-admins avoids the confusing "click → 403" UX for
+  // AdvancedContentEditors who see the sibling Duplicate button (which
+  // ACEs *can* use) right next to it.
+  const role = user && 'role' in user ? (user as { role?: unknown }).role : null
+  if (role !== 'admin') return null
 
   return (
     <>
