@@ -16,9 +16,15 @@
  * calls `/api/studio/sections/:id/duplicate`, which strips managed fields,
  * regenerates every block id inside `content.blocks`, and positions the
  * copy right after the source in the parent exercise's playlist.
+ *
+ * Access: same role gate as the endpoint (admin OR advanced content
+ * editor). Hidden for non-privileged users to avoid the confusing
+ * click-then-403 UX called out in `CascadeDeleteButton`.
  */
 import React, { useEffect, useState } from 'react'
-import { useDocumentInfo } from '@payloadcms/ui'
+import { useAuth, useDocumentInfo } from '@payloadcms/ui'
+
+import { AccountRole, isAdvancedContentEditor } from '@/infra/auth/roles'
 
 type Status = 'idle' | 'submitting' | 'success' | 'error'
 
@@ -31,6 +37,7 @@ const DIALOG_TITLE_ID = 'section-duplicate-modal-title'
 
 export const SectionDuplicateAction: React.FC = () => {
   const { id } = useDocumentInfo()
+  const { user } = useAuth()
   const [open, setOpen] = useState(false)
   const [status, setStatus] = useState<Status>('idle')
   const [error, setError] = useState<string | null>(null)
@@ -54,6 +61,14 @@ export const SectionDuplicateAction: React.FC = () => {
   }, [open, status])
 
   if (!id) return null
+  // Mirror the endpoint's role gate (admin OR advanced content editor) so
+  // ACEs still see the button they can use, but Student/unauthenticated
+  // never get the click-then-403 UX.
+  const role = user && 'role' in user ? (user as { role?: unknown }).role : null
+  const allowed =
+    role === AccountRole.Admin ||
+    (typeof role === 'string' && isAdvancedContentEditor(role as AccountRole))
+  if (!allowed) return null
 
   const reset = () => {
     setStatus('idle')
@@ -98,19 +113,7 @@ export const SectionDuplicateAction: React.FC = () => {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 6,
-          padding: '6px 12px',
-          fontSize: 13,
-          fontWeight: 500,
-          border: '1px solid var(--theme-elevation-200)',
-          borderRadius: 4,
-          backgroundColor: 'var(--theme-elevation-0)',
-          color: 'var(--theme-elevation-1000)',
-          cursor: 'pointer',
-        }}
+        className="rounded border border-[var(--theme-elevation-200)] bg-[var(--theme-elevation-0)] px-3 py-1.5 text-[13px] font-medium text-[var(--theme-elevation-1000)] cursor-pointer"
         title="Duplicate this section (positions the copy right after the source in the exercise playlist)"
       >
         Duplicate
@@ -121,53 +124,31 @@ export const SectionDuplicateAction: React.FC = () => {
           role="dialog"
           aria-modal="true"
           aria-labelledby={DIALOG_TITLE_ID}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            backgroundColor: 'rgba(0,0,0,0.5)',
-            zIndex: 1000,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
           onClick={close}
+          className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50"
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            style={{
-              backgroundColor: 'var(--theme-elevation-0)',
-              border: '1px solid var(--theme-elevation-200)',
-              borderRadius: 6,
-              padding: 24,
-              width: 440,
-              maxWidth: '90vw',
-              maxHeight: '85vh',
-              overflowY: 'auto',
-              color: 'var(--theme-elevation-1000)',
-            }}
+            className="w-[90vw] max-w-[440px] max-h-[85vh] overflow-y-auto rounded-md border border-[var(--theme-elevation-200)] bg-[var(--theme-elevation-0)] p-6 text-[var(--theme-elevation-1000)]"
           >
-            <h3 id={DIALOG_TITLE_ID} style={{ marginTop: 0 }}>
+            <h3 id={DIALOG_TITLE_ID} className="mt-0 mb-3 text-body-md font-semibold">
               Duplicate section
             </h3>
-            <p style={{ fontSize: 13, color: 'var(--theme-elevation-600)' }}>
+            <p className="text-body-sm text-[var(--theme-elevation-600)]">
               Creates an exact copy of this section under the same exercise. The copy is placed
               right after the source in the exercise&apos;s section playlist.
             </p>
 
             {status === 'error' && error && (
-              <div style={{ color: 'var(--theme-error-500)', fontSize: 13, marginTop: 12 }}>
-                {error}
-              </div>
+              <div className="mt-3 text-[13px] text-[var(--theme-error-500)]">{error}</div>
             )}
             {status === 'success' && result?.id && (
-              <div style={{ fontSize: 13, marginTop: 12 }}>
-                <div style={{ color: 'var(--theme-success-500)', marginBottom: 8 }}>
-                  Section duplicated.
-                </div>
-                <div style={{ marginTop: 12 }}>
+              <div className="mt-3 text-[13px]">
+                <div className="mb-2 text-[var(--theme-success-500)]">Section duplicated.</div>
+                <div className="mt-3">
                   <a
                     href={`/admin/collections/sections/${result.id}`}
-                    style={{ color: 'var(--theme-success-500)' }}
+                    className="text-[var(--theme-success-500)]"
                   >
                     Open the new section →
                   </a>
@@ -175,15 +156,13 @@ export const SectionDuplicateAction: React.FC = () => {
               </div>
             )}
 
-            <div
-              style={{
-                display: 'flex',
-                gap: 8,
-                justifyContent: 'flex-end',
-                marginTop: 20,
-              }}
-            >
-              <button type="button" onClick={close} disabled={isSubmitting}>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={close}
+                disabled={isSubmitting}
+                className="cursor-pointer rounded border border-[var(--theme-elevation-300)] bg-transparent px-4 py-1.5 text-[13px] font-medium text-[var(--theme-elevation-800)] disabled:cursor-not-allowed"
+              >
                 {status === 'success' ? 'Close' : 'Cancel'}
               </button>
               {status !== 'success' && (
@@ -191,15 +170,7 @@ export const SectionDuplicateAction: React.FC = () => {
                   type="button"
                   onClick={submit}
                   disabled={isSubmitting}
-                  style={{
-                    backgroundColor: 'var(--theme-success-500)',
-                    color: 'var(--theme-base-0)',
-                    border: 'none',
-                    borderRadius: 4,
-                    padding: '6px 14px',
-                    cursor: isSubmitting ? 'not-allowed' : 'pointer',
-                    opacity: isSubmitting ? 0.6 : 1,
-                  }}
+                  className="cursor-pointer rounded border-none bg-[var(--theme-success-500)] px-4 py-1.5 text-[13px] font-semibold text-[var(--theme-base-0)] disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {isSubmitting ? 'Duplicating…' : 'Duplicate'}
                 </button>
