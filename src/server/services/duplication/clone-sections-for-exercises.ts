@@ -27,6 +27,8 @@
  */
 import type { Payload, PayloadRequest } from 'payload'
 
+import { stripManagedFields } from './strip-managed-fields'
+
 interface BlockRef {
   id?: string
   blockType?: string
@@ -76,26 +78,6 @@ function parseBlocks(raw: unknown): BlockRef[] {
     }
   }
   return []
-}
-
-/** Strip Payload-managed virtual fields so a doc is safe to spread into `create`. */
-function stripManagedFields<T extends Record<string, unknown>>(
-  doc: T,
-): Omit<T, 'id' | 'createdAt' | 'updatedAt'> {
-  const {
-    id: _id,
-    createdAt: _c,
-    updatedAt: _u,
-    ...rest
-  } = doc as T & {
-    id?: unknown
-    createdAt?: unknown
-    updatedAt?: unknown
-  }
-  void _id
-  void _c
-  void _u
-  return rest
 }
 
 /**

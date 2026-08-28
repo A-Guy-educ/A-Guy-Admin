@@ -1,11 +1,14 @@
 /**
  * DELETE /api/cascade-delete?collection=<slug>&id=<id>
  *
- * Cascade-deletes a course, chapter, or lesson and all its descendants.
+ * Cascade-deletes a course, chapter, lesson, or exercise and all its
+ * descendants (including sections — sections are always cleaned up now that
+ * every exercise owns a section graph).
  *
- * - Lesson:  bulk-delete all exercises → delete the lesson
- * - Chapter: bulk-delete all lessons + exercises → delete the chapter
- * - Course:  bulk-delete all chapters + lessons + exercises → delete the course
+ * - Exercise: bulk-delete all sections → delete the exercise
+ * - Lesson:   bulk-delete all sections + exercises → delete the lesson
+ * - Chapter:  bulk-delete all sections + exercises + lessons → delete the chapter
+ * - Course:   bulk-delete all sections + exercises + lessons + chapters → delete the course
  *
  * Access: Admin only.
  *
@@ -15,7 +18,7 @@
  * ceiling. Each delete also fired the exercise `afterDelete` block-sync
  * hook, which updated a parent lesson that was about to be deleted too:
  * pure waste. This version walks the AUTHORITATIVE parent chain once via
- * bulk `find`, then issues `deleteMany` per collection — 4 DB round-trips
+ * bulk `find`, then issues `deleteMany` per collection — 5 DB round-trips
  * total, no per-doc hook overhead. The *target* doc (whatever the caller
  * asked to delete) still goes through `payload.delete` so its own
  * afterDelete hooks fire; that matters for courses, where
@@ -23,15 +26,16 @@
  * unrelated collections.
  *
  * We ONLY traverse authoritative parent refs (chapters.course,
- * lessons.chapter, exercises.lesson). Denorm caches (exercises.chapter,
- * exercises.course, lessons.course) are NEVER used to decide what to
- * delete — a stale denorm on a legit doc is not "belongs to this
- * subtree." Same lesson we relearned in the orphan-cleanup postmortem.
+ * lessons.chapter, exercises.lesson, sections.exercise). Denorm caches
+ * (sections.lesson/chapter/course, exercises.chapter/course, lessons.course)
+ * are NEVER used to decide what to delete — a stale denorm on a legit doc
+ * is not "belongs to this subtree." Same lesson we relearned in the
+ * orphan-cleanup postmortem.
  */
 import { ObjectId } from 'mongodb'
 import type { Payload, PayloadRequest } from 'payload'
 
-type CollectionSlug = 'courses' | 'chapters' | 'lessons'
+type CollectionSlug = 'courses' | 'chapters' | 'lessons' | 'exercises'
 
 type IdForm = string | ObjectId
 
@@ -72,6 +76,13 @@ async function findIds(
   return docs.map((d) => d._id as IdForm)
 }
 
+interface DescendantIds {
+  chapterIds: IdForm[]
+  lessonIds: IdForm[]
+  exerciseIds: IdForm[]
+  sectionIds: IdForm[]
+}
+
 /**
  * Collects descendant ids of the target doc via authoritative parent refs.
  * The returned lists never include the target itself — the caller deletes
@@ -81,11 +92,12 @@ async function collectDescendants(
   payload: Payload,
   collection: CollectionSlug,
   id: string,
-): Promise<{ chapterIds: IdForm[]; lessonIds: IdForm[]; exerciseIds: IdForm[] }> {
+): Promise<DescendantIds> {
   const chaptersCol = mongoCol(payload, 'chapters')
   const lessonsCol = mongoCol(payload, 'lessons')
   const exercisesCol = mongoCol(payload, 'exercises')
-  if (!chaptersCol || !lessonsCol || !exercisesCol) {
+  const sectionsCol = mongoCol(payload, 'sections')
+  if (!chaptersCol || !lessonsCol || !exercisesCol || !sectionsCol) {
     throw new Error('cascade-delete: required Mongo collections not accessible')
   }
 
@@ -93,6 +105,7 @@ async function collectDescendants(
   let chapterIds: IdForm[] = []
   let lessonIds: IdForm[] = []
   let exerciseIds: IdForm[] = []
+  let sectionIds: IdForm[] = []
 
   if (collection === 'courses') {
     chapterIds = await findIds(chaptersCol, { course: { $in: targetForms } })
@@ -102,36 +115,67 @@ async function collectDescendants(
     if (lessonIds.length > 0) {
       exerciseIds = await findIds(exercisesCol, { lesson: { $in: lessonIds } })
     }
-    return { chapterIds, lessonIds, exerciseIds }
+    if (exerciseIds.length > 0) {
+      sectionIds = await findIds(sectionsCol, { exercise: { $in: exerciseIds } })
+    }
+    return { chapterIds, lessonIds, exerciseIds, sectionIds }
   }
 
   if (collection === 'chapters') {
     // The target chapter itself isn't in `chapterIds` — the caller deletes
-    // it via payload.delete. We just gather its lesson+exercise subtree.
+    // it via payload.delete. We just gather its lesson/exercise/section subtree.
     lessonIds = await findIds(lessonsCol, { chapter: { $in: targetForms } })
     if (lessonIds.length > 0) {
       exerciseIds = await findIds(exercisesCol, { lesson: { $in: lessonIds } })
     }
-    return { chapterIds: [], lessonIds, exerciseIds }
+    if (exerciseIds.length > 0) {
+      sectionIds = await findIds(sectionsCol, { exercise: { $in: exerciseIds } })
+    }
+    return { chapterIds: [], lessonIds, exerciseIds, sectionIds }
   }
 
-  // lessons
-  exerciseIds = await findIds(exercisesCol, { lesson: { $in: targetForms } })
-  return { chapterIds: [], lessonIds: [], exerciseIds }
+  if (collection === 'lessons') {
+    exerciseIds = await findIds(exercisesCol, { lesson: { $in: targetForms } })
+    if (exerciseIds.length > 0) {
+      sectionIds = await findIds(sectionsCol, { exercise: { $in: exerciseIds } })
+    }
+    return { chapterIds: [], lessonIds: [], exerciseIds, sectionIds }
+  }
+
+  // exercises — the target is itself an exercise, so we skip straight to
+  // sections keyed by `exercise` FK. Sections are single-parent (Sections
+  // collection defines `exercise` as a single required relationship, and no
+  // other collection has `relationTo: 'sections'`), so deleting by FK is
+  // safe: a section returned here cannot legitimately "belong to" some
+  // other live exercise.
+  sectionIds = await findIds(sectionsCol, { exercise: { $in: targetForms } })
+  return { chapterIds: [], lessonIds: [], exerciseIds: [], sectionIds }
+}
+
+interface DescendantCounts {
+  chapters: number
+  lessons: number
+  exercises: number
+  sections: number
 }
 
 async function bulkCascadeDelete(
   req: PayloadRequest,
   collection: CollectionSlug,
   id: string,
-): Promise<{ chapters: number; lessons: number; exercises: number }> {
+): Promise<DescendantCounts> {
   const { payload } = req
-  const { chapterIds, lessonIds, exerciseIds } = await collectDescendants(payload, collection, id)
+  const { chapterIds, lessonIds, exerciseIds, sectionIds } = await collectDescendants(
+    payload,
+    collection,
+    id,
+  )
 
+  const sectionsCol = mongoCol(payload, 'sections')
   const exercisesCol = mongoCol(payload, 'exercises')
   const lessonsCol = mongoCol(payload, 'lessons')
   const chaptersCol = mongoCol(payload, 'chapters')
-  if (!exercisesCol || !lessonsCol || !chaptersCol) {
+  if (!sectionsCol || !exercisesCol || !lessonsCol || !chaptersCol) {
     throw new Error('cascade-delete: required Mongo collections not accessible')
   }
 
@@ -143,7 +187,22 @@ async function bulkCascadeDelete(
   // idType) — driver types default to ObjectId-only but the runtime
   // accepts both.
   const idIn = (ids: IdForm[]): Record<string, unknown> => ({ _id: { $in: ids } })
-  const counts = { chapters: 0, lessons: 0, exercises: 0 }
+  const counts: DescendantCounts = { chapters: 0, lessons: 0, exercises: 0, sections: 0 }
+  // Sections `deleteMany` bypasses the Sections afterDelete hook (which
+  // strips the corresponding `sectionRef` from the parent exercise's
+  // `blocks` playlist). Safe *when the following deletes succeed*: the
+  // owning exercise is either deleted by `exercisesCol.deleteMany` below
+  // or IS the target `payload.delete` a few lines later. If either step
+  // fails mid-cascade (e.g. network error between round-trips), a live
+  // exercise doc keeps stale `sectionRef` entries — that's the documented
+  // "bottom-up = recoverable via orphan sweep" trade-off (see the block
+  // comment at the top of `bulkCascadeDelete`). If the data model ever
+  // grows shared sections (multi-parent), the "no other live exercise
+  // owns this section" premise breaks and we'd need per-doc cleanup.
+  if (sectionIds.length > 0) {
+    const r = await sectionsCol.deleteMany(idIn(sectionIds))
+    counts.sections = r.deletedCount ?? 0
+  }
   if (exerciseIds.length > 0) {
     const r = await exercisesCol.deleteMany(idIn(exerciseIds))
     counts.exercises = r.deletedCount ?? 0
@@ -159,7 +218,7 @@ async function bulkCascadeDelete(
   return counts
 }
 
-const ALLOWED_COLLECTIONS: CollectionSlug[] = ['courses', 'chapters', 'lessons']
+const ALLOWED_COLLECTIONS: CollectionSlug[] = ['courses', 'chapters', 'lessons', 'exercises']
 
 export async function cascadeDeleteEndpoint(req: PayloadRequest): Promise<Response> {
   // 1) Auth — admin only
@@ -214,13 +273,18 @@ export async function cascadeDeleteEndpoint(req: PayloadRequest): Promise<Respon
     await req.payload.delete({ collection, id, overrideAccess: true, req })
 
     const totalDeleted =
-      1 + descendantCounts.chapters + descendantCounts.lessons + descendantCounts.exercises
+      1 +
+      descendantCounts.chapters +
+      descendantCounts.lessons +
+      descendantCounts.exercises +
+      descendantCounts.sections
     const durationMs = Date.now() - startedAt
 
     const parts = [
       descendantCounts.chapters ? `${descendantCounts.chapters} chapter(s)` : null,
       descendantCounts.lessons ? `${descendantCounts.lessons} lesson(s)` : null,
       descendantCounts.exercises ? `${descendantCounts.exercises} exercise(s)` : null,
+      descendantCounts.sections ? `${descendantCounts.sections} section(s)` : null,
     ].filter(Boolean) as string[]
     const descendantSummary = parts.length > 0 ? parts.join(', ') : 'no descendants'
 
