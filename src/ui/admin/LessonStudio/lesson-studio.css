@@ -797,3 +797,151 @@
   background: var(--theme-warning-100, var(--theme-elevation-50));
   border-bottom: 1px solid var(--theme-warning-300, var(--theme-elevation-200));
 }
+
+/* Row-op failure banner (delete/duplicate). Distinct from the refetch warning
+   above — this is red/error tone because the op itself failed (vs. the tree
+   just failing to refresh). Dismissible so a stale message doesn't linger
+   after the admin has moved on. */
+.studio-action-error {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 24px;
+  font-size: 13px;
+  color: var(--theme-error-700, var(--theme-error-500));
+  background: var(--theme-error-100, var(--theme-elevation-50));
+  border-bottom: 1px solid var(--theme-error-300, var(--theme-elevation-200));
+}
+
+.studio-action-error > span {
+  flex: 1;
+}
+
+.studio-action-error-dismiss {
+  padding: 2px 8px;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--theme-error-700, var(--theme-error-500));
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.studio-action-error-dismiss:hover {
+  background: var(--theme-error-200, var(--theme-elevation-100));
+}
+
+/* ---------- Row toolbar (Duplicate / Delete / Open on section + exercise header) ---------- */
+.studio-row-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+
+.studio-exercise-header:hover .studio-row-toolbar,
+.studio-exercise-header:focus-within .studio-row-toolbar,
+.studio-section-header:hover .studio-row-toolbar,
+.studio-section-header:focus-within .studio-row-toolbar {
+  opacity: 1;
+}
+
+.studio-row-btn {
+  padding: 2px 8px;
+  font-size: 12px;
+  color: var(--theme-elevation-600);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  transition:
+    background 0.12s,
+    color 0.12s,
+    border-color 0.12s;
+}
+
+.studio-row-btn:hover {
+  background: var(--theme-elevation-100);
+  color: var(--theme-text);
+  border-color: var(--theme-elevation-200);
+}
+
+.studio-row-btn:focus-visible {
+  outline: none;
+  border-color: var(--theme-success-500);
+  box-shadow: 0 0 0 2px var(--theme-success-500);
+}
+
+.studio-row-btn:disabled {
+  color: var(--theme-elevation-400);
+  cursor: not-allowed;
+  background: transparent;
+  border-color: transparent;
+}
+
+.studio-row-btn--danger:hover {
+  background: var(--theme-error-100, var(--theme-elevation-100));
+  color: var(--theme-error-700, var(--theme-error-500));
+  border-color: var(--theme-error-300, var(--theme-elevation-200));
+}
+
+/* ---------- Block-level delete X ----------
+   Renders on hover in the top-right corner of a block. Only shown when the
+   parent has more than one block (the section/exercise ContentSchema requires
+   blocks.length >= 1, so we never offer the affordance that would 400 on save). */
+.studio-edit-block-wrapper {
+  position: relative;
+}
+
+.studio-block-delete-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 2;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--theme-elevation-500);
+  background: var(--theme-elevation-0);
+  border: 1px solid var(--theme-elevation-200);
+  border-radius: 50%;
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    opacity 0.12s,
+    color 0.12s,
+    background 0.12s,
+    border-color 0.12s;
+}
+
+.studio-edit-block-wrapper:hover .studio-block-delete-btn,
+.studio-edit-block-wrapper:focus-within .studio-block-delete-btn,
+.studio-doc-block:hover > .studio-block-delete-btn,
+.studio-doc-block:focus-within > .studio-block-delete-btn,
+.studio-block-delete-btn:focus-visible {
+  opacity: 1;
+}
+
+.studio-block-delete-btn:hover {
+  color: var(--theme-error-700, var(--theme-error-500));
+  background: var(--theme-error-100, var(--theme-elevation-50));
+  border-color: var(--theme-error-500, var(--theme-elevation-300));
+}
+
+.studio-block-delete-btn:focus-visible {
+  outline: none;
+  border-color: var(--theme-error-500, var(--theme-elevation-300));
+  box-shadow: 0 0 0 2px var(--theme-error-300, var(--theme-elevation-200));
+}
+
+/* Doc-mode variant sits inside a hover-highlighted block. Kept above the
+   block's own click-to-edit hover chrome (z-index above the wrapper). */
+.studio-block-delete-btn--doc {
+  top: 2px;
+  right: 2px;
+}

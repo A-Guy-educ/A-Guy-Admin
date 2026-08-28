@@ -8,7 +8,10 @@
  * the new sectionRef to the parent exercise's `blocks` playlist for us.
  *
  * Access: admin only.
- * Body: { title?: string } — title is optional; defaults to a placeholder.
+ * Body: `{ title?: string, insertAfter?: string }` — `title` defaults to a
+ * placeholder; `insertAfter` (a sibling section id) repositions the new
+ * sectionRef right after that sibling in the parent's `blocks` playlist
+ * (afterChange hook appends at end by default).
  *
  * @fileType api-route
  * @domain admin-studio
@@ -19,6 +22,8 @@ import { addDataAndFileToRequest } from 'payload'
 
 import { AccountRole, isAdvancedContentEditor } from '@/infra/auth/roles'
 import { DEFAULT_CONTENT } from '@/server/payload/collections/Sections/defaults'
+
+import { insertPlaylistRefAfter } from './reorder-playlist'
 
 interface ExerciseParent {
   id: string
@@ -62,9 +67,10 @@ export async function createSectionEndpoint(req: PayloadRequest): Promise<Respon
   }
 
   await addDataAndFileToRequest(req)
-  const body = (req as unknown as { data?: { title?: unknown } }).data ?? {}
+  const body = (req as unknown as { data?: { title?: unknown; insertAfter?: unknown } }).data ?? {}
   const rawTitle = typeof body.title === 'string' ? body.title.trim() : ''
   const title = rawTitle.length > 0 ? rawTitle : 'Untitled section'
+  const insertAfter = typeof body.insertAfter === 'string' ? body.insertAfter : undefined
 
   let parent: ExerciseParent
   try {
@@ -108,6 +114,30 @@ export async function createSectionEndpoint(req: PayloadRequest): Promise<Respon
         content: DEFAULT_CONTENT(),
       } as never,
     })
+    // Position the new sectionRef right after the caller-chosen sibling if
+    // one was supplied. Sections afterChange has already appended the ref at
+    // end; this moves it. Log-and-continue on failure — the section exists,
+    // just at the wrong slot (recoverable via drag / re-issue).
+    if (insertAfter) {
+      try {
+        await insertPlaylistRefAfter({
+          payload: req.payload,
+          req,
+          parentCollection: 'exercises',
+          parentId: exerciseId,
+          blockType: 'sectionRef',
+          refField: 'section',
+          movedRefId: created.id,
+          insertAfterRefId: insertAfter,
+        })
+      } catch (err) {
+        req.payload.logger.warn(
+          { err, exerciseId, newSectionId: created.id, insertAfter },
+          'studio: created section but failed to position it after sibling',
+        )
+      }
+    }
+
     return Response.json({ id: created.id, title }, { status: 201 })
   } catch (err) {
     // Never leak raw payload/mongo error messages to the client — they can
