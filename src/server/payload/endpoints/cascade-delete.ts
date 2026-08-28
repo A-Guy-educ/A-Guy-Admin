@@ -190,15 +190,12 @@ async function bulkCascadeDelete(
   const counts: DescendantCounts = { chapters: 0, lessons: 0, exercises: 0, sections: 0 }
   // Sections `deleteMany` bypasses the Sections afterDelete hook (which
   // strips the corresponding `sectionRef` from the parent exercise's
-  // `blocks` playlist). Safe *when the following deletes succeed*: the
-  // owning exercise is either deleted by `exercisesCol.deleteMany` below
-  // or IS the target `payload.delete` a few lines later. If either step
-  // fails mid-cascade (e.g. network error between round-trips), a live
-  // exercise doc keeps stale `sectionRef` entries — that's the documented
-  // "bottom-up = recoverable via orphan sweep" trade-off (see the block
-  // comment at the top of `bulkCascadeDelete`). If the data model ever
-  // grows shared sections (multi-parent), the "no other live exercise
-  // owns this section" premise breaks and we'd need per-doc cleanup.
+  // `blocks` playlist). Safe because the owning exercise is deleted in the
+  // same call (via `exercisesCol.deleteMany` below) or IS the target being
+  // deleted a few lines later — either way, no live doc is left pointing
+  // at a deleted section. If the data model ever grows shared sections
+  // (multi-parent), this invariant breaks and we'd need to re-run the
+  // playlist cleanup manually.
   if (sectionIds.length > 0) {
     const r = await sectionsCol.deleteMany(idIn(sectionIds))
     counts.sections = r.deletedCount ?? 0
