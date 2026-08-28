@@ -34,13 +34,22 @@ export const AddBlockButton: React.FC<AddBlockButtonProps> = ({ onAdd }) => {
 
   useEffect(() => {
     if (!open) return
-    const handler = (e: MouseEvent) => {
+    const clickHandler = (e: MouseEvent) => {
       const root = rootRef.current
       if (!root || (e.target instanceof Node && root.contains(e.target))) return
       setOpen(false)
     }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
+    // Escape dismissal matches AddChildButton so keyboard users get a
+    // consistent close path across every studio-add affordance.
+    const keyHandler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('mousedown', clickHandler)
+    document.addEventListener('keydown', keyHandler)
+    return () => {
+      document.removeEventListener('mousedown', clickHandler)
+      document.removeEventListener('keydown', keyHandler)
+    }
   }, [open])
 
   const handlePick = useCallback(

@@ -17,7 +17,7 @@
 import type { PayloadRequest } from 'payload'
 import { addDataAndFileToRequest } from 'payload'
 
-import { AccountRole } from '@/infra/auth/roles'
+import { AccountRole, isAdvancedContentEditor } from '@/infra/auth/roles'
 import { DEFAULT_CONTENT } from '@/server/payload/collections/Sections/defaults'
 
 interface ExerciseParent {
@@ -41,8 +41,19 @@ export async function createSectionEndpoint(req: PayloadRequest): Promise<Respon
   if (!req.user) {
     return Response.json({ error: 'Authentication required' }, { status: 401 })
   }
-  if (!('role' in req.user) || req.user.role !== AccountRole.Admin) {
-    return Response.json({ error: 'Admin access required' }, { status: 403 })
+  // Match the Sections collection's own access convention (`isAdminOrOwner`
+  // at collections/Sections/index.ts) — both Admin and AdvancedContentEditor
+  // can update/delete sections there, so the studio create endpoint accepts
+  // both too. Endpoint being stricter than the collection would silently
+  // lock content editors out of a workflow they're authorised for at the
+  // collection level.
+  const role = 'role' in req.user ? (req.user.role as AccountRole) : null
+  const allowed = role === AccountRole.Admin || (role !== null && isAdvancedContentEditor(role))
+  if (!allowed) {
+    return Response.json(
+      { error: 'Admin or advanced content editor access required' },
+      { status: 403 },
+    )
   }
 
   const { exerciseId } = (req.routeParams ?? {}) as { exerciseId?: string }

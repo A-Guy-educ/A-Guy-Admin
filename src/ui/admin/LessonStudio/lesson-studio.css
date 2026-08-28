@@ -787,3 +787,13 @@
   color: var(--theme-error-500);
   margin-inline-start: 4px;
 }
+
+/* Inline warning for background-refetch failures. Sits below the toolbar so
+   the studio stays mounted and the admin can dismiss + reload on their own. */
+.studio-refetch-warning {
+  padding: 8px 24px;
+  font-size: 13px;
+  color: var(--theme-warning-700, var(--theme-warning-500));
+  background: var(--theme-warning-100, var(--theme-elevation-50));
+  border-bottom: 1px solid var(--theme-warning-300, var(--theme-elevation-200));
+}

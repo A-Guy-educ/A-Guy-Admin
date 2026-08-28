@@ -17,7 +17,7 @@
 import type { PayloadRequest } from 'payload'
 import { addDataAndFileToRequest } from 'payload'
 
-import { AccountRole } from '@/infra/auth/roles'
+import { AccountRole, isAdvancedContentEditor } from '@/infra/auth/roles'
 import { DEFAULT_CONTENT } from '@/server/payload/collections/Exercises/defaults'
 
 interface LessonParent {
@@ -40,8 +40,16 @@ export async function createExerciseEndpoint(req: PayloadRequest): Promise<Respo
   if (!req.user) {
     return Response.json({ error: 'Authentication required' }, { status: 401 })
   }
-  if (!('role' in req.user) || req.user.role !== AccountRole.Admin) {
-    return Response.json({ error: 'Admin access required' }, { status: 403 })
+  // Matches Exercises collection's isAdminOrOwner convention — both Admin
+  // and AdvancedContentEditor can update/delete exercises at the collection
+  // level, so the studio create endpoint accepts both.
+  const role = 'role' in req.user ? (req.user.role as AccountRole) : null
+  const allowed = role === AccountRole.Admin || (role !== null && isAdvancedContentEditor(role))
+  if (!allowed) {
+    return Response.json(
+      { error: 'Admin or advanced content editor access required' },
+      { status: 403 },
+    )
   }
 
   const { lessonId } = (req.routeParams ?? {}) as { lessonId?: string }

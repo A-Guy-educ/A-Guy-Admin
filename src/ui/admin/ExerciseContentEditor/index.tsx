@@ -203,14 +203,12 @@ export const ExerciseContentEditor: React.FC<{ path: string }> = ({ path }) => {
   const handleBlockTypeSelected = (blockType: string) => {
     // Create block using factory defaults. `blockType` comes from an external
     // selector that emits plain strings; the factory map is now strictly
-    // keyed (defaults.ts) so we assert-then-guard to catch typos loudly
-    // instead of returning undefined and crashing on `.id` access below.
+    // keyed (defaults.ts), so guard silently — an unknown key here would
+    // indicate the selector drifted from the factory map, but crashing the
+    // editor for it is worse than a no-op.
     const factory = ExerciseBlockDefaults[blockType as keyof typeof ExerciseBlockDefaults]
-    if (!factory) {
-      console.warn(`Unknown block type selected: ${blockType}`)
-      return
-    }
-    const newBlock = factory() as ContentBlock
+    if (!factory) return
+    const newBlock = factory()
 
     const newBlocks = [...blocks]
     if (insertAtIndex !== undefined) {

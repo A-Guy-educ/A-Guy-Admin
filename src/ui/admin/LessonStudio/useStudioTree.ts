@@ -12,7 +12,19 @@ interface UseStudioTreeResult {
    * they would if the top-level `loading` gate were used.
    */
   refetching: boolean
+  /**
+   * Populated only when the INITIAL fetch fails. Consumed by the parent's
+   * error gate — a value here unmounts the studio, which is correct for
+   * "can't load the lesson at all" but wrong for "background refresh failed."
+   */
   error: string | null
+  /**
+   * Populated when a `refetch()` fails. Separate from `error` so a transient
+   * network blip during a post-mutation refresh doesn't tear down the studio
+   * (with any in-progress edits) via the parent's `if (error)` gate. Caller
+   * should render this as an inline warning and let the user retry.
+   */
+  refetchError: string | null
   /**
    * Re-fetches the tree from the server. Does NOT flip `loading` — using
    * `refetching` instead so the parent's `if (loading) return <Loader/>`
@@ -37,12 +49,17 @@ export function useStudioTree(lessonId: string): UseStudioTreeResult {
   const [loading, setLoading] = useState(true)
   const [refetching, setRefetching] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [refetchError, setRefetchError] = useState<string | null>(null)
 
   const fetchTree = useCallback(
     async ({ silent, signal }: { silent: boolean; signal?: AbortSignal }) => {
-      if (silent) setRefetching(true)
-      else setLoading(true)
-      setError(null)
+      if (silent) {
+        setRefetching(true)
+        setRefetchError(null)
+      } else {
+        setLoading(true)
+        setError(null)
+      }
       try {
         const res = await fetch(`/api/studio/lessons/${lessonId}/tree`, {
           credentials: 'include',
@@ -56,7 +73,12 @@ export function useStudioTree(lessonId: string): UseStudioTreeResult {
         setTree(data)
       } catch (err) {
         if ((err as Error).name === 'AbortError') return
-        setError((err as Error).message)
+        // Route silent-mode failures into refetchError so the parent's error
+        // gate (which unmounts the whole studio) doesn't fire on a transient
+        // background refresh failure. Initial-load failures still go into
+        // `error` because there's no tree to preserve.
+        if (silent) setRefetchError((err as Error).message)
+        else setError((err as Error).message)
       } finally {
         if (silent) setRefetching(false)
         else setLoading(false)
@@ -76,5 +98,5 @@ export function useStudioTree(lessonId: string): UseStudioTreeResult {
     await fetchTree({ silent: true })
   }, [fetchTree])
 
-  return { tree, loading, refetching, error, refetch }
+  return { tree, loading, refetching, error, refetchError, refetch }
 }

@@ -31,7 +31,7 @@ interface LessonStudioPageProps {
  * alongside section edits.
  */
 export const LessonStudioPage: React.FC<LessonStudioPageProps> = ({ lessonId }) => {
-  const { tree, loading, error, refetch } = useStudioTree(lessonId)
+  const { tree, loading, error, refetchError, refetch } = useStudioTree(lessonId)
   const { saving, errors, saveAll } = useStudioSave()
   const [viewMode, setViewMode] = useState<StudioViewMode>('document')
 
@@ -96,8 +96,23 @@ export const LessonStudioPage: React.FC<LessonStudioPageProps> = ({ lessonId }) 
     const dirtySections = dirtySectionIdsRef.current
     const dirtyExercises = dirtyExerciseIdsRef.current
 
+    const presentSectionIds = new Set<string>()
+    const presentExerciseIds = new Set<string>()
+    for (const exercise of tree.exercises) {
+      presentExerciseIds.add(exercise.id)
+      for (const section of exercise.sections) presentSectionIds.add(section.id)
+    }
+
     setSectionBlocks((prev) => {
-      const next: Record<string, ContentBlock[]> = { ...prev }
+      const next: Record<string, ContentBlock[]> = {}
+      // Evict keys that vanished from the server. Preserve dirty entries even
+      // if they've disappeared server-side — save-all will surface a 404 and
+      // the admin can decide what to do rather than us silently losing edits.
+      for (const [id, blocks] of Object.entries(prev)) {
+        if (presentSectionIds.has(id) || dirtySections.has(id)) {
+          next[id] = blocks
+        }
+      }
       for (const exercise of tree.exercises) {
         for (const section of exercise.sections) {
           if (!dirtySections.has(section.id) || !(section.id in next)) {
@@ -108,7 +123,12 @@ export const LessonStudioPage: React.FC<LessonStudioPageProps> = ({ lessonId }) 
       return next
     })
     setExerciseBlocks((prev) => {
-      const next: Record<string, ContentBlock[]> = { ...prev }
+      const next: Record<string, ContentBlock[]> = {}
+      for (const [id, blocks] of Object.entries(prev)) {
+        if (presentExerciseIds.has(id) || dirtyExercises.has(id)) {
+          next[id] = blocks
+        }
+      }
       for (const exercise of tree.exercises) {
         if (exercise.blocks.length === 0) continue
         if (!dirtyExercises.has(exercise.id) || !(exercise.id in next)) {
@@ -272,6 +292,13 @@ export const LessonStudioPage: React.FC<LessonStudioPageProps> = ({ lessonId }) 
           viewMode={viewMode}
           onViewModeChange={handleViewModeChange}
         />
+
+        {refetchError && (
+          <div className="studio-refetch-warning" role="status">
+            Couldn&apos;t refresh the lesson tree: {refetchError}. Any change you just made may
+            still have landed on the server — reload the page to see the latest.
+          </div>
+        )}
 
         <main className="studio-content">
           {tree.exercises.length === 0 ? (
