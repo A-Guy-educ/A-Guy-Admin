@@ -34,6 +34,7 @@
  */
 import type { PayloadRequest } from 'payload'
 
+import { AccountRole, isAdvancedContentEditor } from '@/infra/auth/roles'
 import {
   cloneSectionsAndRewireExercises,
   type ExerciseClonePair,
@@ -74,8 +75,18 @@ export async function duplicateExerciseEndpoint(req: PayloadRequest): Promise<Re
   if (!user) {
     return Response.json({ error: 'Authentication required' }, { status: 401 })
   }
-  if (!('role' in user) || user.role !== 'admin') {
-    return Response.json({ error: 'Admin access required' }, { status: 403 })
+  // Match the Exercises collection's own `isAdminOrOwner` access rule.
+  // AdvancedContentEditor can update/delete exercises at the collection
+  // level, and every studio create/duplicate endpoint accepts both roles —
+  // if this endpoint stayed admin-only, the studio's "Duplicate exercise"
+  // button (which calls into here) would 403 for content editors.
+  const role = 'role' in user ? (user.role as AccountRole) : null
+  const allowed = role === AccountRole.Admin || (role !== null && isAdvancedContentEditor(role))
+  if (!allowed) {
+    return Response.json(
+      { error: 'Admin or advanced content editor access required' },
+      { status: 403 },
+    )
   }
 
   const url = new URL(req.url || 'http://localhost')

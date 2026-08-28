@@ -246,10 +246,20 @@ export const LessonStudioPage: React.FC<LessonStudioPageProps> = ({ lessonId }) 
   )
 
   const handleDeleteSectionBlock = useCallback((sectionId: string, index: number) => {
+    // Authoritative empty-blocks guard: server ContentSchema requires
+    // blocks.length >= 1. Guard outside the setter (reading from the ref
+    // mirror so it's always fresh) instead of mutating a flag inside the
+    // updater — updaters must be pure. Under a rapid two-click sequence
+    // React batches both invocations; the second reads the ref updated
+    // synchronously by the first setter's commit-effect and correctly
+    // sees length=1 → returns early. Inner check inside the setter is
+    // defensive/idempotent, doesn't drive the dirty-flag decision.
+    const current = sectionBlocksRef.current[sectionId]
+    if (!current || current.length <= 1) return
     setSectionBlocks((prev) => {
-      const current = prev[sectionId]
-      if (!current) return prev
-      const next = [...current]
+      const cur = prev[sectionId]
+      if (!cur || cur.length <= 1) return prev
+      const next = [...cur]
       next.splice(index, 1)
       return { ...prev, [sectionId]: next }
     })
@@ -262,10 +272,12 @@ export const LessonStudioPage: React.FC<LessonStudioPageProps> = ({ lessonId }) 
   }, [])
 
   const handleDeleteExerciseBlock = useCallback((exerciseId: string, index: number) => {
+    const current = exerciseBlocksRef.current[exerciseId]
+    if (!current || current.length <= 1) return
     setExerciseBlocks((prev) => {
-      const current = prev[exerciseId]
-      if (!current) return prev
-      const next = [...current]
+      const cur = prev[exerciseId]
+      if (!cur || cur.length <= 1) return prev
+      const next = [...cur]
       next.splice(index, 1)
       return { ...prev, [exerciseId]: next }
     })
@@ -277,17 +289,19 @@ export const LessonStudioPage: React.FC<LessonStudioPageProps> = ({ lessonId }) 
     })
   }, [])
 
-  // In-flight tracking uses a REF for the source-of-truth check so the
-  // "is this key already pending?" test is synchronous and doesn't rely on
-  // a state updater side-effect (React requires updater functions to be pure
-  // and StrictMode / concurrent mode will invoke them multiple times). The
-  // ref stays in sync via its own effect below. `setPendingRowOps` is still
-  // called so React re-renders and the row buttons re-evaluate their disabled
-  // state; the ref is the authoritative gate.
+  // In-flight tracking: the REF is the authoritative gate (synchronous
+  // has/set, safe against rapid double-clicks in the same tick), and
+  // setPendingRowOps drives the render so row buttons re-evaluate their
+  // disabled state. There is NO mirror useEffect that syncs ref ← state —
+  // that would race with the manual ref writes here (the effect commits
+  // an older state after the manual write, resetting the ref) and defeat
+  // the whole purity-safe design.
+  //
+  // Ref is initialised to the initial state and only written by this
+  // function, so state and ref stay in lockstep by construction. React
+  // sees a new Set reference on each mutation so equality diff triggers
+  // a render.
   const pendingRowOpsRef = useRef(pendingRowOps)
-  useEffect(() => {
-    pendingRowOpsRef.current = pendingRowOps
-  }, [pendingRowOps])
 
   // Wrap a row-scoped async op with (a) an in-flight guard so double-clicks
   // don't fire twice, (b) a try/catch that surfaces the error via
@@ -295,9 +309,6 @@ export const LessonStudioPage: React.FC<LessonStudioPageProps> = ({ lessonId }) 
   // operation; typically "delete-section:<id>" or "duplicate-exercise:<id>".
   const runRowOp = useCallback(async (key: string, op: () => Promise<void>): Promise<boolean> => {
     if (pendingRowOpsRef.current.has(key)) return false
-    // Optimistically update the ref so a rapid second call sees the guard
-    // before React commits. The state update below is what causes the row
-    // buttons to actually disable in the UI.
     const nextRef = new Set(pendingRowOpsRef.current)
     nextRef.add(key)
     pendingRowOpsRef.current = nextRef

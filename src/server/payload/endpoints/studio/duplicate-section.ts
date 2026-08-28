@@ -26,6 +26,101 @@ import { generateId } from '@/server/payload/collections/Exercises/defaults'
 
 import { insertPlaylistRefAfter } from './reorder-playlist'
 
+/**
+ * Regenerate every per-doc id nested inside a block (in-place — caller
+ * already spread the block into a fresh object, so this only mutates the
+ * copy). Rewrites answer-key references (correctPairs, correctHotspotIds)
+ * to point at the new ids so validation still passes and answer checking
+ * stays correct.
+ */
+function remapNestedIds(block: Record<string, unknown>): void {
+  // question_multi_axis: nested graph ids
+  if (block.type === 'question_multi_axis' && Array.isArray(block.graphs)) {
+    block.graphs = (block.graphs as Record<string, unknown>[]).map((g) => ({
+      ...g,
+      id: generateId(),
+    }))
+  }
+
+  // question_select (mcq variant): answer.options[].id
+  if (
+    block.type === 'question_select' &&
+    block.variant === 'mcq' &&
+    block.answer &&
+    typeof block.answer === 'object'
+  ) {
+    const answer = block.answer as {
+      options?: Array<Record<string, unknown>>
+      correctOptionIds?: string[]
+    }
+    if (Array.isArray(answer.options)) {
+      const idMap: Record<string, string> = {}
+      const nextOptions = answer.options.map((opt) => {
+        const oldId = typeof opt.id === 'string' ? opt.id : null
+        const newId = generateId()
+        if (oldId) idMap[oldId] = newId
+        return { ...opt, id: newId }
+      })
+      block.answer = {
+        ...answer,
+        options: nextOptions,
+        correctOptionIds: Array.isArray(answer.correctOptionIds)
+          ? answer.correctOptionIds.map((id) => idMap[id] ?? id)
+          : answer.correctOptionIds,
+      }
+    }
+  }
+
+  // question_matching: leftColumn[].id + rightColumn[].id + rewrite correctPairs
+  if (block.type === 'question_matching') {
+    const leftMap: Record<string, string> = {}
+    const rightMap: Record<string, string> = {}
+    if (Array.isArray(block.leftColumn)) {
+      block.leftColumn = (block.leftColumn as Record<string, unknown>[]).map((item) => {
+        const oldId = typeof item.id === 'string' ? item.id : null
+        const newId = generateId()
+        if (oldId) leftMap[oldId] = newId
+        return { ...item, id: newId }
+      })
+    }
+    if (Array.isArray(block.rightColumn)) {
+      block.rightColumn = (block.rightColumn as Record<string, unknown>[]).map((item) => {
+        const oldId = typeof item.id === 'string' ? item.id : null
+        const newId = generateId()
+        if (oldId) rightMap[oldId] = newId
+        return { ...item, id: newId }
+      })
+    }
+    if (Array.isArray(block.correctPairs)) {
+      block.correctPairs = (block.correctPairs as Array<Record<string, unknown>>).map((pair) => ({
+        ...pair,
+        optionId:
+          typeof pair.optionId === 'string'
+            ? (leftMap[pair.optionId] ?? pair.optionId)
+            : pair.optionId,
+        matchId:
+          typeof pair.matchId === 'string'
+            ? (rightMap[pair.matchId] ?? pair.matchId)
+            : pair.matchId,
+      }))
+    }
+  }
+
+  // svg: hotspots[].id + rewrite correctHotspotIds
+  if (block.type === 'svg' && Array.isArray(block.hotspots)) {
+    const idMap: Record<string, string> = {}
+    block.hotspots = (block.hotspots as Record<string, unknown>[]).map((h) => {
+      const oldId = typeof h.id === 'string' ? h.id : null
+      const newId = generateId()
+      if (oldId) idMap[oldId] = newId
+      return { ...h, id: newId }
+    })
+    if (Array.isArray(block.correctHotspotIds)) {
+      block.correctHotspotIds = (block.correctHotspotIds as string[]).map((id) => idMap[id] ?? id)
+    }
+  }
+}
+
 /** Strip Payload-managed virtual fields so a doc is safe to spread into `create`. */
 function stripManagedFields<T extends Record<string, unknown>>(
   doc: T,
@@ -108,29 +203,32 @@ export async function duplicateSectionEndpoint(req: PayloadRequest): Promise<Res
   void _cb
   void _at
 
-  // Regenerate block ids in the cloned content — the shared block factory
-  // (Exercises/defaults.ts) assigns a fresh id per block on create so ids
-  // are per-doc. Spreading source verbatim would carry the source's block
-  // ids into the copy, making them non-unique across sections. Any code
-  // that ever keys on block id assuming per-lesson uniqueness (per-block
-  // progress, analytics, media joins) would silently break.
+  // Regenerate block ids in the cloned content. The shared block factory
+  // (Exercises/defaults.ts) assigns fresh ids per doc at construction time
+  // so ids are per-doc. Spreading source verbatim would carry ids from the
+  // source into the copy — bad for any code that keys on block id assuming
+  // per-lesson uniqueness (progress, analytics, media joins).
   //
-  // question_multi_axis blocks also carry nested `graphs[].id` values that
-  // are generated per-doc by the factory, so those are regenerated too.
+  // Regenerate every id the factory sets:
+  //   - top-level block.id (all block types)
+  //   - question_multi_axis.graphs[].id
+  //   - question_select mcq answer.options[].id
+  //   - question_matching leftColumn[].id / rightColumn[].id (and rewrite
+  //     correctPairs to point at the new ids so answer keys still validate)
+  //   - svg.hotspots[].id (and rewrite correctHotspotIds)
+  //
+  // Hardcoded literal ids the defaults use in a few spots (TF options
+  // 'true'/'false', hardcoded 'o1'/'l1' etc.) already weren't per-doc-unique
+  // in prod — those stay as-is.
   const rawContent = (rest as { content?: { blocks?: unknown } }).content
   if (rawContent && Array.isArray(rawContent.blocks)) {
-    rawContent.blocks = rawContent.blocks.map((block) => {
+    const newBlocks = rawContent.blocks.map((block) => {
       if (!block || typeof block !== 'object') return block
-      const b = block as Record<string, unknown>
-      const cloned: Record<string, unknown> = { ...b, id: generateId() }
-      if (b.type === 'question_multi_axis' && Array.isArray(b.graphs)) {
-        cloned.graphs = (b.graphs as Record<string, unknown>[]).map((graph) => ({
-          ...graph,
-          id: generateId(),
-        }))
-      }
-      return cloned
+      const b = { ...(block as Record<string, unknown>), id: generateId() }
+      remapNestedIds(b)
+      return b
     })
+    ;(rest as { content?: { blocks?: unknown } }).content = { ...rawContent, blocks: newBlocks }
   }
 
   const baseTitle = typeof stripped.title === 'string' ? stripped.title : 'Untitled'
