@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.37.0 — 2026-08-28
+
+### Features
+- Add-between, Delete and Duplicate for sections and exercises in lesson studio (#385)
+- Section duplicate, exercise cascade delete, sections in cascade (#384)
+- Create exercises, sections and blocks from lesson studio (#381)
+
 ## v0.36.0 — 2026-08-27
 
 ### Features
