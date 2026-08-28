@@ -23,14 +23,19 @@
  * regardless of the source's status; the section clones inherit
  * lesson/chapter/course FKs from the source exercise's stored FKs.
  *
- * Access: admin only. Matches the sibling course/lesson duplicate endpoints
- * (`duplicateCourseEndpoint`, `duplicateLessonEndpoint`), which also enforce
- * an explicit admin check at entry. Payload's built-in duplicate we're
- * replacing was gated by the collection's `update: isAdminOrOwner` access;
- * we tighten that to admin-only here to keep parity with the other two
- * duplicate endpoints (and because `payload.create` is called with
- * `overrideAccess: true` for the section-clone step, which would otherwise
- * bypass every access rule downstream).
+ * Access: admin or advanced content editor. Matches the Exercises
+ * collection's own `isAdminOrOwner` update/delete rule, so callers who are
+ * authorised to modify exercises are also authorised to duplicate them —
+ * previously stricter (admin-only) which meant the studio Duplicate button
+ * silently 403'd for content editors even though they could edit the source.
+ *
+ * Note on `overrideAccess: true`: the section-clone helper below is called
+ * with overrideAccess so it can write across per-collection ownership
+ * checks (sections belonging to the same lesson may have different owners).
+ * This is intentional — an editor authorised to duplicate an exercise is
+ * implicitly authorised to create the child sections needed to represent
+ * the copy, regardless of who owns each source section. The role check at
+ * entry is the gate that authorises the whole cascade.
  */
 import type { PayloadRequest } from 'payload'
 

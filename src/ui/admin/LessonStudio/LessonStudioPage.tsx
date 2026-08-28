@@ -246,14 +246,17 @@ export const LessonStudioPage: React.FC<LessonStudioPageProps> = ({ lessonId }) 
   )
 
   const handleDeleteSectionBlock = useCallback((sectionId: string, index: number) => {
-    // Authoritative empty-blocks guard: server ContentSchema requires
-    // blocks.length >= 1. Guard outside the setter (reading from the ref
-    // mirror so it's always fresh) instead of mutating a flag inside the
-    // updater — updaters must be pure. Under a rapid two-click sequence
-    // React batches both invocations; the second reads the ref updated
-    // synchronously by the first setter's commit-effect and correctly
-    // sees length=1 → returns early. Inner check inside the setter is
-    // defensive/idempotent, doesn't drive the dirty-flag decision.
+    // Two-layer empty-blocks guard:
+    //   1. Outer ref-check: fast path that avoids queuing a no-op setter for
+    //      sequential clicks (where the ref has been updated by the prior
+    //      commit's useEffect at line 80-82).
+    //   2. Inner setter-check: the AUTHORITATIVE race-safe guard. `useEffect`
+    //      runs post-commit asynchronously, so two clicks in the same tick
+    //      both see the stale ref. React batches, both queue splice — only
+    //      the inner check catches the second one (`cur.length <= 1` returns
+    //      prev, no-op).
+    // Server ContentSchema requires blocks.length >= 1; leaving it at 0
+    // would 400 every future Save All and lock the section forever.
     const current = sectionBlocksRef.current[sectionId]
     if (!current || current.length <= 1) return
     setSectionBlocks((prev) => {
@@ -367,9 +370,10 @@ export const LessonStudioPage: React.FC<LessonStudioPageProps> = ({ lessonId }) 
         return
       // Snapshot the child section ids BEFORE the delete + refetch — after
       // refetch the tree no longer knows about the deleted exercise, so we'd
-      // lose the ability to evict them. Any of these that were dirty become
-      // ghosts the dirty-aware seed effect happily preserves, which then
-      // makes Save All PATCH a deleted section forever (404).
+      // lose the ability to evict them from local state. Any of these that
+      // were dirty become ghosts the dirty-aware seed effect happily
+      // preserves, which then makes Save All PATCH a deleted section
+      // forever (404).
       const childSectionIds: string[] = []
       const treeSnapshot = treeRef.current
       if (treeSnapshot) {
@@ -377,7 +381,27 @@ export const LessonStudioPage: React.FC<LessonStudioPageProps> = ({ lessonId }) 
         if (parent) for (const s of parent.sections) childSectionIds.push(s.id)
       }
 
-      const ok = await runRowOp(`delete-exercise:${exerciseId}`, () => deleteExercise(exerciseId))
+      // Cascade-delete every child section BEFORE deleting the parent
+      // exercise. Payload's Exercises afterDelete hook only unwires the
+      // exerciseRef from lesson.blocks — it does NOT delete child section
+      // docs. Without this pre-step the confirm ("Delete exercise and all
+      // of its sections?") would be a lie: sections stay in the DB with
+      // a dangling `exercise` FK pointing at a deleted doc, permanent
+      // orphans that pollute reports and per-tenant queries.
+      const ok = await runRowOp(`delete-exercise:${exerciseId}`, async () => {
+        for (const childId of childSectionIds) {
+          try {
+            await deleteSection(childId)
+          } catch (err) {
+            // Log per-child failure but keep going — a stuck section
+            // shouldn't block the whole delete. Whatever survives becomes
+            // an orphan that a follow-up cleanup pass can catch.
+            // eslint-disable-next-line no-console
+            console.warn(`[studio] failed to delete child section ${childId}:`, err)
+          }
+        }
+        await deleteExercise(exerciseId)
+      })
       if (!ok) return
 
       // Cascade the ghost cleanup: the parent exercise + every child section
@@ -532,7 +556,7 @@ export const LessonStudioPage: React.FC<LessonStudioPageProps> = ({ lessonId }) 
           </div>
         )}
         {actionError && (
-          <div className="studio-refetch-warning" role="alert">
+          <div className="studio-action-error" role="alert">
             {actionError}
             <button
               type="button"

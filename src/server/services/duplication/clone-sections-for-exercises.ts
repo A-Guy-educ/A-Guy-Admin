@@ -27,6 +27,8 @@
  */
 import type { Payload, PayloadRequest } from 'payload'
 
+import { regenerateBlockIds } from './regenerate-block-ids'
+
 interface BlockRef {
   id?: string
   blockType?: string
@@ -192,6 +194,12 @@ export async function cloneSectionsAndRewireExercises(
 
       const newSectionData: Record<string, unknown> = {
         ...rest,
+        // Regenerate every per-doc id inside content.blocks (top-level block
+        // ids + nested option/hotspot/graph ids). Otherwise the clone carries
+        // the source's ids verbatim, violating per-doc uniqueness assumptions
+        // that per-block progress / analytics / media joins rely on. Shared
+        // helper — same regen logic the studio duplicate-section endpoint runs.
+        content: regenerateBlockIds((rest as { content?: unknown }).content),
         exercise: pair.newExerciseId,
         lesson: pair.newLessonId,
         chapter: pair.newChapterId,

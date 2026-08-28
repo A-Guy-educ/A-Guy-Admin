@@ -19,7 +19,11 @@ interface PlaylistEntry {
 }
 
 function parsePlaylist(raw: unknown): PlaylistEntry[] {
-  if (Array.isArray(raw)) return raw as PlaylistEntry[]
+  // Always return a fresh array — caller mutates via splice, so returning
+  // the input array directly would silently mutate whatever Payload handed
+  // us (potentially a request-cache reference). Matches the codebase's
+  // Immutability rule (see .claude/rules/coding-style.md).
+  if (Array.isArray(raw)) return [...(raw as PlaylistEntry[])]
   if (typeof raw === 'string' && raw.trim()) {
     try {
       const parsed = JSON.parse(raw)
