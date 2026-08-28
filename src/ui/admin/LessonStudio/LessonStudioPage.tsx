@@ -96,6 +96,15 @@ export const LessonStudioPage: React.FC<LessonStudioPageProps> = ({ lessonId }) 
     dirtyExerciseIdsRef.current = dirtyExerciseIds
   }, [dirtyExerciseIds])
 
+  // Ref mirror of the tree so delete-cascade handlers can look up a deleted
+  // exercise's child section ids WITHOUT taking `tree` as a useCallback dep
+  // (which would recreate every handler on every tree change and thrash
+  // memoization). Read-only — the seed effect owns tree writes.
+  const treeRef = useRef(tree)
+  useEffect(() => {
+    treeRef.current = tree
+  }, [tree])
+
   useEffect(() => {
     if (!tree) return
     // Dirty-aware seed. Fires both on initial load AND on `refetch()` after
@@ -268,22 +277,31 @@ export const LessonStudioPage: React.FC<LessonStudioPageProps> = ({ lessonId }) 
     })
   }, [])
 
+  // In-flight tracking uses a REF for the source-of-truth check so the
+  // "is this key already pending?" test is synchronous and doesn't rely on
+  // a state updater side-effect (React requires updater functions to be pure
+  // and StrictMode / concurrent mode will invoke them multiple times). The
+  // ref stays in sync via its own effect below. `setPendingRowOps` is still
+  // called so React re-renders and the row buttons re-evaluate their disabled
+  // state; the ref is the authoritative gate.
+  const pendingRowOpsRef = useRef(pendingRowOps)
+  useEffect(() => {
+    pendingRowOpsRef.current = pendingRowOps
+  }, [pendingRowOps])
+
   // Wrap a row-scoped async op with (a) an in-flight guard so double-clicks
   // don't fire twice, (b) a try/catch that surfaces the error via
   // `actionError` instead of throwing into the void. `key` identifies the
   // operation; typically "delete-section:<id>" or "duplicate-exercise:<id>".
   const runRowOp = useCallback(async (key: string, op: () => Promise<void>): Promise<boolean> => {
-    let alreadyPending = false
-    setPendingRowOps((prev) => {
-      if (prev.has(key)) {
-        alreadyPending = true
-        return prev
-      }
-      const next = new Set(prev)
-      next.add(key)
-      return next
-    })
-    if (alreadyPending) return false
+    if (pendingRowOpsRef.current.has(key)) return false
+    // Optimistically update the ref so a rapid second call sees the guard
+    // before React commits. The state update below is what causes the row
+    // buttons to actually disable in the UI.
+    const nextRef = new Set(pendingRowOpsRef.current)
+    nextRef.add(key)
+    pendingRowOpsRef.current = nextRef
+    setPendingRowOps(nextRef)
     setActionError(null)
     try {
       await op()
@@ -292,12 +310,10 @@ export const LessonStudioPage: React.FC<LessonStudioPageProps> = ({ lessonId }) 
       setActionError(err instanceof Error ? err.message : 'Action failed')
       return false
     } finally {
-      setPendingRowOps((prev) => {
-        if (!prev.has(key)) return prev
-        const next = new Set(prev)
-        next.delete(key)
-        return next
-      })
+      const afterRef = new Set(pendingRowOpsRef.current)
+      afterRef.delete(key)
+      pendingRowOpsRef.current = afterRef
+      setPendingRowOps(afterRef)
     }
   }, [])
 
@@ -338,11 +354,24 @@ export const LessonStudioPage: React.FC<LessonStudioPageProps> = ({ lessonId }) 
         )
       )
         return
+      // Snapshot the child section ids BEFORE the delete + refetch — after
+      // refetch the tree no longer knows about the deleted exercise, so we'd
+      // lose the ability to evict them. Any of these that were dirty become
+      // ghosts the dirty-aware seed effect happily preserves, which then
+      // makes Save All PATCH a deleted section forever (404).
+      const childSectionIds: string[] = []
+      const treeSnapshot = treeRef.current
+      if (treeSnapshot) {
+        const parent = treeSnapshot.exercises.find((e) => e.id === exerciseId)
+        if (parent) for (const s of parent.sections) childSectionIds.push(s.id)
+      }
+
       const ok = await runRowOp(`delete-exercise:${exerciseId}`, () => deleteExercise(exerciseId))
       if (!ok) return
-      // Same dirty-ghost cleanup as section delete. Child section dirty ids
-      // get evicted by the seed effect naturally on refetch (they're not in
-      // the incoming tree and their exercise isn't a dirty exercise-level).
+
+      // Cascade the ghost cleanup: the parent exercise + every child section
+      // that lived under it. Missing any of them recreates the CRITICAL
+      // dirty-ghost bug for the cascade case.
       setDirtyExerciseIds((prev) => {
         if (!prev.has(exerciseId)) return prev
         const next = new Set(prev)
@@ -355,6 +384,27 @@ export const LessonStudioPage: React.FC<LessonStudioPageProps> = ({ lessonId }) 
         void _dropped
         return rest
       })
+      if (childSectionIds.length > 0) {
+        setDirtySectionIds((prev) => {
+          let changed = false
+          const next = new Set(prev)
+          for (const id of childSectionIds) {
+            if (next.delete(id)) changed = true
+          }
+          return changed ? next : prev
+        })
+        setSectionBlocks((prev) => {
+          let changed = false
+          const next: Record<string, ContentBlock[]> = { ...prev }
+          for (const id of childSectionIds) {
+            if (id in next) {
+              delete next[id]
+              changed = true
+            }
+          }
+          return changed ? next : prev
+        })
+      }
       await refetch()
     },
     [refetch, runRowOp],
@@ -372,10 +422,22 @@ export const LessonStudioPage: React.FC<LessonStudioPageProps> = ({ lessonId }) 
 
   const handleDuplicateExercise = useCallback(
     async (exerciseId: string) => {
-      const ok = await runRowOp(`duplicate-exercise:${exerciseId}`, () =>
-        duplicateExercise(exerciseId, lessonId).then(() => undefined),
-      )
-      if (ok) await refetch()
+      let repositioned = true
+      const ok = await runRowOp(`duplicate-exercise:${exerciseId}`, async () => {
+        const result = await duplicateExercise(exerciseId, lessonId)
+        repositioned = result.repositioned
+      })
+      if (!ok) return
+      // Surface the "landed at end instead of right below" case so the
+      // button title's promise ("creates a copy right below this one")
+      // stays honest. Non-blocking — refetch still runs and the copy
+      // shows wherever the server placed it.
+      if (!repositioned) {
+        setActionError(
+          "Exercise duplicated, but couldn't be moved right below the source — the copy is at the end of the list.",
+        )
+      }
+      await refetch()
     },
     [lessonId, refetch, runRowOp],
   )

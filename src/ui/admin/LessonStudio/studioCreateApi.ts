@@ -74,13 +74,16 @@ export function duplicateSection(sectionId: string): Promise<CreateResponse> {
  * Duplicate an exercise — uses the existing prod deep-clone endpoint
  * (`/api/exercises/:id/duplicate-exercise`, which also clones sections) and
  * then reorders the parent lesson's playlist so the new exercise sits right
- * after the source. Two calls in sequence; if the reorder fails the new
- * exercise still exists but at the end of the list.
+ * after the source. Returns `repositioned: false` when the deep clone
+ * succeeded but the reorder failed, so the caller can surface the "the copy
+ * landed at the end of the list, not right below" state to the admin
+ * instead of silently misleading them (the button says "creates a copy
+ * right below this one" and would otherwise be a lie).
  */
 export async function duplicateExercise(
   exerciseId: string,
   lessonId: string,
-): Promise<{ id: string }> {
+): Promise<{ id: string; repositioned: boolean }> {
   const dupRes = await fetch(`/api/exercises/${exerciseId}/duplicate-exercise`, {
     method: 'POST',
     credentials: 'include',
@@ -91,17 +94,18 @@ export async function duplicateExercise(
     throw new Error(await extractPayloadError(dupRes, `Duplicate failed: ${dupRes.status}`))
   }
   const { outputExerciseId } = (await dupRes.json()) as { outputExerciseId: string }
-  // Best-effort reorder — if it fails, the new exercise still landed and
-  // the admin can just drag it. Not worth throwing here.
+  let repositioned = true
   try {
     await postJson(`/api/studio/lessons/${lessonId}/reorder-exercises`, {
       movedExerciseId: outputExerciseId,
       insertAfterExerciseId: exerciseId,
     })
   } catch {
-    // ignore
+    // Deep clone landed; only the positioning failed. Caller decides how
+    // to notify — the copy is at the end of the lesson's exercise list.
+    repositioned = false
   }
-  return { id: outputExerciseId }
+  return { id: outputExerciseId, repositioned }
 }
 
 // ---- DELETE -------------------------------------------------------------

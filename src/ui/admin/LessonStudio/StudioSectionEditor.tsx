@@ -86,22 +86,30 @@ export const StudioSectionEditor: React.FC<StudioSectionEditorProps> = ({
       <div className="studio-section-blocks">
         {blocks.map((block, index) => {
           const handleChange = (updated: ContentBlock) => onBlockChange(sectionId, index, updated)
-          const handleDelete = () => onDeleteBlock(sectionId, index)
+          // Guard: server-side ContentSchema requires blocks.length >= 1.
+          // Deleting the last block would land the section in an unsavable
+          // state (Save All 400s and dirty flag never clears). Hide/disable
+          // the delete X when there's only one block; admin can add another
+          // first if they really want to replace the last one.
+          const canDeleteBlock = blocks.length > 1
+          const handleDelete = canDeleteBlock ? () => onDeleteBlock(sectionId, index) : undefined
           return (
             <div key={block.id || `block-${index}`} className="studio-block-item">
               {viewMode === 'document' ? (
                 <StudioDocBlock block={block} onChange={handleChange} onDelete={handleDelete} />
               ) : (
                 <div className="studio-edit-block-wrapper">
-                  <button
-                    type="button"
-                    className="studio-block-delete-btn"
-                    onClick={handleDelete}
-                    title="Delete this block"
-                    aria-label="Delete block"
-                  >
-                    ×
-                  </button>
+                  {canDeleteBlock && (
+                    <button
+                      type="button"
+                      className="studio-block-delete-btn"
+                      onClick={handleDelete}
+                      title="Delete this block"
+                      aria-label="Delete block"
+                    >
+                      ×
+                    </button>
+                  )}
                   <LazyInlineBlockEditor block={block} onChange={handleChange} />
                 </div>
               )}

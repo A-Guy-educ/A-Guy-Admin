@@ -115,7 +115,13 @@ export const StudioExerciseCard: React.FC<StudioExerciseCardProps> = ({
               {exerciseBlocks.map((block, blockIndex) => {
                 const handleChange = (updated: ContentBlock) =>
                   onExerciseBlockChange(exercise.id, blockIndex, updated)
-                const handleDelete = () => onDeleteExerciseBlock(exercise.id, blockIndex)
+                // See StudioSectionEditor for the same guard rationale — the
+                // ContentSchema requires >=1 block, so we don't offer a delete
+                // affordance when it'd empty the array and lock save-all.
+                const canDeleteBlock = exerciseBlocks.length > 1
+                const handleDelete = canDeleteBlock
+                  ? () => onDeleteExerciseBlock(exercise.id, blockIndex)
+                  : undefined
                 return (
                   <div key={block.id || `block-${blockIndex}`} className="studio-block-item">
                     {viewMode === 'document' ? (
@@ -126,15 +132,17 @@ export const StudioExerciseCard: React.FC<StudioExerciseCardProps> = ({
                       />
                     ) : (
                       <div className="studio-edit-block-wrapper">
-                        <button
-                          type="button"
-                          className="studio-block-delete-btn"
-                          onClick={handleDelete}
-                          title="Delete this block"
-                          aria-label="Delete block"
-                        >
-                          ×
-                        </button>
+                        {canDeleteBlock && (
+                          <button
+                            type="button"
+                            className="studio-block-delete-btn"
+                            onClick={handleDelete}
+                            title="Delete this block"
+                            aria-label="Delete block"
+                          >
+                            ×
+                          </button>
+                        )}
                         <LazyInlineBlockEditor block={block} onChange={handleChange} />
                       </div>
                     )}

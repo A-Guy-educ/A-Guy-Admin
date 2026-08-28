@@ -114,13 +114,22 @@ export async function duplicateSectionEndpoint(req: PayloadRequest): Promise<Res
   // ids into the copy, making them non-unique across sections. Any code
   // that ever keys on block id assuming per-lesson uniqueness (per-block
   // progress, analytics, media joins) would silently break.
+  //
+  // question_multi_axis blocks also carry nested `graphs[].id` values that
+  // are generated per-doc by the factory, so those are regenerated too.
   const rawContent = (rest as { content?: { blocks?: unknown } }).content
   if (rawContent && Array.isArray(rawContent.blocks)) {
     rawContent.blocks = rawContent.blocks.map((block) => {
-      if (block && typeof block === 'object') {
-        return { ...(block as Record<string, unknown>), id: generateId() }
+      if (!block || typeof block !== 'object') return block
+      const b = block as Record<string, unknown>
+      const cloned: Record<string, unknown> = { ...b, id: generateId() }
+      if (b.type === 'question_multi_axis' && Array.isArray(b.graphs)) {
+        cloned.graphs = (b.graphs as Record<string, unknown>[]).map((graph) => ({
+          ...graph,
+          id: generateId(),
+        }))
       }
-      return block
+      return cloned
     })
   }
 
