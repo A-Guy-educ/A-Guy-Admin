@@ -634,3 +634,166 @@
     background-position: -200% 0%;
   }
 }
+
+/* ==========================================================================
+   Create affordances — "+ Add block / section / exercise" buttons that live
+   inline in the document flow. Kept ghost-styled so they don't compete with
+   real content, then upgrade to solid on hover.
+   ========================================================================== */
+
+.studio-add-block-row,
+.studio-add-section-row,
+.studio-add-exercise-row {
+  padding: 4px 0;
+}
+
+.studio-add-block-row {
+  padding-top: 6px;
+}
+
+.studio-add-section-row {
+  padding: 12px 0 4px;
+}
+
+.studio-add-exercise-row {
+  padding: 32px 0 8px;
+  border-top: 1px dashed var(--theme-elevation-150);
+  margin-top: 8px;
+}
+
+.studio-add-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.studio-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--theme-elevation-500);
+  background: transparent;
+  border: 1px dashed var(--theme-elevation-200);
+  border-radius: 4px;
+  cursor: pointer;
+  transition:
+    background 0.12s,
+    border-color 0.12s,
+    color 0.12s;
+}
+
+.studio-add-btn:hover {
+  background: var(--theme-elevation-50);
+  border-color: var(--theme-success-500);
+  color: var(--theme-success-600, var(--theme-success-500));
+}
+
+.studio-add-btn:focus-visible {
+  outline: none;
+  border-color: var(--theme-success-500);
+  box-shadow: 0 0 0 2px var(--theme-success-500);
+}
+
+.studio-add-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 180px;
+  z-index: 30;
+  background: var(--theme-elevation-0);
+  border: 1px solid var(--theme-elevation-200);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  padding: 4px 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.studio-add-menu-item {
+  text-align: left;
+  padding: 6px 12px;
+  font-size: 13px;
+  color: var(--theme-text);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.studio-add-menu-item:hover {
+  background: var(--theme-elevation-50);
+  color: var(--theme-success-600, var(--theme-success-500));
+}
+
+/* Inline "+ add" form (name input + submit + cancel) */
+.studio-add-form {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.studio-add-input {
+  padding: 4px 8px;
+  font-size: 13px;
+  color: var(--theme-text);
+  background: var(--theme-elevation-0);
+  border: 1px solid var(--theme-elevation-200);
+  border-radius: 4px;
+  min-width: 220px;
+}
+
+.studio-add-input:focus {
+  outline: none;
+  border-color: var(--theme-success-500);
+  box-shadow: 0 0 0 2px var(--theme-success-100, var(--theme-elevation-100));
+}
+
+.studio-add-submit-btn {
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--theme-base-0);
+  background: var(--theme-success-500);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.studio-add-submit-btn:hover {
+  background: var(--theme-success-600);
+}
+
+.studio-add-submit-btn:disabled {
+  background: var(--theme-elevation-200);
+  cursor: not-allowed;
+}
+
+.studio-add-cancel-btn {
+  padding: 4px 10px;
+  font-size: 12px;
+  color: var(--theme-elevation-500);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.studio-add-cancel-btn:hover {
+  color: var(--theme-text);
+}
+
+.studio-add-error {
+  font-size: 12px;
+  color: var(--theme-error-500);
+  margin-inline-start: 4px;
+}
+
+/* Inline warning for background-refetch failures. Sits below the toolbar so
+   the studio stays mounted and the admin can dismiss + reload on their own. */
+.studio-refetch-warning {
+  padding: 8px 24px;
+  font-size: 13px;
+  color: var(--theme-warning-700, var(--theme-warning-500));
+  background: var(--theme-warning-100, var(--theme-elevation-50));
+  border-bottom: 1px solid var(--theme-warning-300, var(--theme-elevation-200));
+}

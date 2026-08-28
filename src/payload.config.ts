@@ -63,6 +63,8 @@ import { duplicateCourseEndpoint } from '@/server/payload/endpoints/courses/dupl
 import { duplicateExerciseEndpoint } from '@/server/payload/endpoints/exercises/duplicate'
 import { duplicateLessonEndpoint } from '@/server/payload/endpoints/lessons/duplicate'
 import { exportLessonEndpoint } from '@/server/payload/endpoints/lessons/export'
+import { createExerciseEndpoint } from '@/server/payload/endpoints/studio/create-exercise'
+import { createSectionEndpoint } from '@/server/payload/endpoints/studio/create-section'
 import { lessonTreeEndpoint } from '@/server/payload/endpoints/studio/lesson-tree'
 import { defaultLexical } from '@/server/payload/fields/defaultLexical'
 import { lessonDuplicationTask } from '@/server/payload/jobs/lesson-duplication-task'
@@ -410,6 +412,16 @@ export default buildConfig({
       path: '/studio/lessons/:id/tree',
       method: 'get',
       handler: (req: PayloadRequest) => lessonTreeEndpoint(req),
+    },
+    {
+      path: '/studio/lessons/:lessonId/exercises',
+      method: 'post',
+      handler: (req: PayloadRequest) => createExerciseEndpoint(req),
+    },
+    {
+      path: '/studio/exercises/:exerciseId/sections',
+      method: 'post',
+      handler: (req: PayloadRequest) => createSectionEndpoint(req),
     },
   ],
   jobs: {

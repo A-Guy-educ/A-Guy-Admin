@@ -3,8 +3,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ContentBlock } from '@/server/payload/collections/Exercises/types'
 
+import { AddChildButton } from './AddChildButton'
 import { StudioExerciseCard } from './StudioExerciseCard'
 import { StudioToolbar } from './StudioToolbar'
+import { createExerciseUnderLesson, createSectionUnderExercise } from './studioCreateApi'
 import { useStudioSave, type DirtyEntry } from './useStudioSave'
 import { useStudioTree } from './useStudioTree'
 import { readStoredViewMode, writeStoredViewMode, type StudioViewMode } from './viewMode'
@@ -29,7 +31,7 @@ interface LessonStudioPageProps {
  * alongside section edits.
  */
 export const LessonStudioPage: React.FC<LessonStudioPageProps> = ({ lessonId }) => {
-  const { tree, loading, error } = useStudioTree(lessonId)
+  const { tree, loading, error, refetchError, refetch } = useStudioTree(lessonId)
   const { saving, errors, saveAll } = useStudioSave()
   const [viewMode, setViewMode] = useState<StudioViewMode>('document')
 
@@ -67,23 +69,74 @@ export const LessonStudioPage: React.FC<LessonStudioPageProps> = ({ lessonId }) 
     exerciseBlocksRef.current = exerciseBlocks
   }, [exerciseBlocks])
 
+  // Refs mirror dirty sets so the seed effect can read "is this id dirty?"
+  // without listing dirty state in its dep array (which would re-seed on
+  // every edit — wrong). Refs stay in sync via their own effects below.
+  const dirtySectionIdsRef = useRef(dirtySectionIds)
+  const dirtyExerciseIdsRef = useRef(dirtyExerciseIds)
+  useEffect(() => {
+    dirtySectionIdsRef.current = dirtySectionIds
+  }, [dirtySectionIds])
+  useEffect(() => {
+    dirtyExerciseIdsRef.current = dirtyExerciseIds
+  }, [dirtyExerciseIds])
+
   useEffect(() => {
     if (!tree) return
-    const seededSections: Record<string, ContentBlock[]> = {}
-    const seededExercises: Record<string, ContentBlock[]> = {}
+    // Dirty-aware seed. Fires both on initial load AND on `refetch()` after
+    // an add-child mutation.
+    //   - Non-dirty ids: overwrite from server. This absorbs server-side
+    //     normalizations (afterChange hooks, denorm backfills) and any
+    //     concurrent updates from another admin session.
+    //   - Dirty ids: preserve local state so in-progress edits aren't wiped.
+    //     Save-all commits them; then dirty clears via ref-comparison in
+    //     handleSaveAll and the next refetch absorbs the server copy.
+    //   - Ids we don't have local state for: seed from server (new sections
+    //     created via +Add, or first mount).
+    const dirtySections = dirtySectionIdsRef.current
+    const dirtyExercises = dirtyExerciseIdsRef.current
+
+    const presentSectionIds = new Set<string>()
+    const presentExerciseIds = new Set<string>()
     for (const exercise of tree.exercises) {
-      if (exercise.blocks.length > 0) {
-        // Deep clone so edits don't leak back into the tree response.
-        seededExercises[exercise.id] = JSON.parse(JSON.stringify(exercise.blocks))
-      }
-      for (const section of exercise.sections) {
-        seededSections[section.id] = JSON.parse(JSON.stringify(section.blocks))
-      }
+      presentExerciseIds.add(exercise.id)
+      for (const section of exercise.sections) presentSectionIds.add(section.id)
     }
-    setSectionBlocks(seededSections)
-    setExerciseBlocks(seededExercises)
-    setDirtySectionIds(new Set())
-    setDirtyExerciseIds(new Set())
+
+    setSectionBlocks((prev) => {
+      const next: Record<string, ContentBlock[]> = {}
+      // Evict keys that vanished from the server. Preserve dirty entries even
+      // if they've disappeared server-side — save-all will surface a 404 and
+      // the admin can decide what to do rather than us silently losing edits.
+      for (const [id, blocks] of Object.entries(prev)) {
+        if (presentSectionIds.has(id) || dirtySections.has(id)) {
+          next[id] = blocks
+        }
+      }
+      for (const exercise of tree.exercises) {
+        for (const section of exercise.sections) {
+          if (!dirtySections.has(section.id) || !(section.id in next)) {
+            next[section.id] = JSON.parse(JSON.stringify(section.blocks))
+          }
+        }
+      }
+      return next
+    })
+    setExerciseBlocks((prev) => {
+      const next: Record<string, ContentBlock[]> = {}
+      for (const [id, blocks] of Object.entries(prev)) {
+        if (presentExerciseIds.has(id) || dirtyExercises.has(id)) {
+          next[id] = blocks
+        }
+      }
+      for (const exercise of tree.exercises) {
+        if (exercise.blocks.length === 0) continue
+        if (!dirtyExercises.has(exercise.id) || !(exercise.id in next)) {
+          next[exercise.id] = JSON.parse(JSON.stringify(exercise.blocks))
+        }
+      }
+      return next
+    })
   }, [tree])
 
   const handleSectionBlockChange = useCallback(
@@ -122,6 +175,50 @@ export const LessonStudioPage: React.FC<LessonStudioPageProps> = ({ lessonId }) 
       })
     },
     [],
+  )
+
+  const handleAddSectionBlock = useCallback((sectionId: string, block: ContentBlock) => {
+    // Seed an empty array first if the section wasn't in the map (edge case
+    // for a section that had zero blocks at load time).
+    setSectionBlocks((prev) => {
+      const current = prev[sectionId] ?? []
+      return { ...prev, [sectionId]: [...current, block] }
+    })
+    setDirtySectionIds((prev) => {
+      if (prev.has(sectionId)) return prev
+      const next = new Set(prev)
+      next.add(sectionId)
+      return next
+    })
+  }, [])
+
+  const handleAddExerciseBlock = useCallback((exerciseId: string, block: ContentBlock) => {
+    setExerciseBlocks((prev) => {
+      const current = prev[exerciseId] ?? []
+      return { ...prev, [exerciseId]: [...current, block] }
+    })
+    setDirtyExerciseIds((prev) => {
+      if (prev.has(exerciseId)) return prev
+      const next = new Set(prev)
+      next.add(exerciseId)
+      return next
+    })
+  }, [])
+
+  const handleAddSection = useCallback(
+    async (exerciseId: string, title: string) => {
+      await createSectionUnderExercise(exerciseId, title)
+      await refetch()
+    },
+    [refetch],
+  )
+
+  const handleAddExercise = useCallback(
+    async (title: string) => {
+      await createExerciseUnderLesson(lessonId, title)
+      await refetch()
+    },
+    [lessonId, refetch],
   )
 
   const dirtyEntries = useMemo<DirtyEntry[]>(() => {
@@ -196,25 +293,44 @@ export const LessonStudioPage: React.FC<LessonStudioPageProps> = ({ lessonId }) 
           onViewModeChange={handleViewModeChange}
         />
 
+        {refetchError && (
+          <div className="studio-refetch-warning" role="status">
+            Couldn&apos;t refresh the lesson tree: {refetchError}. Any change you just made may
+            still have landed on the server — reload the page to see the latest.
+          </div>
+        )}
+
         <main className="studio-content">
           {tree.exercises.length === 0 ? (
             <div className="studio-empty studio-empty-big">This lesson has no exercises yet.</div>
           ) : (
-            tree.exercises.map((exercise, index) => (
-              <StudioExerciseCard
-                key={exercise.id}
-                index={index}
-                exercise={exercise}
-                sectionBlocksById={sectionBlocks}
-                exerciseBlocksById={exerciseBlocks}
-                dirtySectionIds={dirtySectionIds}
-                dirtyExerciseIds={dirtyExerciseIds}
-                onSectionBlockChange={handleSectionBlockChange}
-                onExerciseBlockChange={handleExerciseBlockChange}
-                viewMode={viewMode}
-              />
-            ))
+            <>
+              {tree.exercises.map((exercise, index) => (
+                <StudioExerciseCard
+                  key={exercise.id}
+                  index={index}
+                  exercise={exercise}
+                  sectionBlocksById={sectionBlocks}
+                  exerciseBlocksById={exerciseBlocks}
+                  dirtySectionIds={dirtySectionIds}
+                  dirtyExerciseIds={dirtyExerciseIds}
+                  onSectionBlockChange={handleSectionBlockChange}
+                  onExerciseBlockChange={handleExerciseBlockChange}
+                  onAddSectionBlock={handleAddSectionBlock}
+                  onAddExerciseBlock={handleAddExerciseBlock}
+                  onAddSection={handleAddSection}
+                  viewMode={viewMode}
+                />
+              ))}
+            </>
           )}
+          <div className="studio-add-exercise-row">
+            <AddChildButton
+              label="Add exercise"
+              placeholder="Exercise title"
+              onSubmit={handleAddExercise}
+            />
+          </div>
         </main>
       </div>
     </EditorChromeProvider>
