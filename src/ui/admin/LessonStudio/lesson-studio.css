@@ -797,3 +797,117 @@
   background: var(--theme-warning-100, var(--theme-elevation-50));
   border-bottom: 1px solid var(--theme-warning-300, var(--theme-elevation-200));
 }
+
+/* ==========================================================================
+   Row toolbars (section/exercise header) — Duplicate / Delete / Open buttons
+   ========================================================================== */
+
+.studio-row-toolbar {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-inline-start: auto;
+}
+
+.studio-row-btn {
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--theme-elevation-600);
+  background: transparent;
+  border: 1px solid var(--theme-elevation-200);
+  border-radius: 4px;
+  cursor: pointer;
+  transition:
+    background 0.12s,
+    color 0.12s,
+    border-color 0.12s;
+}
+
+.studio-row-btn:hover {
+  background: var(--theme-elevation-50);
+  color: var(--theme-text);
+  border-color: var(--theme-elevation-300);
+}
+
+.studio-row-btn--danger:hover {
+  color: var(--theme-error-500);
+  border-color: var(--theme-error-500);
+  background: var(--theme-error-50, var(--theme-elevation-50));
+}
+
+/* ==========================================================================
+   Delete X on individual blocks — sits at the top-right of each block wrapper.
+   In edit mode it's inside a wrapping div; in doc mode it's absolute over the
+   StudioDocBlock and only visible on hover so the read view stays clean.
+   ========================================================================== */
+
+.studio-edit-block-wrapper {
+  position: relative;
+}
+
+.studio-block-delete-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--theme-elevation-500);
+  background: var(--theme-elevation-0);
+  border: 1px solid var(--theme-elevation-200);
+  border-radius: 50%;
+  cursor: pointer;
+  transition:
+    background 0.12s,
+    color 0.12s,
+    border-color 0.12s;
+}
+
+.studio-block-delete-btn:hover {
+  color: var(--theme-error-500);
+  border-color: var(--theme-error-500);
+  background: var(--theme-error-50, var(--theme-elevation-50));
+}
+
+/* Edit-mode wrapper: X sits at the top-right of the whole editor. Absolute
+   so it doesn't shift editor layout. */
+.studio-edit-block-wrapper .studio-block-delete-btn {
+  position: absolute;
+  top: 4px;
+  inset-inline-end: 4px;
+  z-index: 5;
+  opacity: 0;
+  transition:
+    opacity 0.12s,
+    background 0.12s,
+    color 0.12s,
+    border-color 0.12s;
+}
+
+.studio-edit-block-wrapper:hover .studio-block-delete-btn,
+.studio-edit-block-wrapper:focus-within .studio-block-delete-btn {
+  opacity: 1;
+}
+
+/* Doc-mode variant: absolute in the block chrome, hover-visible. */
+.studio-block-delete-btn--doc {
+  position: absolute;
+  top: 4px;
+  inset-inline-end: 4px;
+  z-index: 5;
+  opacity: 0;
+  transition:
+    opacity 0.12s,
+    background 0.12s,
+    color 0.12s,
+    border-color 0.12s;
+}
+
+.studio-doc-block:hover .studio-block-delete-btn--doc,
+.studio-doc-block:focus-within .studio-block-delete-btn--doc {
+  opacity: 1;
+}

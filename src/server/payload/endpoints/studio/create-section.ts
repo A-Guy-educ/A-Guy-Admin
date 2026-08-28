@@ -20,6 +20,8 @@ import { addDataAndFileToRequest } from 'payload'
 import { AccountRole, isAdvancedContentEditor } from '@/infra/auth/roles'
 import { DEFAULT_CONTENT } from '@/server/payload/collections/Sections/defaults'
 
+import { insertPlaylistRefAfter } from './reorder-playlist'
+
 interface ExerciseParent {
   id: string
   lesson?: string | { id?: string } | null
@@ -62,9 +64,10 @@ export async function createSectionEndpoint(req: PayloadRequest): Promise<Respon
   }
 
   await addDataAndFileToRequest(req)
-  const body = (req as unknown as { data?: { title?: unknown } }).data ?? {}
+  const body = (req as unknown as { data?: { title?: unknown; insertAfter?: unknown } }).data ?? {}
   const rawTitle = typeof body.title === 'string' ? body.title.trim() : ''
   const title = rawTitle.length > 0 ? rawTitle : 'Untitled section'
+  const insertAfter = typeof body.insertAfter === 'string' ? body.insertAfter : undefined
 
   let parent: ExerciseParent
   try {
@@ -108,6 +111,32 @@ export async function createSectionEndpoint(req: PayloadRequest): Promise<Respon
         content: DEFAULT_CONTENT(),
       } as never,
     })
+    // Position the new sectionRef right after the caller-chosen sibling, if
+    // one was supplied. The Sections afterChange hook already appended the
+    // ref to the end of the parent exercise's `blocks` playlist — this moves
+    // it. Failures here don't rollback the create (section already exists);
+    // we log and continue so the admin at least sees the new section, just
+    // in the wrong slot.
+    if (insertAfter) {
+      try {
+        await insertPlaylistRefAfter({
+          payload: req.payload,
+          req,
+          parentCollection: 'exercises',
+          parentId: exerciseId,
+          blockType: 'sectionRef',
+          refField: 'section',
+          movedRefId: created.id,
+          insertAfterRefId: insertAfter,
+        })
+      } catch (err) {
+        req.payload.logger.warn(
+          { err, exerciseId, newSectionId: created.id, insertAfter },
+          'studio: created section but failed to position it after sibling',
+        )
+      }
+    }
+
     return Response.json({ id: created.id, title }, { status: 201 })
   } catch (err) {
     // Never leak raw payload/mongo error messages to the client — they can

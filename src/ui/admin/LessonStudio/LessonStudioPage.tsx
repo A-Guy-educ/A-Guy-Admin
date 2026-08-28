@@ -6,7 +6,14 @@ import type { ContentBlock } from '@/server/payload/collections/Exercises/types'
 import { AddChildButton } from './AddChildButton'
 import { StudioExerciseCard } from './StudioExerciseCard'
 import { StudioToolbar } from './StudioToolbar'
-import { createExerciseUnderLesson, createSectionUnderExercise } from './studioCreateApi'
+import {
+  createExerciseUnderLesson,
+  createSectionUnderExercise,
+  deleteExercise,
+  deleteSection,
+  duplicateExercise,
+  duplicateSection,
+} from './studioCreateApi'
 import { useStudioSave, type DirtyEntry } from './useStudioSave'
 import { useStudioTree } from './useStudioTree'
 import { readStoredViewMode, writeStoredViewMode, type StudioViewMode } from './viewMode'
@@ -206,16 +213,90 @@ export const LessonStudioPage: React.FC<LessonStudioPageProps> = ({ lessonId }) 
   }, [])
 
   const handleAddSection = useCallback(
-    async (exerciseId: string, title: string) => {
-      await createSectionUnderExercise(exerciseId, title)
+    async (exerciseId: string, title: string, insertAfter?: string) => {
+      await createSectionUnderExercise(exerciseId, { title, insertAfter })
       await refetch()
     },
     [refetch],
   )
 
   const handleAddExercise = useCallback(
-    async (title: string) => {
-      await createExerciseUnderLesson(lessonId, title)
+    async (title: string, insertAfter?: string) => {
+      await createExerciseUnderLesson(lessonId, { title, insertAfter })
+      await refetch()
+    },
+    [lessonId, refetch],
+  )
+
+  const handleDeleteSectionBlock = useCallback((sectionId: string, index: number) => {
+    setSectionBlocks((prev) => {
+      const current = prev[sectionId]
+      if (!current) return prev
+      const next = [...current]
+      next.splice(index, 1)
+      return { ...prev, [sectionId]: next }
+    })
+    setDirtySectionIds((prev) => {
+      if (prev.has(sectionId)) return prev
+      const next = new Set(prev)
+      next.add(sectionId)
+      return next
+    })
+  }, [])
+
+  const handleDeleteExerciseBlock = useCallback((exerciseId: string, index: number) => {
+    setExerciseBlocks((prev) => {
+      const current = prev[exerciseId]
+      if (!current) return prev
+      const next = [...current]
+      next.splice(index, 1)
+      return { ...prev, [exerciseId]: next }
+    })
+    setDirtyExerciseIds((prev) => {
+      if (prev.has(exerciseId)) return prev
+      const next = new Set(prev)
+      next.add(exerciseId)
+      return next
+    })
+  }, [])
+
+  const handleDeleteSection = useCallback(
+    async (sectionId: string, sectionTitle: string) => {
+      // Confirm via a native prompt — matches the "maybe have a popup" ask
+      // without pulling in a modal component. Delete is destructive and
+      // Payload's afterDelete hook cleans up the parent playlist for us.
+      if (!window.confirm(`Delete section "${sectionTitle || 'Untitled Section'}"?`)) return
+      await deleteSection(sectionId)
+      await refetch()
+    },
+    [refetch],
+  )
+
+  const handleDeleteExercise = useCallback(
+    async (exerciseId: string, exerciseTitle: string) => {
+      if (
+        !window.confirm(
+          `Delete exercise "${exerciseTitle || 'Untitled Exercise'}" and all of its sections?`,
+        )
+      )
+        return
+      await deleteExercise(exerciseId)
+      await refetch()
+    },
+    [refetch],
+  )
+
+  const handleDuplicateSection = useCallback(
+    async (sectionId: string) => {
+      await duplicateSection(sectionId)
+      await refetch()
+    },
+    [refetch],
+  )
+
+  const handleDuplicateExercise = useCallback(
+    async (exerciseId: string) => {
+      await duplicateExercise(exerciseId, lessonId)
       await refetch()
     },
     [lessonId, refetch],
@@ -306,31 +387,50 @@ export const LessonStudioPage: React.FC<LessonStudioPageProps> = ({ lessonId }) 
           ) : (
             <>
               {tree.exercises.map((exercise, index) => (
-                <StudioExerciseCard
-                  key={exercise.id}
-                  index={index}
-                  exercise={exercise}
-                  sectionBlocksById={sectionBlocks}
-                  exerciseBlocksById={exerciseBlocks}
-                  dirtySectionIds={dirtySectionIds}
-                  dirtyExerciseIds={dirtyExerciseIds}
-                  onSectionBlockChange={handleSectionBlockChange}
-                  onExerciseBlockChange={handleExerciseBlockChange}
-                  onAddSectionBlock={handleAddSectionBlock}
-                  onAddExerciseBlock={handleAddExerciseBlock}
-                  onAddSection={handleAddSection}
-                  viewMode={viewMode}
-                />
+                <React.Fragment key={exercise.id}>
+                  <StudioExerciseCard
+                    index={index}
+                    exercise={exercise}
+                    sectionBlocksById={sectionBlocks}
+                    exerciseBlocksById={exerciseBlocks}
+                    dirtySectionIds={dirtySectionIds}
+                    dirtyExerciseIds={dirtyExerciseIds}
+                    onSectionBlockChange={handleSectionBlockChange}
+                    onExerciseBlockChange={handleExerciseBlockChange}
+                    onAddSectionBlock={handleAddSectionBlock}
+                    onAddExerciseBlock={handleAddExerciseBlock}
+                    onDeleteSectionBlock={handleDeleteSectionBlock}
+                    onDeleteExerciseBlock={handleDeleteExerciseBlock}
+                    onAddSection={handleAddSection}
+                    onDeleteSection={handleDeleteSection}
+                    onDeleteExercise={handleDeleteExercise}
+                    onDuplicateSection={handleDuplicateSection}
+                    onDuplicateExercise={handleDuplicateExercise}
+                    viewMode={viewMode}
+                  />
+                  {/* +Add exercise between this exercise and the next — same
+                      component that lives at the end of the list; passing
+                      insertAfter targets the placement server-side. */}
+                  <div className="studio-add-exercise-row">
+                    <AddChildButton
+                      label="Add exercise"
+                      placeholder="Exercise title"
+                      onSubmit={(title) => handleAddExercise(title, exercise.id)}
+                    />
+                  </div>
+                </React.Fragment>
               ))}
             </>
           )}
-          <div className="studio-add-exercise-row">
-            <AddChildButton
-              label="Add exercise"
-              placeholder="Exercise title"
-              onSubmit={handleAddExercise}
-            />
-          </div>
+          {tree.exercises.length === 0 && (
+            <div className="studio-add-exercise-row">
+              <AddChildButton
+                label="Add exercise"
+                placeholder="Exercise title"
+                onSubmit={(title) => handleAddExercise(title)}
+              />
+            </div>
+          )}
         </main>
       </div>
     </EditorChromeProvider>

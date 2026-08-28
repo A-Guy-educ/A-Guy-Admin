@@ -14,6 +14,13 @@ import { MultiAxisDocView } from './docViews/MultiAxisDocView'
 interface StudioDocBlockProps {
   block: ContentBlock
   onChange: (updated: ContentBlock) => void
+  /**
+   * Optional — when provided, a small "×" appears on the block's chrome
+   * (top-right) that fires this handler. Parent should show a confirm and
+   * then splice the block out of the local blocks array; save flows via
+   * the existing dirty-then-save-all pipeline.
+   */
+  onDelete?: () => void
 }
 
 /**
@@ -21,7 +28,7 @@ interface StudioDocBlockProps {
  * the full `InlineBlockRenderer` editor on click. Only the block that's being
  * edited shows editor chrome — the rest of the document stays clean.
  */
-export const StudioDocBlock: React.FC<StudioDocBlockProps> = ({ block, onChange }) => {
+export const StudioDocBlock: React.FC<StudioDocBlockProps> = ({ block, onChange, onDelete }) => {
   const [editing, setEditing] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
 
@@ -43,6 +50,17 @@ export const StudioDocBlock: React.FC<StudioDocBlockProps> = ({ block, onChange 
     return (
       <div ref={rootRef} className="studio-doc-block studio-doc-block--editing">
         <div className="studio-doc-block-editing-toolbar">
+          {onDelete && (
+            <button
+              type="button"
+              className="studio-block-delete-btn"
+              onClick={onDelete}
+              title="Delete this block"
+              aria-label="Delete block"
+            >
+              ×
+            </button>
+          )}
           <button type="button" className="studio-doc-done-btn" onClick={stopEditing}>
             Done
           </button>
@@ -68,6 +86,22 @@ export const StudioDocBlock: React.FC<StudioDocBlockProps> = ({ block, onChange 
         }
       }}
     >
+      {onDelete && (
+        <button
+          type="button"
+          className="studio-block-delete-btn studio-block-delete-btn--doc"
+          onClick={(e) => {
+            // The wrapping div's click enters edit mode; stop propagation so
+            // clicking the × doesn't also open the editor.
+            e.stopPropagation()
+            onDelete()
+          }}
+          title="Delete this block"
+          aria-label="Delete block"
+        >
+          ×
+        </button>
+      )}
       <DocView block={block} />
     </div>
   )

@@ -20,6 +20,8 @@ import { addDataAndFileToRequest } from 'payload'
 import { AccountRole, isAdvancedContentEditor } from '@/infra/auth/roles'
 import { DEFAULT_CONTENT } from '@/server/payload/collections/Exercises/defaults'
 
+import { insertPlaylistRefAfter } from './reorder-playlist'
+
 interface LessonParent {
   id: string
   chapter?: string | { id?: string } | null
@@ -58,9 +60,10 @@ export async function createExerciseEndpoint(req: PayloadRequest): Promise<Respo
   }
 
   await addDataAndFileToRequest(req)
-  const body = (req as unknown as { data?: { title?: unknown } }).data ?? {}
+  const body = (req as unknown as { data?: { title?: unknown; insertAfter?: unknown } }).data ?? {}
   const rawTitle = typeof body.title === 'string' ? body.title.trim() : ''
   const title = rawTitle.length > 0 ? rawTitle : 'Untitled exercise'
+  const insertAfter = typeof body.insertAfter === 'string' ? body.insertAfter : undefined
 
   let parent: LessonParent
   try {
@@ -96,6 +99,29 @@ export async function createExerciseEndpoint(req: PayloadRequest): Promise<Respo
         content: DEFAULT_CONTENT(),
       } as never,
     })
+    // Position the new exerciseRef right after the caller-chosen sibling
+    // if provided. Same idempotent-in-failure pattern as create-section:
+    // never rollback the create, just log a positioning failure.
+    if (insertAfter) {
+      try {
+        await insertPlaylistRefAfter({
+          payload: req.payload,
+          req,
+          parentCollection: 'lessons',
+          parentId: lessonId,
+          blockType: 'exerciseRef',
+          refField: 'exercise',
+          movedRefId: created.id,
+          insertAfterRefId: insertAfter,
+        })
+      } catch (err) {
+        req.payload.logger.warn(
+          { err, lessonId, newExerciseId: created.id, insertAfter },
+          'studio: created exercise but failed to position it after sibling',
+        )
+      }
+    }
+
     return Response.json({ id: created.id, title }, { status: 201 })
   } catch (err) {
     // Don't leak internal payload/mongo error text to the UI.

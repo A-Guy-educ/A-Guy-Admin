@@ -21,7 +21,13 @@ interface StudioExerciseCardProps {
   onExerciseBlockChange: (exerciseId: string, index: number, updated: ContentBlock) => void
   onAddSectionBlock: (sectionId: string, block: ContentBlock) => void
   onAddExerciseBlock: (exerciseId: string, block: ContentBlock) => void
-  onAddSection: (exerciseId: string, title: string) => Promise<void>
+  onDeleteSectionBlock: (sectionId: string, index: number) => void
+  onDeleteExerciseBlock: (exerciseId: string, index: number) => void
+  onAddSection: (exerciseId: string, title: string, insertAfter?: string) => Promise<void>
+  onDeleteSection: (sectionId: string, sectionTitle: string) => Promise<void>
+  onDeleteExercise: (exerciseId: string, exerciseTitle: string) => Promise<void>
+  onDuplicateSection: (sectionId: string) => Promise<void>
+  onDuplicateExercise: (exerciseId: string) => Promise<void>
   viewMode: StudioViewMode
 }
 
@@ -36,15 +42,19 @@ export const StudioExerciseCard: React.FC<StudioExerciseCardProps> = ({
   onExerciseBlockChange,
   onAddSectionBlock,
   onAddExerciseBlock,
+  onDeleteSectionBlock,
+  onDeleteExerciseBlock,
   onAddSection,
+  onDeleteSection,
+  onDeleteExercise,
+  onDuplicateSection,
+  onDuplicateExercise,
   viewMode,
 }) => {
   const exerciseBlocks = exerciseBlocksById[exercise.id] ?? exercise.blocks
   const hasExerciseBlocks = exerciseBlocks.length > 0
   const exerciseDirty = dirtyExerciseIds.has(exercise.id)
 
-  // In edit mode every exercise-level block mounts the editor immediately, so
-  // trigger the chunk download once per card render instead of waiting on hover.
   React.useEffect(() => {
     if (viewMode === 'edit' && hasExerciseBlocks) prefetchInlineBlockEditor()
   }, [viewMode, hasExerciseBlocks])
@@ -57,15 +67,33 @@ export const StudioExerciseCard: React.FC<StudioExerciseCardProps> = ({
           {exercise.title || 'Untitled Exercise'}
           {exerciseDirty && <span className="studio-dirty-dot" title="Unsaved changes" />}
         </h2>
-        <a
-          href={`/admin/collections/exercises/${exercise.id}`}
-          className="studio-exercise-openlink"
-          target="_blank"
-          rel="noreferrer"
-          title="Open exercise doc in a new tab"
-        >
-          Open ↗
-        </a>
+        <div className="studio-row-toolbar">
+          <button
+            type="button"
+            className="studio-row-btn"
+            onClick={() => onDuplicateExercise(exercise.id)}
+            title="Duplicate exercise (creates a copy right below this one)"
+          >
+            Duplicate
+          </button>
+          <button
+            type="button"
+            className="studio-row-btn studio-row-btn--danger"
+            onClick={() => onDeleteExercise(exercise.id, exercise.title ?? '')}
+            title="Delete exercise (and all its sections)"
+          >
+            Delete
+          </button>
+          <a
+            href={`/admin/collections/exercises/${exercise.id}`}
+            className="studio-exercise-openlink"
+            target="_blank"
+            rel="noreferrer"
+            title="Open exercise doc in a new tab"
+          >
+            Open ↗
+          </a>
+        </div>
       </header>
 
       <div className="studio-exercise-body">
@@ -75,12 +103,28 @@ export const StudioExerciseCard: React.FC<StudioExerciseCardProps> = ({
               {exerciseBlocks.map((block, blockIndex) => {
                 const handleChange = (updated: ContentBlock) =>
                   onExerciseBlockChange(exercise.id, blockIndex, updated)
+                const handleDelete = () => onDeleteExerciseBlock(exercise.id, blockIndex)
                 return (
                   <div key={block.id || `block-${blockIndex}`} className="studio-block-item">
                     {viewMode === 'document' ? (
-                      <StudioDocBlock block={block} onChange={handleChange} />
+                      <StudioDocBlock
+                        block={block}
+                        onChange={handleChange}
+                        onDelete={handleDelete}
+                      />
                     ) : (
-                      <LazyInlineBlockEditor block={block} onChange={handleChange} />
+                      <div className="studio-edit-block-wrapper">
+                        <button
+                          type="button"
+                          className="studio-block-delete-btn"
+                          onClick={handleDelete}
+                          title="Delete this block"
+                          aria-label="Delete block"
+                        >
+                          ×
+                        </button>
+                        <LazyInlineBlockEditor block={block} onChange={handleChange} />
+                      </div>
                     )}
                   </div>
                 )
@@ -91,25 +135,43 @@ export const StudioExerciseCard: React.FC<StudioExerciseCardProps> = ({
         <div className="studio-add-block-row">
           <AddBlockButton onAdd={(block) => onAddExerciseBlock(exercise.id, block)} />
         </div>
+
         {exercise.sections.map((section) => (
-          <StudioSectionEditor
-            key={section.id}
-            sectionId={section.id}
-            title={section.title}
-            blocks={sectionBlocksById[section.id] ?? section.blocks}
-            dirty={dirtySectionIds.has(section.id)}
-            onBlockChange={onSectionBlockChange}
-            onAddBlock={onAddSectionBlock}
-            viewMode={viewMode}
-          />
+          <React.Fragment key={section.id}>
+            <StudioSectionEditor
+              sectionId={section.id}
+              title={section.title}
+              blocks={sectionBlocksById[section.id] ?? section.blocks}
+              dirty={dirtySectionIds.has(section.id)}
+              onBlockChange={onSectionBlockChange}
+              onAddBlock={onAddSectionBlock}
+              onDeleteBlock={onDeleteSectionBlock}
+              onDelete={() => onDeleteSection(section.id, section.title ?? '')}
+              onDuplicate={() => onDuplicateSection(section.id)}
+              viewMode={viewMode}
+            />
+            {/* +Add section between this section and the next in the same
+                exercise. Passing insertAfter tells the server to place the
+                new sectionRef right after the current one in the exercise's
+                playlist. */}
+            <div className="studio-add-section-row">
+              <AddChildButton
+                label="Add section"
+                placeholder="Section title"
+                onSubmit={(title) => onAddSection(exercise.id, title, section.id)}
+              />
+            </div>
+          </React.Fragment>
         ))}
-        <div className="studio-add-section-row">
-          <AddChildButton
-            label="Add section"
-            placeholder="Section title"
-            onSubmit={(title) => onAddSection(exercise.id, title)}
-          />
-        </div>
+        {exercise.sections.length === 0 && (
+          <div className="studio-add-section-row">
+            <AddChildButton
+              label="Add section"
+              placeholder="Section title"
+              onSubmit={(title) => onAddSection(exercise.id, title)}
+            />
+          </div>
+        )}
       </div>
     </section>
   )
