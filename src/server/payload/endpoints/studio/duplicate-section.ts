@@ -23,35 +23,16 @@ import { addDataAndFileToRequest } from 'payload'
 
 import { AccountRole, isAdvancedContentEditor } from '@/infra/auth/roles'
 import { regenerateBlockIds } from '@/server/services/duplication/regenerate-block-ids'
+import { stripManagedFields } from '@/server/services/duplication/strip-managed-fields'
 
 import { insertPlaylistRefAfter } from './reorder-playlist'
-
-/** Strip Payload-managed virtual fields so a doc is safe to spread into `create`. */
-function stripManagedFields<T extends Record<string, unknown>>(
-  doc: T,
-): Omit<T, 'id' | 'createdAt' | 'updatedAt'> {
-  const {
-    id: _id,
-    createdAt: _c,
-    updatedAt: _u,
-    ...rest
-  } = doc as T & {
-    id?: unknown
-    createdAt?: unknown
-    updatedAt?: unknown
-  }
-  void _id
-  void _c
-  void _u
-  return rest
-}
 
 export async function duplicateSectionEndpoint(req: PayloadRequest): Promise<Response> {
   if (!req.user) {
     return Response.json({ error: 'Authentication required' }, { status: 401 })
   }
   const role = 'role' in req.user ? (req.user.role as AccountRole) : null
-  const allowed = role === AccountRole.Admin || (role !== null && isAdvancedContentEditor(role))
+  const allowed = role === AccountRole.Admin || (role && isAdvancedContentEditor(role))
   if (!allowed) {
     return Response.json(
       { error: 'Admin or advanced content editor access required' },
@@ -159,9 +140,13 @@ export async function duplicateSectionEndpoint(req: PayloadRequest): Promise<Res
 
     return Response.json({ id: created.id }, { status: 201 })
   } catch (err) {
-    if (err instanceof Error && err.name === 'NotFound') {
-      return Response.json({ error: 'Source section not found' }, { status: 404 })
-    }
+    // Any error at this point comes from `payload.create` or its cascade —
+    // the source doc was loaded successfully above (that's the only place
+    // a real "source missing" outcome can surface, and it's already mapped
+    // to a 404 there). A NotFound thrown here would be a related-doc
+    // lookup failure (tenant, exercise), which shouldn't be labelled
+    // "Source section not found" — mislabels the failure and complicates
+    // triage. Log the details and surface a generic 500.
     req.payload.logger.error({ err, sectionId }, 'studio: failed to duplicate section')
     return Response.json({ error: 'Failed to duplicate section' }, { status: 500 })
   }

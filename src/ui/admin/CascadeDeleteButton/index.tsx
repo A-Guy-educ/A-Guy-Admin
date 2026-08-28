@@ -112,7 +112,7 @@ const CascadeDeleteButton: React.FC<{ collection: CollectionSlug }> = ({ collect
               </p>
             )}
 
-            <div className="flex justify-end gap-content-gap-xs.5">
+            <div className="flex justify-end gap-content-gap-xs">
               <button
                 type="button"
                 onClick={() => {
