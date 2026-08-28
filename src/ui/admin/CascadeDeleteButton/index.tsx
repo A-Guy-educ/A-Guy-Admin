@@ -4,6 +4,8 @@ import { useAuth, useDocumentInfo } from '@payloadcms/ui'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 
+import { AccountRole } from '@/infra/auth/roles'
+
 type CollectionSlug = 'courses' | 'chapters' | 'lessons' | 'exercises'
 
 const COLLECTION_LABELS: Record<CollectionSlug, string> = {
@@ -74,7 +76,7 @@ const CascadeDeleteButton: React.FC<{ collection: CollectionSlug }> = ({ collect
   // AdvancedContentEditors who see the sibling Duplicate button (which
   // ACEs *can* use) right next to it.
   const role = user && 'role' in user ? (user as { role?: unknown }).role : null
-  if (role !== 'admin') return null
+  if (role !== AccountRole.Admin) return null
 
   return (
     <>

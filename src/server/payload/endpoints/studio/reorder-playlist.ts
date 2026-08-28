@@ -2,8 +2,10 @@
  * Shared helper for the studio's create/duplicate endpoints: after the
  * afterChange hook appends a new ref to a parent's `blocks` playlist,
  * move it into the position the user asked for ("insert right after
- * <sibling ref>"). Used for both section (parent=exercise, refType=sectionRef)
- * and exercise (parent=lesson, refType=exerciseRef) inserts.
+ * <sibling ref>"). Currently used by `duplicate-section` (parent=exercise,
+ * refType=sectionRef); parametrized on `parentCollection` / `blockType` /
+ * `refField` so `create-section` and `create-exercise` can adopt it
+ * without a rewrite.
  *
  * @fileType utility
  * @domain admin-studio
