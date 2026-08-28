@@ -17,6 +17,13 @@ interface StudioExerciseCardProps {
   exerciseBlocksById: Record<string, ContentBlock[]>
   dirtySectionIds: Set<string>
   dirtyExerciseIds: Set<string>
+  /**
+   * Set of in-flight row operations keyed by `${op}:${id}` (e.g.
+   * `"delete-section:abc123"`). Row buttons disable while their own key is
+   * present to prevent double-submit — matters especially for
+   * `duplicate-exercise` which triggers the expensive prod deep-clone.
+   */
+  pendingRowOps: Set<string>
   onSectionBlockChange: (sectionId: string, index: number, updated: ContentBlock) => void
   onExerciseBlockChange: (exerciseId: string, index: number, updated: ContentBlock) => void
   onAddSectionBlock: (sectionId: string, block: ContentBlock) => void
@@ -38,6 +45,7 @@ export const StudioExerciseCard: React.FC<StudioExerciseCardProps> = ({
   exerciseBlocksById,
   dirtySectionIds,
   dirtyExerciseIds,
+  pendingRowOps,
   onSectionBlockChange,
   onExerciseBlockChange,
   onAddSectionBlock,
@@ -54,6 +62,8 @@ export const StudioExerciseCard: React.FC<StudioExerciseCardProps> = ({
   const exerciseBlocks = exerciseBlocksById[exercise.id] ?? exercise.blocks
   const hasExerciseBlocks = exerciseBlocks.length > 0
   const exerciseDirty = dirtyExerciseIds.has(exercise.id)
+  const exerciseDeleting = pendingRowOps.has(`delete-exercise:${exercise.id}`)
+  const exerciseDuplicating = pendingRowOps.has(`duplicate-exercise:${exercise.id}`)
 
   React.useEffect(() => {
     if (viewMode === 'edit' && hasExerciseBlocks) prefetchInlineBlockEditor()
@@ -72,17 +82,19 @@ export const StudioExerciseCard: React.FC<StudioExerciseCardProps> = ({
             type="button"
             className="studio-row-btn"
             onClick={() => onDuplicateExercise(exercise.id)}
+            disabled={exerciseDuplicating || exerciseDeleting}
             title="Duplicate exercise (creates a copy right below this one)"
           >
-            Duplicate
+            {exerciseDuplicating ? 'Duplicating…' : 'Duplicate'}
           </button>
           <button
             type="button"
             className="studio-row-btn studio-row-btn--danger"
             onClick={() => onDeleteExercise(exercise.id, exercise.title ?? '')}
+            disabled={exerciseDeleting || exerciseDuplicating}
             title="Delete exercise (and all its sections)"
           >
-            Delete
+            {exerciseDeleting ? 'Deleting…' : 'Delete'}
           </button>
           <a
             href={`/admin/collections/exercises/${exercise.id}`}
@@ -143,6 +155,8 @@ export const StudioExerciseCard: React.FC<StudioExerciseCardProps> = ({
               title={section.title}
               blocks={sectionBlocksById[section.id] ?? section.blocks}
               dirty={dirtySectionIds.has(section.id)}
+              deleting={pendingRowOps.has(`delete-section:${section.id}`)}
+              duplicating={pendingRowOps.has(`duplicate-section:${section.id}`)}
               onBlockChange={onSectionBlockChange}
               onAddBlock={onAddSectionBlock}
               onDeleteBlock={onDeleteSectionBlock}

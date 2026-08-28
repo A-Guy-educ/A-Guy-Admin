@@ -22,6 +22,7 @@ import type { PayloadRequest } from 'payload'
 import { addDataAndFileToRequest } from 'payload'
 
 import { AccountRole, isAdvancedContentEditor } from '@/infra/auth/roles'
+import { generateId } from '@/server/payload/collections/Exercises/defaults'
 
 import { insertPlaylistRefAfter } from './reorder-playlist'
 
@@ -107,6 +108,22 @@ export async function duplicateSectionEndpoint(req: PayloadRequest): Promise<Res
   void _cb
   void _at
 
+  // Regenerate block ids in the cloned content — the shared block factory
+  // (Exercises/defaults.ts) assigns a fresh id per block on create so ids
+  // are per-doc. Spreading source verbatim would carry the source's block
+  // ids into the copy, making them non-unique across sections. Any code
+  // that ever keys on block id assuming per-lesson uniqueness (per-block
+  // progress, analytics, media joins) would silently break.
+  const rawContent = (rest as { content?: { blocks?: unknown } }).content
+  if (rawContent && Array.isArray(rawContent.blocks)) {
+    rawContent.blocks = rawContent.blocks.map((block) => {
+      if (block && typeof block === 'object') {
+        return { ...(block as Record<string, unknown>), id: generateId() }
+      }
+      return block
+    })
+  }
+
   const baseTitle = typeof stripped.title === 'string' ? stripped.title : 'Untitled'
   const parentExerciseId =
     typeof source.exercise === 'string'
@@ -150,6 +167,9 @@ export async function duplicateSectionEndpoint(req: PayloadRequest): Promise<Res
 
     return Response.json({ id: created.id }, { status: 201 })
   } catch (err) {
+    if (err instanceof Error && err.name === 'NotFound') {
+      return Response.json({ error: 'Source section not found' }, { status: 404 })
+    }
     req.payload.logger.error({ err, sectionId }, 'studio: failed to duplicate section')
     return Response.json({ error: 'Failed to duplicate section' }, { status: 500 })
   }

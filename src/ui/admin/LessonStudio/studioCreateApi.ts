@@ -5,6 +5,24 @@ interface CreateResponse {
   title?: string
 }
 
+/**
+ * Parse a Payload REST error response into a user-safe string. Payload
+ * uses two shapes depending on the code path:
+ *   - Custom endpoints (studio/*): `{ error: string }`
+ *   - Built-in REST + validation errors: `{ errors: [{ message, ... }] }`
+ * We check both so the same helper works from every call site.
+ */
+export async function extractPayloadError(res: Response, fallback: string): Promise<string> {
+  const data = (await res.json().catch(() => ({}))) as {
+    error?: string | { message?: string }
+    errors?: { message?: string }[]
+  }
+  if (typeof data.error === 'string' && data.error) return data.error
+  if (data.error && typeof data.error === 'object' && data.error.message) return data.error.message
+  if (Array.isArray(data.errors) && data.errors[0]?.message) return data.errors[0].message
+  return fallback
+}
+
 async function postJson<T>(url: string, body: unknown): Promise<T> {
   const res = await fetch(url, {
     method: 'POST',
@@ -13,8 +31,7 @@ async function postJson<T>(url: string, body: unknown): Promise<T> {
     body: JSON.stringify(body ?? {}),
   })
   if (!res.ok) {
-    const data = (await res.json().catch(() => ({}))) as { error?: string }
-    throw new Error(data.error || `Request failed: ${res.status}`)
+    throw new Error(await extractPayloadError(res, `Request failed: ${res.status}`))
   }
   return (await res.json()) as T
 }
@@ -71,8 +88,7 @@ export async function duplicateExercise(
     body: '{}',
   })
   if (!dupRes.ok) {
-    const data = (await dupRes.json().catch(() => ({}))) as { error?: string }
-    throw new Error(data.error || `Duplicate failed: ${dupRes.status}`)
+    throw new Error(await extractPayloadError(dupRes, `Duplicate failed: ${dupRes.status}`))
   }
   const { outputExerciseId } = (await dupRes.json()) as { outputExerciseId: string }
   // Best-effort reorder — if it fails, the new exercise still landed and
@@ -100,9 +116,7 @@ async function deleteCollection(collection: 'sections' | 'exercises', id: string
     credentials: 'include',
   })
   if (!res.ok) {
-    const data = (await res.json().catch(() => ({}))) as { errors?: { message: string }[] }
-    const message = data.errors?.[0]?.message ?? `Delete failed: ${res.status}`
-    throw new Error(message)
+    throw new Error(await extractPayloadError(res, `Delete failed: ${res.status}`))
   }
 }
 

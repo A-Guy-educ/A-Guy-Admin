@@ -7,7 +7,8 @@
  * The Sections collection's `afterChange` hook (`addBlockToExercise`) appends
  * the new sectionRef to the parent exercise's `blocks` playlist for us.
  *
- * Access: admin only.
+ * Access: admin or advanced content editor (matches the Sections collection's
+ * `isAdminOrOwner` update rule).
  * Body: { title?: string } — title is optional; defaults to a placeholder.
  *
  * @fileType api-route

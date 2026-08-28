@@ -67,6 +67,12 @@ export async function reorderLessonExercisesEndpoint(req: PayloadRequest): Promi
     })
     return Response.json({ ok: true })
   } catch (err) {
+    // Distinguish NotFound so the client can tell "parent lesson gone"
+    // (404, don't retry) from "database error" (500, may retry). Matches
+    // the sibling create-*.ts endpoints' NotFound-vs-real-failure pattern.
+    if (err instanceof Error && err.name === 'NotFound') {
+      return Response.json({ error: 'Lesson not found' }, { status: 404 })
+    }
     req.payload.logger.error(
       { err, lessonId, movedExerciseId, insertAfterExerciseId },
       'studio: failed to reorder lesson exercises',

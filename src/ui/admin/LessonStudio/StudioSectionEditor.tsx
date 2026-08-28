@@ -12,6 +12,9 @@ interface StudioSectionEditorProps {
   title: string | null
   blocks: ContentBlock[]
   dirty: boolean
+  /** In-flight guards for the row toolbar buttons (delete / duplicate). */
+  deleting: boolean
+  duplicating: boolean
   onBlockChange: (sectionId: string, index: number, updated: ContentBlock) => void
   onAddBlock: (sectionId: string, block: ContentBlock) => void
   onDeleteBlock: (sectionId: string, index: number) => void
@@ -29,6 +32,8 @@ export const StudioSectionEditor: React.FC<StudioSectionEditorProps> = ({
   title,
   blocks,
   dirty,
+  deleting,
+  duplicating,
   onBlockChange,
   onAddBlock,
   onDeleteBlock,
@@ -52,17 +57,19 @@ export const StudioSectionEditor: React.FC<StudioSectionEditorProps> = ({
             type="button"
             className="studio-row-btn"
             onClick={() => onDuplicate()}
+            disabled={duplicating || deleting}
             title="Duplicate section (creates a copy right below this one)"
           >
-            Duplicate
+            {duplicating ? 'Duplicating…' : 'Duplicate'}
           </button>
           <button
             type="button"
             className="studio-row-btn studio-row-btn--danger"
             onClick={() => onDelete()}
+            disabled={deleting || duplicating}
             title="Delete section"
           >
-            Delete
+            {deleting ? 'Deleting…' : 'Delete'}
           </button>
           <a
             href={`/admin/collections/sections/${sectionId}`}

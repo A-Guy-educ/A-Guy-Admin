@@ -7,7 +7,8 @@
  * (`addBlockToLesson`) appends the new exerciseRef to the parent lesson's
  * `blocks` playlist for us.
  *
- * Access: admin only.
+ * Access: admin or advanced content editor (matches the Exercises collection's
+ * `isAdminOrOwner` update rule).
  * Body: { title?: string } — title is optional; defaults to a placeholder.
  *
  * @fileType api-route

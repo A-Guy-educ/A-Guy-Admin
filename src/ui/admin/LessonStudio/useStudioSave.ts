@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from 'react'
 import type { ContentBlock } from '@/server/payload/collections/Exercises/types'
+import { extractPayloadError } from './studioCreateApi'
 
 const SAVE_CONCURRENCY = 2
 
@@ -71,11 +72,10 @@ export function useStudioSave(): UseStudioSaveResult {
         body: bodyFor(entry.kind, entry.blocks),
       })
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
         return {
           kind: entry.kind,
           id: entry.id,
-          message: data?.error?.message || data?.error || `Save failed (${res.status})`,
+          message: await extractPayloadError(res, `Save failed (${res.status})`),
         }
       }
       return null

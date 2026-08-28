@@ -64,6 +64,14 @@ export const LessonStudioPage: React.FC<LessonStudioPageProps> = ({ lessonId }) 
   const [dirtySectionIds, setDirtySectionIds] = useState<Set<string>>(new Set())
   const [dirtyExerciseIds, setDirtyExerciseIds] = useState<Set<string>>(new Set())
 
+  // In-flight guards: prevent double-submit on Delete / Duplicate row buttons.
+  // Keyed by "section:<id>" or "exercise:<id>" so the same UI can gate both
+  // operations independently. `actionError` surfaces the last failure inline
+  // (same slot as refetchError) so admins see a signal when a delete/duplicate
+  // silently fails — instead of nothing happening and the item still there.
+  const [pendingRowOps, setPendingRowOps] = useState<Set<string>>(new Set())
+  const [actionError, setActionError] = useState<string | null>(null)
+
   // Ref mirrors so the save-completion handler can compare the *current*
   // in-memory blocks against the reference we PATCHed, even if the user edited
   // during the in-flight save.
@@ -260,16 +268,66 @@ export const LessonStudioPage: React.FC<LessonStudioPageProps> = ({ lessonId }) 
     })
   }, [])
 
+  // Wrap a row-scoped async op with (a) an in-flight guard so double-clicks
+  // don't fire twice, (b) a try/catch that surfaces the error via
+  // `actionError` instead of throwing into the void. `key` identifies the
+  // operation; typically "delete-section:<id>" or "duplicate-exercise:<id>".
+  const runRowOp = useCallback(async (key: string, op: () => Promise<void>): Promise<boolean> => {
+    let alreadyPending = false
+    setPendingRowOps((prev) => {
+      if (prev.has(key)) {
+        alreadyPending = true
+        return prev
+      }
+      const next = new Set(prev)
+      next.add(key)
+      return next
+    })
+    if (alreadyPending) return false
+    setActionError(null)
+    try {
+      await op()
+      return true
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Action failed')
+      return false
+    } finally {
+      setPendingRowOps((prev) => {
+        if (!prev.has(key)) return prev
+        const next = new Set(prev)
+        next.delete(key)
+        return next
+      })
+    }
+  }, [])
+
   const handleDeleteSection = useCallback(
     async (sectionId: string, sectionTitle: string) => {
       // Confirm via a native prompt — matches the "maybe have a popup" ask
       // without pulling in a modal component. Delete is destructive and
       // Payload's afterDelete hook cleans up the parent playlist for us.
       if (!window.confirm(`Delete section "${sectionTitle || 'Untitled Section'}"?`)) return
-      await deleteSection(sectionId)
+      const ok = await runRowOp(`delete-section:${sectionId}`, () => deleteSection(sectionId))
+      if (!ok) return
+      // Drop the deleted section from local dirty + blocks maps BEFORE refetch.
+      // Otherwise the dirty-aware seed effect preserves ghost dirty ids even
+      // when the server no longer has them, and Save All will PATCH the
+      // missing id forever.
+      setDirtySectionIds((prev) => {
+        if (!prev.has(sectionId)) return prev
+        const next = new Set(prev)
+        next.delete(sectionId)
+        return next
+      })
+      setSectionBlocks((prev) => {
+        if (!(sectionId in prev)) return prev
+        const { [sectionId]: _dropped, ...rest } = prev
+        void _dropped
+        return rest
+      })
       await refetch()
     },
-    [refetch],
+    [refetch, runRowOp],
   )
 
   const handleDeleteExercise = useCallback(
@@ -280,26 +338,46 @@ export const LessonStudioPage: React.FC<LessonStudioPageProps> = ({ lessonId }) 
         )
       )
         return
-      await deleteExercise(exerciseId)
+      const ok = await runRowOp(`delete-exercise:${exerciseId}`, () => deleteExercise(exerciseId))
+      if (!ok) return
+      // Same dirty-ghost cleanup as section delete. Child section dirty ids
+      // get evicted by the seed effect naturally on refetch (they're not in
+      // the incoming tree and their exercise isn't a dirty exercise-level).
+      setDirtyExerciseIds((prev) => {
+        if (!prev.has(exerciseId)) return prev
+        const next = new Set(prev)
+        next.delete(exerciseId)
+        return next
+      })
+      setExerciseBlocks((prev) => {
+        if (!(exerciseId in prev)) return prev
+        const { [exerciseId]: _dropped, ...rest } = prev
+        void _dropped
+        return rest
+      })
       await refetch()
     },
-    [refetch],
+    [refetch, runRowOp],
   )
 
   const handleDuplicateSection = useCallback(
     async (sectionId: string) => {
-      await duplicateSection(sectionId)
-      await refetch()
+      const ok = await runRowOp(`duplicate-section:${sectionId}`, () =>
+        duplicateSection(sectionId).then(() => undefined),
+      )
+      if (ok) await refetch()
     },
-    [refetch],
+    [refetch, runRowOp],
   )
 
   const handleDuplicateExercise = useCallback(
     async (exerciseId: string) => {
-      await duplicateExercise(exerciseId, lessonId)
-      await refetch()
+      const ok = await runRowOp(`duplicate-exercise:${exerciseId}`, () =>
+        duplicateExercise(exerciseId, lessonId).then(() => undefined),
+      )
+      if (ok) await refetch()
     },
-    [lessonId, refetch],
+    [lessonId, refetch, runRowOp],
   )
 
   const dirtyEntries = useMemo<DirtyEntry[]>(() => {
@@ -380,6 +458,19 @@ export const LessonStudioPage: React.FC<LessonStudioPageProps> = ({ lessonId }) 
             still have landed on the server — reload the page to see the latest.
           </div>
         )}
+        {actionError && (
+          <div className="studio-refetch-warning" role="alert">
+            {actionError}
+            <button
+              type="button"
+              className="studio-action-error-dismiss"
+              onClick={() => setActionError(null)}
+              aria-label="Dismiss error"
+            >
+              ×
+            </button>
+          </div>
+        )}
 
         <main className="studio-content">
           {tree.exercises.length === 0 ? (
@@ -395,6 +486,7 @@ export const LessonStudioPage: React.FC<LessonStudioPageProps> = ({ lessonId }) 
                     exerciseBlocksById={exerciseBlocks}
                     dirtySectionIds={dirtySectionIds}
                     dirtyExerciseIds={dirtyExerciseIds}
+                    pendingRowOps={pendingRowOps}
                     onSectionBlockChange={handleSectionBlockChange}
                     onExerciseBlockChange={handleExerciseBlockChange}
                     onAddSectionBlock={handleAddSectionBlock}
