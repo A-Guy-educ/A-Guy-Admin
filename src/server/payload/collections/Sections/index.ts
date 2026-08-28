@@ -545,10 +545,26 @@ export const Sections: CollectionConfig = {
     update: isAdminOrOwner,
   },
   hooks: sectionHooks,
+  // Payload's built-in duplicate is a shallow field copy — it copies
+  // `content.blocks` verbatim, so every nested block id inside a "duplicated"
+  // section still matches the source's ids. Any admin edit to a block on the
+  // copy then silently mutates the source (and vice-versa). Disable it and
+  // route admins through /api/studio/sections/:id/duplicate via
+  // SectionDuplicateButton, which regenerates every block id and positions
+  // the copy right after the source in the parent exercise's playlist.
+  // Mirrors Exercises.ts, which disabled the built-in for the same reason.
+  disableDuplicate: true,
   admin: {
     useAsTitle: 'adminTitle',
     listSearchableFields: ['adminTitle', 'title'],
     defaultColumns: ['order', 'title', 'exercise', 'updatedAt'],
+    components: {
+      edit: {
+        beforeDocumentControls: [
+          '@/ui/admin/SectionDuplicateButton/SectionDuplicateButton#SectionDuplicateAction',
+        ],
+      },
+    },
   },
   fields: [
     {

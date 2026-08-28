@@ -4,18 +4,20 @@ import { useDocumentInfo } from '@payloadcms/ui'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 
-type CollectionSlug = 'courses' | 'chapters' | 'lessons'
+type CollectionSlug = 'courses' | 'chapters' | 'lessons' | 'exercises'
 
 const COLLECTION_LABELS: Record<CollectionSlug, string> = {
   courses: 'Course',
   chapters: 'Chapter',
   lessons: 'Lesson',
+  exercises: 'Exercise',
 }
 
 const DESCENDANT_DESCRIPTIONS: Record<CollectionSlug, string> = {
-  courses: 'all chapters, lessons, and exercises',
-  chapters: 'all lessons and exercises',
-  lessons: 'all exercises',
+  courses: 'all chapters, lessons, exercises, and sections',
+  chapters: 'all lessons, exercises, and sections',
+  lessons: 'all exercises and sections',
+  exercises: 'all sections',
 }
 
 const CascadeDeleteButton: React.FC<{ collection: CollectionSlug }> = ({ collection }) => {
@@ -134,3 +136,4 @@ const CascadeDeleteButton: React.FC<{ collection: CollectionSlug }> = ({ collect
 export const CourseCascadeDelete = () => <CascadeDeleteButton collection="courses" />
 export const ChapterCascadeDelete = () => <CascadeDeleteButton collection="chapters" />
 export const LessonCascadeDelete = () => <CascadeDeleteButton collection="lessons" />
+export const ExerciseCascadeDelete = () => <CascadeDeleteButton collection="exercises" />
