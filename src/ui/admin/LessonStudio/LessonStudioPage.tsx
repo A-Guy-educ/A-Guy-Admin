@@ -71,21 +71,33 @@ export const LessonStudioPage: React.FC<LessonStudioPageProps> = ({ lessonId }) 
 
   useEffect(() => {
     if (!tree) return
-    const seededSections: Record<string, ContentBlock[]> = {}
-    const seededExercises: Record<string, ContentBlock[]> = {}
-    for (const exercise of tree.exercises) {
-      if (exercise.blocks.length > 0) {
-        // Deep clone so edits don't leak back into the tree response.
-        seededExercises[exercise.id] = JSON.parse(JSON.stringify(exercise.blocks))
+    // Merge-only seed: never overwrite state for a section/exercise we already
+    // have in the map, and never clear the dirty set. This effect fires both
+    // on initial load AND on `refetch()` after an add-child mutation — clearing
+    // state on refetch would silently drop in-progress edits (see PR #381
+    // review), because refetch runs after `handleAddSection`/`handleAddExercise`.
+    // For a freshly-loaded studio the maps are empty so this behaves like a
+    // full seed; on refetch only the new rows get seeded.
+    setSectionBlocks((prev) => {
+      const next: Record<string, ContentBlock[]> = { ...prev }
+      for (const exercise of tree.exercises) {
+        for (const section of exercise.sections) {
+          if (!(section.id in next)) {
+            next[section.id] = JSON.parse(JSON.stringify(section.blocks))
+          }
+        }
       }
-      for (const section of exercise.sections) {
-        seededSections[section.id] = JSON.parse(JSON.stringify(section.blocks))
+      return next
+    })
+    setExerciseBlocks((prev) => {
+      const next: Record<string, ContentBlock[]> = { ...prev }
+      for (const exercise of tree.exercises) {
+        if (exercise.blocks.length > 0 && !(exercise.id in next)) {
+          next[exercise.id] = JSON.parse(JSON.stringify(exercise.blocks))
+        }
       }
-    }
-    setSectionBlocks(seededSections)
-    setExerciseBlocks(seededExercises)
-    setDirtySectionIds(new Set())
-    setDirtyExerciseIds(new Set())
+      return next
+    })
   }, [tree])
 
   const handleSectionBlockChange = useCallback(

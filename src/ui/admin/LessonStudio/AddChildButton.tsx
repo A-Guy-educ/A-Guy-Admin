@@ -25,6 +25,7 @@ export const AddChildButton: React.FC<AddChildButtonProps> = ({ label, placehold
   const [expanded, setExpanded] = useState(false)
   const [value, setValue] = useState('')
   const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -34,15 +35,21 @@ export const AddChildButton: React.FC<AddChildButtonProps> = ({ label, placehold
   const cancel = useCallback(() => {
     setExpanded(false)
     setValue('')
+    setError(null)
   }, [])
 
   const submit = useCallback(async () => {
     if (busy) return
     setBusy(true)
+    setError(null)
     try {
       await onSubmit(value.trim())
+      // Only collapse on success so a failed attempt keeps the title in the
+      // input for retry without re-typing.
       setValue('')
       setExpanded(false)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Create failed')
     } finally {
       setBusy(false)
     }
@@ -87,6 +94,11 @@ export const AddChildButton: React.FC<AddChildButtonProps> = ({ label, placehold
       <button type="button" className="studio-add-cancel-btn" onClick={cancel} disabled={busy}>
         Cancel
       </button>
+      {error && (
+        <span className="studio-add-error" role="alert">
+          {error}
+        </span>
+      )}
     </div>
   )
 }
