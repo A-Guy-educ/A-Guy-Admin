@@ -553,6 +553,10 @@ export const Sections: CollectionConfig = {
   // SectionDuplicateButton, which regenerates every block id and positions
   // the copy right after the source in the parent exercise's playlist.
   // Mirrors Exercises.ts, which disabled the built-in for the same reason.
+  //
+  // Side effect: `disableDuplicate` also removes the list-view row action,
+  // so admins must open a section to duplicate it. Same trade-off as
+  // Exercises + Courses.
   disableDuplicate: true,
   admin: {
     useAsTitle: 'adminTitle',
