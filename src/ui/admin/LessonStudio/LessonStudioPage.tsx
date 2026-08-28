@@ -69,20 +69,38 @@ export const LessonStudioPage: React.FC<LessonStudioPageProps> = ({ lessonId }) 
     exerciseBlocksRef.current = exerciseBlocks
   }, [exerciseBlocks])
 
+  // Refs mirror dirty sets so the seed effect can read "is this id dirty?"
+  // without listing dirty state in its dep array (which would re-seed on
+  // every edit — wrong). Refs stay in sync via their own effects below.
+  const dirtySectionIdsRef = useRef(dirtySectionIds)
+  const dirtyExerciseIdsRef = useRef(dirtyExerciseIds)
+  useEffect(() => {
+    dirtySectionIdsRef.current = dirtySectionIds
+  }, [dirtySectionIds])
+  useEffect(() => {
+    dirtyExerciseIdsRef.current = dirtyExerciseIds
+  }, [dirtyExerciseIds])
+
   useEffect(() => {
     if (!tree) return
-    // Merge-only seed: never overwrite state for a section/exercise we already
-    // have in the map, and never clear the dirty set. This effect fires both
-    // on initial load AND on `refetch()` after an add-child mutation — clearing
-    // state on refetch would silently drop in-progress edits (see PR #381
-    // review), because refetch runs after `handleAddSection`/`handleAddExercise`.
-    // For a freshly-loaded studio the maps are empty so this behaves like a
-    // full seed; on refetch only the new rows get seeded.
+    // Dirty-aware seed. Fires both on initial load AND on `refetch()` after
+    // an add-child mutation.
+    //   - Non-dirty ids: overwrite from server. This absorbs server-side
+    //     normalizations (afterChange hooks, denorm backfills) and any
+    //     concurrent updates from another admin session.
+    //   - Dirty ids: preserve local state so in-progress edits aren't wiped.
+    //     Save-all commits them; then dirty clears via ref-comparison in
+    //     handleSaveAll and the next refetch absorbs the server copy.
+    //   - Ids we don't have local state for: seed from server (new sections
+    //     created via +Add, or first mount).
+    const dirtySections = dirtySectionIdsRef.current
+    const dirtyExercises = dirtyExerciseIdsRef.current
+
     setSectionBlocks((prev) => {
       const next: Record<string, ContentBlock[]> = { ...prev }
       for (const exercise of tree.exercises) {
         for (const section of exercise.sections) {
-          if (!(section.id in next)) {
+          if (!dirtySections.has(section.id) || !(section.id in next)) {
             next[section.id] = JSON.parse(JSON.stringify(section.blocks))
           }
         }
@@ -92,7 +110,8 @@ export const LessonStudioPage: React.FC<LessonStudioPageProps> = ({ lessonId }) 
     setExerciseBlocks((prev) => {
       const next: Record<string, ContentBlock[]> = { ...prev }
       for (const exercise of tree.exercises) {
-        if (exercise.blocks.length > 0 && !(exercise.id in next)) {
+        if (exercise.blocks.length === 0) continue
+        if (!dirtyExercises.has(exercise.id) || !(exercise.id in next)) {
           next[exercise.id] = JSON.parse(JSON.stringify(exercise.blocks))
         }
       }

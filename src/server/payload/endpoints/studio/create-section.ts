@@ -17,6 +17,7 @@
 import type { PayloadRequest } from 'payload'
 import { addDataAndFileToRequest } from 'payload'
 
+import { AccountRole } from '@/infra/auth/roles'
 import { DEFAULT_CONTENT } from '@/server/payload/collections/Sections/defaults'
 
 interface ExerciseParent {
@@ -40,14 +41,12 @@ export async function createSectionEndpoint(req: PayloadRequest): Promise<Respon
   if (!req.user) {
     return Response.json({ error: 'Authentication required' }, { status: 401 })
   }
-  if (!('role' in req.user) || req.user.role !== 'admin') {
+  if (!('role' in req.user) || req.user.role !== AccountRole.Admin) {
     return Response.json({ error: 'Admin access required' }, { status: 403 })
   }
 
-  const url = new URL(req.url || 'http://localhost')
-  const match = url.pathname.match(/\/studio\/exercises\/([^/]+)\/sections/)
-  const exerciseId = match?.[1]
-  if (!exerciseId) {
+  const { exerciseId } = (req.routeParams ?? {}) as { exerciseId?: string }
+  if (!exerciseId || typeof exerciseId !== 'string') {
     return Response.json({ error: 'Missing exercise id in path' }, { status: 400 })
   }
 
@@ -64,23 +63,46 @@ export async function createSectionEndpoint(req: PayloadRequest): Promise<Respon
       depth: 0,
       req,
     })) as ExerciseParent
-  } catch {
-    return Response.json({ error: 'Parent exercise not found' }, { status: 404 })
+  } catch (err) {
+    // Payload throws a `NotFound` error (name === 'NotFound') for missing docs.
+    // Anything else is a real failure (DB timeout, access denial, etc.) and
+    // deserves a 500 with a log entry so we don't quietly report "not found"
+    // for problems that aren't. Same pattern as other studio endpoints.
+    if (err instanceof Error && err.name === 'NotFound') {
+      return Response.json({ error: 'Parent exercise not found' }, { status: 404 })
+    }
+    req.payload.logger.error(
+      { err, exerciseId },
+      'studio: failed to load parent exercise for section create',
+    )
+    return Response.json({ error: 'Failed to load parent exercise' }, { status: 500 })
   }
 
-  const created = await req.payload.create({
-    collection: 'sections',
-    req,
-    data: {
-      title,
-      exercise: exerciseId,
-      lesson: refId(parent.lesson) ?? null,
-      chapter: refId(parent.chapter) ?? null,
-      course: refId(parent.course) ?? null,
-      tenant: refId(parent.tenant),
-      content: DEFAULT_CONTENT(),
-    } as never,
-  })
-
-  return Response.json({ id: created.id, title }, { status: 201 })
+  try {
+    const created = await req.payload.create({
+      collection: 'sections',
+      req,
+      data: {
+        title,
+        // Sections declare `exerciseType: required: true` with no default and no
+        // beforeValidate backfill (Sections/index.ts:577-590). Payload rejects
+        // the create without this — matches every other in-repo section
+        // creator (import-text-lesson, import-lesson, convert-latex-block).
+        exerciseType: 'basic',
+        exercise: exerciseId,
+        lesson: refId(parent.lesson) ?? null,
+        chapter: refId(parent.chapter) ?? null,
+        course: refId(parent.course) ?? null,
+        tenant: refId(parent.tenant),
+        content: DEFAULT_CONTENT(),
+      } as never,
+    })
+    return Response.json({ id: created.id, title }, { status: 201 })
+  } catch (err) {
+    // Never leak raw payload/mongo error messages to the client — they can
+    // include internal field names, stack fragments, or db-specific detail.
+    // Log server-side and surface a stable, user-safe message.
+    req.payload.logger.error({ err, exerciseId, title }, 'studio: failed to create section')
+    return Response.json({ error: 'Failed to create section' }, { status: 500 })
+  }
 }
