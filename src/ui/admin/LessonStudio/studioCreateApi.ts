@@ -73,7 +73,7 @@ export function duplicateSection(sectionId: string): Promise<CreateResponse> {
 export async function duplicateExercise(
   exerciseId: string,
   lessonId: string,
-): Promise<{ id: string; repositioned: boolean }> {
+): Promise<{ id: string; repositioned: boolean; reason?: string }> {
   const dupRes = await fetch(`/api/exercises/${exerciseId}/duplicate-exercise`, {
     method: 'POST',
     credentials: 'include',
@@ -84,16 +84,23 @@ export async function duplicateExercise(
     throw new Error(await extractPayloadError(dupRes, `Duplicate failed: ${dupRes.status}`))
   }
   const { outputExerciseId } = (await dupRes.json()) as { outputExerciseId: string }
-  let repositioned = true
   try {
     await postJson(`/api/studio/lessons/${lessonId}/reorder-exercises`, {
       movedExerciseId: outputExerciseId,
       insertAfterExerciseId: exerciseId,
     })
-  } catch {
-    repositioned = false
+    return { id: outputExerciseId, repositioned: true }
+  } catch (err) {
+    // Reposition is soft-fail — the duplicate itself succeeded, the copy is
+    // just at the end of the lesson. Forward the reason so the parent can
+    // include it in the warning banner and the admin has a real diagnostic
+    // instead of a generic "couldn't reposition."
+    return {
+      id: outputExerciseId,
+      repositioned: false,
+      reason: err instanceof Error ? err.message : String(err),
+    }
   }
-  return { id: outputExerciseId, repositioned }
 }
 
 // ---- DELETE -------------------------------------------------------------
@@ -103,7 +110,7 @@ export async function duplicateExercise(
 // get orphaned with dangling FKs.
 
 export async function deleteSection(sectionId: string): Promise<void> {
-  const res = await fetch(`/api/sections/${sectionId}`, {
+  const res = await fetch(`/api/sections/${encodeURIComponent(sectionId)}`, {
     method: 'DELETE',
     credentials: 'include',
   })

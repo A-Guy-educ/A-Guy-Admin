@@ -1,8 +1,10 @@
 'use client'
 
+import { useAuth } from '@payloadcms/ui'
 import React from 'react'
 import type { ContentBlock } from '@/server/payload/collections/Exercises/types'
 import type { StudioTreeExercise } from '@/server/payload/endpoints/studio/lesson-tree'
+import { AccountRole } from '@/infra/auth/roles'
 import { AddBlockButton } from './AddBlockButton'
 import { AddChildButton } from './AddChildButton'
 import { LazyInlineBlockEditor, prefetchInlineBlockEditor } from './LazyInlineBlockEditor'
@@ -63,6 +65,16 @@ export const StudioExerciseCard: React.FC<StudioExerciseCardProps> = ({
   onDuplicateExercise,
   viewMode,
 }) => {
+  const { user } = useAuth()
+  // Exercise-level Delete + Duplicate hit admin-only endpoints
+  // (/api/cascade-delete requires role === 'admin'; the exercises duplicate
+  // endpoint tightens its own gate for overrideAccess reasons). The studio
+  // itself accepts AdvancedContentEditor, so gate the buttons here to avoid
+  // "click → 403" UX for ACEs. Section-level Delete/Duplicate stay visible
+  // because their endpoints already accept both roles.
+  const role = user && 'role' in user ? (user as { role?: unknown }).role : null
+  const canManageExercise = role === AccountRole.Admin
+
   const exerciseBlocks = exerciseBlocksById[exercise.id] ?? exercise.blocks
   const hasExerciseBlocks = exerciseBlocks.length > 0
   const exerciseDirty = dirtyExerciseIds.has(exercise.id)
@@ -92,24 +104,28 @@ export const StudioExerciseCard: React.FC<StudioExerciseCardProps> = ({
           {exerciseDirty && <span className="studio-dirty-dot" title="Unsaved changes" />}
         </h2>
         <div className="studio-row-toolbar">
-          <button
-            type="button"
-            className="studio-row-btn"
-            onClick={() => onDuplicateExercise(exercise.id)}
-            disabled={exerciseBusy}
-            title="Duplicate exercise (deep-copies content + child sections)"
-          >
-            {exerciseOp === 'duplicate' ? 'Duplicating…' : 'Duplicate'}
-          </button>
-          <button
-            type="button"
-            className="studio-row-btn studio-row-btn--danger"
-            onClick={handleDeleteExercise}
-            disabled={exerciseBusy}
-            title="Delete exercise and all its child sections"
-          >
-            {exerciseOp === 'delete' ? 'Deleting…' : 'Delete'}
-          </button>
+          {canManageExercise && (
+            <>
+              <button
+                type="button"
+                className="studio-row-btn"
+                onClick={() => onDuplicateExercise(exercise.id)}
+                disabled={exerciseBusy}
+                title="Duplicate exercise (deep-copies content + child sections)"
+              >
+                {exerciseOp === 'duplicate' ? 'Duplicating…' : 'Duplicate'}
+              </button>
+              <button
+                type="button"
+                className="studio-row-btn studio-row-btn--danger"
+                onClick={handleDeleteExercise}
+                disabled={exerciseBusy}
+                title="Delete exercise and all its child sections"
+              >
+                {exerciseOp === 'delete' ? 'Deleting…' : 'Delete'}
+              </button>
+            </>
+          )}
           <a
             href={`/admin/collections/exercises/${exercise.id}`}
             className="studio-exercise-openlink"

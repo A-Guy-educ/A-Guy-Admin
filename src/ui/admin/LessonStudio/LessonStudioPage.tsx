@@ -421,16 +421,17 @@ export const LessonStudioPage: React.FC<LessonStudioPageProps> = ({ lessonId }) 
   const handleDuplicateExercise = useCallback(
     async (exerciseId: string) => {
       await runRowOp(`exercise:${exerciseId}`, 'duplicate', async () => {
-        const { repositioned } = await duplicateExercise(exerciseId, lessonId)
+        const { repositioned, reason } = await duplicateExercise(exerciseId, lessonId)
         await refetch()
         if (!repositioned) {
           // Duplicate succeeded but the follow-up reorder call failed. The
           // copy exists at the END of the lesson's playlist rather than
-          // right after the source. Non-fatal — surface a warning so the
-          // admin knows to look further down the page (or drag it back).
-          setActionError(
-            'Duplicate created, but couldn’t reposition it below the source. Check the end of the lesson.',
-          )
+          // right after the source. Non-fatal — surface a warning that
+          // includes the underlying reason so the admin has a diagnostic,
+          // not just a symptom.
+          const base =
+            'Duplicate created, but couldn’t reposition it below the source. Check the end of the lesson.'
+          setActionError(reason ? `${base} (${reason})` : base)
         }
       })
     },
