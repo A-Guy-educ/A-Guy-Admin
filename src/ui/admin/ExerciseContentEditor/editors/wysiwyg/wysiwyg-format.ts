@@ -109,6 +109,31 @@ export function insertHeading(root: HTMLElement): boolean {
   return true
 }
 
+// Strip only color-token wrappers from the selection, leaving bold/italic,
+// sizes, and alignment untouched. Used by the "None" swatch in the color
+// picker so admins can undo a coloring without wiping every other mark.
+export function clearColor(root: HTMLElement): boolean {
+  const range = currentRange(root)
+  if (!range || range.collapsed) return false
+
+  const isColor = (el: Element) => categoryOfElement(el) === 'color'
+
+  let mutated = false
+  let ancestor = findAncestor(range, root, isColor)
+  while (ancestor) {
+    unwrap(ancestor)
+    mutated = true
+    ancestor = findAncestor(range, root, isColor)
+  }
+
+  const contents = range.extractContents()
+  const before = contents.querySelectorAll('*').length
+  stripDescendants(contents, isColor)
+  const stripped = contents.querySelectorAll('*').length !== before
+  range.insertNode(contents)
+  return mutated || stripped
+}
+
 export function clearFormatting(root: HTMLElement): boolean {
   const range = currentRange(root)
   if (!range) return false

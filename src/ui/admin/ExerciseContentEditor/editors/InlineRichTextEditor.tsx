@@ -86,6 +86,11 @@ export const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
     setShowColorPicker(false)
   }
 
+  const clearHighlight = () => {
+    wysiwygRef.current?.clearColor()
+    setShowColorPicker(false)
+  }
+
   const insertSize = (token: SizeToken) => {
     wysiwygRef.current?.applyToken(token)
   }
@@ -280,6 +285,14 @@ export const InlineRichTextEditor: React.FC<InlineRichTextEditorProps> = ({
                       data-testid={`rte-color-${option.token}`}
                     />
                   ))}
+                  <button
+                    className="color-option color-option--none"
+                    onClick={clearHighlight}
+                    title="None"
+                    type="button"
+                    aria-label="Clear color"
+                    data-testid="rte-color-none"
+                  />
                 </div>
               )}
             </div>

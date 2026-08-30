@@ -222,7 +222,7 @@
   top: calc(100% + 4px);
   left: 0;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 0.5rem;
   padding: 0.5rem;
   background: var(--theme-elevation-50);
@@ -278,6 +278,21 @@
 
 .color-option--highlight-8 {
   background: hsl(var(--text-highlight-8));
+}
+
+/* "None" swatch — clears the color from the selection without touching
+   other formatting. White background with a diagonal red slash so the
+   affordance reads as "no color" regardless of the surrounding theme. */
+.color-option--none {
+  background:
+    linear-gradient(
+      to top right,
+      transparent calc(50% - 1.5px),
+      hsl(var(--text-highlight-1)) calc(50% - 1.5px) calc(50% + 1.5px),
+      transparent calc(50% + 1.5px)
+    ),
+    var(--theme-elevation-0, #ffffff);
+  border-color: var(--theme-elevation-300);
 }
 
 /* Toolbar palette swatches (4-color toolbar palette) */
