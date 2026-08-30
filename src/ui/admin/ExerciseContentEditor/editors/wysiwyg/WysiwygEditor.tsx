@@ -9,6 +9,7 @@ import {
   applyToken,
   insertHeading,
   clearFormatting,
+  clearColor,
   insertAround,
 } from './wysiwyg-format'
 import { useEditorHandlers } from './use-editor-handlers'
@@ -18,6 +19,7 @@ export interface WysiwygEditorHandle {
   applyToken: (token: AllToken) => void
   insertHeading: () => void
   clearFormatting: () => void
+  clearColor: () => void
   insertAround: (before: string, after: string) => void
   focus: () => void
 }
@@ -81,6 +83,7 @@ export const WysiwygEditor = React.forwardRef<WysiwygEditorHandle, WysiwygEditor
         applyToken: (token) => runAction((r) => applyToken(r, token)),
         insertHeading: () => runAction((r) => insertHeading(r)),
         clearFormatting: () => runAction((r) => clearFormatting(r)),
+        clearColor: () => runAction((r) => clearColor(r)),
         insertAround: (before, after) => runAction((r) => insertAround(r, before, after)),
         focus: () => rootRef.current?.focus(),
       }),
