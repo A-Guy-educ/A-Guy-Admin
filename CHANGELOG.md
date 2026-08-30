@@ -1961,6 +1961,7 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- feat: Add SVG and table blocks to studio, add clear-color option ([#390](https://github.com/A-Guy-educ/A-Guy-Admin/pull/390)) — @aguyshayb
 - promote: dev -> main (v0.37.0) ([#387](https://github.com/A-Guy-educ/A-Guy-Admin/pull/387)) — @aguyshayb
 - chore: release v0.37.0 ([#386](https://github.com/A-Guy-educ/A-Guy-Admin/pull/386)) — @aguyshayb
 - feat(studio): Add-between + Delete + Duplicate for sections & exercises ([#385](https://github.com/A-Guy-educ/A-Guy-Admin/pull/385)) — @aguyshayb
