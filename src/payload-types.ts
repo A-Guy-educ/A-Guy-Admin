@@ -189,10 +189,12 @@ export interface Config {
   globals: {
     header: Header;
     footer: Footer;
+    tts_settings: TtsSetting;
   };
   globalsSelect: {
     header: HeaderSelect<false> | HeaderSelect<true>;
     footer: FooterSelect<false> | FooterSelect<true>;
+    tts_settings: TtsSettingsSelect<false> | TtsSettingsSelect<true>;
   };
   locale: null;
   user:
@@ -5637,6 +5639,53 @@ export interface Footer {
   createdAt?: string | null;
 }
 /**
+ * Google Cloud TTS voice + speaking rate for chat-lesson audio. Consumed by A-Guy-Web via /api/tts-settings/current (60s CDN cache — changes propagate within ~1 min).
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "tts_settings".
+ */
+export interface TtsSetting {
+  id: string;
+  /**
+   * Google Cloud voice name for Hebrew TTS.
+   */
+  heVoice:
+    | 'he-IL-Wavenet-A'
+    | 'he-IL-Wavenet-B'
+    | 'he-IL-Wavenet-C'
+    | 'he-IL-Wavenet-D'
+    | 'he-IL-Standard-A'
+    | 'he-IL-Standard-B'
+    | 'he-IL-Standard-C'
+    | 'he-IL-Standard-D';
+  /**
+   * ssmlGender passed to Google TTS alongside heVoice. Kept as its own field so gender can be overridden per voice.
+   */
+  heGender: 'FEMALE' | 'MALE';
+  /**
+   * Google Cloud voice name for English TTS.
+   */
+  enVoice:
+    | 'en-US-Neural2-A'
+    | 'en-US-Neural2-C'
+    | 'en-US-Neural2-D'
+    | 'en-US-Neural2-F'
+    | 'en-US-Neural2-H'
+    | 'en-US-Neural2-J'
+    | 'en-US-Wavenet-D'
+    | 'en-US-Wavenet-F';
+  /**
+   * ssmlGender passed to Google TTS alongside enVoice.
+   */
+  enGender: 'FEMALE' | 'MALE';
+  /**
+   * Google TTS speakingRate. 1.0 is natural speed; 0.85 is our current default. Endpoint clamps to [0.25, 2.0] so a corrupt DB value never reaches Google TTS.
+   */
+  speakingRate: number;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "header_select".
  */
@@ -5690,6 +5739,20 @@ export interface FooterSelect<T extends boolean = true> {
             };
         id?: T;
       };
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "tts_settings_select".
+ */
+export interface TtsSettingsSelect<T extends boolean = true> {
+  heVoice?: T;
+  heGender?: T;
+  enVoice?: T;
+  enGender?: T;
+  speakingRate?: T;
   updatedAt?: T;
   createdAt?: T;
   globalType?: T;

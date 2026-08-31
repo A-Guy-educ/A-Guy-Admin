@@ -68,6 +68,8 @@ import { createSectionEndpoint } from '@/server/payload/endpoints/studio/create-
 import { duplicateSectionEndpoint } from '@/server/payload/endpoints/studio/duplicate-section'
 import { lessonTreeEndpoint } from '@/server/payload/endpoints/studio/lesson-tree'
 import { reorderLessonExercisesEndpoint } from '@/server/payload/endpoints/studio/reorder-lesson-exercises'
+import { TtsSettings } from '@/server/payload/globals/TtsSettings'
+import { ttsSettingsCurrentEndpoint } from '@/server/payload/endpoints/tts-settings/current'
 import { defaultLexical } from '@/server/payload/fields/defaultLexical'
 import { lessonDuplicationTask } from '@/server/payload/jobs/lesson-duplication-task'
 import { pdfToExercisesTask } from '@/server/payload/jobs/pdf-to-exercises-task'
@@ -77,6 +79,7 @@ import { runBackfillOnInit } from '@/server/payload/migrations/backfillAdminTitl
 import { runDropStaleCoursesValidatorOnInit } from '@/server/payload/migrations/dropStaleCoursesValidator'
 import { runLocalizeTeacherProfilesOnInit } from '@/server/payload/migrations/localize-teacher-profiles'
 import { runPopulateLessonBlocksOnInit } from '@/server/payload/migrations/populateLessonBlocks'
+import { runSeedTtsSettingsOnInit } from '@/server/payload/migrations/seedTtsSettings'
 import { plugins } from '@/server/payload/plugins'
 import { runSeedFeaturesOnInit } from '@/server/payload/seed/features-seed'
 import { seedTeacherProfiles } from '@/server/payload/seed/teacher-profiles-seed'
@@ -346,7 +349,7 @@ export default buildConfig({
         }),
       }
     : {}),
-  globals: [Header, Footer],
+  globals: [Header, Footer, TtsSettings],
   plugins,
   secret:
     process.env.PAYLOAD_SECRET ||
@@ -434,6 +437,11 @@ export default buildConfig({
       path: '/studio/lessons/:lessonId/reorder-exercises',
       method: 'post',
       handler: (req: PayloadRequest) => reorderLessonExercisesEndpoint(req),
+    },
+    {
+      path: '/tts-settings/current',
+      method: 'get',
+      handler: (req: PayloadRequest) => ttsSettingsCurrentEndpoint(req),
     },
   ],
   jobs: {
@@ -633,6 +641,7 @@ export default buildConfig({
     await timedInit('localizeTeacherProfiles', () => runLocalizeTeacherProfilesOnInit(payload))
     await timedInit('seedTeacherProfiles', () => seedTeacherProfiles(payload))
     await timedInit('seedFeatures', () => runSeedFeaturesOnInit(payload))
+    await timedInit('seedTtsSettings', () => runSeedTtsSettingsOnInit(payload))
 
     bootLog('onInit complete', {
       msSinceBoot: Date.now() - BOOT_START,
