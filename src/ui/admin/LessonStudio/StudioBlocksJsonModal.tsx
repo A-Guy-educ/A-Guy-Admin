@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useRef } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import type { ContentBlock } from '@/server/payload/collections/Exercises/types'
 import { FullJsonEditor } from '../ExerciseContentEditor/FullJsonEditor'
 
@@ -22,6 +22,16 @@ interface StudioBlocksJsonModalProps {
  *
  * Adding / removing blocks or changing a block's id/type is blocked by
  * design — use the studio's per-block Add / Delete affordances for that.
+ *
+ * IMPORTANT — content freeze at mount:
+ * The `blocks` prop is snapshotted into local state at mount and NEVER
+ * refreshed from subsequent prop changes. This is deliberate. The studio's
+ * parent re-renders constantly (Save-all toggling `saving`, row-op state
+ * churn, refetch cycles); if we forwarded the live `blocks` prop to
+ * FullJsonEditor, its own `useEffect(() => setJsonText(...), [content])`
+ * would wipe any in-progress textarea edit on every ancestor re-render.
+ * Snapshotting also stabilizes the invariance baseline so it can't drift
+ * mid-session from a concurrent refetch normalizing the container's blocks.
  */
 export const StudioBlocksJsonModal: React.FC<StudioBlocksJsonModalProps> = ({
   blocks,
@@ -32,10 +42,9 @@ export const StudioBlocksJsonModal: React.FC<StudioBlocksJsonModalProps> = ({
   const dialogRef = useRef<HTMLDivElement>(null)
   const previouslyFocusedRef = useRef<Element | null>(null)
 
-  // Snapshot the blocks at mount so structural-invariance validation compares
-  // against the state the admin opened, not against every keystroke re-render.
-  // Ref (not state) so it's captured once and never re-triggers.
-  const originalContentRef = useRef<{ blocks: ContentBlock[] }>({ blocks })
+  // One-shot capture: useState with an initializer runs exactly once.
+  // Later prop changes to `blocks` are intentionally ignored (see above).
+  const [frozenContent] = useState<{ blocks: ContentBlock[] }>(() => ({ blocks }))
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -55,18 +64,11 @@ export const StudioBlocksJsonModal: React.FC<StudioBlocksJsonModalProps> = ({
   }, [])
 
   const handleApply = (updated: unknown) => {
-    // FullJsonEditor hands back the whole `content` object — pull the blocks
-    // array out and hand only that to the studio parent, which manages the
-    // dirty flag + save-batch.
-    if (
-      updated &&
-      typeof updated === 'object' &&
-      'blocks' in updated &&
-      Array.isArray((updated as { blocks: unknown }).blocks)
-    ) {
-      onApply((updated as { blocks: ContentBlock[] }).blocks)
-      onClose()
-    }
+    // FullJsonEditor's structural-invariance check guarantees `updated` is
+    // shape-compatible with `frozenContent` (which is `{ blocks: [...] }`)
+    // before it fires this callback, so the cast is safe.
+    onApply((updated as { blocks: ContentBlock[] }).blocks)
+    onClose()
   }
 
   return (
@@ -86,8 +88,8 @@ export const StudioBlocksJsonModal: React.FC<StudioBlocksJsonModalProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
         <FullJsonEditor
-          content={{ blocks }}
-          originalContent={originalContentRef.current}
+          content={frozenContent}
+          originalContent={frozenContent}
           onApply={handleApply}
           onCancel={onClose}
         />
