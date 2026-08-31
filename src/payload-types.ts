@@ -5679,7 +5679,7 @@ export interface TtsSetting {
    */
   enGender: 'FEMALE' | 'MALE';
   /**
-   * Google TTS speakingRate. 1.0 is natural speed; 0.85 is our current default.
+   * Google TTS speakingRate. 1.0 is natural speed; 0.85 is our current default. Endpoint clamps to [0.25, 2.0] so a corrupt DB value never reaches Google TTS.
    */
   speakingRate: number;
   updatedAt?: string | null;

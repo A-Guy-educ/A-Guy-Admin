@@ -10,38 +10,25 @@
  * Non-secret; public read via the dedicated endpoint (see
  * endpoints/tts-settings/current.ts). Direct /api/globals/tts_settings reads
  * stay admin-only via `configAdminOnly`.
+ *
+ * Voice/gender enums, defaults, and validation live in
+ * `./tts-settings-constants.ts` — the endpoint imports the same lists so a
+ * DB value trimmed from the enum falls back to the current default rather
+ * than being passed through to Google TTS.
  */
 
 import type { GlobalConfig } from 'payload'
 
 import { configAdminOnly } from '../access/configAdminOnly'
-
-const HE_VOICE_OPTIONS = [
-  { label: 'he-IL-Wavenet-A (Female)', value: 'he-IL-Wavenet-A' },
-  { label: 'he-IL-Wavenet-B (Male)', value: 'he-IL-Wavenet-B' },
-  { label: 'he-IL-Wavenet-C (Female)', value: 'he-IL-Wavenet-C' },
-  { label: 'he-IL-Wavenet-D (Male)', value: 'he-IL-Wavenet-D' },
-  { label: 'he-IL-Standard-A (Female)', value: 'he-IL-Standard-A' },
-  { label: 'he-IL-Standard-B (Male)', value: 'he-IL-Standard-B' },
-  { label: 'he-IL-Standard-C (Female)', value: 'he-IL-Standard-C' },
-  { label: 'he-IL-Standard-D (Male)', value: 'he-IL-Standard-D' },
-] as const
-
-const EN_VOICE_OPTIONS = [
-  { label: 'en-US-Neural2-A (Male)', value: 'en-US-Neural2-A' },
-  { label: 'en-US-Neural2-C (Female)', value: 'en-US-Neural2-C' },
-  { label: 'en-US-Neural2-D (Male)', value: 'en-US-Neural2-D' },
-  { label: 'en-US-Neural2-F (Female)', value: 'en-US-Neural2-F' },
-  { label: 'en-US-Neural2-H (Female)', value: 'en-US-Neural2-H' },
-  { label: 'en-US-Neural2-J (Male)', value: 'en-US-Neural2-J' },
-  { label: 'en-US-Wavenet-D (Male)', value: 'en-US-Wavenet-D' },
-  { label: 'en-US-Wavenet-F (Female)', value: 'en-US-Wavenet-F' },
-] as const
-
-const GENDER_OPTIONS = [
-  { label: 'Female', value: 'FEMALE' },
-  { label: 'Male', value: 'MALE' },
-] as const
+import {
+  EN_VOICE_OPTIONS,
+  GENDER_OPTIONS,
+  HE_VOICE_OPTIONS,
+  SPEAKING_RATE_MAX,
+  SPEAKING_RATE_MIN,
+  SPEAKING_RATE_STEP,
+  TTS_DEFAULTS,
+} from './tts-settings-constants'
 
 export const TtsSettings: GlobalConfig = {
   slug: 'tts_settings',
@@ -59,7 +46,7 @@ export const TtsSettings: GlobalConfig = {
       name: 'heVoice',
       type: 'select',
       required: true,
-      defaultValue: 'he-IL-Wavenet-A',
+      defaultValue: TTS_DEFAULTS.heVoice,
       options: [...HE_VOICE_OPTIONS],
       admin: {
         description: 'Google Cloud voice name for Hebrew TTS.',
@@ -69,7 +56,7 @@ export const TtsSettings: GlobalConfig = {
       name: 'heGender',
       type: 'select',
       required: true,
-      defaultValue: 'FEMALE',
+      defaultValue: TTS_DEFAULTS.heGender,
       options: [...GENDER_OPTIONS],
       admin: {
         description:
@@ -80,7 +67,7 @@ export const TtsSettings: GlobalConfig = {
       name: 'enVoice',
       type: 'select',
       required: true,
-      defaultValue: 'en-US-Neural2-D',
+      defaultValue: TTS_DEFAULTS.enVoice,
       options: [...EN_VOICE_OPTIONS],
       admin: {
         description: 'Google Cloud voice name for English TTS.',
@@ -90,7 +77,7 @@ export const TtsSettings: GlobalConfig = {
       name: 'enGender',
       type: 'select',
       required: true,
-      defaultValue: 'MALE',
+      defaultValue: TTS_DEFAULTS.enGender,
       options: [...GENDER_OPTIONS],
       admin: {
         description: 'ssmlGender passed to Google TTS alongside enVoice.',
@@ -100,12 +87,13 @@ export const TtsSettings: GlobalConfig = {
       name: 'speakingRate',
       type: 'number',
       required: true,
-      defaultValue: 0.85,
-      min: 0.25,
-      max: 2.0,
+      defaultValue: TTS_DEFAULTS.speakingRate,
+      min: SPEAKING_RATE_MIN,
+      max: SPEAKING_RATE_MAX,
       admin: {
-        step: 0.05,
-        description: 'Google TTS speakingRate. 1.0 is natural speed; 0.85 is our current default.',
+        step: SPEAKING_RATE_STEP,
+        description:
+          'Google TTS speakingRate. 1.0 is natural speed; 0.85 is our current default. Endpoint clamps to [0.25, 2.0] so a corrupt DB value never reaches Google TTS.',
       },
     },
   ],
