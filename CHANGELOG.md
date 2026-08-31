@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.38.0 — 2026-08-31
+
+### Features
+- Section- and exercise-level multi-block JSON editor in studio (#398)
+- Add tts_settings global for chat-lesson TTS (#394)
+- Seamless single-mode rte, toggle-off marks, studio JSON editor (#393)
+- Add SVG and table blocks to studio, add clear-color option (#390)
+
+### Bug Fixes
+- Freeze blocks modal content at mount to prevent edit wipe
+- Address review — shared enums, runtime validation, CORS, seed docs
+- Keyboard access to JSON button + cancel-closes-modal
+- Add question_multi_axis to JSONInspector valid types
+- Studio JSON modal auto-edits, focus management, orphan CSS cleanup
+
 ## v0.37.0 — 2026-08-28
 
 ### Features
