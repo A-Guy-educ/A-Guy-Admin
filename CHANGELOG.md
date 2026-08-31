@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.38.0 — 2026-08-31
+
+### Features
+- Section- and exercise-level multi-block JSON editor in studio (#398)
+- Add tts_settings global for chat-lesson TTS (#394)
+- Seamless single-mode rte, toggle-off marks, studio JSON editor (#393)
+- Add SVG and table blocks to studio, add clear-color option (#390)
+
+### Bug Fixes
+- Freeze blocks modal content at mount to prevent edit wipe
+- Address review — shared enums, runtime validation, CORS, seed docs
+- Keyboard access to JSON button + cancel-closes-modal
+- Add question_multi_axis to JSONInspector valid types
+- Studio JSON modal auto-edits, focus management, orphan CSS cleanup
+
 ## v0.37.0 — 2026-08-28
 
 ### Features
@@ -1961,6 +1976,12 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- chore: release v0.38.0 ([#399](https://github.com/A-Guy-educ/A-Guy-Admin/pull/399)) — @aguyshayb
+- feat: TTS settings global for chat-lesson voice/rate ([#394](https://github.com/A-Guy-educ/A-Guy-Admin/pull/394)) — @aguyshayb
+- feat: Section- and exercise-level multi-block JSON editor in studio ([#398](https://github.com/A-Guy-educ/A-Guy-Admin/pull/398)) — @aguyshayb
+- feat: Seamless single-mode RTE, toggle-off marks, studio JSON editor ([#393](https://github.com/A-Guy-educ/A-Guy-Admin/pull/393)) — @aguyshayb
+- feat: Add SVG and table blocks to studio, add clear-color option ([#390](https://github.com/A-Guy-educ/A-Guy-Admin/pull/390)) — @aguyshayb
+- promote: dev -> main (v0.37.0) ([#387](https://github.com/A-Guy-educ/A-Guy-Admin/pull/387)) — @aguyshayb
 - chore: release v0.37.0 ([#386](https://github.com/A-Guy-educ/A-Guy-Admin/pull/386)) — @aguyshayb
 - feat(studio): Add-between + Delete + Duplicate for sections & exercises ([#385](https://github.com/A-Guy-educ/A-Guy-Admin/pull/385)) — @aguyshayb
 - feat: Section duplicate, exercise cascade delete, sections in cascade ([#384](https://github.com/A-Guy-educ/A-Guy-Admin/pull/384)) — @aguyshayb

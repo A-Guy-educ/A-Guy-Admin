@@ -1,6 +1,7 @@
 'use client'
 
 import { useAuth } from '@payloadcms/ui'
+import { FileCode } from 'lucide-react'
 import React from 'react'
 import type { ContentBlock } from '@/server/payload/collections/Exercises/types'
 import type { StudioTreeExercise } from '@/server/payload/endpoints/studio/lesson-tree'
@@ -8,6 +9,7 @@ import { AccountRole } from '@/infra/auth/roles'
 import { AddBlockButton } from './AddBlockButton'
 import { AddChildButton } from './AddChildButton'
 import { LazyInlineBlockEditor, prefetchInlineBlockEditor } from './LazyInlineBlockEditor'
+import { StudioBlocksJsonModal } from './StudioBlocksJsonModal'
 import { StudioDocBlock } from './StudioDocBlock'
 import { StudioSectionEditor } from './StudioSectionEditor'
 import type { StudioViewMode } from './viewMode'
@@ -36,6 +38,9 @@ interface StudioExerciseCardProps {
   onAddExerciseBlock: (exerciseId: string, block: ContentBlock) => void
   onDeleteSectionBlock: (sectionId: string, index: number) => void
   onDeleteExerciseBlock: (exerciseId: string, index: number) => void
+  /** Bulk-replace handlers wired to the section-/exercise-level JSON editor. */
+  onReplaceSectionBlocks: (sectionId: string, blocks: ContentBlock[]) => void
+  onReplaceExerciseBlocks: (exerciseId: string, blocks: ContentBlock[]) => void
   onAddSection: (exerciseId: string, title: string, insertAfter?: string) => Promise<void>
   onDeleteSection: (sectionId: string) => Promise<void>
   onDeleteExercise: (exerciseId: string) => Promise<void>
@@ -58,6 +63,8 @@ export const StudioExerciseCard: React.FC<StudioExerciseCardProps> = ({
   onAddExerciseBlock,
   onDeleteSectionBlock,
   onDeleteExerciseBlock,
+  onReplaceSectionBlocks,
+  onReplaceExerciseBlocks,
   onAddSection,
   onDeleteSection,
   onDeleteExercise,
@@ -65,6 +72,7 @@ export const StudioExerciseCard: React.FC<StudioExerciseCardProps> = ({
   onDuplicateExercise,
   viewMode,
 }) => {
+  const [showExerciseBlocksJson, setShowExerciseBlocksJson] = React.useState(false)
   const { user } = useAuth()
   // Exercise-level Delete + Duplicate hit admin-only endpoints
   // (/api/cascade-delete requires role === 'admin'; the exercises duplicate
@@ -141,6 +149,16 @@ export const StudioExerciseCard: React.FC<StudioExerciseCardProps> = ({
       <div className="studio-exercise-body">
         {hasExerciseBlocks && (
           <div className="studio-section studio-section-exercise-inline">
+            <div className="studio-exercise-blocks-toolbar">
+              <button
+                type="button"
+                className="studio-row-btn"
+                onClick={() => setShowExerciseBlocksJson(true)}
+                title="View / edit JSON for all exercise-level blocks"
+              >
+                <FileCode size={12} /> JSON
+              </button>
+            </div>
             <div className="studio-section-blocks">
               {exerciseBlocks.map((block, blockIndex) => {
                 const handleChange = (updated: ContentBlock) =>
@@ -210,6 +228,7 @@ export const StudioExerciseCard: React.FC<StudioExerciseCardProps> = ({
                 onBlockChange={onSectionBlockChange}
                 onAddBlock={onAddSectionBlock}
                 onDeleteBlock={onDeleteSectionBlock}
+                onReplaceBlocks={onReplaceSectionBlocks}
                 onDelete={async () => {
                   if (
                     !window.confirm(
@@ -234,6 +253,14 @@ export const StudioExerciseCard: React.FC<StudioExerciseCardProps> = ({
           ))
         )}
       </div>
+      {showExerciseBlocksJson && (
+        <StudioBlocksJsonModal
+          blocks={exerciseBlocks}
+          label={exercise.title || 'Exercise content'}
+          onApply={(updated) => onReplaceExerciseBlocks(exercise.id, updated)}
+          onClose={() => setShowExerciseBlocksJson(false)}
+        />
+      )}
     </section>
   )
 }

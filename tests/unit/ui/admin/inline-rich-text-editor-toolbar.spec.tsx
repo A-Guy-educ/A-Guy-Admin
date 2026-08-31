@@ -223,47 +223,6 @@ describe('InlineRichTextEditor toolbar (Issue #110)', () => {
     if (lastValue !== undefined) expect(lastValue).toBe('abc')
   })
 
-  it('toggles to view mode and shows rendered preview instead of the wysiwyg surface', async () => {
-    const { onChange: _onChange } = renderEditor({ value: '::text-wine-red{colored} text' })
-
-    expect(screen.getByTestId('rte-wysiwyg')).toBeInTheDocument()
-    expect(screen.queryByTestId('rte-preview')).toBeNull()
-
-    fireEvent.click(screen.getByTestId('rte-toggle-view'))
-
-    await waitFor(() => {
-      expect(screen.getByTestId('rte-preview')).toBeInTheDocument()
-    })
-    expect(screen.queryByTestId('rte-wysiwyg')).toBeNull()
-    // Edit-mode controls are gone
-    expect(screen.queryByTestId('rte-bold')).toBeNull()
-    // The Edit toggle is now visible
-    expect(screen.getByTestId('rte-toggle-edit')).toBeInTheDocument()
-  })
-
-  it('toggles back to edit mode and restores the wysiwyg surface', async () => {
-    renderEditor({ value: 'some content' })
-
-    fireEvent.click(screen.getByTestId('rte-toggle-view'))
-    await screen.findByTestId('rte-preview')
-
-    fireEvent.click(screen.getByTestId('rte-toggle-edit'))
-
-    await waitFor(() => {
-      expect(screen.getByTestId('rte-wysiwyg')).toBeInTheDocument()
-    })
-    expect(screen.queryByTestId('rte-preview')).toBeNull()
-  })
-
-  it('shows placeholder text in view mode when value is empty', async () => {
-    renderEditor({ value: '' })
-
-    fireEvent.click(screen.getByTestId('rte-toggle-view'))
-
-    await screen.findByTestId('rte-preview')
-    expect(screen.getByTestId('rte-preview').textContent).toContain('Enter text')
-  })
-
   it('replaces (does not nest) when a second color is applied to the same range', async () => {
     const { onChange } = renderEditor({ value: 'abc' })
 
@@ -299,6 +258,48 @@ describe('InlineRichTextEditor toolbar (Issue #110)', () => {
     await waitFor(() => {
       const last = onChange.mock.calls.at(-1)?.[0]?.value
       expect(last).toBe('::text-size-large{abc}')
+    })
+  })
+
+  it('toggles the same color off when re-applied to the same selection', async () => {
+    const { onChange } = renderEditor({ value: 'abc' })
+
+    selectTextInEditor('abc')
+    fireEvent.click(screen.getByTestId('rte-color-toggle'))
+    await screen.findByTestId('rte-color-picker')
+    fireEvent.click(screen.getByTestId('rte-color-text-wine-red'))
+    await waitFor(() => {
+      const last = onChange.mock.calls.at(-1)?.[0]?.value
+      expect(last).toBe('::text-wine-red{abc}')
+    })
+
+    selectTextInEditor('abc')
+    fireEvent.click(screen.getByTestId('rte-color-toggle'))
+    await screen.findByTestId('rte-color-picker')
+    fireEvent.click(screen.getByTestId('rte-color-text-wine-red'))
+
+    await waitFor(() => {
+      const last = onChange.mock.calls.at(-1)?.[0]?.value
+      expect(last).toBe('abc')
+    })
+  })
+
+  it('toggles the same size off when re-applied to the same selection', async () => {
+    const { onChange } = renderEditor({ value: 'abc' })
+
+    selectTextInEditor('abc')
+    fireEvent.click(screen.getByTestId('rte-size-text-size-large'))
+    await waitFor(() => {
+      const last = onChange.mock.calls.at(-1)?.[0]?.value
+      expect(last).toBe('::text-size-large{abc}')
+    })
+
+    selectTextInEditor('abc')
+    fireEvent.click(screen.getByTestId('rte-size-text-size-large'))
+
+    await waitFor(() => {
+      const last = onChange.mock.calls.at(-1)?.[0]?.value
+      expect(last).toBe('abc')
     })
   })
 
@@ -395,6 +396,17 @@ describe('InlineRichTextEditor toolbar (Issue #110)', () => {
     await waitFor(() => expect(onChange).toHaveBeenCalled())
     const last = onChange.mock.calls.at(-1)?.[0]?.value
     expect(last).toBe('::text-align-right{abc}')
+  })
+
+  it('toggles a heading back to a paragraph when re-applied', async () => {
+    const { onChange } = renderEditor({ value: '# hello' })
+    selectTextInEditor('hello')
+
+    fireEvent.click(screen.getByTestId('rte-heading'))
+
+    await waitFor(() => expect(onChange).toHaveBeenCalled())
+    const last = onChange.mock.calls.at(-1)?.[0]?.value
+    expect(last).toBe('hello')
   })
 
   it('converts an aligned paragraph to a plain heading (alignment intentionally dropped)', async () => {
