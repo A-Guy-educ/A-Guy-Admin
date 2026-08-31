@@ -1976,6 +1976,7 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- chore: release v0.38.0 ([#399](https://github.com/A-Guy-educ/A-Guy-Admin/pull/399)) — @aguyshayb
 - feat: TTS settings global for chat-lesson voice/rate ([#394](https://github.com/A-Guy-educ/A-Guy-Admin/pull/394)) — @aguyshayb
 - feat: Section- and exercise-level multi-block JSON editor in studio ([#398](https://github.com/A-Guy-educ/A-Guy-Admin/pull/398)) — @aguyshayb
 - feat: Seamless single-mode RTE, toggle-off marks, studio JSON editor ([#393](https://github.com/A-Guy-educ/A-Guy-Admin/pull/393)) — @aguyshayb
