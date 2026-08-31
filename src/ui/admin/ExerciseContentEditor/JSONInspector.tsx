@@ -6,7 +6,7 @@ import { AlignLeft, Check, Copy, Edit, RotateCcw, X } from 'lucide-react'
 import { Highlight, themes } from 'prism-react-renderer'
 import React from 'react'
 
-// All valid block types (11 total)
+// All valid block types (12 total)
 const VALID_BLOCK_TYPES = [
   'rich_text',
   'question_select',
@@ -17,6 +17,7 @@ const VALID_BLOCK_TYPES = [
   'svg',
   'question_geometry',
   'question_axis',
+  'question_multi_axis',
   'html',
   'media',
 ] as const
