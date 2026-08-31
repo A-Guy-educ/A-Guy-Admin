@@ -1,8 +1,10 @@
 'use client'
 
 import React, { useCallback, useEffect, useRef, useState } from 'react'
+import { FileCode } from 'lucide-react'
 import type { ContentBlock } from '@/server/payload/collections/Exercises/types'
 import { LazyInlineBlockEditor, prefetchInlineBlockEditor } from './LazyInlineBlockEditor'
+import { StudioBlockJsonModal } from './StudioBlockJsonModal'
 import { RichTextDocView } from './docViews/RichTextDocView'
 import { QuestionDocView } from './docViews/QuestionDocView'
 import { LatexDocView } from './docViews/LatexDocView'
@@ -30,12 +32,22 @@ interface StudioDocBlockProps {
  */
 export const StudioDocBlock: React.FC<StudioDocBlockProps> = ({ block, onChange, onDelete }) => {
   const [editing, setEditing] = useState(false)
+  const [showJson, setShowJson] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
 
   const stopEditing = useCallback(() => setEditing(false), [])
+  const openJson = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation()
+    setShowJson(true)
+  }, [])
+  const closeJson = useCallback(() => setShowJson(false), [])
 
   useEffect(() => {
-    if (!editing) return
+    // Skip the outside-click auto-close while the JSON modal is open — a
+    // click inside the modal (which is portalled logically-adjacent but not
+    // inside `rootRef`) would otherwise dismiss the underlying editor and
+    // unmount the modal mid-interaction.
+    if (!editing || showJson) return
     const handler = (e: MouseEvent) => {
       const root = rootRef.current
       if (!root) return
@@ -44,66 +56,96 @@ export const StudioDocBlock: React.FC<StudioDocBlockProps> = ({ block, onChange,
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
-  }, [editing])
+  }, [editing, showJson])
 
   if (editing) {
     return (
-      <div ref={rootRef} className="studio-doc-block studio-doc-block--editing">
-        <div className="studio-doc-block-editing-toolbar">
-          {onDelete && (
+      <>
+        <div ref={rootRef} className="studio-doc-block studio-doc-block--editing">
+          <div className="studio-doc-block-editing-toolbar">
+            {onDelete && (
+              <button
+                type="button"
+                className="studio-block-delete-btn"
+                onClick={onDelete}
+                title="Delete this block"
+                aria-label="Delete block"
+              >
+                ×
+              </button>
+            )}
             <button
               type="button"
-              className="studio-block-delete-btn"
-              onClick={onDelete}
-              title="Delete this block"
-              aria-label="Delete block"
+              className="studio-doc-json-btn"
+              onClick={openJson}
+              title="View / edit block JSON"
+              aria-label="View / edit block JSON"
             >
-              ×
+              <FileCode size={14} /> JSON
             </button>
-          )}
-          <button type="button" className="studio-doc-done-btn" onClick={stopEditing}>
-            Done
-          </button>
+            <button type="button" className="studio-doc-done-btn" onClick={stopEditing}>
+              Done
+            </button>
+          </div>
+          <LazyInlineBlockEditor block={block} onChange={onChange} />
         </div>
-        <LazyInlineBlockEditor block={block} onChange={onChange} />
-      </div>
+        {showJson && <StudioBlockJsonModal block={block} onApply={onChange} onClose={closeJson} />}
+      </>
     )
   }
 
   return (
-    <div
-      ref={rootRef}
-      className="studio-doc-block"
-      role="button"
-      tabIndex={0}
-      onClick={() => setEditing(true)}
-      onMouseEnter={prefetchInlineBlockEditor}
-      onFocus={prefetchInlineBlockEditor}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault()
-          setEditing(true)
-        }
-      }}
-    >
-      {onDelete && (
+    <>
+      <div
+        ref={rootRef}
+        className="studio-doc-block"
+        role="button"
+        tabIndex={0}
+        onClick={() => setEditing(true)}
+        onMouseEnter={prefetchInlineBlockEditor}
+        onFocus={prefetchInlineBlockEditor}
+        onKeyDown={(e) => {
+          // Only handle Enter/Space when the keydown originated on the outer
+          // div itself (keyboard focus on the block). Events bubbling up from
+          // child buttons (delete ×, JSON button) must fall through so their
+          // own Enter/Space activation fires — otherwise preventDefault here
+          // swallows the child's synthesized click.
+          if (e.target !== e.currentTarget) return
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            setEditing(true)
+          }
+        }}
+      >
+        {onDelete && (
+          <button
+            type="button"
+            className="studio-block-delete-btn studio-block-delete-btn--doc"
+            onClick={(e) => {
+              // The wrapping div's click enters edit mode; stop propagation so
+              // clicking the × doesn't also open the editor.
+              e.stopPropagation()
+              onDelete()
+            }}
+            title="Delete this block"
+            aria-label="Delete block"
+          >
+            ×
+          </button>
+        )}
         <button
           type="button"
-          className="studio-block-delete-btn studio-block-delete-btn--doc"
-          onClick={(e) => {
-            // The wrapping div's click enters edit mode; stop propagation so
-            // clicking the × doesn't also open the editor.
-            e.stopPropagation()
-            onDelete()
-          }}
-          title="Delete this block"
-          aria-label="Delete block"
+          className="studio-doc-json-btn studio-doc-json-btn--doc"
+          onClick={openJson}
+          title="View / edit block JSON"
+          aria-label="View / edit block JSON"
         >
-          ×
+          <FileCode size={14} />
         </button>
-      )}
-      <DocView block={block} />
-    </div>
+        <DocView block={block} />
+      </div>
+      {showJson && <StudioBlockJsonModal block={block} onApply={onChange} onClose={closeJson} />}
+    </>
   )
 }
 

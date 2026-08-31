@@ -6,7 +6,7 @@ import { AlignLeft, Check, Copy, Edit, RotateCcw, X } from 'lucide-react'
 import { Highlight, themes } from 'prism-react-renderer'
 import React from 'react'
 
-// All valid block types (11 total)
+// All valid block types (12 total)
 const VALID_BLOCK_TYPES = [
   'rich_text',
   'question_select',
@@ -17,6 +17,7 @@ const VALID_BLOCK_TYPES = [
   'svg',
   'question_geometry',
   'question_axis',
+  'question_multi_axis',
   'html',
   'media',
 ] as const
@@ -28,11 +29,33 @@ interface JSONInspectorProps {
   mode: 'read' | 'edit'
   onApply?: (block: ContentBlock) => void // Called when Apply is clicked
   onClose?: () => void // For mobile toggle
+  /**
+   * When true (and mode === 'edit'), the inspector opens directly in the
+   * editable textarea state instead of the read-only preview. Used by hosts
+   * (e.g. StudioBlockJsonModal) where the caller's affordance is
+   * "edit JSON" — a second click on the Edit pencil would be redundant.
+   */
+  initialEditing?: boolean
+  /**
+   * When provided, the Cancel (X) button in the edit toolbar calls this
+   * instead of just flipping back to the read-only preview. Modal hosts wire
+   * it to `onClose` so a single Cancel click dismisses the whole modal —
+   * without it, users who opened the modal via `initialEditing` land in a
+   * read-only preview inside the modal and have to click a second X to exit.
+   */
+  onCancel?: () => void
 }
 
-export const JSONInspector: React.FC<JSONInspectorProps> = ({ block, mode, onApply, onClose }) => {
+export const JSONInspector: React.FC<JSONInspectorProps> = ({
+  block,
+  mode,
+  onApply,
+  onClose,
+  initialEditing = false,
+  onCancel,
+}) => {
   const [copied, setCopied] = React.useState(false)
-  const [isEditing, setIsEditing] = React.useState(false)
+  const [isEditing, setIsEditing] = React.useState(initialEditing && mode === 'edit')
   const [editValue, setEditValue] = React.useState('')
   const [editError, setEditError] = React.useState<string | null>(null)
   const textareaRef = React.useRef<HTMLTextAreaElement>(null)
@@ -214,6 +237,10 @@ export const JSONInspector: React.FC<JSONInspectorProps> = ({ block, mode, onApp
               <button
                 className="icon-button"
                 onClick={() => {
+                  if (onCancel) {
+                    onCancel()
+                    return
+                  }
                   setIsEditing(false)
                   setEditError(null)
                   handleRevert()

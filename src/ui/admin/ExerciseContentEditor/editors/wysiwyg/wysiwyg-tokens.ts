@@ -56,14 +56,24 @@ export function tokenCategory(token: AllToken): TokenCategory {
 }
 
 export function categoryOfElement(el: Element): TokenCategory | null {
+  const token = tokenOfElement(el)
+  return token ? tokenCategory(token) : null
+}
+
+/**
+ * Return the specific token an element carries — reads the canonical
+ * `data-aguy-token` attribute first, falls back to `aguy-*` class name for
+ * legacy content that may have lost the attribute on paste/round-trip.
+ */
+export function tokenOfElement(el: Element): AllToken | null {
   const tokenAttr = el.getAttribute('data-aguy-token')
   if (tokenAttr && (ALL_TOKENS as readonly string[]).includes(tokenAttr)) {
-    return tokenCategory(tokenAttr as AllToken)
+    return tokenAttr as AllToken
   }
   const cls = el.getAttribute('class') ?? ''
   for (const c of cls.split(/\s+/)) {
     const token = tokenForClass(c)
-    if (token) return tokenCategory(token)
+    if (token) return token
   }
   return null
 }
