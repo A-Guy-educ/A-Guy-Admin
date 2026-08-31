@@ -28,11 +28,24 @@ interface JSONInspectorProps {
   mode: 'read' | 'edit'
   onApply?: (block: ContentBlock) => void // Called when Apply is clicked
   onClose?: () => void // For mobile toggle
+  /**
+   * When true (and mode === 'edit'), the inspector opens directly in the
+   * editable textarea state instead of the read-only preview. Used by hosts
+   * (e.g. StudioBlockJsonModal) where the caller's affordance is
+   * "edit JSON" — a second click on the Edit pencil would be redundant.
+   */
+  initialEditing?: boolean
 }
 
-export const JSONInspector: React.FC<JSONInspectorProps> = ({ block, mode, onApply, onClose }) => {
+export const JSONInspector: React.FC<JSONInspectorProps> = ({
+  block,
+  mode,
+  onApply,
+  onClose,
+  initialEditing = false,
+}) => {
   const [copied, setCopied] = React.useState(false)
-  const [isEditing, setIsEditing] = React.useState(false)
+  const [isEditing, setIsEditing] = React.useState(initialEditing && mode === 'edit')
   const [editValue, setEditValue] = React.useState('')
   const [editError, setEditError] = React.useState<string | null>(null)
   const textareaRef = React.useRef<HTMLTextAreaElement>(null)

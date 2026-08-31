@@ -76,6 +76,13 @@ export function applyToken(root: HTMLElement, token: AllToken): boolean {
     // click (Bold-style behavior for colors and sizes too). Different-token
     // same-category (e.g. red → blue) falls through to the wrap path via
     // selectNode + wrapToken's internal same-category stripDescendants.
+    //
+    // Known limitation: this only fires when `findAncestor` locates a wrapper
+    // above `commonAncestorContainer`. Selections that span multiple sibling
+    // same-color spans (or Ctrl+A across paragraphs whose color lives on
+    // inner spans, not the block) skip the toggle-off and re-wrap the range
+    // in the same color. Users can work around it via the "None" swatch;
+    // proper multi-span toggle needs the align-style "all match?" scan.
     if (tokenOfElement(ancestor) === token) {
       unwrap(ancestor)
       return true

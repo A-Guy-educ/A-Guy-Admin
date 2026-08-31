@@ -397,13 +397,15 @@
   color: var(--theme-elevation-700, currentColor);
 }
 
-.rich-text-toolbar--view,
-.inline-rich-text-toolbar--view {
+/* .rich-text-* selectors are still used by the sibling RichTextEditor.tsx
+   (its Eye/Pencil toggle hasn't been consolidated yet — only the inline
+   variant was). Keep them; the .inline-rich-text-* variants were removed
+   with the view-mode consolidation. */
+.rich-text-toolbar--view {
   background: var(--theme-elevation-100, transparent);
 }
 
-.rich-text-preview,
-.inline-rich-text-preview {
+.rich-text-preview {
   width: 100%;
   min-height: 200px;
   padding: 1rem;
@@ -412,13 +414,7 @@
   color: var(--theme-elevation-1000, currentColor);
 }
 
-.inline-rich-text-preview {
-  min-height: 80px;
-  padding: 0.75rem;
-}
-
-.rich-text-preview-empty,
-.inline-rich-text-preview-empty {
+.rich-text-preview-empty {
   color: var(--theme-elevation-400, currentColor);
   font-style: italic;
 }
