@@ -2,6 +2,7 @@ import {
   isAlignToken,
   categoryOfElement,
   tokenCategory,
+  tokenOfElement,
   classForToken,
   type AllToken,
 } from './wysiwyg-tokens'
@@ -69,7 +70,18 @@ export function applyToken(root: HTMLElement, token: AllToken): boolean {
   const category = tokenCategory(token)
   const sameCategory = (el: Element) => categoryOfElement(el) === category
   const ancestor = findAncestor(range, root, sameCategory)
-  if (ancestor) range.selectNode(ancestor)
+  if (ancestor) {
+    // Re-clicking the same token toggles it off. Unwrap the ancestor rather
+    // than nest / replace so the user sees the token removed on the second
+    // click (Bold-style behavior for colors and sizes too). Different-token
+    // same-category (e.g. red → blue) falls through to the wrap path via
+    // selectNode + wrapToken's internal same-category stripDescendants.
+    if (tokenOfElement(ancestor) === token) {
+      unwrap(ancestor)
+      return true
+    }
+    range.selectNode(ancestor)
+  }
 
   return forEachBlockRange(range, root, (r) => wrapToken(r, token, category))
 }
@@ -98,12 +110,14 @@ export function insertHeading(root: HTMLElement): boolean {
   if (!range) return false
   const block = findEnclosingBlock(range, root)
   if (!block) return false
-  if (block.tagName.toLowerCase() === 'h1') return false
 
-  const heading = document.createElement('h1')
-  heading.innerHTML = block.innerHTML
-  block.replaceWith(heading)
-  selectContents(heading)
+  // Re-clicking Heading on a block that's already an h1 toggles it back to a
+  // paragraph — same "click again to undo" pattern as Bold / Italic / colors.
+  const isHeading = block.tagName.toLowerCase() === 'h1'
+  const replacement = document.createElement(isHeading ? 'p' : 'h1')
+  replacement.innerHTML = block.innerHTML
+  block.replaceWith(replacement)
+  selectContents(replacement)
   const sel = window.getSelection()
   sel?.getRangeAt(0).collapse(false)
   return true

@@ -497,7 +497,7 @@ export const LessonStudioPage: React.FC<LessonStudioPageProps> = ({ lessonId }) 
   if (!tree) return <div className="studio-message">Lesson not found.</div>
 
   return (
-    <EditorChromeProvider mode="compact" defaultRichTextView="edit">
+    <EditorChromeProvider mode="compact">
       <div className={`studio-page studio-page--${viewMode}`}>
         <StudioToolbar
           lessonTitle={tree.lesson.title || 'Untitled Lesson'}
