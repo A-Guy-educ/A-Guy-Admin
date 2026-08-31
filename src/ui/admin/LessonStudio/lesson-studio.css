@@ -996,7 +996,24 @@
   overflow: hidden;
 }
 
-.studio-json-modal .json-inspector {
+/* Wider variant for the multi-block JSON editor — an array of blocks needs
+   more horizontal room than a single block object to stay legible without
+   soft-wrap. */
+.studio-json-modal--wide {
+  width: min(1100px, 100%);
+}
+
+.studio-json-modal .json-inspector,
+.studio-json-modal .full-json-editor {
   height: 100%;
   min-height: 400px;
+}
+
+/* Toolbar strip above the exercise-level content blocks. Just wide enough
+   to hold the "JSON" button flush-right so it lines up with the section
+   header's own JSON button below. */
+.studio-exercise-blocks-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  padding: 4px 8px 0;
 }

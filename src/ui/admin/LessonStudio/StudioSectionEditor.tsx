@@ -1,9 +1,11 @@
 'use client'
 
+import { FileCode } from 'lucide-react'
 import React from 'react'
 import type { ContentBlock } from '@/server/payload/collections/Exercises/types'
 import { AddBlockButton } from './AddBlockButton'
 import { LazyInlineBlockEditor, prefetchInlineBlockEditor } from './LazyInlineBlockEditor'
+import { StudioBlocksJsonModal } from './StudioBlocksJsonModal'
 import { StudioDocBlock } from './StudioDocBlock'
 import type { StudioViewMode } from './viewMode'
 
@@ -18,6 +20,8 @@ interface StudioSectionEditorProps {
   onBlockChange: (sectionId: string, index: number, updated: ContentBlock) => void
   onAddBlock: (sectionId: string, block: ContentBlock) => void
   onDeleteBlock: (sectionId: string, index: number) => void
+  /** Bulk-replace for the section-level JSON modal (Grab all blocks → paste back). */
+  onReplaceBlocks: (sectionId: string, blocks: ContentBlock[]) => void
   onDelete: () => Promise<void>
   onDuplicate: () => Promise<void>
   viewMode: StudioViewMode
@@ -38,10 +42,13 @@ export const StudioSectionEditor: React.FC<StudioSectionEditorProps> = ({
   onBlockChange,
   onAddBlock,
   onDeleteBlock,
+  onReplaceBlocks,
   onDelete,
   onDuplicate,
   viewMode,
 }) => {
+  const [showBlocksJson, setShowBlocksJson] = React.useState(false)
+
   React.useEffect(() => {
     if (viewMode === 'edit') prefetchInlineBlockEditor()
   }, [viewMode])
@@ -69,6 +76,14 @@ export const StudioSectionEditor: React.FC<StudioSectionEditorProps> = ({
             title="Delete section"
           >
             {deleting ? 'Deleting…' : 'Delete'}
+          </button>
+          <button
+            type="button"
+            className="studio-row-btn"
+            onClick={() => setShowBlocksJson(true)}
+            title="View / edit JSON for all blocks in this section"
+          >
+            <FileCode size={12} /> JSON
           </button>
           <a
             href={`/admin/collections/sections/${sectionId}`}
@@ -118,6 +133,14 @@ export const StudioSectionEditor: React.FC<StudioSectionEditorProps> = ({
           <AddBlockButton onAdd={(block) => onAddBlock(sectionId, block)} />
         </div>
       </div>
+      {showBlocksJson && (
+        <StudioBlocksJsonModal
+          blocks={blocks}
+          label={title || 'Section'}
+          onApply={(updated) => onReplaceBlocks(sectionId, updated)}
+          onClose={() => setShowBlocksJson(false)}
+        />
+      )}
     </div>
   )
 }

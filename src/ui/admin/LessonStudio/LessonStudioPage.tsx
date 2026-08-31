@@ -279,6 +279,30 @@ export const LessonStudioPage: React.FC<LessonStudioPageProps> = ({ lessonId }) 
     })
   }, [])
 
+  // Bulk-replace handlers for the section/exercise-level JSON editors.
+  // StudioBlocksJsonModal hands back a whole validated blocks array (structural
+  // invariance already enforced by FullJsonEditor); we swap it in and flag the
+  // container dirty so the next Save-all batches it with the other edits.
+  const handleReplaceSectionBlocks = useCallback((sectionId: string, blocks: ContentBlock[]) => {
+    setSectionBlocks((prev) => ({ ...prev, [sectionId]: blocks }))
+    setDirtySectionIds((prev) => {
+      if (prev.has(sectionId)) return prev
+      const next = new Set(prev)
+      next.add(sectionId)
+      return next
+    })
+  }, [])
+
+  const handleReplaceExerciseBlocks = useCallback((exerciseId: string, blocks: ContentBlock[]) => {
+    setExerciseBlocks((prev) => ({ ...prev, [exerciseId]: blocks }))
+    setDirtyExerciseIds((prev) => {
+      if (prev.has(exerciseId)) return prev
+      const next = new Set(prev)
+      next.add(exerciseId)
+      return next
+    })
+  }, [])
+
   // Row-op wrapper. Enforces "one op per row at a time" via the ref mirror,
   // writes the busy label into state so the toolbar can render it, and clears
   // the slot in a finally so the toolbar re-enables on both success and
@@ -555,6 +579,8 @@ export const LessonStudioPage: React.FC<LessonStudioPageProps> = ({ lessonId }) 
                     onAddExerciseBlock={handleAddExerciseBlock}
                     onDeleteSectionBlock={handleDeleteSectionBlock}
                     onDeleteExerciseBlock={handleDeleteExerciseBlock}
+                    onReplaceSectionBlocks={handleReplaceSectionBlocks}
+                    onReplaceExerciseBlocks={handleReplaceExerciseBlocks}
                     onAddSection={handleAddSection}
                     onDeleteSection={handleDeleteSection}
                     onDeleteExercise={handleDeleteExercise}
