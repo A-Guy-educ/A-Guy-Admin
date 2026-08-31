@@ -36,6 +36,14 @@ interface JSONInspectorProps {
    * "edit JSON" — a second click on the Edit pencil would be redundant.
    */
   initialEditing?: boolean
+  /**
+   * When provided, the Cancel (X) button in the edit toolbar calls this
+   * instead of just flipping back to the read-only preview. Modal hosts wire
+   * it to `onClose` so a single Cancel click dismisses the whole modal —
+   * without it, users who opened the modal via `initialEditing` land in a
+   * read-only preview inside the modal and have to click a second X to exit.
+   */
+  onCancel?: () => void
 }
 
 export const JSONInspector: React.FC<JSONInspectorProps> = ({
@@ -44,6 +52,7 @@ export const JSONInspector: React.FC<JSONInspectorProps> = ({
   onApply,
   onClose,
   initialEditing = false,
+  onCancel,
 }) => {
   const [copied, setCopied] = React.useState(false)
   const [isEditing, setIsEditing] = React.useState(initialEditing && mode === 'edit')
@@ -228,6 +237,10 @@ export const JSONInspector: React.FC<JSONInspectorProps> = ({
               <button
                 className="icon-button"
                 onClick={() => {
+                  if (onCancel) {
+                    onCancel()
+                    return
+                  }
                   setIsEditing(false)
                   setEditError(null)
                   handleRevert()

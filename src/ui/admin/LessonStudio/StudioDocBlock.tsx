@@ -105,6 +105,12 @@ export const StudioDocBlock: React.FC<StudioDocBlockProps> = ({ block, onChange,
         onMouseEnter={prefetchInlineBlockEditor}
         onFocus={prefetchInlineBlockEditor}
         onKeyDown={(e) => {
+          // Only handle Enter/Space when the keydown originated on the outer
+          // div itself (keyboard focus on the block). Events bubbling up from
+          // child buttons (delete ×, JSON button) must fall through so their
+          // own Enter/Space activation fires — otherwise preventDefault here
+          // swallows the child's synthesized click.
+          if (e.target !== e.currentTarget) return
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault()
             setEditing(true)

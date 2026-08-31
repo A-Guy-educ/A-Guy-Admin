@@ -77,6 +77,7 @@ export const StudioBlockJsonModal: React.FC<StudioBlockJsonModalProps> = ({
           initialEditing
           onApply={handleApply}
           onClose={onClose}
+          onCancel={onClose}
         />
       </div>
     </div>
