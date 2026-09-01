@@ -22,6 +22,8 @@ interface HintSolutionPanelProps {
   blockId: string
   onChange: (field: 'hint' | 'solution' | 'fullSolution', value: InlineRichText | undefined) => void
   onBatchChange: (fields: SupportFields) => void
+  showNotebook?: boolean
+  onShowNotebookChange?: (value: boolean) => void
 }
 
 export const HintSolutionPanel: React.FC<HintSolutionPanelProps> = ({
@@ -31,6 +33,8 @@ export const HintSolutionPanel: React.FC<HintSolutionPanelProps> = ({
   blockId,
   onChange,
   onBatchChange,
+  showNotebook,
+  onShowNotebookChange,
 }) => {
   const [expanded, setExpanded] = React.useState(false)
   const { id: exerciseId } = useDocumentInfo()
@@ -70,10 +74,29 @@ export const HintSolutionPanel: React.FC<HintSolutionPanelProps> = ({
           value={fullSolution}
           onChange={(val) => onChange('fullSolution', val)}
         />
+        {onShowNotebookChange && (
+          <NotebookToggle value={showNotebook ?? false} onChange={onShowNotebookChange} />
+        )}
       </div>
     </CollapsibleSection>
   )
 }
+
+const NotebookToggle: React.FC<{
+  value: boolean
+  onChange: (value: boolean) => void
+}> = ({ value, onChange }) => (
+  <div className="hint-solution-notebook-toggle">
+    <label className="hint-solution-notebook-label">
+      <input type="checkbox" checked={value} onChange={(e) => onChange(e.target.checked)} />
+      <span>Show drawing notebook (הצג מחברת ציור)</span>
+    </label>
+    <p className="hint-solution-notebook-help">
+      When on, students see an &quot;Open notebook&quot; pill under this block to sketch work and
+      ask the tutor to check it.
+    </p>
+  </div>
+)
 
 function GenerateBar({
   isGenerating,
