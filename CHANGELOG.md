@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.39.1 — 2026-09-01
+
+_Maintenance-only release._
+
+- Extend admin session token expiration from 2h to 8h (#406)
+
 ## v0.39.0 — 2026-09-01
 
 ### Features
@@ -1985,6 +1991,10 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- chore: release v0.39.1 ([#407](https://github.com/A-Guy-educ/A-Guy-Admin/pull/407)) — @aguyshayb
+## [v0.39.0] - 2026-09-01
+
+- promote: dev -> main (v0.39.0) ([#404](https://github.com/A-Guy-educ/A-Guy-Admin/pull/404)) — @aguyshayb
 - chore: release v0.39.0 ([#403](https://github.com/A-Guy-educ/A-Guy-Admin/pull/403)) — @aguyshayb
 - feat: Import exercises from a file into an existing lesson ([#402](https://github.com/A-Guy-educ/A-Guy-Admin/pull/402)) — @aguyshayb
 - promote: dev -> main (v0.38.0) ([#400](https://github.com/A-Guy-educ/A-Guy-Admin/pull/400)) — @aguyshayb
