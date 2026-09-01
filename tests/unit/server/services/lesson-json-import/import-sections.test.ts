@@ -236,4 +236,172 @@ describe('importLessonFromJson', () => {
     ])
     expect(updateMock).not.toHaveBeenCalled()
   })
+
+  describe('append-mode (targetLessonId)', () => {
+    it('re-reads lesson.blocks at write-time and appends new exerciseRefs after existing ones', async () => {
+      const existingBlocks = [
+        { id: 'preexisting-1', blockType: 'exerciseRef', exercise: 'ex-existing' },
+      ]
+
+      let findByIDCalls = 0
+      const findByID = vi.fn(async ({ collection }: { collection: string }) => {
+        if (collection === 'lessons') {
+          findByIDCalls += 1
+          if (findByIDCalls === 1) {
+            return { id: 'lesson-1', title: 'Existing', blocks: JSON.stringify(existingBlocks) }
+          }
+          return {
+            id: 'lesson-1',
+            title: 'Existing',
+            blocks: JSON.stringify([
+              ...existingBlocks,
+              { id: 'race-add', blockType: 'exerciseRef', exercise: 'ex-raced-in' },
+            ]),
+          }
+        }
+        return null
+      })
+
+      const createMock = vi.fn(async ({ collection }: { collection: string }) => {
+        if (collection === 'exercises') return { id: 'new-ex-1' }
+        if (collection === 'sections') return { id: 'new-sec-1' }
+        throw new Error(`Unexpected collection: ${collection}`)
+      })
+      const updateMock = vi.fn().mockResolvedValue({})
+
+      const req = {
+        user: { id: 'user-1' },
+        payload: {
+          findByID,
+          find: vi.fn().mockResolvedValue({ docs: [{ order: 5 }] }),
+          create: createMock,
+          update: updateMock,
+          delete: vi.fn(),
+        },
+      } as unknown as PayloadRequest
+
+      const result = await importLessonFromJson(req, {
+        targetLessonId: 'lesson-1',
+        filename: 'lesson.json',
+        json: { topic: 'Topic', exercises: [makeExercise()] },
+      })
+
+      expect(result).toMatchObject({ success: true, exercisesCreated: 1, lessonId: 'lesson-1' })
+
+      // We must NOT have created a new lesson.
+      const lessonCreates = createMock.mock.calls.filter(([c]) => c.collection === 'lessons')
+      expect(lessonCreates).toHaveLength(0)
+
+      // New exercise's order must start after the current max (5 → 6).
+      const exerciseCreate = createMock.mock.calls.find(
+        ([c]) => c.collection === 'exercises',
+      )?.[0] as { data: { order: number } } | undefined
+      expect(exerciseCreate?.data.order).toBe(6)
+
+      // Final lesson.blocks write MUST preserve the raced-in block.
+      const lessonUpdate = updateMock.mock.calls.find(([c]) => c.collection === 'lessons')?.[0] as
+        | { data: { blocks: string } }
+        | undefined
+      const written = JSON.parse(lessonUpdate!.data.blocks)
+      expect(written).toEqual([
+        expect.objectContaining({ id: 'preexisting-1', exercise: 'ex-existing' }),
+        expect.objectContaining({ id: 'race-add', exercise: 'ex-raced-in' }),
+        expect.objectContaining({ blockType: 'exerciseRef', exercise: 'new-ex-1' }),
+      ])
+    })
+
+    it('append rollback deletes only new exercises + sections, NEVER the pre-existing lesson', async () => {
+      const createMock = vi.fn()
+      const deleteMock = vi.fn().mockResolvedValue({})
+      let sectionIndex = 0
+      createMock.mockImplementation(async ({ collection }: { collection: string }) => {
+        if (collection === 'exercises') return { id: 'new-ex-1' }
+        if (collection === 'sections') {
+          sectionIndex += 1
+          if (sectionIndex === 2) throw new Error('Section create failed')
+          return { id: 'new-sec-1' }
+        }
+        throw new Error(`Unexpected collection: ${collection}`)
+      })
+
+      const req = {
+        user: { id: 'user-1' },
+        payload: {
+          findByID: vi.fn(async ({ collection }: { collection: string }) => {
+            if (collection === 'lessons') {
+              return { id: 'lesson-1', title: 'Existing', blocks: '[]' }
+            }
+            return null
+          }),
+          find: vi.fn().mockResolvedValue({ docs: [] }),
+          create: createMock,
+          update: vi.fn().mockResolvedValue({}),
+          delete: deleteMock,
+        },
+      } as unknown as PayloadRequest
+
+      const exercise = makeExercise({
+        exercise_content: {
+          sections: [makeSection(), makeSection({ question_number: 'ב' })],
+        },
+      })
+      const result = await importLessonFromJson(req, {
+        targetLessonId: 'lesson-1',
+        filename: 'lesson.json',
+        json: { topic: 'Topic', exercises: [exercise] },
+      })
+
+      expect(result).toMatchObject({
+        success: false,
+        exercisesCreated: 0,
+        exercisesFailed: 1,
+        lessonId: 'lesson-1',
+      })
+
+      const deletedTargets = deleteMock.mock.calls.map(([c]) => `${c.collection}:${c.id}`)
+      expect(deletedTargets).toEqual(['sections:new-sec-1', 'exercises:new-ex-1'])
+      expect(deletedTargets).not.toContain('lessons:lesson-1')
+    })
+
+    it('returns not_found when targetLessonId does not resolve to a lesson', async () => {
+      const req = {
+        user: { id: 'user-1' },
+        payload: {
+          findByID: vi.fn().mockResolvedValue(null),
+          find: vi.fn().mockResolvedValue({ docs: [] }),
+          create: vi.fn(),
+          update: vi.fn(),
+          delete: vi.fn(),
+        },
+      } as unknown as PayloadRequest
+
+      const result = await importLessonFromJson(req, {
+        targetLessonId: 'nope',
+        filename: 'lesson.json',
+        json: { topic: 'Topic', exercises: [makeExercise()] },
+      })
+
+      expect(result).toMatchObject({ kind: 'not_found', message: 'Lesson not found' })
+    })
+
+    it('returns validation error when neither chapterId nor targetLessonId is provided', async () => {
+      const req = {
+        user: { id: 'user-1' },
+        payload: {
+          findByID: vi.fn(),
+          find: vi.fn(),
+          create: vi.fn(),
+          update: vi.fn(),
+          delete: vi.fn(),
+        },
+      } as unknown as PayloadRequest
+
+      const result = await importLessonFromJson(req, {
+        filename: 'lesson.json',
+        json: { topic: 'Topic', exercises: [makeExercise()] },
+      })
+
+      expect(result).toMatchObject({ kind: 'validation' })
+    })
+  })
 })

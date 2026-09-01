@@ -21,7 +21,15 @@ import {
 import { parseTextLesson } from './parse-text'
 
 export interface ImportTextLessonInput {
-  chapterId: string
+  /** Required when creating a NEW lesson. Ignored when `targetLessonId` is set. */
+  chapterId?: string
+  /**
+   * When set, append the imported exercises to this existing lesson instead
+   * of creating a new one. The lesson's chapter/title/order aren't touched;
+   * only new Exercise + Section docs are created and appended to the
+   * lesson.blocks playlist.
+   */
+  targetLessonId?: string
   filename: string
   text: string
 }
@@ -79,12 +87,52 @@ async function resolveLessonOrder(req: PayloadRequest, chapterId: string): Promi
   return (top?.order ?? -1) + 1
 }
 
+/** Parse the existing lesson.blocks textarea payload back into an array. */
+function parseExistingBlocks(raw: unknown): Array<Record<string, unknown>> {
+  if (Array.isArray(raw)) return raw as Array<Record<string, unknown>>
+  if (typeof raw === 'string' && raw.trim()) {
+    try {
+      const parsed = JSON.parse(raw)
+      if (Array.isArray(parsed)) return parsed as Array<Record<string, unknown>>
+    } catch {
+      /* fall through */
+    }
+  }
+  return []
+}
+
+async function nextExerciseOrder(req: PayloadRequest, lessonId: string): Promise<number> {
+  const existing = await req.payload.find({
+    collection: 'exercises',
+    where: { lesson: { equals: lessonId } },
+    sort: '-order',
+    limit: 1,
+    depth: 0,
+    req,
+    overrideAccess: true,
+  })
+  const top = existing.docs[0] as { order?: number } | undefined
+  return (top?.order ?? -1) + 1
+}
+
 export async function importTextLessonFromFile(
   req: PayloadRequest,
   input: ImportTextLessonInput,
 ): Promise<ImportTextLessonResult | ImportTextLessonError> {
   if (!req.user) {
     return { kind: 'not_found', message: 'Authenticated user required' }
+  }
+
+  if (!input.chapterId && !input.targetLessonId) {
+    return {
+      kind: 'validation',
+      issues: [
+        {
+          path: 'chapterId',
+          message: 'Either chapterId (create new lesson) or targetLessonId (append) is required',
+        },
+      ],
+    }
   }
 
   const parsed = parseTextLesson(input.text)
@@ -95,39 +143,69 @@ export async function importTextLessonFromFile(
     }
   }
 
-  const chapter = await req.payload.findByID({
-    collection: 'chapters',
-    id: input.chapterId,
-    depth: 0,
-    req,
-    overrideAccess: false,
-    user: req.user,
-  })
-  if (!chapter) return { kind: 'not_found', message: 'Chapter not found' }
-
   const tenantId = await getDefaultTenantId(req.payload)
 
-  const lessonTitle = deriveLessonTitle({ filename: input.filename })
-  const order = await resolveLessonOrder(req, input.chapterId)
+  // Resolve the target lesson — either create a fresh one, or look up an
+  // existing one to append into. `didCreateLesson` gates rollback below so
+  // we don't accidentally delete a pre-existing lesson if the import fails.
+  let lesson: { id: string; title: string; existingBlocks: Array<Record<string, unknown>> }
+  const didCreateLesson = !input.targetLessonId
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const lessonData = {
-    locale: 'he',
-    chapter: input.chapterId,
-    type: 'practice',
-    title: lessonTitle,
-    order,
-    status: 'draft',
-    isActive: true,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } as any
-  const lesson = await req.payload.create({
-    collection: 'lessons',
-    data: lessonData,
-    req,
-    overrideAccess: false,
-    user: req.user,
-  })
+  if (input.targetLessonId) {
+    const existing = await req.payload.findByID({
+      collection: 'lessons',
+      id: input.targetLessonId,
+      depth: 0,
+      req,
+      overrideAccess: false,
+      user: req.user,
+    })
+    if (!existing) return { kind: 'not_found', message: 'Lesson not found' }
+    lesson = {
+      id: existing.id,
+      title: (existing as { title?: string }).title ?? '',
+      existingBlocks: parseExistingBlocks((existing as { blocks?: unknown }).blocks),
+    }
+  } else {
+    // chapterId is guaranteed non-empty here by the early guard above.
+    const chapterId = input.chapterId as string
+    const chapter = await req.payload.findByID({
+      collection: 'chapters',
+      id: chapterId,
+      depth: 0,
+      req,
+      overrideAccess: false,
+      user: req.user,
+    })
+    if (!chapter) return { kind: 'not_found', message: 'Chapter not found' }
+
+    const lessonTitle = deriveLessonTitle({ filename: input.filename })
+    const order = await resolveLessonOrder(req, chapterId)
+
+    const lessonData = {
+      locale: 'he',
+      chapter: chapterId,
+      type: 'practice',
+      title: lessonTitle,
+      order,
+      status: 'draft',
+      isActive: true,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any
+    const created = await req.payload.create({
+      collection: 'lessons',
+      data: lessonData,
+      req,
+      overrideAccess: false,
+      user: req.user,
+    })
+    lesson = { id: created.id, title: created.title, existingBlocks: [] }
+  }
+
+  // Order offset: for append-mode, start after the current max so we don't
+  // collide with existing exercises' order values (which drive some sort
+  // fallbacks). For fresh-lesson mode this stays 0.
+  const orderStart = input.targetLessonId ? await nextExerciseOrder(req, lesson.id) : 0
 
   const exerciseResults: ImportTextExerciseResult[] = []
   const createdExerciseIds: string[] = []
@@ -170,12 +248,11 @@ export async function importTextLessonFromFile(
         continue
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const exerciseData = {
         locale: 'he',
         lesson: lesson.id,
         title: buildTextExerciseTitle(ex),
-        order: i,
+        order: orderStart + i,
         content,
         origin: 'import',
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -255,14 +332,24 @@ export async function importTextLessonFromFile(
         /* best-effort */
       }
     }
-    try {
-      await req.payload.delete({ collection: 'lessons', id: lesson.id, req, overrideAccess: true })
-    } catch {
-      /* best-effort */
+    // Only delete the lesson if we CREATED it during this import. In
+    // append-mode the lesson pre-existed with other content — deleting it
+    // would nuke unrelated exercises and confuse the admin.
+    if (didCreateLesson) {
+      try {
+        await req.payload.delete({
+          collection: 'lessons',
+          id: lesson.id,
+          req,
+          overrideAccess: true,
+        })
+      } catch {
+        /* best-effort */
+      }
     }
     return {
       success: false,
-      lessonId: '',
+      lessonId: didCreateLesson ? '' : lesson.id,
       lessonTitle: lesson.title,
       exercisesCreated: 0,
       exercisesFailed: failed.length,
@@ -271,22 +358,46 @@ export async function importTextLessonFromFile(
   }
 
   // Single lesson.blocks playlist write — see JSON importer for the rationale.
-  const blocks = createdExerciseIds.map((exerciseId) => ({
+  // Append-mode preserves the existing playlist and adds the new exerciseRefs
+  // at the end; fresh-lesson mode writes only the new blocks.
+  //
+  // Race narrowing: in append-mode, re-read lesson.blocks immediately before
+  // the write so anything an addBlockToLesson hook or concurrent import wrote
+  // during our multi-second create loop still lands in the final playlist.
+  // The mount-time snapshot on `lesson.existingBlocks` could be minutes stale.
+  const newBlocks = createdExerciseIds.map((exerciseId) => ({
     id: Math.random().toString(36).slice(2, 14),
     blockType: 'exerciseRef' as const,
     exercise: exerciseId,
   }))
+  let baseBlocks = lesson.existingBlocks
+  if (!didCreateLesson) {
+    try {
+      const fresh = await req.payload.findByID({
+        collection: 'lessons',
+        id: lesson.id,
+        depth: 0,
+        req,
+        overrideAccess: true,
+      })
+      baseBlocks = parseExistingBlocks((fresh as { blocks?: unknown }).blocks)
+    } catch (err) {
+      // Best-effort — if the re-read fails, fall back to the mount-time
+      // snapshot rather than lose the new exerciseRefs entirely.
+      console.error('[text-lesson-import] failed to re-read lesson.blocks; using snapshot', err)
+    }
+  }
+  const finalBlocks = [...baseBlocks, ...newBlocks]
   try {
     await req.payload.update({
       collection: 'lessons',
       id: lesson.id,
-      data: { blocks: JSON.stringify(blocks) },
+      data: { blocks: JSON.stringify(finalBlocks) },
       req,
       overrideAccess: true,
       context: { _skipBlockSync: true },
     })
   } catch (err) {
-    // eslint-disable-next-line no-console
     console.error('[text-lesson-import] failed to write lesson.blocks playlist', err)
   }
 

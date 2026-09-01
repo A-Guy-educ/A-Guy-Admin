@@ -14,6 +14,10 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@payloadcms/ui', () => ({
   useField: () => ({ value: mocks.fieldValue, setValue: mocks.setValue }),
   useForm: () => ({ setModified: mocks.setModified }),
+  // LessonBlocksField now reads the current doc id to enable the "Import
+  // exercises" button; the lazy-load tests don't exercise that button, so
+  // returning a fixed id is enough to satisfy the import.
+  useDocumentInfo: () => ({ id: 'lesson-under-test' }),
 }))
 
 vi.mock('next/navigation', () => ({

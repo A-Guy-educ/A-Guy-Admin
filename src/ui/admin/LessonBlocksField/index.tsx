@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useField, useForm } from '@payloadcms/ui'
+import { useDocumentInfo, useField, useForm } from '@payloadcms/ui'
 import { useRouter } from 'next/navigation'
 import {
   GripVertical,
@@ -11,8 +11,10 @@ import {
   FileText,
   Trash2,
   Pencil,
+  FileUp,
 } from 'lucide-react'
 
+import { ImportExercisesModal } from './ImportExercisesModal'
 import { InlineExerciseEditor } from './InlineExerciseEditor'
 import './inline-exercise-editor.css'
 
@@ -102,10 +104,13 @@ const LessonBlocksList: React.FC<{ path: string; mode: BlocksMode }> = ({ path, 
   const { value, setValue } = useField<string>({ path })
   const { setModified } = useForm()
   const router = useRouter()
+  const { id: lessonDocId } = useDocumentInfo()
+  const lessonId = lessonDocId != null ? String(lessonDocId) : ''
 
   const blocks: RawBlock[] = useMemo(() => parseBlocks(value), [value])
   const activationRef = useRef<HTMLDivElement>(null)
   const [hasBeenActivated, setHasBeenActivated] = useState(false)
+  const [isImportOpen, setIsImportOpen] = useState(false)
 
   // Drag-and-drop state
   const [dragIndex, setDragIndex] = useState<number | null>(null)
@@ -299,17 +304,48 @@ const LessonBlocksList: React.FC<{ path: string; mode: BlocksMode }> = ({ path, 
 
   return (
     <div style={{ marginBottom: 24 }}>
-      <label
+      <div
         style={{
-          display: 'block',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
           marginBottom: 12,
-          fontWeight: 600,
-          fontSize: 14,
-          color: 'var(--theme-text)',
+          gap: 12,
         }}
       >
-        {mode === 'quick' ? 'Exercises (quick view)' : 'Lesson Blocks'}
-      </label>
+        <label
+          style={{
+            display: 'block',
+            fontWeight: 600,
+            fontSize: 14,
+            color: 'var(--theme-text)',
+          }}
+        >
+          {mode === 'quick' ? 'Exercises (quick view)' : 'Lesson Blocks'}
+        </label>
+        {lessonId && (
+          <button
+            type="button"
+            onClick={() => setIsImportOpen(true)}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              padding: '4px 10px',
+              fontSize: 12,
+              fontWeight: 500,
+              color: 'var(--theme-elevation-700)',
+              background: 'var(--theme-elevation-0)',
+              border: '1px solid var(--theme-elevation-200)',
+              borderRadius: 4,
+              cursor: 'pointer',
+            }}
+            title="Import exercises from a .txt or .json lesson file into this lesson"
+          >
+            <FileUp size={12} /> Import exercises
+          </button>
+        )}
+      </div>
       <p
         style={{
           fontSize: 12,
@@ -322,6 +358,19 @@ const LessonBlocksList: React.FC<{ path: string; mode: BlocksMode }> = ({ path, 
           ? 'Ordered links to exercises and content pages. Use the Exercises tab to edit content inline.'
           : 'Ordered playlist of exercises and content pages. Defines the lesson flow.'}
       </p>
+
+      {isImportOpen && lessonId && (
+        <ImportExercisesModal
+          lessonId={lessonId}
+          onClose={() => setIsImportOpen(false)}
+          onImported={() => {
+            // Reload so the new exercises show up in the playlist and the
+            // form re-reads from the server. router.refresh() alone isn't
+            // enough for Payload's admin field state.
+            window.location.reload()
+          }}
+        />
+      )}
 
       {/* Block list — reorder/delete controls + inline exercise editors */}
       <div

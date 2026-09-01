@@ -8,17 +8,24 @@
  */
 import type { PayloadRequest } from 'payload'
 
-import { ApiErrors, apiError, apiSuccess } from '@/server/api/responses'
+import { apiError, apiSuccess } from '@/server/api/responses'
 import { withApiHandler } from '@/server/api/with-api-handler'
 import { importLessonFromJson } from '@/server/services/lesson-json-import/import-lesson'
 import { z } from 'zod'
 
-const importBodySchema = z.object({
-  chapterId: z.string().min(1, 'chapterId is required'),
-  filename: z.string().min(1, 'filename is required'),
-  // json is unknown — the import service validates it against the strict schema
-  json: z.unknown(),
-})
+const importBodySchema = z
+  .object({
+    // Both are optional individually — the .refine below enforces "one or the other".
+    chapterId: z.string().min(1).optional(),
+    targetLessonId: z.string().min(1).optional(),
+    filename: z.string().min(1, 'filename is required'),
+    // json is unknown — the import service validates it against the strict schema
+    json: z.unknown(),
+  })
+  .refine((data) => Boolean(data.chapterId) || Boolean(data.targetLessonId), {
+    message: 'Either chapterId (new lesson) or targetLessonId (append) is required',
+    path: ['chapterId'],
+  })
 
 type ImportBody = z.infer<typeof importBodySchema>
 
@@ -46,7 +53,9 @@ export const POST = withApiHandler<ImportBody, unknown>(
 
     if ('kind' in result) {
       if (result.kind === 'not_found') {
-        return ApiErrors.notFound('Chapter')
+        // Message references Chapter or Lesson depending on which mode;
+        // pass the specific string through so callers know which was missing.
+        return apiError('NOT_FOUND', result.message, 404)
       }
       return apiError('VALIDATION_ERROR', 'JSON does not match the expected lesson format', 422, {
         issues: result.issues.map((i) => `[${i.path}] ${i.message}`),

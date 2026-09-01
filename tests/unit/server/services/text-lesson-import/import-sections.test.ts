@@ -236,6 +236,193 @@ describe('importTextLessonFromFile', () => {
     expect(deleteMock).not.toHaveBeenCalled()
   })
 
+  describe('append-mode (targetLessonId)', () => {
+    it('re-reads lesson.blocks at write-time and appends new exerciseRefs after existing ones', async () => {
+      parseTextLessonMock.mockReturnValue({
+        lessonName: 'Text lesson',
+        exercises: [makeExercise({ intro: '', svg: undefined, sections: [makeSection()] })],
+      })
+
+      const existingBlocks = [
+        { id: 'preexisting-1', blockType: 'exerciseRef', exercise: 'ex-existing' },
+      ]
+
+      let findByIDCalls = 0
+      // Snapshot returned on first findByID(lessons); race-narrowing re-read
+      // on second call returns a NEW playlist entry added during our import.
+      const findByID = vi.fn(async ({ collection }: { collection: string }) => {
+        if (collection === 'lessons') {
+          findByIDCalls += 1
+          if (findByIDCalls === 1) {
+            return { id: 'lesson-1', title: 'Existing', blocks: JSON.stringify(existingBlocks) }
+          }
+          return {
+            id: 'lesson-1',
+            title: 'Existing',
+            blocks: JSON.stringify([
+              ...existingBlocks,
+              // simulate a hook or concurrent import writing here between our
+              // snapshot and our write
+              { id: 'race-add', blockType: 'exerciseRef', exercise: 'ex-raced-in' },
+            ]),
+          }
+        }
+        return null
+      })
+
+      const createMock = vi.fn(async ({ collection }: { collection: string }) => {
+        if (collection === 'exercises') return { id: 'new-ex-1' }
+        if (collection === 'sections') return { id: 'new-sec-1' }
+        throw new Error(`Unexpected collection: ${collection}`)
+      })
+      const updateMock = vi.fn().mockResolvedValue({})
+
+      const req = {
+        user: { id: 'user-1' },
+        payload: {
+          findByID,
+          // top-existing-order sort — say the lesson already has an ex at order 5
+          find: vi.fn().mockResolvedValue({ docs: [{ order: 5 }] }),
+          create: createMock,
+          update: updateMock,
+          delete: vi.fn(),
+        },
+      } as unknown as PayloadRequest
+
+      const result = await importTextLessonFromFile(req, {
+        targetLessonId: 'lesson-1',
+        filename: 'lesson.txt',
+        text: 'source',
+      })
+
+      expect(result).toMatchObject({ success: true, exercisesCreated: 1, lessonId: 'lesson-1' })
+
+      // Only one lessons.create should ever happen when we appended — we
+      // MUST NOT have created a new lesson.
+      const lessonCreates = createMock.mock.calls.filter(([c]) => c.collection === 'lessons')
+      expect(lessonCreates).toHaveLength(0)
+
+      // New exercise's order must start after the current max (5 → 6).
+      const exerciseCreate = createMock.mock.calls.find(
+        ([c]) => c.collection === 'exercises',
+      )?.[0] as { data: { order: number } } | undefined
+      expect(exerciseCreate?.data.order).toBe(6)
+
+      // Final lesson.blocks write MUST preserve the raced-in block that
+      // landed between our snapshot and our write.
+      const lessonUpdate = updateMock.mock.calls.find(([c]) => c.collection === 'lessons')?.[0] as
+        | { data: { blocks: string } }
+        | undefined
+      const written = JSON.parse(lessonUpdate!.data.blocks)
+      expect(written).toEqual([
+        expect.objectContaining({ id: 'preexisting-1', exercise: 'ex-existing' }),
+        expect.objectContaining({ id: 'race-add', exercise: 'ex-raced-in' }),
+        expect.objectContaining({ blockType: 'exerciseRef', exercise: 'new-ex-1' }),
+      ])
+    })
+
+    it('append rollback deletes only new exercises + sections, NEVER the pre-existing lesson', async () => {
+      parseTextLessonMock.mockReturnValue({
+        lessonName: 'Text lesson',
+        exercises: [makeExercise({ sections: [makeSection(), makeSection()] })],
+      })
+
+      const createMock = vi.fn()
+      const deleteMock = vi.fn().mockResolvedValue({})
+      let sectionIndex = 0
+      createMock.mockImplementation(async ({ collection }: { collection: string }) => {
+        if (collection === 'exercises') return { id: 'new-ex-1' }
+        if (collection === 'sections') {
+          sectionIndex += 1
+          if (sectionIndex === 2) throw new Error('Section create failed')
+          return { id: 'new-sec-1' }
+        }
+        throw new Error(`Unexpected collection: ${collection}`)
+      })
+
+      const req = {
+        user: { id: 'user-1' },
+        payload: {
+          findByID: vi.fn(async ({ collection }: { collection: string }) => {
+            if (collection === 'lessons') {
+              return { id: 'lesson-1', title: 'Existing', blocks: '[]' }
+            }
+            return null
+          }),
+          find: vi.fn().mockResolvedValue({ docs: [] }),
+          create: createMock,
+          update: vi.fn().mockResolvedValue({}),
+          delete: deleteMock,
+        },
+      } as unknown as PayloadRequest
+
+      const result = await importTextLessonFromFile(req, {
+        targetLessonId: 'lesson-1',
+        filename: 'lesson.txt',
+        text: 'source',
+      })
+
+      expect(result).toMatchObject({
+        success: false,
+        exercisesCreated: 0,
+        exercisesFailed: 1,
+        lessonId: 'lesson-1',
+      })
+
+      const deletedTargets = deleteMock.mock.calls.map(([c]) => `${c.collection}:${c.id}`)
+      // Must clean up new records only. MUST NOT contain the pre-existing lesson.
+      expect(deletedTargets).toEqual(['sections:new-sec-1', 'exercises:new-ex-1'])
+      expect(deletedTargets).not.toContain('lessons:lesson-1')
+    })
+
+    it('returns not_found when targetLessonId does not resolve to a lesson', async () => {
+      parseTextLessonMock.mockReturnValue({
+        lessonName: 'Text lesson',
+        exercises: [makeExercise()],
+      })
+
+      const req = {
+        user: { id: 'user-1' },
+        payload: {
+          findByID: vi.fn().mockResolvedValue(null),
+          find: vi.fn().mockResolvedValue({ docs: [] }),
+          create: vi.fn(),
+          update: vi.fn(),
+          delete: vi.fn(),
+        },
+      } as unknown as PayloadRequest
+
+      const result = await importTextLessonFromFile(req, {
+        targetLessonId: 'nope',
+        filename: 'lesson.txt',
+        text: 'source',
+      })
+
+      expect(result).toMatchObject({ kind: 'not_found', message: 'Lesson not found' })
+    })
+
+    it('returns validation error when neither chapterId nor targetLessonId is provided', async () => {
+      parseTextLessonMock.mockReturnValue({ lessonName: 'x', exercises: [makeExercise()] })
+      const req = {
+        user: { id: 'user-1' },
+        payload: {
+          findByID: vi.fn(),
+          find: vi.fn(),
+          create: vi.fn(),
+          update: vi.fn(),
+          delete: vi.fn(),
+        },
+      } as unknown as PayloadRequest
+
+      const result = await importTextLessonFromFile(req, {
+        filename: 'lesson.txt',
+        text: 'source',
+      })
+
+      expect(result).toMatchObject({ kind: 'validation' })
+    })
+  })
+
   it('rolls back sections before exercises and the lesson when section creation fails', async () => {
     parseTextLessonMock.mockReturnValue({
       lessonName: 'Text lesson',
