@@ -287,6 +287,131 @@ describe('QuestionAxisBlockSchema', () => {
   })
 })
 
+describe('showNotebook per-block toggle', () => {
+  const notebookHosts = [
+    {
+      name: 'question_select true_false',
+      block: {
+        id: 'tf1',
+        type: 'question_select',
+        variant: 'true_false',
+        selectionMode: 'single',
+        prompt: { type: 'rich_text', format: 'md-math-v1', value: '2 + 2 = 4' },
+        options: [
+          {
+            id: 'true',
+            value: true,
+            label: { type: 'rich_text', format: 'md-math-v1', value: 'True' },
+          },
+          {
+            id: 'false',
+            value: false,
+            label: { type: 'rich_text', format: 'md-math-v1', value: 'False' },
+          },
+        ],
+        answer: { correctOptionId: 'true' },
+      },
+    },
+    {
+      name: 'question_select mcq',
+      block: {
+        id: 'mcq1',
+        type: 'question_select',
+        variant: 'mcq',
+        selectionMode: 'single',
+        prompt: { type: 'rich_text', format: 'md-math-v1', value: 'Pick one:' },
+        answer: {
+          multiSelect: false,
+          options: [
+            { id: 'a', content: { type: 'rich_text', format: 'md-math-v1', value: 'A' } },
+            { id: 'b', content: { type: 'rich_text', format: 'md-math-v1', value: 'B' } },
+          ],
+          correctOptionIds: ['a'],
+        },
+      },
+    },
+    {
+      name: 'question_free_response',
+      block: {
+        id: 'fr1',
+        type: 'question_free_response',
+        prompt: { type: 'rich_text', format: 'md-math-v1', value: 'What is 2 + 2?' },
+        answer: { acceptedAnswers: ['4'] },
+      },
+    },
+    {
+      name: 'question_table',
+      block: {
+        id: 't1',
+        type: 'question_table',
+        prompt: { type: 'rich_text', format: 'md-math-v1', value: 'Fill in:' },
+        table: {
+          headers: ['a', 'b'],
+          rowsData: [['1', '2']],
+        },
+      },
+    },
+    {
+      name: 'question_matching',
+      block: {
+        id: 'match1',
+        type: 'question_matching',
+        prompt: { type: 'rich_text', format: 'md-math-v1', value: 'Match:' },
+        leftColumn: [
+          { id: 'l1', content: { type: 'rich_text', format: 'md-math-v1', value: 'A' } },
+          { id: 'l2', content: { type: 'rich_text', format: 'md-math-v1', value: 'B' } },
+        ],
+        rightColumn: [
+          { id: 'r1', content: { type: 'rich_text', format: 'md-math-v1', value: '1' } },
+          { id: 'r2', content: { type: 'rich_text', format: 'md-math-v1', value: '2' } },
+        ],
+        correctPairs: [
+          { optionId: 'l1', matchId: 'r1' },
+          { optionId: 'l2', matchId: 'r2' },
+        ],
+      },
+    },
+  ] as const
+
+  for (const { name, block } of notebookHosts) {
+    it(`${name}: accepts showNotebook: true`, () => {
+      const result = ContentBlockSchema.safeParse({ ...block, showNotebook: true })
+      expect(result.success).toBe(true)
+    })
+
+    it(`${name}: accepts showNotebook: false`, () => {
+      const result = ContentBlockSchema.safeParse({ ...block, showNotebook: false })
+      expect(result.success).toBe(true)
+    })
+
+    it(`${name}: accepts omitted showNotebook (backward-compat)`, () => {
+      const result = ContentBlockSchema.safeParse(block)
+      expect(result.success).toBe(true)
+    })
+
+    it(`${name}: rejects non-boolean showNotebook`, () => {
+      const result = ContentBlockSchema.safeParse({ ...block, showNotebook: 'yes' })
+      expect(result.success).toBe(false)
+    })
+  }
+
+  it('question_geometry: rejects showNotebook (strict mode, no toggle for graph blocks)', () => {
+    const block = {
+      id: 'g1',
+      type: 'question_geometry',
+      prompt: { type: 'rich_text', format: 'md-math-v1', value: 'Draw:' },
+      geometry: {
+        kind: 'euclidean',
+        canvas: { width: 400, height: 400 },
+        elements: { points: [], lines: [], circles: [], angles: [] },
+      },
+      showNotebook: true,
+    }
+    const result = ContentBlockSchema.safeParse(block)
+    expect(result.success).toBe(false)
+  })
+})
+
 describe('ExerciseContent with new block types', () => {
   it('validates content containing a matching block', () => {
     const content = {

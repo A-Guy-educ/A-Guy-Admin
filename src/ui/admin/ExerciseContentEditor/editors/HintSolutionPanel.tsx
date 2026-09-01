@@ -75,10 +75,7 @@ export const HintSolutionPanel: React.FC<HintSolutionPanelProps> = ({
           onChange={(val) => onChange('fullSolution', val)}
         />
         {onShowNotebookChange && (
-          <NotebookToggle
-            value={showNotebook ?? false}
-            onChange={onShowNotebookChange}
-          />
+          <NotebookToggle value={showNotebook ?? false} onChange={onShowNotebookChange} />
         )}
       </div>
     </CollapsibleSection>
@@ -91,16 +88,12 @@ const NotebookToggle: React.FC<{
 }> = ({ value, onChange }) => (
   <div className="hint-solution-notebook-toggle">
     <label className="hint-solution-notebook-label">
-      <input
-        type="checkbox"
-        checked={value}
-        onChange={(e) => onChange(e.target.checked)}
-      />
+      <input type="checkbox" checked={value} onChange={(e) => onChange(e.target.checked)} />
       <span>Show drawing notebook (הצג מחברת ציור)</span>
     </label>
     <p className="hint-solution-notebook-help">
-      When on, students see an &quot;Open notebook&quot; pill under this block to sketch work and ask
-      the tutor to check it.
+      When on, students see an &quot;Open notebook&quot; pill under this block to sketch work and
+      ask the tutor to check it.
     </p>
   </div>
 )
