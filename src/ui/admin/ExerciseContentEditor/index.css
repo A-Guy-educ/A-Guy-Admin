@@ -1749,6 +1749,28 @@
   color: var(--theme-error-500);
 }
 
+.hint-solution-notebook-toggle {
+  margin-top: 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--theme-elevation-100);
+}
+
+.hint-solution-notebook-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  color: var(--theme-elevation-800);
+  cursor: pointer;
+}
+
+.hint-solution-notebook-help {
+  margin: 0.375rem 0 0 1.5rem;
+  font-size: 0.75rem;
+  color: var(--theme-elevation-600);
+  line-height: 1.35;
+}
+
 /* True/False Editor */
 .true-false-editor {
   display: flex;

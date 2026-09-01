@@ -114,6 +114,7 @@ const QuestionSelectTrueFalseSchema = z
     hint: InlineRichTextSchema.optional(),
     solution: InlineRichTextSchema.optional(),
     fullSolution: InlineRichTextSchema.optional(),
+    showNotebook: z.boolean().optional(),
   })
   .strict()
 
@@ -130,6 +131,7 @@ const QuestionSelectMcqSchema = z
     hint: InlineRichTextSchema.optional(),
     solution: InlineRichTextSchema.optional(),
     fullSolution: InlineRichTextSchema.optional(),
+    showNotebook: z.boolean().optional(),
   })
   .strict()
 
@@ -149,6 +151,7 @@ export const QuestionFreeResponseBlockSchema = z
     hint: InlineRichTextSchema.optional(),
     solution: InlineRichTextSchema.optional(),
     fullSolution: InlineRichTextSchema.optional(),
+    showNotebook: z.boolean().optional(),
   })
   .strict()
 
@@ -242,6 +245,7 @@ export const QuestionTableBlockSchema = z
     hint: InlineRichTextSchema.optional(),
     solution: InlineRichTextSchema.optional(),
     fullSolution: InlineRichTextSchema.optional(),
+    showNotebook: z.boolean().optional(),
   })
   .strict()
 
@@ -280,6 +284,7 @@ export const QuestionMatchingBlockSchema = z
     hint: InlineRichTextSchema.optional(),
     solution: InlineRichTextSchema.optional(),
     fullSolution: InlineRichTextSchema.optional(),
+    showNotebook: z.boolean().optional(),
   })
   .strict()
   .superRefine((data, ctx) => {

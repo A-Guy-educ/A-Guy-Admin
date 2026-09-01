@@ -70,6 +70,7 @@ export interface QuestionSelectTrueFalseBlock {
   hint?: InlineRichText
   solution?: InlineRichText
   fullSolution?: InlineRichText
+  showNotebook?: boolean
 }
 
 // ---------------------------------
@@ -85,6 +86,7 @@ export interface QuestionSelectMcqBlock {
   hint?: InlineRichText
   solution?: InlineRichText
   fullSolution?: InlineRichText
+  showNotebook?: boolean
 }
 
 // ---------------------------------
@@ -98,6 +100,7 @@ export interface QuestionFreeResponseBlock {
   hint?: InlineRichText
   solution?: InlineRichText
   fullSolution?: InlineRichText
+  showNotebook?: boolean
 }
 
 // ---------------------------------
@@ -124,6 +127,7 @@ export interface QuestionTableBlock {
   hint?: InlineRichText
   solution?: InlineRichText
   fullSolution?: InlineRichText
+  showNotebook?: boolean
 }
 
 // ---------------------------------
@@ -166,6 +170,7 @@ export interface QuestionMatchingBlock {
   hint?: InlineRichText
   solution?: InlineRichText
   fullSolution?: InlineRichText
+  showNotebook?: boolean
 }
 
 // ---------------------------------
