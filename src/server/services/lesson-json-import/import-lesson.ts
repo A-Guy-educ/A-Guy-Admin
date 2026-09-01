@@ -375,12 +375,34 @@ export async function importLessonFromJson(
   // created with _skipBlockSync to suppress the per-create append hook (it
   // races on serial imports), so we own the final ordering here. Append-mode
   // preserves the existing playlist and appends the new refs at the end.
+  //
+  // Race narrowing: in append-mode, re-read lesson.blocks immediately before
+  // the write so anything an addBlockToLesson hook or concurrent import wrote
+  // during our multi-second create loop still lands in the final playlist.
+  // The mount-time snapshot on `lesson.existingBlocks` could be minutes stale.
   const newBlocks = createdExerciseIds.map((exerciseId) => ({
     id: Math.random().toString(36).slice(2, 14),
     blockType: 'exerciseRef' as const,
     exercise: exerciseId,
   }))
-  const finalBlocks = [...lesson.existingBlocks, ...newBlocks]
+  let baseBlocks = lesson.existingBlocks
+  if (!didCreateLesson) {
+    try {
+      const fresh = await req.payload.findByID({
+        collection: 'lessons',
+        id: lesson.id,
+        depth: 0,
+        req,
+        overrideAccess: true,
+      })
+      baseBlocks = parseExistingBlocks((fresh as { blocks?: unknown }).blocks)
+    } catch (err) {
+      // Best-effort — if the re-read fails, fall back to the mount-time
+      // snapshot rather than lose the new exerciseRefs entirely.
+      console.error('[lesson-json-import] failed to re-read lesson.blocks; using snapshot', err)
+    }
+  }
+  const finalBlocks = [...baseBlocks, ...newBlocks]
   try {
     await req.payload.update({
       collection: 'lessons',
