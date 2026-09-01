@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.39.0 — 2026-09-01
+
+### Features
+- Import exercises from a file into an existing lesson (#402)
+
+### Bug Fixes
+- Narrow `lesson.blocks` race in append-mode import (#402)
+- Mock `useDocumentInfo` in `LessonBlocksField` lazy-load spec (#402)
+
 ## v0.38.0 — 2026-08-31
 
 ### Features
