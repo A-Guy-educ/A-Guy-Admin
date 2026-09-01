@@ -13,8 +13,10 @@ import config from '@payload-config'
 import { SignJWT } from 'jose'
 import { decrypt } from './oauth_crypto'
 
-// Default token expiration in seconds (matches Payload's default)
-const TOKEN_EXPIRATION = 7200
+// Token expiration in seconds. Must stay in sync with Users collection
+// auth.tokenExpiration so OAuth and email/password logins get the same
+// session lifetime.
+const TOKEN_EXPIRATION = 60 * 60 * 8
 
 /**
  * Generate a JWT token directly using jose (same algorithm as Payload).

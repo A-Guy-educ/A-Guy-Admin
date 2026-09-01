@@ -36,6 +36,7 @@ export const Users: CollectionConfig = {
     useAsTitle: 'name',
   },
   auth: {
+    tokenExpiration: 60 * 60 * 8,
     cookies: {
       secure: true,
       sameSite: 'None',
