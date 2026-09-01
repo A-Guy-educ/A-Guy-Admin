@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.39.1 — 2026-09-01
+
+_Maintenance-only release._
+
+- Extend admin session token expiration from 2h to 8h (#406)
+
 ## v0.39.0 — 2026-09-01
 
 ### Features
