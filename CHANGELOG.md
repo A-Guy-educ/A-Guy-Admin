@@ -1991,6 +1991,7 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- feat: Add per-block showNotebook toggle to question blocks ([#409](https://github.com/A-Guy-educ/A-Guy-Admin/pull/409)) — @aguyshayb
 ## [v0.39.1] - 2026-09-01
 
 - promote: dev -> main (v0.39.1) ([#408](https://github.com/A-Guy-educ/A-Guy-Admin/pull/408)) — @aguyshayb
