@@ -1991,6 +1991,7 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- promote: dev -> main (v0.39.1) ([#408](https://github.com/A-Guy-educ/A-Guy-Admin/pull/408)) — @aguyshayb
 - chore: release v0.39.1 ([#407](https://github.com/A-Guy-educ/A-Guy-Admin/pull/407)) — @aguyshayb
 ## [v0.39.0] - 2026-09-01
 
