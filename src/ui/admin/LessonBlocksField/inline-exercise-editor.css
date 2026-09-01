@@ -46,3 +46,180 @@
   padding: 6px 16px;
   font-size: 13px;
 }
+
+/* ---------- Import exercises modal ---------- */
+.import-exercises-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.import-exercises-modal {
+  width: min(560px, 100%);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  gap: 12px;
+  background: var(--theme-elevation-0);
+  border: 1px solid var(--theme-elevation-200);
+  border-radius: 6px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
+}
+
+.import-exercises-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.import-exercises-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--theme-text);
+  margin: 0;
+}
+
+.import-exercises-close {
+  padding: 4px;
+  background: transparent;
+  border: none;
+  color: var(--theme-elevation-500);
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.import-exercises-close:hover:not(:disabled) {
+  background: var(--theme-elevation-100);
+  color: var(--theme-text);
+}
+
+.import-exercises-close:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.import-exercises-hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--theme-elevation-600);
+  line-height: 1.5;
+}
+
+.import-exercises-hint code {
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: var(--theme-elevation-100);
+  font-size: 11px;
+}
+
+.import-exercises-dropzone {
+  display: block;
+  padding: 20px;
+  text-align: center;
+  border: 2px dashed var(--theme-elevation-300);
+  border-radius: 6px;
+  background: var(--theme-elevation-50);
+  color: var(--theme-elevation-700);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.import-exercises-dropzone:hover {
+  border-color: var(--theme-elevation-400);
+  background: var(--theme-elevation-100);
+}
+
+.import-exercises-file-input {
+  display: none;
+}
+
+.import-exercises-dropzone-fmt {
+  color: var(--theme-elevation-500);
+  font-size: 11px;
+}
+
+.import-exercises-error {
+  padding: 8px 10px;
+  border-radius: 4px;
+  background: var(--theme-error-100, #fee2e2);
+  color: var(--theme-error-700, #b91c1c);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.import-exercises-success {
+  padding: 8px 10px;
+  border-radius: 4px;
+  background: var(--theme-success-100, #dcfce7);
+  color: var(--theme-success-700, #15803d);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.import-exercises-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.import-exercises-secondary,
+.import-exercises-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.import-exercises-secondary {
+  color: var(--theme-text);
+  background: var(--theme-elevation-50);
+  border-color: var(--theme-elevation-200);
+}
+
+.import-exercises-secondary:hover:not(:disabled) {
+  background: var(--theme-elevation-100);
+}
+
+.import-exercises-primary {
+  color: var(--theme-elevation-0);
+  background: var(--theme-success-500, #22c55e);
+}
+
+.import-exercises-primary:hover:not(:disabled) {
+  background: var(--theme-success-600, #16a34a);
+}
+
+.import-exercises-primary:disabled,
+.import-exercises-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@keyframes import-exercises-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.import-exercises-spin {
+  animation: import-exercises-spin 1s linear infinite;
+}

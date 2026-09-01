@@ -8,7 +8,15 @@ import { buildExerciseTitle, convertExerciseToSections } from './convert-exercis
 import { LessonJsonSchema, parseLessonOrderFromFilename } from './json-schema'
 
 export interface ImportLessonInput {
-  chapterId: string
+  /** Required when creating a NEW lesson. Ignored when `targetLessonId` is set. */
+  chapterId?: string
+  /**
+   * When set, append the imported exercises to this existing lesson instead
+   * of creating a new one. The lesson's chapter/title/order aren't touched;
+   * only new Exercise + Section docs are created and appended to the
+   * lesson.blocks playlist.
+   */
+  targetLessonId?: string
   filename: string
   json: unknown
 }
@@ -73,12 +81,52 @@ async function resolveLessonOrder(
   return (top?.order ?? -1) + 1
 }
 
+/** Parse the existing lesson.blocks textarea payload back into an array. */
+function parseExistingBlocks(raw: unknown): Array<Record<string, unknown>> {
+  if (Array.isArray(raw)) return raw as Array<Record<string, unknown>>
+  if (typeof raw === 'string' && raw.trim()) {
+    try {
+      const parsed = JSON.parse(raw)
+      if (Array.isArray(parsed)) return parsed as Array<Record<string, unknown>>
+    } catch {
+      /* fall through */
+    }
+  }
+  return []
+}
+
+async function nextExerciseOrder(req: PayloadRequest, lessonId: string): Promise<number> {
+  const existing = await req.payload.find({
+    collection: 'exercises',
+    where: { lesson: { equals: lessonId } },
+    sort: '-order',
+    limit: 1,
+    depth: 0,
+    req,
+    overrideAccess: true,
+  })
+  const top = existing.docs[0] as { order?: number } | undefined
+  return (top?.order ?? -1) + 1
+}
+
 export async function importLessonFromJson(
   req: PayloadRequest,
   input: ImportLessonInput,
 ): Promise<ImportLessonResult | ImportLessonError> {
   if (!req.user) {
     return { kind: 'not_found', message: 'Authenticated user required' }
+  }
+
+  if (!input.chapterId && !input.targetLessonId) {
+    return {
+      kind: 'validation',
+      issues: [
+        {
+          path: 'chapterId',
+          message: 'Either chapterId (create new lesson) or targetLessonId (append) is required',
+        },
+      ],
+    }
   }
 
   const parsed = LessonJsonSchema.safeParse(input.json)
@@ -93,40 +141,67 @@ export async function importLessonFromJson(
   }
   const lessonJson = parsed.data
 
-  const chapter = await req.payload.findByID({
-    collection: 'chapters',
-    id: input.chapterId,
-    depth: 0,
-    req,
-    overrideAccess: false,
-    user: req.user,
-  })
-  if (!chapter) {
-    return { kind: 'not_found', message: 'Chapter not found' }
-  }
-
   const tenantId = await getDefaultTenantId(req.payload)
 
-  const order = await resolveLessonOrder(req, input.chapterId, input.filename)
+  // Resolve the target lesson — create fresh or look up existing. Gate rollback
+  // via `didCreateLesson` so an append-mode failure doesn't delete a
+  // pre-existing lesson with other content.
+  let lesson: { id: string; title: string; existingBlocks: Array<Record<string, unknown>> }
+  const didCreateLesson = !input.targetLessonId
 
-  const lessonData = {
-    tenant: tenantId,
-    locale: 'he',
-    chapter: input.chapterId,
-    type: 'practice',
-    title: lessonJson.topic,
-    order,
-    status: 'draft',
-    isActive: true,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } as any
-  const lesson = await req.payload.create({
-    collection: 'lessons',
-    data: lessonData,
-    req,
-    overrideAccess: false,
-    user: req.user,
-  })
+  if (input.targetLessonId) {
+    const existing = await req.payload.findByID({
+      collection: 'lessons',
+      id: input.targetLessonId,
+      depth: 0,
+      req,
+      overrideAccess: false,
+      user: req.user,
+    })
+    if (!existing) return { kind: 'not_found', message: 'Lesson not found' }
+    lesson = {
+      id: existing.id,
+      title: (existing as { title?: string }).title ?? '',
+      existingBlocks: parseExistingBlocks((existing as { blocks?: unknown }).blocks),
+    }
+  } else {
+    const chapterId = input.chapterId as string
+    const chapter = await req.payload.findByID({
+      collection: 'chapters',
+      id: chapterId,
+      depth: 0,
+      req,
+      overrideAccess: false,
+      user: req.user,
+    })
+    if (!chapter) {
+      return { kind: 'not_found', message: 'Chapter not found' }
+    }
+    const order = await resolveLessonOrder(req, chapterId, input.filename)
+    const lessonData = {
+      tenant: tenantId,
+      locale: 'he',
+      chapter: chapterId,
+      type: 'practice',
+      title: lessonJson.topic,
+      order,
+      status: 'draft',
+      isActive: true,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any
+    const created = await req.payload.create({
+      collection: 'lessons',
+      data: lessonData,
+      req,
+      overrideAccess: false,
+      user: req.user,
+    })
+    lesson = { id: created.id, title: created.title, existingBlocks: [] }
+  }
+
+  // Order offset: append-mode starts after the current max in the lesson so
+  // the new exercises don't collide with existing order values.
+  const orderStart = input.targetLessonId ? await nextExerciseOrder(req, lesson.id) : 0
 
   const exerciseResults: ImportLessonExerciseResult[] = []
   const createdExerciseIds: string[] = []
@@ -176,13 +251,13 @@ export async function importLessonFromJson(
       // "field invalid: tenant" (it extracts the first field name from the
       // compound index, which is misleading). Until Stage 4 lands a real
       // dedup/upsert story, we just let each import create fresh rows.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       const exerciseData = {
         tenant: tenantId,
         locale: 'he',
         lesson: lesson.id,
         title: buildExerciseTitle(lessonJson.topic, ex),
-        order: i,
+        order: orderStart + i,
         content,
         origin: 'import',
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -256,6 +331,9 @@ export async function importLessonFromJson(
   // we don't have. Without this, a partial import leaves a draft lesson with
   // some exercises and a confusing "success: false" response. Roll back so the
   // operator only sees clean state and can retry the file after fixing it.
+  //
+  // Append-mode: only delete what THIS import created; never touch the
+  // pre-existing lesson or its unrelated exercises.
   if (failed.length > 0) {
     for (const id of createdSectionIds) {
       try {
@@ -271,14 +349,21 @@ export async function importLessonFromJson(
         // best-effort — surfaced via error in results below
       }
     }
-    try {
-      await req.payload.delete({ collection: 'lessons', id: lesson.id, req, overrideAccess: true })
-    } catch {
-      // best-effort
+    if (didCreateLesson) {
+      try {
+        await req.payload.delete({
+          collection: 'lessons',
+          id: lesson.id,
+          req,
+          overrideAccess: true,
+        })
+      } catch {
+        // best-effort
+      }
     }
     return {
       success: false,
-      lessonId: '',
+      lessonId: didCreateLesson ? '' : lesson.id,
       lessonTitle: lesson.title,
       exercisesCreated: 0,
       exercisesFailed: failed.length,
@@ -288,17 +373,19 @@ export async function importLessonFromJson(
 
   // Write the complete lesson.blocks playlist in one shot. Each exercise was
   // created with _skipBlockSync to suppress the per-create append hook (it
-  // races on serial imports), so we own the final ordering here.
-  const blocks = createdExerciseIds.map((exerciseId) => ({
+  // races on serial imports), so we own the final ordering here. Append-mode
+  // preserves the existing playlist and appends the new refs at the end.
+  const newBlocks = createdExerciseIds.map((exerciseId) => ({
     id: Math.random().toString(36).slice(2, 14),
     blockType: 'exerciseRef' as const,
     exercise: exerciseId,
   }))
+  const finalBlocks = [...lesson.existingBlocks, ...newBlocks]
   try {
     await req.payload.update({
       collection: 'lessons',
       id: lesson.id,
-      data: { blocks: JSON.stringify(blocks) },
+      data: { blocks: JSON.stringify(finalBlocks) },
       req,
       overrideAccess: true,
       context: { _skipBlockSync: true },
@@ -308,7 +395,7 @@ export async function importLessonFromJson(
     // the admin lesson view will still work because LessonBlocksField queries
     // exercises by lesson. Worst case is the playlist order isn't pre-set.
     // Logged here so we have a trace if it ever fires.
-    // eslint-disable-next-line no-console
+
     console.error('[lesson-json-import] failed to write lesson.blocks playlist', err)
   }
 
