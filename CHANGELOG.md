@@ -1976,6 +1976,7 @@
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- feat: Import exercises from a file into an existing lesson ([#402](https://github.com/A-Guy-educ/A-Guy-Admin/pull/402)) — @aguyshayb
 - promote: dev -> main (v0.38.0) ([#400](https://github.com/A-Guy-educ/A-Guy-Admin/pull/400)) — @aguyshayb
 - chore: release v0.38.0 ([#399](https://github.com/A-Guy-educ/A-Guy-Admin/pull/399)) — @aguyshayb
 - feat: TTS settings global for chat-lesson voice/rate ([#394](https://github.com/A-Guy-educ/A-Guy-Admin/pull/394)) — @aguyshayb
