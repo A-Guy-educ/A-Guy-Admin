@@ -126,31 +126,69 @@ export async function importLatexLessonFromFile(
   })
 
   const order = await resolveLessonOrder(req, input.chapterId)
-  const lesson = await req.payload.create({
-    collection: 'lessons',
-    data: {
-      locale: 'he',
-      chapter: input.chapterId,
-      type: 'practice',
-      title: lessonTitle,
-      order,
-      status: 'draft',
-      isActive: true,
-      contentFiles: [media.id],
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any,
-    req,
-    overrideAccess: false,
-    user,
-  })
 
-  const pipeline = await runFullLatexPipeline({
-    payload: req.payload,
-    user,
-    lessonId: lesson.id,
-    mediaId: media.id,
-    request: { url: req.url ?? '', headers: req.headers ?? new Headers() },
-  })
+  // If the lesson create throws (validation, access, DB), the media doc
+  // above is orphaned — nothing else references it. Best-effort delete so
+  // failed imports don't accumulate unreachable blobs in storage.
+  let lesson
+  try {
+    lesson = await req.payload.create({
+      collection: 'lessons',
+      data: {
+        locale: 'he',
+        chapter: input.chapterId,
+        type: 'practice',
+        title: lessonTitle,
+        order,
+        status: 'draft',
+        isActive: true,
+        contentFiles: [media.id],
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any,
+      req,
+      overrideAccess: false,
+      user,
+    })
+  } catch (err) {
+    try {
+      await req.payload.delete({
+        collection: 'media',
+        id: media.id,
+        req,
+        overrideAccess: true,
+      })
+    } catch {
+      /* best-effort */
+    }
+    throw err
+  }
+
+  // Any hard exception from the pipeline (e.g., the un-try/catch'd
+  // context-extractions create in full-pipeline.ts) needs to hit the same
+  // "leave lesson in place, return success:false" branch as documented
+  // soft failures — otherwise a 500 leaves an orphaned Media doc and
+  // silently bypasses the retry-via-button contract the JSDoc promises.
+  let pipeline: Awaited<ReturnType<typeof runFullLatexPipeline>>
+  try {
+    pipeline = await runFullLatexPipeline({
+      payload: req.payload,
+      user,
+      lessonId: lesson.id,
+      mediaId: media.id,
+      request: { url: req.url ?? '', headers: req.headers ?? new Headers() },
+    })
+  } catch (err) {
+    return {
+      success: false,
+      lessonId: lesson.id,
+      lessonTitle,
+      mediaId: media.id,
+      exercisesCreated: 0,
+      latexBlocksFailed: 0,
+      warnings: [],
+      message: `LaTeX pipeline crashed: ${err instanceof Error ? err.message : 'Unknown error'} — open the lesson and click "Full Convert (LaTeX)" to retry.`,
+    }
+  }
 
   if (!pipeline.success) {
     // Lesson + media are LEFT IN PLACE so the admin can retry via the
