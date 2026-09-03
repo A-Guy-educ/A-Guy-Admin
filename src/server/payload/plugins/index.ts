@@ -34,16 +34,13 @@ const generateURL: GenerateURL<Page> = ({ doc }) => {
 
 // Vercel Blob storage plugin - required in production, optional in tests
 // During type generation (PAYLOAD_GENERATE_TYPES=true), this is skipped.
-// Also skipped during Docker builds (PAYLOAD_SKIP_BLOB_INIT=true) — the
-// plugin captures the token's store ID at init time and Next.js bakes
-// that state into .next/standalone, so a dummy build-time token would
-// bake a dummy store ID into runtime redirects. Skipping at build means
-// the plugin initializes fresh at runtime with the real Render env.
+// NOTE: Docker builds must pass the REAL BLOB_READ_WRITE_TOKEN via
+// --build-arg so the store ID captured here matches the runtime store.
+// A dummy build-time token bakes a nonexistent store ID into runtime
+// URL generation, breaking non-streamed media reads (.tex etc.) on
+// hosts that don't rebuild from source (Render). See Dockerfile.
 let vercelBlobPlugin: Plugin | null = null
-if (
-  process.env.PAYLOAD_GENERATE_TYPES !== 'true' &&
-  process.env.PAYLOAD_SKIP_BLOB_INIT !== 'true'
-) {
+if (process.env.PAYLOAD_GENERATE_TYPES !== 'true') {
   const blobToken = process.env.BLOB_READ_WRITE_TOKEN
 
   // In test mode, skip the plugin if no valid token is provided
