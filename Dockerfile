@@ -50,16 +50,25 @@ COPY . .
 # PAYLOAD_SECRET dummy — no bypass exists at payload.config.ts:350;
 # module import throws unconditionally if missing.
 #
-# PAYLOAD_SKIP_BLOB_INIT=true — tells plugins/index.ts to skip the
-# storage-vercel-blob plugin at build time. Necessary because the plugin
-# captures the token's store ID at init and Next.js bakes that state
-# into .next/standalone; a dummy build-time token would produce URLs
-# pointing at a nonexistent store at runtime (Store ID not found on
-# Render for .tex uploads, etc). With this flag, no token is needed at
-# build and the plugin initializes fresh at runtime with the real env.
+# BLOB_READ_WRITE_TOKEN — MUST be the real production token. The
+# storage-vercel-blob plugin captures the token's store ID at init and
+# Next.js bakes that state into .next/standalone, which the runner
+# stage copies. If build-time and runtime store IDs differ, runtime
+# URL generation for non-streamed media (.tex etc.) points at the
+# build-time store — "Store ID not found" on Render. Vercel escapes
+# this only because it builds from source with its real env vars.
+#
+# Passed via --build-arg (see /admin-release Stage 4.5), NOT committed
+# to git. Token lives only in this intermediate builder stage — the
+# runner inherits from `base`, not `builder`, so nothing baked here
+# ships in the final image. Runtime env from Render still wins for
+# actual per-request reads.
 ENV CI=true
 ENV PAYLOAD_SECRET=build-time-dummy-not-used-at-runtime
-ENV PAYLOAD_SKIP_BLOB_INIT=true
+ARG BLOB_READ_WRITE_TOKEN
+RUN test -n "$BLOB_READ_WRITE_TOKEN" || \
+  (echo "ERROR: --build-arg BLOB_READ_WRITE_TOKEN is required. See Dockerfile comment above." && exit 1)
+ENV BLOB_READ_WRITE_TOKEN=$BLOB_READ_WRITE_TOKEN
 # Render's Docker builders cap at 8GB RAM. Next + Payload compilation
 # alone comes close, and the Sentry webpack plugin's in-memory source
 # map processing puts it over. next.config.js honors SKIP_SENTRY=true
