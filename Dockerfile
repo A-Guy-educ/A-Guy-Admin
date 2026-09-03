@@ -50,15 +50,16 @@ COPY . .
 # PAYLOAD_SECRET dummy — no bypass exists at payload.config.ts:350;
 # module import throws unconditionally if missing.
 #
-# BLOB_READ_WRITE_TOKEN dummy — plugins/index.ts gates its check on
-# PAYLOAD_GENERATE_TYPES=true, but that's only set for generate:types
-# (not generate:importmap or next build), so a dummy is safest.
+# PAYLOAD_SKIP_BLOB_INIT=true — tells plugins/index.ts to skip the
+# storage-vercel-blob plugin at build time. Necessary because the plugin
+# captures the token's store ID at init and Next.js bakes that state
+# into .next/standalone; a dummy build-time token would produce URLs
+# pointing at a nonexistent store at runtime (Store ID not found on
+# Render for .tex uploads, etc). With this flag, no token is needed at
+# build and the plugin initializes fresh at runtime with the real env.
 ENV CI=true
 ENV PAYLOAD_SECRET=build-time-dummy-not-used-at-runtime
-# Format: vercel_blob_rw_<alphanumeric>_<alphanumeric> — matches the
-# regex in @payloadcms/storage-vercel-blob's token parser. Just enough
-# structure to pass the format check; not a real credential.
-ENV BLOB_READ_WRITE_TOKEN=vercel_blob_rw_dummystoreid_dummyrandomstring
+ENV PAYLOAD_SKIP_BLOB_INIT=true
 # Render's Docker builders cap at 8GB RAM. Next + Payload compilation
 # alone comes close, and the Sentry webpack plugin's in-memory source
 # map processing puts it over. next.config.js honors SKIP_SENTRY=true
