@@ -2002,6 +2002,8 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+## [v0.40.0] - 2026-09-03
+
 - promote: dev -> main (v0.40.0) ([#416](https://github.com/A-Guy-educ/A-Guy-Admin/pull/416)) — @aguyshayb
 - chore: release v0.40.0 ([#415](https://github.com/A-Guy-educ/A-Guy-Admin/pull/415)) — @aguyshayb
 - feat(latex-parser): Recognize Hebrew answer-key + PDF worksheet patterns ([#414](https://github.com/A-Guy-educ/A-Guy-Admin/pull/414)) — @aguyshayb
