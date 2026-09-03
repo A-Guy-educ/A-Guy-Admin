@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.40.0 — 2026-09-03
+
+### Features
+- Recognize `\textbf{שאלה N}` and `\begin{list}{\textbf{N.}}` in LaTeX parser (#414)
+- Add `.tex` file support to lesson-json-import page (#413)
+- Add per-block `showNotebook` toggle to question blocks (#409)
+
+### Bug Fixes
+- Fetch LaTeX file directly from blob storage (#413)
+- Clean up orphaned media on hard failure in LaTeX import (#413)
+
 ## v0.39.1 — 2026-09-01
 
 _Maintenance-only release._
