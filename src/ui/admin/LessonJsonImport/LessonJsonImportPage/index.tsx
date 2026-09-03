@@ -13,7 +13,7 @@ import {
 import { ChapterSelector } from '../ChapterSelector'
 
 type ParseStatus = 'valid' | 'invalid'
-type ImportFormat = 'json' | 'text'
+type ImportFormat = 'json' | 'text' | 'latex'
 
 interface FileEntry {
   id: string
@@ -21,9 +21,12 @@ interface FileEntry {
   format: ImportFormat
   json: unknown
   text?: string
+  /** Raw file contents for the LaTeX importer. Same idea as `text` but kept separate so the format branches stay obvious. */
+  latex?: string
   status: ParseStatus
   parseError?: string
   lessonTopic?: string
+  /** Undefined for LaTeX — real count is only knowable server-side after the deterministic split. */
   exerciseCount?: number
 }
 
@@ -166,6 +169,27 @@ function safeParseTextLesson(
   return { topic: deriveTitleFromFilename(filename), exerciseCount }
 }
 
+/**
+ * Minimal client-side sanity check for .tex files. The deterministic
+ * parser + AI fallback on the server can handle many shapes, so we only
+ * reject clearly-broken input: empty files or files with no LaTeX at all.
+ * Exercise count is left blank in the preview because the real split
+ * happens server-side.
+ */
+function safeParseLatexLesson(
+  content: string,
+  filename: string,
+): {
+  topic?: string
+  error?: string
+} {
+  if (!content || content.trim() === '') return { error: 'File is empty' }
+  if (!content.includes('\\')) {
+    return { error: 'No LaTeX commands found — is this really a .tex file?' }
+  }
+  return { topic: deriveTitleFromFilename(filename) }
+}
+
 export function LessonJsonImportPage() {
   const [chapterId, setChapterId] = useState<string | null>(null)
   const [files, setFiles] = useState<FileEntry[]>([])
@@ -181,7 +205,9 @@ export function LessonJsonImportPage() {
       const lower = file.name.toLowerCase()
       const isJson = lower.endsWith('.json')
       const isText = lower.endsWith('.txt')
-      if (!isJson && !isText) continue
+      const isLatex = lower.endsWith('.tex')
+      if (!isJson && !isText && !isLatex) continue
+      const format: ImportFormat = isJson ? 'json' : isText ? 'text' : 'latex'
       const id = `${file.name}-${file.size}-${file.lastModified}`
       try {
         const raw = await file.text()
@@ -198,7 +224,7 @@ export function LessonJsonImportPage() {
             lessonTopic: summary.topic,
             exerciseCount: summary.exerciseCount,
           })
-        } else {
+        } else if (isText) {
           const summary = safeParseTextLesson(raw, file.name)
           next.push({
             id,
@@ -211,12 +237,24 @@ export function LessonJsonImportPage() {
             lessonTopic: summary.topic,
             exerciseCount: summary.exerciseCount,
           })
+        } else {
+          const summary = safeParseLatexLesson(raw, file.name)
+          next.push({
+            id,
+            filename: file.name,
+            format: 'latex',
+            json: null,
+            latex: raw,
+            status: summary.error ? 'invalid' : 'valid',
+            parseError: summary.error,
+            lessonTopic: summary.topic,
+          })
         }
       } catch (err) {
         next.push({
           id,
           filename: file.name,
-          format: isJson ? 'json' : 'text',
+          format,
           json: null,
           status: 'invalid',
           parseError: err instanceof Error ? err.message : 'Invalid file',
@@ -258,11 +296,17 @@ export function LessonJsonImportPage() {
       }))
       try {
         const url =
-          f.format === 'json' ? '/api/lessons/import-from-json' : '/api/lessons/import-from-text'
+          f.format === 'json'
+            ? '/api/lessons/import-from-json'
+            : f.format === 'text'
+              ? '/api/lessons/import-from-text'
+              : '/api/lessons/import-from-latex'
         const body =
           f.format === 'json'
             ? { chapterId, filename: f.filename, json: f.json }
-            : { chapterId, filename: f.filename, text: f.text ?? '' }
+            : f.format === 'text'
+              ? { chapterId, filename: f.filename, text: f.text ?? '' }
+              : { chapterId, filename: f.filename, content: f.latex ?? '' }
         const res = await fetch(url, {
           method: 'POST',
           credentials: 'include',
@@ -283,21 +327,29 @@ export function LessonJsonImportPage() {
           continue
         }
         const data = envelope.data || {}
+        // JSON/text importers return { success, exercisesCreated, exercisesFailed }
+        // and roll back on any failure. The LaTeX importer returns
+        // { success, exercisesCreated, latexBlocksFailed, message } and — when
+        // success:false — leaves the lesson + media in place so the admin can
+        // retry via the "Full Convert (LaTeX)" button on the lesson edit view.
+        const isLatex = f.format === 'latex'
+        const failedCount = isLatex ? (data.success === false ? 1 : 0) : data.exercisesFailed
         const firstError =
-          Array.isArray(data.results) && data.exercisesFailed > 0
+          !isLatex && Array.isArray(data.results) && failedCount > 0
             ? data.results.find((r: { error?: string }) => r?.error)?.error
             : undefined
         setResults((prev) => ({
           ...prev,
           [f.id]: {
             ...prev[f.id],
-            state: data.exercisesFailed > 0 ? 'failed' : 'done',
+            state: failedCount > 0 ? 'failed' : 'done',
             lessonId: data.lessonId,
             exercisesCreated: data.exercisesCreated,
-            exercisesFailed: data.exercisesFailed,
-            message:
-              data.exercisesFailed > 0
-                ? `Rolled back — ${data.exercisesFailed} exercise${data.exercisesFailed === 1 ? '' : 's'} failed. First error: ${firstError ?? 'unknown'}`
+            exercisesFailed: isLatex ? 0 : failedCount,
+            message: isLatex
+              ? (data.message ?? `Created lesson with ${data.exercisesCreated} exercises`)
+              : failedCount > 0
+                ? `Rolled back — ${failedCount} exercise${failedCount === 1 ? '' : 's'} failed. First error: ${firstError ?? 'unknown'}`
                 : `Created lesson with ${data.exercisesCreated} exercises`,
           },
         }))
@@ -342,12 +394,12 @@ export function LessonJsonImportPage() {
         <h2 style={sectionHeadingStyle}>2. Drop lesson files</h2>
         <label htmlFor="json-file-input">
           <div style={dropzoneStyle} onDragOver={(e) => e.preventDefault()} onDrop={onDrop}>
-            Drag &amp; drop lesson <code>.json</code> or <code>.txt</code> files here, or click to
-            browse.
+            Drag &amp; drop lesson <code>.json</code>, <code>.txt</code>, or <code>.tex</code> files
+            here, or click to browse.
             <input
               id="json-file-input"
               type="file"
-              accept=".json,application/json,.txt,text/plain"
+              accept=".json,application/json,.txt,text/plain,.tex,application/x-tex,text/x-tex"
               multiple
               onChange={(e) => onFiles(e.target.files)}
               style={{ display: 'none' }}

@@ -337,6 +337,38 @@ function processTokens(
         const inner = extractInner(token)
         const mcq = tryMcqMatchers(inner)
         if (mcq) blocks.push(mcq)
+      } else if (envName === 'list') {
+        // Custom `\begin{list}{<label>}{<params>}...\end{list}` is often used
+        // in Hebrew PDF worksheets to wrap the exercise number + intro
+        // paragraph, e.g. `\begin{list}{\textbf{1.}}{...}\item <intro>\end{list}`.
+        // Emit a `## תרגיל N` heading so parseLatexToExercises can split on it,
+        // then process the item content as rich_text. The second `{<params>}`
+        // brace group (setlength calls, etc.) is skipped by finding the first
+        // \item and taking everything after it.
+        const raw = token.value ?? ''
+        const labelMatch = /\\begin\{list\}\s*\{\\textbf\{\s*(\d+)\.\s*\}\}/.exec(raw)
+        if (labelMatch) {
+          const num = parseInt(labelMatch[1], 10)
+          blocks.push(makeRichTextBlock(`## תרגיל ${num}`))
+        }
+        const inner = extractInner(token)
+        const itemIdx = inner.indexOf('\\item')
+        if (itemIdx !== -1) {
+          const itemContent = inner.slice(itemIdx).replace(/^\\item\s*/, '')
+          const contentTokens = tokenize(itemContent, token.line)
+          processTokens(contentTokens, blocks, warnings)
+        } else if (!labelMatch) {
+          // No numbered label AND no items — treat as unknown env fallback
+          const cleaned = cleanText(inner)
+          if (cleaned) {
+            blocks.push(makeRichTextBlock(cleaned))
+            warnings.push({
+              line: token.line,
+              message: 'Unrecognized list environment (no numbered label, no items)',
+              rawLatex: raw,
+            })
+          }
+        }
       } else {
         // Unknown environment — try MCQ matchers, then fall back to rich_text with warning
         const inner = extractInner(token)

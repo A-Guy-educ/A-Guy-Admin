@@ -80,6 +80,8 @@ export const FreeResponseEditor: React.FC<FreeResponseEditorProps> = ({ block, o
           blockId={block.id}
           onChange={(field, value) => onChange({ ...block, [field]: value })}
           onBatchChange={(fields) => onChange({ ...block, ...fields })}
+          showNotebook={block.showNotebook}
+          onShowNotebookChange={(value) => onChange({ ...block, showNotebook: value })}
         />
       </div>
     </div>

@@ -17,7 +17,11 @@
  */
 import type { Payload, PayloadRequest, User } from 'payload'
 import { fetchBuffer } from '@/infra/utils/http'
-import { isVercelBlobUrl } from '@/infra/blob/vercel-blob-adapter'
+import {
+  getMediaBlobAdapter,
+  getPdfBufferFromUrl,
+  isVercelBlobUrl,
+} from '@/infra/blob/vercel-blob-adapter'
 import { logger } from '@/infra/utils/logger'
 import type { Lesson, Media } from '@/payload-types'
 import { convertLatexBlockOnExercise } from '@/server/payload/endpoints/exercises/convert-latex-block'
@@ -171,9 +175,11 @@ export interface RunFullLatexInput {
 }
 
 /**
- * Pull the file bytes for the attached .tex media. The Media collection
- * stores files in Vercel Blob in production; locally it falls through to
- * a normalized URL fetch.
+ * Pull the file bytes for the attached .tex media. Fetches directly from
+ * Vercel Blob using the storage adapter — avoids the /api/media/file/...
+ * proxy loopback, which is fragile across hosts (needs NEXT_PUBLIC_SERVER_URL
+ * and can trip on unencoded filename characters). Falls back to the proxy
+ * URL only when the blob lookup fails (e.g. local dev without blob storage).
  */
 async function readLatexFileContent(
   payload: Payload,
@@ -192,24 +198,36 @@ async function readLatexFileContent(
     throw new Error('Media file has no URL')
   }
 
+  if (media.filename) {
+    try {
+      const adapter = getMediaBlobAdapter()
+      const { blobs } = await adapter.list(media.filename, 1)
+      if (blobs.length > 0) {
+        const buffer = await fetchBuffer(blobs[0].url, 30000)
+        return buffer.toString('utf-8')
+      }
+    } catch (err) {
+      logger.warn({ err, mediaId }, '[full-pipeline] direct blob fetch failed, falling back to URL')
+    }
+  }
+
   let fetchUrl = media.url
   if (!fetchUrl.startsWith('http://') && !fetchUrl.startsWith('https://')) {
     fetchUrl = await normalizeToAbsoluteUrl(fetchUrl)
   }
 
-  let buffer: Buffer
   if (isVercelBlobUrl(fetchUrl)) {
-    const { getPdfBufferFromUrl } = await import('@/infra/blob/vercel-blob-adapter')
-    buffer = await getPdfBufferFromUrl(fetchUrl)
-  } else {
-    try {
-      buffer = await getPdfBufferFromBlob(mediaId, payload)
-    } catch {
-      buffer = await fetchBuffer(fetchUrl, 30000)
-    }
+    const buffer = await getPdfBufferFromUrl(fetchUrl)
+    return buffer.toString('utf-8')
   }
 
-  return buffer.toString('utf-8')
+  try {
+    const buffer = await getPdfBufferFromBlob(mediaId, payload)
+    return buffer.toString('utf-8')
+  } catch {
+    const buffer = await fetchBuffer(fetchUrl, 30000)
+    return buffer.toString('utf-8')
+  }
 }
 
 export async function runFullLatexPipeline(input: RunFullLatexInput): Promise<FullPipelineResult> {
