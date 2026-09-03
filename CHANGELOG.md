@@ -2002,6 +2002,7 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- fix: Skip blob plugin init at Docker build time ([#418](https://github.com/A-Guy-educ/A-Guy-Admin/pull/418)) — @aguyshayb
 ## [v0.40.0] - 2026-09-03
 
 - promote: dev -> main (v0.40.0) ([#416](https://github.com/A-Guy-educ/A-Guy-Admin/pull/416)) — @aguyshayb
