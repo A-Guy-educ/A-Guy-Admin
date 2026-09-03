@@ -2002,6 +2002,7 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- chore: release v0.40.0 ([#415](https://github.com/A-Guy-educ/A-Guy-Admin/pull/415)) — @aguyshayb
 - feat(latex-parser): Recognize Hebrew answer-key + PDF worksheet patterns ([#414](https://github.com/A-Guy-educ/A-Guy-Admin/pull/414)) — @aguyshayb
 - fix: Fetch LaTeX file directly from blob storage ([#413](https://github.com/A-Guy-educ/A-Guy-Admin/pull/413)) — @aguyshayb
 - feat: Add .tex file support to lesson-json-import page ([#412](https://github.com/A-Guy-educ/A-Guy-Admin/pull/412)) — @aguyshayb
