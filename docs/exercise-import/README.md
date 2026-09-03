@@ -5,6 +5,8 @@
 
 This document describes the end-to-end pipeline for importing exercises from images using AI extraction, including two import methods, validation stages, and error handling.
 
+> **Importing from a `.tex` file instead of an image?** See [`latex-format-guide.md`](./latex-format-guide.md) for the LaTeX format contract the deterministic parser expects.
+
 ---
 
 ## 📂 Architecture Overview

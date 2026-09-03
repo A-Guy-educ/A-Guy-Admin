@@ -220,6 +220,7 @@ export function isSolutionHeader(text: string): boolean {
  * Detects if this is an exercise title.
  * Matches:
  *   \textbf{תרגיל 1 - Title} or \textbf{תרגיל 1}
+ *   \textbf{שאלה 1 - Title} or \textbf{שאלה 1:} or \textbf{שאלה 1}
  *   \section*{תרגיל 1: Title} or \subsection*{תרגיל 1}
  *   \section*{שאלה 1} or \subsection*{שאלה 1}
  *   \textbf{N.} standalone numbered exercise (e.g. \textbf{1.})
@@ -228,6 +229,11 @@ export function isExerciseTitle(text: string): { title: string; number: number }
   // \textbf{תרגיל N ...}
   const textbfMatch = /\\textbf\{(תרגיל\s+(\d+)[^}]*)\}/.exec(text)
   if (textbfMatch) return { title: textbfMatch[1], number: parseInt(textbfMatch[2], 10) }
+
+  // \textbf{שאלה N ...} — common in Hebrew answer keys where each answer is
+  // headed by "\textbf{שאלה N:}". Same shape as the תרגיל variant above.
+  const textbfQMatch = /\\textbf\{(שאלה\s+(\d+)[^}]*)\}/.exec(text)
+  if (textbfQMatch) return { title: textbfQMatch[1], number: parseInt(textbfQMatch[2], 10) }
 
   // \section*{תרגיל N ...} or \subsection*{תרגיל N ...}
   const sectionExMatch = /\\(?:section|subsection)\*?\{(תרגיל\s+(\d+)[^}]*)\}/.exec(text)
