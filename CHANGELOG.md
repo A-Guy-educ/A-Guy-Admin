@@ -1991,6 +1991,7 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- fix: Fetch LaTeX file directly from blob storage ([#413](https://github.com/A-Guy-educ/A-Guy-Admin/pull/413)) — @aguyshayb
 - feat: Add .tex file support to lesson-json-import page ([#412](https://github.com/A-Guy-educ/A-Guy-Admin/pull/412)) — @aguyshayb
 - feat: Add per-block showNotebook toggle to question blocks ([#409](https://github.com/A-Guy-educ/A-Guy-Admin/pull/409)) — @aguyshayb
 ## [v0.39.1] - 2026-09-01
