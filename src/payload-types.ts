@@ -506,6 +506,10 @@ export interface User {
   googleSub?: string | null;
   verifiedEmail?: string | null;
   registrationMethod?: ('google' | 'email') | null;
+  signupSource?: ('google' | 'guykoren' | 'direct' | 'other') | null;
+  utmSource?: string | null;
+  utmMedium?: string | null;
+  utmCampaign?: string | null;
   registeredAt?: string | null;
   googleProfile?: {
     name?: string | null;
@@ -4838,6 +4842,10 @@ export interface UsersSelect<T extends boolean = true> {
   googleSub?: T;
   verifiedEmail?: T;
   registrationMethod?: T;
+  signupSource?: T;
+  utmSource?: T;
+  utmMedium?: T;
+  utmCampaign?: T;
   registeredAt?: T;
   googleProfile?:
     | T

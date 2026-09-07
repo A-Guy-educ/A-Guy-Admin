@@ -113,6 +113,41 @@ export const Users: CollectionConfig = {
       },
     },
     {
+      name: 'signupSource',
+      type: 'select',
+      options: [
+        { label: 'Google', value: 'google' },
+        { label: 'GuyKoren', value: 'guykoren' },
+        { label: 'Direct', value: 'direct' },
+        { label: 'Other', value: 'other' },
+      ],
+      admin: {
+        readOnly: true,
+        position: 'sidebar',
+      },
+    },
+    {
+      name: 'utmSource',
+      type: 'text',
+      admin: {
+        readOnly: true,
+      },
+    },
+    {
+      name: 'utmMedium',
+      type: 'text',
+      admin: {
+        readOnly: true,
+      },
+    },
+    {
+      name: 'utmCampaign',
+      type: 'text',
+      admin: {
+        readOnly: true,
+      },
+    },
+    {
       name: 'registeredAt',
       type: 'date',
       admin: {
