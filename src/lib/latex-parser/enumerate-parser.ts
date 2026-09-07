@@ -297,8 +297,9 @@ export function isExerciseTitle(text: string): { title: string; number: number }
   }
 
   // \section*{N. text...} — section using a bare number as the exercise anchor
-  const sectionNumberedMatch =
-    /\\(?:section|subsection)\*?\{\s*(\d{1,2})\.\s*([^}]{0,200})\}/.exec(stripped)
+  const sectionNumberedMatch = /\\(?:section|subsection)\*?\{\s*(\d{1,2})\.\s*([^}]{0,200})\}/.exec(
+    stripped,
+  )
   if (sectionNumberedMatch) {
     const num = parseInt(sectionNumberedMatch[1], 10)
     return { title: `תרגיל ${num}`, number: num }
