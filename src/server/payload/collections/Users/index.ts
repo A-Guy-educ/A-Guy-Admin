@@ -28,6 +28,9 @@ const CONTROL_CHAR_RE = /[\x00-\x1F\x7F]/
 const validateUtmString = (value: unknown): true | string => {
   if (value == null || value === '') return true
   if (typeof value !== 'string') return 'Must be a string'
+  // Payload only wires its default text validator (which enforces maxLength)
+  // when `validate` is undefined, so we re-check the cap here.
+  if (value.length > 255) return 'Must be 255 characters or fewer'
   if (CONTROL_CHAR_RE.test(value)) return 'Control characters are not allowed'
   return true
 }
