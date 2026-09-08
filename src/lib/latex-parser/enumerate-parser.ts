@@ -107,10 +107,11 @@ function cleanItemText(text: string): string {
       .replace(/\\textbf\{([^}]*)\}/g, '**$1**')
       .replace(/\\textit\{([^}]*)\}/g, '*$1*')
       .replace(/\\emph\{([^}]*)\}/g, '*$1*')
-      .replace(/\\underline\{([^}]*)\}/g, '$1')
+      .replace(/\\(?:underline|underbar)\{([^}]*)\}/g, '$1')
       .replace(/\\text\{([^}]*)\}/g, '$1')
       .replace(/\\\\/g, ' ')
       .replace(/\\vspace\{[^}]*\}/g, ' ')
+      .replace(/\\hspace\*?\{[^}]*\}/g, ' ')
       .replace(/\\noindent/g, '')
       // Collapse whitespace into single spaces
       .replace(/\s+/g, ' ')
