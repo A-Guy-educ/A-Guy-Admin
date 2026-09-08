@@ -2019,6 +2019,7 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- chore: release v0.42.0 ([#434](https://github.com/A-Guy-educ/A-Guy-Admin/pull/434)) — @aguyshayb
 - feat: Follow-up fixes for LaTeX-to-blocks importer ([#433](https://github.com/A-Guy-educ/A-Guy-Admin/pull/433)) — @aguyshayb
 ## [v0.41.0] - 2026-09-08
 
