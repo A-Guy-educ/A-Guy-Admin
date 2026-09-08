@@ -155,12 +155,16 @@ export async function convertLatexBlockOnExercise(
       isScriptOutputMeaningful(latexBlock.latex, result.blocks)
 
     if (scriptUsable) {
-      // Script succeeded — insert parsed blocks AFTER the LaTeX block, keeping
-      // the original LaTeX as a hidden source-of-truth reference in content.
+      // Script succeeded — REPLACE the LaTeX block with the parsed blocks. The
+      // original source is still recoverable from the source .tex file
+      // (attached via lesson.contentFiles) and the "Full Convert (LaTeX)" button
+      // re-runs the whole pipeline from that file, so we don't need to keep
+      // the raw LaTeX block in the exercise content — its only effect there
+      // was to render as a big raw-source blob above every parsed exercise.
       outcome.convertedBlockIds.push(latexBlock.id)
       outcome.addedBlockCount += result.blocks.length
       sourceLatexChunks.unshift(latexBlock.latex)
-      nextBlocks.splice(idx + 1, 0, ...result.blocks)
+      nextBlocks.splice(idx, 1, ...result.blocks)
       continue
     }
 
