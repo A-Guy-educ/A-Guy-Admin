@@ -2012,6 +2012,8 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+## [v0.41.0] - 2026-09-08
+
 - promote: dev -> main (v0.41.0) ([#432](https://github.com/A-Guy-educ/A-Guy-Admin/pull/432)) — @aguyshayb
 - chore: release v0.41.0 ([#431](https://github.com/A-Guy-educ/A-Guy-Admin/pull/431)) — @aguyshayb
 - feat: Broaden LaTeX parser to accept author-format exercises ([#426](https://github.com/A-Guy-educ/A-Guy-Admin/pull/426)) — @aguyshayb
