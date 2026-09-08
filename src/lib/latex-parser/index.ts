@@ -93,6 +93,11 @@ const PASSTHROUGH_ENVS = new Set([
   'flushleft',
   'flushright',
   'spacing',
+  'RTL',
+  'LTR',
+  'otherlanguage',
+  'hebrew',
+  'english',
 ])
 
 /** Layout/formatting commands to silently skip */
@@ -241,6 +246,71 @@ function cleanText(text: string): string {
 }
 
 /**
+ * Rewrite section/subsection/textbf titles so their arguments contain no
+ * nested braces. The flat tokenizer stops command args at the first `}`, so
+ * `\section*{{\color{name} תרגיל 1}}` is otherwise truncated to
+ * `\section*{{\color{name}` and the exercise title is lost.
+ *
+ * We locate each occurrence, brace-count to the true closing `}`, then strip
+ * `{\color{...}` / `{\Large}` / `\textcolor{...}{...}` wrappers from inside
+ * the argument. The rewritten command has a flat, brace-free argument that
+ * matches the tokenizer's assumptions and `isExerciseTitle`'s patterns.
+ */
+function unwrapStyledTitleArgs(src: string): string {
+  const cmdRe = /\\(section|subsection|textbf)\*?\{/g
+  let out = ''
+  let cursor = 0
+  let match: RegExpExecArray | null
+  while ((match = cmdRe.exec(src)) !== null) {
+    const openBraceIdx = match.index + match[0].length - 1
+    const closeIdx = findMatchingBrace(src, openBraceIdx)
+    if (closeIdx === -1) continue
+    const arg = src.slice(openBraceIdx + 1, closeIdx)
+    if (!arg.includes('{')) continue
+    const flat = flattenTitleArg(arg)
+    if (flat === arg) continue
+    out += src.slice(cursor, openBraceIdx + 1) + flat
+    cursor = closeIdx
+    cmdRe.lastIndex = closeIdx
+  }
+  return out + src.slice(cursor)
+}
+
+/**
+ * Strip color/sizing wrappers from a title argument, collapsing nested groups
+ * so the result contains no `{` or `}`. `\textcolor{name}{content}` keeps
+ * `content`; `{\color{name} X}` and `{\Large X}` keep `X`.
+ */
+function flattenTitleArg(arg: string): string {
+  let result = arg
+  for (let i = 0; i < 5; i++) {
+    const next = result
+      .replace(/\\textcolor\{[^}]*\}\{([^{}]*)\}/g, '$1')
+      .replace(/\{\s*\\color\{[^}]*\}\s*([^{}]*)\}/g, '$1')
+      .replace(/\{\s*\\(?:Large|large|huge|Huge|LARGE|normalsize)\s*([^{}]*)\}/g, '$1')
+      .replace(/\\(?:Large|large|huge|Huge|LARGE|normalsize)\s*/g, '')
+      .replace(/\\color\{[^}]*\}\s*/g, '')
+    if (next === result) break
+    result = next
+  }
+  return result
+}
+
+/**
+ * Detects an itemize/enumerate whose items carry explicit `\item[label]`
+ * markers such as `\item[\textbf{א.}]` or `\item[א.]`. These lists are
+ * effectively sub-question lists and should be handled by parseEnumerate,
+ * not collapsed into bullet-point text.
+ */
+function hasExplicitSubQuestionLabels(inner: string): boolean {
+  // Match \item[\textbf{א.}], \item[א.], \item[(1)], \item[a.], etc.
+  const labelChar = '[\\u0590-\\u05FFa-z0-9]'
+  const label = `\\(?${labelChar}${labelChar}?[.)]?\\)?`
+  const re = new RegExp(`\\\\item\\s*\\[\\s*(?:\\\\textbf\\{)?\\s*${label}\\s*\\}?\\s*\\]`, 'i')
+  return re.test(inner)
+}
+
+/**
  * Detects LaTeX noise fragments that shouldn't become blocks.
  * These are typically orphaned arguments/options from parsed commands.
  */
@@ -284,12 +354,24 @@ function processTokens(
         const inner = extractInner(token)
         processQuestionsEnv(inner, blocks, warnings, token.line)
       } else if (envName === 'itemize') {
-        // Convert itemize to bullet-point rich text
         const inner = extractInner(token)
-        const items = inner.split(/\\item\s*/).filter((s) => s.trim())
-        const bullets = items.map((item) => `• ${cleanText(item)}`).join('\n')
-        if (bullets) {
-          blocks.push(makeRichTextBlock(bullets))
+        // Hebrew worksheets commonly use itemize with explicit labels
+        // (`\item[\textbf{א.}]`) as a sub-question list — treat those as
+        // enumerate so each item becomes a question_free_response block.
+        if (hasExplicitSubQuestionLabels(inner)) {
+          const enumBlocks = parseEnumerate(inner)
+          if (inSolutionSection && enumBlocks.length > 0) {
+            attachSolutions(blocks, enumBlocks)
+          } else {
+            blocks.push(...enumBlocks)
+          }
+        } else {
+          // Plain bullet list — collapse into bullet-point rich text
+          const items = inner.split(/\\item\s*/).filter((s) => s.trim())
+          const bullets = items.map((item) => `• ${cleanText(item)}`).join('\n')
+          if (bullets) {
+            blocks.push(makeRichTextBlock(bullets))
+          }
         }
       } else if (envName === 'enumerate') {
         const inner = extractInner(token)
@@ -554,6 +636,8 @@ export function parseLatexToBlocks(latex: string): ParseResult {
   if (beginDocIdx !== -1) {
     source = source.slice(beginDocIdx)
   }
+
+  source = unwrapStyledTitleArgs(source)
 
   const sanitized = sanitizeLatex(source)
   if (!sanitized.safe) {

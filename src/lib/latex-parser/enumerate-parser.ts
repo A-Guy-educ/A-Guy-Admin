@@ -217,36 +217,91 @@ export function isSolutionHeader(text: string): boolean {
 }
 
 /**
+ * Strip `{\color{name} ...}` / `{\Large ...}` / `\textcolor{name}{...}` wrappers
+ * from a candidate title so `\section*{{\color{explanation} תרגיל 1}}` can be
+ * matched by the same regexes as `\section*{תרגיל 1}`.
+ *
+ * Iterated because color wrappers can appear nested inside sizing wrappers
+ * and vice versa; each pass strips one layer.
+ */
+function stripTitleWrappers(text: string): string {
+  let prev = ''
+  let curr = text
+  let guard = 0
+  while (prev !== curr && guard++ < 6) {
+    prev = curr
+    curr = curr
+      .replace(/\\textcolor\{[^}]*\}\s*/g, '')
+      .replace(/\{\s*\\color\{[^}]*\}\s*/g, '{')
+      .replace(/\{\s*\\(?:Large|large|huge|Huge|LARGE)\s*/g, '{')
+      .replace(/\\color\{[^}]*\}\s*/g, '')
+      .replace(/\\(?:Large|large|huge|Huge|LARGE)\s*/g, '')
+      // Collapse nested `{{...}}` produced by wrapper removal into `{...}`.
+      .replace(/\{\{([^{}]*)\}\}/g, '{$1}')
+      .replace(/\{\s*\}/g, '')
+  }
+  return curr
+}
+
+/**
  * Detects if this is an exercise title.
  * Matches:
  *   \textbf{תרגיל 1 - Title} or \textbf{תרגיל 1}
  *   \textbf{שאלה 1 - Title} or \textbf{שאלה 1:} or \textbf{שאלה 1}
+ *   \textbf{N. anything} — bare number followed by text (Hebrew worksheet pattern)
  *   \section*{תרגיל 1: Title} or \subsection*{תרגיל 1}
  *   \section*{שאלה 1} or \subsection*{שאלה 1}
+ *   \section*{N. anything} — section titled with just a bare number
+ *   \section*{{\color{name} תרגיל 1}} — color-wrapped titles (common in styled worksheets)
  *   \textbf{N.} standalone numbered exercise (e.g. \textbf{1.})
  */
 export function isExerciseTitle(text: string): { title: string; number: number } | null {
+  const stripped = stripTitleWrappers(text)
+
   // \textbf{תרגיל N ...}
-  const textbfMatch = /\\textbf\{(תרגיל\s+(\d+)[^}]*)\}/.exec(text)
-  if (textbfMatch) return { title: textbfMatch[1], number: parseInt(textbfMatch[2], 10) }
+  const textbfMatch = /\\textbf\{\s*(תרגיל\s+(\d+)[^}]*)\}/.exec(stripped)
+  if (textbfMatch) return { title: textbfMatch[1].trim(), number: parseInt(textbfMatch[2], 10) }
 
   // \textbf{שאלה N ...} — common in Hebrew answer keys where each answer is
   // headed by "\textbf{שאלה N:}". Same shape as the תרגיל variant above.
-  const textbfQMatch = /\\textbf\{(שאלה\s+(\d+)[^}]*)\}/.exec(text)
-  if (textbfQMatch) return { title: textbfQMatch[1], number: parseInt(textbfQMatch[2], 10) }
+  const textbfQMatch = /\\textbf\{\s*(שאלה\s+(\d+)[^}]*)\}/.exec(stripped)
+  if (textbfQMatch) return { title: textbfQMatch[1].trim(), number: parseInt(textbfQMatch[2], 10) }
 
   // \section*{תרגיל N ...} or \subsection*{תרגיל N ...}
-  const sectionExMatch = /\\(?:section|subsection)\*?\{(תרגיל\s+(\d+)[^}]*)\}/.exec(text)
-  if (sectionExMatch) return { title: sectionExMatch[1], number: parseInt(sectionExMatch[2], 10) }
+  const sectionExMatch = /\\(?:section|subsection)\*?\{\s*(תרגיל\s+(\d+)[^}]*)\}/.exec(stripped)
+  if (sectionExMatch)
+    return { title: sectionExMatch[1].trim(), number: parseInt(sectionExMatch[2], 10) }
 
   // \section*{שאלה N ...} or \subsection*{שאלה N ...}
-  const sectionQMatch = /\\(?:section|subsection)\*?\{(שאלה\s+(\d+)[^}]*)\}/.exec(text)
-  if (sectionQMatch) return { title: sectionQMatch[1], number: parseInt(sectionQMatch[2], 10) }
+  const sectionQMatch = /\\(?:section|subsection)\*?\{\s*(שאלה\s+(\d+)[^}]*)\}/.exec(stripped)
+  if (sectionQMatch)
+    return { title: sectionQMatch[1].trim(), number: parseInt(sectionQMatch[2], 10) }
 
-  // \textbf{N.} — standalone numbered exercise boundary
-  const numberedMatch = /^\\textbf\{(\d+)\.\s*\}$/.exec(text.trim())
+  // \textbf{N.} — standalone numbered exercise boundary. Only 1-2 digit
+  // numbers, so year-like values (\textbf{2024.}) don't get treated as
+  // exercise anchors.
+  const numberedMatch = /^\\textbf\{(\d{1,2})\.\s*\}$/.exec(stripped.trim())
   if (numberedMatch) {
     const num = parseInt(numberedMatch[1], 10)
+    return { title: `תרגיל ${num}`, number: num }
+  }
+
+  // \textbf{N. text...} — bare number followed by inline exercise text.
+  // Only accept reasonable exercise numbers (1-99) to avoid matching numeric
+  // fragments like `\textbf{2024.}`. The rest of the textbf content becomes
+  // the title so the reader can still see the intro.
+  const numberedInlineMatch = /^\\textbf\{\s*(\d{1,2})\.\s+([^}]{1,200})\}/.exec(stripped.trim())
+  if (numberedInlineMatch) {
+    const num = parseInt(numberedInlineMatch[1], 10)
+    return { title: `תרגיל ${num}`, number: num }
+  }
+
+  // \section*{N. text...} — section using a bare number as the exercise anchor
+  const sectionNumberedMatch = /\\(?:section|subsection)\*?\{\s*(\d{1,2})\.\s*([^}]{0,200})\}/.exec(
+    stripped,
+  )
+  if (sectionNumberedMatch) {
+    const num = parseInt(sectionNumberedMatch[1], 10)
     return { title: `תרגיל ${num}`, number: num }
   }
 

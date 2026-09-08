@@ -167,3 +167,117 @@ Answer to question two.
     expect(result.exercises[1].number).toBe(2)
   })
 })
+
+describe('Boss-format patterns — bare numbers, color wrappers, itemize sub-questions', () => {
+  // Hebrew worksheet authors commonly title an exercise with just a bare
+  // number followed by the intro paragraph, e.g. `\textbf{1. פשטו את...}`.
+  // Previously this only matched when the closing `}` was right after the
+  // period, which broke on this very common inline shape.
+  it('matches \\textbf{N. inline intro text} as exercise title', () => {
+    const result = isExerciseTitle('\\textbf{3. \\quad נתונות הפונקציות:}')
+    expect(result).not.toBeNull()
+    expect(result?.number).toBe(3)
+  })
+
+  it('matches \\section*{N. text} as exercise title', () => {
+    const result = isExerciseTitle('\\section*{1. ענו על הסעיפים הבאים:}')
+    expect(result).not.toBeNull()
+    expect(result?.number).toBe(1)
+  })
+
+  it('matches \\section*{{\\color{name} תרגיל N}} (color-wrapped title)', () => {
+    const result = isExerciseTitle('\\section*{{\\color{explanation} תרגיל 5}}')
+    expect(result).not.toBeNull()
+    expect(result?.number).toBe(5)
+  })
+
+  it('rejects \\textbf{2024.} — four-digit numbers are not exercise anchors', () => {
+    const result = isExerciseTitle('\\textbf{2024.}')
+    expect(result).toBeNull()
+  })
+
+  it('splits a file whose exercise titles use \\section*{N. text}', () => {
+    const latex = `
+\\begin{document}
+\\section*{1. Solve the equation:}
+\\[ x^2 - 5x + 6 = 0 \\]
+
+\\section*{2. Factor the polynomial:}
+\\[ x^3 - x \\]
+\\end{document}
+`
+    const result = parseLatexToExercises(latex)
+    expect(result.errors).toHaveLength(0)
+    const numberedExercises = result.exercises.filter((e) => e.number > 0)
+    expect(numberedExercises.length).toBe(2)
+    expect(numberedExercises[0].number).toBe(1)
+    expect(numberedExercises[1].number).toBe(2)
+  })
+
+  it('splits a file whose exercise titles use \\section*{{\\color{...} תרגיל N}}', () => {
+    const latex = `
+\\begin{document}
+\\section*{{\\color{explanation} תרגיל 1}}
+Content of exercise 1.
+
+\\section*{{\\color{explanation} תרגיל 2}}
+Content of exercise 2.
+\\end{document}
+`
+    const result = parseLatexToExercises(latex)
+    expect(result.errors).toHaveLength(0)
+    const numberedExercises = result.exercises.filter((e) => e.number > 0)
+    expect(numberedExercises.length).toBe(2)
+    expect(numberedExercises[0].number).toBe(1)
+    expect(numberedExercises[1].number).toBe(2)
+  })
+
+  // Hebrew PDF worksheets often use `itemize` with explicit `\item[\textbf{א.}]`
+  // labels as a sub-question list. Previously the parser collapsed those to
+  // bullet-point rich text, losing the per-item free-response structure.
+  it('treats itemize with explicit Hebrew alph labels as sub-questions', () => {
+    const latex = `
+\\begin{itemize}[label={}, itemsep=5pt]
+\\item[\\textbf{א.}] מצאו את שטח משולש ACD.
+\\item[\\textbf{ב.}] מצאו את שטח משולש BEF.
+\\item[\\textbf{ג.}] עבור אילו ערכי x, הפונקציה עולה?
+\\end{itemize}
+`
+    const result = parseLatexToBlocks(latex)
+    const freeResponse = result.blocks.filter((b) => b.type === 'question_free_response')
+    expect(freeResponse.length).toBe(3)
+  })
+
+  it('still collapses plain itemize (no explicit labels) into bullet text', () => {
+    const latex = `
+\\begin{itemize}
+\\item First point.
+\\item Second point.
+\\end{itemize}
+`
+    const result = parseLatexToBlocks(latex)
+    const freeResponse = result.blocks.filter((b) => b.type === 'question_free_response')
+    expect(freeResponse.length).toBe(0)
+    const richText = result.blocks.filter((b) => b.type === 'rich_text')
+    expect(richText.length).toBeGreaterThan(0)
+    const bullets = richText.find((b) => b.type === 'rich_text' && b.value.includes('•'))
+    expect(bullets).toBeDefined()
+  })
+
+  it('recurses into \\begin{RTL}...\\end{RTL} so inner titles are still detected', () => {
+    const latex = `
+\\begin{document}
+\\begin{RTL}
+\\textbf{1.} First exercise intro.
+\\end{RTL}
+\\begin{RTL}
+\\textbf{2.} Second exercise intro.
+\\end{RTL}
+\\end{document}
+`
+    const result = parseLatexToExercises(latex)
+    expect(result.errors).toHaveLength(0)
+    const numberedExercises = result.exercises.filter((e) => e.number > 0)
+    expect(numberedExercises.length).toBe(2)
+  })
+})
