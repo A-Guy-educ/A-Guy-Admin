@@ -33,7 +33,12 @@ const generateURL: GenerateURL<Page> = ({ doc }) => {
 }
 
 // Vercel Blob storage plugin - required in production, optional in tests
-// During type generation (PAYLOAD_GENERATE_TYPES=true), this is skipped
+// During type generation (PAYLOAD_GENERATE_TYPES=true), this is skipped.
+// NOTE: Docker builds must pass the REAL BLOB_READ_WRITE_TOKEN via
+// --build-arg so the store ID captured here matches the runtime store.
+// A dummy build-time token bakes a nonexistent store ID into runtime
+// URL generation, breaking non-streamed media reads (.tex etc.) on
+// hosts that don't rebuild from source (Render). See Dockerfile.
 let vercelBlobPlugin: Plugin | null = null
 if (process.env.PAYLOAD_GENERATE_TYPES !== 'true') {
   const blobToken = process.env.BLOB_READ_WRITE_TOKEN

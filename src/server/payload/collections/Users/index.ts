@@ -22,6 +22,19 @@ import { preventLastAdminDemotion } from './hooks/preventLastAdminDemotion-hook'
 import { optionalTenantField } from '../../fields/tenant'
 import { ACCOUNT_ROLE_LABEL, AccountRole } from './roles'
 
+// eslint-disable-next-line no-control-regex
+const CONTROL_CHAR_RE = /[\x00-\x1F\x7F]/
+
+const validateUtmString = (value: unknown): true | string => {
+  if (value == null || value === '') return true
+  if (typeof value !== 'string') return 'Must be a string'
+  // Payload only wires its default text validator (which enforces maxLength)
+  // when `validate` is undefined, so we re-check the cap here.
+  if (value.length > 255) return 'Must be 255 characters or fewer'
+  if (CONTROL_CHAR_RE.test(value)) return 'Control characters are not allowed'
+  return true
+}
+
 export const Users: CollectionConfig = {
   slug: 'users',
   access: {
@@ -110,6 +123,68 @@ export const Users: CollectionConfig = {
       admin: {
         readOnly: true,
         position: 'sidebar',
+      },
+    },
+    // Attribution fields: written once at signup by A-Guy-Web via
+    // overrideAccess: true. Blocking REST/GraphQL create+update prevents the
+    // unauthenticated `create: anyone` signup POST from injecting forged
+    // sources, and prevents authenticated users from later PATCHing their own
+    // acquisition history under `update: adminOrSelf`.
+    {
+      name: 'signupSource',
+      type: 'select',
+      options: [
+        { label: 'Google', value: 'google' },
+        { label: 'GuyKoren', value: 'guykoren' },
+        { label: 'Direct', value: 'direct' },
+        { label: 'Other', value: 'other' },
+      ],
+      access: {
+        create: () => false,
+        update: () => false,
+      },
+      admin: {
+        readOnly: true,
+        position: 'sidebar',
+      },
+    },
+    {
+      name: 'utmSource',
+      type: 'text',
+      maxLength: 255,
+      access: {
+        create: () => false,
+        update: () => false,
+      },
+      validate: validateUtmString,
+      admin: {
+        readOnly: true,
+      },
+    },
+    {
+      name: 'utmMedium',
+      type: 'text',
+      maxLength: 255,
+      access: {
+        create: () => false,
+        update: () => false,
+      },
+      validate: validateUtmString,
+      admin: {
+        readOnly: true,
+      },
+    },
+    {
+      name: 'utmCampaign',
+      type: 'text',
+      maxLength: 255,
+      access: {
+        create: () => false,
+        update: () => false,
+      },
+      validate: validateUtmString,
+      admin: {
+        readOnly: true,
       },
     },
     {

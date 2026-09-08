@@ -17,6 +17,11 @@ public/media/
 # Local-only testing materials for interactive lesson / schema work
 schema-testing/
 
+# Local credential scratch files — never commit
+blob.md
+*.token
+credentials.md
+
 public/robots.txt
 public/sitemap*.xml
 

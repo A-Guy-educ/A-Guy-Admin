@@ -13,6 +13,10 @@ export interface SanitizeResult {
 // Note: \newcommand and \renewcommand are standard LaTeX and NOT dangerous.
 // \input and \include CAN read arbitrary files and ARE flagged.
 // Only commands that can execute shell code or read/write files are flagged.
+// \def is not flagged: this parser only extracts text (never compiles LaTeX),
+// and \def is used legitimately inside tikzpicture blocks in author worksheets.
+// If a document uses \def\input{...} to hide an \input, the \input itself
+// is still flagged separately below.
 const DANGEROUS_COMMANDS = [
   '\\write18',
   '\\expandafter',
@@ -23,7 +27,6 @@ const DANGEROUS_COMMANDS = [
   '\\openin',
   '\\input',
   '\\write',
-  '\\def',
 ]
 
 export function sanitizeLatex(latex: string): SanitizeResult {

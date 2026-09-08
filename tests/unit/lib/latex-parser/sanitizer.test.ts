@@ -23,10 +23,19 @@ describe('sanitizeLatex', () => {
     expect(result.safe).toBe(false)
   })
 
-  it('rejects \\def command', () => {
+  // \def is not flagged on its own: this parser only extracts text (never
+  // compiles LaTeX), and \def is used legitimately inside tikzpicture blocks
+  // in author worksheets. If \def is used to hide a truly dangerous command
+  // like \input, that inner command is still flagged separately.
+  it('allows \\def alone (used inside tikzpicture)', () => {
+    const result = sanitizeLatex('\\def\\gap{0.3}')
+    expect(result.safe).toBe(true)
+  })
+
+  it('still rejects \\input hidden inside \\def', () => {
     const result = sanitizeLatex('\\def\\myinput{\\input}')
     expect(result.safe).toBe(false)
-    expect(result.violations[0].command).toBe('\\def')
+    expect(result.violations[0].command).toBe('\\input')
   })
 
   it('rejects \\newcommand', () => {

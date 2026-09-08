@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.41.0 — 2026-09-08
+
+### Features
+- Broaden LaTeX parser to accept author-format exercises (#426)
+- Add `signupSource` and UTM fields to Users, server-only writes (#424)
+
+### Bug Fixes
+- Require `BLOB_READ_WRITE_TOKEN` as Docker build arg so runtime and build-time blob store IDs match (#419)
+- Skip blob plugin init at Docker build time (#418)
+
 ## v0.40.0 — 2026-09-03
 
 ### Features
@@ -2002,6 +2012,16 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- chore: release v0.41.0 ([#431](https://github.com/A-Guy-educ/A-Guy-Admin/pull/431)) — @aguyshayb
+- feat: Broaden LaTeX parser to accept author-format exercises ([#426](https://github.com/A-Guy-educ/A-Guy-Admin/pull/426)) — @aguyshayb
+- chore: Store admin-release skill as real dir instead of symlink ([#430](https://github.com/A-Guy-educ/A-Guy-Admin/pull/430)) — @aguyshayb
+- chore: Restore admin-release skill under version control ([#429](https://github.com/A-Guy-educ/A-Guy-Admin/pull/429)) — @aguyshayb
+- feat: Add signupSource and UTM fields to Users ([#424](https://github.com/A-Guy-educ/A-Guy-Admin/pull/424)) — @aguyshayb
+- fix: Require BLOB_READ_WRITE_TOKEN as Docker build arg ([#419](https://github.com/A-Guy-educ/A-Guy-Admin/pull/419)) — @aguyshayb
+- fix: Skip blob plugin init at Docker build time ([#418](https://github.com/A-Guy-educ/A-Guy-Admin/pull/418)) — @aguyshayb
+## [v0.40.0] - 2026-09-03
+
+- promote: dev -> main (v0.40.0) ([#416](https://github.com/A-Guy-educ/A-Guy-Admin/pull/416)) — @aguyshayb
 - chore: release v0.40.0 ([#415](https://github.com/A-Guy-educ/A-Guy-Admin/pull/415)) — @aguyshayb
 - feat(latex-parser): Recognize Hebrew answer-key + PDF worksheet patterns ([#414](https://github.com/A-Guy-educ/A-Guy-Admin/pull/414)) — @aguyshayb
 - fix: Fetch LaTeX file directly from blob storage ([#413](https://github.com/A-Guy-educ/A-Guy-Admin/pull/413)) — @aguyshayb
