@@ -97,9 +97,7 @@ export function parseContextText(contextText: string): ParsedSegment[] {
     // and cutting off at the first one would drop the remaining exercises.
     const firstSolutionHeader =
       solutionMatches.length > 0 ? solutionMatches[0].index : runText.length
-    const firstSolutionIndex = solutionsSectionMatch
-      ? solutionsSectionStart
-      : firstSolutionHeader
+    const firstSolutionIndex = solutionsSectionMatch ? solutionsSectionStart : firstSolutionHeader
 
     // Find end of exercise section — "בהצלחה!" after questions marks the boundary
     // (answer summaries and דגשים sections come after it but before solutions)

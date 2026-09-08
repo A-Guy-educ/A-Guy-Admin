@@ -42,7 +42,10 @@ if (!FOLDER || !CHAPTER_ID || !TITLES_RAW) {
   process.exit(1)
 }
 
-const TARGET_TITLES = TITLES_RAW!.split('|').map((s) => s.trim()).filter(Boolean)
+const TARGET_TITLES = TITLES_RAW!
+  .split('|')
+  .map((s) => s.trim())
+  .filter(Boolean)
 
 function walk(dir: string): string[] {
   const out: string[] = []
@@ -100,7 +103,9 @@ async function cascadeDelete(payload: Payload, lessonId: string, title: string):
       /* best-effort */
     }
   }
-  console.log(`  ✓ deleted "${title}" — ${exercises.docs.length} exercises, ${contentFiles.length} media`)
+  console.log(
+    `  ✓ deleted "${title}" — ${exercises.docs.length} exercises, ${contentFiles.length} media`,
+  )
 }
 
 async function main(): Promise<void> {
@@ -139,7 +144,9 @@ async function main(): Promise<void> {
   for (const [idx, title] of TARGET_TITLES.entries()) {
     const file = filesByTitle.get(title)
     if (!file) {
-      console.log(`  [${idx + 1}/${TARGET_TITLES.length}] "${title}" — no matching .tex file, skipping`)
+      console.log(
+        `  [${idx + 1}/${TARGET_TITLES.length}] "${title}" — no matching .tex file, skipping`,
+      )
       continue
     }
     const filename = basename(file)
