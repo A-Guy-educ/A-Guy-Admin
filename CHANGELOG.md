@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.42.0 — 2026-09-08
+
+### Bug Fixes
+- Follow-up fixes for LaTeX-to-blocks importer (#433): parser now strips leaked layout primitives (`\setlength`, `\hrule`, `\hspace`, `\mcolor`, `\pagenumbering`, itemize/minipage options); `\[...\]` display math and `titlepage` handled cleanly; TikZ nested-brace labels no longer produce garbage tokens; TikZ inside enumerate items extracted as sibling blocks; new `parseTikzAxisGeometry` handles axis+shape+coordinate combos; numeric-center circles, smooth-plot coordinates, and pgfplots gauss curves now supported; table cells unwrap single-math tokens.
+- Stage-2 exercise splitting recognizes broader exercise anchors (`\section*{שאלה N}`, `\textbf{N.}`, `\section*{{\color{...} תרגיל N}}`, etc.); solutions section detection widened to `\textbf{פתרונות}` / `\textbf{תשובות}`; phantom filter now requires ≥50% solution coverage before dropping to avoid killing real exercises (#433).
+- Script-parser success now replaces the raw LaTeX block (no more red raw-source blob above each exercise); graphics block absorbs intro rich_text into its prompt slot and is hoisted to the front of the exercise segment so it renders at exercise-shared level (#433).
+
 ## v0.41.0 — 2026-09-08
 
 ### Features

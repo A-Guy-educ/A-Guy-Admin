@@ -701,7 +701,10 @@ export function parseLatexToBlocks(latex: string): ParseResult {
   //    so `$\mcolor{x}$` renders as literal `\mcolor{x}` in inline math. Peel
   //    the wrapper and keep the inner content.
   source = source
-    .replace(/\\hrule\s*(?:height\s+[\d.]+(?:cm|mm|pt|em|ex)\s*)?(?:width\s+[\d.]+(?:cm|mm|pt|em|ex)\s*)?/g, '')
+    .replace(
+      /\\hrule\s*(?:height\s+[\d.]+(?:cm|mm|pt|em|ex)\s*)?(?:width\s+[\d.]+(?:cm|mm|pt|em|ex)\s*)?/g,
+      '',
+    )
     .replace(/\\mcolor\s*\{([^}]*)\}/g, '$1')
     // `\setlength{\name}{value}` — two-arg TeX primitive. The tokenizer's
     // COMMAND_RE only captures one `{arg}` per command, so the second `{value}`
@@ -714,10 +717,7 @@ export function parseLatexToBlocks(latex: string): ParseResult {
     // sees a clean `\begin{minipage}`. Also handle `\begin{tabular}{|c|c|}`
     // (column spec) — kept alive because the tabular parser reads it back
     // from `token.value` directly.
-    .replace(
-      /\\begin\{minipage\}\s*(?:\[[^\]]*\])?\s*\{[^}]*\}/g,
-      '\\begin{minipage}',
-    )
+    .replace(/\\begin\{minipage\}\s*(?:\[[^\]]*\])?\s*\{[^}]*\}/g, '\\begin{minipage}')
     // `\\[0.1cm]` — LaTeX line break with optional vertical spacing. The
     // tokenizer consumes the `\\` as a text substitution, but the following
     // `[0.1cm]` is left as literal text and shows up as an `[0.1cm]` blot in
@@ -730,10 +730,7 @@ export function parseLatexToBlocks(latex: string): ParseResult {
     // to a single space so the markdown+math renderer picks up the `$$`
     // delimiters as a single-line display math (multiline `$$` breaks in
     // the markdown parser).
-    .replace(
-      /\\\[([\s\S]*?)\\\]/g,
-      (_, body: string) => `$$${body.trim().replace(/\s+/g, ' ')}$$`,
-    )
+    .replace(/\\\[([\s\S]*?)\\\]/g, (_, body: string) => `$$${body.trim().replace(/\s+/g, ' ')}$$`)
 
   const sanitized = sanitizeLatex(source)
   if (!sanitized.safe) {
@@ -821,10 +818,9 @@ function absorbIntroIntoGraphicsPrompt(blocks: ContentBlock[]): ContentBlock[] {
     }
     const introText = introParts.join('\n\n')
     // Merge intro into the graphics block's prompt (first graphics block in segment).
-    const graphics = keep.find((b) => GRAPHICS_BLOCK_TYPES.has(b.type)) as
-      | ContentBlock & {
-          prompt?: { type: 'rich_text'; format: 'md-math-v1'; value: string; mediaIds: string[] }
-        }
+    const graphics = keep.find((b) => GRAPHICS_BLOCK_TYPES.has(b.type)) as ContentBlock & {
+      prompt?: { type: 'rich_text'; format: 'md-math-v1'; value: string; mediaIds: string[] }
+    }
     if (graphics && introText) {
       const existing = graphics.prompt?.value?.trim() ?? ''
       const merged = existing ? `${introText}\n\n${existing}` : introText

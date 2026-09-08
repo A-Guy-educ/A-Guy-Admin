@@ -65,8 +65,7 @@ function parseOptions(optionStr: string): Record<string, string> {
 function expandPgfplotsFns(expr: string): string {
   return expr.replace(
     /gauss\s*\(\s*([^,()]+?)\s*,\s*([^()]+?)\s*\)/g,
-    (_, mu: string, sigma: string) =>
-      `(2.51/(${sigma}))*2.71^(-(((x-(${mu}))/(${sigma}))^2))`,
+    (_, mu: string, sigma: string) => `(2.51/(${sigma}))*2.71^(-(((x-(${mu}))/(${sigma}))^2))`,
   )
 }
 
@@ -580,7 +579,8 @@ export function parseTikzAxisGeometry(content: string): QuestionAxisBlock | null
   // so `\draw (M) circle (5)` and `\draw (A) -- (B)` can be resolved back to
   // real numeric points.
   const coordMap = new Map<string, { x: number; y: number }>()
-  const coordRe = /\\coordinate\s*\((\w+)\)\s*at\s*\(\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*\)/g
+  const coordRe =
+    /\\coordinate\s*\((\w+)\)\s*at\s*\(\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*\)/g
   let cMatch: RegExpExecArray | null
   while ((cMatch = coordRe.exec(content)) !== null) {
     coordMap.set(cMatch[1], { x: parseFloat(cMatch[2]), y: parseFloat(cMatch[3]) })
@@ -691,7 +691,8 @@ export function parseTikzAxisGeometry(content: string): QuestionAxisBlock | null
   // The plotter here can't render bezier splines, so approximate as a chain
   // of straight segments between consecutive points. Good enough for the
   // "sketch of a function" figures the author uses.
-  const smoothPlotRe = /\\draw\s*(?:\[([^\]]*)\])?\s*plot\s*(?:\[[^\]]*\])?\s*coordinates\s*\{([^}]+)\}/g
+  const smoothPlotRe =
+    /\\draw\s*(?:\[([^\]]*)\])?\s*plot\s*(?:\[[^\]]*\])?\s*coordinates\s*\{([^}]+)\}/g
   let spMatch: RegExpExecArray | null
   while ((spMatch = smoothPlotRe.exec(content)) !== null) {
     const opts = spMatch[1] ?? ''
