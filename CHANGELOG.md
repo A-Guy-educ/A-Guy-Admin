@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.41.0 — 2026-09-08
+
+### Features
+- Broaden LaTeX parser to accept author-format exercises (#426)
+- Add `signupSource` and UTM fields to Users, server-only writes (#424)
+
+### Bug Fixes
+- Require `BLOB_READ_WRITE_TOKEN` as Docker build arg so runtime and build-time blob store IDs match (#419)
+- Skip blob plugin init at Docker build time (#418)
+
 ## v0.40.0 — 2026-09-03
 
 ### Features
