@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.42.0 — 2026-09-08
+
+### Bug Fixes
+- Follow-up fixes for LaTeX-to-blocks importer (#433): parser now strips leaked layout primitives (`\setlength`, `\hrule`, `\hspace`, `\mcolor`, `\pagenumbering`, itemize/minipage options); `\[...\]` display math and `titlepage` handled cleanly; TikZ nested-brace labels no longer produce garbage tokens; TikZ inside enumerate items extracted as sibling blocks; new `parseTikzAxisGeometry` handles axis+shape+coordinate combos; numeric-center circles, smooth-plot coordinates, and pgfplots gauss curves now supported; table cells unwrap single-math tokens.
+- Stage-2 exercise splitting recognizes broader exercise anchors (`\section*{שאלה N}`, `\textbf{N.}`, `\section*{{\color{...} תרגיל N}}`, etc.); solutions section detection widened to `\textbf{פתרונות}` / `\textbf{תשובות}`; phantom filter now requires ≥50% solution coverage before dropping to avoid killing real exercises (#433).
+- Script-parser success now replaces the raw LaTeX block (no more red raw-source blob above each exercise); graphics block absorbs intro rich_text into its prompt slot and is hoisted to the front of the exercise segment so it renders at exercise-shared level (#433).
+
 ## v0.41.0 — 2026-09-08
 
 ### Features
@@ -2012,6 +2019,11 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- chore: release v0.42.0 ([#434](https://github.com/A-Guy-educ/A-Guy-Admin/pull/434)) — @aguyshayb
+- feat: Follow-up fixes for LaTeX-to-blocks importer ([#433](https://github.com/A-Guy-educ/A-Guy-Admin/pull/433)) — @aguyshayb
+## [v0.41.0] - 2026-09-08
+
+- promote: dev -> main (v0.41.0) ([#432](https://github.com/A-Guy-educ/A-Guy-Admin/pull/432)) — @aguyshayb
 - chore: release v0.41.0 ([#431](https://github.com/A-Guy-educ/A-Guy-Admin/pull/431)) — @aguyshayb
 - feat: Broaden LaTeX parser to accept author-format exercises ([#426](https://github.com/A-Guy-educ/A-Guy-Admin/pull/426)) — @aguyshayb
 - chore: Store admin-release skill as real dir instead of symlink ([#430](https://github.com/A-Guy-educ/A-Guy-Admin/pull/430)) — @aguyshayb

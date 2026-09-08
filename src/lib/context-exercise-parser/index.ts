@@ -55,8 +55,13 @@ export function parseContextText(contextText: string): ParsedSegment[] {
 
     // Pattern to match exercise titles:
     //   \textbf{תרגיל N ...} or \section*{תרגיל N ...} or \subsection*{תרגיל N ...}
+    //   \textbf{שאלה N ...} / \section*{שאלה N ...} / \subsection*{שאלה N ...}
+    //     — Bagrut convention, common in worksheets pointing to exam questions.
+    // Secondary shapes (bare numbers, color-wrapped titles, list-wrapped
+    // numbers) are handled by additional passes below so this primary regex
+    // stays small and the existing captures at match[1..6] keep their meaning.
     const exercisePattern =
-      /(?:\\textbf\{(תרגיל\s+(\d+)[^}]*)\}|\\section\*?\{(תרגיל\s+(\d+)[^}]*)\}|\\subsection\*?\{(תרגיל\s+(\d+)[^}]*)\})/g
+      /(?:\\textbf\{((?:תרגיל|שאלה)\s+(\d+)[^}]*)\}|\\section\*?\{((?:תרגיל|שאלה)\s+(\d+)[^}]*)\}|\\subsection\*?\{((?:תרגיל|שאלה)\s+(\d+)[^}]*)\})/g
 
     // Pattern to match exercises via \setcounter{enumi}{N} followed by \item
     // Does NOT require \begin{enumerate} — handles mid-enumerate setcounter too
@@ -76,12 +81,23 @@ export function parseContextText(contextText: string): ParsedSegment[] {
       solutionMatches.push({ index: match.index, number, fullMatch: match[0] })
     }
 
-    // Find the start of solutions/post-exercise section
-    const solutionsSectionMatch = runText.match(/\\section\*?\{פתרונות\}/)
+    // Find the start of solutions/post-exercise section. Matches a wider set
+    // of "answers" headings the author uses, including plain-text markers
+    // inside `\begin{center}\textbf{...}\end{center}` blocks. Once we hit
+    // any of these, the anchor scan cuts off — later `\textbf{תרגיל N:}`
+    // items belong to the answer key, not to new exercises.
+    const solutionsSectionMatch = runText.match(
+      /\\(?:section|subsection)\*?\{(?:פתרונות|תשובות)[^}]*\}|\\textbf\{(?:פתרונות|תשובות)[^}]*\}/,
+    )
     const solutionsSectionStart = solutionsSectionMatch?.index ?? runText.length
+    // Only fall back to the first per-exercise `\section*{פתרון תרגיל N}` as
+    // the exercise-end marker when there is NO explicit solutions-section
+    // header. Per-exercise solutions can be embedded inline mid-document
+    // (author's convention: worked example after ex6, then ex7-10 follow),
+    // and cutting off at the first one would drop the remaining exercises.
     const firstSolutionHeader =
       solutionMatches.length > 0 ? solutionMatches[0].index : runText.length
-    const firstSolutionIndex = Math.min(solutionsSectionStart, firstSolutionHeader)
+    const firstSolutionIndex = solutionsSectionMatch ? solutionsSectionStart : firstSolutionHeader
 
     // Find end of exercise section — "בהצלחה!" after questions marks the boundary
     // (answer summaries and דגשים sections come after it but before solutions)
@@ -104,6 +120,12 @@ export function parseContextText(contextText: string): ParsedSegment[] {
     }> = []
 
     while ((match = exercisePattern.exec(runText)) !== null) {
+      // Skip primary matches that land inside the solutions/answer-key
+      // region — otherwise `\textbf{תרגיל N:}` entries in the answer key
+      // outrank the real `\section*{תרגיל N}` in the body (they're primary
+      // matches too), and dedup can pick the wrong chunk when the answer
+      // entry's content region ends up longer.
+      if (match.index >= exerciseEndIndex) continue
       const title = match[1] || match[3] || match[5]
       const number = parseInt(match[2] || match[4] || match[6], 10)
       exerciseMatches.push({
@@ -176,20 +198,93 @@ export function parseContextText(contextText: string): ParsedSegment[] {
       })
     }
 
+    // Passes 1d–1g upsert with "prefer earlier position" semantics. This
+    // matters when the same number appears both in the exercise body and in
+    // an answer-key `\textbf{שאלה N:}` block near the end of the document —
+    // dedup by "first pass wins" would keep the answer-key anchor (matched
+    // by the primary pass) and discard the actual exercise (and its tikz).
+    // Preferring the earliest document position picks the exercise body
+    // anchor over the trailing answer-key one.
+    const upsertEarliest = (
+      index: number,
+      title: string,
+      number: number,
+      fullMatch: string,
+    ): void => {
+      const existingIdx = exerciseMatches.findIndex((e) => e.number === number)
+      if (existingIdx === -1) {
+        exerciseMatches.push({ index, title, number, fullMatch })
+        return
+      }
+      if (index < exerciseMatches[existingIdx].index) {
+        exerciseMatches[existingIdx] = { index, title, number, fullMatch }
+      }
+    }
+
+    // Pass 1d: `\section*{N. text}` — bare-number section titles used by the
+    // author. Restrict N to 1..99 so year-like `\section*{2024. ...}` doesn't
+    // become an exercise anchor.
+    const bareSectionPattern = /\\(?:section|subsection)\*?\{\s*(\d{1,2})\.\s+[^}]{1,200}\}/g
+    while ((match = bareSectionPattern.exec(runText)) !== null) {
+      if (match.index >= exerciseEndIndex) continue
+      const number = parseInt(match[1], 10)
+      upsertEarliest(match.index, `תרגיל ${number}`, number, match[0])
+    }
+
+    // Pass 1e: `\textbf{N. inline text}` — bare-number bold intros. Used
+    // heavily inside minipage/flushright columns in PDF-style worksheets.
+    const bareTextbfPattern = /\\textbf\{\s*(\d{1,2})\.\s+[^}]{1,200}\}/g
+    while ((match = bareTextbfPattern.exec(runText)) !== null) {
+      if (match.index >= exerciseEndIndex) continue
+      const number = parseInt(match[1], 10)
+      upsertEarliest(match.index, `תרגיל ${number}`, number, match[0])
+    }
+
+    // Pass 1f: `\textbf{N.}` standalone bold number — the pattern used inside
+    // `\begin{list}{\textbf{N.}}{...}` PDF-worksheet exercise wrappers.
+    const standaloneTextbfPattern = /\\textbf\{\s*(\d{1,2})\.\s*\}/g
+    while ((match = standaloneTextbfPattern.exec(runText)) !== null) {
+      if (match.index >= exerciseEndIndex) continue
+      const number = parseInt(match[1], 10)
+      upsertEarliest(match.index, `תרגיל ${number}`, number, match[0])
+    }
+
+    // Pass 1g: color-wrapped section titles like `\section*{{\color{name} תרגיל N ...}}`.
+    // The primary regex above uses `[^}]*` for the title body, so nested
+    // `{\color{...}}` groups break the match. Recognize the wrapped form
+    // explicitly here.
+    const colorWrappedPattern =
+      /\\(?:section|subsection)\*?\{\s*\{\s*\\color\{[^}]*\}\s*((?:תרגיל|שאלה)\s+(\d+)[^}]*)\}\s*\}/g
+    while ((match = colorWrappedPattern.exec(runText)) !== null) {
+      if (match.index >= exerciseEndIndex) continue
+      const number = parseInt(match[2], 10)
+      upsertEarliest(match.index, match[1].trim(), number, match[0])
+    }
+
     // Pass 2: Find continuation exercises (plain \item after a known exercise)
     // Scan ALL detected exercises, not just those missing the next number
     const foundNumbers = new Set(exerciseMatches.map((e) => e.number))
     const continuations: typeof exerciseMatches = []
     for (const ex of exerciseMatches) {
       if (foundNumbers.has(ex.number + 1)) continue
+      // Anchors of the form `\textbf{N.}` (standalone) come from PDF
+      // worksheet wrappers `\begin{list}{\textbf{N.}}{...}\item body\end{list}`.
+      // The list contains exactly one `\item` (the exercise intro) — treating
+      // it as a "continuation exercise" would produce a phantom N+1.
+      if (/^\\textbf\{\s*\d{1,2}\.\s*\}$/.test(ex.fullMatch)) continue
 
       const searchStart = ex.index + ex.fullMatch.length
       const region = runText.slice(searchStart, exerciseEndIndex)
 
       let level = 0
       let exerciseNum = ex.number
+      // Also track `\begin{list}` / `\end{list}` so PDF-worksheet exercise
+      // wrappers (`\begin{list}{\textbf{N.}}{...} \item intro \end{list}`)
+      // don't misread the intro `\item` as a continuation exercise. The
+      // anchor is INSIDE the list; the first `\end{list}` we hit means we've
+      // exited the wrapper and there's no continuation to find here.
       const tokenPattern =
-        /\\begin\{enumerate\}(\[[^\]]*\])?|\\end\{enumerate\}|\\setcounter\{enumi\}\{\d+\}|\\item\b/g
+        /\\begin\{enumerate\}(\[[^\]]*\])?|\\end\{enumerate\}|\\begin\{list\}|\\end\{list\}|\\setcounter\{enumi\}\{\d+\}|\\item\b/g
       let tokenMatch
       while ((tokenMatch = tokenPattern.exec(region)) !== null) {
         if (tokenMatch[0].startsWith('\\begin{enumerate}')) {
@@ -208,6 +303,11 @@ export function parseContextText(contextText: string): ParsedSegment[] {
         } else if (tokenMatch[0] === '\\end{enumerate}') {
           level--
           if (level < 0) break // Exited the containing enumerate block
+        } else if (tokenMatch[0] === '\\begin{list}') {
+          level++
+        } else if (tokenMatch[0] === '\\end{list}') {
+          level--
+          if (level < 0) break // Exited the containing list wrapper
         } else if (tokenMatch[0].startsWith('\\setcounter')) {
           // A setcounter means the next item has an explicit number — stop continuation
           break
@@ -373,8 +473,17 @@ export function parseContextText(contextText: string): ParsedSegment[] {
         }
       }
       const dedup = Array.from(byNumber.values())
-      const anyHasSolution = dedup.some((ex) => ex.solution !== null)
-      if (anyHasSolution) {
+      // Only fire the phantom filter when MOST primary matches have their own
+      // solution header. If just one or two do (e.g., an inline sample
+      // solution embedded mid-document), the "phantoms" are real exercises
+      // that simply lack a per-exercise solution — dropping them would gut
+      // the file. Require ≥50% coverage.
+      const primaryWithSolution = dedup.filter(
+        (ex) => ex.solution !== null && primaryNumbers.has(ex.number),
+      ).length
+      const primaryCount = dedup.filter((ex) => primaryNumbers.has(ex.number)).length
+      const coverageOk = primaryCount > 0 && primaryWithSolution / primaryCount >= 0.5
+      if (coverageOk) {
         finalExercises = dedup.filter(
           (ex) => ex.solution !== null || !primaryNumbers.has(ex.number),
         )

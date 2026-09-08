@@ -12,6 +12,7 @@
 import type { GeometrySpecV1 } from '@/infra/contracts/graphics/geometry.v1'
 import type { QuestionGeometryBlock } from '@/server/payload/collections/Exercises/types'
 import { makeGeometryBlock } from '@/lib/latex-parser/block-generators'
+import { cleanNodeLabel } from '@/lib/latex-parser/tikz-axis-parser'
 
 interface ParsedPoint {
   name: string
@@ -59,13 +60,13 @@ function parseInlineDrawCoordinates(content: string): {
 
     // Match (x,y) optionally followed by node[...]{Label}
     const coordRegex =
-      /\((-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\)\s*(?:node\s*\[[^\]]*\]\s*(?:\{([^}]*)\})?)?/g
+      /\((-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\)\s*(?:node\s*\[[^\]]*\]\s*(?:\{((?:[^{}]|\{[^{}]*\})*)\})?)?/g
     const segmentPoints: string[] = []
     let coordMatch: RegExpExecArray | null
     while ((coordMatch = coordRegex.exec(path)) !== null) {
       const x = parseFloat(coordMatch[1])
       const y = parseFloat(coordMatch[2])
-      const label = coordMatch[3]?.trim()
+      const label = coordMatch[3] ? cleanNodeLabel(coordMatch[3]) : undefined
       const key = `${x},${y}`
 
       let name: string
@@ -150,10 +151,11 @@ function parseCircles(
 /** Parse \fill (A) circle (3pt) node[...] {Label}; for labeled points */
 function parseLabeledPoints(content: string): Map<string, string> {
   const labels = new Map<string, string>()
-  const regex = /\\fill\s*\((\w+)\)\s*circle\s*\([^)]+\)\s*node\s*\[[^\]]*\]\s*\{([^}]*)\}/g
+  const regex =
+    /\\fill\s*\((\w+)\)\s*circle\s*\([^)]+\)\s*node\s*\[[^\]]*\]\s*\{((?:[^{}]|\{[^{}]*\})*)\}/g
   let match: RegExpExecArray | null
   while ((match = regex.exec(content)) !== null) {
-    labels.set(match[1], match[2].replace(/\$/g, ''))
+    labels.set(match[1], cleanNodeLabel(match[2]))
   }
   return labels
 }
@@ -245,6 +247,26 @@ export function parseTikzGeometry(tikzContent: string): QuestionGeometryBlock | 
     drawLines = parseDrawLines(tikzContent, knownPoints)
     circles = parseCircles(tikzContent, knownPoints)
     rightAngles = parseRightAngles(tikzContent, knownPoints)
+
+    // Numeric-center circles: `\draw (X,Y) circle (R)`. parseCircles only
+    // matches named centers, so an intersecting-circles diagram like
+    // `\draw (-1,0) circle (1.8); \draw (1,0) circle (2);` is missed.
+    // Synthesize a coordinate for each numeric center so the geometry block
+    // can render them.
+    const numericCircleRe =
+      /\\draw(?:\s*\[[^\]]*\])?\s*\(\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*\)\s*circle\s*\(([^)]+)\)/g
+    let ncMatch: RegExpExecArray | null
+    let syntheticId = coordinates.length
+    while ((ncMatch = numericCircleRe.exec(tikzContent)) !== null) {
+      const cx = parseFloat(ncMatch[1])
+      const cy = parseFloat(ncMatch[2])
+      const rStr = ncMatch[3].replace(/pt|cm|mm/g, '').trim()
+      const r = parseFloat(rStr)
+      if (!Number.isFinite(r) || r < 0.5) continue
+      const name = `_nc${++syntheticId}`
+      coordinates.push({ name, x: cx, y: cy })
+      circles.push({ center: name, radius: r })
+    }
   } else {
     // Fallback: extract inline coordinates from \draw commands
     const inline = parseInlineDrawCoordinates(tikzContent)
@@ -301,9 +323,17 @@ export function parseTikzGeometry(tikzContent: string): QuestionGeometryBlock | 
 /** Check if a tikzpicture is coordinate-based geometry (not axis) */
 export function hasTikzGeometry(content: string): boolean {
   if (content.includes('\\begin{axis}')) return false
+  // Annotation-style tikz that uses bezier callouts (`to[out=A,in=B]`) with
+  // text labels isn't geometry — the parser would draw the callout curves as
+  // straight lines and produce a nonsense figure. Skip.
+  if (/\\draw[^;]*\bto\s*\[[^\]]*(?:out|in)\s*=/.test(content)) return false
   // Has explicit \coordinate definitions
   if (content.includes('\\coordinate')) return true
-  // Has \draw with inline numeric coordinates like (0,0) -- (5,3)
-  if (/\\draw[\s\[][^;]*\(\d+(?:\.\d+)?\s*,\s*-?\d+(?:\.\d+)?\)/.test(content)) return true
+  // Has \draw with `--` linking numeric coordinates, i.e. an actual geometric
+  // shape (not just a stray annotation with a numeric anchor).
+  if (
+    /\\draw[\s\[][^;]*\(\s*-?\d+(?:\.\d+)?\s*,\s*-?\d+(?:\.\d+)?\s*\)[^;]*--[^;]*\(/.test(content)
+  )
+    return true
   return false
 }

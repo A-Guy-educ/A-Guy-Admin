@@ -21,6 +21,8 @@ import {
   hasTikzAxis,
   parseTikzDrawPlot,
   hasTikzDrawPlot,
+  parseTikzAxisGeometry,
+  hasTikzAxisGeometry,
 } from '@/lib/latex-parser/tikz-axis-parser'
 import { parseTikzGeometry, hasTikzGeometry } from '@/lib/latex-parser/tikz-geometry-parser'
 import { makeRichTextBlock } from '@/lib/latex-parser/block-generators'
@@ -112,6 +114,7 @@ const SKIP_COMMANDS = new Set([
   'clearpage',
   'bigskip',
   'medskip',
+  'pagenumbering',
   'smallskip',
   'selectlanguage',
   'begingroup',
@@ -226,7 +229,7 @@ function cleanText(text: string): string {
       .replace(/\\textbf\{([^}]*)\}/g, '**$1**')
       .replace(/\\textit\{([^}]*)\}/g, '*$1*')
       .replace(/\\emph\{([^}]*)\}/g, '*$1*')
-      .replace(/\\underline\{([^}]*)\}/g, '$1')
+      .replace(/\\(?:underline|underbar)\{([^}]*)\}/g, '$1')
       .replace(/\\text\{([^}]*)\}/g, '$1')
       .replace(/\\\\/g, ' ')
       .replace(/\\vspace\{[^}]*\}/g, ' ')
@@ -350,6 +353,10 @@ function processTokens(
         if (token.children?.length) {
           processTokens(token.children, blocks, warnings)
         }
+      } else if (envName === 'titlepage') {
+        // Author's transcription tool emits a `\begin{titlepage}` cover with
+        // course metadata (מקצוע, רמת לימוד, כיתה/שאלון, מועד, תאריך, פרק,
+        // נושאים, הערות כלליות). None of that is exercise content — skip.
       } else if (envName === 'questions') {
         const inner = extractInner(token)
         processQuestionsEnv(inner, blocks, warnings, token.line)
@@ -366,21 +373,55 @@ function processTokens(
             blocks.push(...enumBlocks)
           }
         } else {
-          // Plain bullet list — collapse into bullet-point rich text
-          const items = inner.split(/\\item\s*/).filter((s) => s.trim())
-          const bullets = items.map((item) => `• ${cleanText(item)}`).join('\n')
+          // Plain bullet list — collapse into bullet-point rich text.
+          // Split on \item, then SKIP index 0 (pre-item content: the env's
+          // `[options]` block and surrounding whitespace). Otherwise
+          // `\begin{itemize}[rightmargin=1em]` produces a bullet whose text
+          // is `[rightmargin=1em]`.
+          const parts = inner.split(/\\item\s*/)
+          const bullets = parts
+            .slice(1)
+            .map((item) => item.trim())
+            .filter((item) => item.length > 0)
+            .map((item) => `• ${cleanText(item)}`)
+            .join('\n')
           if (bullets) {
             blocks.push(makeRichTextBlock(bullets))
           }
         }
       } else if (envName === 'enumerate') {
         const inner = extractInner(token)
+        // Extract any tikzpictures nested inside enumerate items — parseEnumerate
+        // strips them from the item text (it has no way to nest a diagram
+        // inside a `question_free_response` prompt). Emit each as its own
+        // block, then let parseEnumerate produce the sub-question stream from
+        // the tikz-stripped remainder.
+        const tikzBlocks: ContentBlock[] = []
+        const tikzRe = /\\begin\{tikzpicture\}[\s\S]*?\\end\{tikzpicture\}/g
+        let tMatch: RegExpExecArray | null
+        while ((tMatch = tikzRe.exec(inner)) !== null) {
+          const raw = tMatch[0]
+          if (hasTikzAxis(raw)) {
+            const b = parseTikzAxis(raw)
+            if (b) tikzBlocks.push(b)
+          } else if (hasTikzDrawPlot(raw)) {
+            const b = parseTikzDrawPlot(raw)
+            if (b) tikzBlocks.push(b)
+          } else if (hasTikzAxisGeometry(raw)) {
+            const b = parseTikzAxisGeometry(raw)
+            if (b) tikzBlocks.push(b)
+          } else if (hasTikzGeometry(raw)) {
+            const b = parseTikzGeometry(raw)
+            if (b) tikzBlocks.push(b)
+          }
+        }
         const enumBlocks = parseEnumerate(inner)
         if (inSolutionSection && enumBlocks.length > 0) {
           // Solution enumerate — attach as fullSolution to previous question blocks
           attachSolutions(blocks, enumBlocks)
         } else {
           blocks.push(...enumBlocks)
+          blocks.push(...tikzBlocks)
         }
       } else if (envName === 'tabular' || envName === 'tabular*') {
         const inner = extractInner(token)
@@ -406,6 +447,14 @@ function processTokens(
           const drawPlotBlock = parseTikzDrawPlot(raw)
           if (drawPlotBlock) {
             blocks.push(drawPlotBlock)
+          }
+        } else if (hasTikzAxisGeometry(raw)) {
+          // Geometric shapes drawn in a manual axis coordinate system —
+          // `\draw[->]` axes + `\draw (X,Y) -- (X,Y) -- cycle` shapes.
+          // Emit as an axis block so the coordinate system is preserved.
+          const axisGeoBlock = parseTikzAxisGeometry(raw)
+          if (axisGeoBlock) {
+            blocks.push(axisGeoBlock)
           }
         } else if (hasTikzGeometry(raw)) {
           const geoBlock = parseTikzGeometry(raw)
@@ -434,9 +483,13 @@ function processTokens(
           blocks.push(makeRichTextBlock(`## תרגיל ${num}`))
         }
         const inner = extractInner(token)
-        const itemIdx = inner.indexOf('\\item')
-        if (itemIdx !== -1) {
-          const itemContent = inner.slice(itemIdx).replace(/^\\item\s*/, '')
+        // Use a word-boundary regex so we match `\item` the command, not
+        // `\itemindent` / `\itemsep` (both appear in the list's second brace
+        // group of setlength calls). A plain indexOf('\\item') matched the
+        // former and stole the list params into the item content.
+        const itemMatch = /\\item(?![a-zA-Z])/.exec(inner)
+        if (itemMatch) {
+          const itemContent = inner.slice(itemMatch.index).replace(/^\\item\s*/, '')
           const contentTokens = tokenize(itemContent, token.line)
           processTokens(contentTokens, blocks, warnings)
         } else if (!labelMatch) {
@@ -639,6 +692,46 @@ export function parseLatexToBlocks(latex: string): ParseResult {
 
   source = unwrapStyledTitleArgs(source)
 
+  // Strip a handful of layout / custom-macro noise before tokenizing:
+  //  - `\hrule[ height 1.2pt][ width ...]` — TeX primitive with option-y args
+  //    that aren't in {...} braces, so the tokenizer would emit them as
+  //    trailing text (`height 1.2pt}`) and pollute rich_text blocks.
+  //  - `\mcolor{X}` — custom color macro from the author's newcommands. Unlike
+  //    `\color`/`\textcolor`, this is document-specific and unknown to KaTeX,
+  //    so `$\mcolor{x}$` renders as literal `\mcolor{x}` in inline math. Peel
+  //    the wrapper and keep the inner content.
+  source = source
+    .replace(
+      /\\hrule\s*(?:height\s+[\d.]+(?:cm|mm|pt|em|ex)\s*)?(?:width\s+[\d.]+(?:cm|mm|pt|em|ex)\s*)?/g,
+      '',
+    )
+    .replace(/\\mcolor\s*\{([^}]*)\}/g, '$1')
+    // `\setlength{\name}{value}` — two-arg TeX primitive. The tokenizer's
+    // COMMAND_RE only captures one `{arg}` per command, so the second `{value}`
+    // leaks into text tokens as `{0.5em}` / `{0pt}` fragments. Pre-strip the
+    // whole two-arg form so nothing leaks. Same treatment for `\setcounter`.
+    .replace(/\\setlength\s*\{[^}]*\}\s*\{[^}]*\}/g, '')
+    // `\begin{minipage}[t]{0.6\textwidth}` — the `[t]` positional option and
+    // the `{0.6\textwidth}` width arg leak into the env's inner content as
+    // stray `{0.6\textwidth}` text tokens. Strip the args so the tokenizer
+    // sees a clean `\begin{minipage}`. Also handle `\begin{tabular}{|c|c|}`
+    // (column spec) — kept alive because the tabular parser reads it back
+    // from `token.value` directly.
+    .replace(/\\begin\{minipage\}\s*(?:\[[^\]]*\])?\s*\{[^}]*\}/g, '\\begin{minipage}')
+    // `\\[0.1cm]` — LaTeX line break with optional vertical spacing. The
+    // tokenizer consumes the `\\` as a text substitution, but the following
+    // `[0.1cm]` is left as literal text and shows up as an `[0.1cm]` blot in
+    // rich_text blocks.
+    .replace(/\\\\\s*\[\d+(?:\.\d+)?(?:cm|mm|pt|em|ex)\]/g, ' ')
+    // `\[...\]` display math — convert to `$$...$$` since the frontend only
+    // recognizes `$$` as display math. Inner content (including nested
+    // `\begin{aligned}...\end{aligned}` for `&`-aligned equations) stays
+    // intact — KaTeX renders those inside `$$...$$`. Flatten inner newlines
+    // to a single space so the markdown+math renderer picks up the `$$`
+    // delimiters as a single-line display math (multiline `$$` breaks in
+    // the markdown parser).
+    .replace(/\\\[([\s\S]*?)\\\]/g, (_, body: string) => `$$${body.trim().replace(/\s+/g, ' ')}$$`)
+
   const sanitized = sanitizeLatex(source)
   if (!sanitized.safe) {
     const violations = sanitized.violations.map((v) => v.command).join(', ')
@@ -661,7 +754,101 @@ export function parseLatexToBlocks(latex: string): ParseResult {
   // Merge consecutive rich_text blocks (inline math splits text into fragments)
   const merged = mergeAdjacentRichText(blocks)
 
-  return { blocks: merged, warnings, errors: [] }
+  // Move any intro rich_text into the graphics block's prompt slot — an
+  // exercise that has a diagram treats the diagram as its primary block,
+  // with the intro paragraph rendered inside the block's text area rather
+  // than as a separate rich_text sibling above it.
+  const compacted = absorbIntroIntoGraphicsPrompt(merged)
+
+  return { blocks: compacted, warnings, errors: [] }
+}
+
+/**
+ * Types whose `prompt: InlineRichText` slot renders as the block's own
+ * intro/text area. When an exercise has one of these, we hoist the
+ * exercise's intro rich_text into that prompt so the exercise displays as
+ * "diagram + text" rather than "text block, then diagram block".
+ */
+const GRAPHICS_BLOCK_TYPES = new Set(['question_axis', 'question_geometry', 'question_multi_axis'])
+
+/**
+ * Walk the block list per-exercise (split on `## תרגיל N` / `## שאלה N`
+ * headings). In each segment, if there's a graphics block, take every
+ * standalone `rich_text` in that segment (except the heading) and merge
+ * their text into the graphics block's `prompt.value`, then drop them.
+ * Sub-question blocks (question_free_response, question_select, ...) are
+ * left untouched.
+ */
+function absorbIntroIntoGraphicsPrompt(blocks: ContentBlock[]): ContentBlock[] {
+  const isHeading = (b: ContentBlock): boolean =>
+    b.type === 'rich_text' && /^##\s+(?:תרגיל|שאלה)\s+\d/.test(b.value)
+
+  // Split into segments delimited by heading rich_texts.
+  const segments: ContentBlock[][] = []
+  let current: ContentBlock[] = []
+  for (const b of blocks) {
+    if (isHeading(b)) {
+      if (current.length > 0) segments.push(current)
+      current = [b]
+    } else {
+      current.push(b)
+    }
+  }
+  if (current.length > 0) segments.push(current)
+
+  const out: ContentBlock[] = []
+  for (const seg of segments) {
+    const graphicsIdx = seg.findIndex((b) => GRAPHICS_BLOCK_TYPES.has(b.type))
+    if (graphicsIdx === -1) {
+      out.push(...seg)
+      continue
+    }
+    // Rich texts to absorb: standalone rich_text in this segment, excluding
+    // the leading heading. Keep the heading (Stage 2 uses it as the exercise
+    // title boundary) and preserve non-rich_text blocks (sub-questions).
+    const introParts: string[] = []
+    const keep: ContentBlock[] = []
+    for (const b of seg) {
+      if (b.type === 'rich_text' && !isHeading(b)) {
+        const v = b.value.trim()
+        if (v) introParts.push(v)
+      } else {
+        keep.push(b)
+      }
+    }
+    const introText = introParts.join('\n\n')
+    // Merge intro into the graphics block's prompt (first graphics block in segment).
+    const graphics = keep.find((b) => GRAPHICS_BLOCK_TYPES.has(b.type)) as ContentBlock & {
+      prompt?: { type: 'rich_text'; format: 'md-math-v1'; value: string; mediaIds: string[] }
+    }
+    if (graphics && introText) {
+      const existing = graphics.prompt?.value?.trim() ?? ''
+      const merged = existing ? `${introText}\n\n${existing}` : introText
+      graphics.prompt = {
+        type: 'rich_text',
+        format: 'md-math-v1',
+        value: merged,
+        mediaIds: [],
+      }
+    }
+
+    // Hoist the graphics block to the front of the segment (right after the
+    // heading, BEFORE any question block). partitionBlocks() sends the
+    // pre-first-question region to `exerciseSharedBlocks`, so the diagram
+    // ends up at exercise level instead of tucked inside a section.
+    if (graphics) {
+      const heading = keep[0] && isHeading(keep[0]) ? keep[0] : null
+      const others = keep.filter((b) => b !== graphics && b !== heading)
+      const ordered: ContentBlock[] = []
+      if (heading) ordered.push(heading)
+      ordered.push(graphics)
+      ordered.push(...others)
+      out.push(...ordered)
+    } else {
+      out.push(...keep)
+    }
+  }
+  return out
 }
 
 /**

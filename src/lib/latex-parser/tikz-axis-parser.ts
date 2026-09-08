@@ -49,18 +49,40 @@ function parseOptions(optionStr: string): Record<string, string> {
   return opts
 }
 
+/**
+ * Expand pgfplots convenience functions into plain math the client-side
+ * plotter can render. pgfplots provides `gauss(mu, sigma)` which pgfplots
+ * itself resolves to the normal PDF; we translate to a form the mathjs-based
+ * safeMathEval accepts AND that has a peak large enough to be visible on the
+ * default -5..5 viewport.
+ *
+ * The literal normal PDF `(1/(sigma*sqrt(2*pi))) * exp(...)` peaks at ~0.4/sigma
+ * — for gauss(12, 2) that's 0.2 on a -5..5 range, i.e. an invisible flat line.
+ * The author's own workaround was `2.71^(-((x-mu)/sigma)^2) / sigma * 2.51`,
+ * which peaks at 2.51/sigma (visible) and matches the bell-shape they expect.
+ * We use the same pattern so their gauss curves render.
+ */
+function expandPgfplotsFns(expr: string): string {
+  return expr.replace(
+    /gauss\s*\(\s*([^,()]+?)\s*,\s*([^()]+?)\s*\)/g,
+    (_, mu: string, sigma: string) => `(2.51/(${sigma}))*2.71^(-(((x-(${mu}))/(${sigma}))^2))`,
+  )
+}
+
 /** Convert LaTeX math expression to a simpler function string */
 function latexToFnString(latex: string): string {
-  return latex
-    .replace(/\\cdot/g, '*')
-    .replace(/\\\*/g, '*')
-    .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '($1)/($2)')
-    .replace(/\\sqrt\{([^}]+)\}/g, 'sqrt($1)')
-    .replace(/\\left\(/g, '(')
-    .replace(/\\right\)/g, ')')
-    .replace(/\^(\d+)/g, '^$1')
-    .replace(/\{([^}]+)\}/g, '($1)')
-    .trim()
+  return expandPgfplotsFns(
+    latex
+      .replace(/\\cdot/g, '*')
+      .replace(/\\\*/g, '*')
+      .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '($1)/($2)')
+      .replace(/\\sqrt\{([^}]+)\}/g, 'sqrt($1)')
+      .replace(/\\left\(/g, '(')
+      .replace(/\\right\)/g, ')')
+      .replace(/\^(\d+)/g, '^$1')
+      .replace(/\{([^}]+)\}/g, '($1)')
+      .trim(),
+  )
 }
 
 /** Parse \addplot commands from tikzpicture content */
@@ -101,12 +123,15 @@ function parseAddPlots(content: string): {
       if (!isNaN(to)) range.toX = to
     }
 
+    // Omit `range` entirely when empty rather than setting it to `undefined` —
+    // the axis schema rejects null, and undefined round-trips as null through
+    // the block-content serialization path.
     graphs.push({
       id: generateId(),
       fn: latexToFnString(expr),
       style,
       thickness,
-      range: Object.keys(range).length > 0 ? range : undefined,
+      ...(Object.keys(range).length > 0 ? { range } : {}),
     })
   }
 
@@ -170,7 +195,7 @@ function parseDrawPlots(content: string): {
       fn: expr,
       style,
       thickness,
-      range: Object.keys(range).length > 0 ? range : undefined,
+      ...(Object.keys(range).length > 0 ? { range } : {}),
     })
   }
 
@@ -227,21 +252,45 @@ function parseAsymptotes(content: string): {
 }
 
 /**
+ * Clean tikz node label text before rendering as a plain string. The axis /
+ * geometry renderers draw labels as text (not math), so LaTeX commands, math
+ * delimiters, and sizing/color macros must be stripped or unwrapped first —
+ * otherwise labels display as `\small f(x)` / `\textbf{A}` / `$x$`.
+ */
+export function cleanNodeLabel(raw: string): string {
+  return raw
+    .replace(/\\textcolor\{[^}]*\}\{([^}]*)\}/g, '$1')
+    .replace(/\{\s*\\color\{[^}]*\}\s*([^{}]*)\}/g, '$1')
+    .replace(/\\color\{[^}]*\}\s*/g, '')
+    .replace(/\\textbf\{([^}]*)\}/g, '$1')
+    .replace(/\\textit\{([^}]*)\}/g, '$1')
+    .replace(/\\emph\{([^}]*)\}/g, '$1')
+    .replace(/\\text\{([^}]*)\}/g, '$1')
+    .replace(/\\mathrm\{([^}]*)\}/g, '$1')
+    .replace(/\\(?:Large|large|huge|Huge|LARGE|normalsize|small|footnotesize|tiny)\s*/g, '')
+    .replace(/\$/g, '')
+    .replace(/[{}]/g, '')
+    .trim()
+}
+
+/**
  * Parse \node at (axis cs:X,Y) {...} for text labels and point markers.
  */
 function parseAxisNodes(content: string): AxisSpecV1['elements']['points'] {
   const nodePoints: AxisSpecV1['elements']['points'] = []
 
   // Match \node at (axis cs:X,Y) [options] {text};  OR  \node at (axis cs:X,Y) {text};
+  // Label capture allows one level of nested braces so `{${\color{winered} X}$}`
+  // captures the whole `${\color{winered} X}$`, not just `${\color{winered`.
   const nodeRegex =
-    /\\node\s*(?:\[([^\]]*)\])?\s*at\s*\(axis\s+cs:\s*([^,]+),\s*([^)]+)\)\s*(?:\[([^\]]*)\])?\s*\{([^}]*)\}/g
+    /\\node\s*(?:\[([^\]]*)\])?\s*at\s*\(axis\s+cs:\s*([^,]+),\s*([^)]+)\)\s*(?:\[([^\]]*)\])?\s*\{((?:[^{}]|\{[^{}]*\})*)\}/g
   let match: RegExpExecArray | null
   while ((match = nodeRegex.exec(content)) !== null) {
     const beforeOpts = match[1] ?? ''
     const x = parseFloat(match[2])
     const y = parseFloat(match[3])
     const afterOpts = match[4] ?? ''
-    const text = match[5].replace(/\$/g, '').trim()
+    const text = cleanNodeLabel(match[5])
 
     if (isNaN(x) || isNaN(y)) continue
 
@@ -275,6 +324,16 @@ function parseAxisOptions(content: string): {
   if (opts['xmax']) viewport.xMax = parseFloat(opts['xmax'])
   if (opts['ymin']) viewport.yMin = parseFloat(opts['ymin'])
   if (opts['ymax']) viewport.yMax = parseFloat(opts['ymax'])
+  // pgfplots' `domain=a:b` on `\begin{axis}[...]` sets the default x range
+  // that every \addplot inherits. Treat it as the x viewport when explicit
+  // xmin/xmax aren't given — otherwise files that rely on `domain=` (common
+  // in the author's distribution plots) fall back to a hardcoded ±5 range
+  // and the actual curve is drawn entirely off-screen.
+  if (opts['domain'] && (viewport.xMin === undefined || viewport.xMax === undefined)) {
+    const [from, to] = opts['domain'].split(':').map((n) => parseFloat(n))
+    if (viewport.xMin === undefined && !isNaN(from)) viewport.xMin = from
+    if (viewport.xMax === undefined && !isNaN(to)) viewport.xMax = to
+  }
 
   const xlabel = opts['xlabel']?.replace(/[{}$]/g, '') ?? 'x'
   const ylabel = opts['ylabel']?.replace(/[{}$]/g, '') ?? 'y'
@@ -395,7 +454,8 @@ export function parseTikzDrawPlot(tikzContent: string): QuestionAxisBlock | null
 
   // Parse any coordinate-based points referenced in the TikZ
   const coordPoints: AxisSpecV1['elements']['points'] = []
-  const fillRegex = /\\fill\s*\((\w+)\)\s*circle\s*\([^)]+\)\s*node\s*\[[^\]]*\]\s*\{([^}]*)\}/g
+  const fillRegex =
+    /\\fill\s*\((\w+)\)\s*circle\s*\([^)]+\)\s*node\s*\[[^\]]*\]\s*\{((?:[^{}]|\{[^{}]*\})*)\}/g
   const coordRegex = /\\coordinate\s*\((\w+)\)\s*at\s*\(([^)]+)\)/g
   const coordMap = new Map<string, { x: number; y: number }>()
 
@@ -451,4 +511,252 @@ export function hasTikzAxis(content: string): boolean {
 /** Check if a tikzpicture contains \draw ... plot commands (raw function plots) */
 export function hasTikzDrawPlot(content: string): boolean {
   return /\\draw\s*\[[^\]]*\]\s*plot\s*\(\\x/.test(content)
+}
+
+/**
+ * Regex fragments for x/y axis arrows drawn as `\draw[->] (xmin,0)--(xmax,0)`.
+ * pgfplots/tikz files that draw the axes manually (rather than with
+ * `\begin{axis}`) use these to establish the coordinate system before drawing
+ * geometric shapes.
+ */
+const X_AXIS_ARROW_RE =
+  /\\draw\s*(?:\[[^\]]*(?:->|latex|stealth)[^\]]*\])\s*\((-?\d+(?:\.\d+)?)\s*,\s*0\)\s*--\s*\((-?\d+(?:\.\d+)?)\s*,\s*0\)/
+const Y_AXIS_ARROW_RE =
+  /\\draw\s*(?:\[[^\]]*(?:->|latex|stealth)[^\]]*\])\s*\(\s*0\s*,\s*(-?\d+(?:\.\d+)?)\)\s*--\s*\(\s*0\s*,\s*(-?\d+(?:\.\d+)?)\)/
+
+/**
+ * "Geometry inside an axis system" — the tikz draws its own `\draw[->]` axes
+ * plus one or more geometric shapes (`\draw (X,Y) -- (X,Y) -- ... -- cycle;`)
+ * with numeric coordinates. Previously routed to the geometry parser, which
+ * ignored the axes and produced a bounding-box drawing without a coordinate
+ * system.
+ */
+export function hasTikzAxisGeometry(content: string): boolean {
+  if (content.includes('\\begin{axis}')) return false
+  const hasXAxis = X_AXIS_ARROW_RE.test(content)
+  const hasYAxis = Y_AXIS_ARROW_RE.test(content)
+  if (!hasXAxis || !hasYAxis) return false
+
+  // Shape via `\draw (X,Y) -- (X,Y)` with numeric coordinates.
+  const numericShapeRe =
+    /\\draw\s*(?:\[[^\]]*\])?\s*\((-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\)\s*--\s*\((-?\d+(?:\.\d+)?)/g
+  let match: RegExpExecArray | null
+  while ((match = numericShapeRe.exec(content)) !== null) {
+    const y1 = parseFloat(match[2])
+    const y2 = parseFloat(match[4])
+    const isAxisDraw = (y1 === 0 && y2 === 0) || (match[1] === '0' && match[3] === '0')
+    if (!isAxisDraw) return true
+  }
+
+  // Named-coord shapes: `\coordinate (Name) at ...` (Bagrut style).
+  if (content.includes('\\coordinate')) return true
+
+  // Smooth-plot-through-points: `\draw[opts] plot[smooth] coordinates {(X,Y) ...}`
+  // — common for sketching functions from a table of sample points.
+  if (/\\draw[^;]*\bplot\b[^;]*\bcoordinates\s*\{/.test(content)) return true
+
+  return false
+}
+
+/**
+ * Parse an "axis + geometric shapes" tikz into a `question_axis` block.
+ * Emits the axis viewport from the `\draw[->]` arrow ranges, labeled points
+ * from `\node[pos] at (X,Y) {label}` and `\filldraw (Name) circle (Xpt) node[...] {label}`,
+ * line segments between coordinate pairs (numeric or named via `\coordinate`),
+ * and circles from `\draw (Name) circle (R)`.
+ */
+export function parseTikzAxisGeometry(content: string): QuestionAxisBlock | null {
+  const xAxis = X_AXIS_ARROW_RE.exec(content)
+  const yAxis = Y_AXIS_ARROW_RE.exec(content)
+  if (!xAxis || !yAxis) return null
+
+  const xMin = parseFloat(xAxis[1])
+  const xMax = parseFloat(xAxis[2])
+  const yMin = parseFloat(yAxis[1])
+  const yMax = parseFloat(yAxis[2])
+
+  // Named coordinates: `\coordinate (M) at (5,-4)` — track name → position
+  // so `\draw (M) circle (5)` and `\draw (A) -- (B)` can be resolved back to
+  // real numeric points.
+  const coordMap = new Map<string, { x: number; y: number }>()
+  const coordRe =
+    /\\coordinate\s*\((\w+)\)\s*at\s*\(\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*\)/g
+  let cMatch: RegExpExecArray | null
+  while ((cMatch = coordRe.exec(content)) !== null) {
+    coordMap.set(cMatch[1], { x: parseFloat(cMatch[2]), y: parseFloat(cMatch[3]) })
+  }
+
+  const resolvePoint = (token: string): { x: number; y: number } | null => {
+    const named = coordMap.get(token)
+    if (named) return named
+    const numeric = /^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/.exec(token)
+    if (numeric) return { x: parseFloat(numeric[1]), y: parseFloat(numeric[2]) }
+    return null
+  }
+
+  // Points from `\node[pos] at (X,Y) {label}`.
+  const points: AxisSpecV1['elements']['points'] = []
+  const nodeRe =
+    /\\node\s*(?:\[([^\]]*)\])?\s*at\s*\(\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*\)\s*\{((?:[^{}]|\{[^{}]*\})*)\}/g
+  let nMatch: RegExpExecArray | null
+  while ((nMatch = nodeRe.exec(content)) !== null) {
+    const x = parseFloat(nMatch[2])
+    const y = parseFloat(nMatch[3])
+    if (isNaN(x) || isNaN(y)) continue
+    // Skip axis endpoint labels ($x$, $y$) — they're the arrow-tip annotations.
+    const label = cleanNodeLabel(nMatch[4])
+    if (!label || label === 'x' || label === 'y') continue
+    points.push({ x, y, type: 'point' as const, label })
+  }
+
+  // Points from `\filldraw (Name-or-X,Y) circle (2pt) node[pos] {label}`.
+  const filldrawRe =
+    /\\filldraw\s*(?:\[[^\]]*\])?\s*\(([^)]+)\)\s*circle\s*\(\s*[\d.]+\s*pt\s*\)\s*node\s*(?:\[([^\]]*)\])?\s*\{((?:[^{}]|\{[^{}]*\})*)\}/g
+  let fMatch: RegExpExecArray | null
+  while ((fMatch = filldrawRe.exec(content)) !== null) {
+    const pt = resolvePoint(fMatch[1])
+    if (!pt) continue
+    const label = cleanNodeLabel(fMatch[3])
+    points.push({ x: pt.x, y: pt.y, type: 'point' as const, label: label || undefined })
+  }
+
+  // Circles: `\draw[opts] (Name-or-X,Y) circle (radius)` — emit as
+  // geometricLoci with the implicit-form `(x-cx)^2 + (y-cy)^2 = r^2` that
+  // the axis renderer's `tryParseCircle` fast-path picks up.
+  const geometricLoci: NonNullable<AxisSpecV1['elements']['geometricLoci']> = []
+  const circleRe =
+    /\\draw\s*(?:\[([^\]]*)\])?\s*\(([^)]+)\)\s*circle\s*\(\s*([\d.]+)\s*(?:cm|mm|pt|em|ex)?\s*\)/g
+  let circleMatch: RegExpExecArray | null
+  while ((circleMatch = circleRe.exec(content)) !== null) {
+    const opts = circleMatch[1] ?? ''
+    const centerToken = circleMatch[2]
+    const radius = parseFloat(circleMatch[3])
+    if (!Number.isFinite(radius) || radius <= 0) continue
+    const center = resolvePoint(centerToken)
+    if (!center) continue
+    // Skip tiny circles (point markers, usually `2pt`) — those are handled
+    // by the `\filldraw ... circle (2pt) node ...` branch as labeled points.
+    if (radius < 1) continue
+    const xTerm = center.x === 0 ? 'x' : `(x${center.x > 0 ? '-' : '+'}${Math.abs(center.x)})`
+    const yTerm = center.y === 0 ? 'y' : `(y${center.y > 0 ? '-' : '+'}${Math.abs(center.y)})`
+    const equation = `${xTerm}^2+${yTerm}^2=${radius * radius}`
+    const style: 'solid' | 'dashed' = opts.includes('dashed') ? 'dashed' : 'solid'
+    const thickness = opts.includes('thick') ? 2 : 1
+    geometricLoci.push({ equation, style, thickness })
+  }
+
+  // Line segments: each `\draw[...] (X,Y)|(Name) -- (X,Y)|(Name) -- ... [-- cycle];`.
+  const lineBetweenPoints: NonNullable<AxisSpecV1['elements']['lineBetweenPoints']> = []
+  const drawRe = /\\draw\s*(?:\[([^\]]*)\])?\s*([^;]+);/g
+  let dMatch: RegExpExecArray | null
+  while ((dMatch = drawRe.exec(content)) !== null) {
+    const opts = dMatch[1] ?? ''
+    const path = dMatch[2]
+    // Skip axis arrow draws.
+    if (/->|latex|stealth/.test(opts) && /\(\s*0\s*,|\s*,\s*0\s*\)/.test(path)) continue
+    // Skip circle draws (handled above).
+    if (/\)\s*circle\s*\(/.test(path)) continue
+    // Skip if path doesn't chain with `--`.
+    if (!path.includes('--')) continue
+
+    // Split into (coord) tokens.
+    const tokenRe = /\(([^)]+)\)/g
+    const chain: Array<{ x: number; y: number }> = []
+    let tMatch: RegExpExecArray | null
+    while ((tMatch = tokenRe.exec(path)) !== null) {
+      const pt = resolvePoint(tMatch[1])
+      if (pt) chain.push(pt)
+    }
+    if (chain.length < 2) continue
+    if (chain.length === 2) {
+      const [a, b] = chain
+      if ((a.y === 0 && b.y === 0) || (a.x === 0 && b.x === 0)) continue
+    }
+    const style: 'solid' | 'dashed' = opts.includes('dashed') ? 'dashed' : 'solid'
+    const thickness = opts.includes('thick') ? 2 : 1
+    for (let i = 0; i < chain.length - 1; i++) {
+      lineBetweenPoints.push({ style, thickness, a: chain[i], b: chain[i + 1] })
+    }
+    if (/--\s*cycle/.test(path)) {
+      lineBetweenPoints.push({
+        style,
+        thickness,
+        a: chain[chain.length - 1],
+        b: chain[0],
+      })
+    }
+  }
+
+  // Smooth-plot-through-points: `\draw[opts] plot[smooth] coordinates {(X,Y) (X,Y) ...}`.
+  // The plotter here can't render bezier splines, so approximate as a chain
+  // of straight segments between consecutive points. Good enough for the
+  // "sketch of a function" figures the author uses.
+  const smoothPlotRe =
+    /\\draw\s*(?:\[([^\]]*)\])?\s*plot\s*(?:\[[^\]]*\])?\s*coordinates\s*\{([^}]+)\}/g
+  let spMatch: RegExpExecArray | null
+  while ((spMatch = smoothPlotRe.exec(content)) !== null) {
+    const opts = spMatch[1] ?? ''
+    const inside = spMatch[2]
+    const ptRe = /\(\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*\)/g
+    const chain: Array<{ x: number; y: number }> = []
+    let pMatch: RegExpExecArray | null
+    while ((pMatch = ptRe.exec(inside)) !== null) {
+      chain.push({ x: parseFloat(pMatch[1]), y: parseFloat(pMatch[2]) })
+    }
+    if (chain.length < 2) continue
+    const style: 'solid' | 'dashed' = opts.includes('dashed') ? 'dashed' : 'solid'
+    const thickness = opts.includes('thick') ? 2 : 1
+    for (let i = 0; i < chain.length - 1; i++) {
+      lineBetweenPoints.push({ style, thickness, a: chain[i], b: chain[i + 1] })
+    }
+  }
+
+  if (points.length === 0 && lineBetweenPoints.length === 0 && geometricLoci.length === 0) {
+    return null
+  }
+
+  // Deduplicate identical `lineBetweenPoints`. When named-coord references
+  // don't resolve (e.g., TikZ polar arithmetic `($(M) + (340:5)$)`), a chain
+  // like `(A) -- (E) -- (D)` degenerates to `(A) -- (D)` and can duplicate an
+  // existing line from the same coords. Same for direct duplicates from
+  // multiple `\draw` statements.
+  const dedupedLines: typeof lineBetweenPoints = []
+  const lineKey = (l: (typeof lineBetweenPoints)[number]): string =>
+    `${l.a.x},${l.a.y}|${l.b.x},${l.b.y}|${l.style}|${l.thickness}`
+  const revKey = (l: (typeof lineBetweenPoints)[number]): string =>
+    `${l.b.x},${l.b.y}|${l.a.x},${l.a.y}|${l.style}|${l.thickness}`
+  const seen = new Set<string>()
+  for (const l of lineBetweenPoints) {
+    const k = lineKey(l)
+    const kr = revKey(l)
+    if (seen.has(k) || seen.has(kr)) continue
+    seen.add(k)
+    dedupedLines.push(l)
+  }
+
+  const axis: AxisSpecV1 = {
+    kind: 'cartesian',
+    units: 1,
+    viewportMode: 'manual',
+    grid: { enabled: false },
+    // Geometry-in-axis figures are diagrams, not function plots — the
+    // curriculum team's overleaf renders don't show tick numbers or the
+    // `x`/`y` labels next to the arrows for these. Match that.
+    axes: {
+      showNumbers: false,
+      showLabels: false,
+      ticks: 1,
+      labels: { x: 'x', y: 'y' },
+      origin: { x: 0, y: 0 },
+    },
+    viewport: { xMin, xMax, yMin, yMax },
+    elements: {
+      points,
+      graphs: [],
+      ...(dedupedLines.length > 0 ? { lineBetweenPoints: dedupedLines } : {}),
+      ...(geometricLoci.length > 0 ? { geometricLoci } : {}),
+    },
+  }
+
+  return makeAxisBlock('', axis)
 }
