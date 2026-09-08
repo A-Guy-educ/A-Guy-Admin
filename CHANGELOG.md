@@ -2002,6 +2002,7 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- chore: Store admin-release skill as real dir instead of symlink ([#430](https://github.com/A-Guy-educ/A-Guy-Admin/pull/430)) — @aguyshayb
 - chore: Restore admin-release skill under version control ([#429](https://github.com/A-Guy-educ/A-Guy-Admin/pull/429)) — @aguyshayb
 - feat: Add signupSource and UTM fields to Users ([#424](https://github.com/A-Guy-educ/A-Guy-Admin/pull/424)) — @aguyshayb
 - fix: Require BLOB_READ_WRITE_TOKEN as Docker build arg ([#419](https://github.com/A-Guy-educ/A-Guy-Admin/pull/419)) — @aguyshayb
