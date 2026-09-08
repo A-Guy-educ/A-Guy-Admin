@@ -2012,6 +2012,7 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- chore: release v0.41.0 ([#431](https://github.com/A-Guy-educ/A-Guy-Admin/pull/431)) — @aguyshayb
 - feat: Broaden LaTeX parser to accept author-format exercises ([#426](https://github.com/A-Guy-educ/A-Guy-Admin/pull/426)) — @aguyshayb
 - chore: Store admin-release skill as real dir instead of symlink ([#430](https://github.com/A-Guy-educ/A-Guy-Admin/pull/430)) — @aguyshayb
 - chore: Restore admin-release skill under version control ([#429](https://github.com/A-Guy-educ/A-Guy-Admin/pull/429)) — @aguyshayb
