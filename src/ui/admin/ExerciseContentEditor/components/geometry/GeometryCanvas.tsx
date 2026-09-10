@@ -9,7 +9,7 @@ import {
 } from '@/infra/contracts/graphics/textColors'
 import { computeBoardSize } from '@/infra/utils/graphics/board-sizing'
 import type { JXGBoard, JXGElement } from 'jsxgraph'
-import React, { useCallback, useEffect, useMemo, useRef } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { JSXGraphBoard } from '../shared/JSXGraphBoard'
 
 interface PointUpdate {
@@ -21,8 +21,6 @@ interface PointUpdate {
 interface GeometryCanvasProps {
   id: string
   geometry: GeometrySpecV1
-  displayWidth?: number
-  displayHeight?: number
   interactionMode?: 'move' | 'addPoint'
   onPointMoved?: (name: string, x: number, y: number) => void
   onMultiPointMoved?: (updates: PointUpdate[]) => void
@@ -31,8 +29,11 @@ interface GeometryCanvasProps {
   onPointLabelMoved?: (name: string, position: string) => void
 }
 
-const DISPLAY_WIDTH = 420
-const DISPLAY_HEIGHT = 320
+// Fallback pixel width used on the very first render, before the
+// ResizeObserver measures the surrounding `.graph-editor-canvas` column.
+const INITIAL_BOARD_PX = 500
+const MIN_BOARD_PX = 320
+const MAX_BOARD_PX = 600
 
 const round1 = (n: number) => Math.round(n * 10) / 10
 
@@ -61,8 +62,6 @@ function angleToLabelPosition(angleDeg: number): string {
 export const GeometryCanvas: React.FC<GeometryCanvasProps> = ({
   id,
   geometry,
-  displayWidth = DISPLAY_WIDTH,
-  displayHeight = DISPLAY_HEIGHT,
   interactionMode = 'move',
   onPointMoved,
   onMultiPointMoved,
@@ -74,6 +73,11 @@ export const GeometryCanvas: React.FC<GeometryCanvasProps> = ({
   const isSyncingRef = useRef(false)
   const isDraggingRef = useRef(false)
   const elementsRef = useRef<Map<string, JXGElement>>(new Map())
+  const wrapRef = useRef<HTMLDivElement | null>(null)
+  // Match the board pixel size to the surrounding CSS column so the canvas
+  // fills the 55%-wide slot instead of sitting as a small fixed rectangle
+  // inside it. Aspect is derived from the geometry's bounding box below.
+  const [containerWidth, setContainerWidth] = useState<number>(INITIAL_BOARD_PX)
   const modeRef = useRef(interactionMode)
   const onCanvasClickRef = useRef(onCanvasClick)
   const onPointMovedRef = useRef(onPointMoved)
@@ -183,27 +187,49 @@ export const GeometryCanvas: React.FC<GeometryCanvasProps> = ({
     [canvas.boundingBox, canvas.width, canvas.height],
   )
 
-  // Fit the editor canvas into the requested display box while preserving
-  // the bounding box's aspect ratio. Without this the 420×320 default warps
-  // circles into ~1.3:1 ellipses even when the underlying box is square.
+  // Measure the surrounding `.graph-editor-canvas` column so the board
+  // fills it (clamped between MIN and MAX). Aspect below still comes from
+  // the bounding box, so circles stay circular.
+  useEffect(() => {
+    const el = wrapRef.current
+    if (!el) return
+    const recompute = () => {
+      const w = el.clientWidth
+      if (!w) return
+      const next = Math.max(MIN_BOARD_PX, Math.min(MAX_BOARD_PX, Math.floor(w)))
+      setContainerWidth((prev) => (prev === next ? prev : next))
+    }
+    recompute()
+    const observer = new ResizeObserver(recompute)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
+  // Fit the editor canvas into the measured column while preserving the
+  // bounding box's aspect ratio. Without this the old 420×320 default warped
+  // circles into ~1.3:1 ellipses even when the underlying box was square.
   const { width: boardWidth, height: boardHeight } = useMemo(() => {
     const xRange = Math.abs(bbox[2] - bbox[0])
     const yRange = Math.abs(bbox[1] - bbox[3])
     return computeBoardSize({
       xRange,
       yRange,
-      availableWidth: displayWidth,
-      maxWidth: displayWidth,
-      maxHeight: displayHeight,
-      minWidth: Math.min(200, displayWidth),
-      minHeight: Math.min(200, displayHeight),
+      availableWidth: containerWidth,
+      maxWidth: containerWidth,
+      maxHeight: MAX_BOARD_PX,
+      minWidth: MIN_BOARD_PX,
+      minHeight: MIN_BOARD_PX,
     })
-  }, [bbox, displayWidth, displayHeight])
+  }, [bbox, containerWidth])
 
   return (
     <div
+      ref={wrapRef}
       className={`geo-canvas-wrap geo-canvas-wrap--${interactionMode}`}
-      style={{ background: canvas.background || getAdminCanvasBackground() }}
+      style={{
+        background: canvas.background || getAdminCanvasBackground(),
+        width: '100%',
+      }}
     >
       <JSXGraphBoard
         id={id}

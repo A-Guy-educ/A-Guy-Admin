@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useCallback, useEffect, useMemo, useRef } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { AxisSpecV1 } from '@/infra/contracts/graphics/axis.v1'
 import type { JXGBoard, JXGElement } from 'jsxgraph'
 import { JSXGraphBoard } from '../shared/JSXGraphBoard'
@@ -31,10 +31,21 @@ interface AxisCanvasProps {
   onPointMoved?: (index: number, x: number, y: number) => void
 }
 
+const MIN_BOARD_PX = 320
+const MAX_BOARD_PX = 600
+const DEFAULT_BOARD_PX = 500
+
 export const AxisCanvas: React.FC<AxisCanvasProps> = ({ id, axis, onPointMoved }) => {
   const boardRef = useRef<JXGBoard | null>(null)
   const isSyncingRef = useRef(false)
   const elementsRef = useRef<Map<string, JXGElement>>(new Map())
+  const wrapRef = useRef<HTMLDivElement | null>(null)
+
+  // Match the board pixel size to the surrounding CSS column so it fills the
+  // 55%-wide canvas slot instead of sitting as a small fixed square inside
+  // it. The board stays square (so proportion changes never reshape the
+  // layout) and is clamped between MIN_BOARD_PX and MAX_BOARD_PX.
+  const [boardSize, setBoardSize] = useState<number>(DEFAULT_BOARD_PX)
 
   const syncToBoard = useCallback(() => {
     const board = boardRef.current
@@ -273,13 +284,25 @@ export const AxisCanvas: React.FC<AxisCanvasProps> = ({ id, axis, onPointMoved }
     syncToBoardRef.current()
   }, [])
 
-  // Admin editor canvas: keep the board pixel size fixed so changing the
-  // proportion (or the viewport) never pushes the block-controls column on
-  // the left. Instead, expand the visible bounding box in whichever
-  // direction is needed so that units keep the requested x/y proportion —
-  // authors see more (or less) of the plane rather than a reshaping panel.
-  const BOARD_WIDTH = 500
-  const BOARD_HEIGHT = 500
+  // Board stays square (proportion changes never resize the DOM — they just
+  // expand the visible bounding box below). Instead of a hardcoded 500×500,
+  // measure the surrounding `.graph-editor-canvas` column and match it up
+  // to the max, so the board fills the 55% slot on wide screens instead of
+  // leaving dead space around a small fixed square.
+  useEffect(() => {
+    const el = wrapRef.current
+    if (!el) return
+    const recompute = () => {
+      const w = el.clientWidth
+      if (!w) return
+      const next = Math.max(MIN_BOARD_PX, Math.min(MAX_BOARD_PX, Math.floor(w)))
+      setBoardSize((prev) => (prev === next ? prev : next))
+    }
+    recompute()
+    const observer = new ResizeObserver(recompute)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
 
   const bbox = useMemo<[number, number, number, number]>(() => {
     const resolved = resolveViewport(axis)
@@ -289,17 +312,17 @@ export const AxisCanvas: React.FC<AxisCanvasProps> = ({ id, axis, onPointMoved }
     if (xRange <= 0 || yRange <= 0) {
       return [resolved.xMin, resolved.yMax, resolved.xMax, resolved.yMin]
     }
-    const containerAspect = BOARD_WIDTH / BOARD_HEIGHT
+    // Board is square, so containerAspect is always 1.
     const desiredAspect = (xRange * proportion) / yRange
     let visibleXRange = xRange
     let visibleYRange = yRange
-    if (desiredAspect > containerAspect) {
-      // Requested aspect is wider than the fixed container — grow y to fit
-      // (author sees additional plane above/below their configured viewport).
-      visibleYRange = (xRange * proportion) / containerAspect
-    } else if (desiredAspect < containerAspect) {
-      // Requested aspect is taller — grow x instead.
-      visibleXRange = (yRange * containerAspect) / proportion
+    if (desiredAspect > 1) {
+      // Requested aspect wider than square — grow y to fit (author sees
+      // additional plane above/below their configured viewport).
+      visibleYRange = xRange * proportion
+    } else if (desiredAspect < 1) {
+      // Requested aspect taller — grow x instead.
+      visibleXRange = yRange / proportion
     }
     const xCenter = (resolved.xMin + resolved.xMax) / 2
     const yCenter = (resolved.yMin + resolved.yMax) / 2
@@ -311,25 +334,24 @@ export const AxisCanvas: React.FC<AxisCanvasProps> = ({ id, axis, onPointMoved }
     ]
   }, [axis])
 
-  const boardWidth = BOARD_WIDTH
-  const boardHeight = BOARD_HEIGHT
-
   return (
-    <JSXGraphBoard
-      id={id}
-      width={boardWidth}
-      height={boardHeight}
-      boundingBox={bbox}
-      showAxis
-      showGrid={axis.grid.enabled}
-      axisConfig={{
-        showNumbers: axis.axes.showNumbers,
-        showLabels: axis.axes.showLabels,
-        ticks: axis.axes.ticks,
-        labels: axis.axes.labels,
-        tickPosition: axis.axes.tickPosition ?? { x: 'default', y: 'default' },
-      }}
-      onBoardReady={handleBoardReady}
-    />
+    <div ref={wrapRef} style={{ width: '100%' }}>
+      <JSXGraphBoard
+        id={id}
+        width={boardSize}
+        height={boardSize}
+        boundingBox={bbox}
+        showAxis
+        showGrid={axis.grid.enabled}
+        axisConfig={{
+          showNumbers: axis.axes.showNumbers,
+          showLabels: axis.axes.showLabels,
+          ticks: axis.axes.ticks,
+          labels: axis.axes.labels,
+          tickPosition: axis.axes.tickPosition ?? { x: 'default', y: 'default' },
+        }}
+        onBoardReady={handleBoardReady}
+      />
+    </div>
   )
 }
