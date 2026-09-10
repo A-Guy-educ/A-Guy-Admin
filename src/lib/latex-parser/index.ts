@@ -885,12 +885,6 @@ function defaultBlackOnGraphicsElements(block: ContentBlock): void {
 }
 
 /**
- * Types whose `prompt: InlineRichText` slot renders as the block's own
- * intro/text area.
- */
-const GRAPHICS_BLOCK_TYPES = new Set(['question_axis', 'question_geometry', 'question_multi_axis'])
-
-/**
  * Merges consecutive rich_text blocks into single blocks.
  * This fixes fragmentation caused by the tokenizer splitting text around inline math.
  */
