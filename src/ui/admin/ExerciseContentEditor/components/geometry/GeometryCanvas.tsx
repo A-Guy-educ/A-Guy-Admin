@@ -31,8 +31,12 @@ interface GeometryCanvasProps {
   onPointLabelMoved?: (name: string, position: string) => void
 }
 
-const DISPLAY_WIDTH = 420
-const DISPLAY_HEIGHT = 320
+// Match the graph editor's pinned 500×500 board so both block editors give
+// the canvas roughly the same footprint (~55% of the block) — the previous
+// 420×320 default left the geometry image at ~20% of the block width with
+// the controls column visually dominating.
+const DISPLAY_WIDTH = 500
+const DISPLAY_HEIGHT = 500
 
 const round1 = (n: number) => Math.round(n * 10) / 10
 
