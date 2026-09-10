@@ -78,5 +78,17 @@ export function computeBoardSize(input: BoardSizeInput): BoardSize {
     width = height * desiredAspect
   }
 
+  // Final clamp. For extreme aspect ratios (e.g. an author-set viewport of
+  // xRange=100, yRange=1) the min-height branch above can drive `width`
+  // above `maxWidth` and overflow the caller's container — cap it here.
+  if (width > maxWidth) {
+    width = maxWidth
+    height = width / desiredAspect
+  }
+  if (height > maxHeight) {
+    height = maxHeight
+    width = height * desiredAspect
+  }
+
   return { width, height }
 }

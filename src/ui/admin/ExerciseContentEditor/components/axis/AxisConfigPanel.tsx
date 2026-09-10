@@ -118,16 +118,27 @@ export const AxisConfigPanel: React.FC<AxisConfigPanelProps> = ({ spec, onChange
           />
         </div>
         <div className="panel-field">
-          <span className="panel-field-label" title="Ratio of x-unit width to y-unit width. 1 = square grid; 2 = x-units twice as wide as y-units.">
+          <span
+            className="panel-field-label"
+            title="Ratio of x-unit width to y-unit width. 1 = square grid; 2 = x-units twice as wide as y-units."
+          >
             x/y proportion
           </span>
+          {/*
+            Uncontrolled input on purpose: a controlled `value={spec.proportion ?? 1}`
+            with a "coerce ≤ 0 back to 1" onChange would snap to 1 the instant
+            the author types "0" or "0." on the way to "0.5" — the same
+            keystroke-eating bug the viewport min/max fields above avoid via
+            defaultValue + onBlur.
+          */}
           <input
             type="number"
             className="panel-field-input"
-            value={spec.proportion ?? 1}
+            key={`proportion-${spec.proportion ?? 1}`}
+            defaultValue={spec.proportion ?? 1}
             min={0.1}
             step={0.1}
-            onChange={(e) => {
+            onBlur={(e) => {
               const raw = Number(e.target.value)
               const p = Number.isFinite(raw) && raw > 0 ? raw : 1
               onChange({ ...spec, proportion: p })

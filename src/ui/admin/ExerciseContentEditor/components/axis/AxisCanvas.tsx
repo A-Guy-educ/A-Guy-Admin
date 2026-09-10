@@ -64,6 +64,19 @@ export const AxisCanvas: React.FC<AxisCanvasProps> = ({ id, axis, onPointMoved }
 
         if (existing && existing.moveTo && prevKey === labelKey) {
           existing.moveTo([point.x, point.y])
+          // Re-apply everything else the author might have changed — size,
+          // color, hole/point/text swap, label text/visibility. Without this,
+          // editing size or color silently no-ops until the label direction
+          // is also toggled and forces a full recreation.
+          existing.setAttribute({
+            name: point.label || '',
+            size: pointSize,
+            color: point.color || '#3366cc',
+            fillColor: point.type === 'hole' ? '#ffffff' : point.color || '#3366cc',
+            strokeColor: point.color || '#3366cc',
+            withLabel: !!point.label,
+            visible: point.type !== 'floating_text',
+          })
         } else {
           if (existing) {
             board.removeObject(existing)
