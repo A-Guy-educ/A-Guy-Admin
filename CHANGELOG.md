@@ -2019,6 +2019,7 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- fix(studio): pin graph editor canvas so proportion doesn't reshape left panels ([#442](https://github.com/A-Guy-educ/A-Guy-Admin/pull/442)) — @aguyshayb
 - feat(admin): Foldable Content Hierarchy sidebar ([#441](https://github.com/A-Guy-educ/A-Guy-Admin/pull/441)) — @aguyshayb
 - feat(studio): 1:1 proportion, uniform color palette, point size/label controls ([#440](https://github.com/A-Guy-educ/A-Guy-Admin/pull/440)) — @aguyshayb
 - feat(studio): Add graph, geometry, matching and media to blocks menu ([#439](https://github.com/A-Guy-educ/A-Guy-Admin/pull/439)) — @aguyshayb
