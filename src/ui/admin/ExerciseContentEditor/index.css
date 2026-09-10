@@ -2716,12 +2716,17 @@
    * Canvas column takes the remaining ~55%. `min-width: 0` lets it
    * shrink below the board's intrinsic pixel width if the block is
    * narrow. The board itself measures this column and sizes to fit.
+   *
+   * `flex-direction: column` stacks the geometry toolbar (Move / Add Point /
+   * Grid) above the board instead of beside it — the graph editor has no
+   * toolbar and just centers its single child, so this works uniformly.
    */
   flex: 1 1 55%;
   min-width: 0;
   display: flex;
-  justify-content: center;
-  align-items: flex-start;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.375rem;
   position: sticky;
   top: 0;
 }
