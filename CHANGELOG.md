@@ -2019,6 +2019,7 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- feat(studio): 1:1 proportion, uniform color palette, point size/label controls ([#440](https://github.com/A-Guy-educ/A-Guy-Admin/pull/440)) — @aguyshayb
 - feat(studio): Add graph, geometry, matching and media to blocks menu ([#439](https://github.com/A-Guy-educ/A-Guy-Admin/pull/439)) — @aguyshayb
 - feat(latex-parser): TikZ tick labels, smooth curves, label positions, multi-axis blocks ([#438](https://github.com/A-Guy-educ/A-Guy-Admin/pull/438)) — @aguyshayb
 ## [v0.42.0] - 2026-09-08
