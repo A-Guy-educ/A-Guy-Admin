@@ -90,33 +90,26 @@ describe('emptyPlaceholder', () => {
 })
 
 describe('deriveSectionTitle', () => {
-  it('uses the first line of the question prompt', () => {
+  // Section titles always match the sub-question label the author uses in the
+  // source (`\item` inside `\begin{enumerate}[label=\alph*.]`) — see the
+  // header comment on `deriveSectionTitle`. The n-th section becomes
+  // `סעיף א`, `סעיף ב`, … regardless of the anchor question's prompt.
+  it('numbers sections with Hebrew letter labels', () => {
     const q = questionSelect('Solve 2+2')
-    const title = deriveSectionTitle([q], 1)
-    expect(title).toBe('Solve 2+2')
+    expect(deriveSectionTitle([q], 1)).toBe('סעיף א')
+    expect(deriveSectionTitle([q], 2)).toBe('סעיף ב')
+    expect(deriveSectionTitle([q], 3)).toBe('סעיף ג')
   })
 
-  it('truncates prompts longer than 60 chars', () => {
+  it('ignores the question prompt when generating the title', () => {
     const longPrompt = 'A'.repeat(80)
     const q = questionSelect(longPrompt)
-    const title = deriveSectionTitle([q], 1)
-    expect(title.length).toBeLessThanOrEqual(61)
-    expect(title.endsWith('…')).toBe(true)
+    expect(deriveSectionTitle([q], 1)).toBe('סעיף א')
   })
 
-  it('uses only the first line of multi-line prompts', () => {
-    const q = questionSelect('First line\nSecond line\nThird line')
-    expect(deriveSectionTitle([q], 1)).toBe('First line')
-  })
-
-  it('falls back to the first rich_text block when no question prompt is present', () => {
-    const intro = richText('Some intro text for the section')
-    expect(deriveSectionTitle([intro], 1)).toBe('Some intro text for the section')
-  })
-
-  it('falls back to generic Section N when no text content is found', () => {
+  it('falls back to the numeric index when past the Hebrew alphabet range', () => {
     const q = questionSelect('')
-    expect(deriveSectionTitle([q], 7)).toBe('Section 7')
+    expect(deriveSectionTitle([q], 42)).toBe('סעיף 42')
   })
 })
 
@@ -138,7 +131,7 @@ describe('partitionBlocks — flat shape', () => {
 })
 
 describe('partitionBlocks — partitioned shape', () => {
-  it('creates one section per question, anchor as last block', () => {
+  it('creates one section per question; pre-first-question content hoists to exercise-shared', () => {
     const intro = richText('Read this intro first')
     const q1 = questionSelect('Pick true or false')
     const middle = richText('Some text between questions')
@@ -148,15 +141,16 @@ describe('partitionBlocks — partitioned shape', () => {
 
     expect(result.isFlat).toBe(false)
     expect(result.sections).toHaveLength(2)
-    // intro stays on exercise
+    // Pre-first-question content (intro paragraph, top-of-exercise diagram)
+    // lives on the exercise as shared context — it renders alongside the
+    // right-minipage diagram, not shoved into section א as leading.
     expect(result.exerciseSharedBlocks).toEqual([intro])
-    // First section = q1 (no inter-section blocks yet)
-    expect(result.sections[0].contentBlocks).toEqual([q1])
-    // Second section = middle (inter-section) + q2 (question LAST)
-    expect(result.sections[1].contentBlocks).toEqual([middle, q2])
+    // Section א = [q1 anchor, middle (trailing before q2)].
+    expect(result.sections[0].contentBlocks).toEqual([q1, middle])
+    expect(result.sections[1].contentBlocks).toEqual([q2])
   })
 
-  it('attaches trailing non-question blocks to the LAST section (before the anchor question)', () => {
+  it('attaches trailing non-question blocks to the CURRENT section', () => {
     const q1 = questionSelect('First question')
     const q2 = questionFreeResponse('Second question')
     const tail1 = richText('After q2 #1')
@@ -167,14 +161,12 @@ describe('partitionBlocks — partitioned shape', () => {
     expect(result.sections).toHaveLength(2)
     expect(result.exerciseSharedBlocks).toEqual([])
     expect(result.sections[0].contentBlocks).toEqual([q1])
-    // q2 has trailing non-question blocks. They attach to the LAST section
-    // BEFORE the anchor question, so q2 remains the LAST block.
-    expect(result.sections[1].contentBlocks).toEqual([tail1, tail2, q2])
-    const last = result.sections[1].contentBlocks[result.sections[1].contentBlocks.length - 1]
-    expect(last).toBe(q2)
+    // Both tails attach to q2's section (the current section when they
+    // arrive), so section 2 = [q2, tail1, tail2].
+    expect(result.sections[1].contentBlocks).toEqual([q2, tail1, tail2])
   })
 
-  it('attaches trailing non-question blocks to the LAST section, keeping the anchor as last block', () => {
+  it('intro hoists to shared; trailing content lands in the only section', () => {
     const intro = richText('Shared intro')
     const q = questionSelect('Only question')
     const tail = richText('Trailing shared text')
@@ -183,11 +175,7 @@ describe('partitionBlocks — partitioned shape', () => {
 
     expect(result.exerciseSharedBlocks).toEqual([intro])
     expect(result.sections).toHaveLength(1)
-    // Trailing blocks attach BEFORE the anchor question.
-    expect(result.sections[0].contentBlocks).toEqual([tail, q])
-    // Verify the anchor question is the LAST element (acceptance criterion).
-    const last = result.sections[0].contentBlocks[result.sections[0].contentBlocks.length - 1]
-    expect(last).toBe(q)
+    expect(result.sections[0].contentBlocks).toEqual([q, tail])
   })
 
   it('handles a stream with only question blocks (no shared, no intro)', () => {
@@ -201,17 +189,12 @@ describe('partitionBlocks — partitioned shape', () => {
     expect(result.sections[1].contentBlocks).toEqual([q2])
   })
 
-  it('derives a Section N fallback title when the anchor prompt is empty and there is no intro', () => {
-    const q = questionSelect('')
-    const result = partitionBlocks([q])
-    expect(result.sections).toHaveLength(1)
-    expect(result.sections[0].title).toBe('Section 1')
-  })
-
-  it('uses the question prompt as the section title', () => {
-    const q = questionSelect('Solve x^2 = 4')
-    const result = partitionBlocks([q])
-    expect(result.sections[0].title).toBe('Solve x^2 = 4')
+  it('titles each section סעיף א/ב/ג… regardless of question content', () => {
+    const q1 = questionSelect('anything')
+    const q2 = questionFreeResponse('')
+    const q3 = questionSelect('another')
+    const result = partitionBlocks([q1, q2, q3])
+    expect(result.sections.map((s) => s.title)).toEqual(['סעיף א', 'סעיף ב', 'סעיף ג'])
   })
 
   it('does not mutate the input blocks array', () => {

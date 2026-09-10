@@ -54,39 +54,62 @@ export function emptyPlaceholder(): RichTextBlock {
   }
 }
 
+/** Hebrew alphabet — used for section labels `סעיף א`, `סעיף ב`, etc. */
+const HEBREW_LETTERS = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ז', 'ח', 'ט', 'י']
+
+function hebrewLetter(oneBasedIndex: number): string {
+  return HEBREW_LETTERS[oneBasedIndex - 1] ?? String(oneBasedIndex)
+}
+
 /**
- * Title for a new section derived from its anchor question block.
- *
- * Strategy:
- * 1. First line of the question prompt, truncated to 60 chars.
- * 2. Fallback: first non-empty rich_text block in the section's content
- *    (its first line, truncated).
- * 3. Final fallback: `Section N` (1-based index).
+ * Hidden `<!--SEC:label-->` marker set by parseEnumerate for nested sub-items
+ * (e.g., `סעיף ג1`, `סעיף ג2`). The marker keeps the label attached to the
+ * question so downstream partitioning uses the correct title without needing
+ * to change the block schema. Kept in sync with `SECTION_TITLE_MARKER_RE` in
+ * the enumerate parser.
  */
-export function deriveSectionTitle(sectionContent: ContentBlock[], fallbackIndex: number): string {
-  const firstLine = (text: string): string => {
-    const line = text.split('\n')[0]?.trim() ?? ''
-    return line.length > 60 ? `${line.slice(0, 60).trimEnd()}…` : line
-  }
+const SECTION_TITLE_MARKER_RE = /^<!--SEC:([^>]+?)-->\n?/
 
-  const anchor = sectionContent.find(isQuestion)
-  if (anchor) {
-    const prompt = (anchor as { prompt?: { value?: string } }).prompt?.value
-    if (prompt && prompt.trim()) {
-      const line = firstLine(prompt)
-      if (line) return line
-    }
-  }
+/**
+ * WeakSet of blocks that the parser has flagged as exercise-level (not part of
+ * any section). Used for right-minipage tikz diagrams that structurally sit
+ * next to an enumerate rather than inside a specific `\item`. Populated by
+ * `markExerciseShared` in the parser; `partitionBlocks` filters these out
+ * BEFORE the section walk and returns them as `exerciseSharedBlocks`.
+ *
+ * WeakSet is safe here because blocks flow parse→partition in the same
+ * runtime with no serialization between the two steps.
+ */
+const exerciseSharedMarks = new WeakSet<object>()
 
-  for (const block of sectionContent) {
-    const value = (block as { value?: string }).value
-    if (typeof value === 'string' && value.trim()) {
-      const line = firstLine(value)
-      if (line) return line
-    }
-  }
+/** Mark a block as exercise-level shared content (top-level tikz outside any \item). */
+export function markExerciseShared(block: ContentBlock): void {
+  exerciseSharedMarks.add(block)
+}
 
-  return `Section ${fallbackIndex}`
+/** True when the block was flagged as exercise-level shared content. */
+export function isMarkedExerciseShared(block: ContentBlock): boolean {
+  return exerciseSharedMarks.has(block)
+}
+
+/**
+ * Title for a new section. When the anchor question's prompt starts with a
+ * `<!--SEC:...-->` marker (set by parseEnumerate for nested sub-items), use
+ * that explicit label — mutates the anchor's prompt to strip the marker so
+ * it doesn't leak into rendered content. Otherwise fall back to the default
+ * `סעיף א/ב/ג/…` numbering that mirrors what a student sees in the PDF.
+ */
+export function deriveSectionTitle(sectionContent: ContentBlock[], oneBasedIndex: number): string {
+  const anchor = sectionContent.find(isQuestion) as
+    | (ContentBlock & { prompt?: { value: string } })
+    | undefined
+  const prompt = anchor?.prompt?.value ?? ''
+  const markerMatch = SECTION_TITLE_MARKER_RE.exec(prompt)
+  if (markerMatch && anchor?.prompt) {
+    anchor.prompt.value = prompt.slice(markerMatch[0].length)
+    return markerMatch[1]
+  }
+  return `סעיף ${hebrewLetter(oneBasedIndex)}`
 }
 
 export interface PartitionResultSection {
@@ -114,15 +137,16 @@ export interface PartitionResult {
  *
  * Algorithm:
  * - Walk blocks in source order.
- * - Shared blocks before the first question go into `exerciseSharedBlocks`.
- * - When a question block is encountered: flush any accumulated shared
- *   blocks for the current section (none for the first question), then start
- *   a new section with that question as its anchor.
- * - Non-question blocks that follow a question become the leading blocks of
- *   the NEXT section, unless we hit another question first (in which case
- *   they belong to that next section).
- * - After the last question, any trailing non-question blocks attach to the
- *   LAST section.
+ * - Non-question blocks BEFORE the first question land in
+ *   `exerciseSharedBlocks`. That's the exercise's intro paragraph (a `נתון…`
+ *   context sentence describing the diagram + variables) which should render
+ *   ALONGSIDE the right-minipage diagram as a single exercise-level context
+ *   block, not be shoved into section א as leading content.
+ * - When a question block is encountered: start a new section with that
+ *   question as its anchor.
+ * - Non-question blocks AFTER a question (e.g., a diagram embedded inside
+ *   sub-question 2's item content in the source) attach as TRAILING content
+ *   of the CURRENT section — that's the section they belong to semantically.
  * - If no question blocks exist at all, the whole stream is returned as
  *   `exerciseSharedBlocks` and `sections` is empty (`isFlat: true`).
  */
@@ -137,47 +161,123 @@ export function partitionBlocks(blocks: ContentBlock[]): PartitionResult {
 
   const exerciseSharedBlocks: ContentBlock[] = []
   const sections: PartitionResultSection[] = []
-  // Blocks waiting to be attached to a section. Two consumers:
-  //  - before the first question: stay on the exercise
-  //  - between questions OR trailing after the last question: prepend to the
-  //    current/last section so the anchor question remains the LAST block.
-  let pending: ContentBlock[] = []
 
   for (const block of blocks) {
     if (isQuestion(block)) {
-      // Start a new section. Whatever was pending is the section's leading
-      // content (so the anchor question stays last).
+      // Sub-question (marker like `סעיף ד1`, `ד2`, …) — append to the
+      // CURRENT section instead of starting a new one, so a parent item with
+      // nested `(1)/(2)` sub-parts renders as ONE section (`סעיף ד`) with
+      // multiple sub-questions grouped inside rather than nine flat sections.
+      if (isSubQuestionMarker(block) && sections.length > 0) {
+        stripSectionMarker(block)
+        sections[sections.length - 1].contentBlocks.push(block)
+        continue
+      }
       sections.push({
-        contentBlocks: [...pending, block],
-        title: deriveSectionTitle([...pending, block], sections.length + 1),
+        contentBlocks: [block],
+        title: deriveSectionTitle([block], sections.length + 1),
       })
-      pending = []
       continue
     }
 
-    if (sections.length === 0) {
-      // Pre-question region — belongs to the exercise.
+    // Non-question. Two shared-cases and one section-attach case:
+    //   1. Marked exercise-shared (top-level tikz not inside any `\item`) —
+    //      always shared, regardless of source position.
+    //   2. Pre-first-question rich_text/tikz (intro paragraph, top-of-
+    //      exercise diagram) — shared, so intro + diagram render as one
+    //      exercise-level context block instead of being shoved into
+    //      section א.
+    //   3. Post-question non-question (in-item diagram, trailing prose) —
+    //      trailing content of the CURRENT (most recent) section.
+    if (isMarkedExerciseShared(block) || sections.length === 0) {
       exerciseSharedBlocks.push(block)
     } else {
-      // Between questions or trailing after the last question. Defer
-      // attachment until we know whether the trailing tail belongs to the
-      // current section or — if no further question follows — to the LAST
-      // section as leading content (so the question remains last).
-      pending.push(block)
+      sections[sections.length - 1].contentBlocks.push(block)
     }
   }
 
-  // Trailing non-question blocks after the last question: prepend to the
-  // LAST section so the anchor question stays the LAST block.
-  if (pending.length > 0 && sections.length > 0) {
-    const lastSection = sections[sections.length - 1]
-    lastSection.contentBlocks = [...pending, ...lastSection.contentBlocks]
-    pending = []
-  }
-
+  // Fuse `[rich_text, question_axis|question_geometry|question_multi_axis]`
+  // pairs in exerciseSharedBlocks into ONE graphics block by absorbing the
+  // rich_text into the graphics block's `prompt` slot. The block renderer
+  // shows `prompt` as a text area above the graphic, so the intro paragraph
+  // and diagram render as a single unified exercise-context block — matching
+  // the author's side-by-side minipage layout in the source PDF.
   return {
-    exerciseSharedBlocks,
+    exerciseSharedBlocks: absorbIntroIntoGraphics(exerciseSharedBlocks),
     sections,
     isFlat: false,
   }
+}
+
+/**
+ * True when the question's SEC marker has a numeric suffix (`ד1`, `ה2`, …).
+ * Numeric suffix comes from parseEnumerate's inline-`(N)` / nested-enumerate
+ * handler for sub-questions. Bare `סעיף ד` is a parent — starts a new section.
+ */
+function isSubQuestionMarker(block: ContentBlock): boolean {
+  const prompt = (block as { prompt?: { value?: string } }).prompt?.value ?? ''
+  const match = SECTION_TITLE_MARKER_RE.exec(prompt)
+  if (!match) return false
+  return /סעיף\s+[֐-׿]\d+/.test(match[1])
+}
+
+/**
+ * Remove the leading `<!--SEC:...-->` marker from a question's prompt without
+ * changing anything else. Used for sub-questions merged into a parent section
+ * (only the parent's marker becomes the section title).
+ */
+function stripSectionMarker(block: ContentBlock): void {
+  const q = block as { prompt?: { value?: string } }
+  const prompt = q.prompt?.value ?? ''
+  const match = SECTION_TITLE_MARKER_RE.exec(prompt)
+  if (match && q.prompt) {
+    q.prompt.value = prompt.slice(match[0].length)
+  }
+}
+
+const GRAPHICS_TYPES = new Set(['question_axis', 'question_geometry', 'question_multi_axis'])
+
+interface WithPrompt {
+  prompt?: { type: 'rich_text'; format: string; value: string; mediaIds: string[] }
+}
+
+function isGraphicsBlock(block: ContentBlock): boolean {
+  return GRAPHICS_TYPES.has(block.type)
+}
+
+function absorbIntroIntoGraphics(blocks: ContentBlock[]): ContentBlock[] {
+  const out: ContentBlock[] = []
+  const pendingIntro: ContentBlock[] = []
+  for (const block of blocks) {
+    if (block.type === 'rich_text') {
+      pendingIntro.push(block)
+      continue
+    }
+    if (isGraphicsBlock(block) && pendingIntro.length > 0) {
+      const introText = pendingIntro
+        .map((b) => (b as { value?: string }).value ?? '')
+        .join('\n\n')
+        .trim()
+      pendingIntro.length = 0
+      const graphics = block as ContentBlock & WithPrompt
+      const existing = graphics.prompt?.value ?? ''
+      const combined = existing ? `${introText}\n\n${existing}` : introText
+      graphics.prompt = {
+        type: 'rich_text',
+        format: 'md-math-v1',
+        value: combined,
+        mediaIds: [],
+      }
+      out.push(block)
+      continue
+    }
+    // Non-graphics, non-rich_text (or graphics with no pending intro) —
+    // pass pending rich_text through unchanged (preserves original IDs),
+    // then this block.
+    out.push(...pendingIntro)
+    pendingIntro.length = 0
+    out.push(block)
+  }
+  out.push(...pendingIntro)
+  return out
 }

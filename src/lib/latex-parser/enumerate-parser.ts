@@ -38,6 +38,23 @@ function _indexToLabel(index: number): string {
   return String.fromCharCode(96 + index) // 1->a, 2->b, etc.
 }
 
+/**
+ * HTML-comment marker prepended to a question's prompt so `deriveSectionTitle`
+ * can override the default `סעיף {letter}` label with an explicit one (e.g.,
+ * `סעיף ג1` for a nested sub-item). HTML comments are hidden by markdown
+ * renderers and `partitionBlocks` strips the marker before persistence.
+ */
+export const SECTION_TITLE_MARKER_RE = /^<!--SEC:([^>]+?)-->\n?/
+
+function sectionTitleMarker(label: string): string {
+  return `<!--SEC:${label}-->\n`
+}
+
+const HEB_LETTERS = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ז', 'ח', 'ט', 'י', 'כ', 'ל', 'מ', 'נ']
+function hebrewLetter(oneBasedIndex: number): string {
+  return HEB_LETTERS[oneBasedIndex - 1] ?? String(oneBasedIndex)
+}
+
 /** Find matching closing brace with nesting support. */
 function findMatchingBrace(text: string, openPos: number): number {
   let depth = 1
@@ -145,22 +162,36 @@ export function parseEnumerate(innerContent: string): ContentBlock[] {
       return items.map((item: string) => `\n(${item.trim()})`).join(' ')
     },
   )
-  // Convert nested \begin{enumerate}...\end{enumerate} (MCQ sub-options) to inline text
+  // Convert nested `\begin{enumerate}[label=...]...\end{enumerate}` to inline
+  // `(N) …` markers so the outer split on `\item` doesn't shred through the
+  // nested structure. Downstream the outer parent picks up these markers via
+  // the inline-`(N)` sub-item handler and emits `סעיף {parent}{n}` sections.
+  //
+  // Matches both MCQ sub-options `[label=(\textbf{\arabic*})]` and plain
+  // numeric sub-items `[label=\arabic*.]` / `[label=(\arabic*)]` /
+  // `[label=\Roman*.]` / `[label=\alph*.]`.
   preprocessed = preprocessed.replace(
-    /\\begin\{enumerate\}\s*\[label=\(\\textbf\{\\arabic\*\}\)[^\]]*\]([\s\S]*?)\\end\{enumerate\}/g,
+    /\\begin\{enumerate\}\s*\[label=(?:\(?\\textbf\{[^}]*\}\)?|\(?\\(?:arabic|Roman|roman|Alph|alph)\*\)?[.:)]?)[^\]]*\]([\s\S]*?)\\end\{enumerate\}/g,
     (_match, inner: string) => {
       const items = inner.split(/\\item\s*/).filter((s: string) => s.trim())
       return items.map((item: string, idx: number) => `\n(${idx + 1}) ${item.trim()}`).join('')
     },
   )
 
-  // Split on \item markers — handles both \item and \item[label]
-  const parts = preprocessed.split(/\\item\s*/)
+  // Split on \item markers (word-boundary so \itemindent etc. don't match)
+  const parts = preprocessed.split(/\\item(?![a-zA-Z])/)
 
-  // First part is pre-item text (options, whitespace) — skip it
+  // Non-empty items only — parent-letter counter is over these so labels
+  // match the PDF (empty \item's skipped, no gaps in א/ב/ג/...).
+  const nonEmpty: string[] = []
   for (let i = 1; i < parts.length; i++) {
-    const raw = parts[i].trim()
-    if (!raw) continue
+    const t = parts[i].trim()
+    if (t) nonEmpty.push(t)
+  }
+
+  for (let parentIdx = 0; parentIdx < nonEmpty.length; parentIdx++) {
+    const raw = nonEmpty[parentIdx]
+    const parentLetter = hebrewLetter(parentIdx + 1)
 
     // Strip explicit label at the start:
     //   [\textbf{א.}]  [\textbf{(1)}]  [(1)]  [(א)]  [א.]
@@ -168,18 +199,100 @@ export function parseEnumerate(innerContent: string): ContentBlock[] {
       /^\[\\textbf\{([^}]*)\}\]\s*/.exec(raw) || /^\[\(?[\u0590-\u05FFa-z\d]+\.?\)?\]\s*/.exec(raw)
     const content = explicitLabelMatch ? raw.slice(explicitLabelMatch[0].length).trim() : raw
 
-    const cleaned = cleanItemText(content)
-    if (!cleaned) continue
-
-    // For numbered exercises (\arabic* label), emit an exercise heading
-    // so that parseLatexToExercises can split on it
+    // Numbered top-level exercise (\arabic*. label) — emit heading + item,
+    // no section-label marker. parseLatexToExercises splits on `## תרגיל N`.
     if (isNumbered) {
-      const num = startIndex + i - 1
+      const num = startIndex + parentIdx
       blocks.push(makeRichTextBlock(`## תרגיל ${num}`))
+      const cleanedTop = cleanItemText(content)
+      if (cleanedTop) blocks.push(makeFreeResponseBlock(cleanedTop))
+      continue
     }
 
-    // Don't prepend labels — the frontend handles numbering automatically
-    blocks.push(makeFreeResponseBlock(cleaned))
+    // Nested numbered enumerate inside this parent item — each nested `\item`
+    // becomes its own section labeled `סעיף {parent}{n}` (e.g. `ג1`, `ג2`).
+    // Matches both `\arabic*` and `\Roman*` labels with or without wrapping
+    // parens, so `[label=\arabic*.]`, `[label=(\arabic*)]`, and
+    // `[label=\Roman*.]` all expand the same way.
+    //
+    // Also handles bare inline sub-numbering — many worksheets don't wrap
+    // sub-parts in `\begin{enumerate}` at all, they just prefix items with
+    // `(1) …`, `(2) …`, `(3) …`. If we see two or more of those markers in
+    // the parent item text (each starting a line after whitespace), split on
+    // them the same way as an explicit nested enumerate.
+    //
+    // Parent's pre-nested text ("segment CD is a diameter…") becomes its OWN
+    // section (labeled `סעיף {parent}`) so users see it as a stand-alone
+    // context section, not merged into ג1.
+    const nestedMatch =
+      /\\begin\{enumerate\}\s*\[label=\(?\\(?:arabic|Roman|roman|Alph|alph)\*\)?[.:)]?[^\]]*\]([\s\S]*?)\\end\{enumerate\}/.exec(
+        content,
+      )
+    // Detect bare `(N)` inline markers if there's no explicit nested enum.
+    // Require ≥2 markers so isolated `(1)` inside a formula doesn't fire.
+    const inlineMarkerRe = /(?:^|\n)\s*\((\d{1,2})\)\s+/g
+    const inlineMarkers = nestedMatch ? [] : [...content.matchAll(inlineMarkerRe)]
+    if (!nestedMatch && inlineMarkers.length >= 2) {
+      const before = content.slice(0, inlineMarkers[0].index ?? 0).trim()
+      // Slice item bodies between consecutive markers.
+      const nestedItems: string[] = []
+      for (let mi = 0; mi < inlineMarkers.length; mi++) {
+        const m = inlineMarkers[mi]
+        const startPos = (m.index ?? 0) + m[0].length
+        const endPos =
+          mi + 1 < inlineMarkers.length
+            ? (inlineMarkers[mi + 1].index ?? content.length)
+            : content.length
+        nestedItems.push(content.slice(startPos, endPos).trim())
+      }
+      const beforeCleaned = before ? cleanItemText(before) : ''
+      if (beforeCleaned) {
+        blocks.push(
+          makeFreeResponseBlock(`${sectionTitleMarker(`סעיף ${parentLetter}`)}${beforeCleaned}`),
+        )
+      }
+      nestedItems.forEach((nItem, nIdx) => {
+        const label = `סעיף ${parentLetter}${nIdx + 1}`
+        const nCleaned = cleanItemText(nItem)
+        if (nCleaned) {
+          blocks.push(makeFreeResponseBlock(`${sectionTitleMarker(label)}${nCleaned}`))
+        }
+      })
+      continue
+    }
+    if (nestedMatch) {
+      const before = content.slice(0, nestedMatch.index).trim()
+      const nestedInner = nestedMatch[1]
+      const after = content.slice(nestedMatch.index + nestedMatch[0].length).trim()
+      const nestedParts = nestedInner.split(/\\item(?![a-zA-Z])/).slice(1)
+      const nestedItems = nestedParts.map((s) => s.trim()).filter(Boolean)
+      if (nestedItems.length > 0) {
+        // Parent's pre-nested context — emit as its own section (labeled
+        // `סעיף {parent}`) with the context text as its prompt. Users see
+        // it as a stand-alone context section, then the nested sub-parts
+        // follow as `ד1, ד2, ד3` etc.
+        const beforeCleaned = before ? cleanItemText(before) : ''
+        if (beforeCleaned) {
+          blocks.push(
+            makeFreeResponseBlock(`${sectionTitleMarker(`סעיף ${parentLetter}`)}${beforeCleaned}`),
+          )
+        }
+        nestedItems.forEach((nItem, nIdx) => {
+          const label = `סעיף ${parentLetter}${nIdx + 1}`
+          const nCleaned = cleanItemText(nItem)
+          const afterCleaned = nIdx === nestedItems.length - 1 && after ? cleanItemText(after) : ''
+          const combined = [nCleaned, afterCleaned].filter(Boolean).join('\n\n')
+          if (combined) {
+            blocks.push(makeFreeResponseBlock(`${sectionTitleMarker(label)}${combined}`))
+          }
+        })
+        continue
+      }
+    }
+
+    const cleaned = cleanItemText(content)
+    if (!cleaned) continue
+    blocks.push(makeFreeResponseBlock(`${sectionTitleMarker(`סעיף ${parentLetter}`)}${cleaned}`))
   }
 
   return blocks

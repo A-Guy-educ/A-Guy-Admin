@@ -34,6 +34,25 @@ export function hasDiagramCheck(text: string): boolean {
 }
 
 /**
+ * Unwrap PDF-worksheet exercise headers of the form
+ *   `\begin{list}{\textbf{N.}}{...setlength config...}\item body\end{list}`
+ * into a clean `\textbf{N.}\n\nbody\n\n` pair. Without this, the standalone
+ * `\textbf{N.}` chunker anchor lands INSIDE the list env, so the chunk starts
+ * with the closing `}` of the label + all the setlength config braces and
+ * pollutes downstream rich_text blocks with `}{}` fragments.
+ *
+ * Only matches when the label is a bare numeric `\textbf{N.}` and the list
+ * contains a single `\item`, so other `\begin{list}` uses (e.g. custom
+ * labels, multi-item lists) are left alone.
+ */
+export function unwrapListExerciseWrappers(source: string): string {
+  return source.replace(
+    /\\begin\{list\}\s*\{\s*\\textbf\{\s*(\d{1,2})\.\s*\}\s*\}\s*\{(?:[^{}]|\{[^{}]*\})*\}\s*\\item\s+([\s\S]*?)\\end\{list\}/g,
+    (_match, num: string, body: string) => `\\textbf{${num}.}\n\n${body.trim()}\n\n`,
+  )
+}
+
+/**
  * Parse LaTeX text into structured exercise segments.
  * Handles multiple extraction runs separated by \n\n---\n\n
  * Tracks character positions for write-back support.
@@ -48,8 +67,12 @@ export function parseContextText(contextText: string): ParsedSegment[] {
   const segments: ParsedSegment[] = []
 
   for (let runIndex = 0; runIndex < runs.length; runIndex++) {
-    const runText = runs[runIndex]
-    if (!runText.trim()) continue
+    const rawRunText = runs[runIndex]
+    if (!rawRunText.trim()) continue
+    // Unwrap `\begin{list}{\textbf{N.}}{config}\item body\end{list}` PDF-worksheet
+    // wrappers to plain `\textbf{N.}\n\nbody\n\n` so the chunker anchor lands
+    // cleanly at the start of an exercise instead of inside the list env.
+    const runText = unwrapListExerciseWrappers(rawRunText)
 
     const exercises: ParsedExercise[] = []
 
@@ -421,7 +444,18 @@ export function parseContextText(contextText: string): ParsedSegment[] {
         // Content starts after the exercise header
         const contentStart = current.index + current.fullMatch.length
         // Content ends at the next exercise boundary (by position), solutions section, or end of text
-        const contentEnd = nextByPos ? nextByPos.index : firstSolutionIndex
+        let contentEnd = nextByPos ? nextByPos.index : firstSolutionIndex
+        // If this exercise has its own inline `\section*{פתרון תרגיל N}` block
+        // BEFORE the next exercise (author's `תרגיל 5 - אנליטית עם מעגל.tex`
+        // pattern where ex6's solution is placed directly under ex6 rather
+        // than in the global "final solutions" section), trim `contentEnd` to
+        // the start of that solution. Otherwise the inline solution text
+        // leaks into the exercise's `latexContent` and gets rendered as
+        // trailing rich_text on the last section.
+        const inlineSol = solutionMatches.find(
+          (s) => s.number === current.number && s.index > contentStart && s.index < contentEnd,
+        )
+        if (inlineSol) contentEnd = inlineSol.index
 
         const latexContent = runText.slice(contentStart, contentEnd).trim()
 
