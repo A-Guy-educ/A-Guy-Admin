@@ -2,8 +2,12 @@
 
 import React from 'react'
 import type { GeometrySpecV1 } from '@/infra/contracts/graphics/geometry.v1'
-import { getDefaultShapeFill, getDefaultTextColor } from '@/infra/contracts/graphics/textColors'
+import {
+  getDefaultCanvasElementColor,
+  getDefaultShapeFill,
+} from '@/infra/contracts/graphics/textColors'
 import { Plus, Trash2 } from 'lucide-react'
+import { ColorSwatchPicker } from '../shared/ColorSwatchPicker'
 
 type GeoTriangle = NonNullable<GeometrySpecV1['elements']['triangles']>[number]
 type GeoRectangle = NonNullable<GeometrySpecV1['elements']['rectangles']>[number]
@@ -92,21 +96,21 @@ export const ShapesPanel: React.FC<ShapesPanelProps> = ({
             ))}
             <div className="panel-field">
               <span className="panel-field-label">Edge</span>
-              <input
-                type="color"
-                className="panel-color-input"
-                value={tri.color || getDefaultTextColor()}
-                onChange={(e) => updateTri(tIdx, { color: e.target.value })}
+              <ColorSwatchPicker
+                value={tri.color}
+                onChange={(hex) => updateTri(tIdx, { color: hex })}
+                defaultHex={getDefaultCanvasElementColor()}
+                label="Triangle edge color"
               />
             </div>
             <div className="panel-field">
               <span className="panel-field-label">Fill</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <input
-                  type="color"
-                  className="panel-color-input"
-                  value={tri.fill || getDefaultShapeFill()}
-                  onChange={(e) => updateTri(tIdx, { fill: e.target.value })}
+                <ColorSwatchPicker
+                  value={tri.fill}
+                  onChange={(hex) => updateTri(tIdx, { fill: hex })}
+                  defaultHex={getDefaultShapeFill()}
+                  label="Triangle fill color"
                 />
                 {tri.fill && (
                   <button
@@ -162,21 +166,21 @@ export const ShapesPanel: React.FC<ShapesPanelProps> = ({
             ))}
             <div className="panel-field">
               <span className="panel-field-label">Edge</span>
-              <input
-                type="color"
-                className="panel-color-input"
-                value={rect.color || getDefaultTextColor()}
-                onChange={(e) => updateRect(rIdx, { color: e.target.value })}
+              <ColorSwatchPicker
+                value={rect.color}
+                onChange={(hex) => updateRect(rIdx, { color: hex })}
+                defaultHex={getDefaultCanvasElementColor()}
+                label="Rectangle edge color"
               />
             </div>
             <div className="panel-field">
               <span className="panel-field-label">Fill</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <input
-                  type="color"
-                  className="panel-color-input"
-                  value={rect.fill || getDefaultShapeFill()}
-                  onChange={(e) => updateRect(rIdx, { fill: e.target.value })}
+                <ColorSwatchPicker
+                  value={rect.fill}
+                  onChange={(hex) => updateRect(rIdx, { fill: hex })}
+                  defaultHex={getDefaultShapeFill()}
+                  label="Rectangle fill color"
                 />
                 {rect.fill && (
                   <button

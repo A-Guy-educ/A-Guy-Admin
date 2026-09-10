@@ -58,6 +58,7 @@ const PointSchema = z.object({
   type: z.enum(['point', 'hole', 'floating_text']),
   color: ColorStringSchema.optional(),
   labelPosition: PositionEnumSchema.optional(),
+  size: z.number().int().min(1).max(10).optional(),
 })
 
 /** Integral/area paint range */
@@ -111,6 +112,7 @@ const LineBetweenPointsSchema = z.object({
     y: z.number(),
   }),
   color: ColorStringSchema.optional(),
+  arrow: z.boolean().optional(),
 })
 
 /** Geometric locus (implicit curve) */
@@ -190,6 +192,14 @@ export const AxisSpecV1Schema = z
   .object({
     kind: z.literal('cartesian'),
     units: z.number().positive(),
+    /**
+     * Ratio of x-unit pixel width to y-unit pixel width.
+     * `1` (default) means one unit on x looks the same length as one unit on
+     * y — grid squares are square and unit circles look circular. `2` makes
+     * x-units twice as wide as y-units. Applies to both the site renderer
+     * and the admin editor canvas.
+     */
+    proportion: z.number().positive().optional(),
     grid: GridSchema,
     axes: AxesSchema,
     viewportMode: ViewportModeSchema,

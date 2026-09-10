@@ -118,6 +118,23 @@ export const AxisConfigPanel: React.FC<AxisConfigPanelProps> = ({ spec, onChange
           />
         </div>
         <div className="panel-field">
+          <span className="panel-field-label" title="Ratio of x-unit width to y-unit width. 1 = square grid; 2 = x-units twice as wide as y-units.">
+            x/y proportion
+          </span>
+          <input
+            type="number"
+            className="panel-field-input"
+            value={spec.proportion ?? 1}
+            min={0.1}
+            step={0.1}
+            onChange={(e) => {
+              const raw = Number(e.target.value)
+              const p = Number.isFinite(raw) && raw > 0 ? raw : 1
+              onChange({ ...spec, proportion: p })
+            }}
+          />
+        </div>
+        <div className="panel-field">
           <span className="panel-field-label">Ticks</span>
           <input
             type="number"

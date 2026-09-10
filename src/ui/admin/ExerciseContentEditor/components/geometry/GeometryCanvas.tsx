@@ -7,6 +7,7 @@ import {
   getDefaultCanvasElementColor,
   sizeScaleToPixels,
 } from '@/infra/contracts/graphics/textColors'
+import { computeBoardSize } from '@/infra/utils/graphics/board-sizing'
 import type { JXGBoard, JXGElement } from 'jsxgraph'
 import React, { useCallback, useEffect, useMemo, useRef } from 'react'
 import { JSXGraphBoard } from '../shared/JSXGraphBoard'
@@ -182,6 +183,23 @@ export const GeometryCanvas: React.FC<GeometryCanvasProps> = ({
     [canvas.boundingBox, canvas.width, canvas.height],
   )
 
+  // Fit the editor canvas into the requested display box while preserving
+  // the bounding box's aspect ratio. Without this the 420×320 default warps
+  // circles into ~1.3:1 ellipses even when the underlying box is square.
+  const { width: boardWidth, height: boardHeight } = useMemo(() => {
+    const xRange = Math.abs(bbox[2] - bbox[0])
+    const yRange = Math.abs(bbox[1] - bbox[3])
+    return computeBoardSize({
+      xRange,
+      yRange,
+      availableWidth: displayWidth,
+      maxWidth: displayWidth,
+      maxHeight: displayHeight,
+      minWidth: Math.min(200, displayWidth),
+      minHeight: Math.min(200, displayHeight),
+    })
+  }, [bbox, displayWidth, displayHeight])
+
   return (
     <div
       className={`geo-canvas-wrap geo-canvas-wrap--${interactionMode}`}
@@ -189,8 +207,8 @@ export const GeometryCanvas: React.FC<GeometryCanvasProps> = ({
     >
       <JSXGraphBoard
         id={id}
-        width={displayWidth}
-        height={displayHeight}
+        width={boardWidth}
+        height={boardHeight}
         boundingBox={bbox}
         showGrid={canvas.grid ?? false}
         onBoardReady={handleBoardReady}

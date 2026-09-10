@@ -2,8 +2,9 @@
 
 import React from 'react'
 import type { GeometrySpecV1 } from '@/infra/contracts/graphics/geometry.v1'
-import { getDefaultTextColor } from '@/infra/contracts/graphics/textColors'
+import { getDefaultCanvasElementColor } from '@/infra/contracts/graphics/textColors'
 import { Plus, Trash2 } from 'lucide-react'
+import { ColorSwatchPicker } from '../shared/ColorSwatchPicker'
 
 type GeoLine = GeometrySpecV1['elements']['lines'][number]
 type GeoPoint = GeometrySpecV1['elements']['points'][number]
@@ -78,11 +79,11 @@ export const LinesPanel: React.FC<LinesPanelProps> = ({ lines, points, onChange 
             </div>
             <div className="panel-field">
               <span className="panel-field-label">Color</span>
-              <input
-                type="color"
-                className="panel-color-input"
-                value={line.color || getDefaultTextColor()}
-                onChange={(e) => handleUpdate(index, { color: e.target.value })}
+              <ColorSwatchPicker
+                value={line.color}
+                onChange={(hex) => handleUpdate(index, { color: hex })}
+                defaultHex={getDefaultCanvasElementColor()}
+                label="Line color"
               />
             </div>
             <div className="panel-field">
