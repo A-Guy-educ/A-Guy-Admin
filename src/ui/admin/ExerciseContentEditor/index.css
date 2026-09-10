@@ -2694,7 +2694,15 @@
 }
 
 .graph-editor-form {
-  flex: 1 1 55%;
+  /*
+   * Cap the controls column at ~45% of the block. Previously
+   * `flex: 1 1 55%` on the form + `flex: 0 0 auto` on the canvas meant
+   * the form grew to fill every pixel the fixed-pixel board didn't take,
+   * leaving the canvas at ~20-30% of the block on a wide page. The panel
+   * rows inside already wrap when they run out of horizontal space.
+   */
+  flex: 0 1 45%;
+  max-width: 45%;
   min-width: 280px;
   display: flex;
   flex-direction: column;
@@ -2704,7 +2712,16 @@
 }
 
 .graph-editor-canvas {
-  flex: 0 0 auto;
+  /*
+   * Canvas column takes the remaining ~55%. `min-width: 0` lets it
+   * shrink below the board's intrinsic pixel width if the block is
+   * narrow. The board itself measures this column and sizes to fit.
+   */
+  flex: 1 1 55%;
+  min-width: 0;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
   position: sticky;
   top: 0;
 }
