@@ -2694,7 +2694,15 @@
 }
 
 .graph-editor-form {
-  flex: 1 1 55%;
+  /*
+   * Hard-cap the controls column at ~45% of the block so it can't hog the
+   * width on wide screens. Previously `flex: 1 1 55%` let the form grow to
+   * fill everything the fixed-pixel canvas didn't take, leaving the canvas
+   * at ~20% on a wide Payload exercise page. Panel rows inside already
+   * wrap when they run out of horizontal space.
+   */
+  flex: 0 1 45%;
+  max-width: 45%;
   min-width: 280px;
   display: flex;
   flex-direction: column;
@@ -2704,7 +2712,16 @@
 }
 
 .graph-editor-canvas {
-  flex: 0 0 auto;
+  /*
+   * Canvas column takes the remaining ~55% and centers the fixed-pixel
+   * JSXGraph board inside it, so proportion / viewport edits never
+   * reshape the surrounding layout (see PR #442).
+   */
+  flex: 1 1 55%;
+  min-width: 0;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
   position: sticky;
   top: 0;
 }
