@@ -1,10 +1,7 @@
 'use client'
 
 import type { GeometrySpecV1 } from '@/infra/contracts/graphics/geometry.v1'
-import {
-  getDefaultTextColor,
-  DEFAULT_TEXT_SIZE_SCALE,
-} from '@/infra/contracts/graphics/textColors'
+import { getDefaultTextColor, DEFAULT_TEXT_SIZE_SCALE } from '@/infra/contracts/graphics/textColors'
 import { Plus, Trash2 } from 'lucide-react'
 import React from 'react'
 import { ColorSwatchPicker } from '../shared/ColorSwatchPicker'

@@ -115,7 +115,9 @@ export const AxisPointsPanel: React.FC<AxisPointsPanelProps> = ({ points, onChan
                 <span className="panel-field-label">Label pos</span>
                 <CompassPositionPicker
                   value={
-                    point.labelPosition && point.labelPosition !== 'm' && point.labelPosition !== 'middle'
+                    point.labelPosition &&
+                    point.labelPosition !== 'm' &&
+                    point.labelPosition !== 'middle'
                       ? point.labelPosition
                       : undefined
                   }

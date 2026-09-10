@@ -49,9 +49,7 @@ export const ColorSwatchPicker: React.FC<ColorSwatchPickerProps> = ({
   const normalizedValue = normalizeHex(value)
   const normalizedDefault = normalizeHex(defaultHex)
   const showLegacySwatch =
-    !!normalizedValue &&
-    !paletteHexes.has(normalizedValue) &&
-    normalizedValue !== normalizedDefault
+    !!normalizedValue && !paletteHexes.has(normalizedValue) && normalizedValue !== normalizedDefault
   return (
     <div className="color-swatches-row" role="radiogroup" aria-label={label}>
       {showLegacySwatch && value && (

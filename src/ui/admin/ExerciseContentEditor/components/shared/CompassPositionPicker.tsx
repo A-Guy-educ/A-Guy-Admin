@@ -58,8 +58,7 @@ export const CompassPositionPicker: React.FC<CompassPositionPickerProps> = ({
               border: `1px solid ${cssVarToHex('--border')}`,
               borderRadius: 3,
               cursor: 'pointer',
-              background:
-                active === cell.pos ? cssVarToHex('--primary') : cssVarToHex('--muted'),
+              background: active === cell.pos ? cssVarToHex('--primary') : cssVarToHex('--muted'),
               color:
                 active === cell.pos
                   ? cssVarToHex('--primary-foreground')
