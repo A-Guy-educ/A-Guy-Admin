@@ -48,14 +48,19 @@ export const AxisCanvas: React.FC<AxisCanvasProps> = ({ id, axis, onPointMoved }
       const existingIds = new Set(elementsRef.current.keys())
       const newIds = new Set<string>()
 
-      // Sync points — recreate when label offset changes because JSXGraph
-      // doesn't reliably update label.offset via setAttribute.
+      // Sync points — recreate when label offset OR label presence changes:
+      // JSXGraph doesn't reliably update label.offset via setAttribute, and it
+      // won't lazily create a label sub-element for a point that was built
+      // with withLabel: false, so flipping withLabel on later via setAttribute
+      // silently no-ops. Baking `hasLabel` into the recreate key forces a
+      // fresh board.create() the first time the author adds label text.
       axis.elements.points.forEach((point, index) => {
         const elemId = `point-${index}`
         newIds.add(elemId)
         const existing = elementsRef.current.get(elemId)
         const labelOffset = mapLabelOffset(point.labelPosition)
-        const labelKey = labelOffset.join(',')
+        const hasLabel = !!point.label
+        const labelKey = `${labelOffset.join(',')}|${hasLabel ? '1' : '0'}`
         const pointSize = point.size ?? (point.type === 'hole' ? 4 : 3)
 
         const prevKey = existing

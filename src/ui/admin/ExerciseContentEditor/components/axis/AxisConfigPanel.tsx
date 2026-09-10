@@ -141,6 +141,11 @@ export const AxisConfigPanel: React.FC<AxisConfigPanelProps> = ({ spec, onChange
             onBlur={(e) => {
               const raw = Number(e.target.value)
               const p = Number.isFinite(raw) && raw > 0 ? raw : 1
+              // Snap the DOM back to the coerced value so an invalid entry
+              // (empty, 0, "-2") can't leave the input showing something
+              // different from what state actually holds — otherwise the
+              // remount key doesn't change when we coerce back to 1 from 1.
+              e.target.value = String(p)
               onChange({ ...spec, proportion: p })
             }}
           />
