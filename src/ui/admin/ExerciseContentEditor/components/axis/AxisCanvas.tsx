@@ -5,7 +5,6 @@ import type { AxisSpecV1 } from '@/infra/contracts/graphics/axis.v1'
 import type { JXGBoard, JXGElement } from 'jsxgraph'
 import { JSXGraphBoard } from '../shared/JSXGraphBoard'
 import { resolveViewport } from '@/infra/utils/graphics/viewport-utils'
-import { computeBoardSize } from '@/infra/utils/graphics/board-sizing'
 import { createLocusOnBoard } from '@/ui/shared/exerciserenderer/graphics/axisElements'
 
 /** Map a compass label position to a JSXGraph pixel offset. */
@@ -274,24 +273,46 @@ export const AxisCanvas: React.FC<AxisCanvasProps> = ({ id, axis, onPointMoved }
     syncToBoardRef.current()
   }, [])
 
+  // Admin editor canvas: keep the board pixel size fixed so changing the
+  // proportion (or the viewport) never pushes the block-controls column on
+  // the left. Instead, expand the visible bounding box in whichever
+  // direction is needed so that units keep the requested x/y proportion —
+  // authors see more (or less) of the plane rather than a reshaping panel.
+  const BOARD_WIDTH = 500
+  const BOARD_HEIGHT = 500
+
   const bbox = useMemo<[number, number, number, number]>(() => {
     const resolved = resolveViewport(axis)
-    return [resolved.xMin, resolved.yMax, resolved.xMax, resolved.yMin]
+    const xRange = resolved.xMax - resolved.xMin
+    const yRange = resolved.yMax - resolved.yMin
+    const proportion = axis.proportion ?? 1
+    if (xRange <= 0 || yRange <= 0) {
+      return [resolved.xMin, resolved.yMax, resolved.xMax, resolved.yMin]
+    }
+    const containerAspect = BOARD_WIDTH / BOARD_HEIGHT
+    const desiredAspect = (xRange * proportion) / yRange
+    let visibleXRange = xRange
+    let visibleYRange = yRange
+    if (desiredAspect > containerAspect) {
+      // Requested aspect is wider than the fixed container — grow y to fit
+      // (author sees additional plane above/below their configured viewport).
+      visibleYRange = (xRange * proportion) / containerAspect
+    } else if (desiredAspect < containerAspect) {
+      // Requested aspect is taller — grow x instead.
+      visibleXRange = (yRange * containerAspect) / proportion
+    }
+    const xCenter = (resolved.xMin + resolved.xMax) / 2
+    const yCenter = (resolved.yMin + resolved.yMax) / 2
+    return [
+      xCenter - visibleXRange / 2,
+      yCenter + visibleYRange / 2,
+      xCenter + visibleXRange / 2,
+      yCenter - visibleYRange / 2,
+    ]
   }, [axis])
 
-  const { width: boardWidth, height: boardHeight } = useMemo(() => {
-    const resolved = resolveViewport(axis)
-    return computeBoardSize({
-      xRange: resolved.xMax - resolved.xMin,
-      yRange: resolved.yMax - resolved.yMin,
-      availableWidth: 600,
-      proportion: axis.proportion ?? 1,
-      maxWidth: 600,
-      maxHeight: 500,
-      minWidth: 260,
-      minHeight: 260,
-    })
-  }, [axis])
+  const boardWidth = BOARD_WIDTH
+  const boardHeight = BOARD_HEIGHT
 
   return (
     <JSXGraphBoard
