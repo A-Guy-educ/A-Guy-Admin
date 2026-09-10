@@ -3,6 +3,8 @@
 import { useDocumentInfo, useFormFields } from '@payloadcms/ui'
 import { useCallback, useEffect, useState } from 'react'
 
+import { SidebarFoldToggle } from './SidebarFoldToggle'
+
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
@@ -253,6 +255,7 @@ const ContentNavigation: React.FC<{ context: CollectionContext }> = ({ context }
   if (!docId && !parentId) {
     return (
       <div className="py-3">
+        <SidebarFoldToggle />
         <div className="mb-2 text-[13px] font-semibold uppercase tracking-wide text-[var(--theme-elevation-800)]">
           Content Hierarchy
         </div>
@@ -266,6 +269,7 @@ const ContentNavigation: React.FC<{ context: CollectionContext }> = ({ context }
   if (loading) {
     return (
       <div className="py-3">
+        <SidebarFoldToggle />
         <div className="mb-2 text-[13px] font-semibold uppercase tracking-wide text-[var(--theme-elevation-800)]">
           Content Hierarchy
         </div>
@@ -323,6 +327,7 @@ const ContentNavigation: React.FC<{ context: CollectionContext }> = ({ context }
 
   return (
     <div className="py-3">
+      <SidebarFoldToggle />
       <div className="mb-2 text-[13px] font-semibold uppercase tracking-wide text-[var(--theme-elevation-800)]">
         Content Hierarchy
       </div>
