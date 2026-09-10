@@ -2019,6 +2019,7 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- feat(latex-parser): TikZ tick labels, smooth curves, label positions, multi-axis blocks ([#438](https://github.com/A-Guy-educ/A-Guy-Admin/pull/438)) — @aguyshayb
 ## [v0.42.0] - 2026-09-08
 
 - promote: dev -> main (v0.42.0) ([#435](https://github.com/A-Guy-educ/A-Guy-Admin/pull/435)) — @aguyshayb
