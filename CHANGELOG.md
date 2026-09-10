@@ -2036,6 +2036,8 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+## [v0.43.0] - 2026-09-10
+
 - promote: dev -> main (v0.43.0) ([#447](https://github.com/A-Guy-educ/A-Guy-Admin/pull/447)) — @aguyshayb
 - chore: release v0.43.0 ([#446](https://github.com/A-Guy-educ/A-Guy-Admin/pull/446)) — @aguyshayb
 - fix(studio): stack geometry toolbar above canvas ([#445](https://github.com/A-Guy-educ/A-Guy-Admin/pull/445)) — @aguyshayb
