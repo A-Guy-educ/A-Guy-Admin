@@ -2,8 +2,9 @@
 
 import React from 'react'
 import type { GeometrySpecV1 } from '@/infra/contracts/graphics/geometry.v1'
-import { getDefaultTextColor } from '@/infra/contracts/graphics/textColors'
+import { getDefaultCanvasElementColor } from '@/infra/contracts/graphics/textColors'
 import { Plus, Trash2 } from 'lucide-react'
+import { ColorSwatchPicker } from '../shared/ColorSwatchPicker'
 
 type GeoVector = NonNullable<GeometrySpecV1['elements']['vectors']>[number]
 type GeoPoint = GeometrySpecV1['elements']['points'][number]
@@ -66,11 +67,11 @@ export const VectorsPanel: React.FC<VectorsPanelProps> = ({ vectors, points, onC
             </div>
             <div className="panel-field">
               <span className="panel-field-label">Color</span>
-              <input
-                type="color"
-                className="panel-color-input"
-                value={vec.color || getDefaultTextColor()}
-                onChange={(e) => handleUpdate(index, { color: e.target.value })}
+              <ColorSwatchPicker
+                value={vec.color}
+                onChange={(hex) => handleUpdate(index, { color: hex })}
+                defaultHex={getDefaultCanvasElementColor()}
+                label="Vector color"
               />
             </div>
             <button type="button" className="panel-remove-btn" onClick={() => handleRemove(index)}>

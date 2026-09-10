@@ -14,6 +14,7 @@ import {
   parseEnumerate,
   isSolutionHeader,
   isExerciseTitle,
+  SECTION_TITLE_MARKER_RE,
 } from '@/lib/latex-parser/enumerate-parser'
 import { parseTabular } from '@/lib/latex-parser/tabular-parser'
 import {
@@ -25,7 +26,8 @@ import {
   hasTikzAxisGeometry,
 } from '@/lib/latex-parser/tikz-axis-parser'
 import { parseTikzGeometry, hasTikzGeometry } from '@/lib/latex-parser/tikz-geometry-parser'
-import { makeRichTextBlock } from '@/lib/latex-parser/block-generators'
+import { makeMultiAxisBlock, makeRichTextBlock } from '@/lib/latex-parser/block-generators'
+import { markExerciseShared } from '@/server/services/sections/partition-blocks'
 import type { ContentBlock } from '@/server/payload/collections/Exercises/types'
 
 /**
@@ -300,6 +302,46 @@ function flattenTitleArg(arg: string): string {
 }
 
 /**
+ * Split the inner content of an enumerate on `\item` boundaries and, per
+ * item, parse any nested `\begin{tikzpicture}...\end{tikzpicture}` blocks
+ * into content blocks. Returns an array aligned with the non-empty items
+ * (index 0 = first `\item`, etc.). Empty items produce empty arrays.
+ *
+ * Diagrams inside enumerate items live semantically with the sub-question
+ * they were embedded in — keeping the mapping lets us emit each tikz block
+ * right after its associated `question_free_response`, so `partitionBlocks`
+ * puts the diagram in the same section.
+ */
+function extractTikzPerItem(inner: string): ContentBlock[][] {
+  const parts = inner.split(/\\item(?![a-zA-Z])/).slice(1)
+  const out: ContentBlock[][] = []
+  for (const part of parts) {
+    if (!part.trim()) continue
+    const tikzRe = /\\begin\{tikzpicture\}[\s\S]*?\\end\{tikzpicture\}/g
+    const forThisItem: ContentBlock[] = []
+    let m: RegExpExecArray | null
+    while ((m = tikzRe.exec(part)) !== null) {
+      const raw = m[0]
+      if (hasTikzAxis(raw)) {
+        const b = parseTikzAxis(raw)
+        if (b) forThisItem.push(b)
+      } else if (hasTikzDrawPlot(raw)) {
+        const b = parseTikzDrawPlot(raw)
+        if (b) forThisItem.push(b)
+      } else if (hasTikzAxisGeometry(raw)) {
+        const b = parseTikzAxisGeometry(raw)
+        if (b) forThisItem.push(b)
+      } else if (hasTikzGeometry(raw)) {
+        const b = parseTikzGeometry(raw)
+        if (b) forThisItem.push(b)
+      }
+    }
+    out.push(forThisItem)
+  }
+  return out
+}
+
+/**
  * Detects an itemize/enumerate whose items carry explicit `\item[label]`
  * markers such as `\item[\textbf{א.}]` or `\item[א.]`. These lists are
  * effectively sub-question lists and should be handled by parseEnumerate,
@@ -391,44 +433,70 @@ function processTokens(
         }
       } else if (envName === 'enumerate') {
         const inner = extractInner(token)
-        // Extract any tikzpictures nested inside enumerate items — parseEnumerate
-        // strips them from the item text (it has no way to nest a diagram
-        // inside a `question_free_response` prompt). Emit each as its own
-        // block, then let parseEnumerate produce the sub-question stream from
-        // the tikz-stripped remainder.
-        const tikzBlocks: ContentBlock[] = []
-        const tikzRe = /\\begin\{tikzpicture\}[\s\S]*?\\end\{tikzpicture\}/g
-        let tMatch: RegExpExecArray | null
-        while ((tMatch = tikzRe.exec(inner)) !== null) {
-          const raw = tMatch[0]
-          if (hasTikzAxis(raw)) {
-            const b = parseTikzAxis(raw)
-            if (b) tikzBlocks.push(b)
-          } else if (hasTikzDrawPlot(raw)) {
-            const b = parseTikzDrawPlot(raw)
-            if (b) tikzBlocks.push(b)
-          } else if (hasTikzAxisGeometry(raw)) {
-            const b = parseTikzAxisGeometry(raw)
-            if (b) tikzBlocks.push(b)
-          } else if (hasTikzGeometry(raw)) {
-            const b = parseTikzGeometry(raw)
-            if (b) tikzBlocks.push(b)
-          }
-        }
         const enumBlocks = parseEnumerate(inner)
         if (inSolutionSection && enumBlocks.length > 0) {
           // Solution enumerate — attach as fullSolution to previous question blocks
           attachSolutions(blocks, enumBlocks)
         } else {
-          blocks.push(...enumBlocks)
-          blocks.push(...tikzBlocks)
+          // Extract tikz per-item so each diagram stays associated with the
+          // sub-question it lived inside — partitionBlocks then attaches
+          // trailing non-question blocks to the CURRENT section, so an
+          // in-item diagram lands in the right section instead of the next.
+          //
+          // parseEnumerate can emit MULTIPLE question blocks per parent item
+          // (parent context + nested `(1)/(2)/…` sub-items). Group question
+          // blocks by parent letter (from the `<!--SEC:סעיף X…-->` marker) so
+          // we emit `perItemTikz[parentIdx]` AFTER the parent's last
+          // sub-question, not after some middle sub-question of a different
+          // parent.
+          const perItemTikz = extractTikzPerItem(inner)
+          const questionBlocks = enumBlocks.filter((b) => b.type === 'question_free_response')
+          const nonQuestion = enumBlocks.filter((b) => b.type !== 'question_free_response')
+          blocks.push(...nonQuestion)
+
+          const parentGroups: ContentBlock[][] = []
+          let currentParentLetter: string | null = null
+          for (const qb of questionBlocks) {
+            const rawPrompt = (qb as { prompt?: { value?: string } }).prompt?.value ?? ''
+            const markerMatch = SECTION_TITLE_MARKER_RE.exec(rawPrompt)
+            const label = markerMatch?.[1] ?? ''
+            // Label shape: `סעיף X` or `סעיף X1` — parent letter is the first
+            // Hebrew char after `סעיף `.
+            const parentLetterMatch = /סעיף\s+([֐-׿])/.exec(label)
+            const parentLetter = parentLetterMatch?.[1] ?? null
+            if (parentLetter !== currentParentLetter) {
+              parentGroups.push([])
+              currentParentLetter = parentLetter
+            }
+            parentGroups[parentGroups.length - 1].push(qb)
+          }
+
+          for (let p = 0; p < parentGroups.length; p++) {
+            for (const qb of parentGroups[p]) blocks.push(qb)
+            const tikzForParent = perItemTikz[p] ?? []
+            for (const t of tikzForParent) blocks.push(t)
+          }
         }
       } else if (envName === 'tabular' || envName === 'tabular*') {
         const inner = extractInner(token)
-        // If the tabular contains tikzpictures (e.g. Q6 option graphs), extract those
+        // If the tabular contains tikzpictures (e.g. Q6 option graphs), extract
+        // them into a SINGLE `question_multi_axis` when they're all axis
+        // blocks — the tabular layout is authorial signal that these graphs
+        // belong together as one visual comparison (option A/B/C/D style).
+        // Falls back to individual blocks when the tikzes mix axis/geometry
+        // or produce zero axis blocks.
         if (/\\begin\{tikzpicture\}/.test(inner)) {
           const tikzBlocks = extractTikzFromTabular(inner, blocks, warnings, token.line)
-          blocks.push(...tikzBlocks)
+          const axisOnly =
+            tikzBlocks.length >= 2 && tikzBlocks.every((b) => b.type === 'question_axis')
+          if (axisOnly) {
+            const axes = tikzBlocks.map(
+              (b) => (b as { axis: import('@/infra/contracts/graphics/axis.v1').AxisSpecV1 }).axis,
+            )
+            blocks.push(makeMultiAxisBlock(axes))
+          } else {
+            blocks.push(...tikzBlocks)
+          }
         } else {
           const table = parseTabular(inner)
           if (table) {
@@ -436,31 +504,28 @@ function processTokens(
           }
         }
       } else if (envName === 'tikzpicture') {
+        // Top-level tikzpicture (not inside a `\begin{enumerate}` \item's
+        // body — those are handled by `extractTikzPerItem` and interleaved
+        // with their sub-question blocks). Right-minipage exercise-level
+        // diagrams land here, so flag them exercise-shared for partitionBlocks.
         const raw = token.value ?? ''
+        const emit = (block: ContentBlock | null): void => {
+          if (!block) return
+          markExerciseShared(block)
+          blocks.push(block)
+        }
         if (hasTikzAxis(raw)) {
-          const axisBlock = parseTikzAxis(raw)
-          if (axisBlock) {
-            blocks.push(axisBlock)
-          }
+          emit(parseTikzAxis(raw))
         } else if (hasTikzDrawPlot(raw)) {
           // Raw \draw ... plot (\x, {expr}) — function graphs without \begin{axis}
-          const drawPlotBlock = parseTikzDrawPlot(raw)
-          if (drawPlotBlock) {
-            blocks.push(drawPlotBlock)
-          }
+          emit(parseTikzDrawPlot(raw))
         } else if (hasTikzAxisGeometry(raw)) {
           // Geometric shapes drawn in a manual axis coordinate system —
           // `\draw[->]` axes + `\draw (X,Y) -- (X,Y) -- cycle` shapes.
           // Emit as an axis block so the coordinate system is preserved.
-          const axisGeoBlock = parseTikzAxisGeometry(raw)
-          if (axisGeoBlock) {
-            blocks.push(axisGeoBlock)
-          }
+          emit(parseTikzAxisGeometry(raw))
         } else if (hasTikzGeometry(raw)) {
-          const geoBlock = parseTikzGeometry(raw)
-          if (geoBlock) {
-            blocks.push(geoBlock)
-          }
+          emit(parseTikzGeometry(raw))
         }
         // Unrecognized tikzpicture → silently skip (can't render TikZ client-side)
       } else if (envName === 'choices') {
@@ -588,7 +653,12 @@ function processTokens(
       // Other commands silently ignored
     } else if (token.type === 'text') {
       const text = cleanText(token.value)
-      if (text && text.length > 1 && !isLatexNoise(text)) {
+      // Allow single-char text if it's meaningful punctuation. The tokenizer
+      // splits `$math$, \quad $math$` into text `, `, command `\quad`, text ` `
+      // — cleanText collapses to `,` which is length 1. `isLatexNoise` still
+      // filters orphan braces / setlength fragments.
+      const isMeaningful = /[.,;:!?)\]]/.test(text)
+      if (text && (text.length > 1 || isMeaningful) && !isLatexNoise(text)) {
         blocks.push(makeRichTextBlock(text))
       }
     }
@@ -732,6 +802,15 @@ export function parseLatexToBlocks(latex: string): ParseResult {
     // the markdown parser).
     .replace(/\\\[([\s\S]*?)\\\]/g, (_, body: string) => `$$${body.trim().replace(/\s+/g, ' ')}$$`)
 
+  // Peel `{\color{name} ...}` / `{\Large ...}` group wrappers and
+  // `\textcolor{name}{...}` at the SOURCE level, before tokenization.
+  // The tokenizer splits `{\color{winered}$f(x)$}` into 4 tokens (text `{`,
+  // command `\color`, math `$f(x)$`, text `}`), so `stripColorAndSizing`
+  // applied per-token can't see the group as a unit — the outer braces
+  // leak into rich_text as literal `{ $f(x)$ }`. Stripping here on the
+  // whole source keeps the group intact.
+  source = stripColorAndSizing(source)
+
   const sanitized = sanitizeLatex(source)
   if (!sanitized.safe) {
     const violations = sanitized.violations.map((v) => v.command).join(', ')
@@ -758,97 +837,52 @@ export function parseLatexToBlocks(latex: string): ParseResult {
   // exercise that has a diagram treats the diagram as its primary block,
   // with the intro paragraph rendered inside the block's text area rather
   // than as a separate rich_text sibling above it.
-  const compacted = absorbIntroIntoGraphicsPrompt(merged)
+  const compacted = merged
+
+  // Colors on graphs/points come from the TikZ source when present
+  // (`color=winered`, `color=black`, … resolved via `resolveColor` in
+  // tikz-axis-parser). The AUTHOR only writes `color=` when they want a
+  // specific hue — bare `\draw`/`\filldraw` in the source means "black" in
+  // LaTeX, but the block schema's default renders as blue. Set an explicit
+  // black on every uncolored element so uncoloured LaTeX renders as black in
+  // the admin, matching what the PDF shows.
+  for (const b of compacted) defaultBlackOnGraphicsElements(b)
 
   return { blocks: compacted, warnings, errors: [] }
 }
 
-/**
- * Types whose `prompt: InlineRichText` slot renders as the block's own
- * intro/text area. When an exercise has one of these, we hoist the
- * exercise's intro rich_text into that prompt so the exercise displays as
- * "diagram + text" rather than "text block, then diagram block".
- */
-const GRAPHICS_BLOCK_TYPES = new Set(['question_axis', 'question_geometry', 'question_multi_axis'])
+const DEFAULT_BLACK = '#000000'
+type ColoredElement = { color?: string }
 
-/**
- * Walk the block list per-exercise (split on `## תרגיל N` / `## שאלה N`
- * headings). In each segment, if there's a graphics block, take every
- * standalone `rich_text` in that segment (except the heading) and merge
- * their text into the graphics block's `prompt.value`, then drop them.
- * Sub-question blocks (question_free_response, question_select, ...) are
- * left untouched.
- */
-function absorbIntroIntoGraphicsPrompt(blocks: ContentBlock[]): ContentBlock[] {
-  const isHeading = (b: ContentBlock): boolean =>
-    b.type === 'rich_text' && /^##\s+(?:תרגיל|שאלה)\s+\d/.test(b.value)
+function applyDefaultColor(el: ColoredElement): void {
+  if (!el.color) el.color = DEFAULT_BLACK
+}
 
-  // Split into segments delimited by heading rich_texts.
-  const segments: ContentBlock[][] = []
-  let current: ContentBlock[] = []
-  for (const b of blocks) {
-    if (isHeading(b)) {
-      if (current.length > 0) segments.push(current)
-      current = [b]
-    } else {
-      current.push(b)
+function defaultBlackOnGraphicsElements(block: ContentBlock): void {
+  if (block.type === 'question_axis') {
+    const axis = (block as { axis?: { elements?: Record<string, unknown[]> } }).axis
+    const elements = axis?.elements
+    if (!elements) return
+    for (const key of ['points', 'graphs', 'lineBetweenPoints', 'geometricLoci'] as const) {
+      const arr = elements[key] as ColoredElement[] | undefined
+      if (Array.isArray(arr)) for (const el of arr) applyDefaultColor(el)
     }
+  } else if (block.type === 'question_geometry') {
+    const geometry = (block as { geometry?: { elements?: Record<string, unknown[]> } }).geometry
+    const elements = geometry?.elements
+    if (!elements) return
+    for (const key of ['points', 'lines', 'circles', 'angles', 'vectors', 'areas'] as const) {
+      const arr = elements[key] as ColoredElement[] | undefined
+      if (Array.isArray(arr)) for (const el of arr) applyDefaultColor(el)
+    }
+  } else if (block.type === 'question_multi_axis') {
+    const graphs = (
+      block as { graphs?: Array<{ axis?: { elements?: Record<string, unknown[]> } }> }
+    ).graphs
+    if (!Array.isArray(graphs)) return
+    for (const g of graphs)
+      defaultBlackOnGraphicsElements({ type: 'question_axis', ...g } as ContentBlock)
   }
-  if (current.length > 0) segments.push(current)
-
-  const out: ContentBlock[] = []
-  for (const seg of segments) {
-    const graphicsIdx = seg.findIndex((b) => GRAPHICS_BLOCK_TYPES.has(b.type))
-    if (graphicsIdx === -1) {
-      out.push(...seg)
-      continue
-    }
-    // Rich texts to absorb: standalone rich_text in this segment, excluding
-    // the leading heading. Keep the heading (Stage 2 uses it as the exercise
-    // title boundary) and preserve non-rich_text blocks (sub-questions).
-    const introParts: string[] = []
-    const keep: ContentBlock[] = []
-    for (const b of seg) {
-      if (b.type === 'rich_text' && !isHeading(b)) {
-        const v = b.value.trim()
-        if (v) introParts.push(v)
-      } else {
-        keep.push(b)
-      }
-    }
-    const introText = introParts.join('\n\n')
-    // Merge intro into the graphics block's prompt (first graphics block in segment).
-    const graphics = keep.find((b) => GRAPHICS_BLOCK_TYPES.has(b.type)) as ContentBlock & {
-      prompt?: { type: 'rich_text'; format: 'md-math-v1'; value: string; mediaIds: string[] }
-    }
-    if (graphics && introText) {
-      const existing = graphics.prompt?.value?.trim() ?? ''
-      const merged = existing ? `${introText}\n\n${existing}` : introText
-      graphics.prompt = {
-        type: 'rich_text',
-        format: 'md-math-v1',
-        value: merged,
-        mediaIds: [],
-      }
-    }
-
-    // Hoist the graphics block to the front of the segment (right after the
-    // heading, BEFORE any question block). partitionBlocks() sends the
-    // pre-first-question region to `exerciseSharedBlocks`, so the diagram
-    // ends up at exercise level instead of tucked inside a section.
-    if (graphics) {
-      const heading = keep[0] && isHeading(keep[0]) ? keep[0] : null
-      const others = keep.filter((b) => b !== graphics && b !== heading)
-      const ordered: ContentBlock[] = []
-      if (heading) ordered.push(heading)
-      ordered.push(graphics)
-      ordered.push(...others)
-      out.push(...ordered)
-    } else {
-      out.push(...keep)
-    }
-  }
-  return out
 }
 
 /**

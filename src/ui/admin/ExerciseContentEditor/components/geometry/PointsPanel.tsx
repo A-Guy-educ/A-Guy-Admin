@@ -2,12 +2,10 @@
 
 import React from 'react'
 import type { GeometrySpecV1 } from '@/infra/contracts/graphics/geometry.v1'
-import {
-  cssVarToHex,
-  getCanvasColorPalette,
-  getDefaultCanvasElementColor,
-} from '@/infra/contracts/graphics/textColors'
+import { getDefaultCanvasElementColor } from '@/infra/contracts/graphics/textColors'
 import { Plus, Trash2 } from 'lucide-react'
+import { ColorSwatchPicker } from '../shared/ColorSwatchPicker'
+import { CompassPositionPicker } from '../shared/CompassPositionPicker'
 
 type GeoPoint = GeometrySpecV1['elements']['points'][number]
 
@@ -18,18 +16,6 @@ interface PointsPanelProps {
 
 const DEFAULT_POINT_SIZE = 4
 const DEFAULT_POINT_POSITION = 'r' as const
-
-const COMPASS_CELLS = [
-  { pos: 'tl', arrow: '↖' },
-  { pos: 't', arrow: '↑' },
-  { pos: 'tr', arrow: '↗' },
-  { pos: 'l', arrow: '←' },
-  { pos: null, arrow: '' },
-  { pos: 'r', arrow: '→' },
-  { pos: 'bl', arrow: '↙' },
-  { pos: 'b', arrow: '↓' },
-  { pos: 'br', arrow: '↘' },
-] as const
 
 const nextPointName = (points: GeoPoint[]): string => {
   const names = new Set(points.map((p) => p.name))
@@ -97,18 +83,12 @@ export const PointsPanel: React.FC<PointsPanelProps> = ({ points, onChange }) =>
             </div>
             <div className="panel-field">
               <span className="panel-field-label">Color</span>
-              <div className="color-swatches-row">
-                {getCanvasColorPalette().map((colorOption) => (
-                  <button
-                    key={colorOption.hex}
-                    type="button"
-                    className={`color-swatch ${point.color === colorOption.hex || (!point.color && colorOption.hex === getDefaultCanvasElementColor()) ? 'color-swatch--selected' : ''}`}
-                    style={{ backgroundColor: colorOption.hex }}
-                    title={colorOption.label}
-                    onClick={() => handleUpdate(index, { color: colorOption.hex })}
-                  />
-                ))}
-              </div>
+              <ColorSwatchPicker
+                value={point.color}
+                onChange={(hex) => handleUpdate(index, { color: hex })}
+                defaultHex={getDefaultCanvasElementColor()}
+                label="Point color"
+              />
             </div>
             <div className="panel-field">
               <span className="panel-field-label">Size (1-5)</span>
@@ -129,49 +109,15 @@ export const PointsPanel: React.FC<PointsPanelProps> = ({ points, onChange }) =>
             </div>
             <div className="panel-field">
               <span className="panel-field-label">Label</span>
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(3, 20px)',
-                  gap: 2,
-                }}
-              >
-                {COMPASS_CELLS.map((cell, i) =>
-                  cell.pos ? (
-                    <button
-                      key={cell.pos}
-                      type="button"
-                      title={cell.pos}
-                      onClick={() =>
-                        handleUpdate(index, {
-                          position: cell.pos as GeoPoint['position'],
-                        })
-                      }
-                      style={{
-                        width: 20,
-                        height: 20,
-                        padding: 0,
-                        fontSize: 11,
-                        border: `1px solid ${cssVarToHex('--border')}`,
-                        borderRadius: 3,
-                        cursor: 'pointer',
-                        background:
-                          (point.position ?? DEFAULT_POINT_POSITION) === cell.pos
-                            ? cssVarToHex('--primary')
-                            : cssVarToHex('--muted'),
-                        color:
-                          (point.position ?? DEFAULT_POINT_POSITION) === cell.pos
-                            ? cssVarToHex('--primary-foreground')
-                            : cssVarToHex('--foreground'),
-                      }}
-                    >
-                      {cell.arrow}
-                    </button>
-                  ) : (
-                    <span key={i} style={{ width: 20, height: 20 }} />
-                  ),
-                )}
-              </div>
+              <CompassPositionPicker
+                value={
+                  point.position && point.position !== 'm' && point.position !== 'middle'
+                    ? point.position
+                    : undefined
+                }
+                defaultValue={DEFAULT_POINT_POSITION}
+                onChange={(pos) => handleUpdate(index, { position: pos })}
+              />
             </div>
             <label className="panel-checkbox-label" style={{ fontSize: '0.75rem' }}>
               <input

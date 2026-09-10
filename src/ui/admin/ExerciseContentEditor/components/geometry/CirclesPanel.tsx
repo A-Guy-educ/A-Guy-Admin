@@ -2,7 +2,9 @@
 
 import React from 'react'
 import type { GeometrySpecV1 } from '@/infra/contracts/graphics/geometry.v1'
+import { getDefaultCanvasElementColor } from '@/infra/contracts/graphics/textColors'
 import { Plus, Trash2 } from 'lucide-react'
+import { ColorSwatchPicker } from '../shared/ColorSwatchPicker'
 
 type GeoCircle = GeometrySpecV1['elements']['circles'][number]
 type GeoPoint = GeometrySpecV1['elements']['points'][number]
@@ -91,6 +93,15 @@ export const CirclesPanel: React.FC<CirclesPanelProps> = ({ circles, points, onC
                 <option value="solid">Solid</option>
                 <option value="dashed">Dashed</option>
               </select>
+            </div>
+            <div className="panel-field">
+              <span className="panel-field-label">Color</span>
+              <ColorSwatchPicker
+                value={circle.color}
+                onChange={(hex) => handleUpdate(index, { color: hex })}
+                defaultHex={getDefaultCanvasElementColor()}
+                label="Circle color"
+              />
             </div>
             <button
               type="button"

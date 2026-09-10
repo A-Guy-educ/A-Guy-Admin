@@ -38,6 +38,100 @@ import type {
 } from '@/server/payload/collections/Exercises/types'
 import { emptyPlaceholder, partitionBlocks } from '@/server/services/sections/partition-blocks'
 
+/**
+ * Detects a solution LatexBlock. `createExercisesFromExtraction` creates TWO
+ * LatexBlocks per exercise: the exercise content, then the solution content
+ * (when the source file has a `\section*{פתרון תרגיל N}` block). Without this
+ * detection the solution's parsed rich_text blocks land as trailing content
+ * of the LAST section, so students see "solutions at the end of q1".
+ */
+function isSolutionLatex(raw: string): boolean {
+  return /^\s*\\(?:section|subsection)\*?\{\s*(?:פתרון|פתרונות|תשובה|תשובות)\s+(?:תרגיל|שאלה)\s+\d+/.test(
+    raw,
+  )
+}
+
+/**
+ * Split solution raw LaTeX by `\textbf{סעיף X':}` labels (or `\textbf{סעיף X:}`
+ * without the geresh). Returns a map from label → body text. Body text is the
+ * raw slice between one label and the next — the caller wraps it in a
+ * rich_text block after markdown-ish cleanup.
+ */
+function splitSolutionByLabel(raw: string): Map<string, string> {
+  const labels: Array<{ label: string; startIdx: number; endIdx: number }> = []
+  const labelRe = /\\textbf\{\s*(סעיף\s+[֐-׿](?:\d+)?)'?\s*[:.]?\s*\}/g
+  let m: RegExpExecArray | null
+  while ((m = labelRe.exec(raw)) !== null) {
+    labels.push({
+      label: m[1].replace(/\s+/g, ' ').trim(),
+      startIdx: m.index,
+      endIdx: m.index + m[0].length,
+    })
+  }
+  const map = new Map<string, string>()
+  for (let i = 0; i < labels.length; i++) {
+    const bodyStart = labels[i].endIdx
+    const bodyEnd = i + 1 < labels.length ? labels[i + 1].startIdx : raw.length
+    map.set(labels[i].label, raw.slice(bodyStart, bodyEnd).trim())
+  }
+  return map
+}
+
+/**
+ * Strip authoring noise from a solution body so it renders cleanly inside the
+ * question's `fullSolution` slot. Keeps math intact, drops `\noindent`, `\\`,
+ * `\textbf` wrappers (converted to `**bold**`), color wrappers.
+ */
+function cleanSolutionBody(body: string): string {
+  return body
+    .replace(/^\s*\\noindent\s*/gm, '')
+    .replace(/\{\s*\\color\{[^}]*\}\s*([\s\S]*?)\}/g, '$1')
+    .replace(/\\textcolor\{[^}]*\}\{([^{}]*)\}/g, '$1')
+    .replace(/\\color\{[^}]*\}\s*/g, '')
+    .replace(/\\textbf\{([^{}]*)\}/g, '**$1**')
+    .replace(/\\textit\{([^{}]*)\}/g, '*$1*')
+    .replace(/\\\\\[[\d.]+\s*(?:cm|mm|pt|em|ex)\]/g, ' ')
+    .replace(/\\\\/g, ' ')
+    .replace(/\\vspace\{[^}]*\}/g, ' ')
+    .replace(/\\hspace\*?\{[^}]*\}/g, ' ')
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n\s*\n/g, '\n\n')
+    .trim()
+}
+
+/**
+ * Attach solution bodies to question blocks via their `<!--SEC:label-->`
+ * markers (set by parseEnumerate). Returns the number of solutions attached.
+ * Mutates the question blocks' `fullSolution` field in-place.
+ */
+function attachSolutionsBySectionLabel(
+  blocks: ContentBlock[],
+  solutionMap: Map<string, string>,
+): number {
+  let attached = 0
+  const sectionMarkerRe = /^<!--SEC:([^>]+?)-->/
+  for (const block of blocks) {
+    if (block.type !== 'question_free_response') continue
+    const q = block as ContentBlock & {
+      prompt?: { value?: string }
+      fullSolution?: { type: 'rich_text'; format: string; value: string; mediaIds: string[] }
+    }
+    const promptValue = q.prompt?.value ?? ''
+    const marker = sectionMarkerRe.exec(promptValue)
+    if (!marker) continue
+    const body = solutionMap.get(marker[1].trim())
+    if (!body) continue
+    q.fullSolution = {
+      type: 'rich_text',
+      format: 'md-math-v1',
+      value: cleanSolutionBody(body),
+      mediaIds: [],
+    }
+    attached++
+  }
+  return attached
+}
+
 type ImportMethod = 'script' | 'ai_fallback'
 
 interface ConversionOutcome {
@@ -139,10 +233,30 @@ export async function convertLatexBlockOnExercise(
   }
   const sourceLatexChunks: string[] = []
 
-  // Iterate right-to-left so splice indices stay valid as we mutate nextBlocks.
-  for (let i = latexBlockIndices.length - 1; i >= 0; i--) {
-    const idx = latexBlockIndices[i]
-    const latexBlock = blocks[idx] as LatexBlock
+  // Split LatexBlocks into exercise-content vs solution. Exercise content is
+  // parsed first (fills `nextBlocks` with question_free_response blocks) so
+  // the solution pass can attach to them via `<!--SEC:label-->` markers.
+  const solutionBlockIds = new Set<string>()
+  for (const idx of latexBlockIndices) {
+    const lb = blocks[idx] as LatexBlock
+    if (isSolutionLatex(lb.latex)) solutionBlockIds.add(lb.id)
+  }
+
+  const primaryLatexBlocks = latexBlockIndices
+    .map((idx) => ({ idx, block: blocks[idx] as LatexBlock }))
+    .filter((entry) => !solutionBlockIds.has(entry.block.id))
+  const solutionLatexBlocks = latexBlockIndices
+    .map((idx) => ({ idx, block: blocks[idx] as LatexBlock }))
+    .filter((entry) => solutionBlockIds.has(entry.block.id))
+
+  // Iterate right-to-left over PRIMARY blocks so splice indices stay valid.
+  for (let i = primaryLatexBlocks.length - 1; i >= 0; i--) {
+    const { block: latexBlock } = primaryLatexBlocks[i]
+    // Look up the CURRENT position of this block in nextBlocks (it may have
+    // shifted from splices on other primary blocks — solution blocks might
+    // still sit between primaries).
+    const idx = nextBlocks.findIndex((b) => b.id === latexBlock.id)
+    if (idx === -1) continue
 
     // --- Attempt 1: script parser ---
     const result = parseLatexToBlocks(latexBlock.latex)
@@ -206,6 +320,30 @@ export async function convertLatexBlockOnExercise(
         'AI fallback also failed — leaving block untouched',
       )
     }
+  }
+
+  // Second pass: solution LatexBlocks. Attach `\textbf{סעיף X':}`-labeled
+  // bodies to their matching question_free_response blocks (populated by the
+  // primary pass above) via the `<!--SEC:label-->` marker set by
+  // parseEnumerate. The raw LatexBlock is then removed — leaving it in would
+  // leak the solution as trailing rich_text on the last section.
+  //
+  // Iterate right-to-left; each iteration re-derives the current index via
+  // block ID to survive splices from the primary pass.
+  for (let i = solutionLatexBlocks.length - 1; i >= 0; i--) {
+    const { block: latexBlock } = solutionLatexBlocks[i]
+    const idx = nextBlocks.findIndex((b) => b.id === latexBlock.id)
+    if (idx === -1) continue
+
+    const solutionMap = splitSolutionByLabel(latexBlock.latex)
+    const attached = attachSolutionsBySectionLabel(nextBlocks, solutionMap)
+    outcome.convertedBlockIds.push(latexBlock.id)
+    sourceLatexChunks.push(latexBlock.latex)
+    nextBlocks.splice(idx, 1)
+    reqLogger.info(
+      { blockId: latexBlock.id, labels: solutionMap.size, attached },
+      'Solution LaTeX block: attached to questions via SEC markers',
+    )
   }
 
   if (outcome.convertedBlockIds.length === 0) {

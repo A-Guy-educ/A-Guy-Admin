@@ -6,6 +6,78 @@
 @import 'katex/dist/katex.min.css';
 
 // ============================================
+// Foldable Content Hierarchy sidebar
+// Used only in lessons / exercises / sections edit views where the
+// sidebar carries the ContentNavigation panel.
+// ============================================
+.document-fields.document-fields--content-sidebar-collapsed {
+  .document-fields__sidebar-wrap {
+    display: none;
+  }
+
+  &.document-fields--has-sidebar {
+    --main-width: 100%;
+    --main-border: none;
+    --main-field-margin: initial;
+  }
+}
+
+.content-sidebar-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--theme-elevation-200);
+  border-radius: 4px;
+  background: var(--theme-elevation-50);
+  color: var(--theme-elevation-700);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.2;
+  cursor: pointer;
+  transition:
+    background-color 150ms,
+    color 150ms,
+    border-color 150ms;
+
+  &:hover {
+    background: var(--theme-elevation-100);
+    color: var(--theme-elevation-900);
+    border-color: var(--theme-elevation-300);
+  }
+
+  &--collapse {
+    margin-bottom: 0.5rem;
+  }
+
+  &--expand {
+    position: fixed;
+    top: calc(var(--doc-controls-height, 60px) + 12px);
+    z-index: 90;
+    width: 28px;
+    height: 40px;
+    padding: 0;
+    justify-content: center;
+    font-size: 18px;
+    line-height: 1;
+    background: var(--theme-elevation-0);
+    box-shadow: 0 2px 6px rgb(0 0 0 / 0.12);
+
+    [dir='ltr'] & {
+      right: 0;
+      border-top-right-radius: 0;
+      border-bottom-right-radius: 0;
+    }
+
+    [dir='rtl'] & {
+      left: 0;
+      border-top-left-radius: 0;
+      border-bottom-left-radius: 0;
+    }
+  }
+}
+
+// ============================================
 // Geometry Editor - Design system CSS variables for geometry canvas
 // ============================================
 // The geometry canvas reads --foreground, --text-highlight-*, etc. from :root.
@@ -25,6 +97,7 @@
   --text-highlight-6: 271 91% 65%; // Purple
   --text-highlight-7: 330 81% 60%; // Pink
   --text-highlight-8: 220 9% 46%; // Gray
+  --text-highlight-9: 353 40% 33%; // Wine red
 }
 
 // ============================================

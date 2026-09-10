@@ -1,5 +1,22 @@
 # Changelog
 
+## v0.43.0 — 2026-09-10
+
+### Features
+- Foldable sidebar on lesson, exercise, and section edit views (#441)
+- Add graph, geometry, matching, and media entries to the studio blocks menu (#439)
+- TikZ parser: tick labels, smooth curves, label positioning, and multi-axis blocks (#438)
+- Studio graphics: 1:1 proportion default, uniform color palette, point size and label controls (#440)
+
+### Bug Fixes
+- Stack the geometry toolbar above the canvas instead of beside it (#445)
+- Re-init JSXGraph on size change; drop misleading `GeometryCanvas` prop (#444)
+- Restore the 45/55 studio block layout so the canvas actually fills its column (#444)
+- Pin the graph editor canvas so proportion changes no longer reshape the left panels (#442)
+- Studio graphics polish: worksheet aspect, `question_geometry` default, stroke/label cleanups (#440)
+- Unblock proportion edits, label toggle, and legacy-color recovery in studio (#440)
+- Apply graph point size/color on re-sync; unblock typing sub-1 proportion values (#440)
+
 ## v0.42.0 — 2026-09-08
 
 ### Bug Fixes
@@ -2019,6 +2036,17 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- chore: release v0.43.0 ([#446](https://github.com/A-Guy-educ/A-Guy-Admin/pull/446)) — @aguyshayb
+- fix(studio): stack geometry toolbar above canvas ([#445](https://github.com/A-Guy-educ/A-Guy-Admin/pull/445)) — @aguyshayb
+- fix(studio): 45/55 block layout so canvas actually fills its column ([#444](https://github.com/A-Guy-educ/A-Guy-Admin/pull/444)) — @aguyshayb
+- fix(studio): pin graph editor canvas so proportion doesn't reshape left panels ([#442](https://github.com/A-Guy-educ/A-Guy-Admin/pull/442)) — @aguyshayb
+- feat(admin): Foldable Content Hierarchy sidebar ([#441](https://github.com/A-Guy-educ/A-Guy-Admin/pull/441)) — @aguyshayb
+- feat(studio): 1:1 proportion, uniform color palette, point size/label controls ([#440](https://github.com/A-Guy-educ/A-Guy-Admin/pull/440)) — @aguyshayb
+- feat(studio): Add graph, geometry, matching and media to blocks menu ([#439](https://github.com/A-Guy-educ/A-Guy-Admin/pull/439)) — @aguyshayb
+- feat(latex-parser): TikZ tick labels, smooth curves, label positions, multi-axis blocks ([#438](https://github.com/A-Guy-educ/A-Guy-Admin/pull/438)) — @aguyshayb
+## [v0.42.0] - 2026-09-08
+
+- promote: dev -> main (v0.42.0) ([#435](https://github.com/A-Guy-educ/A-Guy-Admin/pull/435)) — @aguyshayb
 - chore: release v0.42.0 ([#434](https://github.com/A-Guy-educ/A-Guy-Admin/pull/434)) — @aguyshayb
 - feat: Follow-up fixes for LaTeX-to-blocks importer ([#433](https://github.com/A-Guy-educ/A-Guy-Admin/pull/433)) — @aguyshayb
 ## [v0.41.0] - 2026-09-08

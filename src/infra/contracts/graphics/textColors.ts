@@ -33,6 +33,7 @@ const CSS_VAR_FALLBACKS: Record<string, string> = {
   '--text-highlight-6': '#9333ea',
   '--text-highlight-7': '#db2777',
   '--text-highlight-8': '#6b7280',
+  '--text-highlight-9': '#722f37',
   '--card': '#ffffff',
   '--muted': '#f3f4f6',
   '--border': '#e5e7eb',
@@ -59,6 +60,24 @@ const PALETTE_VARS = [
   { label: 'Blue', cssVar: '--text-highlight-5' },
   { label: 'Purple', cssVar: '--text-highlight-6' },
   { label: 'Pink', cssVar: '--text-highlight-7' },
+] as const
+
+/**
+ * 8-color palette used across every block color picker (points, lines,
+ * circles, shapes, vectors, angles, graphs, loci, paint). Kept intentionally
+ * short so authors get consistent, on-theme choices everywhere. If a color
+ * needs to be added or replaced, edit this list — the CSS variables live
+ * in `src/app/(payload)/custom.scss`.
+ */
+const BLOCK_PALETTE_VARS = [
+  { label: 'Black', cssVar: '--foreground' },
+  { label: 'Red', cssVar: '--text-highlight-1' },
+  { label: 'Wine red', cssVar: '--text-highlight-9' },
+  { label: 'Orange', cssVar: '--text-highlight-2' },
+  { label: 'Yellow', cssVar: '--text-highlight-3' },
+  { label: 'Green', cssVar: '--text-highlight-4' },
+  { label: 'Blue', cssVar: '--text-highlight-5' },
+  { label: 'Purple', cssVar: '--text-highlight-6' },
 ] as const
 
 /** Color palette for text/point elements, resolved from CSS theme variables. */
@@ -93,9 +112,12 @@ export function getDefaultCanvasElementColor(): string {
  * Use this in the Payload admin panel where :root CSS variables belong to the
  * admin theme (e.g. --foreground is white in dark mode) and don't match the
  * geometry canvas's white background.
+ *
+ * This is the shared 8-color palette used by every block color picker
+ * (geometry + graph). See BLOCK_PALETTE_VARS above for the list.
  */
 export function getCanvasColorPalette(): ReadonlyArray<{ label: string; hex: string }> {
-  return PALETTE_VARS.map(({ label, cssVar }) => ({
+  return BLOCK_PALETTE_VARS.map(({ label, cssVar }) => ({
     label,
     hex: CSS_VAR_FALLBACKS[cssVar] ?? '#000000',
   }))

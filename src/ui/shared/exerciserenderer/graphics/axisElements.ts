@@ -8,6 +8,24 @@ type GraphSpec = AxisSpecV1['elements']['graphs'][number]
 type PointSpec = AxisSpecV1['elements']['points'][number]
 type LocusSpec = NonNullable<AxisSpecV1['elements']['geometricLoci']>[number]
 
+/** Map a compass label position to a JSXGraph pixel offset. */
+function mapLabelOffset(pos?: string): [number, number] {
+  const d = 14
+  const map: Record<string, [number, number]> = {
+    tl: [-d, d],
+    t: [0, d],
+    tr: [d, d],
+    l: [-d, 0],
+    r: [d, 0],
+    bl: [-d, -d],
+    b: [0, -d],
+    br: [d, -d],
+    m: [0, 0],
+    middle: [0, 0],
+  }
+  return map[pos || 'tr'] || [d, d]
+}
+
 function renderGraphs(
   board: JXG.Board,
   graphs: GraphSpec[],
@@ -44,8 +62,13 @@ function renderAxisPoints(board: JXG.Board, points: PointSpec[]) {
       const attrs: Record<string, unknown> = {
         name: p.label || '',
         fixed: true,
-        size: 4,
+        size: p.size ?? 4,
         withLabel: !!p.label,
+        label: {
+          offset: mapLabelOffset(p.labelPosition),
+          fontSize: 12,
+          fontFamily: 'Times New Roman',
+        },
       }
       if (p.color) {
         attrs.strokeColor = p.color
@@ -112,6 +135,7 @@ function renderLineBetweenPoints(
       dash: line.style === 'dashed' ? 2 : 0,
       straightFirst: false,
       straightLast: false,
+      lastArrow: line.arrow ? { type: 1, size: 6 } : false,
     }
     if (line.color) attrs.strokeColor = line.color
     board.create(
@@ -279,6 +303,36 @@ function renderGeometricLoci(board: JXG.Board, loci: LocusSpec[]) {
 }
 
 /**
+ * Render smooth curves through a list of waypoints. Uses JSXGraph's cardinal
+ * spline via a parametric curve — the LaTeX side `\draw plot[smooth,
+ * tension=0.7] coordinates {…}` describes an f(x) sketch by its shape rather
+ * than an explicit function, so we interpolate through the waypoints instead
+ * of segment-joining them.
+ */
+function renderSmoothCurves(
+  board: JXG.Board,
+  curves: NonNullable<AxisSpecV1['elements']['smoothCurves']>,
+): void {
+  for (const curve of curves) {
+    if (curve.points.length < 2) continue
+    const xs = curve.points.map((p) => p.x)
+    const ys = curve.points.map((p) => p.y)
+    const attrs: Record<string, unknown> = {
+      strokeWidth: curve.thickness,
+      dash: curve.style === 'dashed' ? 2 : curve.style === 'dotted' ? 1 : 0,
+    }
+    if (curve.color) attrs.strokeColor = curve.color
+    try {
+      // `spline` interpolates a Catmull-Rom-like curve through all waypoints —
+      // matches TikZ `smooth` with default tension well enough for sketches.
+      board.create('spline', [xs, ys], attrs)
+    } catch (err) {
+      console.error('[AxisRenderer] spline failed:', err, curve)
+    }
+  }
+}
+
+/**
  * Render all axis elements from an AxisSpecV1 onto a JSXGraph board.
  */
 export function renderAxisSpec(board: JXG.Board, spec: AxisSpecV1): void {
@@ -296,5 +350,8 @@ export function renderAxisSpec(board: JXG.Board, spec: AxisSpecV1): void {
   }
   if (spec.elements.geometricLoci?.length) {
     renderGeometricLoci(board, spec.elements.geometricLoci)
+  }
+  if (spec.elements.smoothCurves?.length) {
+    renderSmoothCurves(board, spec.elements.smoothCurves)
   }
 }

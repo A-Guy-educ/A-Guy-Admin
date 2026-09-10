@@ -213,7 +213,14 @@ export async function createExercisesFromExtraction(
     const blocks = [makeLatexBlock(exercise.latexContent)]
 
     if (exercise.solution) {
-      blocks.push(makeLatexBlock(exercise.solution))
+      // Re-prepend a `\section*{פתרון תרגיל N}` header so downstream Stage 3
+      // (convert-latex-block) can detect this as a solution block and attach
+      // its `\textbf{סעיף X':}` bodies to the matching questions via SEC
+      // markers. Without the header the block looks like ordinary content and
+      // the solution text leaks in as trailing rich_text on the last section.
+      blocks.push(
+        makeLatexBlock(`\\section*{פתרון תרגיל ${exercise.number}}\n${exercise.solution}`),
+      )
     }
 
     try {

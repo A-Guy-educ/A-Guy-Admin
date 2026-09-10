@@ -2,7 +2,9 @@
 
 import React from 'react'
 import type { AxisSpecV1 } from '@/infra/contracts/graphics/axis.v1'
+import { getDefaultCanvasElementColor } from '@/infra/contracts/graphics/textColors'
 import { Plus, Trash2 } from 'lucide-react'
+import { ColorSwatchPicker } from '../shared/ColorSwatchPicker'
 
 type Locus = NonNullable<AxisSpecV1['elements']['geometricLoci']>[number]
 
@@ -69,11 +71,11 @@ export const LociPanel: React.FC<LociPanelProps> = ({ loci, onChange }) => {
             </div>
             <div className="panel-field">
               <span className="panel-field-label">Color</span>
-              <input
-                type="color"
-                value={locus.color || '#3366cc'}
-                style={{ width: 28, height: 24 }}
-                onChange={(e) => handleUpdate(index, { color: e.target.value })}
+              <ColorSwatchPicker
+                value={locus.color}
+                onChange={(hex) => handleUpdate(index, { color: hex })}
+                defaultHex={getDefaultCanvasElementColor()}
+                label="Locus color"
               />
             </div>
             <button type="button" className="panel-remove-btn" onClick={() => handleRemove(index)}>
