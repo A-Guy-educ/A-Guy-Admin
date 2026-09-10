@@ -67,6 +67,12 @@ export const AxisCanvas: React.FC<AxisCanvasProps> = ({ id, axis, onPointMoved }
           ? (existing as unknown as { _labelKey?: string })._labelKey
           : undefined
 
+        // Holes render as an unfilled ring — thicker stroke makes the ring
+        // visible. Explicitly set strokeWidth on both paths so switching a
+        // hole back to a plain point actually resets it (previously the
+        // hole's strokeWidth: 2 lingered after the type change).
+        const strokeWidth = point.type === 'hole' ? 2 : 1
+
         if (existing && existing.moveTo && prevKey === labelKey) {
           existing.moveTo([point.x, point.y])
           // Re-apply everything else the author might have changed — size,
@@ -79,6 +85,7 @@ export const AxisCanvas: React.FC<AxisCanvasProps> = ({ id, axis, onPointMoved }
             color: point.color || '#3366cc',
             fillColor: point.type === 'hole' ? '#ffffff' : point.color || '#3366cc',
             strokeColor: point.color || '#3366cc',
+            strokeWidth,
             withLabel: !!point.label,
             visible: point.type !== 'floating_text',
           })
@@ -94,6 +101,7 @@ export const AxisCanvas: React.FC<AxisCanvasProps> = ({ id, axis, onPointMoved }
             color: point.color || '#3366cc',
             fillColor: point.type === 'hole' ? '#ffffff' : point.color || '#3366cc',
             strokeColor: point.color || '#3366cc',
+            strokeWidth,
             fixed: false,
             withLabel: !!point.label,
             visible: point.type !== 'floating_text',

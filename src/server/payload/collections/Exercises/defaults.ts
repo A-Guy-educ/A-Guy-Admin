@@ -309,13 +309,17 @@ export const ExerciseBlockDefaults = {
     prompt: DEFAULT_HINT_SOLUTION(),
     layout: 'textRight' as const,
     geometry: {
+      // Square 500×500 canvas so 1 unit x is the same visual length as 1 unit
+      // y — circles come out circular, right angles look right. Matches the
+      // intro geometry default (IntroGeometryField). Authors can widen it in
+      // the Canvas panel; the renderer preserves whatever aspect they pick.
       kind: 'euclidean',
-      canvas: { width: 600, height: 400, background: '#ffffff', grid: true },
+      canvas: { width: 500, height: 500, background: '#ffffff', grid: true },
       elements: {
         points: [
-          { name: 'A', x: 150, y: 100, position: 'tl', visible: true, color: '#1a1a2e' },
-          { name: 'B', x: 350, y: 100, position: 'tr', visible: true, color: '#1a1a2e' },
-          { name: 'C', x: 250, y: 300, position: 'b', visible: true, color: '#1a1a2e' },
+          { name: 'A', x: 150, y: 150, position: 'tl', visible: true, color: '#1a1a2e' },
+          { name: 'B', x: 350, y: 150, position: 'tr', visible: true, color: '#1a1a2e' },
+          { name: 'C', x: 250, y: 350, position: 'b', visible: true, color: '#1a1a2e' },
         ],
         lines: [],
         circles: [],

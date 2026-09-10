@@ -19,12 +19,14 @@ const DEFAULT_LABEL_POSITION = 'tr' as const
 
 export const AxisPointsPanel: React.FC<AxisPointsPanelProps> = ({ points, onChange }) => {
   const handleAdd = () => {
+    // labelPosition is only meaningful once the author adds a label, so we
+    // don't pre-seed it — DEFAULT_LABEL_POSITION acts as the fallback in the
+    // compass picker + renderer instead. Keeps the stored JSON minimal.
     const newPoint: AxisPoint = {
       x: 0,
       y: 0,
       type: 'point',
       size: DEFAULT_POINT_SIZE,
-      labelPosition: DEFAULT_LABEL_POSITION,
     }
     onChange([...points, newPoint])
   }

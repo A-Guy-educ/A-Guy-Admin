@@ -38,6 +38,7 @@ import { GraphWithPrompt } from '../blocks/GraphWithPrompt'
 import { MultiAxisRenderer } from '../blocks/MultiAxisRenderer'
 import { LatexBlockRenderer } from '../blocks/LatexBlockRenderer'
 import { getMediaUrl } from '@/infra/utils/getMediaUrl'
+import { resolveViewport } from '@/infra/utils/graphics/viewport-utils'
 import { HEBREW_LETTERS } from '../constants'
 import type { Media } from '@/payload-types'
 import type {
@@ -239,10 +240,22 @@ function renderBlockContent({
 
   if (block.type === 'question_axis') {
     const b = block as QuestionAxisBlock
-    // AxisRenderer renders an approximately square/landscape board. Aspect 1.5
-    // is below the 5/3 wrap threshold so the axis stays side-by-side, matching
-    // geometry's default 600×400 canvas behavior.
-    const axisAspectRatio = 1.5
+    // Derive the axis aspect from the same inputs AxisRenderer uses to size
+    // its board — viewport + proportion — so the worksheet slot matches the
+    // rendered board width/height instead of leaving whitespace beside it.
+    // Previously hardcoded to 1.5 to match a now-gone 600×400 default; new
+    // AxisRenderer defaults to 1:1 and honors spec.proportion.
+    const axisAspectRatio = (() => {
+      try {
+        const vp = resolveViewport(b.axis)
+        const xRange = vp.xMax - vp.xMin
+        const yRange = vp.yMax - vp.yMin
+        if (xRange <= 0 || yRange <= 0) return 1
+        return (xRange * (b.axis.proportion ?? 1)) / yRange
+      } catch {
+        return 1
+      }
+    })()
     const layout = pickGraphLayout(b.layout, sideBySideLayout, axisAspectRatio)
     return (
       <GraphWithPrompt
