@@ -8,10 +8,10 @@ interface AddBlockButtonProps {
   onAdd: (block: ContentBlock) => void
 }
 
-// Curated menu of block types that make sense from the studio. Advanced
-// graph blocks (geometry, axis, multi-axis, matching, media) still require
-// complex specs — admins open the exercise/section doc page (via the
-// "Open ↗" links) to add those and paste the raw JSON.
+// Every block type exposed by `ExerciseBlockDefaults` — the studio now
+// renders inline editors for the graph/geometry/matching/media types via
+// `InlineBlockRenderer`, so there's no reason to hide them behind the
+// section-doc-page JSON escape hatch anymore.
 const STUDIO_BLOCK_MENU: ReadonlyArray<{ key: keyof typeof ExerciseBlockDefaults; label: string }> =
   [
     { key: 'rich_text', label: 'Rich text' },
@@ -19,9 +19,14 @@ const STUDIO_BLOCK_MENU: ReadonlyArray<{ key: keyof typeof ExerciseBlockDefaults
     { key: 'question_select', label: 'True / False' },
     { key: 'question_free_response', label: 'Free response' },
     { key: 'question_table', label: 'Table' },
+    { key: 'question_matching', label: 'Matching' },
+    { key: 'question_axis', label: 'Axis graph' },
+    { key: 'question_multi_axis', label: 'Multi-axis graph' },
+    { key: 'question_geometry', label: 'Geometry' },
     { key: 'svg', label: 'SVG' },
     { key: 'latex', label: 'LaTeX' },
     { key: 'html', label: 'HTML' },
+    { key: 'media', label: 'Media' },
   ]
 
 /**
