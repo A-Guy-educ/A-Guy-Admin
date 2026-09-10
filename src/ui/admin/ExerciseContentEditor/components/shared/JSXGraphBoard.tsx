@@ -122,7 +122,13 @@ export const JSXGraphBoard: React.FC<JSXGraphBoardProps> = ({
     const board = jxgRef.current.JSXGraph.initBoard(containerRef.current, options)
     boardRef.current = board
     onBoardReadyRef.current?.(board)
-  }, [loaded, boundingBox, showAxis, showGrid, showNavigation, axisConfig])
+    // `width` and `height` are used only to size the wrapper <div> below;
+    // JSXGraph reads the container size at init time. Include them in the
+    // deps so a size change (parent column resized via ResizeObserver, sidebar
+    // toggled, browser resized) actually re-inits the board — otherwise the
+    // DOM grows to the new size while the SVG coordinate space stays frozen
+    // at mount-time dimensions and every subsequent render looks mis-scaled.
+  }, [loaded, boundingBox, showAxis, showGrid, showNavigation, axisConfig, width, height])
 
   useEffect(() => {
     initBoard()

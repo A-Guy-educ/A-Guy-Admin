@@ -21,8 +21,6 @@ interface PointUpdate {
 interface GeometryCanvasProps {
   id: string
   geometry: GeometrySpecV1
-  /** Fallback pixel width until the surrounding CSS column is measured. */
-  displayWidth?: number
   interactionMode?: 'move' | 'addPoint'
   onPointMoved?: (name: string, x: number, y: number) => void
   onMultiPointMoved?: (updates: PointUpdate[]) => void
@@ -33,7 +31,7 @@ interface GeometryCanvasProps {
 
 // Fallback pixel width used on the very first render, before the
 // ResizeObserver measures the surrounding `.graph-editor-canvas` column.
-const DISPLAY_WIDTH = 500
+const INITIAL_BOARD_PX = 500
 const MIN_BOARD_PX = 320
 const MAX_BOARD_PX = 600
 
@@ -64,7 +62,6 @@ function angleToLabelPosition(angleDeg: number): string {
 export const GeometryCanvas: React.FC<GeometryCanvasProps> = ({
   id,
   geometry,
-  displayWidth = DISPLAY_WIDTH,
   interactionMode = 'move',
   onPointMoved,
   onMultiPointMoved,
@@ -80,7 +77,7 @@ export const GeometryCanvas: React.FC<GeometryCanvasProps> = ({
   // Match the board pixel size to the surrounding CSS column so the canvas
   // fills the 55%-wide slot instead of sitting as a small fixed rectangle
   // inside it. Aspect is derived from the geometry's bounding box below.
-  const [containerWidth, setContainerWidth] = useState<number>(displayWidth)
+  const [containerWidth, setContainerWidth] = useState<number>(INITIAL_BOARD_PX)
   const modeRef = useRef(interactionMode)
   const onCanvasClickRef = useRef(onCanvasClick)
   const onPointMovedRef = useRef(onPointMoved)
