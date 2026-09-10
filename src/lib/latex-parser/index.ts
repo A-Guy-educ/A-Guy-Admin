@@ -457,8 +457,7 @@ function processTokens(
           const parentGroups: ContentBlock[][] = []
           let currentParentLetter: string | null = null
           for (const qb of questionBlocks) {
-            const rawPrompt =
-              (qb as { prompt?: { value?: string } }).prompt?.value ?? ''
+            const rawPrompt = (qb as { prompt?: { value?: string } }).prompt?.value ?? ''
             const markerMatch = SECTION_TITLE_MARKER_RE.exec(rawPrompt)
             const label = markerMatch?.[1] ?? ''
             // Label shape: `סעיף X` or `סעיף X1` — parent letter is the first
@@ -877,10 +876,12 @@ function defaultBlackOnGraphicsElements(block: ContentBlock): void {
       if (Array.isArray(arr)) for (const el of arr) applyDefaultColor(el)
     }
   } else if (block.type === 'question_multi_axis') {
-    const graphs = (block as { graphs?: Array<{ axis?: { elements?: Record<string, unknown[]> } }> })
-      .graphs
+    const graphs = (
+      block as { graphs?: Array<{ axis?: { elements?: Record<string, unknown[]> } }> }
+    ).graphs
     if (!Array.isArray(graphs)) return
-    for (const g of graphs) defaultBlackOnGraphicsElements({ type: 'question_axis', ...g } as ContentBlock)
+    for (const g of graphs)
+      defaultBlackOnGraphicsElements({ type: 'question_axis', ...g } as ContentBlock)
   }
 }
 

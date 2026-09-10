@@ -240,15 +240,15 @@ export function parseEnumerate(innerContent: string): ContentBlock[] {
         const m = inlineMarkers[mi]
         const startPos = (m.index ?? 0) + m[0].length
         const endPos =
-          mi + 1 < inlineMarkers.length ? (inlineMarkers[mi + 1].index ?? content.length) : content.length
+          mi + 1 < inlineMarkers.length
+            ? (inlineMarkers[mi + 1].index ?? content.length)
+            : content.length
         nestedItems.push(content.slice(startPos, endPos).trim())
       }
       const beforeCleaned = before ? cleanItemText(before) : ''
       if (beforeCleaned) {
         blocks.push(
-          makeFreeResponseBlock(
-            `${sectionTitleMarker(`סעיף ${parentLetter}`)}${beforeCleaned}`,
-          ),
+          makeFreeResponseBlock(`${sectionTitleMarker(`סעיף ${parentLetter}`)}${beforeCleaned}`),
         )
       }
       nestedItems.forEach((nItem, nIdx) => {
@@ -274,16 +274,13 @@ export function parseEnumerate(innerContent: string): ContentBlock[] {
         const beforeCleaned = before ? cleanItemText(before) : ''
         if (beforeCleaned) {
           blocks.push(
-            makeFreeResponseBlock(
-              `${sectionTitleMarker(`סעיף ${parentLetter}`)}${beforeCleaned}`,
-            ),
+            makeFreeResponseBlock(`${sectionTitleMarker(`סעיף ${parentLetter}`)}${beforeCleaned}`),
           )
         }
         nestedItems.forEach((nItem, nIdx) => {
           const label = `סעיף ${parentLetter}${nIdx + 1}`
           const nCleaned = cleanItemText(nItem)
-          const afterCleaned =
-            nIdx === nestedItems.length - 1 && after ? cleanItemText(after) : ''
+          const afterCleaned = nIdx === nestedItems.length - 1 && after ? cleanItemText(after) : ''
           const combined = [nCleaned, afterCleaned].filter(Boolean).join('\n\n')
           if (combined) {
             blocks.push(makeFreeResponseBlock(`${sectionTitleMarker(label)}${combined}`))
@@ -295,9 +292,7 @@ export function parseEnumerate(innerContent: string): ContentBlock[] {
 
     const cleaned = cleanItemText(content)
     if (!cleaned) continue
-    blocks.push(
-      makeFreeResponseBlock(`${sectionTitleMarker(`סעיף ${parentLetter}`)}${cleaned}`),
-    )
+    blocks.push(makeFreeResponseBlock(`${sectionTitleMarker(`סעיף ${parentLetter}`)}${cleaned}`))
   }
 
   return blocks

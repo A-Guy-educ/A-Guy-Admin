@@ -62,7 +62,11 @@ function splitSolutionByLabel(raw: string): Map<string, string> {
   const labelRe = /\\textbf\{\s*(סעיף\s+[֐-׿](?:\d+)?)'?\s*[:.]?\s*\}/g
   let m: RegExpExecArray | null
   while ((m = labelRe.exec(raw)) !== null) {
-    labels.push({ label: m[1].replace(/\s+/g, ' ').trim(), startIdx: m.index, endIdx: m.index + m[0].length })
+    labels.push({
+      label: m[1].replace(/\s+/g, ' ').trim(),
+      startIdx: m.index,
+      endIdx: m.index + m[0].length,
+    })
   }
   const map = new Map<string, string>()
   for (let i = 0; i < labels.length; i++) {

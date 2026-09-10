@@ -52,10 +52,7 @@ const KNOWN_COLORS: Record<string, string> = {
  * `logogreen` both resolve. Returns undefined for unrecognized names so the
  * downstream schema falls back to its default.
  */
-function resolveColor(
-  raw: string | undefined,
-  extra?: Map<string, string>,
-): string | undefined {
+function resolveColor(raw: string | undefined, extra?: Map<string, string>): string | undefined {
   if (!raw) return undefined
   const name = raw.split('!')[0].trim().toLowerCase()
   if (!name) return undefined

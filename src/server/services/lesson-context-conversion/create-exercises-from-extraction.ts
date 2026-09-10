@@ -218,7 +218,9 @@ export async function createExercisesFromExtraction(
       // its `\textbf{סעיף X':}` bodies to the matching questions via SEC
       // markers. Without the header the block looks like ordinary content and
       // the solution text leaks in as trailing rich_text on the last section.
-      blocks.push(makeLatexBlock(`\\section*{פתרון תרגיל ${exercise.number}}\n${exercise.solution}`))
+      blocks.push(
+        makeLatexBlock(`\\section*{פתרון תרגיל ${exercise.number}}\n${exercise.solution}`),
+      )
     }
 
     try {

@@ -176,9 +176,7 @@ function tikzPositionToCompass(optionStr: string | undefined): LabelPosition | u
  * text AND the `node[pos]` positioning so the renderer can offset the label
  * from the dot instead of overlapping it.
  */
-function parseLabeledPoints(
-  content: string,
-): {
+function parseLabeledPoints(content: string): {
   labels: Map<string, string>
   positions: Map<string, LabelPosition>
 } {
