@@ -121,6 +121,26 @@ const GeometricLocusSchema = z.object({
   color: ColorStringSchema.optional(),
 })
 
+/**
+ * Smooth curve through a list of coordinates. Renders as a Catmull-Rom /
+ * cardinal spline. Used for TikZ `\draw[thick] plot[smooth, tension=0.7]
+ * coordinates {(x1,y1) (x2,y2) …}` — the author's shape for f(x) sketches
+ * whose exact function form isn't specified, only the shape via waypoints.
+ */
+const SmoothCurveSchema = z.object({
+  points: z
+    .array(
+      z.object({
+        x: z.number(),
+        y: z.number(),
+      }),
+    )
+    .min(2),
+  style: LineStyleSchema,
+  thickness: z.number().positive(),
+  color: ColorStringSchema.optional(),
+})
+
 /** Elements collection */
 const ElementsSchema = z.object({
   points: z.array(PointSchema),
@@ -130,6 +150,7 @@ const ElementsSchema = z.object({
   paintBetweenGraphs: z.array(PaintBetweenGraphsSchema).optional(),
   lineBetweenPoints: z.array(LineBetweenPointsSchema).optional(),
   geometricLoci: z.array(GeometricLocusSchema).optional(),
+  smoothCurves: z.array(SmoothCurveSchema).optional(),
 })
 
 /** Interaction specification (future Drawing Response) */

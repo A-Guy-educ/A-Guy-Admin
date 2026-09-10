@@ -16,6 +16,78 @@ import type { QuestionAxisBlock } from '@/server/payload/collections/Exercises/t
 import { makeAxisBlock } from '@/lib/latex-parser/block-generators'
 import { generateId } from '@/server/payload/collections/Exercises/types'
 
+/**
+ * Standard TikZ / pgfplots color names → hex. Covers the colors the author
+ * uses across worksheets (winered/LogoGreen from their `\definecolor` set) as
+ * well as the built-in TikZ palette. Kept as an inline map because the
+ * `\definecolor` definitions live in the LaTeX preamble which is stripped
+ * before the tikz parser ever sees the source.
+ */
+const KNOWN_COLORS: Record<string, string> = {
+  black: '#000000',
+  white: '#ffffff',
+  red: '#ff0000',
+  green: '#00c000',
+  blue: '#0000ff',
+  cyan: '#00ffff',
+  magenta: '#ff00ff',
+  yellow: '#ffff00',
+  orange: '#ffa500',
+  purple: '#800080',
+  pink: '#ffc0cb',
+  brown: '#a52a2a',
+  gray: '#808080',
+  grey: '#808080',
+  darkgray: '#404040',
+  lightgray: '#c0c0c0',
+  // Author custom colors — mirrors `\definecolor{winered}{RGB}{153,0,0}` etc.
+  winered: '#990000',
+  logogreen: '#556b4f',
+  logored: '#990000',
+}
+
+/**
+ * Resolve a TikZ color option (`color=winered`, `blue`, `LogoGreen`, `!50!red`
+ * variants…) to a hex string. Case-insensitive lookup so `LogoGreen` /
+ * `logogreen` both resolve. Returns undefined for unrecognized names so the
+ * downstream schema falls back to its default.
+ */
+function resolveColor(
+  raw: string | undefined,
+  extra?: Map<string, string>,
+): string | undefined {
+  if (!raw) return undefined
+  const name = raw.split('!')[0].trim().toLowerCase()
+  if (!name) return undefined
+  if (extra?.has(name)) return extra.get(name)
+  return KNOWN_COLORS[name]
+}
+
+/**
+ * Map TikZ node position keywords (`above`, `below`, `below left`, …) to the
+ * axis schema's `labelPosition` compass short-code (`t`, `b`, `bl`, …).
+ * Whitespace between the two words is optional so `above right` and
+ * `aboveright` both resolve. Returns undefined for unrecognised strings so
+ * the schema falls back to its default.
+ */
+type LabelPosition = 't' | 'tr' | 'r' | 'br' | 'b' | 'bl' | 'l' | 'tl' | 'm'
+
+function resolveTikzLabelPosition(optionStr: string | undefined): LabelPosition | undefined {
+  if (!optionStr) return undefined
+  const normalized = optionStr.toLowerCase().replace(/\s+/g, ' ').trim()
+  // Composite keys first (order-independent).
+  if (/(above\s+right|right\s+above)/.test(normalized)) return 'tr'
+  if (/(above\s+left|left\s+above)/.test(normalized)) return 'tl'
+  if (/(below\s+right|right\s+below)/.test(normalized)) return 'br'
+  if (/(below\s+left|left\s+below)/.test(normalized)) return 'bl'
+  if (/(^|\W)above(\W|$)/.test(normalized)) return 't'
+  if (/(^|\W)below(\W|$)/.test(normalized)) return 'b'
+  if (/(^|\W)left(\W|$)/.test(normalized)) return 'l'
+  if (/(^|\W)right(\W|$)/.test(normalized)) return 'r'
+  if (/(^|\W)(center|centered)(\W|$)/.test(normalized)) return 'm'
+  return undefined
+}
+
 /** Parse key=value options from [key=val, key2=val2], respecting brace groups */
 function parseOptions(optionStr: string): Record<string, string> {
   const opts: Record<string, string> = {}
@@ -123,6 +195,14 @@ function parseAddPlots(content: string): {
       if (!isNaN(to)) range.toX = to
     }
 
+    // TikZ color option supports both `color=name` and bare `name` — pgfplots
+    // accepts the color name as a standalone option key. Prefer the explicit
+    // `color=` form, then look for any known-color bare key.
+    const optColor =
+      opts['color'] ??
+      Object.keys(opts).find((k) => opts[k] === 'true' && resolveColor(k) !== undefined)
+    const color = resolveColor(optColor)
+
     // Omit `range` entirely when empty rather than setting it to `undefined` —
     // the axis schema rejects null, and undefined round-trips as null through
     // the block-content serialization path.
@@ -132,6 +212,7 @@ function parseAddPlots(content: string): {
       style,
       thickness,
       ...(Object.keys(range).length > 0 ? { range } : {}),
+      ...(color ? { color } : {}),
     })
   }
 
@@ -274,6 +355,45 @@ export function cleanNodeLabel(raw: string): string {
 }
 
 /**
+ * Parse `\fill[options] (axis cs: X, Y) circle (Xpt) node[pos] {label};` —
+ * the standard pgfplots pattern for placing a labeled data point on an axis
+ * (e.g., `\fill[color=black] (axis cs: -1, 0) circle (2pt) node[above left] {$A$};`).
+ * Emitted by the author's PDF worksheets throughout — without this, all the
+ * labeled points on `\begin{axis}` diagrams get dropped.
+ */
+function parseAxisFillPoints(
+  content: string,
+  colorMap: Map<string, string>,
+): AxisSpecV1['elements']['points'] {
+  const out: AxisSpecV1['elements']['points'] = []
+  // `\fill[opts] (axis cs: X, Y) circle (Xpt) node[pos] {label}` — options
+  // optional, node label allows one level of nested braces so `{$A$}` and
+  // `{${\color{winered} A}$}` both capture cleanly.
+  const re =
+    /\\fill\s*(?:\[([^\]]*)\])?\s*\(\s*axis\s+cs:\s*([^,]+),\s*([^)]+)\)\s*circle\s*\(\s*[\d.]+\s*pt\s*\)\s*node\s*(?:\[([^\]]*)\])?\s*\{((?:[^{}]|\{[^{}]*\})*)\}/g
+  let m: RegExpExecArray | null
+  while ((m = re.exec(content)) !== null) {
+    const fillOpts = parseOptions(m[1] ?? '')
+    const x = parseFloat(m[2])
+    const y = parseFloat(m[3])
+    const nodeOpts = m[4] ?? ''
+    const label = cleanNodeLabel(m[5])
+    if (isNaN(x) || isNaN(y)) continue
+    const color = resolveColor(fillOpts['color'], colorMap)
+    const labelPosition = resolveTikzLabelPosition(nodeOpts)
+    out.push({
+      x,
+      y,
+      type: 'point' as const,
+      ...(label ? { label } : {}),
+      ...(color ? { color } : {}),
+      ...(labelPosition ? { labelPosition } : {}),
+    })
+  }
+  return out
+}
+
+/**
  * Parse \node at (axis cs:X,Y) {...} for text labels and point markers.
  */
 function parseAxisNodes(content: string): AxisSpecV1['elements']['points'] {
@@ -295,13 +415,25 @@ function parseAxisNodes(content: string): AxisSpecV1['elements']['points'] {
     if (isNaN(x) || isNaN(y)) continue
 
     const allOpts = `${beforeOpts} ${afterOpts}`
+    const labelPosition = resolveTikzLabelPosition(allOpts)
 
     // Node with circle,fill → point marker (no label)
     if (allOpts.includes('circle') && allOpts.includes('fill')) {
-      nodePoints.push({ x, y, type: 'point' as const })
+      nodePoints.push({
+        x,
+        y,
+        type: 'point' as const,
+        ...(labelPosition ? { labelPosition } : {}),
+      })
     } else if (text) {
       // Node with text → floating text label
-      nodePoints.push({ x, y, type: 'floating_text' as const, label: text })
+      nodePoints.push({
+        x,
+        y,
+        type: 'floating_text' as const,
+        label: text,
+        ...(labelPosition ? { labelPosition } : {}),
+      })
     }
   }
 
@@ -389,8 +521,11 @@ export function parseTikzAxis(tikzContent: string): QuestionAxisBlock | null {
   const { graphs, points, fillRanges } = parseAddPlots(tikzContent)
   const asymptotes = parseAsymptotes(tikzContent)
   const nodePoints = parseAxisNodes(tikzContent)
+  // `\fill[color=black] (axis cs: X, Y) circle (Xpt) node[pos] {$A$}` — the
+  // standard way to mark labeled data points inside `\begin{axis}` blocks.
+  const fillPoints = parseAxisFillPoints(tikzContent, new Map())
 
-  const allPoints = [...points, ...nodePoints]
+  const allPoints = [...points, ...nodePoints, ...fillPoints]
 
   if (graphs.length === 0 && allPoints.length === 0) return null
 
@@ -454,8 +589,10 @@ export function parseTikzDrawPlot(tikzContent: string): QuestionAxisBlock | null
 
   // Parse any coordinate-based points referenced in the TikZ
   const coordPoints: AxisSpecV1['elements']['points'] = []
+  // Capture node[pos] options so the label renders beside the dot, not
+  // overlapping it.
   const fillRegex =
-    /\\fill\s*\((\w+)\)\s*circle\s*\([^)]+\)\s*node\s*\[[^\]]*\]\s*\{((?:[^{}]|\{[^{}]*\})*)\}/g
+    /\\fill\s*\((\w+)\)\s*circle\s*\([^)]+\)\s*node\s*(?:\[([^\]]*)\])?\s*\{((?:[^{}]|\{[^{}]*\})*)\}/g
   const coordRegex = /\\coordinate\s*\((\w+)\)\s*at\s*\(([^)]+)\)/g
   const coordMap = new Map<string, { x: number; y: number }>()
 
@@ -469,14 +606,17 @@ export function parseTikzDrawPlot(tikzContent: string): QuestionAxisBlock | null
 
   while ((match = fillRegex.exec(tikzContent)) !== null) {
     const name = match[1]
-    const label = match[2].replace(/\$/g, '').trim()
+    const nodeOpts = match[2] ?? ''
+    const label = match[3].replace(/\$/g, '').trim()
     const coord = coordMap.get(name)
     if (coord) {
+      const labelPosition = resolveTikzLabelPosition(nodeOpts)
       coordPoints.push({
         x: coord.x,
         y: coord.y,
         type: 'point' as const,
         label: label || name,
+        ...(labelPosition ? { labelPosition } : {}),
       })
     }
   }
@@ -594,30 +734,51 @@ export function parseTikzAxisGeometry(content: string): QuestionAxisBlock | null
     return null
   }
 
-  // Points from `\node[pos] at (X,Y) {label}`.
+  // `\node[pos] at (X,Y) {label}` — pure text label (no marker dot). Axis-tick
+  // number labels (`\node at (-2, -0.3) {-2}`) and general standalone labels
+  // both take this form; a bare `\node at` never draws a dot in TikZ, so
+  // emit as `floating_text` not `point`.
   const points: AxisSpecV1['elements']['points'] = []
   const nodeRe =
     /\\node\s*(?:\[([^\]]*)\])?\s*at\s*\(\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*\)\s*\{((?:[^{}]|\{[^{}]*\})*)\}/g
   let nMatch: RegExpExecArray | null
   while ((nMatch = nodeRe.exec(content)) !== null) {
+    const opts = nMatch[1] ?? ''
     const x = parseFloat(nMatch[2])
     const y = parseFloat(nMatch[3])
     if (isNaN(x) || isNaN(y)) continue
     // Skip axis endpoint labels ($x$, $y$) — they're the arrow-tip annotations.
     const label = cleanNodeLabel(nMatch[4])
     if (!label || label === 'x' || label === 'y') continue
-    points.push({ x, y, type: 'point' as const, label })
+    const labelPosition = resolveTikzLabelPosition(opts)
+    points.push({
+      x,
+      y,
+      type: 'floating_text' as const,
+      label,
+      ...(labelPosition ? { labelPosition } : {}),
+    })
   }
 
-  // Points from `\filldraw (Name-or-X,Y) circle (2pt) node[pos] {label}`.
+  // Points from `\filldraw (Name-or-X,Y) circle (2pt) node[pos] {label}` —
+  // these DO draw a dot. Capture the `node[pos]` positioning so the label
+  // renders beside the dot instead of overlapping it.
   const filldrawRe =
     /\\filldraw\s*(?:\[[^\]]*\])?\s*\(([^)]+)\)\s*circle\s*\(\s*[\d.]+\s*pt\s*\)\s*node\s*(?:\[([^\]]*)\])?\s*\{((?:[^{}]|\{[^{}]*\})*)\}/g
   let fMatch: RegExpExecArray | null
   while ((fMatch = filldrawRe.exec(content)) !== null) {
     const pt = resolvePoint(fMatch[1])
     if (!pt) continue
+    const nodeOpts = fMatch[2] ?? ''
     const label = cleanNodeLabel(fMatch[3])
-    points.push({ x: pt.x, y: pt.y, type: 'point' as const, label: label || undefined })
+    const labelPosition = resolveTikzLabelPosition(nodeOpts)
+    points.push({
+      x: pt.x,
+      y: pt.y,
+      type: 'point' as const,
+      label: label || undefined,
+      ...(labelPosition ? { labelPosition } : {}),
+    })
   }
 
   // Circles: `\draw[opts] (Name-or-X,Y) circle (radius)` — emit as
@@ -687,16 +848,18 @@ export function parseTikzAxisGeometry(content: string): QuestionAxisBlock | null
     }
   }
 
-  // Smooth-plot-through-points: `\draw[opts] plot[smooth] coordinates {(X,Y) (X,Y) ...}`.
-  // The plotter here can't render bezier splines, so approximate as a chain
-  // of straight segments between consecutive points. Good enough for the
-  // "sketch of a function" figures the author uses.
+  // Smooth-plot-through-points: `\draw[opts] plot[smooth[, tension=…]]
+  // coordinates {(X,Y) (X,Y) …}`. Emit as `smoothCurves` so the renderer
+  // interpolates through the waypoints as a Catmull-Rom spline. Falls back to
+  // straight-segment mode only when the plot options DON'T include `smooth`.
+  const smoothCurves: NonNullable<AxisSpecV1['elements']['smoothCurves']> = []
   const smoothPlotRe =
-    /\\draw\s*(?:\[([^\]]*)\])?\s*plot\s*(?:\[[^\]]*\])?\s*coordinates\s*\{([^}]+)\}/g
+    /\\draw\s*(?:\[([^\]]*)\])?\s*plot\s*(?:\[([^\]]*)\])?\s*coordinates\s*\{([^}]+)\}/g
   let spMatch: RegExpExecArray | null
   while ((spMatch = smoothPlotRe.exec(content)) !== null) {
-    const opts = spMatch[1] ?? ''
-    const inside = spMatch[2]
+    const drawOpts = spMatch[1] ?? ''
+    const plotOpts = spMatch[2] ?? ''
+    const inside = spMatch[3]
     const ptRe = /\(\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*\)/g
     const chain: Array<{ x: number; y: number }> = []
     let pMatch: RegExpExecArray | null
@@ -704,14 +867,24 @@ export function parseTikzAxisGeometry(content: string): QuestionAxisBlock | null
       chain.push({ x: parseFloat(pMatch[1]), y: parseFloat(pMatch[2]) })
     }
     if (chain.length < 2) continue
-    const style: 'solid' | 'dashed' = opts.includes('dashed') ? 'dashed' : 'solid'
-    const thickness = opts.includes('thick') ? 2 : 1
-    for (let i = 0; i < chain.length - 1; i++) {
-      lineBetweenPoints.push({ style, thickness, a: chain[i], b: chain[i + 1] })
+    const style: 'solid' | 'dashed' = drawOpts.includes('dashed') ? 'dashed' : 'solid'
+    const thickness = drawOpts.includes('thick') ? 2 : 1
+    if (/\bsmooth\b/.test(plotOpts)) {
+      smoothCurves.push({ points: chain, style, thickness })
+    } else {
+      // Non-smooth `plot coordinates` — straight polyline through the points.
+      for (let i = 0; i < chain.length - 1; i++) {
+        lineBetweenPoints.push({ style, thickness, a: chain[i], b: chain[i + 1] })
+      }
     }
   }
 
-  if (points.length === 0 && lineBetweenPoints.length === 0 && geometricLoci.length === 0) {
+  if (
+    points.length === 0 &&
+    lineBetweenPoints.length === 0 &&
+    geometricLoci.length === 0 &&
+    smoothCurves.length === 0
+  ) {
     return null
   }
 
@@ -755,6 +928,7 @@ export function parseTikzAxisGeometry(content: string): QuestionAxisBlock | null
       graphs: [],
       ...(dedupedLines.length > 0 ? { lineBetweenPoints: dedupedLines } : {}),
       ...(geometricLoci.length > 0 ? { geometricLoci } : {}),
+      ...(smoothCurves.length > 0 ? { smoothCurves } : {}),
     },
   }
 

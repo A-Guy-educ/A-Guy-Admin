@@ -7,6 +7,7 @@ import type {
   QuestionTableBlock,
   QuestionAxisBlock,
   QuestionGeometryBlock,
+  QuestionMultiAxisBlock,
   InlineRichText,
 } from '@/server/payload/collections/Exercises/types'
 import type { AxisSpecV1 } from '@/infra/contracts/graphics/axis.v1'
@@ -90,6 +91,32 @@ export function makeGeometryBlock(prompt: string, geometry: GeometrySpecV1): Que
     type: 'question_geometry',
     prompt: makeInlineRichText(prompt),
     geometry,
+  }
+}
+
+/**
+ * Build a `question_multi_axis` block from an array of pre-parsed axis blocks.
+ * Used when a tabular contains multiple `\begin{tikzpicture}\begin{axis}…`
+ * blocks side-by-side — the author's shape for "compare graphs A/B/C/D" or
+ * "which of these matches the function?". The `columnsPerRow` follows the
+ * schema's 1/2/4 options (author's typical shape is a 1×2, 1×3, 2×2, or
+ * 1×4 grid); we always emit `4` so a 3-graph row still uses the wide layout.
+ */
+export function makeMultiAxisBlock(
+  axes: AxisSpecV1[],
+  columnsPerRow: 1 | 2 | 4 = 4,
+): QuestionMultiAxisBlock {
+  return {
+    id: generateId(),
+    type: 'question_multi_axis',
+    textPosition: 'above',
+    columnsPerRow,
+    graphs: axes.map((axis, idx) => ({
+      id: generateId(),
+      label: String.fromCharCode(65 + idx), // A, B, C, D…
+      axis,
+      order: idx,
+    })),
   }
 }
 

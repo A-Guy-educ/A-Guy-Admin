@@ -43,10 +43,12 @@ function parseCoordinates(content: string): ParsedPoint[] {
 function parseInlineDrawCoordinates(content: string): {
   points: ParsedPoint[]
   labels: Map<string, string>
+  positions: Map<string, LabelPosition>
   lines: Array<{ from: string; to: string; style: 'solid' | 'dashed' }>
 } {
   const points: ParsedPoint[] = []
   const labels = new Map<string, string>()
+  const positions = new Map<string, LabelPosition>()
   const lines: Array<{ from: string; to: string; style: 'solid' | 'dashed' }> = []
   const seen = new Map<string, string>() // "x,y" → point name
 
@@ -58,15 +60,17 @@ function parseInlineDrawCoordinates(content: string): {
     const isDashed = opts.includes('dashed')
     const style: 'solid' | 'dashed' = isDashed ? 'dashed' : 'solid'
 
-    // Match (x,y) optionally followed by node[...]{Label}
+    // Match (x,y) optionally followed by node[pos]{Label}. Capture the node
+    // options so `node[above]{$D$}` → position `t` for the emitted point.
     const coordRegex =
-      /\((-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\)\s*(?:node\s*\[[^\]]*\]\s*(?:\{((?:[^{}]|\{[^{}]*\})*)\})?)?/g
+      /\((-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\)\s*(?:node\s*(?:\[([^\]]*)\])?\s*(?:\{((?:[^{}]|\{[^{}]*\})*)\})?)?/g
     const segmentPoints: string[] = []
     let coordMatch: RegExpExecArray | null
     while ((coordMatch = coordRegex.exec(path)) !== null) {
       const x = parseFloat(coordMatch[1])
       const y = parseFloat(coordMatch[2])
-      const label = coordMatch[3] ? cleanNodeLabel(coordMatch[3]) : undefined
+      const nodeOpts = coordMatch[3] ?? ''
+      const label = coordMatch[4] ? cleanNodeLabel(coordMatch[4]) : undefined
       const key = `${x},${y}`
 
       let name: string
@@ -77,6 +81,8 @@ function parseInlineDrawCoordinates(content: string): {
         seen.set(key, name)
         points.push({ name, x, y })
         if (label) labels.set(name, label)
+        const pos = tikzPositionToCompass(nodeOpts)
+        if (pos) positions.set(name, pos)
       }
       segmentPoints.push(name)
     }
@@ -91,7 +97,7 @@ function parseInlineDrawCoordinates(content: string): {
     }
   }
 
-  return { points, labels, lines }
+  return { points, labels, positions, lines }
 }
 
 /** Parse \draw[...] (A) -- (B) -- (C); line chains */
@@ -148,16 +154,45 @@ function parseCircles(
   return circles
 }
 
-/** Parse \fill (A) circle (3pt) node[...] {Label}; for labeled points */
-function parseLabeledPoints(content: string): Map<string, string> {
+type LabelPosition = 't' | 'tr' | 'r' | 'br' | 'b' | 'bl' | 'l' | 'tl' | 'm'
+
+function tikzPositionToCompass(optionStr: string | undefined): LabelPosition | undefined {
+  if (!optionStr) return undefined
+  const s = optionStr.toLowerCase().replace(/\s+/g, ' ').trim()
+  if (/(above\s+right|right\s+above)/.test(s)) return 'tr'
+  if (/(above\s+left|left\s+above)/.test(s)) return 'tl'
+  if (/(below\s+right|right\s+below)/.test(s)) return 'br'
+  if (/(below\s+left|left\s+below)/.test(s)) return 'bl'
+  if (/(^|\W)above(\W|$)/.test(s)) return 't'
+  if (/(^|\W)below(\W|$)/.test(s)) return 'b'
+  if (/(^|\W)left(\W|$)/.test(s)) return 'l'
+  if (/(^|\W)right(\W|$)/.test(s)) return 'r'
+  if (/(^|\W)(center|centered)(\W|$)/.test(s)) return 'm'
+  return undefined
+}
+
+/**
+ * Parse `\fill (A) circle (3pt) node[pos] {Label};` — captures both the label
+ * text AND the `node[pos]` positioning so the renderer can offset the label
+ * from the dot instead of overlapping it.
+ */
+function parseLabeledPoints(
+  content: string,
+): {
+  labels: Map<string, string>
+  positions: Map<string, LabelPosition>
+} {
   const labels = new Map<string, string>()
+  const positions = new Map<string, LabelPosition>()
   const regex =
-    /\\fill\s*\((\w+)\)\s*circle\s*\([^)]+\)\s*node\s*\[[^\]]*\]\s*\{((?:[^{}]|\{[^{}]*\})*)\}/g
+    /\\fill\s*\((\w+)\)\s*circle\s*\([^)]+\)\s*node\s*(?:\[([^\]]*)\])?\s*\{((?:[^{}]|\{[^{}]*\})*)\}/g
   let match: RegExpExecArray | null
   while ((match = regex.exec(content)) !== null) {
-    labels.set(match[1], cleanNodeLabel(match[2]))
+    labels.set(match[1], cleanNodeLabel(match[3]))
+    const pos = tikzPositionToCompass(match[2])
+    if (pos) positions.set(match[1], pos)
   }
-  return labels
+  return { labels, positions }
 }
 
 /** Parse \tkzMarkRightAngle(A,B,C) for right angle markers */
@@ -236,6 +271,7 @@ export function parseTikzGeometry(tikzContent: string): QuestionGeometryBlock | 
 
   let coordinates = parseCoordinates(tikzContent)
   let labels: Map<string, string>
+  let labelPositions: Map<string, LabelPosition> = new Map()
   let drawLines: Array<{ from: string; to: string; style: 'solid' | 'dashed' }>
   let circles: Array<{ center: string; radius: number }>
   let rightAngles: Array<{ center: string; ray1: string; ray2: string }>
@@ -243,7 +279,9 @@ export function parseTikzGeometry(tikzContent: string): QuestionGeometryBlock | 
   if (coordinates.length > 0) {
     // Standard path: explicit \coordinate definitions
     const knownPoints = new Set(coordinates.map((p) => p.name))
-    labels = parseLabeledPoints(tikzContent)
+    const parsed = parseLabeledPoints(tikzContent)
+    labels = parsed.labels
+    labelPositions = parsed.positions
     drawLines = parseDrawLines(tikzContent, knownPoints)
     circles = parseCircles(tikzContent, knownPoints)
     rightAngles = parseRightAngles(tikzContent, knownPoints)
@@ -273,6 +311,7 @@ export function parseTikzGeometry(tikzContent: string): QuestionGeometryBlock | 
     if (inline.points.length === 0) return null
     coordinates = inline.points
     labels = inline.labels
+    labelPositions = inline.positions
     drawLines = inline.lines
     circles = []
     rightAngles = []
@@ -292,12 +331,16 @@ export function parseTikzGeometry(tikzContent: string): QuestionGeometryBlock | 
       boundingBox,
     },
     elements: {
-      points: coordinates.map((p) => ({
-        name: labels.get(p.name) ?? p.name,
-        x: p.x,
-        y: p.y,
-        visible: labels.has(p.name) || !labels.size,
-      })),
+      points: coordinates.map((p) => {
+        const pos = labelPositions.get(p.name)
+        return {
+          name: labels.get(p.name) ?? p.name,
+          x: p.x,
+          y: p.y,
+          visible: labels.has(p.name) || !labels.size,
+          ...(pos ? { position: pos } : {}),
+        }
+      }),
       lines: drawLines.map((l) => ({
         from: labels.get(l.from) ?? l.from,
         to: labels.get(l.to) ?? l.to,
