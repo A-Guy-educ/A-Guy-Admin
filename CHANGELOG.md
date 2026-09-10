@@ -2036,6 +2036,7 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- chore: release v0.43.0 ([#446](https://github.com/A-Guy-educ/A-Guy-Admin/pull/446)) — @aguyshayb
 - fix(studio): stack geometry toolbar above canvas ([#445](https://github.com/A-Guy-educ/A-Guy-Admin/pull/445)) — @aguyshayb
 - fix(studio): 45/55 block layout so canvas actually fills its column ([#444](https://github.com/A-Guy-educ/A-Guy-Admin/pull/444)) — @aguyshayb
 - fix(studio): pin graph editor canvas so proportion doesn't reshape left panels ([#442](https://github.com/A-Guy-educ/A-Guy-Admin/pull/442)) — @aguyshayb
