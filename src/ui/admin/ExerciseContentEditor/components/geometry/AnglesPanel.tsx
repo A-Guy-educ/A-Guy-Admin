@@ -4,6 +4,7 @@ import React from 'react'
 import type { GeometrySpecV1 } from '@/infra/contracts/graphics/geometry.v1'
 import { getDefaultAngleColor } from '@/infra/contracts/graphics/textColors'
 import { Plus, Trash2 } from 'lucide-react'
+import { ColorSwatchPicker } from '../shared/ColorSwatchPicker'
 
 type GeoAngle = GeometrySpecV1['elements']['angles'][number]
 type GeoPoint = GeometrySpecV1['elements']['points'][number]
@@ -93,11 +94,11 @@ export const AnglesPanel: React.FC<AnglesPanelProps> = ({ angles, points, onChan
             </div>
             <div className="panel-field">
               <span className="panel-field-label">Color</span>
-              <input
-                type="color"
-                className="panel-color-input"
-                value={angle.color || getDefaultAngleColor()}
-                onChange={(e) => handleUpdate(index, { color: e.target.value })}
+              <ColorSwatchPicker
+                value={angle.color}
+                onChange={(hex) => handleUpdate(index, { color: hex })}
+                defaultHex={getDefaultAngleColor()}
+                label="Angle color"
               />
             </div>
             <div className="panel-field">

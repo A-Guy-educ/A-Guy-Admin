@@ -3,7 +3,9 @@
 import React from 'react'
 import type { AxisSpecV1 } from '@/infra/contracts/graphics/axis.v1'
 import { generateId } from '@/server/payload/collections/Exercises/types'
+import { getDefaultCanvasElementColor } from '@/infra/contracts/graphics/textColors'
 import { Plus, Trash2 } from 'lucide-react'
+import { ColorSwatchPicker } from '../shared/ColorSwatchPicker'
 
 type AxisGraph = AxisSpecV1['elements']['graphs'][number]
 
@@ -19,7 +21,7 @@ export const GraphsPanel: React.FC<GraphsPanelProps> = ({ graphs, onChange }) =>
       fn: 'x',
       style: 'solid',
       thickness: 2,
-      color: '#3366cc',
+      color: getDefaultCanvasElementColor(),
     }
     onChange([...graphs, newGraph])
   }
@@ -75,11 +77,11 @@ export const GraphsPanel: React.FC<GraphsPanelProps> = ({ graphs, onChange }) =>
             </div>
             <div className="panel-field">
               <span className="panel-field-label">Color</span>
-              <input
-                type="color"
-                className="panel-color-input"
-                value={graph.color || '#3366cc'}
-                onChange={(e) => handleUpdate(index, { color: e.target.value })}
+              <ColorSwatchPicker
+                value={graph.color}
+                onChange={(hex) => handleUpdate(index, { color: hex })}
+                defaultHex={getDefaultCanvasElementColor()}
+                label="Graph color"
               />
             </div>
             <button type="button" className="panel-remove-btn" onClick={() => handleRemove(index)}>

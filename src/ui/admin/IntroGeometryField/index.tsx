@@ -15,13 +15,17 @@ import { TextsPanel } from '@/ui/admin/ExerciseContentEditor/components/geometry
 import { VectorsPanel } from '@/ui/admin/ExerciseContentEditor/components/geometry/VectorsPanel'
 
 const DEFAULT_SPEC: GeometrySpecV1 = {
+  // Default to a square 500×500 canvas so 1 unit on x is the same visual
+  // length as 1 unit on y — circles come out circular, right angles look
+  // right. Authors can widen it in the Canvas panel; the renderer preserves
+  // whatever aspect they pick.
   kind: 'euclidean',
-  canvas: { width: 600, height: 400, background: '#ffffff', grid: true },
+  canvas: { width: 500, height: 500, background: '#ffffff', grid: true },
   elements: {
     points: [
-      { name: 'A', x: 150, y: 100, position: 'tl', visible: true },
-      { name: 'B', x: 350, y: 100, position: 'tr', visible: true },
-      { name: 'C', x: 250, y: 300, position: 'b', visible: true },
+      { name: 'A', x: 150, y: 150, position: 'tl', visible: true },
+      { name: 'B', x: 350, y: 150, position: 'tr', visible: true },
+      { name: 'C', x: 250, y: 350, position: 'b', visible: true },
     ],
     lines: [],
     circles: [],

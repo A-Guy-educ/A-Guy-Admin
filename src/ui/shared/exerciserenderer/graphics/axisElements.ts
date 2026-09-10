@@ -8,6 +8,24 @@ type GraphSpec = AxisSpecV1['elements']['graphs'][number]
 type PointSpec = AxisSpecV1['elements']['points'][number]
 type LocusSpec = NonNullable<AxisSpecV1['elements']['geometricLoci']>[number]
 
+/** Map a compass label position to a JSXGraph pixel offset. */
+function mapLabelOffset(pos?: string): [number, number] {
+  const d = 14
+  const map: Record<string, [number, number]> = {
+    tl: [-d, d],
+    t: [0, d],
+    tr: [d, d],
+    l: [-d, 0],
+    r: [d, 0],
+    bl: [-d, -d],
+    b: [0, -d],
+    br: [d, -d],
+    m: [0, 0],
+    middle: [0, 0],
+  }
+  return map[pos || 'tr'] || [d, d]
+}
+
 function renderGraphs(
   board: JXG.Board,
   graphs: GraphSpec[],
@@ -44,8 +62,13 @@ function renderAxisPoints(board: JXG.Board, points: PointSpec[]) {
       const attrs: Record<string, unknown> = {
         name: p.label || '',
         fixed: true,
-        size: 4,
+        size: p.size ?? 4,
         withLabel: !!p.label,
+        label: {
+          offset: mapLabelOffset(p.labelPosition),
+          fontSize: 12,
+          fontFamily: 'Times New Roman',
+        },
       }
       if (p.color) {
         attrs.strokeColor = p.color
@@ -112,6 +135,7 @@ function renderLineBetweenPoints(
       dash: line.style === 'dashed' ? 2 : 0,
       straightFirst: false,
       straightLast: false,
+      lastArrow: line.arrow ? { type: 1, size: 6 } : false,
     }
     if (line.color) attrs.strokeColor = line.color
     board.create(

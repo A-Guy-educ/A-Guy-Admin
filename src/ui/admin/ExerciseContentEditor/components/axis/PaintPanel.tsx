@@ -2,7 +2,9 @@
 
 import React from 'react'
 import type { AxisSpecV1 } from '@/infra/contracts/graphics/axis.v1'
+import { getDefaultCanvasElementColor } from '@/infra/contracts/graphics/textColors'
 import { Plus, Trash2 } from 'lucide-react'
+import { ColorSwatchPicker } from '../shared/ColorSwatchPicker'
 
 type Graph = AxisSpecV1['elements']['graphs'][number]
 type PaintRange = NonNullable<NonNullable<Graph['paint']>['integral']>[number]
@@ -107,11 +109,11 @@ export const PaintPanel: React.FC<PaintPanelProps> = ({
             </div>
             <div className="panel-field">
               <span className="panel-field-label">Color</span>
-              <input
-                type="color"
-                value={r.fillColor || '#3366cc'}
-                style={{ width: 28, height: 24 }}
-                onChange={(e) => updateRange(gIdx, kind, rIdx, { fillColor: e.target.value })}
+              <ColorSwatchPicker
+                value={r.fillColor}
+                onChange={(hex) => updateRange(gIdx, kind, rIdx, { fillColor: hex })}
+                defaultHex={getDefaultCanvasElementColor()}
+                label="Fill color"
               />
             </div>
             <button

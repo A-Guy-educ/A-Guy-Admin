@@ -5,7 +5,26 @@ import type { AxisSpecV1 } from '@/infra/contracts/graphics/axis.v1'
 import type { JXGBoard, JXGElement } from 'jsxgraph'
 import { JSXGraphBoard } from '../shared/JSXGraphBoard'
 import { resolveViewport } from '@/infra/utils/graphics/viewport-utils'
+import { computeBoardSize } from '@/infra/utils/graphics/board-sizing'
 import { createLocusOnBoard } from '@/ui/shared/exerciserenderer/graphics/axisElements'
+
+/** Map a compass label position to a JSXGraph pixel offset. */
+function mapLabelOffset(pos?: string): [number, number] {
+  const d = 14
+  const map: Record<string, [number, number]> = {
+    tl: [-d, d],
+    t: [0, d],
+    tr: [d, d],
+    l: [-d, 0],
+    r: [d, 0],
+    bl: [-d, -d],
+    b: [0, -d],
+    br: [d, -d],
+    m: [0, 0],
+    middle: [0, 0],
+  }
+  return map[pos || 'tr'] || [d, d]
+}
 
 interface AxisCanvasProps {
   id: string
@@ -29,14 +48,47 @@ export const AxisCanvas: React.FC<AxisCanvasProps> = ({ id, axis, onPointMoved }
       const existingIds = new Set(elementsRef.current.keys())
       const newIds = new Set<string>()
 
-      // Sync points
+      // Sync points — recreate when label offset OR label presence changes:
+      // JSXGraph doesn't reliably update label.offset via setAttribute, and it
+      // won't lazily create a label sub-element for a point that was built
+      // with withLabel: false, so flipping withLabel on later via setAttribute
+      // silently no-ops. Baking `hasLabel` into the recreate key forces a
+      // fresh board.create() the first time the author adds label text.
       axis.elements.points.forEach((point, index) => {
         const elemId = `point-${index}`
         newIds.add(elemId)
         const existing = elementsRef.current.get(elemId)
+        const labelOffset = mapLabelOffset(point.labelPosition)
+        const hasLabel = !!point.label
+        const labelKey = `${labelOffset.join(',')}|${hasLabel ? '1' : '0'}`
+        const pointSize = point.size ?? (point.type === 'hole' ? 4 : 3)
 
-        if (existing && existing.moveTo) {
+        const prevKey = existing
+          ? (existing as unknown as { _labelKey?: string })._labelKey
+          : undefined
+
+        // Holes render as an unfilled ring — thicker stroke makes the ring
+        // visible. Explicitly set strokeWidth on both paths so switching a
+        // hole back to a plain point actually resets it (previously the
+        // hole's strokeWidth: 2 lingered after the type change).
+        const strokeWidth = point.type === 'hole' ? 2 : 1
+
+        if (existing && existing.moveTo && prevKey === labelKey) {
           existing.moveTo([point.x, point.y])
+          // Re-apply everything else the author might have changed — size,
+          // color, hole/point/text swap, label text/visibility. Without this,
+          // editing size or color silently no-ops until the label direction
+          // is also toggled and forces a full recreation.
+          existing.setAttribute({
+            name: point.label || '',
+            size: pointSize,
+            color: point.color || '#3366cc',
+            fillColor: point.type === 'hole' ? '#ffffff' : point.color || '#3366cc',
+            strokeColor: point.color || '#3366cc',
+            strokeWidth,
+            withLabel: !!point.label,
+            visible: point.type !== 'floating_text',
+          })
         } else {
           if (existing) {
             board.removeObject(existing)
@@ -45,13 +97,19 @@ export const AxisCanvas: React.FC<AxisCanvasProps> = ({ id, axis, onPointMoved }
 
           const attrs: Record<string, unknown> = {
             name: point.label || '',
-            size: point.type === 'hole' ? 4 : 3,
+            size: pointSize,
             color: point.color || '#3366cc',
             fillColor: point.type === 'hole' ? '#ffffff' : point.color || '#3366cc',
             strokeColor: point.color || '#3366cc',
+            strokeWidth,
             fixed: false,
             withLabel: !!point.label,
             visible: point.type !== 'floating_text',
+            label: {
+              offset: labelOffset,
+              fontSize: 12,
+              fontFamily: 'Times New Roman',
+            },
           }
 
           const el = board.create('point', [point.x, point.y], attrs)
@@ -61,6 +119,7 @@ export const AxisCanvas: React.FC<AxisCanvasProps> = ({ id, axis, onPointMoved }
               onPointMoved?.(index, Math.round(el.X() * 100) / 100, Math.round(el.Y() * 100) / 100)
             }
           })
+          ;(el as unknown as { _labelKey?: string })._labelKey = labelKey
           elementsRef.current.set(elemId, el)
         }
       })
@@ -166,6 +225,7 @@ export const AxisCanvas: React.FC<AxisCanvasProps> = ({ id, axis, onPointMoved }
             strokeWidth: line.thickness || 2,
             dash: dashMap[line.style] || 0,
             fixed: true,
+            lastArrow: line.arrow ? { type: 1, size: 6 } : false,
           },
         )
         elementsRef.current.set(elemId, el)
@@ -219,11 +279,25 @@ export const AxisCanvas: React.FC<AxisCanvasProps> = ({ id, axis, onPointMoved }
     return [resolved.xMin, resolved.yMax, resolved.xMax, resolved.yMin]
   }, [axis])
 
+  const { width: boardWidth, height: boardHeight } = useMemo(() => {
+    const resolved = resolveViewport(axis)
+    return computeBoardSize({
+      xRange: resolved.xMax - resolved.xMin,
+      yRange: resolved.yMax - resolved.yMin,
+      availableWidth: 600,
+      proportion: axis.proportion ?? 1,
+      maxWidth: 600,
+      maxHeight: 500,
+      minWidth: 260,
+      minHeight: 260,
+    })
+  }, [axis])
+
   return (
     <JSXGraphBoard
       id={id}
-      width={600}
-      height={400}
+      width={boardWidth}
+      height={boardHeight}
       boundingBox={bbox}
       showAxis
       showGrid={axis.grid.enabled}
