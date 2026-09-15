@@ -1,6 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { GeometrySpecV1 } from '@/infra/contracts'
-import { getDefaultTextColor, sizeScaleToPixels } from '@/infra/contracts/graphics/textColors'
+import {
+  getDefaultAngleColor,
+  getDefaultTextColor,
+  sizeScaleToPixels,
+} from '@/infra/contracts/graphics/textColors'
 
 type PointSpec = GeometrySpecV1['elements']['points'][number]
 type LineSpec = GeometrySpecV1['elements']['lines'][number]
@@ -117,11 +121,17 @@ function renderAngles(board: JXG.Board, angles: AngleSpec[], pointMap: Map<strin
     const ray2 = pointMap.get(a.ray2)
     if (!center || !ray1 || !ray2) continue
 
+    const color = a.color || getDefaultAngleColor()
+    const isSquare = a.style === 'square'
     const attrs: Record<string, unknown> = {
-      radius: a.arcRadius ?? 1,
-      type: a.style === 'square' ? 'square' : 'sector',
+      radius: a.arcRadius || 30,
+      orthoType: isSquare ? 'square' : 'sector',
+      strokeColor: color,
+      fillColor: color,
+      fillOpacity: 0.15,
+      strokeWidth: 2,
+      fixed: true,
     }
-    if (a.color) attrs.fillColor = a.color
     if (a.label?.value) {
       attrs.name = a.label.value
       attrs.withLabel = true
