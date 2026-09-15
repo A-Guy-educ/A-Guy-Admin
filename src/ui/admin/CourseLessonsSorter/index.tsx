@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useDocumentInfo, useForm, useTranslation } from '@payloadcms/ui'
 import { GripVertical, ChevronUp, ChevronDown, BookOpen, Pencil, ClipboardList } from 'lucide-react'
 
@@ -231,6 +231,24 @@ export const CourseLessonsSorter: React.FC = () => {
     null,
   )
   const [activeFilter, setActiveFilter] = useState<'all' | 'learning' | 'practice' | 'exam'>('all')
+
+  // Per-type running index across all chapters in course order.
+  // Numbering does not reset between chapters and is independent per type.
+  const typeIndexByLessonId = useMemo(() => {
+    const map = new Map<string, number>()
+    const counters: Record<'learning' | 'practice' | 'exam', number> = {
+      learning: 0,
+      practice: 0,
+      exam: 0,
+    }
+    for (const group of chapters) {
+      for (const lesson of group.lessons) {
+        counters[lesson.type] += 1
+        map.set(lesson.id, counters[lesson.type])
+      }
+    }
+    return map
+  }, [chapters])
 
   // Keep a ref to the latest chapters state so moveLesson can access it without stale-closure issues
   const chaptersRef = useRef<GroupedChapter[]>([])
@@ -523,8 +541,10 @@ export const CourseLessonsSorter: React.FC = () => {
                     <GripVertical size={16} />
                   </span>
 
-                  {/* Index */}
-                  <span style={lessonIndexStyle}>{idx + 1}</span>
+                  {/* Index (per-type, cumulative across chapters) */}
+                  <span style={lessonIndexStyle}>
+                    {typeIndexByLessonId.get(lesson.id) ?? idx + 1}
+                  </span>
 
                   {/* Type badge */}
                   <span style={typeBadgeStyle(lesson.type)}>
