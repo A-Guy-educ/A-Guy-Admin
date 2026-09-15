@@ -2036,6 +2036,7 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- fix(admin): Sync shared renderer angle attributes with admin canvas ([#455](https://github.com/A-Guy-educ/A-Guy-Admin/pull/455)) — @aguyshayb
 - feat(admin): Fix geometry label font and add Greek letter picker ([#454](https://github.com/A-Guy-educ/A-Guy-Admin/pull/454)) — @aguyshayb
 - feat(admin): Number course lessons per type across chapters ([#453](https://github.com/A-Guy-educ/A-Guy-Admin/pull/453)) — @aguyshayb
 ## [v0.43.0] - 2026-09-10
