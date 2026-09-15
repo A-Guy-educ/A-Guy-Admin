@@ -37,7 +37,7 @@ function renderPoints(board: JXG.Board, points: PointSpec[]): Map<string, any> {
       label: {
         offset: mapLabelOffset(p.position),
         fontSize: p.fontSize ?? 12,
-        fontFamily: 'Times New Roman',
+        cssStyle: "font-family: 'Times New Roman', Times, serif;",
       },
     })
     pointMap.set(p.name, pt)
@@ -84,7 +84,7 @@ function renderLines(
         anchorY: 'middle',
         display: 'internal',
         rotate: deg,
-        fontFamily: 'Times New Roman',
+        cssStyle: "font-family: 'Times New Roman', Times, serif;",
       })
     }
   }
@@ -127,8 +127,12 @@ function renderAngles(board: JXG.Board, angles: AngleSpec[], pointMap: Map<strin
       attrs.withLabel = true
       attrs.label = {
         fontSize: a.label.fontSize ?? 10,
-        fontFamily: 'Times New Roman',
+        cssStyle: "font-family: 'Times New Roman', Times, serif;",
       }
+    } else {
+      attrs.withLabel = false
+      attrs.name = ''
+      attrs.label = { visible: false }
     }
 
     board.create('angle', [ray1, center, ray2], attrs)

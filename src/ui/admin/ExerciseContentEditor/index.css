@@ -2897,6 +2897,18 @@
   color: var(--theme-elevation-800);
 }
 
+.panel-field-inline {
+  display: flex;
+  gap: 0.25rem;
+  align-items: stretch;
+}
+
+.panel-field-select--greek {
+  width: 3.25rem;
+  padding: 0.375rem 0.25rem;
+  font-family: 'Times New Roman', Times, serif;
+}
+
 .panel-add-btn {
   display: flex;
   align-items: center;
