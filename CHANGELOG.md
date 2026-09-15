@@ -2045,6 +2045,8 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+## [v0.44.0] - 2026-09-15
+
 - promote: dev -> main (v0.44.0) ([#457](https://github.com/A-Guy-educ/A-Guy-Admin/pull/457)) — @aguyshayb
 - chore: release v0.44.0 ([#456](https://github.com/A-Guy-educ/A-Guy-Admin/pull/456)) — @aguyshayb
 - fix(admin): Sync shared renderer angle attributes with admin canvas ([#455](https://github.com/A-Guy-educ/A-Guy-Admin/pull/455)) — @aguyshayb
