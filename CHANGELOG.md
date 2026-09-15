@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.44.0 — 2026-09-15
+
+### Features
+- Number course lessons per type across chapters (#453)
+- Geometry label font and greek letter picker (#454)
+
+### Bug Fixes
+- Sync shared renderer angle attributes with admin canvas; mirror type+orthoType fix on the interactive canvas; preserve square style off-90 degrees (#455)
+
 ## v0.43.0 — 2026-09-10
 
 ### Features
