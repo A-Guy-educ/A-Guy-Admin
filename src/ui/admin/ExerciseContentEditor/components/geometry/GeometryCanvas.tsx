@@ -498,9 +498,13 @@ function syncAngles(
 
     const isSquare = angle.style === 'square'
     const hasLabel = !!angle.label?.value
+    // Set both `type` and `orthoType` so `style: 'square'` renders as a square
+    // marker regardless of the measured angle — matches the shared renderer.
+    const shape = isSquare ? 'square' : 'sector'
     const el = board.create('angle', [ray1El, centerEl, ray2El], {
       radius: angle.arcRadius || 30,
-      orthoType: isSquare ? 'square' : 'sector',
+      type: shape,
+      orthoType: shape,
       strokeColor: angle.color || getDefaultAngleColor(),
       fillColor: angle.color || getDefaultAngleColor(),
       fillOpacity: 0.15,
