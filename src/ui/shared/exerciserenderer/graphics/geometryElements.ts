@@ -123,9 +123,15 @@ function renderAngles(board: JXG.Board, angles: AngleSpec[], pointMap: Map<strin
 
     const color = a.color || getDefaultAngleColor()
     const isSquare = a.style === 'square'
+    // Set both `type` and `orthoType` so `style: 'square'` renders as a square
+    // marker regardless of the measured angle. `orthoType` alone only overrides
+    // within `orthoSensitivity` (~1°) of 90°, which silently downgrades
+    // authored non-right square-style angles back to sectors.
+    const shape = isSquare ? 'square' : 'sector'
     const attrs: Record<string, unknown> = {
       radius: a.arcRadius || 30,
-      orthoType: isSquare ? 'square' : 'sector',
+      type: shape,
+      orthoType: shape,
       strokeColor: color,
       fillColor: color,
       fillOpacity: 0.15,
