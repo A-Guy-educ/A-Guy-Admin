@@ -2036,6 +2036,7 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- feat(admin): Number course lessons per type across chapters ([#453](https://github.com/A-Guy-educ/A-Guy-Admin/pull/453)) — @aguyshayb
 ## [v0.43.0] - 2026-09-10
 
 - promote: dev -> main (v0.43.0) ([#447](https://github.com/A-Guy-educ/A-Guy-Admin/pull/447)) — @aguyshayb
