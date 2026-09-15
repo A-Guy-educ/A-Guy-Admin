@@ -1,6 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { GeometrySpecV1 } from '@/infra/contracts'
-import { getDefaultTextColor, sizeScaleToPixels } from '@/infra/contracts/graphics/textColors'
+import {
+  getDefaultAngleColor,
+  getDefaultTextColor,
+  sizeScaleToPixels,
+} from '@/infra/contracts/graphics/textColors'
 
 type PointSpec = GeometrySpecV1['elements']['points'][number]
 type LineSpec = GeometrySpecV1['elements']['lines'][number]
@@ -37,7 +41,7 @@ function renderPoints(board: JXG.Board, points: PointSpec[]): Map<string, any> {
       label: {
         offset: mapLabelOffset(p.position),
         fontSize: p.fontSize ?? 12,
-        fontFamily: 'Times New Roman',
+        cssStyle: "font-family: 'Times New Roman', Times, serif;",
       },
     })
     pointMap.set(p.name, pt)
@@ -84,7 +88,7 @@ function renderLines(
         anchorY: 'middle',
         display: 'internal',
         rotate: deg,
-        fontFamily: 'Times New Roman',
+        cssStyle: "font-family: 'Times New Roman', Times, serif;",
       })
     }
   }
@@ -117,18 +121,34 @@ function renderAngles(board: JXG.Board, angles: AngleSpec[], pointMap: Map<strin
     const ray2 = pointMap.get(a.ray2)
     if (!center || !ray1 || !ray2) continue
 
+    const color = a.color || getDefaultAngleColor()
+    const isSquare = a.style === 'square'
+    // Set both `type` and `orthoType` so `style: 'square'` renders as a square
+    // marker regardless of the measured angle. `orthoType` alone only overrides
+    // within `orthoSensitivity` (~1°) of 90°, which silently downgrades
+    // authored non-right square-style angles back to sectors.
+    const shape = isSquare ? 'square' : 'sector'
     const attrs: Record<string, unknown> = {
-      radius: a.arcRadius ?? 1,
-      type: a.style === 'square' ? 'square' : 'sector',
+      radius: a.arcRadius || 30,
+      type: shape,
+      orthoType: shape,
+      strokeColor: color,
+      fillColor: color,
+      fillOpacity: 0.15,
+      strokeWidth: 2,
+      fixed: true,
     }
-    if (a.color) attrs.fillColor = a.color
     if (a.label?.value) {
       attrs.name = a.label.value
       attrs.withLabel = true
       attrs.label = {
         fontSize: a.label.fontSize ?? 10,
-        fontFamily: 'Times New Roman',
+        cssStyle: "font-family: 'Times New Roman', Times, serif;",
       }
+    } else {
+      attrs.withLabel = false
+      attrs.name = ''
+      attrs.label = { visible: false }
     }
 
     board.create('angle', [ray1, center, ray2], attrs)

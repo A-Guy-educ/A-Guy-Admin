@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.44.0 — 2026-09-15
+
+### Features
+- Number course lessons per type across chapters (#453)
+- Geometry label font and greek letter picker (#454)
+
+### Bug Fixes
+- Sync shared renderer angle attributes with admin canvas; mirror type+orthoType fix on the interactive canvas; preserve square style off-90 degrees (#455)
+
 ## v0.43.0 — 2026-09-10
 
 ### Features
@@ -2036,6 +2045,13 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- chore: release v0.44.0 ([#456](https://github.com/A-Guy-educ/A-Guy-Admin/pull/456)) — @aguyshayb
+- fix(admin): Sync shared renderer angle attributes with admin canvas ([#455](https://github.com/A-Guy-educ/A-Guy-Admin/pull/455)) — @aguyshayb
+- feat(admin): Fix geometry label font and add Greek letter picker ([#454](https://github.com/A-Guy-educ/A-Guy-Admin/pull/454)) — @aguyshayb
+- feat(admin): Number course lessons per type across chapters ([#453](https://github.com/A-Guy-educ/A-Guy-Admin/pull/453)) — @aguyshayb
+## [v0.43.0] - 2026-09-10
+
+- promote: dev -> main (v0.43.0) ([#447](https://github.com/A-Guy-educ/A-Guy-Admin/pull/447)) — @aguyshayb
 - chore: release v0.43.0 ([#446](https://github.com/A-Guy-educ/A-Guy-Admin/pull/446)) — @aguyshayb
 - fix(studio): stack geometry toolbar above canvas ([#445](https://github.com/A-Guy-educ/A-Guy-Admin/pull/445)) — @aguyshayb
 - fix(studio): 45/55 block layout so canvas actually fills its column ([#444](https://github.com/A-Guy-educ/A-Guy-Admin/pull/444)) — @aguyshayb

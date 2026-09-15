@@ -300,7 +300,7 @@ function syncPoints(
         label: {
           offset: labelOffset,
           fontSize: point.fontSize || 12,
-          fontFamily: 'Times New Roman',
+          cssStyle: "font-family: 'Times New Roman', Times, serif;",
         } as Record<string, unknown>,
       })
       el.on('drag', () => {
@@ -420,7 +420,7 @@ function syncLineLabels(
         anchorX: 'middle',
         anchorY: 'middle',
         display: 'internal',
-        fontFamily: 'Times New Roman',
+        cssStyle: "font-family: 'Times New Roman', Times, serif;",
         rotate: () => {
           const dx = t.X() - f.X()
           const dy = t.Y() - f.Y()
@@ -497,22 +497,27 @@ function syncAngles(
     }
 
     const isSquare = angle.style === 'square'
+    const hasLabel = !!angle.label?.value
+    // Set both `type` and `orthoType` so `style: 'square'` renders as a square
+    // marker regardless of the measured angle — matches the shared renderer.
+    const shape = isSquare ? 'square' : 'sector'
     const el = board.create('angle', [ray1El, centerEl, ray2El], {
       radius: angle.arcRadius || 30,
-      orthoType: isSquare ? 'square' : 'sector',
+      type: shape,
+      orthoType: shape,
       strokeColor: angle.color || getDefaultAngleColor(),
       fillColor: angle.color || getDefaultAngleColor(),
       fillOpacity: 0.15,
       strokeWidth: 2,
       fixed: true,
-      withLabel: !!angle.label?.value,
-      name: angle.label?.value || '',
-      label: angle.label
-        ? ({ fontSize: angle.label.fontSize || 10, fontFamily: 'Times New Roman' } as Record<
-            string,
-            unknown
-          >)
-        : undefined,
+      withLabel: hasLabel,
+      name: hasLabel ? angle.label!.value! : '',
+      label: hasLabel
+        ? ({
+            fontSize: angle.label!.fontSize || 10,
+            cssStyle: "font-family: 'Times New Roman', Times, serif;",
+          } as Record<string, unknown>)
+        : ({ visible: false } as Record<string, unknown>),
     })
     elementsRef.current.set(elemId, el)
   }

@@ -1,6 +1,6 @@
 'use client'
 
-import React from 'react'
+import React, { useRef } from 'react'
 import type { GeometrySpecV1 } from '@/infra/contracts/graphics/geometry.v1'
 import { getDefaultAngleColor } from '@/infra/contracts/graphics/textColors'
 import { Plus, Trash2 } from 'lucide-react'
@@ -9,6 +9,8 @@ import { ColorSwatchPicker } from '../shared/ColorSwatchPicker'
 type GeoAngle = GeometrySpecV1['elements']['angles'][number]
 type GeoPoint = GeometrySpecV1['elements']['points'][number]
 
+const GREEK_LETTERS = ['α', 'β', 'γ', 'δ', 'θ', 'φ'] as const
+
 interface AnglesPanelProps {
   angles: GeoAngle[]
   points: GeoPoint[]
@@ -16,6 +18,7 @@ interface AnglesPanelProps {
 }
 
 export const AnglesPanel: React.FC<AnglesPanelProps> = ({ angles, points, onChange }) => {
+  const labelInputRefs = useRef<Map<number, HTMLInputElement | null>>(new Map())
   const handleAdd = () => {
     const names = points.map((p) => p.name)
     const newAngle: GeoAngle = {
@@ -114,20 +117,69 @@ export const AnglesPanel: React.FC<AnglesPanelProps> = ({ angles, points, onChan
             </div>
             <div className="panel-field">
               <span className="panel-field-label">Label</span>
-              <input
-                type="text"
-                className="panel-field-input panel-field-input--short"
-                placeholder="e.g. α"
-                value={angle.label?.value || ''}
-                onChange={(e) => {
-                  const value = e.target.value
-                  handleUpdate(index, {
-                    label: value
-                      ? { ...angle.label, value, position: angle.label?.position || 'inside' }
-                      : undefined,
-                  })
-                }}
-              />
+              <div className="panel-field-inline">
+                <input
+                  ref={(el) => {
+                    labelInputRefs.current.set(index, el)
+                  }}
+                  type="text"
+                  className="panel-field-input panel-field-input--short"
+                  placeholder="e.g. α"
+                  value={angle.label?.value || ''}
+                  onChange={(e) => {
+                    const value = e.target.value
+                    handleUpdate(index, {
+                      label: value
+                        ? { ...angle.label, value, position: angle.label?.position || 'inside' }
+                        : undefined,
+                    })
+                  }}
+                />
+                <select
+                  className="panel-field-select panel-field-select--greek"
+                  aria-label="Insert Greek letter"
+                  title="Insert Greek letter"
+                  value=""
+                  onChange={(e) => {
+                    const letter = e.target.value
+                    if (!letter) return
+                    const input = labelInputRefs.current.get(index)
+                    const current = angle.label?.value || ''
+                    // selectionStart/End are preserved across the select's focus
+                    // steal in modern browsers; fall back to end of string if
+                    // the field was never focused.
+                    const start = input?.selectionStart ?? current.length
+                    const end = input?.selectionEnd ?? current.length
+                    const nextValue = current.slice(0, start) + letter + current.slice(end)
+                    handleUpdate(index, {
+                      label: {
+                        ...angle.label,
+                        value: nextValue,
+                        position: angle.label?.position || 'inside',
+                      },
+                    })
+                    e.target.value = ''
+                    // Restore focus + caret right after the inserted letter so
+                    // the user can keep typing (e.g. `α` → click β → `αβ|`).
+                    window.setTimeout(() => {
+                      const el = labelInputRefs.current.get(index)
+                      if (!el) return
+                      const caret = start + letter.length
+                      el.focus()
+                      el.setSelectionRange(caret, caret)
+                    }, 0)
+                  }}
+                >
+                  <option value="" disabled hidden>
+                    α…
+                  </option>
+                  {GREEK_LETTERS.map((letter) => (
+                    <option key={letter} value={letter}>
+                      {letter}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
             <div className="panel-field">
               <span className="panel-field-label">Font</span>
