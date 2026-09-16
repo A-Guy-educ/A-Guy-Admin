@@ -65,6 +65,11 @@ function renderLines(
       dash: line.style === 'dashed' ? 2 : 0,
       straightFirst: false,
       straightLast: false,
+      // Force visible so segments render even when parent points are
+      // `visible: false` (a common pattern for angle-only questions where
+      // only the arcs and lines should be shown, without vertex dots).
+      // Without this JSXGraph propagates the parents' invisibility down.
+      visible: true,
     }
     if (line.color) attrs.strokeColor = line.color
 
@@ -137,6 +142,10 @@ function renderAngles(board: JXG.Board, angles: AngleSpec[], pointMap: Map<strin
       fillOpacity: 0.15,
       strokeWidth: 2,
       fixed: true,
+      // Same rationale as segments: parent points may be `visible: false` when
+      // the block wants only arcs/lines visible; without this override the
+      // angle inherits invisibility from its vertex.
+      visible: true,
     }
     if (a.label?.value) {
       attrs.name = a.label.value
