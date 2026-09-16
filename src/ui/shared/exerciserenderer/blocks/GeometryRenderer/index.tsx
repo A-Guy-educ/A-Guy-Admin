@@ -33,6 +33,14 @@ export function GeometryRenderer({ blockId, spec }: GeometryRendererProps) {
     [canvas.boundingBox, canvas.width, canvas.height],
   )
 
+  // JSXGraphBoard's init useEffect depends on `[id]` only — once the board is
+  // created for a given block id, it never re-inits, even if `spec` changes
+  // afterwards (e.g., fresh block data arriving after the initial render, or
+  // parent state updates). That leaves the board rendering stale geometry.
+  // Key the board on a hash of the spec so a spec change unmounts (freeBoard
+  // runs) and remounts (initBoard + onBoardReady fire) with the fresh data.
+  const specKey = useMemo(() => JSON.stringify(spec), [spec])
+
   // Render the board at the same aspect ratio as the bounding box so 1 unit
   // on x and 1 unit on y produce the same pixel length — otherwise the
   // container gets stretched by CSS max-width and circles come out as
@@ -68,6 +76,7 @@ export function GeometryRenderer({ blockId, spec }: GeometryRendererProps) {
   return (
     <div className="my-4 flex justify-center" ref={containerRef}>
       <JSXGraphBoard
+        key={specKey}
         id={blockId}
         width={dimensions.width}
         height={dimensions.height}
