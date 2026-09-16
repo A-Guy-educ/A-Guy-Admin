@@ -27,6 +27,7 @@
  */
 import type { Payload, PayloadRequest } from 'payload'
 
+import { regenerateBlockIds } from './regenerate-block-ids'
 import { stripManagedFields } from './strip-managed-fields'
 
 interface BlockRef {
@@ -172,8 +173,19 @@ export async function cloneSectionsAndRewireExercises(
       void _ch
       void _co
 
+      // Regenerate every per-doc id inside content.blocks so the cloned
+      // section doesn't share block ids with the source. Without this the
+      // duplicate's blocks collide with the source's (per-block progress,
+      // analytics, media joins, and the studio's DOM-id-derived render all
+      // key on block id and assume per-lesson uniqueness). The studio's
+      // duplicate-section endpoint already does this — parity fix for
+      // Duplicate Exercise + Duplicate Lesson, which share this helper.
+      const rewrittenContent = regenerateBlockIds(
+        (rest as { content?: unknown }).content,
+      )
       const newSectionData: Record<string, unknown> = {
         ...rest,
+        content: rewrittenContent,
         exercise: pair.newExerciseId,
         lesson: pair.newLessonId,
         chapter: pair.newChapterId,
