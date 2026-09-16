@@ -2,6 +2,7 @@
 
 import React from 'react'
 import type { QuestionTableBlock } from '@/server/payload/collections/Exercises/types'
+import { AttachmentEditor } from './AttachmentEditor'
 import { InlineRichTextEditor } from './InlineRichTextEditor'
 import { HintSolutionPanel } from './HintSolutionPanel'
 import { Plus, Trash2 } from 'lucide-react'
@@ -288,6 +289,21 @@ export const TableEditor: React.FC<TableEditorProps> = ({ block, onChange }) => 
           <Plus size={14} />
           <span>Add Row</span>
         </button>
+      </div>
+
+      <div className="question-editor-section">
+        <AttachmentEditor
+          blockId={block.id}
+          attachment={block.attachment}
+          onChange={(attachment) => {
+            if (attachment === undefined) {
+              const { attachment: _omit, ...rest } = block
+              onChange(rest as QuestionTableBlock)
+            } else {
+              onChange({ ...block, attachment })
+            }
+          }}
+        />
       </div>
 
       <div className="question-editor-section">

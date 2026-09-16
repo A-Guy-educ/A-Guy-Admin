@@ -17,7 +17,7 @@ export const SvgDocView: React.FC<SvgDocViewProps> = ({ block }) => {
   }
   return (
     <div className="studio-doc-svg">
-      <SvgRenderer block={block} disabled />
+      <SvgRenderer block={block} displaySize={block.displaySize} disabled />
     </div>
   )
 }

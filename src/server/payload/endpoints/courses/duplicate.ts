@@ -54,6 +54,7 @@ import type { Payload, PayloadRequest, Where } from 'payload'
 
 import { formatSlug } from '@/server/payload/fields/formatSlug'
 import { markRequestAsContentPromotionImport } from '@/server/services/content-promotion/import-context'
+import { regenerateBlockIds } from '@/server/services/duplication/regenerate-block-ids'
 
 /**
  * Batch limits for `insertMany`. `INSERT_MANY_MAX_DOCS` is the doc-count cap;
@@ -600,8 +601,15 @@ function prepareSection(
   void _a
 
   const sectionTitle = typeof rest.title === 'string' ? rest.title : ''
+  // Regenerate every per-doc id inside content.blocks — the raw insertMany
+  // path skips all Payload hooks, so nothing else in this pipeline would
+  // freshen these. Without this, cloned sections carry the source's block
+  // ids, colliding with per-block progress / analytics / media joins and
+  // (in the studio) causing DOM-id collisions when both are rendered.
+  const rewrittenContent = regenerateBlockIds((rest as { content?: unknown }).content)
   const doc: Record<string, unknown> = {
     ...rest,
+    content: rewrittenContent,
     _id: newSectionObjectId,
     exercise: newExerciseObjectId,
     lesson: newLessonObjectId,

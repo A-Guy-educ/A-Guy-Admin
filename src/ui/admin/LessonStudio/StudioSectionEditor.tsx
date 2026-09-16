@@ -18,7 +18,7 @@ interface StudioSectionEditorProps {
   deleting: boolean
   duplicating: boolean
   onBlockChange: (sectionId: string, index: number, updated: ContentBlock) => void
-  onAddBlock: (sectionId: string, block: ContentBlock) => void
+  onAddBlock: (sectionId: string, block: ContentBlock, insertAt?: number) => void
   onDeleteBlock: (sectionId: string, index: number) => void
   /** Bulk-replace for the section-level JSON modal (Grab all blocks → paste back). */
   onReplaceBlocks: (sectionId: string, blocks: ContentBlock[]) => void
@@ -107,26 +107,34 @@ export const StudioSectionEditor: React.FC<StudioSectionEditorProps> = ({
           const canDeleteBlock = blocks.length > 1
           const handleDelete = canDeleteBlock ? () => onDeleteBlock(sectionId, index) : undefined
           return (
-            <div key={block.id || `block-${index}`} className="studio-block-item">
-              {viewMode === 'document' ? (
-                <StudioDocBlock block={block} onChange={handleChange} onDelete={handleDelete} />
-              ) : (
-                <div className="studio-edit-block-wrapper">
-                  {canDeleteBlock && (
-                    <button
-                      type="button"
-                      className="studio-block-delete-btn"
-                      onClick={handleDelete}
-                      title="Delete this block"
-                      aria-label="Delete block"
-                    >
-                      ×
-                    </button>
-                  )}
-                  <LazyInlineBlockEditor block={block} onChange={handleChange} />
-                </div>
-              )}
-            </div>
+            <React.Fragment key={block.id || `block-${index}`}>
+              {/* Between-block inserter — appears before every block so a new
+                  one can slot in anywhere (index 0..N-1). The end position N
+                  is covered by the terminal AddBlockButton below. */}
+              <div className="studio-add-block-row studio-add-block-row--between">
+                <AddBlockButton onAdd={(newBlock) => onAddBlock(sectionId, newBlock, index)} />
+              </div>
+              <div className="studio-block-item">
+                {viewMode === 'document' ? (
+                  <StudioDocBlock block={block} onChange={handleChange} onDelete={handleDelete} />
+                ) : (
+                  <div className="studio-edit-block-wrapper">
+                    {canDeleteBlock && (
+                      <button
+                        type="button"
+                        className="studio-block-delete-btn"
+                        onClick={handleDelete}
+                        title="Delete this block"
+                        aria-label="Delete block"
+                      >
+                        ×
+                      </button>
+                    )}
+                    <LazyInlineBlockEditor block={block} onChange={handleChange} />
+                  </div>
+                )}
+              </div>
+            </React.Fragment>
           )
         })}
         <div className="studio-add-block-row">

@@ -301,6 +301,7 @@ export const ExerciseBlockDefaults = {
     value:
       '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">\n  <circle cx="100" cy="100" r="50" fill="none" stroke="black" />\n</svg>',
     altText: '',
+    displaySize: 'full',
   }),
 
   question_geometry: (): QuestionGeometryBlock => ({
@@ -331,6 +332,7 @@ export const ExerciseBlockDefaults = {
         evaluation: { mode: 'none' },
       },
     },
+    displaySize: 'full',
     hint: DEFAULT_HINT_SOLUTION(),
     solution: DEFAULT_HINT_SOLUTION(),
     fullSolution: DEFAULT_HINT_SOLUTION(),

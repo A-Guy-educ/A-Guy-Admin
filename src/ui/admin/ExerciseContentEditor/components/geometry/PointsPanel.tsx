@@ -14,7 +14,12 @@ interface PointsPanelProps {
   onChange: (points: GeoPoint[]) => void
 }
 
+/** Renderer fallback (mirrored in geometryElements.ts / GeometryCanvas.tsx) —
+ *  legacy points saved without an explicit size render at this value, so it
+ *  must stay 4 to preserve existing content. Newly-added points use
+ *  NEW_POINT_SIZE. */
 const DEFAULT_POINT_SIZE = 4
+const NEW_POINT_SIZE = 2
 const DEFAULT_POINT_POSITION = 'r' as const
 
 const nextPointName = (points: GeoPoint[]): string => {
@@ -34,7 +39,7 @@ export const PointsPanel: React.FC<PointsPanelProps> = ({ points, onChange }) =>
       y: 0,
       visible: true,
       color: getDefaultCanvasElementColor(),
-      size: DEFAULT_POINT_SIZE,
+      size: NEW_POINT_SIZE,
       position: DEFAULT_POINT_POSITION,
     }
     onChange([...points, newPoint])
@@ -126,6 +131,14 @@ export const PointsPanel: React.FC<PointsPanelProps> = ({ points, onChange }) =>
                 onChange={(e) => handleUpdate(index, { visible: e.target.checked })}
               />
               Vis
+            </label>
+            <label className="panel-checkbox-label" style={{ fontSize: '0.75rem' }}>
+              <input
+                type="checkbox"
+                checked={point.labelVisible ?? true}
+                onChange={(e) => handleUpdate(index, { labelVisible: e.target.checked })}
+              />
+              Label
             </label>
             <button
               type="button"

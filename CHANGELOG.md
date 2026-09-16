@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.45.0 — 2026-09-16
+
+### Features
+- Text-lesson import (v2 bracketed format): geometry blocks are now recognised alongside existing content types (#466)
+- Geometry angle labels are now draggable and snap to one of three preset bisector distances (near/mid/far); new per-point `labelVisible` toggle in the geometry editor (#465)
+- Studio: insert new blocks between existing ones via slim in-line inserters on section and exercise block lists (#465)
+- Sketch blocks (SVG, geometry, axis, question attachments) can be sized via a shared dropdown; new `xsmall` (25 %) option added alongside the existing `small / medium / large / full` (33/50/75/100 %) (#465)
+- Studio doc view now shows question attachments inline (#463)
+- Optional attachment field added to question blocks (#461)
+
+### Bug Fixes
+- Duplicating an Exercise, Lesson, or Course now regenerates all nested content-block ids to prevent JSXGraph and React-key collisions (#464)
+- Resolve JSXGraph DOM id collision when a geometry block renders twice on the same page (#462)
+- Refresh geometry preview when the block spec changes (#460)
+- Force derived geometry elements to stay visible when their parent points are hidden (#459)
+
 ## v0.44.0 — 2026-09-15
 
 ### Features
@@ -2045,6 +2061,18 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- chore: release v0.45.0 ([#467](https://github.com/A-Guy-educ/A-Guy-Admin/pull/467)) — @aguyshayb
+- feat(text-lesson-import): add geometry support to bracketed v2 format ([#466](https://github.com/A-Guy-educ/A-Guy-Admin/pull/466)) — @aguyshayb
+- feat(admin): Angle label distances, point label toggle, sketch sizes, and studio between-block inserts ([#465](https://github.com/A-Guy-educ/A-Guy-Admin/pull/465)) — @aguyshayb
+- fix(admin): Regenerate content block ids on Duplicate Exercise/Lesson/Course ([#464](https://github.com/A-Guy-educ/A-Guy-Admin/pull/464)) — @aguyshayb
+- feat(admin): Show question attachments in Studio doc view ([#463](https://github.com/A-Guy-educ/A-Guy-Admin/pull/463)) — @aguyshayb
+- fix(admin): Resolve JSXGraph DOM id collision when a block renders twice ([#462](https://github.com/A-Guy-educ/A-Guy-Admin/pull/462)) — @aguyshayb
+- feat(admin): Optional attachment field on question blocks ([#461](https://github.com/A-Guy-educ/A-Guy-Admin/pull/461)) — @aguyshayb
+- fix(admin): Refresh geometry preview when block spec changes ([#460](https://github.com/A-Guy-educ/A-Guy-Admin/pull/460)) — @aguyshayb
+- fix(admin): Force derived geometry visible when parent points are hidden ([#459](https://github.com/A-Guy-educ/A-Guy-Admin/pull/459)) — @aguyshayb
+## [v0.44.0] - 2026-09-15
+
+- promote: dev -> main (v0.44.0) ([#457](https://github.com/A-Guy-educ/A-Guy-Admin/pull/457)) — @aguyshayb
 - chore: release v0.44.0 ([#456](https://github.com/A-Guy-educ/A-Guy-Admin/pull/456)) — @aguyshayb
 - fix(admin): Sync shared renderer angle attributes with admin canvas ([#455](https://github.com/A-Guy-educ/A-Guy-Admin/pull/455)) — @aguyshayb
 - feat(admin): Fix geometry label font and add Greek letter picker ([#454](https://github.com/A-Guy-educ/A-Guy-Admin/pull/454)) — @aguyshayb

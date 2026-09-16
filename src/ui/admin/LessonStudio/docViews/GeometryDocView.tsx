@@ -14,7 +14,11 @@ export const GeometryDocView: React.FC<GeometryDocViewProps> = ({ block }) => {
         <RichTextDocView block={block.prompt} placeholder="Untitled geometry question" />
       </div>
       <div className="studio-doc-graph-canvas">
-        <GeometryRenderer blockId={block.id} spec={block.geometry} />
+        <GeometryRenderer
+          blockId={block.id}
+          spec={block.geometry}
+          displaySize={block.displaySize}
+        />
       </div>
     </div>
   )

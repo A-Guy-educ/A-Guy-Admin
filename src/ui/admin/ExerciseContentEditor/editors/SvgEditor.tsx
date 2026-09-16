@@ -1,121 +1,59 @@
 'use client'
 
-import React, { useMemo, useRef } from 'react'
+import React from 'react'
 import type { SvgBlock } from '@/server/payload/collections/Exercises/types'
-import { sanitizeSvg } from '@/ui/admin/shared/utils'
+import { SvgContentEditor } from './SvgContentEditor'
 
 interface SvgEditorProps {
   block: SvgBlock
   onChange: (block: SvgBlock) => void
 }
 
-function validateSvg(value: string): { valid: boolean; error?: string } {
-  if (!value.trim()) return { valid: false, error: 'SVG content is empty' }
-  if (!value.includes('<svg')) return { valid: false, error: 'Missing <svg> element' }
-  if (!value.includes('</svg>') && !value.includes('/>')) {
-    return { valid: false, error: 'SVG element is not closed' }
-  }
-  if (typeof DOMParser === 'undefined') return { valid: true }
-  try {
-    const parser = new DOMParser()
-    const doc = parser.parseFromString(value, 'image/svg+xml')
-    const errorNode = doc.querySelector('parsererror')
-    if (errorNode) {
-      return {
-        valid: false,
-        error: 'Malformed XML: ' + (errorNode.textContent?.slice(0, 80) ?? ''),
-      }
-    }
-    if (!doc.querySelector('svg')) return { valid: false, error: 'No root <svg> element found' }
-    return { valid: true }
-  } catch {
-    return { valid: false, error: 'Failed to parse SVG' }
-  }
-}
-
 export const SvgEditor: React.FC<SvgEditorProps> = ({ block, onChange }) => {
-  const fileInputRef = useRef<HTMLInputElement>(null)
-
-  const validation = useMemo(() => validateSvg(block.value), [block.value])
-  const sanitized = useMemo(() => {
-    if (!validation.valid) return null
-    return sanitizeSvg(block.value)
-  }, [block.value, validation.valid])
-
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file || !file.name.endsWith('.svg')) return
-    const reader = new FileReader()
-    reader.onload = () => {
-      const content = reader.result as string
-      const { sanitized: cleaned } = sanitizeSvg(content)
-      onChange({ ...block, value: cleaned || content })
-    }
-    reader.readAsText(file)
-    e.target.value = ''
-  }
+  // The child SvgContentEditor can fire onChange asynchronously from
+  // FileReader.onload. Reading `block` from a ref keeps sibling fields
+  // (hint / solution / hotspots) safe if the user edits them mid-upload.
+  const blockRef = React.useRef(block)
+  React.useEffect(() => {
+    blockRef.current = block
+  }, [block])
 
   return (
     <div className="svg-editor">
       <div className="question-editor-section">
-        <label className="question-editor-label">SVG Code</label>
-        <div className="svg-editor-toolbar">
-          <button
-            type="button"
-            className="svg-editor-upload-btn"
-            onClick={() => fileInputRef.current?.click()}
-          >
-            Upload .svg
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".svg"
-            onChange={handleFileUpload}
-            style={{ display: 'none' }}
-          />
-          <span
-            className={`svg-editor-status ${validation.valid ? 'svg-editor-status--valid' : 'svg-editor-status--invalid'}`}
-          >
-            {validation.valid ? 'Valid' : validation.error}
-          </span>
-        </div>
-        <textarea
-          className="svg-editor-textarea"
-          value={block.value}
-          onChange={(e) => onChange({ ...block, value: e.target.value })}
-          spellCheck={false}
-        />
-      </div>
-
-      <div className="question-editor-section">
-        <label className="question-editor-label">Preview</label>
-        <div className="svg-editor-preview">
-          {validation.valid && sanitized ? (
-            // eslint-disable-next-line @next/next/no-img-element -- data URI, next/image can't optimize
-            <img
-              src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(sanitized.sanitized)}`}
-              alt={block.altText || 'SVG Preview'}
-              className="svg-editor-preview-img"
-            />
-          ) : (
-            <div className="svg-editor-preview-error">
-              {validation.error || 'No valid SVG to preview'}
-            </div>
-          )}
+        <div className="canvas-config-row">
+          <div className="panel-field">
+            <span className="panel-field-label">Display Size</span>
+            <select
+              className="panel-field-select"
+              value={block.displaySize || 'full'}
+              onChange={(e) =>
+                onChange({
+                  ...blockRef.current,
+                  displaySize: e.target.value as 'xsmall' | 'small' | 'medium' | 'large' | 'full',
+                })
+              }
+            >
+              <option value="xsmall">25%</option>
+              <option value="small">33%</option>
+              <option value="medium">50%</option>
+              <option value="large">75%</option>
+              <option value="full">100%</option>
+            </select>
+          </div>
         </div>
       </div>
-
-      <div className="question-editor-section">
-        <label className="question-editor-label">Alt Text</label>
-        <input
-          type="text"
-          className="svg-editor-alt-input"
-          value={block.altText || ''}
-          onChange={(e) => onChange({ ...block, altText: e.target.value })}
-          placeholder="Describe this image for accessibility..."
-        />
-      </div>
+      <SvgContentEditor
+        content={{ value: block.value, altText: block.altText, caption: block.caption }}
+        onChange={(content) =>
+          onChange({
+            ...blockRef.current,
+            value: content.value,
+            altText: content.altText,
+            caption: content.caption,
+          })
+        }
+      />
     </div>
   )
 }

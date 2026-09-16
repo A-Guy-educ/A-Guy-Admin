@@ -2,6 +2,7 @@
 
 import React, { useMemo } from 'react'
 import { GeometryRenderer } from '@/ui/shared/exerciserenderer/blocks/GeometryRenderer'
+import type { DisplaySize } from '@/ui/shared/exerciserenderer/blocks/AxisRenderer'
 
 import type { GeometryBlock as GeometryBlockType } from '@/payload-types'
 import type { GeometrySpecV1 } from '@/infra/contracts/graphics/geometry.v1'
@@ -11,7 +12,7 @@ type Props = GeometryBlockType & {
   disableInnerContainer?: boolean
 }
 
-export const GeometryBlock: React.FC<Props> = ({ id, spec }) => {
+export const GeometryBlock: React.FC<Props> = ({ id, spec, displaySize }) => {
   const parsed = useMemo<GeometrySpecV1 | null>(() => {
     if (!spec) return null
     try {
@@ -25,7 +26,11 @@ export const GeometryBlock: React.FC<Props> = ({ id, spec }) => {
 
   return (
     <div className="flex justify-center">
-      <GeometryRenderer blockId={id ?? 'geometry'} spec={parsed} />
+      <GeometryRenderer
+        blockId={id ?? 'geometry'}
+        spec={parsed}
+        displaySize={(displaySize as DisplaySize) ?? 'full'}
+      />
     </div>
   )
 }

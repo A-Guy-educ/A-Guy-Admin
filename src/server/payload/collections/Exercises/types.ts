@@ -53,6 +53,45 @@ export interface FreeResponseAnswer {
 }
 
 // ---------------------------------
+// Graph Layout Type (shared by geometry, axis, and attachment)
+// ---------------------------------
+export type GraphLayout = 'textAbove' | 'textBelow' | 'textLeft' | 'textRight'
+
+// ---------------------------------
+// Question Attachment
+// ---------------------------------
+// Optional sketch attached to a question so it renders side-by-side with an
+// SVG / geometry / axis diagram. Purely visual — the parent question still
+// owns prompt + answer + grading. Shapes mirror the standalone `svg`,
+// `question_geometry`, and `question_axis` blocks so Web can reuse existing
+// renderers.
+export interface SvgAttachmentContent {
+  value: string
+  altText?: string
+  caption?: InlineRichText
+}
+
+export type QuestionAttachment =
+  | {
+      kind: 'svg'
+      layout: GraphLayout
+      svg: SvgAttachmentContent
+      displaySize?: 'xsmall' | 'small' | 'medium' | 'large' | 'full'
+    }
+  | {
+      kind: 'geometry'
+      layout: GraphLayout
+      geometry: GeometrySpecV1
+      displaySize?: 'xsmall' | 'small' | 'medium' | 'large' | 'full'
+    }
+  | {
+      kind: 'axis'
+      layout: GraphLayout
+      axis: AxisSpecV1
+      displaySize?: 'xsmall' | 'small' | 'medium' | 'large' | 'full'
+    }
+
+// ---------------------------------
 // Question Select Block (True/False)
 // ---------------------------------
 export interface QuestionSelectTrueFalseBlock {
@@ -71,6 +110,7 @@ export interface QuestionSelectTrueFalseBlock {
   solution?: InlineRichText
   fullSolution?: InlineRichText
   showNotebook?: boolean
+  attachment?: QuestionAttachment
 }
 
 // ---------------------------------
@@ -87,6 +127,7 @@ export interface QuestionSelectMcqBlock {
   solution?: InlineRichText
   fullSolution?: InlineRichText
   showNotebook?: boolean
+  attachment?: QuestionAttachment
 }
 
 // ---------------------------------
@@ -101,6 +142,7 @@ export interface QuestionFreeResponseBlock {
   solution?: InlineRichText
   fullSolution?: InlineRichText
   showNotebook?: boolean
+  attachment?: QuestionAttachment
 }
 
 // ---------------------------------
@@ -128,6 +170,7 @@ export interface QuestionTableBlock {
   solution?: InlineRichText
   fullSolution?: InlineRichText
   showNotebook?: boolean
+  attachment?: QuestionAttachment
 }
 
 // ---------------------------------
@@ -171,6 +214,7 @@ export interface QuestionMatchingBlock {
   solution?: InlineRichText
   fullSolution?: InlineRichText
   showNotebook?: boolean
+  attachment?: QuestionAttachment
 }
 
 // ---------------------------------
@@ -194,6 +238,7 @@ export interface SvgBlock {
   interactive?: boolean // If true, hotspots are clickable
   hotspots?: SvgHotspot[] // Clickable regions (only when interactive=true)
   correctHotspotIds?: string[] // Answer key: which hotspot IDs are correct
+  displaySize?: 'xsmall' | 'small' | 'medium' | 'large' | 'full'
   hint?: InlineRichText
   solution?: InlineRichText
   fullSolution?: InlineRichText
@@ -210,11 +255,6 @@ export type QuestionAnswer =
   | { kind: 'function'; acceptedExpressions: string[] }
 
 // ---------------------------------
-// Graph Layout Type (for geometry and axis blocks)
-// ---------------------------------
-export type GraphLayout = 'textAbove' | 'textBelow' | 'textLeft' | 'textRight'
-
-// ---------------------------------
 // Question Geometry Block
 // ---------------------------------
 export interface QuestionGeometryBlock {
@@ -223,6 +263,7 @@ export interface QuestionGeometryBlock {
   prompt: InlineRichText
   layout?: GraphLayout
   geometry: GeometrySpecV1
+  displaySize?: 'xsmall' | 'small' | 'medium' | 'large' | 'full'
   answer?: QuestionAnswer
   hint?: InlineRichText
   solution?: InlineRichText
@@ -238,7 +279,7 @@ export interface QuestionAxisBlock {
   prompt: InlineRichText
   layout?: GraphLayout
   axis: AxisSpecV1
-  displaySize?: 'small' | 'medium' | 'large' | 'full'
+  displaySize?: 'xsmall' | 'small' | 'medium' | 'large' | 'full'
   answer?: QuestionAnswer
   hint?: InlineRichText
   solution?: InlineRichText

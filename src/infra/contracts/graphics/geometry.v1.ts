@@ -26,6 +26,8 @@ const GeometryPointSchema = z.object({
   position: PositionEnumSchema.optional(),
   fontSize: z.number().positive().optional(),
   visible: z.boolean().optional(),
+  /** When false the point is still drawn but its name label is hidden. Defaults to true. */
+  labelVisible: z.boolean().optional(),
   color: ColorStringSchema.optional(),
   size: z.number().int().min(1).max(5).optional(),
 })
@@ -61,6 +63,12 @@ const AngleLabelSchema = z.object({
   value: z.string().optional(),
   position: z.enum(['inside', 'outside']),
   fontSize: z.number().positive().optional(),
+  /**
+   * Distance ring for the label along the angle's bisector, expressed as a
+   * preset relative to the arc radius. Defaults to 'mid'. Editors let admins
+   * drag the label around; on release the distance snaps to the nearest ring.
+   */
+  distance: z.enum(['near', 'mid', 'far']).optional(),
 })
 
 /** Angle element */

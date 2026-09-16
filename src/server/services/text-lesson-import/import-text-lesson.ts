@@ -18,7 +18,9 @@ import {
   convertTextExerciseToSections,
   deriveLessonTitle,
 } from './convert-text-exercise'
+import { buildV2ExerciseTitle, convertTextExerciseV2ToSections } from './convert-text-exercise-v2'
 import { parseTextLesson } from './parse-text'
+import { isV2Format, parseTextLessonV2 } from './parse-text-v2'
 
 export interface ImportTextLessonInput {
   /** Required when creating a NEW lesson. Ignored when `targetLessonId` is set. */
@@ -135,11 +137,46 @@ export async function importTextLessonFromFile(
     }
   }
 
-  const parsed = parseTextLesson(input.text)
-  if (parsed.exercises.length === 0) {
-    return {
-      kind: 'validation',
-      issues: [{ path: 'exercises', message: 'No exercises found in the file' }],
+  // Route between the legacy `תרגיל N – מנחה: subtopic` format and the v2
+  // bracketed / geometry-aware format based on a signature check. Both
+  // paths converge on the same `{ exerciseNumber, title, converted }`
+  // shape so the create loop below is format-agnostic.
+  const useV2 = isV2Format(input.text)
+  const prepared: Array<{
+    exerciseNumber: string
+    title: string
+    converted: ReturnType<typeof convertTextExerciseToSections>
+  }> = []
+
+  if (useV2) {
+    const parsed = parseTextLessonV2(input.text)
+    if (parsed.exercises.length === 0) {
+      return {
+        kind: 'validation',
+        issues: [{ path: 'exercises', message: 'No exercises found in the file' }],
+      }
+    }
+    for (const ex of parsed.exercises) {
+      prepared.push({
+        exerciseNumber: ex.exerciseNumber,
+        title: buildV2ExerciseTitle(ex),
+        converted: convertTextExerciseV2ToSections(ex),
+      })
+    }
+  } else {
+    const parsed = parseTextLesson(input.text)
+    if (parsed.exercises.length === 0) {
+      return {
+        kind: 'validation',
+        issues: [{ path: 'exercises', message: 'No exercises found in the file' }],
+      }
+    }
+    for (const ex of parsed.exercises) {
+      prepared.push({
+        exerciseNumber: ex.exerciseNumber,
+        title: buildTextExerciseTitle(ex),
+        converted: convertTextExerciseToSections(ex),
+      })
     }
   }
 
@@ -211,10 +248,10 @@ export async function importTextLessonFromFile(
   const createdExerciseIds: string[] = []
   const createdSectionIds: string[] = []
 
-  for (let i = 0; i < parsed.exercises.length; i++) {
-    const ex = parsed.exercises[i]
+  for (let i = 0; i < prepared.length; i++) {
+    const ex = prepared[i]
     try {
-      const converted = convertTextExerciseToSections(ex)
+      const converted = ex.converted
       const content = {
         blocks:
           converted.sharedBlocks.length > 0 ? converted.sharedBlocks : [emptyRichTextPlaceholder()],
@@ -251,7 +288,7 @@ export async function importTextLessonFromFile(
       const exerciseData = {
         locale: 'he',
         lesson: lesson.id,
-        title: buildTextExerciseTitle(ex),
+        title: ex.title,
         order: orderStart + i,
         content,
         origin: 'import',

@@ -59,7 +59,7 @@ const validAxisBlockBase = {
 
 describe('QuestionAxisBlockSchema displaySize field', () => {
   describe('Valid displaySize values', () => {
-    it('should accept displaySize="small" (33%)', () => {
+    it('should accept displaySize="small" (25%)', () => {
       const block = { ...validAxisBlockBase, displaySize: 'small' as const }
       const result = QuestionAxisBlockSchema.safeParse(block)
       expect(result.success).toBe(true)

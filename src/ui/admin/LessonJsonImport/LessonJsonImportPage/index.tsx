@@ -131,7 +131,14 @@ function safeParseLesson(json: unknown): {
   return { topic, exerciseCount: exercises.length }
 }
 
+// Two accepted header shapes:
+//   v1  → "תרגיל 1 – מנחה: <subtopic>"   (colon-separated, at column 0)
+//   v2  → "[ תרגיל 1 - נתוני פתיחה ]"     (bracketed, wrapped in ==== fences)
+// The v2 form accepts both spaced and tight (`[תרגיל 1 - נתוני פתיחה]`)
+// brackets — the server-side signature is equally lax, so the preview
+// wouldn't be lying to the admin if we counted only one shape.
 const TEXT_EXERCISE_HEADER_RE = /^תרגיל\s+[^\s–-]+\s*[–-]\s*[^:]+:\s*(.*)$/gm
+const V2_EXERCISE_HEADER_RE = /^\s*\[\s*תרגיל\s+\S+\s*[-–]\s*נתוני\s*פתיחה\s*\]\s*$/gm
 
 // Mirrors deriveLessonTitle in server/services/text-lesson-import/convert-text-exercise.ts
 // so the preview table shows the same title the server will store.
@@ -162,9 +169,13 @@ function safeParseTextLesson(
   error?: string
 } {
   if (!text || text.trim() === '') return { error: 'File is empty' }
-  const exerciseCount = Array.from(text.matchAll(TEXT_EXERCISE_HEADER_RE)).length
+  const v1Count = Array.from(text.matchAll(TEXT_EXERCISE_HEADER_RE)).length
+  const v2Count = Array.from(text.matchAll(V2_EXERCISE_HEADER_RE)).length
+  const exerciseCount = v1Count + v2Count
   if (exerciseCount === 0) {
-    return { error: 'No "תרגיל N – …:" headers found — does this match the new format?' }
+    return {
+      error: 'No exercise headers found — expected "תרגיל N – …:" or "[ תרגיל N - נתוני פתיחה ]".',
+    }
   }
   return { topic: deriveTitleFromFilename(filename), exerciseCount }
 }
