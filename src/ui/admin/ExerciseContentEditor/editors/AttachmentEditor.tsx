@@ -10,7 +10,7 @@ import type { AxisSpecV1 } from '@/infra/contracts/graphics/axis.v1'
 import type { GeometrySpecV1 } from '@/infra/contracts/graphics/geometry.v1'
 import { AxisSpecEditor } from './AxisSpecEditor'
 import { GeometrySpecEditor } from './GeometrySpecEditor'
-import { InlineRichTextEditor } from './InlineRichTextEditor'
+import { SvgContentEditor } from './SvgContentEditor'
 
 type AttachmentKind = QuestionAttachment['kind']
 
@@ -118,7 +118,7 @@ export const AttachmentEditor: React.FC<AttachmentEditorProps> = ({
 
   return (
     <div className="attachment-editor">
-      <label className="question-editor-label" style={{ display: 'flex', gap: '0.5rem' }}>
+      <label className="question-editor-label flex gap-2">
         <input type="checkbox" checked={enabled} onChange={handleToggle} />
         <span>Attach a sketch (SVG / geometry / axis)</span>
       </label>
@@ -154,9 +154,10 @@ export const AttachmentEditor: React.FC<AttachmentEditorProps> = ({
           </div>
 
           {attachment.kind === 'svg' && (
-            <SvgAttachmentInputs
-              value={attachment.svg}
+            <SvgContentEditor
+              content={attachment.svg}
               onChange={(svg) => onChange({ ...attachment, svg })}
+              showCaption
             />
           )}
 
@@ -206,56 +207,5 @@ export const AttachmentEditor: React.FC<AttachmentEditorProps> = ({
         </>
       )}
     </div>
-  )
-}
-
-interface SvgAttachmentInputsProps {
-  value: SvgAttachmentContent
-  onChange: (value: SvgAttachmentContent) => void
-}
-
-const SvgAttachmentInputs: React.FC<SvgAttachmentInputsProps> = ({ value, onChange }) => {
-  return (
-    <>
-      <div className="question-editor-section">
-        <label className="question-editor-label">SVG Code</label>
-        <textarea
-          className="svg-editor-textarea"
-          value={value.value}
-          onChange={(e) => onChange({ ...value, value: e.target.value })}
-          spellCheck={false}
-        />
-      </div>
-
-      <div className="question-editor-section">
-        <label className="question-editor-label">Alt Text</label>
-        <input
-          type="text"
-          className="svg-editor-alt-input"
-          value={value.altText || ''}
-          onChange={(e) => onChange({ ...value, altText: e.target.value })}
-          placeholder="Describe this image for accessibility..."
-        />
-      </div>
-
-      <div className="question-editor-section">
-        <label className="question-editor-label">Caption (optional)</label>
-        <InlineRichTextEditor
-          value={
-            value.caption ?? {
-              type: 'rich_text',
-              format: 'md-math-v1',
-              value: '',
-              mediaIds: [],
-            }
-          }
-          onChange={(caption) => {
-            const hasContent = caption.value.trim().length > 0 || caption.mediaIds.length > 0
-            onChange({ ...value, caption: hasContent ? caption : undefined })
-          }}
-          placeholder="Optional caption shown below the sketch"
-        />
-      </div>
-    </>
   )
 }

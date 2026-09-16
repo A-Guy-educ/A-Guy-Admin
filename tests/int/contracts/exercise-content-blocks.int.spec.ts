@@ -564,6 +564,41 @@ describe('QuestionAttachment', () => {
       })
       expect(result.success).toBe(false)
     })
+
+    it(`${name}: rejects svg attachment with unknown extra field (.strict guard)`, () => {
+      const result = ContentBlockSchema.safeParse({
+        ...block,
+        attachment: { ...svgAttachment, bogus: 'oops' },
+      })
+      expect(result.success).toBe(false)
+    })
+
+    it(`${name}: rejects geometry attachment with unknown extra field (.strict guard)`, () => {
+      const result = ContentBlockSchema.safeParse({
+        ...block,
+        attachment: { ...geometryAttachment, bogus: 'oops' },
+      })
+      expect(result.success).toBe(false)
+    })
+
+    it(`${name}: rejects axis attachment with unknown extra field (.strict guard)`, () => {
+      const result = ContentBlockSchema.safeParse({
+        ...block,
+        attachment: { ...axisAttachment, bogus: 'oops' },
+      })
+      expect(result.success).toBe(false)
+    })
+
+    it(`${name}: rejects svg attachment payload with unknown nested key (.strict guard)`, () => {
+      const result = ContentBlockSchema.safeParse({
+        ...block,
+        attachment: {
+          ...svgAttachment,
+          svg: { ...svgAttachment.svg, bogus: 'oops' },
+        },
+      })
+      expect(result.success).toBe(false)
+    })
   }
 })
 
