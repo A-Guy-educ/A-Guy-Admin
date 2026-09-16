@@ -582,6 +582,166 @@
   padding: 4px 0;
 }
 
+/* ---------- Question attachment ----------
+   An attachment is a sketch (SVG / geometry / axis) owned by a question block.
+   The chip marks it as belonging to the parent so authors don't mistake it for
+   a standalone block, and the layout wrapper reproduces the four-way split
+   (textAbove/textBelow/textLeft/textRight) used at runtime. */
+.studio-doc-attachment {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border: 1px dashed var(--theme-elevation-200);
+  border-radius: 6px;
+  padding: 8px;
+  background: var(--theme-elevation-50);
+}
+
+.studio-doc-attachment-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  align-self: flex-start;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--theme-elevation-600);
+  background: var(--theme-elevation-100);
+  padding: 2px 8px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.studio-doc-attachment-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.studio-doc-attachment-caption {
+  font-size: 12px;
+  color: var(--theme-elevation-600);
+  font-style: italic;
+}
+
+.studio-doc-attachment-layout {
+  display: grid;
+  gap: 16px;
+  align-items: start;
+}
+
+.studio-doc-attachment-layout-text,
+.studio-doc-attachment-layout-sketch {
+  min-width: 0;
+}
+
+.studio-doc-attachment-layout--textAbove {
+  grid-template-columns: 1fr;
+  grid-template-areas: 'text' 'sketch';
+}
+
+.studio-doc-attachment-layout--textBelow {
+  grid-template-columns: 1fr;
+  grid-template-areas: 'sketch' 'text';
+}
+
+.studio-doc-attachment-layout--textLeft {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-areas: 'text sketch';
+}
+
+.studio-doc-attachment-layout--textRight {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-areas: 'sketch text';
+}
+
+.studio-doc-attachment-layout--textAbove .studio-doc-attachment-layout-text,
+.studio-doc-attachment-layout--textBelow .studio-doc-attachment-layout-text,
+.studio-doc-attachment-layout--textLeft .studio-doc-attachment-layout-text,
+.studio-doc-attachment-layout--textRight .studio-doc-attachment-layout-text {
+  grid-area: text;
+}
+
+.studio-doc-attachment-layout--textAbove .studio-doc-attachment-layout-sketch,
+.studio-doc-attachment-layout--textBelow .studio-doc-attachment-layout-sketch,
+.studio-doc-attachment-layout--textLeft .studio-doc-attachment-layout-sketch,
+.studio-doc-attachment-layout--textRight .studio-doc-attachment-layout-sketch {
+  grid-area: sketch;
+}
+
+/* On narrow viewports the side-by-side layouts collapse to stacked to keep
+   both the prose and the sketch readable in the studio's narrow column. */
+@media (max-width: 720px) {
+  .studio-doc-attachment-layout--textLeft,
+  .studio-doc-attachment-layout--textRight {
+    grid-template-columns: 1fr;
+    grid-template-areas: 'text' 'sketch';
+  }
+}
+
+/* ---------- Table question preview ---------- */
+.studio-doc-table-wrap {
+  overflow-x: auto;
+  margin-top: 4px;
+}
+
+.studio-doc-table {
+  border-collapse: collapse;
+  font-size: 14px;
+  min-width: 100%;
+}
+
+.studio-doc-table th,
+.studio-doc-table td {
+  padding: 4px 8px;
+  vertical-align: top;
+}
+
+.studio-doc-table--bordered th,
+.studio-doc-table--bordered td {
+  border: 1px solid var(--theme-elevation-200);
+}
+
+.studio-doc-table th {
+  background: var(--theme-elevation-100);
+  font-weight: 600;
+}
+
+.studio-doc-table-blank {
+  display: inline-block;
+  min-width: 40px;
+  height: 0;
+  border-bottom: 1px solid var(--theme-elevation-300);
+}
+
+/* ---------- Matching question preview ---------- */
+.studio-doc-matching {
+  list-style: none;
+  padding: 0;
+  margin: 4px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.studio-doc-matching-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: baseline;
+  gap: 8px;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.studio-doc-matching-arrow {
+  color: var(--theme-elevation-500);
+}
+
+.studio-doc-matching-left,
+.studio-doc-matching-right {
+  min-width: 0;
+}
+
 /* ---------- Editor loading skeleton ----------
    Rendered while the InlineBlockRenderer chunk downloads on first click. Sized
    so it doesn't cause layout shift compared to the doc-view height it replaces. */

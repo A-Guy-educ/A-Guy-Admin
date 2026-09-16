@@ -12,6 +12,8 @@ import { SvgDocView } from './docViews/SvgDocView'
 import { AxisDocView } from './docViews/AxisDocView'
 import { GeometryDocView } from './docViews/GeometryDocView'
 import { MultiAxisDocView } from './docViews/MultiAxisDocView'
+import { TableQuestionDocView } from './docViews/TableQuestionDocView'
+import { MatchingQuestionDocView } from './docViews/MatchingQuestionDocView'
 
 interface StudioDocBlockProps {
   block: ContentBlock
@@ -170,6 +172,12 @@ function DocView({ block }: { block: ContentBlock }) {
   }
   if (block.type === 'question_multi_axis') {
     return <MultiAxisDocView block={block} />
+  }
+  if (block.type === 'question_table') {
+    return <TableQuestionDocView block={block} />
+  }
+  if (block.type === 'question_matching') {
+    return <MatchingQuestionDocView block={block} />
   }
   return <UnsupportedDocView block={block} />
 }
