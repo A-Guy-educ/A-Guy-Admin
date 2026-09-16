@@ -53,6 +53,35 @@ export interface FreeResponseAnswer {
 }
 
 // ---------------------------------
+// Graph Layout Type (shared by geometry, axis, and attachment)
+// ---------------------------------
+export type GraphLayout = 'textAbove' | 'textBelow' | 'textLeft' | 'textRight'
+
+// ---------------------------------
+// Question Attachment
+// ---------------------------------
+// Optional sketch attached to a question so it renders side-by-side with an
+// SVG / geometry / axis diagram. Purely visual — the parent question still
+// owns prompt + answer + grading. Shapes mirror the standalone `svg`,
+// `question_geometry`, and `question_axis` blocks so Web can reuse existing
+// renderers.
+export interface SvgAttachmentContent {
+  value: string
+  altText?: string
+  caption?: InlineRichText
+}
+
+export type QuestionAttachment =
+  | { kind: 'svg'; layout: GraphLayout; svg: SvgAttachmentContent }
+  | { kind: 'geometry'; layout: GraphLayout; geometry: GeometrySpecV1 }
+  | {
+      kind: 'axis'
+      layout: GraphLayout
+      axis: AxisSpecV1
+      displaySize?: 'small' | 'medium' | 'large' | 'full'
+    }
+
+// ---------------------------------
 // Question Select Block (True/False)
 // ---------------------------------
 export interface QuestionSelectTrueFalseBlock {
@@ -71,6 +100,7 @@ export interface QuestionSelectTrueFalseBlock {
   solution?: InlineRichText
   fullSolution?: InlineRichText
   showNotebook?: boolean
+  attachment?: QuestionAttachment
 }
 
 // ---------------------------------
@@ -87,6 +117,7 @@ export interface QuestionSelectMcqBlock {
   solution?: InlineRichText
   fullSolution?: InlineRichText
   showNotebook?: boolean
+  attachment?: QuestionAttachment
 }
 
 // ---------------------------------
@@ -101,6 +132,7 @@ export interface QuestionFreeResponseBlock {
   solution?: InlineRichText
   fullSolution?: InlineRichText
   showNotebook?: boolean
+  attachment?: QuestionAttachment
 }
 
 // ---------------------------------
@@ -128,6 +160,7 @@ export interface QuestionTableBlock {
   solution?: InlineRichText
   fullSolution?: InlineRichText
   showNotebook?: boolean
+  attachment?: QuestionAttachment
 }
 
 // ---------------------------------
@@ -171,6 +204,7 @@ export interface QuestionMatchingBlock {
   solution?: InlineRichText
   fullSolution?: InlineRichText
   showNotebook?: boolean
+  attachment?: QuestionAttachment
 }
 
 // ---------------------------------
@@ -208,11 +242,6 @@ export type QuestionAnswer =
   | { kind: 'free_response'; acceptedAnswers: string[] }
   | { kind: 'point'; x: number; y: number; tolerance?: number }
   | { kind: 'function'; acceptedExpressions: string[] }
-
-// ---------------------------------
-// Graph Layout Type (for geometry and axis blocks)
-// ---------------------------------
-export type GraphLayout = 'textAbove' | 'textBelow' | 'textLeft' | 'textRight'
 
 // ---------------------------------
 // Question Geometry Block

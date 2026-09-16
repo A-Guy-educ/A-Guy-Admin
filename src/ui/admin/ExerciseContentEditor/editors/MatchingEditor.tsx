@@ -6,6 +6,7 @@ import type {
   MatchingOption,
   MatchingPair,
 } from '@/server/payload/collections/Exercises/types'
+import { AttachmentEditor } from './AttachmentEditor'
 import { InlineRichTextEditor } from './InlineRichTextEditor'
 import { HintSolutionPanel } from './HintSolutionPanel'
 import { ColumnEditor } from '../components/matching/ColumnEditor'
@@ -79,6 +80,21 @@ export const MatchingEditor: React.FC<MatchingEditorProps> = ({ block, onChange 
           />
           <span>Shuffle right column for students</span>
         </label>
+      </div>
+
+      <div className="question-editor-section">
+        <AttachmentEditor
+          blockId={block.id}
+          attachment={block.attachment}
+          onChange={(attachment) => {
+            if (attachment === undefined) {
+              const { attachment: _omit, ...rest } = block
+              onChange(rest as QuestionMatchingBlock)
+            } else {
+              onChange({ ...block, attachment })
+            }
+          }}
+        />
       </div>
 
       <div className="question-editor-section">

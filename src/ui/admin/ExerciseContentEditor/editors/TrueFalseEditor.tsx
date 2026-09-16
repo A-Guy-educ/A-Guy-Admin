@@ -2,6 +2,7 @@
 
 import React from 'react'
 import type { QuestionSelectTrueFalseBlock } from '@/server/payload/collections/Exercises/types'
+import { AttachmentEditor } from './AttachmentEditor'
 import { InlineRichTextEditor } from './InlineRichTextEditor'
 import { HintSolutionPanel } from './HintSolutionPanel'
 
@@ -74,6 +75,21 @@ export const TrueFalseEditor: React.FC<TrueFalseEditorProps> = ({ block, onChang
             />
           </button>
         </div>
+      </div>
+
+      <div className="question-editor-section">
+        <AttachmentEditor
+          blockId={block.id}
+          attachment={block.attachment}
+          onChange={(attachment) => {
+            if (attachment === undefined) {
+              const { attachment: _omit, ...rest } = block
+              onChange(rest as QuestionSelectTrueFalseBlock)
+            } else {
+              onChange({ ...block, attachment })
+            }
+          }}
+        />
       </div>
 
       <div className="question-editor-section">
