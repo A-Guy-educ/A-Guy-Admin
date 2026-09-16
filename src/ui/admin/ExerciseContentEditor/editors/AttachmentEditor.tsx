@@ -92,6 +92,10 @@ export const AttachmentEditor: React.FC<AttachmentEditorProps> = ({
   const enabled = attachment !== undefined
   const layout = attachment?.layout ?? DEFAULT_LAYOUT
 
+  // Track the current attachment in a ref so async continuations (e.g. the
+  // SvgContentEditor's FileReader.onload) merge onto the latest state instead
+  // of a stale snapshot captured at click time.
+  const attachmentRef = React.useRef<QuestionAttachment | undefined>(attachment)
   // Remember the last state for each kind independently. Two flows benefit:
   //   - Toggle off → on restores the last attachment (any kind).
   //   - Switch kind svg → geometry → svg restores the earlier svg work
@@ -99,6 +103,7 @@ export const AttachmentEditor: React.FC<AttachmentEditorProps> = ({
   const lastAttachmentRef = React.useRef<QuestionAttachment | undefined>(attachment)
   const perKindRef = React.useRef<PerKindSnapshots>({})
   React.useEffect(() => {
+    attachmentRef.current = attachment
     if (attachment !== undefined) {
       lastAttachmentRef.current = attachment
       // Type narrowing across the union — `attachment` has the exact shape
@@ -109,6 +114,22 @@ export const AttachmentEditor: React.FC<AttachmentEditorProps> = ({
       }
     }
   }, [attachment])
+
+  // Merge a partial patch onto the latest attachment for the given kind.
+  // Guards against a stale-closure race where a slow child (e.g. FileReader
+  // upload) fires onChange after the parent already moved to a different
+  // attachment or kind.
+  const patchAttachment = React.useCallback(
+    <K extends AttachmentKind>(
+      expectedKind: K,
+      patch: Partial<Extract<QuestionAttachment, { kind: K }>>,
+    ) => {
+      const cur = attachmentRef.current
+      if (!cur || cur.kind !== expectedKind) return
+      onChange({ ...cur, ...patch } as QuestionAttachment)
+    },
+    [onChange],
+  )
 
   const handleToggle = () => {
     if (enabled) {
@@ -175,7 +196,7 @@ export const AttachmentEditor: React.FC<AttachmentEditorProps> = ({
           {attachment.kind === 'svg' && (
             <SvgContentEditor
               content={attachment.svg}
-              onChange={(svg) => onChange({ ...attachment, svg })}
+              onChange={(svg) => patchAttachment('svg', { svg })}
               showCaption
             />
           )}
@@ -185,7 +206,7 @@ export const AttachmentEditor: React.FC<AttachmentEditorProps> = ({
               <GeometrySpecEditor
                 canvasId={`attachment-geo-${blockId}`}
                 spec={attachment.geometry}
-                onChange={(geometry) => onChange({ ...attachment, geometry })}
+                onChange={(geometry) => patchAttachment('geometry', { geometry })}
               />
             </div>
           )}
@@ -200,8 +221,7 @@ export const AttachmentEditor: React.FC<AttachmentEditorProps> = ({
                       className="panel-field-select"
                       value={attachment.displaySize || 'full'}
                       onChange={(e) =>
-                        onChange({
-                          ...attachment,
+                        patchAttachment('axis', {
                           displaySize: e.target.value as 'small' | 'medium' | 'large' | 'full',
                         })
                       }
@@ -218,7 +238,7 @@ export const AttachmentEditor: React.FC<AttachmentEditorProps> = ({
                 <AxisSpecEditor
                   canvasId={`attachment-axis-${blockId}`}
                   spec={attachment.axis}
-                  onChange={(axis) => onChange({ ...attachment, axis })}
+                  onChange={(axis) => patchAttachment('axis', { axis })}
                 />
               </div>
             </>
