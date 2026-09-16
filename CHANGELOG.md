@@ -1,11 +1,20 @@
 # Changelog
 
-## Unreleased
+## v0.45.0 — 2026-09-16
 
 ### Features
+- Text-lesson import (v2 bracketed format): geometry blocks are now recognised alongside existing content types (#466)
 - Geometry angle labels are now draggable and snap to one of three preset bisector distances (near/mid/far); new per-point `labelVisible` toggle in the geometry editor (#465)
 - Studio: insert new blocks between existing ones via slim in-line inserters on section and exercise block lists (#465)
 - Sketch blocks (SVG, geometry, axis, question attachments) can be sized via a shared dropdown; new `xsmall` (25 %) option added alongside the existing `small / medium / large / full` (33/50/75/100 %) (#465)
+- Studio doc view now shows question attachments inline (#463)
+- Optional attachment field added to question blocks (#461)
+
+### Bug Fixes
+- Duplicating an Exercise, Lesson, or Course now regenerates all nested content-block ids to prevent JSXGraph and React-key collisions (#464)
+- Resolve JSXGraph DOM id collision when a geometry block renders twice on the same page (#462)
+- Refresh geometry preview when the block spec changes (#460)
+- Force derived geometry elements to stay visible when their parent points are hidden (#459)
 
 ## v0.44.0 — 2026-09-15
 
