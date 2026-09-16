@@ -2045,6 +2045,7 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- fix(admin): Resolve JSXGraph DOM id collision when a block renders twice ([#462](https://github.com/A-Guy-educ/A-Guy-Admin/pull/462)) — @aguyshayb
 - feat(admin): Optional attachment field on question blocks ([#461](https://github.com/A-Guy-educ/A-Guy-Admin/pull/461)) — @aguyshayb
 - fix(admin): Refresh geometry preview when block spec changes ([#460](https://github.com/A-Guy-educ/A-Guy-Admin/pull/460)) — @aguyshayb
 - fix(admin): Force derived geometry visible when parent points are hidden ([#459](https://github.com/A-Guy-educ/A-Guy-Admin/pull/459)) — @aguyshayb
