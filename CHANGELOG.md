@@ -2052,6 +2052,7 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- feat(admin): Angle label distances, point label toggle, sketch sizes, and studio between-block inserts ([#465](https://github.com/A-Guy-educ/A-Guy-Admin/pull/465)) — @aguyshayb
 - fix(admin): Regenerate content block ids on Duplicate Exercise/Lesson/Course ([#464](https://github.com/A-Guy-educ/A-Guy-Admin/pull/464)) — @aguyshayb
 - feat(admin): Show question attachments in Studio doc view ([#463](https://github.com/A-Guy-educ/A-Guy-Admin/pull/463)) — @aguyshayb
 - fix(admin): Resolve JSXGraph DOM id collision when a block renders twice ([#462](https://github.com/A-Guy-educ/A-Guy-Admin/pull/462)) — @aguyshayb
