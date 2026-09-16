@@ -96,9 +96,12 @@ export function isV2Format(raw: string): boolean {
 // Exercise header inside [ ... ] — accepts trailing tokens after the number so
 // the header rest ("נתוני פתיחה" or a section-type label) can be captured.
 const EXERCISE_HEADER_RE = /^\[\s*תרגיל\s+(\S+?)\s*[-–]\s*(.+?)\s*\]\s*$/
-// Section header, either with or without a "תרגיל N -" prefix.
+// Section header, either with or without a "תרגיל N -" prefix. The label is
+// captured with a greedy-lazy pattern that allows extras like "1 ויחיד" or a
+// comma-separated multi-label ("א', ב', ג', ד'") — anything up to the first
+// " - question-type" tail (or the closing bracket if no tail is present).
 const SECTION_HEADER_RE =
-  /^\[\s*(?:תרגיל\s+\S+\s*[-–]\s*)?סעיף\s+(\S+?)\s*(?:[-–]\s*(.+?))?\s*\]\s*$/
+  /^\[\s*(?:תרגיל\s+\S+\s*[-–]\s*)?סעיף\s+(.+?)\s*(?:[-–]\s*(.+?))?\s*\]\s*$/
 const FIELD_RE = /^\*\s+([^:]+?)\s*:\s*(.*)$/
 const OPTION_FIELD_RE = /^אפשרות\s+(\d+)$/
 const CORRECT_MARKER_RE = /\s*\[\s*תשובה\s+נכונה\s*\]\s*$/
@@ -278,6 +281,22 @@ function isTopLevelFieldStart(line: string): boolean {
   return /^\*\s+\S/.test(line) && !line.startsWith('*  ') && !line.startsWith('* ---')
 }
 
+/**
+ * Split a section-header label like "א', ב', ג', ד'" or "1 ויחיד" into its
+ * component sub-labels. Comma-separated Hebrew letters / numbers each become
+ * their own section; "N ויחיד" ("N and only") is a single section. Falsy or
+ * empty labels return an empty array so the caller can decide the fallback.
+ */
+function splitSectionLabels(raw: string): string[] {
+  const trimmed = raw.trim()
+  if (!trimmed) return []
+  if (!trimmed.includes(',')) return [trimmed]
+  return trimmed
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+}
+
 export function parseTextLessonV2(raw: string): TextLessonV2 {
   const text = raw.replace(/^﻿/, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n')
   const lines = text.split('\n')
@@ -327,7 +346,24 @@ export function parseTextLessonV2(raw: string): TextLessonV2 {
           // Orphan section — attach to a synthetic exercise so we don't lose it.
           currentEx = newExercise('?', '')
         }
-        currentSec = newSection(secMatch[1] ?? '', (secMatch[2] ?? '').trim())
+        const rawLabel = secMatch[1] ?? ''
+        const rest = (secMatch[2] ?? '').trim()
+        // Authors sometimes pack several sections into one bracket
+        // ("[ סעיף א', ב', ג', ד' - כמו מקודם ]"). Split on commas so we
+        // still emit N discrete sections — the target is 4 sections per
+        // exercise, and dropping the collapsed ones would leave big holes.
+        const labels = splitSectionLabels(rawLabel)
+        if (labels.length > 1) {
+          for (let li = 0; li < labels.length - 1; li++) {
+            const placeholder = newSection(labels[li], rest)
+            placeholder.question = rest
+            currentEx.sections.push(placeholder)
+          }
+          currentSec = newSection(labels[labels.length - 1], rest)
+          currentSec.question = rest
+        } else {
+          currentSec = newSection(rawLabel.trim(), rest)
+        }
         continue
       }
       const exMatch = bracketed.match(EXERCISE_HEADER_RE)

@@ -145,6 +145,52 @@ describe('parseTextLessonV2 — basic shape', () => {
     expect(lesson.exercises[0].sections[0].questionNumber).toBe("א'")
   })
 
+  it("expands a multi-label section header ('א', ב', ג', ד'') into N sections", () => {
+    const source = [
+      SEP,
+      '[ תרגיל 7 - נתוני פתיחה ]',
+      SEP,
+      '* טקסט: intro',
+      '',
+      SEP,
+      "[ סעיף א', ב', ג', ד' - כמו מקודם, שאלות על צלעות סמוכות ונגדיות ]",
+      SEP,
+      '',
+    ].join('\n')
+
+    const lesson = parseTextLessonV2(source)
+    expect(lesson.exercises[0].sections).toHaveLength(4)
+    expect(lesson.exercises[0].sections.map((s) => s.questionNumber)).toEqual([
+      "א'",
+      "ב'",
+      "ג'",
+      "ד'",
+    ])
+    for (const sec of lesson.exercises[0].sections) {
+      expect(sec.question).toContain('כמו מקודם')
+    }
+  })
+
+  it("accepts a non-standard 'סעיף 1 ויחיד' single-section header", () => {
+    const source = [
+      SEP,
+      '[ תרגיל 3 - נתוני פתיחה ]',
+      SEP,
+      '* טקסט: intro',
+      '',
+      SEP,
+      '[ סעיף 1 ויחיד - שאלת השלמת טבלה ]',
+      SEP,
+      '* סוג השאלה: Fill-in Table',
+      '* הנחיה: prompt',
+    ].join('\n')
+
+    const lesson = parseTextLessonV2(source)
+    expect(lesson.exercises[0].sections).toHaveLength(1)
+    expect(lesson.exercises[0].sections[0].questionNumber).toBe('1 ויחיד')
+    expect(lesson.exercises[0].sections[0].headerRest).toBe('שאלת השלמת טבלה')
+  })
+
   it('falls back to the shared geometry when a section has no override', () => {
     const source = [
       SEP,
