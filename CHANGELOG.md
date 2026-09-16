@@ -2061,6 +2061,8 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+## [v0.45.0] - 2026-09-16
+
 - promote: dev -> main (v0.45.0) ([#468](https://github.com/A-Guy-educ/A-Guy-Admin/pull/468)) — @aguyshayb
 - chore: release v0.45.0 ([#467](https://github.com/A-Guy-educ/A-Guy-Admin/pull/467)) — @aguyshayb
 - feat(text-lesson-import): add geometry support to bracketed v2 format ([#466](https://github.com/A-Guy-educ/A-Guy-Admin/pull/466)) — @aguyshayb
