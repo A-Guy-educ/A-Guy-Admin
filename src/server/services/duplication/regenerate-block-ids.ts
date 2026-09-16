@@ -4,9 +4,10 @@
  * @pattern content-transform
  * @ai-summary Regenerate every per-doc id inside a section/exercise's `content.blocks`
  *
- * Shared by two duplicate paths:
+ * Shared by every duplicate path:
  *   - `src/server/payload/endpoints/studio/duplicate-section.ts` — studio Duplicate Section button
- *   - `src/server/services/duplication/clone-sections-for-exercises.ts` — Duplicate Exercise + Duplicate Course
+ *   - `src/server/services/duplication/clone-sections-for-exercises.ts` — Duplicate Exercise + Duplicate Lesson
+ *   - `src/server/payload/endpoints/courses/duplicate.ts` — Duplicate Course (raw insertMany path, applied inside `prepareSection`)
  *
  * The block factory (`src/server/payload/collections/Exercises/defaults.ts`)
  * generates fresh per-doc ids at construction time. Cloning a section by
