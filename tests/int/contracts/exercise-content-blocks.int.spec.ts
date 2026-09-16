@@ -412,6 +412,161 @@ describe('showNotebook per-block toggle', () => {
   })
 })
 
+describe('QuestionAttachment', () => {
+  const attachmentHosts = [
+    {
+      name: 'question_select true_false',
+      block: {
+        id: 'tf1',
+        type: 'question_select',
+        variant: 'true_false',
+        selectionMode: 'single',
+        prompt: { type: 'rich_text', format: 'md-math-v1', value: 'The area is 25.' },
+        options: [
+          {
+            id: 'true',
+            value: true,
+            label: { type: 'rich_text', format: 'md-math-v1', value: 'True' },
+          },
+          {
+            id: 'false',
+            value: false,
+            label: { type: 'rich_text', format: 'md-math-v1', value: 'False' },
+          },
+        ],
+        answer: { correctOptionId: 'true' },
+      },
+    },
+    {
+      name: 'question_select mcq',
+      block: {
+        id: 'mcq1',
+        type: 'question_select',
+        variant: 'mcq',
+        selectionMode: 'single',
+        prompt: { type: 'rich_text', format: 'md-math-v1', value: 'Pick one:' },
+        answer: {
+          multiSelect: false,
+          options: [
+            { id: 'a', content: { type: 'rich_text', format: 'md-math-v1', value: 'A' } },
+            { id: 'b', content: { type: 'rich_text', format: 'md-math-v1', value: 'B' } },
+          ],
+          correctOptionIds: ['a'],
+        },
+      },
+    },
+    {
+      name: 'question_free_response',
+      block: {
+        id: 'fr1',
+        type: 'question_free_response',
+        prompt: { type: 'rich_text', format: 'md-math-v1', value: 'Compute:' },
+        answer: { acceptedAnswers: ['4'] },
+      },
+    },
+    {
+      name: 'question_table',
+      block: {
+        id: 't1',
+        type: 'question_table',
+        prompt: { type: 'rich_text', format: 'md-math-v1', value: 'Fill in:' },
+        table: {
+          headers: ['a', 'b'],
+          rowsData: [['1', '2']],
+        },
+      },
+    },
+    {
+      name: 'question_matching',
+      block: {
+        id: 'match1',
+        type: 'question_matching',
+        prompt: { type: 'rich_text', format: 'md-math-v1', value: 'Match:' },
+        leftColumn: [
+          { id: 'l1', content: { type: 'rich_text', format: 'md-math-v1', value: 'A' } },
+          { id: 'l2', content: { type: 'rich_text', format: 'md-math-v1', value: 'B' } },
+        ],
+        rightColumn: [
+          { id: 'r1', content: { type: 'rich_text', format: 'md-math-v1', value: '1' } },
+          { id: 'r2', content: { type: 'rich_text', format: 'md-math-v1', value: '2' } },
+        ],
+        correctPairs: [
+          { optionId: 'l1', matchId: 'r1' },
+          { optionId: 'l2', matchId: 'r2' },
+        ],
+      },
+    },
+  ] as const
+
+  const svgAttachment = {
+    kind: 'svg' as const,
+    layout: 'textRight' as const,
+    svg: {
+      value: '<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40"/></svg>',
+      altText: 'Circle',
+    },
+  }
+
+  const geometryAttachment = {
+    kind: 'geometry' as const,
+    layout: 'textLeft' as const,
+    geometry: {
+      kind: 'euclidean' as const,
+      canvas: { width: 400, height: 400 },
+      elements: { points: [], lines: [], circles: [], angles: [] },
+    },
+  }
+
+  const axisAttachment = {
+    kind: 'axis' as const,
+    layout: 'textAbove' as const,
+    axis: {
+      kind: 'cartesian' as const,
+      units: 1,
+      grid: { enabled: true },
+      axes: {
+        showNumbers: true,
+        showLabels: true,
+        ticks: 1,
+        labels: { x: 'x', y: 'y' },
+        origin: { x: 0, y: 0 },
+      },
+      elements: { points: [], graphs: [] },
+    },
+    displaySize: 'medium' as const,
+  }
+
+  for (const { name, block } of attachmentHosts) {
+    it(`${name}: accepts optional svg attachment`, () => {
+      const result = ContentBlockSchema.safeParse({ ...block, attachment: svgAttachment })
+      expect(result.success).toBe(true)
+    })
+
+    it(`${name}: accepts optional geometry attachment`, () => {
+      const result = ContentBlockSchema.safeParse({ ...block, attachment: geometryAttachment })
+      expect(result.success).toBe(true)
+    })
+
+    it(`${name}: accepts optional axis attachment`, () => {
+      const result = ContentBlockSchema.safeParse({ ...block, attachment: axisAttachment })
+      expect(result.success).toBe(true)
+    })
+
+    it(`${name}: still validates without attachment (backward-compat)`, () => {
+      const result = ContentBlockSchema.safeParse(block)
+      expect(result.success).toBe(true)
+    })
+
+    it(`${name}: rejects attachment with unknown kind`, () => {
+      const result = ContentBlockSchema.safeParse({
+        ...block,
+        attachment: { kind: 'video', layout: 'textRight', video: { src: '' } },
+      })
+      expect(result.success).toBe(false)
+    })
+  }
+})
+
 describe('ExerciseContent with new block types', () => {
   it('validates content containing a matching block', () => {
     const content = {

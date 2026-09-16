@@ -89,6 +89,12 @@ export const FreeResponseAnswerSchema = z
 // Zod: Question blocks
 // ---------------------------------
 
+// Forward reference — attachment schema is defined further down so it can
+// reuse GraphLayoutSchema, DisplaySizeSchema, and the graphics contracts.
+// We can't import ahead of definition in a single file, but z.lazy() gives
+// us a runtime pointer that resolves later.
+const AttachmentLazySchema = z.lazy(() => QuestionAttachmentSchema)
+
 // True/False variant of question_select
 const QuestionSelectTrueFalseSchema = z
   .object({
@@ -115,6 +121,7 @@ const QuestionSelectTrueFalseSchema = z
     solution: InlineRichTextSchema.optional(),
     fullSolution: InlineRichTextSchema.optional(),
     showNotebook: z.boolean().optional(),
+    attachment: AttachmentLazySchema.optional(),
   })
   .strict()
 
@@ -132,6 +139,7 @@ const QuestionSelectMcqSchema = z
     solution: InlineRichTextSchema.optional(),
     fullSolution: InlineRichTextSchema.optional(),
     showNotebook: z.boolean().optional(),
+    attachment: AttachmentLazySchema.optional(),
   })
   .strict()
 
@@ -152,6 +160,7 @@ export const QuestionFreeResponseBlockSchema = z
     solution: InlineRichTextSchema.optional(),
     fullSolution: InlineRichTextSchema.optional(),
     showNotebook: z.boolean().optional(),
+    attachment: AttachmentLazySchema.optional(),
   })
   .strict()
 
@@ -246,6 +255,7 @@ export const QuestionTableBlockSchema = z
     solution: InlineRichTextSchema.optional(),
     fullSolution: InlineRichTextSchema.optional(),
     showNotebook: z.boolean().optional(),
+    attachment: AttachmentLazySchema.optional(),
   })
   .strict()
 
@@ -285,6 +295,7 @@ export const QuestionMatchingBlockSchema = z
     solution: InlineRichTextSchema.optional(),
     fullSolution: InlineRichTextSchema.optional(),
     showNotebook: z.boolean().optional(),
+    attachment: AttachmentLazySchema.optional(),
   })
   .strict()
   .superRefine((data, ctx) => {
@@ -320,6 +331,17 @@ const SvgHotspotSchema = z
     label: z.string().optional(),
   })
   .strict()
+
+// ---------------------------------
+// Zod: SVG Content Schema (raw markup + optional metadata)
+// Shared by the standalone `svg` block and the `attachment.svg` field.
+// Kept without `id`/`type` so it can be embedded as a plain object.
+// ---------------------------------
+const SvgContentSchema = z.object({
+  value: z.string().min(1),
+  altText: z.string().optional(),
+  caption: InlineRichTextSchema.optional(),
+})
 
 // ---------------------------------
 // Zod: SVG Block Schema
@@ -447,6 +469,39 @@ export const QuestionAxisBlockSchema = z
     fullSolution: InlineRichTextSchema.optional(),
   })
   .strict()
+
+// ---------------------------------
+// Zod: Question Attachment Schema
+// ---------------------------------
+// Optional sketch attached to a question block so the question renders
+// side-by-side with an SVG / geometry / axis diagram. The attachment is
+// purely visual — the parent question still owns prompt + answer + grading.
+// Shapes mirror the standalone `svg`, `question_geometry`, and `question_axis`
+// blocks so Web can reuse existing renderers.
+export const QuestionAttachmentSchema = z.discriminatedUnion('kind', [
+  z
+    .object({
+      kind: z.literal('svg'),
+      layout: GraphLayoutSchema,
+      svg: SvgContentSchema,
+    })
+    .strict(),
+  z
+    .object({
+      kind: z.literal('geometry'),
+      layout: GraphLayoutSchema,
+      geometry: GeometrySpecV1Schema,
+    })
+    .strict(),
+  z
+    .object({
+      kind: z.literal('axis'),
+      layout: GraphLayoutSchema,
+      axis: AxisSpecV1Schema,
+      displaySize: DisplaySizeSchema,
+    })
+    .strict(),
+])
 
 // ---------------------------------
 // Zod: Multi-Axis Graph Item Schema (single graph within multi-axis block)
