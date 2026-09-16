@@ -337,11 +337,13 @@ const SvgHotspotSchema = z
 // Shared by the standalone `svg` block and the `attachment.svg` field.
 // Kept without `id`/`type` so it can be embedded as a plain object.
 // ---------------------------------
-const SvgContentSchema = z.object({
-  value: z.string().min(1),
-  altText: z.string().optional(),
-  caption: InlineRichTextSchema.optional(),
-})
+const SvgContentSchema = z
+  .object({
+    value: z.string().min(1),
+    altText: z.string().optional(),
+    caption: InlineRichTextSchema.optional(),
+  })
+  .strict()
 
 // ---------------------------------
 // Zod: SVG Block Schema

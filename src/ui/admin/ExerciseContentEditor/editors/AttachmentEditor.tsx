@@ -90,11 +90,20 @@ export const AttachmentEditor: React.FC<AttachmentEditorProps> = ({
   const enabled = attachment !== undefined
   const layout = attachment?.layout ?? DEFAULT_LAYOUT
 
+  // Remember the last configured attachment so toggling off → on within a
+  // session restores prior work instead of wiping it back to a default SVG.
+  const lastAttachmentRef = React.useRef<QuestionAttachment | undefined>(attachment)
+  React.useEffect(() => {
+    if (attachment !== undefined) {
+      lastAttachmentRef.current = attachment
+    }
+  }, [attachment])
+
   const handleToggle = () => {
     if (enabled) {
       onChange(undefined)
     } else {
-      onChange(buildAttachment('svg', DEFAULT_LAYOUT))
+      onChange(lastAttachmentRef.current ?? buildAttachment('svg', DEFAULT_LAYOUT))
     }
   }
 
