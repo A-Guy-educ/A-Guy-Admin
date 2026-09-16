@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useRef } from 'react'
+import React, { useEffect, useId, useRef } from 'react'
 import { cn } from '@/infra/utils/ui'
 
 interface JSXGraphBoardProps {
@@ -36,6 +36,13 @@ export function JSXGraphBoard({
   const containerRef = useRef<HTMLDivElement>(null)
   const boardRef = useRef<JXG.Board | null>(null)
   const jxgRef = useRef<typeof JXG | null>(null)
+  // React-generated per-instance suffix. The block `id` prop is not unique
+  // when the same block is rendered in two places at once (e.g. the studio's
+  // doc view mounts a preview while a duplicate render exists elsewhere) —
+  // two divs sharing the same DOM id break JSXGraph, which does
+  // `getElementById` internally and finds only the first match, leaving the
+  // second board blank. Combining `id` with `reactId` guarantees uniqueness.
+  const reactId = useId()
 
   useEffect(() => {
     let destroyed = false
@@ -47,7 +54,11 @@ export function JSXGraphBoard({
       if (destroyed || !containerRef.current) return
 
       jxgRef.current = JXGLib
-      const containerId = `jsxgraph-${id}`
+      // Pass the DOM element ref directly (not a lookup-by-id string) so
+      // JSXGraph doesn't call `getElementById` and get the wrong div when the
+      // block is rendered in two places at once. `initBoard` accepts either
+      // a string id or an HTMLElement.
+      const container = containerRef.current
 
       // Check if origin is outside the viewport — if so, create axes manually
       const ox = axisConfig?.origin?.x ?? 0
@@ -94,7 +105,7 @@ export function JSXGraphBoard({
             }
           : { axis: false }
 
-      const board = JXGLib.JSXGraph.initBoard(containerId, {
+      const board = JXGLib.JSXGraph.initBoard(container, {
         boundingbox: boundingBox,
         ...axisOpts,
         grid: showGrid,
@@ -164,7 +175,11 @@ export function JSXGraphBoard({
   return (
     <div
       ref={containerRef}
-      id={`jsxgraph-${id}`}
+      // Include `reactId` so the DOM id is unique per component instance —
+      // otherwise two mounts of the same block collide and the second one
+      // renders blank. Kept as an attribute (rather than removed entirely)
+      // so authors can still target a specific board in the DOM inspector.
+      id={`jsxgraph-${id}-${reactId.replace(/[^a-zA-Z0-9_-]/g, '')}`}
       className={cn('w-full border rounded-lg overflow-hidden bg-white', className)}
       style={{ width, height, maxWidth: '100%' }}
     />
