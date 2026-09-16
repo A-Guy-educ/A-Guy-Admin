@@ -16,12 +16,12 @@ const JSXGraphBoard = dynamic(
 )
 
 /**
- * Percentage of the surrounding container the board should occupy. Matches
- * `SIZE_MAP` in AxisRenderer so all three sketch blocks share the same
- * "25 / 50 / 75 / 100 %" scale.
+ * Percentage of the surrounding container the board should occupy. Mirrors
+ * `SIZE_MAP` in AxisRenderer so all three sketch blocks share the same scale.
  */
 const GEOMETRY_SIZE_MAP: Record<DisplaySize, number> = {
-  small: 0.25,
+  xsmall: 0.25,
+  small: 0.33,
   medium: 0.5,
   large: 0.75,
   full: 1,
@@ -33,11 +33,7 @@ interface GeometryRendererProps {
   displaySize?: DisplaySize
 }
 
-export function GeometryRenderer({
-  blockId,
-  spec,
-  displaySize = 'full',
-}: GeometryRendererProps) {
+export function GeometryRenderer({ blockId, spec, displaySize = 'full' }: GeometryRendererProps) {
   const handleBoardReady = useCallback(
     (board: JXG.Board) => {
       renderGeometrySpec(board, spec)

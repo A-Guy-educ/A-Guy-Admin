@@ -5,6 +5,7 @@ import {
   getDefaultTextColor,
   sizeScaleToPixels,
 } from '@/infra/contracts/graphics/textColors'
+import { computeAngleLabelPos } from '@/infra/utils/graphics/angle-label'
 
 type PointSpec = GeometrySpecV1['elements']['points'][number]
 type LineSpec = GeometrySpecV1['elements']['lines'][number]
@@ -38,7 +39,9 @@ function renderPoints(board: JXG.Board, points: PointSpec[]): Map<string, any> {
       visible: p.visible !== false,
       fillColor: pointColor,
       strokeColor: pointColor,
-      size: p.size ?? 2,
+      // Renderer fallback stays at 4 so legacy points saved without an explicit
+      // size don't shrink. Author-time default is 2 (set in the admin editor).
+      size: p.size ?? 4,
       withLabel: labelVisible,
       label: {
         offset: mapLabelOffset(p.position),
@@ -122,45 +125,9 @@ function renderCircles(board: JXG.Board, circles: CircleSpec[], pointMap: Map<st
   }
 }
 
-/** Same distance rings the admin editor uses so authored labels stay put. */
-const ANGLE_LABEL_DISTANCE_MULTIPLIERS: Record<'near' | 'mid' | 'far', number> = {
-  near: 1.3,
-  mid: 2.0,
-  far: 2.8,
-}
-
-function computeAngleLabelPos(
-  board: JXG.Board,
-  cx: number,
-  cy: number,
-  r1x: number,
-  r1y: number,
-  r2x: number,
-  r2y: number,
-  arcRadiusPx: number,
-  distance: 'near' | 'mid' | 'far',
-): { x: number; y: number } {
+function getBoardScale(board: JXG.Board): { unitX: number; unitY: number } {
   const b = board as unknown as { unitX?: number; unitY?: number }
-  const unitX = b.unitX || 1
-  const unitY = b.unitY || 1
-  const v1x = (r1x - cx) * unitX
-  const v1y = (r1y - cy) * unitY
-  const v2x = (r2x - cx) * unitX
-  const v2y = (r2y - cy) * unitY
-  const l1 = Math.hypot(v1x, v1y) || 1
-  const l2 = Math.hypot(v2x, v2y) || 1
-  let bx = v1x / l1 + v2x / l2
-  let by = v1y / l1 + v2y / l2
-  const bl = Math.hypot(bx, by)
-  if (bl < 1e-6) {
-    bx = -v1y / l1
-    by = v1x / l1
-  } else {
-    bx /= bl
-    by /= bl
-  }
-  const distPx = arcRadiusPx * ANGLE_LABEL_DISTANCE_MULTIPLIERS[distance]
-  return { x: cx + (bx * distPx) / unitX, y: cy + (by * distPx) / unitY }
+  return { unitX: b.unitX || 1, unitY: b.unitY || 1 }
 }
 
 function renderAngles(board: JXG.Board, angles: AngleSpec[], pointMap: Map<string, any>) {
@@ -177,7 +144,9 @@ function renderAngles(board: JXG.Board, angles: AngleSpec[], pointMap: Map<strin
     // within `orthoSensitivity` (~1°) of 90°, which silently downgrades
     // authored non-right square-style angles back to sectors.
     const shape = isSquare ? 'square' : 'sector'
-    const arcRadius = a.arcRadius || 50
+    // Renderer fallback stays at 30 so legacy angles saved without an explicit
+    // arcRadius don't grow. Author-time default is 50 (set in the admin editor).
+    const arcRadius = a.arcRadius || 30
     // Built-in label disabled — the editor renders a separate text element
     // along the bisector so admins can pick one of three preset distances.
     // Web mirrors that here so the rendered lesson matches what the editor
@@ -203,7 +172,7 @@ function renderAngles(board: JXG.Board, angles: AngleSpec[], pointMap: Map<strin
     if (a.label?.value) {
       const distance = a.label.distance ?? 'mid'
       const { x, y } = computeAngleLabelPos(
-        board,
+        getBoardScale(board),
         center.X(),
         center.Y(),
         ray1.X(),

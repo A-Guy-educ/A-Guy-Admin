@@ -30,11 +30,12 @@ export const SvgEditor: React.FC<SvgEditorProps> = ({ block, onChange }) => {
               onChange={(e) =>
                 onChange({
                   ...blockRef.current,
-                  displaySize: e.target.value as 'small' | 'medium' | 'large' | 'full',
+                  displaySize: e.target.value as 'xsmall' | 'small' | 'medium' | 'large' | 'full',
                 })
               }
             >
-              <option value="small">25%</option>
+              <option value="xsmall">25%</option>
+              <option value="small">33%</option>
               <option value="medium">50%</option>
               <option value="large">75%</option>
               <option value="full">100%</option>

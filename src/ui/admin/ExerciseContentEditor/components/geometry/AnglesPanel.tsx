@@ -25,6 +25,9 @@ export const AnglesPanel: React.FC<AnglesPanelProps> = ({ angles, points, onChan
       center: names[1] || names[0] || '',
       ray1: names[0] || '',
       ray2: names[2] || names[0] || '',
+      // Author-time default. Renderer fallback stays at 30 so legacy angles
+      // saved without arcRadius keep their historical visual size.
+      arcRadius: 50,
     }
     onChange([...angles, newAngle])
   }
@@ -109,10 +112,10 @@ export const AnglesPanel: React.FC<AnglesPanelProps> = ({ angles, points, onChan
               <input
                 type="number"
                 className="panel-field-input panel-field-input--short"
-                value={angle.arcRadius || 50}
+                value={angle.arcRadius || 30}
                 min={10}
                 max={100}
-                onChange={(e) => handleUpdate(index, { arcRadius: Number(e.target.value) || 50 })}
+                onChange={(e) => handleUpdate(index, { arcRadius: Number(e.target.value) || 30 })}
               />
             </div>
             <div className="panel-field">

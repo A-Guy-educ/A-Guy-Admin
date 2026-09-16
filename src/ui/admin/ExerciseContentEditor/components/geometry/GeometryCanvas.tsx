@@ -8,6 +8,12 @@ import {
   sizeScaleToPixels,
 } from '@/infra/contracts/graphics/textColors'
 import { computeBoardSize } from '@/infra/utils/graphics/board-sizing'
+import {
+  computeAngleLabelPos,
+  snapAngleLabelDistance,
+  type AngleLabelDistance,
+  type BoardPixelScale,
+} from '@/infra/utils/graphics/angle-label'
 import type { JXGBoard, JXGElement } from 'jsxgraph'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { JSXGraphBoard } from '../shared/JSXGraphBoard'
@@ -27,7 +33,7 @@ interface GeometryCanvasProps {
   onCanvasClick?: (x: number, y: number) => void
   onTextMoved?: (index: number, x: number, y: number) => void
   onPointLabelMoved?: (name: string, position: string) => void
-  onAngleLabelMoved?: (index: number, distance: 'near' | 'mid' | 'far') => void
+  onAngleLabelMoved?: (index: number, distance: AngleLabelDistance) => void
 }
 
 // Fallback pixel width used on the very first render, before the
@@ -60,96 +66,10 @@ function angleToLabelPosition(angleDeg: number): string {
   return ['r', 'tr', 't', 'tl', 'l', 'bl', 'b', 'br'][idx]
 }
 
-/**
- * Multipliers of `arcRadius` (in JSXGraph pixel units) used to place the angle
- * label along the bisector. Mid sits ~one arc-radius outside the arc; near
- * hugs it; far pushes it a bit further out.
- */
-const ANGLE_LABEL_DISTANCE_MULTIPLIERS: Record<'near' | 'mid' | 'far', number> = {
-  near: 1.3,
-  mid: 2.0,
-  far: 2.8,
-}
-const ANGLE_LABEL_DISTANCE_ORDER: Array<'near' | 'mid' | 'far'> = ['near', 'mid', 'far']
-
-/** JSXGraph board exposes pixel-per-user-unit scales at runtime. Not in .d.ts. */
-type BoardScales = { unitX: number; unitY: number }
-
-function getBoardScales(board: JXGBoard): BoardScales {
+/** JSXGraph exposes pixel-per-user-unit scales on the board at runtime. */
+function getBoardScale(board: JXGBoard): BoardPixelScale {
   const b = board as unknown as { unitX?: number; unitY?: number }
   return { unitX: b.unitX || 1, unitY: b.unitY || 1 }
-}
-
-/**
- * Convert an angle label's `distance` preset into a user-space (x, y) point
- * along the interior bisector of the angle. Uses the board's pixel scale so
- * the label sits the same visual distance from the vertex regardless of the
- * board's aspect ratio.
- */
-function computeAngleLabelPos(
-  board: JXGBoard,
-  cx: number,
-  cy: number,
-  r1x: number,
-  r1y: number,
-  r2x: number,
-  r2y: number,
-  arcRadiusPx: number,
-  distance: 'near' | 'mid' | 'far',
-): { x: number; y: number } {
-  const { unitX, unitY } = getBoardScales(board)
-  // Bisector in pixel space — normalize each ray to unit length in pixels,
-  // sum, then renormalize. This gives a visually correct bisector even when
-  // unitX and unitY differ (non-square pixel scale).
-  const v1x = (r1x - cx) * unitX
-  const v1y = (r1y - cy) * unitY
-  const v2x = (r2x - cx) * unitX
-  const v2y = (r2y - cy) * unitY
-  const l1 = Math.hypot(v1x, v1y) || 1
-  const l2 = Math.hypot(v2x, v2y) || 1
-  let bx = v1x / l1 + v2x / l2
-  let by = v1y / l1 + v2y / l2
-  const bl = Math.hypot(bx, by)
-  if (bl < 1e-6) {
-    // Rays are anti-parallel (straight line). Fall back to a perpendicular
-    // direction so the label doesn't collapse onto the vertex.
-    bx = -v1y / l1
-    by = v1x / l1
-  } else {
-    bx /= bl
-    by /= bl
-  }
-  const distPx = arcRadiusPx * ANGLE_LABEL_DISTANCE_MULTIPLIERS[distance]
-  return { x: cx + (bx * distPx) / unitX, y: cy + (by * distPx) / unitY }
-}
-
-/**
- * Given the drag-drop position of an angle label, snap the distance from the
- * vertex to the nearest ring preset. All math done in pixel space.
- */
-function snapAngleLabelDistance(
-  board: JXGBoard,
-  cx: number,
-  cy: number,
-  labelX: number,
-  labelY: number,
-  arcRadiusPx: number,
-): 'near' | 'mid' | 'far' {
-  const { unitX, unitY } = getBoardScales(board)
-  const dx = (labelX - cx) * unitX
-  const dy = (labelY - cy) * unitY
-  const distPx = Math.hypot(dx, dy)
-  let best: 'near' | 'mid' | 'far' = 'mid'
-  let bestGap = Infinity
-  for (const key of ANGLE_LABEL_DISTANCE_ORDER) {
-    const target = arcRadiusPx * ANGLE_LABEL_DISTANCE_MULTIPLIERS[key]
-    const gap = Math.abs(distPx - target)
-    if (gap < bestGap) {
-      bestGap = gap
-      best = key
-    }
-  }
-  return best
 }
 
 export const GeometryCanvas: React.FC<GeometryCanvasProps> = ({
@@ -372,7 +292,9 @@ function syncPoints(
     const existing = elementsRef.current.get(elemId)
 
     const pointColor = point.color ?? getDefaultCanvasElementColor()
-    const pointSize = point.size ?? 2
+    // Renderer fallback stays at 4 so legacy points saved without an explicit
+    // size don't shrink. New-point authoring uses 2 in PointsPanel.
+    const pointSize = point.size ?? 4
     const labelOffset = mapLabelOffset(point.position)
     const labelVisible = point.labelVisible !== false
     // Include labelVisible in the change key so toggling it forces a full
@@ -598,18 +520,24 @@ function syncAngles(
     const labelElemId = `anglelabel-${angle.ray1}-${angle.center}-${angle.ray2}`
     newIds.add(elemId)
 
-    const ray1El = elementsRef.current.get(`point-${angle.ray1}`) as unknown as {
-      X: () => number
-      Y: () => number
-    } | undefined
-    const centerEl = elementsRef.current.get(`point-${angle.center}`) as unknown as {
-      X: () => number
-      Y: () => number
-    } | undefined
-    const ray2El = elementsRef.current.get(`point-${angle.ray2}`) as unknown as {
-      X: () => number
-      Y: () => number
-    } | undefined
+    const ray1El = elementsRef.current.get(`point-${angle.ray1}`) as unknown as
+      | {
+          X: () => number
+          Y: () => number
+        }
+      | undefined
+    const centerEl = elementsRef.current.get(`point-${angle.center}`) as unknown as
+      | {
+          X: () => number
+          Y: () => number
+        }
+      | undefined
+    const ray2El = elementsRef.current.get(`point-${angle.ray2}`) as unknown as
+      | {
+          X: () => number
+          Y: () => number
+        }
+      | undefined
     if (!ray1El || !centerEl || !ray2El) continue
 
     // Always remove and recreate — JSXGraph angle elements don't support
@@ -630,7 +558,9 @@ function syncAngles(
     // Set both `type` and `orthoType` so `style: 'square'` renders as a square
     // marker regardless of the measured angle — matches the shared renderer.
     const shape = isSquare ? 'square' : 'sector'
-    const arcRadius = angle.arcRadius || 50
+    // Renderer fallback stays at 30 so legacy angles saved without an explicit
+    // arcRadius don't grow. New-angle authoring defaults to 50 in AnglesPanel.
+    const arcRadius = angle.arcRadius || 30
     const el = board.create('angle', [ray1El, centerEl, ray2El], {
       radius: arcRadius,
       type: shape,
@@ -651,8 +581,9 @@ function syncAngles(
 
     if (hasLabel) {
       const distance = angle.label!.distance ?? 'mid'
+      const scale = getBoardScale(board)
       const { x: lx, y: ly } = computeAngleLabelPos(
-        board,
+        scale,
         centerEl.X(),
         centerEl.Y(),
         ray1El.X(),
@@ -680,7 +611,7 @@ function syncAngles(
       labelEl.on('up', () => {
         const t = labelEl as unknown as { X: () => number; Y: () => number }
         const snapped = snapAngleLabelDistance(
-          board,
+          getBoardScale(board),
           centerEl.X(),
           centerEl.Y(),
           t.X(),

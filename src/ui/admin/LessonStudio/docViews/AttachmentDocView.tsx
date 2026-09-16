@@ -54,6 +54,7 @@ function renderAttachmentBody(hostBlockId: string, attachment: QuestionAttachmen
               altText: svg.altText,
               caption: svg.caption,
             }}
+            displaySize={attachment.displaySize}
             disabled
           />
         </div>
@@ -68,7 +69,11 @@ function renderAttachmentBody(hostBlockId: string, attachment: QuestionAttachmen
   if (attachment.kind === 'geometry') {
     return (
       <div className="studio-doc-graph-canvas">
-        <GeometryRenderer blockId={`${hostBlockId}-attachment`} spec={attachment.geometry} />
+        <GeometryRenderer
+          blockId={`${hostBlockId}-attachment`}
+          spec={attachment.geometry}
+          displaySize={attachment.displaySize}
+        />
       </div>
     )
   }

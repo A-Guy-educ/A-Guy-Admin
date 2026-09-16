@@ -112,9 +112,7 @@ export const StudioSectionEditor: React.FC<StudioSectionEditorProps> = ({
                   one can slot in anywhere (index 0..N-1). The end position N
                   is covered by the terminal AddBlockButton below. */}
               <div className="studio-add-block-row studio-add-block-row--between">
-                <AddBlockButton
-                  onAdd={(newBlock) => onAddBlock(sectionId, newBlock, index)}
-                />
+                <AddBlockButton onAdd={(newBlock) => onAddBlock(sectionId, newBlock, index)} />
               </div>
               <div className="studio-block-item">
                 {viewMode === 'document' ? (

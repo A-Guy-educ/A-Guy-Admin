@@ -204,11 +204,17 @@ export const AttachmentEditor: React.FC<AttachmentEditorProps> = ({
                       value={attachment.displaySize || 'full'}
                       onChange={(e) =>
                         patchAttachment('svg', {
-                          displaySize: e.target.value as 'small' | 'medium' | 'large' | 'full',
+                          displaySize: e.target.value as
+                            | 'xsmall'
+                            | 'small'
+                            | 'medium'
+                            | 'large'
+                            | 'full',
                         })
                       }
                     >
-                      <option value="small">25%</option>
+                      <option value="xsmall">25%</option>
+                      <option value="small">33%</option>
                       <option value="medium">50%</option>
                       <option value="large">75%</option>
                       <option value="full">100%</option>
@@ -235,11 +241,17 @@ export const AttachmentEditor: React.FC<AttachmentEditorProps> = ({
                       value={attachment.displaySize || 'full'}
                       onChange={(e) =>
                         patchAttachment('geometry', {
-                          displaySize: e.target.value as 'small' | 'medium' | 'large' | 'full',
+                          displaySize: e.target.value as
+                            | 'xsmall'
+                            | 'small'
+                            | 'medium'
+                            | 'large'
+                            | 'full',
                         })
                       }
                     >
-                      <option value="small">25%</option>
+                      <option value="xsmall">25%</option>
+                      <option value="small">33%</option>
                       <option value="medium">50%</option>
                       <option value="large">75%</option>
                       <option value="full">100%</option>
@@ -268,11 +280,17 @@ export const AttachmentEditor: React.FC<AttachmentEditorProps> = ({
                       value={attachment.displaySize || 'full'}
                       onChange={(e) =>
                         patchAttachment('axis', {
-                          displaySize: e.target.value as 'small' | 'medium' | 'large' | 'full',
+                          displaySize: e.target.value as
+                            | 'xsmall'
+                            | 'small'
+                            | 'medium'
+                            | 'large'
+                            | 'full',
                         })
                       }
                     >
-                      <option value="small">25%</option>
+                      <option value="xsmall">25%</option>
+                      <option value="small">33%</option>
                       <option value="medium">50%</option>
                       <option value="large">75%</option>
                       <option value="full">100%</option>

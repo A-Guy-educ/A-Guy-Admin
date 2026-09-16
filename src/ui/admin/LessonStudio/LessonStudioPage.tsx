@@ -219,7 +219,8 @@ export const LessonStudioPage: React.FC<LessonStudioPageProps> = ({ lessonId }) 
       // for a section that had zero blocks at load time).
       setSectionBlocks((prev) => {
         const current = prev[sectionId] ?? []
-        const at = insertAt == null ? current.length : Math.max(0, Math.min(insertAt, current.length))
+        const at =
+          insertAt == null ? current.length : Math.max(0, Math.min(insertAt, current.length))
         const next = [...current.slice(0, at), block, ...current.slice(at)]
         return { ...prev, [sectionId]: next }
       })
@@ -237,7 +238,8 @@ export const LessonStudioPage: React.FC<LessonStudioPageProps> = ({ lessonId }) 
     (exerciseId: string, block: ContentBlock, insertAt?: number) => {
       setExerciseBlocks((prev) => {
         const current = prev[exerciseId] ?? []
-        const at = insertAt == null ? current.length : Math.max(0, Math.min(insertAt, current.length))
+        const at =
+          insertAt == null ? current.length : Math.max(0, Math.min(insertAt, current.length))
         const next = [...current.slice(0, at), block, ...current.slice(at)]
         return { ...prev, [exerciseId]: next }
       })

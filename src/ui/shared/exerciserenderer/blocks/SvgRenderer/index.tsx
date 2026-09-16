@@ -7,10 +7,11 @@ import { RichTextRenderer } from '../RichTextRenderer'
 import { sanitizeSvg } from '../../utils/svgSanitize'
 import type { DisplaySize } from '../AxisRenderer'
 
-/** Matches the SIZE_MAP in AxisRenderer so all three sketch blocks share
- *  the same "25 / 50 / 75 / 100 %" scale. */
+/** Mirrors SIZE_MAP in AxisRenderer so all three sketch blocks share the same
+ *  scale. `xsmall` = 25 %; `small` stays at 33 % for backwards compat. */
 const SVG_SIZE_MAP: Record<DisplaySize, string> = {
-  small: '25%',
+  xsmall: '25%',
+  small: '33%',
   medium: '50%',
   large: '75%',
   full: '100%',

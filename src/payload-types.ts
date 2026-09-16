@@ -2546,7 +2546,7 @@ export interface ContentPage {
  */
 export interface GeometryBlock {
   spec: string;
-  displaySize?: ('small' | 'medium' | 'large' | 'full') | null;
+  displaySize?: ('xsmall' | 'small' | 'medium' | 'large' | 'full') | null;
   /**
    * Override the page default spacing after this block
    */
@@ -2561,7 +2561,7 @@ export interface GeometryBlock {
  */
 export interface GraphBlock {
   spec: string;
-  displaySize?: ('small' | 'medium' | 'large' | 'full') | null;
+  displaySize?: ('xsmall' | 'small' | 'medium' | 'large' | 'full') | null;
   /**
    * Override the page default spacing after this block
    */

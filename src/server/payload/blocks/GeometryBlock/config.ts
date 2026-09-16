@@ -25,7 +25,8 @@ export const GeometryBlock: Block = {
       type: 'select',
       defaultValue: 'full',
       options: [
-        { label: '25%', value: 'small' },
+        { label: '25%', value: 'xsmall' },
+        { label: '33%', value: 'small' },
         { label: '50%', value: 'medium' },
         { label: '75%', value: 'large' },
         { label: '100%', value: 'full' },

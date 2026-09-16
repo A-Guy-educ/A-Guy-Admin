@@ -172,9 +172,7 @@ export const StudioExerciseCard: React.FC<StudioExerciseCardProps> = ({
                         is the terminal AddBlockButton below the map. */}
                     <div className="studio-add-block-row studio-add-block-row--between">
                       <AddBlockButton
-                        onAdd={(newBlock) =>
-                          onAddExerciseBlock(exercise.id, newBlock, blockIndex)
-                        }
+                        onAdd={(newBlock) => onAddExerciseBlock(exercise.id, newBlock, blockIndex)}
                       />
                     </div>
                     <div className="studio-block-item">
