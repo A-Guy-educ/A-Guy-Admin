@@ -80,10 +80,13 @@ export interface TextLessonV2 {
 // Format detection
 // ---------------------------------------------------------------------------
 
-const V2_SIGNATURE_RE = /\[\s+תרגיל\s+\S+\s*[-–]\s*נתוני\s*פתיחה\s+\]/
+// Accept both spaced (`[ תרגיל 1 - נתוני פתיחה ]`) and tight
+// (`[תרגיל 1 - נתוני פתיחה]`) bracket forms — otherwise the preview would
+// silently report "0 exercises" for a fixable, legitimately-v2 file.
+const V2_SIGNATURE_RE = /\[\s*תרגיל\s+\S+\s*[-–]\s*נתוני\s*פתיחה\s*\]/
 // `\b` is ASCII-only in JS regex and doesn't fire between Hebrew letters and
 // non-letters, so anchor on explicit whitespace after "סעיף" instead.
-const V2_SECTION_SIGNATURE_RE = /\[\s+(?:תרגיל\s+\S+\s*[-–]\s*)?סעיף\s/
+const V2_SECTION_SIGNATURE_RE = /\[\s*(?:תרגיל\s+\S+\s*[-–]\s*)?סעיף\s/
 
 export function isV2Format(raw: string): boolean {
   return V2_SIGNATURE_RE.test(raw) || V2_SECTION_SIGNATURE_RE.test(raw)
@@ -226,7 +229,10 @@ function applySectionField(
     sec.fullSolution = sec.fullSolution ? `${sec.fullSolution}\n${value}` : value
     return 'consumed'
   }
-  if (k.startsWith('שרטוט מותאם') || k.startsWith('שרטוט')) {
+  // Only the documented "שרטוט מותאם[…]" prefix flips into geometry mode.
+  // A bare `שרטוט` fallback would silently swallow any future `שרטוט <foo>:`
+  // field the authors introduce (and its value would be lost).
+  if (k.startsWith('שרטוט מותאם')) {
     sec.inGeometry = true
     return 'geometry-start'
   }

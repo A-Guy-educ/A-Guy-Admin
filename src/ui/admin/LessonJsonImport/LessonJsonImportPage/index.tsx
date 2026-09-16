@@ -134,9 +134,11 @@ function safeParseLesson(json: unknown): {
 // Two accepted header shapes:
 //   v1  → "תרגיל 1 – מנחה: <subtopic>"   (colon-separated, at column 0)
 //   v2  → "[ תרגיל 1 - נתוני פתיחה ]"     (bracketed, wrapped in ==== fences)
-// Detecting either counts as one exercise for the preview table.
+// The v2 form accepts both spaced and tight (`[תרגיל 1 - נתוני פתיחה]`)
+// brackets — the server-side signature is equally lax, so the preview
+// wouldn't be lying to the admin if we counted only one shape.
 const TEXT_EXERCISE_HEADER_RE = /^תרגיל\s+[^\s–-]+\s*[–-]\s*[^:]+:\s*(.*)$/gm
-const V2_EXERCISE_HEADER_RE = /^\s*\[\s+תרגיל\s+\S+\s*[-–]\s*נתוני\s*פתיחה\s+\]\s*$/gm
+const V2_EXERCISE_HEADER_RE = /^\s*\[\s*תרגיל\s+\S+\s*[-–]\s*נתוני\s*פתיחה\s*\]\s*$/gm
 
 // Mirrors deriveLessonTitle in server/services/text-lesson-import/convert-text-exercise.ts
 // so the preview table shows the same title the server will store.

@@ -19,6 +19,11 @@ describe('isV2Format', () => {
     const text = `${'='.repeat(80)}\nתרגיל 1 – מנחה: היקף\n${'='.repeat(80)}`
     expect(isV2Format(text)).toBe(false)
   })
+
+  it('recognises tight-bracket headers without inner whitespace', () => {
+    expect(isV2Format(`${SEP}\n[תרגיל 1 - נתוני פתיחה]\n${SEP}`)).toBe(true)
+    expect(isV2Format(`${SEP}\n[סעיף א' - שאלת ברירה יחידה]\n${SEP}`)).toBe(true)
+  })
 })
 
 describe('parseTextLessonV2 — basic shape', () => {

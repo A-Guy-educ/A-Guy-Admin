@@ -477,21 +477,42 @@ export function parseGeometryDsl(raw: string): ParseGeometryDslResult {
         break
       }
       case 'markers': {
-        // Right-angle markers ("סימן זווית ישרה"). We attempt to record an
-        // angle with square style if the caller referenced a vertex.
+        // Right-angle markers ("סימן זווית ישרה"). The vertex is a single
+        // point name; ray fields typically arrive as 2-letter segment refs
+        // (e.g. "EF" / "GH") where one letter is the vertex and the other
+        // is the far endpoint. Mirror parseAngleRow's `pick` so we emit
+        // actual point names — otherwise the renderer would try to resolve
+        // "EF" as a point and silently draw nothing.
+        //
+        // "בין ישר EF לישר GH" is often written WITHOUT a colon after "בין",
+        // so it can't be picked up by findField. Fall back to scanning the
+        // raw fields for a `בין`-prefixed one.
         const centerField = findField(item.fields, ['קודקוד'])
-        const between = findField(item.fields, ['בין ישר', 'בין'])
+        const between =
+          findField(item.fields, ['בין ישר', 'בין']) ??
+          item.fields.find((f) => /^בין(\s|$)/.test(f.trim()))
         if (centerField && between) {
           const centerName = centerField.match(/[A-Za-z][A-Za-z0-9_]*/)?.[0]
-          const rays = Array.from(between.matchAll(/([A-Za-z][A-Za-z0-9_]*)/g)).map((m) => m[1])
-          if (centerName && rays.length >= 2) {
-            angles.push({
-              center: centerName,
-              ray1: rays[0] === centerName ? rays[1] : rays[0],
-              ray2: rays.at(-1) === centerName ? rays.at(-2)! : rays.at(-1)!,
-              style: 'square',
-            })
-            break
+          const rayTokens = Array.from(between.matchAll(/([A-Za-z][A-Za-z0-9_]*)/g)).map(
+            (m) => m[1],
+          )
+          if (centerName && rayTokens.length >= 2) {
+            const pick = (raw: string): string | undefined => {
+              if (raw.length === 2) return raw[0] === centerName ? raw[1] : raw[0]
+              if (raw.length === 1) return raw
+              return undefined
+            }
+            const ray1 = pick(rayTokens[0])
+            const ray2 = pick(rayTokens[rayTokens.length - 1])
+            if (ray1 && ray2) {
+              angles.push({
+                center: centerName,
+                ray1,
+                ray2,
+                style: 'square',
+              })
+              break
+            }
           }
         }
         warnings.push(`Skipped marker row: ${body}`)

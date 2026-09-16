@@ -130,6 +130,32 @@ describe('parseGeometryDsl', () => {
     expect(spec.elements.points).toHaveLength(1)
   })
 
+  it('resolves right-angle markers to single-letter point names', () => {
+    // Author writes "בין ישר EF לישר GH" — the ray tokens are 2-letter
+    // segment refs where one letter is the vertex. The parser must strip
+    // the vertex letter and emit the far endpoint as the ray, otherwise
+    // the renderer can't resolve `ray1: 'EF'` to a point.
+    const raw = [
+      '  --- נקודות ---',
+      '  * נקודה E | מיקום: X=280, Y=125',
+      '  * נקודה F | מיקום: X=380, Y=125',
+      '  * נקודה G | מיקום: X=330, Y=70',
+      '  * נקודה H | מיקום: X=330, Y=180',
+      '  * נקודה O | מיקום: X=330, Y=125',
+      '  --- סימונים ---',
+      '  * סימן זווית ישרה (90°) | קודקוד: O | בין ישר OE לישר OG',
+    ].join('\n')
+
+    const { spec } = parseGeometryDsl(raw)
+    expect(spec.elements.angles).toHaveLength(1)
+    expect(spec.elements.angles[0]).toMatchObject({
+      center: 'O',
+      ray1: 'E',
+      ray2: 'G',
+      style: 'square',
+    })
+  })
+
   it('records warnings for garbled rows without dropping later ones', () => {
     const raw = [
       '  --- נקודות ---',
