@@ -4,6 +4,8 @@ import type {
   QuestionSelectTrueFalseBlock,
   QuestionFreeResponseBlock,
 } from '@/server/payload/collections/Exercises/types'
+import { AttachmentDocView } from './AttachmentDocView'
+import { AttachmentLayout } from './AttachmentLayout'
 import { RichTextDocView } from './RichTextDocView'
 
 interface QuestionDocViewProps {
@@ -14,7 +16,7 @@ interface QuestionDocViewProps {
 // prompt is in one of these ranges we treat the whole question as RTL so
 // markers (A. / B. / …) end up on the right side of each option, matching how
 // Word lays out Hebrew paragraphs.
-const RTL_CHAR = /[֑-߿יִ-﷽ﹰ-ﻼ]/
+const RTL_CHAR = /[֑-߿יִ-﷽ﹰ-ﻼ]/
 
 function detectQuestionDir(text: string | undefined): 'rtl' | 'ltr' | undefined {
   if (!text) return undefined
@@ -27,15 +29,36 @@ function detectQuestionDir(text: string | undefined): 'rtl' | 'ltr' | undefined 
  * Read-only, Word-style preview of a question. Prompt is prose; options render
  * as a static bulleted / lettered list with a marker for the correct answer.
  * There is no answer UI — this is authoring preview, not a runtime.
+ *
+ * If the question has an `attachment`, its sketch is rendered next to the
+ * question per `attachment.layout`.
  */
 export const QuestionDocView: React.FC<QuestionDocViewProps> = ({ block }) => {
   const dir = detectQuestionDir(block.prompt?.value)
-  return (
-    <div className="studio-doc-question" dir={dir}>
+  const questionNode = (
+    <>
       <div className="studio-doc-question-prompt">
         <RichTextDocView block={block.prompt} placeholder="Untitled question" />
       </div>
       {renderBody(block)}
+    </>
+  )
+
+  if (block.attachment) {
+    return (
+      <div className="studio-doc-question" dir={dir}>
+        <AttachmentLayout
+          layout={block.attachment.layout}
+          question={questionNode}
+          attachment={<AttachmentDocView hostBlockId={block.id} attachment={block.attachment} />}
+        />
+      </div>
+    )
+  }
+
+  return (
+    <div className="studio-doc-question" dir={dir}>
+      {questionNode}
     </div>
   )
 }
