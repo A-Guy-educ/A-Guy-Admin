@@ -180,9 +180,7 @@ export async function cloneSectionsAndRewireExercises(
       // key on block id and assume per-lesson uniqueness). The studio's
       // duplicate-section endpoint already does this — parity fix for
       // Duplicate Exercise + Duplicate Lesson, which share this helper.
-      const rewrittenContent = regenerateBlockIds(
-        (rest as { content?: unknown }).content,
-      )
+      const rewrittenContent = regenerateBlockIds((rest as { content?: unknown }).content)
       const newSectionData: Record<string, unknown> = {
         ...rest,
         content: rewrittenContent,
