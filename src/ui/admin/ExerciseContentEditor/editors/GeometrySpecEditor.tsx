@@ -85,6 +85,20 @@ export const GeometrySpecEditor: React.FC<GeometrySpecEditorProps> = ({
     [spec.elements.points, updateElements],
   )
 
+  const handleAngleLabelMoved = useCallback(
+    (index: number, distance: 'near' | 'mid' | 'far') => {
+      const newAngles = spec.elements.angles.map((a, i) => {
+        if (i !== index || !a.label?.value) return a
+        return {
+          ...a,
+          label: { ...a.label, distance, position: a.label.position ?? 'inside' },
+        }
+      })
+      updateElements({ angles: newAngles })
+    },
+    [spec.elements.angles, updateElements],
+  )
+
   const handleGridToggle = useCallback(
     (showGrid: boolean) => {
       updateSpec({ canvas: { ...spec.canvas, grid: showGrid } })
@@ -187,6 +201,7 @@ export const GeometrySpecEditor: React.FC<GeometrySpecEditorProps> = ({
         onGridToggle={handleGridToggle}
         onTextMoved={handleTextMoved}
         onPointLabelMoved={handlePointLabelMoved}
+        onAngleLabelMoved={handleAngleLabelMoved}
       />
     </div>
   )

@@ -25,6 +25,9 @@ export const AnglesPanel: React.FC<AnglesPanelProps> = ({ angles, points, onChan
       center: names[1] || names[0] || '',
       ray1: names[0] || '',
       ray2: names[2] || names[0] || '',
+      // Author-time default. Renderer fallback stays at 30 so legacy angles
+      // saved without arcRadius keep their historical visual size.
+      arcRadius: 50,
     }
     onChange([...angles, newAngle])
   }
@@ -196,6 +199,27 @@ export const AnglesPanel: React.FC<AnglesPanelProps> = ({ angles, points, onChan
                   })
                 }}
               />
+            </div>
+            <div className="panel-field">
+              <span className="panel-field-label">Dist</span>
+              <select
+                className="panel-field-select"
+                disabled={!angle.label?.value}
+                value={angle.label?.distance ?? 'mid'}
+                onChange={(e) => {
+                  if (!angle.label?.value) return
+                  handleUpdate(index, {
+                    label: {
+                      ...angle.label,
+                      distance: e.target.value as 'near' | 'mid' | 'far',
+                    },
+                  })
+                }}
+              >
+                <option value="near">Near</option>
+                <option value="mid">Mid</option>
+                <option value="far">Far</option>
+              </select>
             </div>
             <button type="button" className="panel-remove-btn" onClick={() => handleRemove(index)}>
               <Trash2 size={14} />

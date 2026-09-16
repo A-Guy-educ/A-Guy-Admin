@@ -204,9 +204,10 @@ function renderBlockContent({
   }
 
   if (block.type === 'svg') {
+    const svgBlock = block as SvgBlock
     return (
       <figure className="my-2 flex justify-center">
-        <SvgRenderer block={block as SvgBlock} />
+        <SvgRenderer block={svgBlock} displaySize={svgBlock.displaySize} />
       </figure>
     )
   }
@@ -232,7 +233,7 @@ function renderBlockContent({
         worksheetLayout={{ sideContentAspectRatio: aspectRatio, proportions: '50-50' }}
       >
         <div className="my-4 rounded-xl border bg-card p-card-padding-sm">
-          <GeometryRenderer blockId={b.id} spec={b.geometry} />
+          <GeometryRenderer blockId={b.id} spec={b.geometry} displaySize={b.displaySize} />
         </div>
       </GraphWithPrompt>
     )

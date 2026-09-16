@@ -72,13 +72,23 @@ export interface SvgAttachmentContent {
 }
 
 export type QuestionAttachment =
-  | { kind: 'svg'; layout: GraphLayout; svg: SvgAttachmentContent }
-  | { kind: 'geometry'; layout: GraphLayout; geometry: GeometrySpecV1 }
+  | {
+      kind: 'svg'
+      layout: GraphLayout
+      svg: SvgAttachmentContent
+      displaySize?: 'xsmall' | 'small' | 'medium' | 'large' | 'full'
+    }
+  | {
+      kind: 'geometry'
+      layout: GraphLayout
+      geometry: GeometrySpecV1
+      displaySize?: 'xsmall' | 'small' | 'medium' | 'large' | 'full'
+    }
   | {
       kind: 'axis'
       layout: GraphLayout
       axis: AxisSpecV1
-      displaySize?: 'small' | 'medium' | 'large' | 'full'
+      displaySize?: 'xsmall' | 'small' | 'medium' | 'large' | 'full'
     }
 
 // ---------------------------------
@@ -228,6 +238,7 @@ export interface SvgBlock {
   interactive?: boolean // If true, hotspots are clickable
   hotspots?: SvgHotspot[] // Clickable regions (only when interactive=true)
   correctHotspotIds?: string[] // Answer key: which hotspot IDs are correct
+  displaySize?: 'xsmall' | 'small' | 'medium' | 'large' | 'full'
   hint?: InlineRichText
   solution?: InlineRichText
   fullSolution?: InlineRichText
@@ -252,6 +263,7 @@ export interface QuestionGeometryBlock {
   prompt: InlineRichText
   layout?: GraphLayout
   geometry: GeometrySpecV1
+  displaySize?: 'xsmall' | 'small' | 'medium' | 'large' | 'full'
   answer?: QuestionAnswer
   hint?: InlineRichText
   solution?: InlineRichText
@@ -267,7 +279,7 @@ export interface QuestionAxisBlock {
   prompt: InlineRichText
   layout?: GraphLayout
   axis: AxisSpecV1
-  displaySize?: 'small' | 'medium' | 'large' | 'full'
+  displaySize?: 'xsmall' | 'small' | 'medium' | 'large' | 'full'
   answer?: QuestionAnswer
   hint?: InlineRichText
   solution?: InlineRichText

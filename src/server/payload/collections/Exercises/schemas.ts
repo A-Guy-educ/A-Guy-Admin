@@ -358,6 +358,7 @@ const SvgBlockSchema = z
     interactive: z.boolean().optional(),
     hotspots: z.array(SvgHotspotSchema).optional(),
     correctHotspotIds: z.array(z.string().min(1)).optional(),
+    displaySize: z.enum(['xsmall', 'small', 'medium', 'large', 'full']).default('full').optional(),
     hint: InlineRichTextSchema.optional(),
     solution: InlineRichTextSchema.optional(),
     fullSolution: InlineRichTextSchema.optional(),
@@ -442,6 +443,7 @@ export const QuestionGeometryBlockSchema = z
     prompt: InlineRichTextSchema,
     layout: GraphLayoutSchema,
     geometry: GeometrySpecV1Schema,
+    displaySize: z.enum(['xsmall', 'small', 'medium', 'large', 'full']).default('full').optional(),
     answer: QuestionAnswerSchema.optional(),
     hint: InlineRichTextSchema.optional(),
     solution: InlineRichTextSchema.optional(),
@@ -450,9 +452,14 @@ export const QuestionGeometryBlockSchema = z
   .strict()
 
 // ---------------------------------
-// Zod: Display Size Enum (for graph width control)
+// Zod: Display Size Enum (for sketch-block width control)
 // ---------------------------------
-const DisplaySizeSchema = z.enum(['small', 'medium', 'large', 'full']).default('full').optional()
+// `xsmall` (25 %) is the newer author-time option. `small` stays at 33 % for
+// backwards compat with content saved before the extra option was introduced.
+const DisplaySizeSchema = z
+  .enum(['xsmall', 'small', 'medium', 'large', 'full'])
+  .default('full')
+  .optional()
 
 // ---------------------------------
 // Zod: Question Axis Block Schema
@@ -486,6 +493,7 @@ export const QuestionAttachmentSchema = z.discriminatedUnion('kind', [
       kind: z.literal('svg'),
       layout: GraphLayoutSchema,
       svg: SvgContentSchema,
+      displaySize: DisplaySizeSchema,
     })
     .strict(),
   z
@@ -493,6 +501,7 @@ export const QuestionAttachmentSchema = z.discriminatedUnion('kind', [
       kind: z.literal('geometry'),
       layout: GraphLayoutSchema,
       geometry: GeometrySpecV1Schema,
+      displaySize: DisplaySizeSchema,
     })
     .strict(),
   z

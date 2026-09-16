@@ -34,8 +34,8 @@ interface StudioExerciseCardProps {
   pendingRowOps: Record<string, RowOp | undefined>
   onSectionBlockChange: (sectionId: string, index: number, updated: ContentBlock) => void
   onExerciseBlockChange: (exerciseId: string, index: number, updated: ContentBlock) => void
-  onAddSectionBlock: (sectionId: string, block: ContentBlock) => void
-  onAddExerciseBlock: (exerciseId: string, block: ContentBlock) => void
+  onAddSectionBlock: (sectionId: string, block: ContentBlock, insertAt?: number) => void
+  onAddExerciseBlock: (exerciseId: string, block: ContentBlock, insertAt?: number) => void
   onDeleteSectionBlock: (sectionId: string, index: number) => void
   onDeleteExerciseBlock: (exerciseId: string, index: number) => void
   /** Bulk-replace handlers wired to the section-/exercise-level JSON editor. */
@@ -167,30 +167,39 @@ export const StudioExerciseCard: React.FC<StudioExerciseCardProps> = ({
                   ? () => onDeleteExerciseBlock(exercise.id, blockIndex)
                   : undefined
                 return (
-                  <div key={block.id || `block-${blockIndex}`} className="studio-block-item">
-                    {viewMode === 'document' ? (
-                      <StudioDocBlock
-                        block={block}
-                        onChange={handleChange}
-                        onDelete={handleDelete}
+                  <React.Fragment key={block.id || `block-${blockIndex}`}>
+                    {/* Between-block inserter (positions 0..N-1). Position N
+                        is the terminal AddBlockButton below the map. */}
+                    <div className="studio-add-block-row studio-add-block-row--between">
+                      <AddBlockButton
+                        onAdd={(newBlock) => onAddExerciseBlock(exercise.id, newBlock, blockIndex)}
                       />
-                    ) : (
-                      <div className="studio-edit-block-wrapper">
-                        {canDeleteExerciseBlock && (
-                          <button
-                            type="button"
-                            className="studio-block-delete-btn"
-                            onClick={handleDelete}
-                            title="Delete this block"
-                            aria-label="Delete block"
-                          >
-                            ×
-                          </button>
-                        )}
-                        <LazyInlineBlockEditor block={block} onChange={handleChange} />
-                      </div>
-                    )}
-                  </div>
+                    </div>
+                    <div className="studio-block-item">
+                      {viewMode === 'document' ? (
+                        <StudioDocBlock
+                          block={block}
+                          onChange={handleChange}
+                          onDelete={handleDelete}
+                        />
+                      ) : (
+                        <div className="studio-edit-block-wrapper">
+                          {canDeleteExerciseBlock && (
+                            <button
+                              type="button"
+                              className="studio-block-delete-btn"
+                              onClick={handleDelete}
+                              title="Delete this block"
+                              aria-label="Delete block"
+                            >
+                              ×
+                            </button>
+                          )}
+                          <LazyInlineBlockEditor block={block} onChange={handleChange} />
+                        </div>
+                      )}
+                    </div>
+                  </React.Fragment>
                 )
               })}
             </div>

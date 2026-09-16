@@ -15,15 +15,20 @@ const JSXGraphBoard = dynamic(
   },
 )
 
-// Display size to percentage mapping
+// Display size to percentage mapping.
+// `xsmall` (25 %) was introduced so authors can pick a "quarter width" option
+// without changing the historical `small` = 33 % values already stored on
+// existing content. All five keys stay valid in the schema; editors show all
+// five in the dropdown so authors can pick either 25 % or 33 %.
 const SIZE_MAP = {
+  xsmall: 0.25,
   small: 0.33,
   medium: 0.5,
   large: 0.75,
   full: 1,
 } as const
 
-export type DisplaySize = 'small' | 'medium' | 'large' | 'full'
+export type DisplaySize = 'xsmall' | 'small' | 'medium' | 'large' | 'full'
 
 interface AxisRendererProps {
   blockId: string

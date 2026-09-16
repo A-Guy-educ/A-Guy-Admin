@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### Features
+- Geometry angle labels are now draggable and snap to one of three preset bisector distances (near/mid/far); new per-point `labelVisible` toggle in the geometry editor (#465)
+- Studio: insert new blocks between existing ones via slim in-line inserters on section and exercise block lists (#465)
+- Sketch blocks (SVG, geometry, axis, question attachments) can be sized via a shared dropdown; new `xsmall` (25 %) option added alongside the existing `small / medium / large / full` (33/50/75/100 %) (#465)
+
 ## v0.44.0 — 2026-09-15
 
 ### Features

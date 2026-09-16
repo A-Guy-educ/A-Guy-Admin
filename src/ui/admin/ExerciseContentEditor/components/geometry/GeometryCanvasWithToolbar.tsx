@@ -20,6 +20,7 @@ interface GeometryCanvasWithToolbarProps {
   onGridToggle: (showGrid: boolean) => void
   onTextMoved?: (index: number, x: number, y: number) => void
   onPointLabelMoved?: (name: string, position: string) => void
+  onAngleLabelMoved?: (index: number, distance: 'near' | 'mid' | 'far') => void
 }
 
 export const GeometryCanvasWithToolbar: React.FC<GeometryCanvasWithToolbarProps> = ({
@@ -31,6 +32,7 @@ export const GeometryCanvasWithToolbar: React.FC<GeometryCanvasWithToolbarProps>
   onGridToggle,
   onTextMoved,
   onPointLabelMoved,
+  onAngleLabelMoved,
 }) => {
   const [mode, setMode] = useState<GeometryMode>('move')
   const showGrid = geometry.canvas.grid ?? false
@@ -64,6 +66,7 @@ export const GeometryCanvasWithToolbar: React.FC<GeometryCanvasWithToolbarProps>
         onCanvasClick={handleCanvasClick}
         onTextMoved={onTextMoved}
         onPointLabelMoved={onPointLabelMoved}
+        onAngleLabelMoved={onAngleLabelMoved}
       />
       {mode === 'addPoint' && (
         <div className="geo-canvas-hint">Click on the canvas to place a point</div>

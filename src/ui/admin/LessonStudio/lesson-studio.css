@@ -794,6 +794,19 @@
   padding-top: 6px;
 }
 
+/* Between-block insertion — subtle by default so a stack of many blocks
+   doesn't look like a wall of "+ Add block" buttons. Reveals on hover. */
+.studio-add-block-row--between {
+  padding: 2px 0;
+  opacity: 0.35;
+  transition: opacity 0.15s;
+}
+
+.studio-add-block-row--between:hover,
+.studio-add-block-row--between:focus-within {
+  opacity: 1;
+}
+
 .studio-add-section-row {
   padding: 12px 0 4px;
 }

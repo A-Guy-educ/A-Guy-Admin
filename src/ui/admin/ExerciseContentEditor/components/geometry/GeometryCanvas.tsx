@@ -8,6 +8,12 @@ import {
   sizeScaleToPixels,
 } from '@/infra/contracts/graphics/textColors'
 import { computeBoardSize } from '@/infra/utils/graphics/board-sizing'
+import {
+  computeAngleLabelPos,
+  snapAngleLabelDistance,
+  type AngleLabelDistance,
+  type BoardPixelScale,
+} from '@/infra/utils/graphics/angle-label'
 import type { JXGBoard, JXGElement } from 'jsxgraph'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { JSXGraphBoard } from '../shared/JSXGraphBoard'
@@ -27,6 +33,7 @@ interface GeometryCanvasProps {
   onCanvasClick?: (x: number, y: number) => void
   onTextMoved?: (index: number, x: number, y: number) => void
   onPointLabelMoved?: (name: string, position: string) => void
+  onAngleLabelMoved?: (index: number, distance: AngleLabelDistance) => void
 }
 
 // Fallback pixel width used on the very first render, before the
@@ -59,6 +66,12 @@ function angleToLabelPosition(angleDeg: number): string {
   return ['r', 'tr', 't', 'tl', 'l', 'bl', 'b', 'br'][idx]
 }
 
+/** JSXGraph exposes pixel-per-user-unit scales on the board at runtime. */
+function getBoardScale(board: JXGBoard): BoardPixelScale {
+  const b = board as unknown as { unitX?: number; unitY?: number }
+  return { unitX: b.unitX || 1, unitY: b.unitY || 1 }
+}
+
 export const GeometryCanvas: React.FC<GeometryCanvasProps> = ({
   id,
   geometry,
@@ -68,6 +81,7 @@ export const GeometryCanvas: React.FC<GeometryCanvasProps> = ({
   onCanvasClick,
   onTextMoved,
   onPointLabelMoved,
+  onAngleLabelMoved,
 }) => {
   const boardRef = useRef<JXGBoard | null>(null)
   const isSyncingRef = useRef(false)
@@ -84,12 +98,14 @@ export const GeometryCanvas: React.FC<GeometryCanvasProps> = ({
   const onMultiPointMovedRef = useRef(onMultiPointMoved)
   const onTextMovedRef = useRef(onTextMoved)
   const onPointLabelMovedRef = useRef(onPointLabelMoved)
+  const onAngleLabelMovedRef = useRef(onAngleLabelMoved)
   modeRef.current = interactionMode
   onCanvasClickRef.current = onCanvasClick
   onPointMovedRef.current = onPointMoved
   onMultiPointMovedRef.current = onMultiPointMoved
   onTextMovedRef.current = onTextMoved
   onPointLabelMovedRef.current = onPointLabelMoved
+  onAngleLabelMovedRef.current = onAngleLabelMoved
 
   const syncToBoard = useCallback(() => {
     const board = boardRef.current
@@ -128,7 +144,15 @@ export const GeometryCanvas: React.FC<GeometryCanvasProps> = ({
       syncSegments(board, geometry, newIds, elementsRef)
       syncLineLabels(board, geometry, newIds, elementsRef)
       syncCircles(board, geometry, newIds, elementsRef)
-      syncAngles(board, geometry, newIds, elementsRef)
+      syncAngles(
+        board,
+        geometry,
+        newIds,
+        elementsRef,
+        isSyncingRef,
+        isDraggingRef,
+        onAngleLabelMovedRef,
+      )
       syncPolygons(
         board,
         geometry,
@@ -268,9 +292,15 @@ function syncPoints(
     const existing = elementsRef.current.get(elemId)
 
     const pointColor = point.color ?? getDefaultCanvasElementColor()
+    // Renderer fallback stays at 4 so legacy points saved without an explicit
+    // size don't shrink. New-point authoring uses 2 in PointsPanel.
     const pointSize = point.size ?? 4
     const labelOffset = mapLabelOffset(point.position)
-    const labelKey = labelOffset.join(',')
+    const labelVisible = point.labelVisible !== false
+    // Include labelVisible in the change key so toggling it forces a full
+    // recreation. JSXGraph's `withLabel` can't be flipped reliably via
+    // setAttribute after the point exists.
+    const labelKey = `${labelOffset.join(',')}|${labelVisible ? '1' : '0'}`
 
     // Check if label position changed — JSXGraph doesn't reliably update
     // label offset via setAttribute, so we force recreation.
@@ -296,11 +326,12 @@ function syncPoints(
         fillColor: pointColor,
         strokeColor: pointColor,
         visible: point.visible !== false,
-        withLabel: true,
+        withLabel: labelVisible,
         label: {
           offset: labelOffset,
           fontSize: point.fontSize || 12,
           cssStyle: "font-family: 'Times New Roman', Times, serif;",
+          visible: labelVisible,
         } as Record<string, unknown>,
       })
       el.on('drag', () => {
@@ -477,15 +508,36 @@ function syncAngles(
   geometry: GeometrySpecV1,
   newIds: Set<string>,
   elementsRef: React.MutableRefObject<Map<string, JXGElement>>,
+  isSyncingRef: React.MutableRefObject<boolean>,
+  isDraggingRef: React.MutableRefObject<boolean>,
+  onAngleLabelMovedRef: React.RefObject<
+    ((index: number, distance: 'near' | 'mid' | 'far') => void) | undefined
+  >,
 ) {
   for (let i = 0; i < geometry.elements.angles.length; i++) {
     const angle = geometry.elements.angles[i]
     const elemId = `angle-${angle.ray1}-${angle.center}-${angle.ray2}`
+    const labelElemId = `anglelabel-${angle.ray1}-${angle.center}-${angle.ray2}`
     newIds.add(elemId)
 
-    const ray1El = elementsRef.current.get(`point-${angle.ray1}`)
-    const centerEl = elementsRef.current.get(`point-${angle.center}`)
-    const ray2El = elementsRef.current.get(`point-${angle.ray2}`)
+    const ray1El = elementsRef.current.get(`point-${angle.ray1}`) as unknown as
+      | {
+          X: () => number
+          Y: () => number
+        }
+      | undefined
+    const centerEl = elementsRef.current.get(`point-${angle.center}`) as unknown as
+      | {
+          X: () => number
+          Y: () => number
+        }
+      | undefined
+    const ray2El = elementsRef.current.get(`point-${angle.ray2}`) as unknown as
+      | {
+          X: () => number
+          Y: () => number
+        }
+      | undefined
     if (!ray1El || !centerEl || !ray2El) continue
 
     // Always remove and recreate — JSXGraph angle elements don't support
@@ -495,14 +547,22 @@ function syncAngles(
       board.removeObject(existing)
       elementsRef.current.delete(elemId)
     }
+    const existingLabel = elementsRef.current.get(labelElemId)
+    if (existingLabel) {
+      board.removeObject(existingLabel)
+      elementsRef.current.delete(labelElemId)
+    }
 
     const isSquare = angle.style === 'square'
     const hasLabel = !!angle.label?.value
     // Set both `type` and `orthoType` so `style: 'square'` renders as a square
     // marker regardless of the measured angle — matches the shared renderer.
     const shape = isSquare ? 'square' : 'sector'
+    // Renderer fallback stays at 30 so legacy angles saved without an explicit
+    // arcRadius don't grow. New-angle authoring defaults to 50 in AnglesPanel.
+    const arcRadius = angle.arcRadius || 30
     const el = board.create('angle', [ray1El, centerEl, ray2El], {
-      radius: angle.arcRadius || 30,
+      radius: arcRadius,
       type: shape,
       orthoType: shape,
       strokeColor: angle.color || getDefaultAngleColor(),
@@ -510,16 +570,60 @@ function syncAngles(
       fillOpacity: 0.15,
       strokeWidth: 2,
       fixed: true,
-      withLabel: hasLabel,
-      name: hasLabel ? angle.label!.value! : '',
-      label: hasLabel
-        ? ({
-            fontSize: angle.label!.fontSize || 10,
-            cssStyle: "font-family: 'Times New Roman', Times, serif;",
-          } as Record<string, unknown>)
-        : ({ visible: false } as Record<string, unknown>),
+      // The angle's built-in label is disabled — we render our own draggable
+      // text element along the bisector so the admin can pick one of three
+      // distances (near/mid/far).
+      withLabel: false,
+      name: '',
+      label: { visible: false } as Record<string, unknown>,
     })
     elementsRef.current.set(elemId, el)
+
+    if (hasLabel) {
+      const distance = angle.label!.distance ?? 'mid'
+      const scale = getBoardScale(board)
+      const { x: lx, y: ly } = computeAngleLabelPos(
+        scale,
+        centerEl.X(),
+        centerEl.Y(),
+        ray1El.X(),
+        ray1El.Y(),
+        ray2El.X(),
+        ray2El.Y(),
+        arcRadius,
+        distance,
+      )
+      const labelEl = board.create('text', [lx, ly, angle.label!.value!], {
+        fontSize: angle.label!.fontSize || 12,
+        anchorX: 'middle',
+        anchorY: 'middle',
+        cssStyle: "font-family: 'Times New Roman', Times, serif;",
+        strokeColor: angle.color || getDefaultAngleColor(),
+        color: angle.color || getDefaultAngleColor(),
+        fixed: false,
+        highlight: true,
+      })
+      const capturedIndex = i
+      labelEl.on('drag', () => {
+        if (isSyncingRef.current) return
+        isDraggingRef.current = true
+      })
+      labelEl.on('up', () => {
+        const t = labelEl as unknown as { X: () => number; Y: () => number }
+        const snapped = snapAngleLabelDistance(
+          getBoardScale(board),
+          centerEl.X(),
+          centerEl.Y(),
+          t.X(),
+          t.Y(),
+          arcRadius,
+        )
+        onAngleLabelMovedRef.current?.(capturedIndex, snapped)
+        isDraggingRef.current = false
+      })
+      elementsRef.current.set(labelElemId, labelEl)
+      newIds.add(labelElemId)
+    }
   }
 }
 

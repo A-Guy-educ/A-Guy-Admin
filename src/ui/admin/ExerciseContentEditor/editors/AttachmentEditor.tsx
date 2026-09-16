@@ -65,8 +65,8 @@ const defaultAxis = (): AxisSpecV1 => ({
 })
 
 function buildAttachment(kind: AttachmentKind, layout: GraphLayout): QuestionAttachment {
-  if (kind === 'svg') return { kind, layout, svg: defaultSvg() }
-  if (kind === 'geometry') return { kind, layout, geometry: defaultGeometry() }
+  if (kind === 'svg') return { kind, layout, svg: defaultSvg(), displaySize: 'full' }
+  if (kind === 'geometry') return { kind, layout, geometry: defaultGeometry(), displaySize: 'full' }
   return { kind, layout, axis: defaultAxis(), displaySize: 'full' }
 }
 
@@ -194,21 +194,79 @@ export const AttachmentEditor: React.FC<AttachmentEditorProps> = ({
           </div>
 
           {attachment.kind === 'svg' && (
-            <SvgContentEditor
-              content={attachment.svg}
-              onChange={(svg) => patchAttachment('svg', { svg })}
-              showCaption
-            />
+            <>
+              <div className="question-editor-section">
+                <div className="canvas-config-row">
+                  <div className="panel-field">
+                    <span className="panel-field-label">Display Size</span>
+                    <select
+                      className="panel-field-select"
+                      value={attachment.displaySize || 'full'}
+                      onChange={(e) =>
+                        patchAttachment('svg', {
+                          displaySize: e.target.value as
+                            | 'xsmall'
+                            | 'small'
+                            | 'medium'
+                            | 'large'
+                            | 'full',
+                        })
+                      }
+                    >
+                      <option value="xsmall">25%</option>
+                      <option value="small">33%</option>
+                      <option value="medium">50%</option>
+                      <option value="large">75%</option>
+                      <option value="full">100%</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+              <SvgContentEditor
+                content={attachment.svg}
+                onChange={(svg) => patchAttachment('svg', { svg })}
+                showCaption
+              />
+            </>
           )}
 
           {attachment.kind === 'geometry' && (
-            <div className="question-editor-section">
-              <GeometrySpecEditor
-                canvasId={`attachment-geo-${blockId}`}
-                spec={attachment.geometry}
-                onChange={(geometry) => patchAttachment('geometry', { geometry })}
-              />
-            </div>
+            <>
+              <div className="question-editor-section">
+                <div className="canvas-config-row">
+                  <div className="panel-field">
+                    <span className="panel-field-label">Display Size</span>
+                    <select
+                      className="panel-field-select"
+                      value={attachment.displaySize || 'full'}
+                      onChange={(e) =>
+                        patchAttachment('geometry', {
+                          displaySize: e.target.value as
+                            | 'xsmall'
+                            | 'small'
+                            | 'medium'
+                            | 'large'
+                            | 'full',
+                        })
+                      }
+                    >
+                      <option value="xsmall">25%</option>
+                      <option value="small">33%</option>
+                      <option value="medium">50%</option>
+                      <option value="large">75%</option>
+                      <option value="full">100%</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+              <div className="question-editor-section">
+                <GeometrySpecEditor
+                  canvasId={`attachment-geo-${blockId}`}
+                  spec={attachment.geometry}
+                  onChange={(geometry) => patchAttachment('geometry', { geometry })}
+                />
+              </div>
+            </>
           )}
 
           {attachment.kind === 'axis' && (
@@ -222,14 +280,20 @@ export const AttachmentEditor: React.FC<AttachmentEditorProps> = ({
                       value={attachment.displaySize || 'full'}
                       onChange={(e) =>
                         patchAttachment('axis', {
-                          displaySize: e.target.value as 'small' | 'medium' | 'large' | 'full',
+                          displaySize: e.target.value as
+                            | 'xsmall'
+                            | 'small'
+                            | 'medium'
+                            | 'large'
+                            | 'full',
                         })
                       }
                     >
-                      <option value="small">Small (33%)</option>
-                      <option value="medium">Medium (50%)</option>
-                      <option value="large">Large (75%)</option>
-                      <option value="full">Full Width (100%)</option>
+                      <option value="xsmall">25%</option>
+                      <option value="small">33%</option>
+                      <option value="medium">50%</option>
+                      <option value="large">75%</option>
+                      <option value="full">100%</option>
                     </select>
                   </div>
                 </div>

@@ -454,7 +454,10 @@ export function ExerciseRenderer({
                 prompt?: unknown
               }
               if (b.type === ('question_geometry' as string)) {
-                const geometryBlock = b as ContentBlock & { geometry?: GeometrySpecV1 }
+                const geometryBlock = b as ContentBlock & {
+                  geometry?: GeometrySpecV1
+                  displaySize?: DisplaySize
+                }
                 return (
                   <GraphWithPrompt
                     key={b.id}
@@ -472,6 +475,7 @@ export function ExerciseRenderer({
                     <GeometryRenderer
                       blockId={b.id}
                       spec={geometryBlock.geometry as GeometrySpecV1}
+                      displaySize={geometryBlock.displaySize}
                     />
                   </GraphWithPrompt>
                 )
@@ -586,13 +590,14 @@ export function ExerciseRenderer({
                         disabled={!!svgDisabled}
                         checkResult={svgResult}
                         correctHotspotIds={svgBlock.correctHotspotIds}
+                        displaySize={svgBlock.displaySize}
                       />
                     </QuestionCard>
                   )
                 }
                 return (
                   <div key={svgBlock.id}>
-                    <SvgRenderer block={svgBlock} />
+                    <SvgRenderer block={svgBlock} displaySize={svgBlock.displaySize} />
                   </div>
                 )
               }
