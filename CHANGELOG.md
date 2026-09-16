@@ -2045,6 +2045,7 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- fix(admin): Refresh geometry preview when block spec changes ([#460](https://github.com/A-Guy-educ/A-Guy-Admin/pull/460)) — @aguyshayb
 - fix(admin): Force derived geometry visible when parent points are hidden ([#459](https://github.com/A-Guy-educ/A-Guy-Admin/pull/459)) — @aguyshayb
 ## [v0.44.0] - 2026-09-15
 
