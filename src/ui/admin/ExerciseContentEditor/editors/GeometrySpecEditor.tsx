@@ -116,10 +116,7 @@ export const GeometrySpecEditor: React.FC<GeometrySpecEditorProps> = ({
           />
         </CollapsibleSection>
 
-        <CollapsibleSection
-          title={`Lines (${spec.elements.lines.length})`}
-          defaultExpanded={false}
-        >
+        <CollapsibleSection title={`Lines (${spec.elements.lines.length})`} defaultExpanded={false}>
           <LinesPanel
             lines={spec.elements.lines}
             points={spec.elements.points}

@@ -48,6 +48,15 @@ export const SvgContentEditor: React.FC<SvgContentEditorProps> = ({
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  // FileReader.onload fires asynchronously; if the parent updates `content`
+  // (e.g. user types in altText/caption) while a large SVG is loading, closing
+  // over `content` here would revert those sibling edits when the read
+  // completes. Read the latest snapshot from a ref instead.
+  const contentRef = useRef(content)
+  React.useEffect(() => {
+    contentRef.current = content
+  }, [content])
+
   const validation = useMemo(() => validateSvg(content.value), [content.value])
   const sanitized = useMemo(() => {
     if (!validation.valid) return null
@@ -61,7 +70,7 @@ export const SvgContentEditor: React.FC<SvgContentEditorProps> = ({
     reader.onload = () => {
       const raw = reader.result as string
       const { sanitized: cleaned } = sanitizeSvg(raw)
-      onChange({ ...content, value: cleaned || raw })
+      onChange({ ...contentRef.current, value: cleaned || raw })
     }
     reader.readAsText(file)
     e.target.value = ''

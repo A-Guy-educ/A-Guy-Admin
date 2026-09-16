@@ -82,6 +82,8 @@ interface AttachmentEditorProps {
  * sub-editor. The whole attachment is optional — toggling it off strips the
  * field so the question renders as it does today.
  */
+type PerKindSnapshots = { [K in AttachmentKind]?: Extract<QuestionAttachment, { kind: K }> }
+
 export const AttachmentEditor: React.FC<AttachmentEditorProps> = ({
   blockId,
   attachment,
@@ -90,12 +92,21 @@ export const AttachmentEditor: React.FC<AttachmentEditorProps> = ({
   const enabled = attachment !== undefined
   const layout = attachment?.layout ?? DEFAULT_LAYOUT
 
-  // Remember the last configured attachment so toggling off → on within a
-  // session restores prior work instead of wiping it back to a default SVG.
+  // Remember the last state for each kind independently. Two flows benefit:
+  //   - Toggle off → on restores the last attachment (any kind).
+  //   - Switch kind svg → geometry → svg restores the earlier svg work
+  //     instead of resetting to a fresh default.
   const lastAttachmentRef = React.useRef<QuestionAttachment | undefined>(attachment)
+  const perKindRef = React.useRef<PerKindSnapshots>({})
   React.useEffect(() => {
     if (attachment !== undefined) {
       lastAttachmentRef.current = attachment
+      // Type narrowing across the union — `attachment` has the exact shape
+      // for its `kind`, so assigning it back into the matching slot is safe.
+      perKindRef.current = {
+        ...perKindRef.current,
+        [attachment.kind]: attachment as PerKindSnapshots[typeof attachment.kind],
+      }
     }
   }, [attachment])
 
@@ -108,7 +119,15 @@ export const AttachmentEditor: React.FC<AttachmentEditorProps> = ({
   }
 
   const handleKindChange = (kind: AttachmentKind) => {
-    onChange(buildAttachment(kind, layout))
+    const snapshot = perKindRef.current[kind]
+    // Preserve the currently-selected layout across kind switches even if
+    // the restored snapshot had a different one — layout is a top-level
+    // control that shouldn't jump around under the user.
+    if (snapshot) {
+      onChange({ ...snapshot, layout } as QuestionAttachment)
+    } else {
+      onChange(buildAttachment(kind, layout))
+    }
   }
 
   const handleLayoutChange = (nextLayout: GraphLayout) => {
