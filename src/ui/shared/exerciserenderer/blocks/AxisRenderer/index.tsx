@@ -15,9 +15,10 @@ const JSXGraphBoard = dynamic(
   },
 )
 
-// Display size to percentage mapping
+// Display size to percentage mapping. Values map to the "25/50/75/100"
+// dropdown authors see in the block editors.
 const SIZE_MAP = {
-  small: 0.33,
+  small: 0.25,
   medium: 0.5,
   large: 0.75,
   full: 1,

@@ -31,17 +31,20 @@ function renderPoints(board: JXG.Board, points: PointSpec[]): Map<string, any> {
   const pointMap = new Map<string, any>()
   for (const p of points) {
     const pointColor = p.color ?? getDefaultTextColor()
+    const labelVisible = p.labelVisible !== false
     const pt = board.create('point', [p.x, p.y], {
       name: p.name,
       fixed: true,
       visible: p.visible !== false,
       fillColor: pointColor,
       strokeColor: pointColor,
-      size: p.size ?? 4,
+      size: p.size ?? 2,
+      withLabel: labelVisible,
       label: {
         offset: mapLabelOffset(p.position),
         fontSize: p.fontSize ?? 12,
         cssStyle: "font-family: 'Times New Roman', Times, serif;",
+        visible: labelVisible,
       },
     })
     pointMap.set(p.name, pt)
@@ -119,6 +122,47 @@ function renderCircles(board: JXG.Board, circles: CircleSpec[], pointMap: Map<st
   }
 }
 
+/** Same distance rings the admin editor uses so authored labels stay put. */
+const ANGLE_LABEL_DISTANCE_MULTIPLIERS: Record<'near' | 'mid' | 'far', number> = {
+  near: 1.3,
+  mid: 2.0,
+  far: 2.8,
+}
+
+function computeAngleLabelPos(
+  board: JXG.Board,
+  cx: number,
+  cy: number,
+  r1x: number,
+  r1y: number,
+  r2x: number,
+  r2y: number,
+  arcRadiusPx: number,
+  distance: 'near' | 'mid' | 'far',
+): { x: number; y: number } {
+  const b = board as unknown as { unitX?: number; unitY?: number }
+  const unitX = b.unitX || 1
+  const unitY = b.unitY || 1
+  const v1x = (r1x - cx) * unitX
+  const v1y = (r1y - cy) * unitY
+  const v2x = (r2x - cx) * unitX
+  const v2y = (r2y - cy) * unitY
+  const l1 = Math.hypot(v1x, v1y) || 1
+  const l2 = Math.hypot(v2x, v2y) || 1
+  let bx = v1x / l1 + v2x / l2
+  let by = v1y / l1 + v2y / l2
+  const bl = Math.hypot(bx, by)
+  if (bl < 1e-6) {
+    bx = -v1y / l1
+    by = v1x / l1
+  } else {
+    bx /= bl
+    by /= bl
+  }
+  const distPx = arcRadiusPx * ANGLE_LABEL_DISTANCE_MULTIPLIERS[distance]
+  return { x: cx + (bx * distPx) / unitX, y: cy + (by * distPx) / unitY }
+}
+
 function renderAngles(board: JXG.Board, angles: AngleSpec[], pointMap: Map<string, any>) {
   for (const a of angles) {
     const center = pointMap.get(a.center)
@@ -133,8 +177,13 @@ function renderAngles(board: JXG.Board, angles: AngleSpec[], pointMap: Map<strin
     // within `orthoSensitivity` (~1°) of 90°, which silently downgrades
     // authored non-right square-style angles back to sectors.
     const shape = isSquare ? 'square' : 'sector'
-    const attrs: Record<string, unknown> = {
-      radius: a.arcRadius || 30,
+    const arcRadius = a.arcRadius || 50
+    // Built-in label disabled — the editor renders a separate text element
+    // along the bisector so admins can pick one of three preset distances.
+    // Web mirrors that here so the rendered lesson matches what the editor
+    // shows.
+    board.create('angle', [ray1, center, ray2], {
+      radius: arcRadius,
       type: shape,
       orthoType: shape,
       strokeColor: color,
@@ -146,21 +195,35 @@ function renderAngles(board: JXG.Board, angles: AngleSpec[], pointMap: Map<strin
       // the block wants only arcs/lines visible; without this override the
       // angle inherits invisibility from its vertex.
       visible: true,
-    }
-    if (a.label?.value) {
-      attrs.name = a.label.value
-      attrs.withLabel = true
-      attrs.label = {
-        fontSize: a.label.fontSize ?? 10,
-        cssStyle: "font-family: 'Times New Roman', Times, serif;",
-      }
-    } else {
-      attrs.withLabel = false
-      attrs.name = ''
-      attrs.label = { visible: false }
-    }
+      withLabel: false,
+      name: '',
+      label: { visible: false },
+    })
 
-    board.create('angle', [ray1, center, ray2], attrs)
+    if (a.label?.value) {
+      const distance = a.label.distance ?? 'mid'
+      const { x, y } = computeAngleLabelPos(
+        board,
+        center.X(),
+        center.Y(),
+        ray1.X(),
+        ray1.Y(),
+        ray2.X(),
+        ray2.Y(),
+        arcRadius,
+        distance,
+      )
+      board.create('text', [x, y, a.label.value], {
+        fontSize: a.label.fontSize ?? 12,
+        anchorX: 'middle',
+        anchorY: 'middle',
+        strokeColor: color,
+        color,
+        cssStyle: "font-family: 'Times New Roman', Times, serif;",
+        fixed: true,
+        visible: true,
+      })
+    }
   }
 }
 

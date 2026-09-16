@@ -20,6 +20,28 @@ export const SvgEditor: React.FC<SvgEditorProps> = ({ block, onChange }) => {
 
   return (
     <div className="svg-editor">
+      <div className="question-editor-section">
+        <div className="canvas-config-row">
+          <div className="panel-field">
+            <span className="panel-field-label">Display Size</span>
+            <select
+              className="panel-field-select"
+              value={block.displaySize || 'full'}
+              onChange={(e) =>
+                onChange({
+                  ...blockRef.current,
+                  displaySize: e.target.value as 'small' | 'medium' | 'large' | 'full',
+                })
+              }
+            >
+              <option value="small">25%</option>
+              <option value="medium">50%</option>
+              <option value="large">75%</option>
+              <option value="full">100%</option>
+            </select>
+          </div>
+        </div>
+      </div>
       <SvgContentEditor
         content={{ value: block.value, altText: block.altText, caption: block.caption }}
         onChange={(content) =>

@@ -27,10 +27,10 @@ export const AxisEditor: React.FC<AxisEditorProps> = ({ block, onChange }) => {
                 })
               }
             >
-              <option value="small">Small (33%)</option>
-              <option value="medium">Medium (50%)</option>
-              <option value="large">Large (75%)</option>
-              <option value="full">Full Width (100%)</option>
+              <option value="small">25%</option>
+              <option value="medium">50%</option>
+              <option value="large">75%</option>
+              <option value="full">100%</option>
             </select>
           </div>
         </div>

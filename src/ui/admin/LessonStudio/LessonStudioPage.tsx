@@ -213,33 +213,43 @@ export const LessonStudioPage: React.FC<LessonStudioPageProps> = ({ lessonId }) 
     [],
   )
 
-  const handleAddSectionBlock = useCallback((sectionId: string, block: ContentBlock) => {
-    // Seed an empty array first if the section wasn't in the map (edge case
-    // for a section that had zero blocks at load time).
-    setSectionBlocks((prev) => {
-      const current = prev[sectionId] ?? []
-      return { ...prev, [sectionId]: [...current, block] }
-    })
-    setDirtySectionIds((prev) => {
-      if (prev.has(sectionId)) return prev
-      const next = new Set(prev)
-      next.add(sectionId)
-      return next
-    })
-  }, [])
+  const handleAddSectionBlock = useCallback(
+    (sectionId: string, block: ContentBlock, insertAt?: number) => {
+      // Seed an empty array first if the section wasn't in the map (edge case
+      // for a section that had zero blocks at load time).
+      setSectionBlocks((prev) => {
+        const current = prev[sectionId] ?? []
+        const at = insertAt == null ? current.length : Math.max(0, Math.min(insertAt, current.length))
+        const next = [...current.slice(0, at), block, ...current.slice(at)]
+        return { ...prev, [sectionId]: next }
+      })
+      setDirtySectionIds((prev) => {
+        if (prev.has(sectionId)) return prev
+        const next = new Set(prev)
+        next.add(sectionId)
+        return next
+      })
+    },
+    [],
+  )
 
-  const handleAddExerciseBlock = useCallback((exerciseId: string, block: ContentBlock) => {
-    setExerciseBlocks((prev) => {
-      const current = prev[exerciseId] ?? []
-      return { ...prev, [exerciseId]: [...current, block] }
-    })
-    setDirtyExerciseIds((prev) => {
-      if (prev.has(exerciseId)) return prev
-      const next = new Set(prev)
-      next.add(exerciseId)
-      return next
-    })
-  }, [])
+  const handleAddExerciseBlock = useCallback(
+    (exerciseId: string, block: ContentBlock, insertAt?: number) => {
+      setExerciseBlocks((prev) => {
+        const current = prev[exerciseId] ?? []
+        const at = insertAt == null ? current.length : Math.max(0, Math.min(insertAt, current.length))
+        const next = [...current.slice(0, at), block, ...current.slice(at)]
+        return { ...prev, [exerciseId]: next }
+      })
+      setDirtyExerciseIds((prev) => {
+        if (prev.has(exerciseId)) return prev
+        const next = new Set(prev)
+        next.add(exerciseId)
+        return next
+      })
+    },
+    [],
+  )
 
   // Delete-block guards are BOTH render-time (via `canDeleteBlock` in the
   // child component) AND state-time (via the `current.length <= 1` short-

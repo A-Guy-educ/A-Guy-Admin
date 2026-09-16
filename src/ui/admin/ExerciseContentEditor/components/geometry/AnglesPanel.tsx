@@ -109,10 +109,10 @@ export const AnglesPanel: React.FC<AnglesPanelProps> = ({ angles, points, onChan
               <input
                 type="number"
                 className="panel-field-input panel-field-input--short"
-                value={angle.arcRadius || 30}
+                value={angle.arcRadius || 50}
                 min={10}
                 max={100}
-                onChange={(e) => handleUpdate(index, { arcRadius: Number(e.target.value) || 30 })}
+                onChange={(e) => handleUpdate(index, { arcRadius: Number(e.target.value) || 50 })}
               />
             </div>
             <div className="panel-field">
@@ -196,6 +196,27 @@ export const AnglesPanel: React.FC<AnglesPanelProps> = ({ angles, points, onChan
                   })
                 }}
               />
+            </div>
+            <div className="panel-field">
+              <span className="panel-field-label">Dist</span>
+              <select
+                className="panel-field-select"
+                disabled={!angle.label?.value}
+                value={angle.label?.distance ?? 'mid'}
+                onChange={(e) => {
+                  if (!angle.label?.value) return
+                  handleUpdate(index, {
+                    label: {
+                      ...angle.label,
+                      distance: e.target.value as 'near' | 'mid' | 'far',
+                    },
+                  })
+                }}
+              >
+                <option value="near">Near</option>
+                <option value="mid">Mid</option>
+                <option value="far">Far</option>
+              </select>
             </div>
             <button type="button" className="panel-remove-btn" onClick={() => handleRemove(index)}>
               <Trash2 size={14} />

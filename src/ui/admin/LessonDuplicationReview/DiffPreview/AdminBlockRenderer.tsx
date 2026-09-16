@@ -67,7 +67,7 @@ function BlockItem({ block }: { block: ContentBlock }) {
   if (block.type === 'svg') {
     return (
       <div className="not-prose">
-        <SvgRenderer block={block} />
+        <SvgRenderer block={block} displaySize={block.displaySize} />
       </div>
     )
   }
@@ -90,14 +90,21 @@ function BlockItem({ block }: { block: ContentBlock }) {
 
   // Geometry question — wrap in GraphWithPrompt
   if (block.type === 'question_geometry') {
-    const geometryBlock = block as ContentBlock & { geometry?: GeometrySpecV1 }
+    const geometryBlock = block as ContentBlock & {
+      geometry?: GeometrySpecV1
+      displaySize?: DisplaySize
+    }
     return (
       <GraphWithPrompt
         blockId={b.id}
         layout={(b.layout as 'textAbove' | 'textBelow' | 'textLeft' | 'textRight') || 'textRight'}
         prompt={b.prompt}
       >
-        <GeometryRenderer blockId={b.id} spec={geometryBlock.geometry as GeometrySpecV1} />
+        <GeometryRenderer
+          blockId={b.id}
+          spec={geometryBlock.geometry as GeometrySpecV1}
+          displaySize={geometryBlock.displaySize}
+        />
       </GraphWithPrompt>
     )
   }

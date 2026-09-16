@@ -14,7 +14,7 @@ interface PointsPanelProps {
   onChange: (points: GeoPoint[]) => void
 }
 
-const DEFAULT_POINT_SIZE = 4
+const DEFAULT_POINT_SIZE = 2
 const DEFAULT_POINT_POSITION = 'r' as const
 
 const nextPointName = (points: GeoPoint[]): string => {
@@ -126,6 +126,14 @@ export const PointsPanel: React.FC<PointsPanelProps> = ({ points, onChange }) =>
                 onChange={(e) => handleUpdate(index, { visible: e.target.checked })}
               />
               Vis
+            </label>
+            <label className="panel-checkbox-label" style={{ fontSize: '0.75rem' }}>
+              <input
+                type="checkbox"
+                checked={point.labelVisible ?? true}
+                onChange={(e) => handleUpdate(index, { labelVisible: e.target.checked })}
+              />
+              Label
             </label>
             <button
               type="button"

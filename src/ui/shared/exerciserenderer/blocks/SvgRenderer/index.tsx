@@ -5,6 +5,16 @@ import { cn } from '@/infra/utils/ui'
 import type { SvgBlock, CheckResult } from '../../types'
 import { RichTextRenderer } from '../RichTextRenderer'
 import { sanitizeSvg } from '../../utils/svgSanitize'
+import type { DisplaySize } from '../AxisRenderer'
+
+/** Matches the SIZE_MAP in AxisRenderer so all three sketch blocks share
+ *  the same "25 / 50 / 75 / 100 %" scale. */
+const SVG_SIZE_MAP: Record<DisplaySize, string> = {
+  small: '25%',
+  medium: '50%',
+  large: '75%',
+  full: '100%',
+}
 
 interface SvgRendererProps {
   block: SvgBlock
@@ -13,6 +23,7 @@ interface SvgRendererProps {
   disabled?: boolean
   checkResult?: CheckResult | null
   correctHotspotIds?: string[]
+  displaySize?: DisplaySize
 }
 
 export function SvgRenderer({
@@ -22,6 +33,7 @@ export function SvgRenderer({
   disabled,
   checkResult,
   correctHotspotIds,
+  displaySize,
 }: SvgRendererProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const sanitizedSvg = useMemo(() => sanitizeSvg(block.value), [block.value])
@@ -109,8 +121,16 @@ export function SvgRenderer({
     ? { ...block.caption, id: `${block.id}-caption`, mediaIds: block.caption.mediaIds || [] }
     : null
 
+  // Prefer the prop; fall back to the block's authored value; then to 'full'.
+  // Applied on the outer wrapper so the caption tracks the sketch width.
+  const effectiveSize = displaySize ?? block.displaySize ?? 'full'
+  const widthStyle = SVG_SIZE_MAP[effectiveSize]
+
   return (
-    <div className="rounded-xl border border-border/20 overflow-hidden bg-card shadow-elevation-1 p-3">
+    <div
+      className="rounded-xl border border-border/20 overflow-hidden bg-card shadow-elevation-1 p-3 mx-auto"
+      style={{ width: widthStyle, maxWidth: '100%' }}
+    >
       <div
         ref={containerRef}
         role={isInteractive ? 'application' : 'img'}

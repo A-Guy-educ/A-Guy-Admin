@@ -2546,6 +2546,7 @@ export interface ContentPage {
  */
 export interface GeometryBlock {
   spec: string;
+  displaySize?: ('small' | 'medium' | 'large' | 'full') | null;
   /**
    * Override the page default spacing after this block
    */
@@ -4580,6 +4581,7 @@ export interface TableBlockSelect<T extends boolean = true> {
  */
 export interface GeometryBlockSelect<T extends boolean = true> {
   spec?: T;
+  displaySize?: T;
   spacingAfter?: T;
   id?: T;
   blockName?: T;
