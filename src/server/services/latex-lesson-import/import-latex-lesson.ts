@@ -23,10 +23,14 @@ import { runFullLatexPipeline } from '@/server/services/lesson-context-conversio
 
 import { deriveLessonTitle } from '../text-lesson-import/convert-text-exercise'
 
+export type LessonType = 'learning' | 'practice' | 'exam'
+
 export interface ImportLatexLessonInput {
   chapterId: string
   filename: string
   content: string
+  /** Lesson.type stamped on the newly-created lesson (default: `learning`). */
+  lessonType?: LessonType
 }
 
 /**
@@ -137,7 +141,7 @@ export async function importLatexLessonFromFile(
       data: {
         locale: 'he',
         chapter: input.chapterId,
-        type: 'practice',
+        type: input.lessonType ?? 'learning',
         title: lessonTitle,
         order,
         status: 'draft',

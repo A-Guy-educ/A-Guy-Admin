@@ -22,6 +22,7 @@ const importBodySchema = z.object({
   chapterId: z.string().min(1),
   filename: z.string().min(1, 'filename is required'),
   content: z.string().min(1, 'content is required'),
+  lessonType: z.enum(['learning', 'practice', 'exam']).optional(),
 })
 
 type ImportBody = z.infer<typeof importBodySchema>

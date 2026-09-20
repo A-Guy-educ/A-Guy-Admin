@@ -7,6 +7,8 @@ import { getDefaultTenantId } from '@/server/repos/tenant/get-default-tenant'
 import { buildExerciseTitle, convertExerciseToSections } from './convert-exercise'
 import { LessonJsonSchema, parseLessonOrderFromFilename } from './json-schema'
 
+export type LessonType = 'learning' | 'practice' | 'exam'
+
 export interface ImportLessonInput {
   /** Required when creating a NEW lesson. Ignored when `targetLessonId` is set. */
   chapterId?: string
@@ -19,6 +21,8 @@ export interface ImportLessonInput {
   targetLessonId?: string
   filename: string
   json: unknown
+  /** Lesson.type stamped on newly-created lessons (default: `learning`). */
+  lessonType?: LessonType
 }
 
 export interface ImportLessonExerciseResult {
@@ -182,7 +186,7 @@ export async function importLessonFromJson(
       tenant: tenantId,
       locale: 'he',
       chapter: chapterId,
-      type: 'practice',
+      type: input.lessonType ?? 'learning',
       title: lessonJson.topic,
       order,
       status: 'draft',
