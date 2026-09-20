@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.46.0 — 2026-09-20
+
+### Features
+- Lesson-import page: new "Lesson type" select (Learning / Practice / Exam) next to the chapter picker; the choice is threaded through JSON, text, and LaTeX importers and stamped on the created lesson (append-mode still respects the target lesson's existing type) (#474)
+
+### Bug Fixes
+- Text-lesson import (v2): v2 section signature now requires a trailing dash after the section label, so legacy v1 files with `[תרגיל N - סעיף א]` headers no longer flip into v2 mode and collapse into a single synthetic exercise (#473)
+
 ## v0.45.0 — 2026-09-16
 
 ### Features
@@ -2061,6 +2069,12 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- chore: release v0.46.0 ([#475](https://github.com/A-Guy-educ/A-Guy-Admin/pull/475)) — @aguyshayb
+- feat(lesson-import): add lesson-type dropdown to import page ([#474](https://github.com/A-Guy-educ/A-Guy-Admin/pull/474)) — @aguyshayb
+- fix(text-lesson-import): stop v2 detection from swallowing v1 files ([#473](https://github.com/A-Guy-educ/A-Guy-Admin/pull/473)) — @aguyshayb
+## [v0.45.0] - 2026-09-16
+
+- promote: dev -> main (v0.45.0) ([#468](https://github.com/A-Guy-educ/A-Guy-Admin/pull/468)) — @aguyshayb
 - chore: release v0.45.0 ([#467](https://github.com/A-Guy-educ/A-Guy-Admin/pull/467)) — @aguyshayb
 - feat(text-lesson-import): add geometry support to bracketed v2 format ([#466](https://github.com/A-Guy-educ/A-Guy-Admin/pull/466)) — @aguyshayb
 - feat(admin): Angle label distances, point label toggle, sketch sizes, and studio between-block inserts ([#465](https://github.com/A-Guy-educ/A-Guy-Admin/pull/465)) — @aguyshayb

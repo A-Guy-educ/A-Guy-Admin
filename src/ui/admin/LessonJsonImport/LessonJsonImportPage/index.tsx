@@ -14,6 +14,13 @@ import { ChapterSelector } from '../ChapterSelector'
 
 type ParseStatus = 'valid' | 'invalid'
 type ImportFormat = 'json' | 'text' | 'latex'
+type LessonType = 'learning' | 'practice' | 'exam'
+
+const LESSON_TYPE_OPTIONS: Array<{ value: LessonType; label: string }> = [
+  { value: 'learning', label: 'Learning' },
+  { value: 'practice', label: 'Practice' },
+  { value: 'exam', label: 'Exam' },
+]
 
 interface FileEntry {
   id: string
@@ -203,6 +210,10 @@ function safeParseLatexLesson(
 
 export function LessonJsonImportPage() {
   const [chapterId, setChapterId] = useState<string | null>(null)
+  // Default to `learning` because that's also the Lessons collection's own
+  // default — the dropdown just makes the choice explicit at import time
+  // instead of forcing admins to open every lesson to change it.
+  const [lessonType, setLessonType] = useState<LessonType>('learning')
   const [files, setFiles] = useState<FileEntry[]>([])
   const [results, setResults] = useState<Record<string, FileResult>>({})
   const [isImporting, setIsImporting] = useState(false)
@@ -314,10 +325,10 @@ export function LessonJsonImportPage() {
               : '/api/lessons/import-from-latex'
         const body =
           f.format === 'json'
-            ? { chapterId, filename: f.filename, json: f.json }
+            ? { chapterId, filename: f.filename, json: f.json, lessonType }
             : f.format === 'text'
-              ? { chapterId, filename: f.filename, text: f.text ?? '' }
-              : { chapterId, filename: f.filename, content: f.latex ?? '' }
+              ? { chapterId, filename: f.filename, text: f.text ?? '', lessonType }
+              : { chapterId, filename: f.filename, content: f.latex ?? '', lessonType }
         const res = await fetch(url, {
           method: 'POST',
           credentials: 'include',
@@ -376,7 +387,7 @@ export function LessonJsonImportPage() {
       }
     }
     setIsImporting(false)
-  }, [chapterId, validFiles])
+  }, [chapterId, lessonType, validFiles])
 
   return (
     <div style={pageStyle}>
@@ -399,6 +410,38 @@ export function LessonJsonImportPage() {
           selectedChapterId={chapterId}
           onSelectChapter={(c) => setChapterId(c.id)}
         />
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            marginTop: 12,
+            fontSize: 13,
+          }}
+        >
+          <label htmlFor="lesson-type-select" style={{ color: 'var(--theme-elevation-700)' }}>
+            Lesson type
+          </label>
+          <select
+            id="lesson-type-select"
+            value={lessonType}
+            onChange={(e) => setLessonType(e.target.value as LessonType)}
+            style={{
+              padding: '4px 8px',
+              fontSize: 13,
+              border: '1px solid var(--theme-elevation-200)',
+              borderRadius: 4,
+              backgroundColor: 'var(--theme-elevation-0)',
+              color: 'var(--theme-elevation-1000)',
+            }}
+          >
+            {LESSON_TYPE_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div style={{ ...cardStyle, marginBottom: 16 }}>

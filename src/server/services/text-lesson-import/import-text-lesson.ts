@@ -22,6 +22,8 @@ import { buildV2ExerciseTitle, convertTextExerciseV2ToSections } from './convert
 import { parseTextLesson } from './parse-text'
 import { isV2Format, parseTextLessonV2 } from './parse-text-v2'
 
+export type LessonType = 'learning' | 'practice' | 'exam'
+
 export interface ImportTextLessonInput {
   /** Required when creating a NEW lesson. Ignored when `targetLessonId` is set. */
   chapterId?: string
@@ -34,6 +36,12 @@ export interface ImportTextLessonInput {
   targetLessonId?: string
   filename: string
   text: string
+  /**
+   * Lesson.type to stamp on newly-created lessons. Defaults to the Lessons
+   * collection's own default (`learning`). Ignored in append-mode since the
+   * target lesson already has its type.
+   */
+  lessonType?: LessonType
 }
 
 export interface ImportTextExerciseResult {
@@ -222,7 +230,7 @@ export async function importTextLessonFromFile(
     const lessonData = {
       locale: 'he',
       chapter: chapterId,
-      type: 'practice',
+      type: input.lessonType ?? 'learning',
       title: lessonTitle,
       order,
       status: 'draft',

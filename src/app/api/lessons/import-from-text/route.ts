@@ -22,6 +22,7 @@ const importBodySchema = z
     targetLessonId: z.string().min(1).optional(),
     filename: z.string().min(1, 'filename is required'),
     text: z.string().min(1, 'text is required'),
+    lessonType: z.enum(['learning', 'practice', 'exam']).optional(),
   })
   .refine((data) => Boolean(data.chapterId) || Boolean(data.targetLessonId), {
     message: 'Either chapterId (new lesson) or targetLessonId (append) is required',
