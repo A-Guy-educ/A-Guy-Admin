@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.46.0 — 2026-09-20
+
+### Features
+- Lesson-import page: new "Lesson type" select (Learning / Practice / Exam) next to the chapter picker; the choice is threaded through JSON, text, and LaTeX importers and stamped on the created lesson (append-mode still respects the target lesson's existing type) (#474)
+
+### Bug Fixes
+- Text-lesson import (v2): v2 section signature now requires a trailing dash after the section label, so legacy v1 files with `[תרגיל N - סעיף א]` headers no longer flip into v2 mode and collapse into a single synthetic exercise (#473)
+
 ## v0.45.0 — 2026-09-16
 
 ### Features
