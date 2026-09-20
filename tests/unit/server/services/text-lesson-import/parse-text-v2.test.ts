@@ -24,6 +24,32 @@ describe('isV2Format', () => {
     expect(isV2Format(`${SEP}\n[תרגיל 1 - נתוני פתיחה]\n${SEP}`)).toBe(true)
     expect(isV2Format(`${SEP}\n[סעיף א' - שאלת ברירה יחידה]\n${SEP}`)).toBe(true)
   })
+
+  it('does NOT falsely detect v1 legacy files as v2', () => {
+    // v1 files use `================` fences with bare `תרגיל 1 – מנחה: subtopic`
+    // exercise headers and `[תרגיל 1 - סעיף א]` section headers (no trailing
+    // question-type suffix). Prior detection triggered on the `[…סעיף…]` shape
+    // and routed the file to the v2 parser, which then collapsed all content
+    // into a single synthetic exercise.
+    const v1File = [
+      '='.repeat(80),
+      'תרגיל 1 – מנחה: הכרת ציר המספרים',
+      '='.repeat(80),
+      'שרטוט',
+      '<svg>...</svg>',
+      '',
+      '-'.repeat(80),
+      '[תרגיל 1 - סעיף א]',
+      '-'.repeat(80),
+      '* תוכן השאלה: מה הצבע?',
+      '* אופציות:',
+      '  - כחול',
+      '  - אדום',
+      '* פתרון נכון: כחול',
+      '* סוג תרגיל: בחירה בין 2 אפשרויות',
+    ].join('\n')
+    expect(isV2Format(v1File)).toBe(false)
+  })
 })
 
 describe('parseTextLessonV2 — basic shape', () => {
