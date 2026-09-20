@@ -84,9 +84,13 @@ export interface TextLessonV2 {
 // (`[תרגיל 1 - נתוני פתיחה]`) bracket forms — otherwise the preview would
 // silently report "0 exercises" for a fixable, legitimately-v2 file.
 const V2_SIGNATURE_RE = /\[\s*תרגיל\s+\S+\s*[-–]\s*נתוני\s*פתיחה\s*\]/
-// `\b` is ASCII-only in JS regex and doesn't fire between Hebrew letters and
-// non-letters, so anchor on explicit whitespace after "סעיף" instead.
-const V2_SECTION_SIGNATURE_RE = /\[\s*(?:תרגיל\s+\S+\s*[-–]\s*)?סעיף\s/
+// v1 files use section headers like `[תרגיל 1 - סעיף א]` which end at the
+// section letter with no further dash. v2 files use `[ סעיף X - <question
+// type> ]` — always a dash AFTER the label. Requiring that trailing dash
+// stops v1 section headers from false-positive triggering v2 detection
+// (which would route a legacy file to parseTextLessonV2 and dump its whole
+// content into a single synthetic exercise).
+const V2_SECTION_SIGNATURE_RE = /\[\s*(?:תרגיל\s+\S+\s*[-–]\s*)?סעיף\s+[^-–\]]+[-–]/
 
 export function isV2Format(raw: string): boolean {
   return V2_SIGNATURE_RE.test(raw) || V2_SECTION_SIGNATURE_RE.test(raw)
