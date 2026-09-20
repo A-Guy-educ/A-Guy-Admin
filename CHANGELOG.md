@@ -2069,6 +2069,8 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+## [v0.46.0] - 2026-09-20
+
 - promote: dev -> main (v0.46.0) ([#476](https://github.com/A-Guy-educ/A-Guy-Admin/pull/476)) — @aguyshayb
 - chore: release v0.46.0 ([#475](https://github.com/A-Guy-educ/A-Guy-Admin/pull/475)) — @aguyshayb
 - feat(lesson-import): add lesson-type dropdown to import page ([#474](https://github.com/A-Guy-educ/A-Guy-Admin/pull/474)) — @aguyshayb
