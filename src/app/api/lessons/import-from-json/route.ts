@@ -21,6 +21,7 @@ const importBodySchema = z
     filename: z.string().min(1, 'filename is required'),
     // json is unknown — the import service validates it against the strict schema
     json: z.unknown(),
+    lessonType: z.enum(['learning', 'practice', 'exam']).optional(),
   })
   .refine((data) => Boolean(data.chapterId) || Boolean(data.targetLessonId), {
     message: 'Either chapterId (new lesson) or targetLessonId (append) is required',
