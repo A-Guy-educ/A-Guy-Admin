@@ -572,6 +572,37 @@ export function parseGeometryDsl(raw: string): ParseGeometryDslResult {
       width: canvasWidth ?? DEFAULT_CANVAS_WIDTH,
       height: canvasHeight ?? DEFAULT_CANVAS_HEIGHT,
       ...(canvasGrid ? { grid: true } : {}),
+      ...(() => {
+        // Fit the JSXGraph viewport to the actual points so a small shape
+        // in the top-left doesn't render as a tiny fragment against a full
+        // 400×400 canvas. GeometryRenderer defaults `boundingBox` to
+        // [0, height, width, 0] when unset; we override with the point
+        // extents plus ~10% padding. Skipped when there are no points
+        // (SVG-only blocks bypass this path anyway) or when only one axis
+        // has spread (still add flat padding so range isn't zero).
+        const usable = points.filter((p) => p.name && Number.isFinite(p.x) && Number.isFinite(p.y))
+        if (usable.length === 0) return {}
+        const xs = usable.map((p) => p.x)
+        const ys = usable.map((p) => p.y)
+        const xMin = Math.min(...xs)
+        const xMax = Math.max(...xs)
+        const yMin = Math.min(...ys)
+        const yMax = Math.max(...ys)
+        const xRange = xMax - xMin
+        const yRange = yMax - yMin
+        const padX = xRange > 0 ? xRange * 0.1 : 20
+        const padY = yRange > 0 ? yRange * 0.1 : 20
+        // JSXGraph boundingBox convention: [xMin, yMax, xMax, yMin] —
+        // top-left to bottom-right.
+        return {
+          boundingBox: [xMin - padX, yMax + padY, xMax + padX, yMin - padY] as [
+            number,
+            number,
+            number,
+            number,
+          ],
+        }
+      })(),
     },
     elements: {
       points: points

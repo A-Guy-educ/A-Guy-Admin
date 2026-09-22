@@ -203,6 +203,43 @@ describe('parseGeometryDsl', () => {
     })
   })
 
+  it('emits a boundingBox fitted to the actual points with ~10% padding', () => {
+    // Without a boundingBox, the renderer falls back to the full canvas
+    // ([0, height, width, 0]) and small shapes render as tiny fragments in
+    // a corner. Fit the viewport to the point extents so the drawing fills
+    // the available area.
+    const raw = [
+      '  --- נקודות ---',
+      '  * נקודה A | X=150, Y=100',
+      '  * נקודה B | X=200, Y=200',
+      '  * נקודה C | X=100, Y=200',
+    ].join('\n')
+    const { spec } = parseGeometryDsl(raw)
+    // Points span x∈[100,200] (range 100) and y∈[100,200] (range 100).
+    // 10% padding → 10 on each side. JSXGraph order: [xMin, yMax, xMax, yMin].
+    expect(spec.canvas.boundingBox).toEqual([90, 210, 210, 90])
+  })
+
+  it('pads flat axes with a fixed amount so the boundingBox is never zero-range', () => {
+    const raw = [
+      '  --- נקודות ---',
+      '  * נקודה A | X=100, Y=100',
+      '  * נקודה B | X=200, Y=100', // all points share the same Y — flat axis
+    ].join('\n')
+    const { spec } = parseGeometryDsl(raw)
+    const bb = spec.canvas.boundingBox
+    expect(bb).toBeDefined()
+    const [xMin, yMax, xMax, yMin] = bb!
+    expect(xMax - xMin).toBeGreaterThan(0)
+    expect(yMax - yMin).toBe(40)
+  })
+
+  it('omits boundingBox when the block has no points (SVG-only paths)', () => {
+    const raw = ['  --- ישרים וקטעים ---', '  * קטע AB | מנקודה A ל-B'].join('\n')
+    const { spec } = parseGeometryDsl(raw)
+    expect(spec.canvas.boundingBox).toBeUndefined()
+  })
+
   it('records warnings for garbled rows without dropping later ones', () => {
     const raw = [
       '  --- נקודות ---',

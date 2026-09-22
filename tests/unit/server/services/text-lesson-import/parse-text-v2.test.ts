@@ -340,4 +340,46 @@ describe('parseTextLessonV2 — basic shape', () => {
     expect(sec.geometry).toBeUndefined()
     expect(sec.svg).toContain('<svg')
   })
+
+  it('routes `שרטוט בסיס (מתוקן):` inside a section to geometry, not into fullSolution', () => {
+    // When the author revises a problem mid-section, they emit an extra
+    // `* שרטוט בסיס (מתוקן):` DSL block followed by `* פתרון מלא (מתוקן):`.
+    // The parser now (a) accepts `שרטוט בסיס` at the section level and
+    // (b) strips the `(מתוקן)` clarifier so the field key normalises to
+    // `שרטוט בסיס` / `פתרון מלא`. Without those, the DSL rows and the
+    // revised solution both cascaded into fullSolution as raw text.
+    const source = [
+      SEP,
+      '[ תרגיל 1 - נתוני פתיחה ]',
+      SEP,
+      '* טקסט: intro',
+      '',
+      SEP,
+      "[ סעיף א' - שאלת ברירה יחידה ]",
+      SEP,
+      '* סוג השאלה: Single Choice',
+      '* הנחיה: prompt',
+      '* אפשרות 1: A [תשובה נכונה]',
+      '* אפשרות 2: B',
+      '* פתרון מלא: first attempt.',
+      '* שרטוט בסיס (מתוקן):',
+      '  --- נקודות ---',
+      '  * נקודה A | X=150, Y=100',
+      '  * נקודה B | X=100, Y=200',
+      '  --- קטעים ---',
+      '  * קטע AB | מנקודה A ל-B | תווית: x+2',
+      '* פתרון מלא (מתוקן): revised answer.',
+    ].join('\n')
+
+    const lesson = parseTextLessonV2(source)
+    const sec = lesson.exercises[0].sections[0]
+
+    expect(sec.geometry?.elements.points.map((p) => p.name)).toEqual(['A', 'B'])
+    expect(sec.geometry?.elements.lines).toHaveLength(1)
+    expect(sec.geometry?.elements.lines[0].label?.value).toBe('x+2')
+
+    expect(sec.fullSolution).toBe('first attempt.\nrevised answer.')
+    expect(sec.fullSolution).not.toContain('--- נקודות ---')
+    expect(sec.fullSolution).not.toContain('נקודה A')
+  })
 })

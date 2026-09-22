@@ -213,17 +213,29 @@ type ApplyExerciseResult =
  * geometry state. Anything else is treated as free-form narrative appended
  * to the intro so nothing is silently lost.
  */
+/**
+ * Strip a trailing `(…)` clarifier from a field key. Authors annotate
+ * revised versions inline: `* פתרון מלא (מתוקן):`, `* שרטוט בסיס (מתוקן 2):`,
+ * `* שרטוט בסיס (מבנה אובייקטים):`. Without stripping, none of these match
+ * the exact-key checks below and the value cascades into whichever slot
+ * was previously open — usually spilling a whole geometry block into
+ * fullSolution. Trailing whitespace before the paren is fine.
+ */
+function normalizeFieldKey(key: string): string {
+  return key.replace(/\s*\([^)]*\)\s*$/, '').trim()
+}
+
 function applyExerciseField(
   ex: MutableExerciseV2,
   key: string,
   value: string,
 ): ApplyExerciseResult {
-  const k = key.trim()
+  const k = normalizeFieldKey(key)
   if (k === 'טקסט') {
     ex.intro = ex.intro ? `${ex.intro}\n${value}` : value
     return { kind: 'consumed', slot: 'intro' }
   }
-  if (k.startsWith('שרטוט בסיס') || k.startsWith('שרטוט בסיסי')) {
+  if (k === 'שרטוט בסיס' || k === 'שרטוט בסיסי') {
     ex.inGeometry = true
     return { kind: 'geometry-start' }
   }
@@ -231,7 +243,7 @@ function applyExerciseField(
 }
 
 function applySectionField(sec: MutableSectionV2, key: string, value: string): ApplySectionResult {
-  const k = key.trim()
+  const k = normalizeFieldKey(key)
   if (k === 'סוג השאלה' || k === 'סוג תרגיל') {
     sec.typeRaw = value
     return { kind: 'type' }
@@ -248,10 +260,11 @@ function applySectionField(sec: MutableSectionV2, key: string, value: string): A
     sec.fullSolution = sec.fullSolution ? `${sec.fullSolution}\n${value}` : value
     return { kind: 'consumed', slot: 'fullSolution' }
   }
-  // Only the documented "שרטוט מותאם[…]" prefix flips into geometry mode.
-  // A bare `שרטוט` fallback would silently swallow any future `שרטוט <foo>:`
-  // field the authors introduce (and its value would be lost).
-  if (k.startsWith('שרטוט מותאם')) {
+  // Both `שרטוט מותאם*` and `שרטוט בסיס*` are documented ways to attach a
+  // per-section sketch. The generator emits `שרטוט בסיס (מתוקן):` when a
+  // problem is revised mid-section — treating it as anything other than a
+  // geometry block would cascade the DSL rows into fullSolution.
+  if (k === 'שרטוט מותאם' || k === 'שרטוט מותאם לסעיף' || k === 'שרטוט בסיס') {
     sec.inGeometry = true
     return { kind: 'geometry-start' }
   }
