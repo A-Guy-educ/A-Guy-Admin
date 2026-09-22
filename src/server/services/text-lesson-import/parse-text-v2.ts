@@ -193,6 +193,21 @@ function newSection(num: string, headerRest: string): MutableSectionV2 {
 // Parser
 // ---------------------------------------------------------------------------
 
+type SectionFieldSlot = 'question' | 'hint' | 'fullSolution'
+type ExerciseFieldSlot = 'intro'
+
+type ApplySectionResult =
+  | { kind: 'geometry-start' }
+  | { kind: 'option' }
+  | { kind: 'type' }
+  | { kind: 'consumed'; slot: SectionFieldSlot }
+  | { kind: 'passthrough' }
+
+type ApplyExerciseResult =
+  | { kind: 'geometry-start' }
+  | { kind: 'consumed'; slot: ExerciseFieldSlot }
+  | { kind: 'passthrough' }
+
 /**
  * Field names on the exercise level that map directly onto structured intro/
  * geometry state. Anything else is treated as free-form narrative appended
@@ -202,56 +217,57 @@ function applyExerciseField(
   ex: MutableExerciseV2,
   key: string,
   value: string,
-): 'geometry-start' | 'consumed' | 'passthrough' {
+): ApplyExerciseResult {
   const k = key.trim()
   if (k === 'טקסט') {
     ex.intro = ex.intro ? `${ex.intro}\n${value}` : value
-    return 'consumed'
+    return { kind: 'consumed', slot: 'intro' }
   }
   if (k.startsWith('שרטוט בסיס') || k.startsWith('שרטוט בסיסי')) {
     ex.inGeometry = true
-    return 'geometry-start'
+    return { kind: 'geometry-start' }
   }
-  return 'passthrough'
+  return { kind: 'passthrough' }
 }
 
-function applySectionField(
-  sec: MutableSectionV2,
-  key: string,
-  value: string,
-): 'geometry-start' | 'consumed' | 'passthrough' {
+function applySectionField(sec: MutableSectionV2, key: string, value: string): ApplySectionResult {
   const k = key.trim()
   if (k === 'סוג השאלה' || k === 'סוג תרגיל') {
     sec.typeRaw = value
-    return 'consumed'
+    return { kind: 'type' }
   }
   if (k === 'הנחיה' || k === 'תוכן השאלה' || k === 'טקסט נלווה') {
     sec.question = sec.question ? `${sec.question}\n${value}` : value
-    return 'consumed'
+    return { kind: 'consumed', slot: 'question' }
   }
   if (k === 'רמז') {
     sec.hint = sec.hint ? `${sec.hint}\n${value}` : value
-    return 'consumed'
+    return { kind: 'consumed', slot: 'hint' }
   }
   if (k === 'פתרון מלא') {
     sec.fullSolution = sec.fullSolution ? `${sec.fullSolution}\n${value}` : value
-    return 'consumed'
+    return { kind: 'consumed', slot: 'fullSolution' }
   }
   // Only the documented "שרטוט מותאם[…]" prefix flips into geometry mode.
   // A bare `שרטוט` fallback would silently swallow any future `שרטוט <foo>:`
   // field the authors introduce (and its value would be lost).
   if (k.startsWith('שרטוט מותאם')) {
     sec.inGeometry = true
-    return 'geometry-start'
+    return { kind: 'geometry-start' }
   }
   const optionMatch = k.match(OPTION_FIELD_RE)
   if (optionMatch) {
     const trimmed = value.replace(CORRECT_MARKER_RE, '').trim()
     const correct = CORRECT_MARKER_RE.test(value)
     if (trimmed) sec.options.push({ text: trimmed, correct })
-    return 'consumed'
+    return { kind: 'option' }
   }
-  return 'passthrough'
+  return { kind: 'passthrough' }
+}
+
+function appendToSlot(sec: MutableSectionV2, slot: SectionFieldSlot, text: string) {
+  const current = sec[slot] ?? ''
+  sec[slot] = current ? `${current}\n${text}` : text
 }
 
 /**
@@ -352,6 +368,12 @@ export function parseTextLessonV2(raw: string): TextLessonV2 {
   const lesson: TextLessonV2 = { exercises: [] }
   let currentEx: MutableExerciseV2 | null = null
   let currentSec: MutableSectionV2 | null = null
+  // Tracks which section/exercise slot the LAST recognised `* field:` opened,
+  // so that continuation lines (`*   subitem` or bare narrative lines) stick
+  // to the correct slot instead of always defaulting to `question` / `intro`.
+  // Reset on new bracket header, geometry-start, option row, or a passthrough
+  // `* field:` whose key we don't recognise.
+  let currentField: SectionFieldSlot | ExerciseFieldSlot | null = null
 
   const flushSection = () => {
     if (currentSec && currentEx) {
@@ -412,6 +434,7 @@ export function parseTextLessonV2(raw: string): TextLessonV2 {
         } else {
           currentSec = newSection(rawLabel.trim(), rest)
         }
+        currentField = null
         continue
       }
       const exMatch = bracketed.match(EXERCISE_HEADER_RE)
@@ -421,6 +444,7 @@ export function parseTextLessonV2(raw: string): TextLessonV2 {
         flushExercise()
         currentEx = newExercise(num, rest)
         currentSec = null
+        currentField = null
         continue
       }
       // Unknown bracket header — ignore.
@@ -453,18 +477,40 @@ export function parseTextLessonV2(raw: string): TextLessonV2 {
       const value = fm[2]
       if (currentSec) {
         const status = applySectionField(currentSec, key, value)
-        if (status === 'geometry-start') continue
-        if (status === 'consumed') continue
-        // Passthrough — record as free-form narrative on the question so nothing
-        // is silently lost.
-        if (currentSec.question) currentSec.question += `\n${key}: ${value}`
-        else currentSec.question = `${key}: ${value}`
+        if (status.kind === 'geometry-start') {
+          currentField = null
+          continue
+        }
+        if (status.kind === 'option' || status.kind === 'type') {
+          currentField = null
+          continue
+        }
+        if (status.kind === 'consumed') {
+          currentField = status.slot
+          continue
+        }
+        // Passthrough — the `* key: value` shape matched but the key isn't a
+        // known field. If we're inside a multi-line field (e.g. `* פתרון מלא:`
+        // followed by a `* נזהה את המבנה:` bullet), treat the whole raw line
+        // as continuation of that field. Otherwise fall back to question.
+        if (currentField) {
+          appendToSlot(currentSec, currentField as SectionFieldSlot, line)
+        } else {
+          if (currentSec.question) currentSec.question += `\n${key}: ${value}`
+          else currentSec.question = `${key}: ${value}`
+        }
         continue
       }
       if (currentEx) {
         const status = applyExerciseField(currentEx, key, value)
-        if (status === 'geometry-start') continue
-        if (status === 'consumed') continue
+        if (status.kind === 'geometry-start') {
+          currentField = null
+          continue
+        }
+        if (status.kind === 'consumed') {
+          currentField = status.slot
+          continue
+        }
         // Passthrough — append to intro.
         currentEx.intro += currentEx.intro ? `\n${key}: ${value}` : `${key}: ${value}`
         continue
@@ -472,12 +518,15 @@ export function parseTextLessonV2(raw: string): TextLessonV2 {
       continue
     }
 
-    // Free-text continuation lines (rare in v2). Attach to the current
-    // section's question or the current exercise's intro so authors can
-    // wrap long lines without losing content.
+    // Bare non-field lines. Route to the currently-open field slot so a
+    // multi-line `* פתרון מלא:` block doesn't spill into `question`.
     if (line.trim() === '') continue
     if (currentSec) {
-      currentSec.question += currentSec.question ? `\n${line}` : line
+      if (currentField && currentField !== 'intro') {
+        appendToSlot(currentSec, currentField, line)
+      } else {
+        currentSec.question += currentSec.question ? `\n${line}` : line
+      }
     } else if (currentEx) {
       currentEx.intro += currentEx.intro ? `\n${line}` : line
     }

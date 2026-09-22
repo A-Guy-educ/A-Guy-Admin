@@ -90,6 +90,24 @@ function findField(fields: string[], keys: string[]): string | undefined {
   return undefined
 }
 
+/**
+ * Same as findField but ALSO accepts the space-separated shape authors
+ * occasionally use ("קודקוד B", "צלעות BA, BC") when no colon was written.
+ * Colon-delimited fields still win when both shapes are present in the row.
+ */
+function findFieldRelaxed(fields: string[], keys: string[]): string | undefined {
+  const withColon = findField(fields, keys)
+  if (withColon !== undefined) return withColon
+  for (const field of fields) {
+    const trimmed = field.trim()
+    for (const key of keys) {
+      if (trimmed === key) return ''
+      if (trimmed.startsWith(key + ' ')) return trimmed.slice(key.length + 1).trim()
+    }
+  }
+  return undefined
+}
+
 function parseNumberPair(value: string): { x: number; y: number } | null {
   // Matches "X=50, Y=100", "50, 100", or "(50, 100)"
   const cleaned = value.replace(/[()X=Y=xy]/gi, ' ').replace(/,/g, ' ')
@@ -272,9 +290,12 @@ function parseSegmentRow(head: string, fields: string[]): MutableLine | null {
     if (Number.isFinite(n) && n > 0) line.thickness = n
   }
 
-  const valueField = findField(fields, ['ערך'])
-  if (valueField) {
-    line.label = { value: valueField, position: 'm' }
+  // Length/algebraic label: authors use `ערך`, `תווית`, or `מידה` depending
+  // on generator. Prefer the more-specific ones first so a numeric `מידה`
+  // doesn't shadow an explicit `תווית: 8 ס"מ`.
+  const labelField = findField(fields, ['תווית']) ?? findField(fields, ['ערך', 'מידה'])
+  if (labelField) {
+    line.label = { value: labelField, position: 'm' }
   }
 
   return line
@@ -296,7 +317,8 @@ function parseAngleRow(head: string, fields: string[]): MutableAngle | null {
   if (!nameMatch) return null
   const nameLetters = nameMatch[1]
 
-  const centerField = findField(fields, ['קודקוד'])
+  // `קודקוד` sometimes ships without a colon ("קודקוד B") — accept both forms.
+  const centerField = findFieldRelaxed(fields, ['קודקוד'])
   let center = centerField
     ? centerField.match(/[A-Za-z][A-Za-z0-9_]*/)?.[0]
     : nameLetters.length === 3
@@ -304,15 +326,20 @@ function parseAngleRow(head: string, fields: string[]): MutableAngle | null {
       : undefined
   if (!center) return null
 
-  // "נמדדת בין: OA ל- OC" — extract the two rays' non-center endpoints.
-  const raysField = findField(fields, ['נמדדת בין'])
+  // Ray sources, in preference order:
+  //   1. Combined `נמדדת בין: OA ל- OC`
+  //   2. Combined `צלעות[:] BA, BC` / `צלע[:] BA, BC` (generator variant)
+  //   3. Separate `צלע1: XY` + `צלע2: XZ`
   let ray1: string | undefined
   let ray2: string | undefined
+  const raysField =
+    findFieldRelaxed(fields, ['נמדדת בין']) ?? findFieldRelaxed(fields, ['צלעות', 'צלע'])
   if (raysField) {
-    // "OA ל- OC" or "OA ל OC"
-    const parts = raysField.split(/\s*ל[-\s]?\s*/)
+    // Split on either "ל" (Hebrew "to") or "," so we handle both
+    //   "OA ל- OC"  and  "BA, BC".
+    const parts = raysField.split(/\s*(?:ל[-\s]?|,)\s*/).filter((p) => p.trim() !== '')
     if (parts.length >= 2) {
-      const pick = (raw: string) => {
+      const pick = (raw: string): string | undefined => {
         const cleaned = raw.trim().replace(/[^A-Za-z]/g, '')
         if (cleaned.length === 2) return cleaned[0] === center ? cleaned[1] : cleaned[0]
         if (cleaned.length === 1) return cleaned
@@ -321,6 +348,19 @@ function parseAngleRow(head: string, fields: string[]): MutableAngle | null {
       ray1 = pick(parts[0])
       ray2 = pick(parts[1])
     }
+  }
+  if (!ray1 || !ray2) {
+    const r1Field = findFieldRelaxed(fields, ['צלע1'])
+    const r2Field = findFieldRelaxed(fields, ['צלע2'])
+    const pickToken = (raw: string | undefined): string | undefined => {
+      if (!raw) return undefined
+      const cleaned = raw.trim().replace(/[^A-Za-z]/g, '')
+      if (cleaned.length === 2) return cleaned[0] === center ? cleaned[1] : cleaned[0]
+      if (cleaned.length === 1) return cleaned
+      return undefined
+    }
+    ray1 = ray1 ?? pickToken(r1Field)
+    ray2 = ray2 ?? pickToken(r2Field)
   }
 
   if ((!ray1 || !ray2) && nameLetters.length === 3) {
@@ -351,9 +391,12 @@ function parseAngleRow(head: string, fields: string[]): MutableAngle | null {
     angle.style = 'square'
   }
 
-  const valueField = findField(fields, ['ערך'])
-  if (valueField) {
-    angle.label = { value: valueField, position: 'inside' }
+  // Label on the arc: authors use `תווית`, `ערך`, or `מידה`. Prefer `תווית`
+  // when both are present (`מידה: 50 | תווית: 50 מעלות` — the latter is the
+  // human-readable one).
+  const labelField = findField(fields, ['תווית']) ?? findField(fields, ['ערך', 'מידה'])
+  if (labelField) {
+    angle.label = { value: labelField, position: 'inside' }
   }
 
   return angle

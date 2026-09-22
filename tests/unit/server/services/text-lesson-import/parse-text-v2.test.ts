@@ -283,6 +283,40 @@ describe('parseTextLessonV2 — basic shape', () => {
     expect(lesson.exercises[0].sections[0].svg).toBeUndefined()
   })
 
+  it('keeps multi-line `פתרון מלא:` on fullSolution instead of spilling into question', () => {
+    // The generator emits open-ended solutions as a multi-line block with
+    // nested `*   subitem` bullets. Previously each continuation line was
+    // appended to `question` because we only tracked the last matched key,
+    // and `* subitem: value` shapes were treated as brand-new fields.
+    const source = [
+      SEP,
+      '[ תרגיל 1 - נתוני פתיחה ]',
+      SEP,
+      '* טקסט: intro',
+      '',
+      SEP,
+      "[ תרגיל 1 - סעיף ד' - שאלה פתוחה ]",
+      SEP,
+      '* סוג השאלה: Open Ended',
+      '* הנחיה: פרקו לגורמים את הביטוי m²+12m+36.',
+      '* פתרון מלא:',
+      '    נזהה את המבנה:',
+      '    *   m² הוא הריבוע של m. (a=m)',
+      '    *   36 הוא הריבוע של 6. (b=6)',
+      '    *   12m הוא 2 כפול m כפול 6 (2ab).',
+      '    לכן, הביטוי הוא ריבוע של סכום: (m+6)².',
+    ].join('\n')
+
+    const lesson = parseTextLessonV2(source)
+    const sec = lesson.exercises[0].sections[0]
+    expect(sec.question).toBe('פרקו לגורמים את הביטוי m²+12m+36.')
+    expect(sec.fullSolution).toContain('נזהה את המבנה')
+    expect(sec.fullSolution).toContain('a=m')
+    expect(sec.fullSolution).toContain('(m+6)²')
+    expect(sec.question).not.toContain('נזהה את המבנה')
+    expect(sec.question).not.toContain('a=m')
+  })
+
   it('captures raw <svg> inside `שרטוט מותאם לסעיף` as a section-level svg field', () => {
     const source = [
       SEP,
