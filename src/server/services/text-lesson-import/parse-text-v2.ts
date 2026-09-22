@@ -54,8 +54,10 @@ export interface TextSectionV2 {
   fullSolution?: string
   type: QuestionTypeV2
   options: TextOptionV2[]
-  /** Parsed geometry — either from `שרטוט מותאם לסעיף` or falling back to the exercise-level shared geometry. */
+  /** Parsed DSL geometry from `שרטוט מותאם לסעיף`. Set only when the section has its own DSL block — never falls back to the exercise's shared geometry (that would double-emit the sketch, once via sharedBlocks and once as an attachment). */
   geometry?: GeometrySpecV1
+  /** Raw SVG markup pulled from `שרטוט מותאם לסעיף` when the block was inline `<svg>` rather than DSL. Mutually exclusive with `geometry`. */
+  svg?: string
   geometryWarnings: string[]
 }
 
@@ -65,8 +67,10 @@ export interface TextExerciseV2 {
   headerRest: string
   /** Free narrative pulled from the "* טקסט:" field. */
   intro: string
-  /** Parsed shared geometry from "* שרטוט בסיס". */
+  /** Parsed DSL geometry from `שרטוט בסיס`. */
   sharedGeometry?: GeometrySpecV1
+  /** Raw SVG markup pulled from `שרטוט בסיס` when the block was inline `<svg>` rather than DSL. Mutually exclusive with `sharedGeometry`. */
+  sharedSvg?: string
   sharedGeometryWarnings: string[]
   sections: TextSectionV2[]
 }
@@ -250,10 +254,41 @@ function applySectionField(
   return 'passthrough'
 }
 
-function finalizeSection(sec: MutableSectionV2, sharedGeom?: GeometrySpecV1): TextSectionV2 {
-  const { spec, warnings, hasContent } = sec.geometryLines.length
-    ? parseGeometryDsl(sec.geometryLines.join('\n'))
-    : { spec: undefined as GeometrySpecV1 | undefined, warnings: [] as string[], hasContent: false }
+/**
+ * Split a captured `שרטוט …` block into an SVG blob or DSL spec.
+ *
+ * Authors put two flavours of content behind the same `* שרטוט בסיס:` /
+ * `* שרטוט מותאם לסעיף:` field:
+ *   - DSL rows (`--- נקודות ---` / `--- ישרים וקטעים ---` / …), parsed by
+ *     parse-geometry-dsl.ts into a `GeometrySpecV1`.
+ *   - Raw `<svg>…</svg>` markup, used for pictorial scenes (a ladder against
+ *     a wall, a stack of factoring squares) where the DSL's point-and-segment
+ *     vocabulary doesn't apply.
+ *
+ * If the first non-blank line starts with `<svg`, treat the whole block as
+ * SVG and skip the DSL parser (which would return `hasContent: false` and
+ * silently drop the block). Anything else goes to the DSL path.
+ */
+function classifyBlockBody(rawLines: string[]): {
+  svg?: string
+  spec?: GeometrySpecV1
+  warnings: string[]
+  hasContent: boolean
+} {
+  if (rawLines.length === 0) {
+    return { warnings: [], hasContent: false }
+  }
+  const joined = rawLines.join('\n')
+  const firstNonBlank = joined.replace(/^\s+/, '')
+  if (/^<svg\b/i.test(firstNonBlank)) {
+    return { svg: joined.trim(), warnings: [], hasContent: true }
+  }
+  const { spec, warnings, hasContent } = parseGeometryDsl(joined)
+  return { spec: hasContent ? spec : undefined, warnings, hasContent }
+}
+
+function finalizeSection(sec: MutableSectionV2): TextSectionV2 {
+  const { svg, spec, warnings, hasContent } = classifyBlockBody(sec.geometryLines)
   return {
     questionNumber: sec.questionNumber,
     headerRest: sec.headerRest,
@@ -262,23 +297,26 @@ function finalizeSection(sec: MutableSectionV2, sharedGeom?: GeometrySpecV1): Te
     fullSolution: sec.fullSolution?.trim() || undefined,
     type: classifyType(sec.typeRaw),
     options: sec.options,
-    geometry: hasContent ? spec : sharedGeom,
+    // Section geometry/svg is set ONLY when the section has its own block.
+    // We deliberately do NOT fall back to the exercise-level shared sketch —
+    // that would emit the same drawing twice (once via sharedBlocks, once
+    // per section as an attachment).
+    geometry: hasContent ? spec : undefined,
+    svg: hasContent ? svg : undefined,
     geometryWarnings: warnings,
   }
 }
 
 function finalizeExercise(ex: MutableExerciseV2): TextExerciseV2 {
-  const { spec, warnings, hasContent } = ex.sharedGeometryLines.length
-    ? parseGeometryDsl(ex.sharedGeometryLines.join('\n'))
-    : { spec: undefined as GeometrySpecV1 | undefined, warnings: [] as string[], hasContent: false }
-  const shared = hasContent ? spec : undefined
+  const { svg, spec, warnings, hasContent } = classifyBlockBody(ex.sharedGeometryLines)
   return {
     exerciseNumber: ex.exerciseNumber,
     headerRest: ex.headerRest,
     intro: ex.intro.trim(),
-    sharedGeometry: shared,
+    sharedGeometry: hasContent ? spec : undefined,
+    sharedSvg: hasContent ? svg : undefined,
     sharedGeometryWarnings: warnings,
-    sections: ex.sections.map((s) => finalizeSection(s, shared)),
+    sections: ex.sections.map((s) => finalizeSection(s)),
   }
 }
 
