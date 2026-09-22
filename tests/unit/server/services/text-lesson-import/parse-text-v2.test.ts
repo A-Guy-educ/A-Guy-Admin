@@ -222,7 +222,12 @@ describe('parseTextLessonV2 — basic shape', () => {
     expect(lesson.exercises[0].sections[0].headerRest).toBe('שאלת השלמת טבלה')
   })
 
-  it('falls back to the shared geometry when a section has no override', () => {
+  it('does NOT copy the shared exercise geometry onto sections without their own block', () => {
+    // Previously the parser inherited exercise.sharedGeometry onto every
+    // sibling section. The converter then emitted the shared drawing twice:
+    // once via sharedBlocks and once as a per-section attachment. Fixture
+    // has one exercise with a shared sketch and one section with no sketch
+    // of its own — the section must NOT carry the geometry.
     const source = [
       SEP,
       '[ תרגיל 1 - נתוני פתיחה ]',
@@ -242,8 +247,63 @@ describe('parseTextLessonV2 — basic shape', () => {
     ].join('\n')
 
     const lesson = parseTextLessonV2(source)
+    expect(lesson.exercises[0].sharedGeometry?.elements.points).toHaveLength(1)
+    expect(lesson.exercises[0].sections[0].geometry).toBeUndefined()
+    expect(lesson.exercises[0].sections[0].svg).toBeUndefined()
+  })
+
+  it('captures raw <svg> inside `שרטוט בסיס` as sharedSvg, not a discarded DSL block', () => {
+    // Generators emit inline SVG for pictorial scenes (a ladder against a
+    // wall) where the DSL's point/segment vocabulary doesn't apply. Prior
+    // parser dropped these because parseGeometryDsl returned hasContent:false.
+    const source = [
+      SEP,
+      '[ תרגיל 1 - נתוני פתיחה ]',
+      SEP,
+      '* טקסט: intro',
+      '* שרטוט בסיס:',
+      '  <svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">',
+      '    <line x1="50" y1="250" x2="350" y2="250" stroke="brown"/>',
+      '  </svg>',
+      '',
+      SEP,
+      "[ תרגיל 1 - סעיף א' - שאלת ברירה יחידה ]",
+      SEP,
+      '* סוג השאלה: Single Choice',
+      '* הנחיה: prompt',
+      '* אפשרות 1: A [תשובה נכונה]',
+      '* אפשרות 2: B',
+    ].join('\n')
+
+    const lesson = parseTextLessonV2(source)
+    expect(lesson.exercises[0].sharedGeometry).toBeUndefined()
+    expect(lesson.exercises[0].sharedSvg).toContain('<svg')
+    expect(lesson.exercises[0].sharedSvg).toContain('</svg>')
+    // Section stays clean — the sharedSvg is emitted at the exercise level only.
+    expect(lesson.exercises[0].sections[0].svg).toBeUndefined()
+  })
+
+  it('captures raw <svg> inside `שרטוט מותאם לסעיף` as a section-level svg field', () => {
+    const source = [
+      SEP,
+      '[ תרגיל 1 - נתוני פתיחה ]',
+      SEP,
+      '* טקסט: intro',
+      '',
+      SEP,
+      "[ תרגיל 1 - סעיף א' - שאלת ברירה יחידה ]",
+      SEP,
+      '* סוג השאלה: Single Choice',
+      '* הנחיה: prompt',
+      '* שרטוט מותאם לסעיף:',
+      '  <svg width="100" height="100"><rect/></svg>',
+      '* אפשרות 1: A [תשובה נכונה]',
+      '* אפשרות 2: B',
+    ].join('\n')
+
+    const lesson = parseTextLessonV2(source)
     const sec = lesson.exercises[0].sections[0]
-    expect(sec.geometry?.elements.points).toHaveLength(1)
-    expect(sec.geometry?.elements.points[0].name).toBe('A')
+    expect(sec.geometry).toBeUndefined()
+    expect(sec.svg).toContain('<svg')
   })
 })
