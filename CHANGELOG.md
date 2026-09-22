@@ -2069,6 +2069,7 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- fix(text-lesson-import): stop פתרון מלא spill + accept generator field variants ([#480](https://github.com/A-Guy-educ/A-Guy-Admin/pull/480)) — @aguyshayb
 - fix(text-lesson-import): stop duplicating shared geometry + preserve inline SVG ([#479](https://github.com/A-Guy-educ/A-Guy-Admin/pull/479)) — @aguyshayb
 ## [v0.46.0] - 2026-09-20
 
