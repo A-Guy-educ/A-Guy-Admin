@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.46.1 — 2026-09-23
+
+### Bug Fixes
+- Text-lesson import (v2): stop duplicating shared geometry across exercises and preserve inline SVG blocks (#479)
+- Text-lesson import (v2): route mid-section corrected sketches to the right block and fit `boundingBox` to points (#480)
+- Text-lesson import (v2): stop `פתרון מלא` content spilling into adjacent blocks; accept generator-field name variants (#480)
+
+### CI
+- Disable auto Vercel deploy on push to `main`/`dev`; the `vercel-deploy.yml` workflow is now `workflow_dispatch`-only (#481)
+
 ## v0.46.0 — 2026-09-20
 
 ### Features
