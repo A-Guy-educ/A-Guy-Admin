@@ -1,19 +1,6 @@
 name: Build & Deploy to Vercel
 
 on:
-  push:
-    branches: [main, dev]
-    paths:
-      - 'src/**'
-      - 'public/**'
-      - 'payload.config.*'
-      - 'next.config.*'
-      - 'package.json'
-      - 'pnpm-lock.yaml'
-      - 'tsconfig.json'
-      - 'vercel.json'
-      - '.github/workflows/vercel-deploy.yml'
-
   workflow_dispatch:
 
 concurrency:

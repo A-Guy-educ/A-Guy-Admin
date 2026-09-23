@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.46.1 — 2026-09-23
+
+### Bug Fixes
+- Text-lesson import (v2): stop duplicating shared geometry across exercises and preserve inline SVG blocks (#479)
+- Text-lesson import (v2): route mid-section corrected sketches to the right block and fit `boundingBox` to points (#480)
+- Text-lesson import (v2): stop `פתרון מלא` content spilling into adjacent blocks; accept generator-field name variants (#480)
+
+### CI
+- Disable auto Vercel deploy on push to `main`/`dev`; the `vercel-deploy.yml` workflow is now `workflow_dispatch`-only (#481)
+
 ## v0.46.0 — 2026-09-20
 
 ### Features
@@ -2069,6 +2079,13 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- chore: release v0.46.1 ([#484](https://github.com/A-Guy-educ/A-Guy-Admin/pull/484)) — @aguyshayb
+- chore(ci): Disable auto vercel deploy on push ([#481](https://github.com/A-Guy-educ/A-Guy-Admin/pull/481)) — @aguyshayb
+- fix(text-lesson-import): stop פתרון מלא spill + accept generator field variants ([#480](https://github.com/A-Guy-educ/A-Guy-Admin/pull/480)) — @aguyshayb
+- fix(text-lesson-import): stop duplicating shared geometry + preserve inline SVG ([#479](https://github.com/A-Guy-educ/A-Guy-Admin/pull/479)) — @aguyshayb
+## [v0.46.0] - 2026-09-20
+
+- promote: dev -> main (v0.46.0) ([#476](https://github.com/A-Guy-educ/A-Guy-Admin/pull/476)) — @aguyshayb
 - chore: release v0.46.0 ([#475](https://github.com/A-Guy-educ/A-Guy-Admin/pull/475)) — @aguyshayb
 - feat(lesson-import): add lesson-type dropdown to import page ([#474](https://github.com/A-Guy-educ/A-Guy-Admin/pull/474)) — @aguyshayb
 - fix(text-lesson-import): stop v2 detection from swallowing v1 files ([#473](https://github.com/A-Guy-educ/A-Guy-Admin/pull/473)) — @aguyshayb

@@ -16,6 +16,7 @@ import type {
   QuestionGeometryBlock,
   QuestionSelectMcqBlock,
   RichTextBlock,
+  SvgBlock,
 } from '@/server/payload/collections/Exercises/types'
 import { generateId } from '@/server/payload/collections/Exercises/types'
 import type { GeometrySpecV1 } from '@/infra/contracts/graphics/geometry.v1'
@@ -42,12 +43,32 @@ function standaloneGeometryBlock(geometry: GeometrySpecV1): QuestionGeometryBloc
   }
 }
 
+function svgBlock(value: string): SvgBlock {
+  return { id: generateId(), type: 'svg', value }
+}
+
 function geometryAttachment(geometry: GeometrySpecV1): QuestionAttachment {
   return {
     kind: 'geometry',
     layout: 'textRight',
     geometry,
   }
+}
+
+function svgAttachment(value: string): QuestionAttachment {
+  return {
+    kind: 'svg',
+    layout: 'textRight',
+    svg: { value },
+  }
+}
+
+function sectionAttachment(section: TextSectionV2): QuestionAttachment | undefined {
+  // Geometry DSL wins if both are somehow set — geometry is richer and the
+  // parser makes them mutually exclusive today anyway.
+  if (section.geometry) return geometryAttachment(section.geometry)
+  if (section.svg) return svgAttachment(section.svg)
+  return undefined
 }
 
 function buildPrompt(section: TextSectionV2): InlineRichText {
@@ -91,7 +112,8 @@ function tryBuildMcqBlock(section: TextSectionV2): QuestionSelectMcqBlock | null
   }
   if (section.hint) block.hint = inlineRichText(section.hint)
   if (section.fullSolution) block.fullSolution = inlineRichText(section.fullSolution)
-  if (section.geometry) block.attachment = geometryAttachment(section.geometry)
+  const attachment = sectionAttachment(section)
+  if (attachment) block.attachment = attachment
   return block
 }
 
@@ -111,7 +133,8 @@ function buildFreeResponseBlock(section: TextSectionV2): QuestionFreeResponseBlo
   }
   if (section.hint) block.hint = inlineRichText(section.hint)
   if (section.fullSolution) block.fullSolution = inlineRichText(section.fullSolution)
-  if (section.geometry) block.attachment = geometryAttachment(section.geometry)
+  const attachment = sectionAttachment(section)
+  if (attachment) block.attachment = attachment
   return block
 }
 
@@ -167,7 +190,12 @@ export interface ConvertedExerciseV2 {
 export function convertTextExerciseV2ToSections(exercise: TextExerciseV2): ConvertedExerciseV2 {
   const sharedBlocks: ContentBlock[] = []
   if (exercise.intro) sharedBlocks.push(richTextBlock(exercise.intro))
-  if (exercise.sharedGeometry) sharedBlocks.push(standaloneGeometryBlock(exercise.sharedGeometry))
+  // Shared sketch is emitted once at the exercise level. Sections deliberately
+  // don't inherit it as an attachment — that would double-render the same
+  // drawing in every section.
+  if (exercise.sharedSvg) sharedBlocks.push(svgBlock(exercise.sharedSvg))
+  else if (exercise.sharedGeometry)
+    sharedBlocks.push(standaloneGeometryBlock(exercise.sharedGeometry))
 
   return {
     sharedBlocks,
