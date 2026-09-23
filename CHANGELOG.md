@@ -2079,6 +2079,8 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+## [v0.46.1] - 2026-09-23
+
 - promote: dev -> main (v0.46.1) ([#485](https://github.com/A-Guy-educ/A-Guy-Admin/pull/485)) — @aguyshayb
 - chore: release v0.46.1 ([#484](https://github.com/A-Guy-educ/A-Guy-Admin/pull/484)) — @aguyshayb
 - chore(ci): Disable auto vercel deploy on push ([#481](https://github.com/A-Guy-educ/A-Guy-Admin/pull/481)) — @aguyshayb
