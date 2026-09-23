@@ -139,8 +139,28 @@ export function buildWriterSystemPrompt(): string {
   return SYSTEM_PROMPT
 }
 
-export function buildWriterUserPrompt(skeleton: LessonSkeleton): string {
+export interface BuildWriterUserPromptOptions {
+  /** If set, write only these exercise numbers. Used for opening-only iteration or reader-critic regen. */
+  onlyExercises?: number[]
+  /**
+   * Per-exercise feedback from the reader critic. When present for an exercise,
+   * the writer prompt includes a "previous attempt had these issues" block for
+   * that exercise. Used by the fix loop after reader critic flags problems.
+   */
+  feedbackPerExercise?: Map<number, string>
+}
+
+export function buildWriterUserPrompt(
+  skeleton: LessonSkeleton,
+  options: BuildWriterUserPromptOptions = {},
+): string {
   const lines: string[] = []
+  const only = options.onlyExercises
+  const feedback = options.feedbackPerExercise
+  const filtered = only
+    ? skeleton.exercises.filter((ex) => only.includes(ex.number))
+    : skeleton.exercises
+
   lines.push(`# שלד השיעור לכתיבה`)
   lines.push('')
   lines.push(`**שם השיעור**: ${skeleton.lessonName}`)
@@ -151,9 +171,22 @@ export function buildWriterUserPrompt(skeleton: LessonSkeleton): string {
   lines.push(`**ידע קודם (לא להניח שיודע)**: ${skeleton.priorKnowledgeAssumeNot || '(לא פורט)'}`)
   lines.push(`**גבולות השיעור (לא ללמד)**: ${skeleton.lessonBoundaries || '(לא פורט)'}`)
   lines.push('')
-  lines.push(`## התרגילים:`)
+
+  if (only && only.length > 0) {
+    lines.push(`## ⚠ מצב "פתיחה בלבד" — חשוב מאוד`)
+    lines.push('')
+    lines.push(
+      `**כתוב אך ורק את התרגילים הבאים**: ${only.join(', ')}. אל תכתוב תרגילים אחרים. הפלט יסתיים אחרי תרגיל ${only[only.length - 1]}.`,
+    )
+    lines.push(
+      `מטרת המצב הזה: איטרציה מהירה על פתיחת השיעור בלבד. שאר התרגילים כבר בשלד ואינם נדרשים כרגע.`,
+    )
+    lines.push('')
+  }
+
+  lines.push(`## התרגילים${only ? ` (רק ${only.join(', ')})` : ''}:`)
   lines.push('')
-  for (const ex of skeleton.exercises) {
+  for (const ex of filtered) {
     lines.push(`### תרגיל ${ex.number}`)
     lines.push(`- **objective**: ${ex.objective}`)
     lines.push(`- **oneNewThing**: ${ex.oneNewThing}`)
@@ -162,6 +195,18 @@ export function buildWriterUserPrompt(skeleton: LessonSkeleton): string {
       lines.push(`  - **סעיף ${sec.letter}' (${sec.shape})**:`)
       lines.push(`    - briefPrompt: ${sec.briefPrompt}`)
       lines.push(`    - expectedDiscovery: ${sec.expectedDiscovery}`)
+    }
+    // Reader critic feedback — surfaced right under the exercise's plan so
+    // the writer sees it in context. Only when we're regenerating this
+    // exercise as a fix pass.
+    const fb = feedback?.get(ex.number)
+    if (fb && fb.trim()) {
+      lines.push('')
+      lines.push(`⚠ **משוב מהמבקר על גרסה קודמת של תרגיל ${ex.number} — יש לתקן:**`)
+      lines.push(fb.trim())
+      lines.push(
+        `בכתיבה מחדש של תרגיל ${ex.number}: הקפד לטפל בנקודות אלה. אל תחזור על אותה בעיה.`,
+      )
     }
     lines.push('')
   }

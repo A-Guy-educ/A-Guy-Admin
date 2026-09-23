@@ -3,11 +3,10 @@
  * CriticVerdict. Stage 2 of the 4-stage pipeline. Feeds the reviser stage
  * with structured findings.
  *
- * Uses gemini-2.5-flash (same as planner) — the critic is a pattern-
- * matcher, not a reasoning task. If quality is insufficient we can bump
- * to gemini-3.1-pro-preview later.
+ * Model selection lives in ../models.ts.
  */
 import { generateJson } from '../gemini-client.js'
+import { MODEL_CRITIC } from '../models.js'
 import type { LessonSkeleton } from '../planner/schema.js'
 import { buildCriticSystemPrompt, buildCriticUserPrompt } from './prompt.js'
 import { CriticVerdict } from './schema.js'
@@ -17,7 +16,7 @@ export async function critiqueSkeleton(skeleton: LessonSkeleton): Promise<Critic
     systemInstruction: buildCriticSystemPrompt(),
     userPrompt: buildCriticUserPrompt(skeleton),
     schema: CriticVerdict,
-    modelName: 'gemini-2.5-flash',
+    modelName: MODEL_CRITIC,
     temperature: 0.1, // Low: we want the critic to apply rules consistently, not creatively.
     maxOutputTokens: 16384,
   })

@@ -6,6 +6,7 @@
  * MVP-scoped: no retry, no critic loop yet. Just: call → parse → validate.
  */
 import { generateJson } from '../gemini-client.js'
+import { MODEL_PLANNER } from '../models.js'
 import { buildSystemPrompt, buildUserPrompt } from './prompt.js'
 import { LessonSkeleton } from './schema.js'
 import type { GenerationInput } from './types.js'
@@ -15,7 +16,7 @@ export async function planLesson(input: GenerationInput): Promise<LessonSkeleton
     systemInstruction: buildSystemPrompt(),
     userPrompt: buildUserPrompt(input),
     schema: LessonSkeleton,
-    modelName: 'gemini-2.5-flash',
+    modelName: MODEL_PLANNER,
     temperature: 0.3,
     maxOutputTokens: 16384,
   })

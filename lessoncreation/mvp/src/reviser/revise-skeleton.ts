@@ -8,6 +8,7 @@
  */
 import { generateJson } from '../gemini-client.js'
 import type { CriticVerdict } from '../critic/schema.js'
+import { MODEL_REVISER } from '../models.js'
 import type { LessonSkeleton } from '../planner/schema.js'
 import { buildReviserSystemPrompt, buildReviserUserPrompt, pickTargetExercises } from './prompt.js'
 import { RevisedExercises } from './schema.js'
@@ -32,7 +33,7 @@ export async function reviseSkeleton(
     systemInstruction: buildReviserSystemPrompt(),
     userPrompt: buildReviserUserPrompt(skeleton, verdict, targetNumbers),
     schema: RevisedExercises,
-    modelName: 'gemini-2.5-flash',
+    modelName: MODEL_REVISER,
     temperature: 0.3,
     maxOutputTokens: 16384,
   })

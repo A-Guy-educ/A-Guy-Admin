@@ -13,7 +13,9 @@ import { GoogleGenerativeAI } from '@google/generative-ai'
 
 import { buildMaterializerSystemPrompt, buildMaterializerUserPrompt } from './prompt.js'
 
-const DEFAULT_MODEL = 'gemini-2.5-flash'
+import { MODEL_MATERIALIZER } from '../models.js'
+
+const DEFAULT_MODEL = MODEL_MATERIALIZER
 const CONCURRENCY = 4
 // Marker format the writer must emit for freeform sketches. Fenced to allow
 // multi-line descriptions without escape gymnastics.

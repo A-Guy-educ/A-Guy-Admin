@@ -34,7 +34,9 @@ export interface WriteResult {
   sketchFailed: number
 }
 
-const DEFAULT_MODEL = 'gemini-2.5-flash'
+import { MODEL_WRITER } from '../models.js'
+
+const DEFAULT_MODEL = MODEL_WRITER
 
 /** Strip any accidental markdown code fences the model might add despite instructions. */
 function cleanOutput(raw: string): string {
@@ -122,25 +124,31 @@ function countGeometryDegenerationWarnings(rawText: string): string[] {
   return warnings
 }
 
-function checkStructure(parsed: ReturnType<typeof parseTextLessonV2>, skeleton: LessonSkeleton): string[] {
+function checkStructure(
+  parsed: ReturnType<typeof parseTextLessonV2>,
+  skeleton: LessonSkeleton,
+  expectedExerciseNumbers?: number[],
+): string[] {
   const warnings: string[] = []
-  if (parsed.exercises.length !== skeleton.exercises.length) {
+  const expected = expectedExerciseNumbers ?? skeleton.exercises.map((e) => e.number)
+  if (parsed.exercises.length !== expected.length) {
     warnings.push(
-      `Exercise count mismatch: skeleton has ${skeleton.exercises.length}, parsed output has ${parsed.exercises.length}`,
+      `Exercise count mismatch: expected ${expected.length}, parsed output has ${parsed.exercises.length}`,
     )
   }
   parsed.exercises.forEach((parsedEx, i) => {
-    const expected = skeleton.exercises[i]
-    if (!expected) return
+    const expectedNum = expected[i]
+    const skeletonEx = skeleton.exercises.find((e) => e.number === expectedNum)
+    if (!skeletonEx) return
     if (parsedEx.sections.length !== 4) {
       warnings.push(
-        `Exercise ${expected.number}: expected 4 sections, parsed ${parsedEx.sections.length}`,
+        `Exercise ${expectedNum}: expected 4 sections, parsed ${parsedEx.sections.length}`,
       )
     }
     parsedEx.sections.forEach((sec, si) => {
       if (sec.type.kind === 'unknown') {
         warnings.push(
-          `Exercise ${expected.number} section ${si + 1}: unknown question type (raw="${sec.type.raw}")`,
+          `Exercise ${expectedNum} section ${si + 1}: unknown question type (raw="${sec.type.raw}")`,
         )
       }
       // MCQ: exactly one option marked correct
@@ -148,12 +156,12 @@ function checkStructure(parsed: ReturnType<typeof parseTextLessonV2>, skeleton: 
         const correctCount = sec.options.filter((o) => o.correct).length
         if (correctCount !== 1) {
           warnings.push(
-            `Exercise ${expected.number} section ${si + 1}: MCQ has ${correctCount} correct-marked options (should be 1)`,
+            `Exercise ${expectedNum} section ${si + 1}: MCQ has ${correctCount} correct-marked options (should be 1)`,
           )
         }
         if (sec.options.length !== sec.type.optionsCount) {
           warnings.push(
-            `Exercise ${expected.number} section ${si + 1}: MCQ says ${sec.type.optionsCount} options but has ${sec.options.length}`,
+            `Exercise ${expectedNum} section ${si + 1}: MCQ says ${sec.type.optionsCount} options but has ${sec.options.length}`,
           )
         }
       }
@@ -162,7 +170,26 @@ function checkStructure(parsed: ReturnType<typeof parseTextLessonV2>, skeleton: 
   return warnings
 }
 
-export async function writeLesson(skeleton: LessonSkeleton): Promise<WriteResult> {
+export interface WriteLessonOptions {
+  /**
+   * If set, writer is instructed to produce ONLY these exercise numbers.
+   * Used for opening-only iteration (E1-E3) so we can tune the opening
+   * without paying for the full 10-exercise write. Also used by the reader-
+   * critic fix loop to regenerate only flagged exercises.
+   */
+  onlyExercises?: number[]
+  /**
+   * Per-exercise reader-critic feedback. When present, the writer prompt
+   * shows the feedback under each affected exercise's plan so the writer
+   * regenerates addressing the specific issues.
+   */
+  feedbackPerExercise?: Map<number, string>
+}
+
+export async function writeLesson(
+  skeleton: LessonSkeleton,
+  options: WriteLessonOptions = {},
+): Promise<WriteResult> {
   const apiKey = process.env.GEMINI_API_KEY
   if (!apiKey) throw new Error('GEMINI_API_KEY is not set.')
 
@@ -179,7 +206,12 @@ export async function writeLesson(skeleton: LessonSkeleton): Promise<WriteResult
     },
   })
 
-  const result = await model.generateContent(buildWriterUserPrompt(skeleton))
+  const result = await model.generateContent(
+    buildWriterUserPrompt(skeleton, {
+      onlyExercises: options.onlyExercises,
+      feedbackPerExercise: options.feedbackPerExercise,
+    }),
+  )
   const rawWriterText = cleanOutput(result.response.text())
 
   // Stage 2: materialize all {{SKETCH BEGIN}}…{{SKETCH END}} blocks into
@@ -192,7 +224,7 @@ export async function writeLesson(skeleton: LessonSkeleton): Promise<WriteResult
   try {
     const parsed = parseTextLessonV2(text)
     const structureWarnings = [
-      ...checkStructure(parsed, skeleton),
+      ...checkStructure(parsed, skeleton, options.onlyExercises),
       // Raw-text scan — catches DSL-degeneration loops the parser hides via
       // deduplication (see 577-segment regression).
       ...countGeometryDegenerationWarnings(text),

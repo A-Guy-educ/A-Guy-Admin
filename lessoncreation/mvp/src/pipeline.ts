@@ -22,6 +22,8 @@ import type { CriticVerdict } from './critic/schema.js'
 import { planLesson } from './planner/plan-lesson.js'
 import type { LessonSkeleton } from './planner/schema.js'
 import type { GenerationInput } from './planner/types.js'
+import { readCritic, type ReaderCriticResult } from './reader-critic/read-critic.js'
+import { spliceExercises } from './reader-critic/splice.js'
 import { reviseSkeleton } from './reviser/revise-skeleton.js'
 import { writeLesson } from './writer/write-lesson.js'
 
@@ -44,6 +46,15 @@ export interface PipelineResult {
   writerSketchCount?: number
   writerSketchSucceeded?: number
   writerSketchFailed?: number
+  /**
+   * Reader-critic loop results — one entry per iteration. Present when the
+   * reader critic ran (i.e., writer produced parseable text).
+   */
+  readerCriticIterations?: Array<{
+    iterationNumber: number
+    result: ReaderCriticResult
+    patchedNumbers: number[]
+  }>
   totalDurationMs: number
 }
 
@@ -155,11 +166,126 @@ export async function runPipeline(
     : 'PARSE-FAILED'
   console.log(`  → ${writerStatus} (${writeResult.text.length} chars)`)
 
+  let lessonText = writeResult.text
+  const readerCriticIterations: NonNullable<PipelineResult['readerCriticIterations']> = []
+
+  // Stage 6: Reader critic loop — reads the FINAL rendered lesson (post-
+  // materializer) and checks per-exercise semantic coherence + plan
+  // fidelity. Only runs if writer produced parseable text (otherwise
+  // there's nothing coherent to read). Max 2 iterations: initial read +
+  // 1 fix pass. Second read verifies the fix; a second fix pass is
+  // deferred to keep costs bounded.
+  const READER_MAX_ITERATIONS = 2
+  if (writeResult.parseOk) {
+    for (let iter = 1; iter <= READER_MAX_ITERATIONS; iter++) {
+      console.log(`━━━ [Reader Critic iter ${iter}] ${input.lessonName} ━━━`)
+      const readerResult = await readCritic(lessonText, skeleton)
+      console.log(
+        `  → flagged: ${readerResult.flaggedExerciseNumbers.length} exercises | CRIT:${readerResult.totalCritical} HIGH:${readerResult.totalHigh} MED:${readerResult.totalMedium} LOW:${readerResult.totalLow}`,
+      )
+      const flagged = readerResult.flaggedExerciseNumbers
+      if (flagged.length === 0 || iter >= READER_MAX_ITERATIONS) {
+        readerCriticIterations.push({
+          iterationNumber: iter,
+          result: readerResult,
+          patchedNumbers: [],
+        })
+        break
+      }
+
+      // Build feedback map from CRITICAL/HIGH findings on flagged exercises.
+      const feedbackPerExercise = new Map<number, string>()
+      for (const v of readerResult.verdicts) {
+        if (!flagged.includes(v.exerciseNumber)) continue
+        const blocking = v.findings.filter(
+          (f) => f.severity === 'CRITICAL' || f.severity === 'HIGH',
+        )
+        if (blocking.length === 0) continue
+        const lines: string[] = []
+        for (const f of blocking) {
+          const loc =
+            f.sectionLetter === 'exercise'
+              ? `כלל-תרגילי`
+              : `סעיף ${f.sectionLetter}'`
+          lines.push(`- [${f.severity} — ${loc}] ${f.issue} → ${f.suggestedFix}`)
+        }
+        feedbackPerExercise.set(v.exerciseNumber, lines.join('\n'))
+      }
+
+      // Chunk the flagged exercises so each writer call handles at most
+      // MAX_PATCH_CHUNK exercises. Writing many at once with feedback
+      // attached to each degrades output quality — the original run
+      // wrote 10 exercises fine, but patching 7 with feedback produced
+      // truncated DSL and other regressions. Chunks run in parallel
+      // since they touch disjoint exercises.
+      const MAX_PATCH_CHUNK = 3
+      const chunks: number[][] = []
+      for (let i = 0; i < flagged.length; i += MAX_PATCH_CHUNK) {
+        chunks.push(flagged.slice(i, i + MAX_PATCH_CHUNK))
+      }
+      console.log(
+        `━━━ [Writer regen iter ${iter}] patching [${flagged.join(', ')}] in ${chunks.length} parallel call${chunks.length > 1 ? 's' : ''} ━━━`,
+      )
+      const patchResults = await Promise.all(
+        chunks.map((chunk) => {
+          const chunkFeedback = new Map<number, string>()
+          for (const n of chunk) {
+            const fb = feedbackPerExercise.get(n)
+            if (fb) chunkFeedback.set(n, fb)
+          }
+          return writeLesson(skeleton, {
+            onlyExercises: chunk,
+            feedbackPerExercise: chunkFeedback,
+          })
+        }),
+      )
+
+      // Splice each chunk's patches into the current lesson text.
+      let spliceFailed = false
+      for (let i = 0; i < chunks.length; i++) {
+        try {
+          lessonText = spliceExercises(lessonText, patchResults[i].text, chunks[i])
+        } catch (err) {
+          console.error(
+            `  splice failed for chunk [${chunks[i].join(',')}]: ${err instanceof Error ? err.message : err}`,
+          )
+          spliceFailed = true
+          break
+        }
+      }
+      if (spliceFailed) {
+        readerCriticIterations.push({
+          iterationNumber: iter,
+          result: readerResult,
+          patchedNumbers: [],
+        })
+        break
+      }
+      readerCriticIterations.push({
+        iterationNumber: iter,
+        result: readerResult,
+        patchedNumbers: flagged,
+      })
+    }
+  } else {
+    console.log(`  [Reader Critic] skipped — writer output not parseable`)
+  }
+
   const lessonsDir = resolve(baseDir, 'generated-lessons')
   if (persist) {
     mkdirSync(lessonsDir, { recursive: true })
     const txtPath = resolve(lessonsDir, `${stem}.txt`)
-    writeFileSync(txtPath, writeResult.text, 'utf8')
+    writeFileSync(txtPath, lessonText, 'utf8')
+    // Also persist reader-critic verdicts for traceability.
+    if (readerCriticIterations.length > 0) {
+      for (const { iterationNumber, result } of readerCriticIterations) {
+        writeFileSync(
+          resolve(verdictsDir, `${stem}.reader-iter${iterationNumber}.json`),
+          JSON.stringify(result, null, 2),
+          'utf8',
+        )
+      }
+    }
   }
 
   return {
@@ -167,13 +293,14 @@ export async function runPipeline(
     finalSkeleton: skeleton,
     iterations,
     outcome: finalOutcome,
-    lessonText: writeResult.text,
+    lessonText,
     writerParseOk: writeResult.parseOk,
     writerStructureWarnings: writeResult.structureWarnings,
     writerParseError: writeResult.parseError,
     writerSketchCount: writeResult.sketchCount,
     writerSketchSucceeded: writeResult.sketchSucceeded,
     writerSketchFailed: writeResult.sketchFailed,
+    readerCriticIterations,
     totalDurationMs: Date.now() - t0,
   }
 }
