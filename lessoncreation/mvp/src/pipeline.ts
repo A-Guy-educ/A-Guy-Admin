@@ -18,6 +18,7 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 import { critiqueSkeleton } from './critic/critique-skeleton.js'
+import { critiquePedagogically } from './critic/pedagogical-critic.js'
 import type { CriticVerdict } from './critic/schema.js'
 import { planLesson } from './planner/plan-lesson.js'
 import type { LessonSkeleton } from './planner/schema.js'
@@ -117,16 +118,37 @@ export async function runPipeline(
   let finalOutcome: PipelineOutcome = 'HALT'
 
   for (let iter = 1; iter <= MAX_ITERATIONS; iter++) {
-    console.log(`━━━ [Critic iter ${iter}] ${input.lessonName} ━━━`)
-    const verdict = await critiqueSkeleton(skeleton)
+    console.log(`━━━ [Critic iter ${iter}] ${input.lessonName} — structural + pedagogical (parallel) ━━━`)
+    // Two critics run in parallel: structural (rule-based) + pedagogical
+    // (teacher-role, no rules). Same schema, so findings combine into
+    // a single list that the reviser handles uniformly.
+    const [structuralVerdict, pedagogicalVerdict] = await Promise.all([
+      critiqueSkeleton(skeleton),
+      critiquePedagogically(skeleton),
+    ])
+    const verdict: CriticVerdict = {
+      passed: structuralVerdict.passed && pedagogicalVerdict.passed,
+      overallVerdict:
+        !structuralVerdict.passed || !pedagogicalVerdict.passed
+          ? 'FAIL'
+          : structuralVerdict.findings.length > 0 || pedagogicalVerdict.findings.length > 0
+            ? 'PASS_WITH_FIXES'
+            : 'PASS',
+      summary: `[Structural] ${structuralVerdict.summary}\n[Pedagogical] ${pedagogicalVerdict.summary}`,
+      findings: [...structuralVerdict.findings, ...pedagogicalVerdict.findings],
+    }
     const crit = verdict.findings.filter((f) => f.severity === 'CRITICAL').length
     const high = verdict.findings.filter((f) => f.severity === 'HIGH').length
     const med = verdict.findings.filter((f) => f.severity === 'MEDIUM').length
     const low = verdict.findings.filter((f) => f.severity === 'LOW').length
+    const sCrit = structuralVerdict.findings.filter((f) => f.severity === 'CRITICAL' || f.severity === 'HIGH').length
+    const pCrit = pedagogicalVerdict.findings.filter((f) => f.severity === 'CRITICAL' || f.severity === 'HIGH').length
     console.log(
-      `  → ${verdict.overallVerdict} — CRIT:${crit} HIGH:${high} MED:${med} LOW:${low}`,
+      `  → ${verdict.overallVerdict} — CRIT:${crit} HIGH:${high} MED:${med} LOW:${low} (structural: ${sCrit} blocking, pedagogical: ${pCrit} blocking)`,
     )
     writeArtifact(resolve(verdictsDir, `${stem}.iter${iter}.json`), verdict)
+    writeArtifact(resolve(verdictsDir, `${stem}.iter${iter}.structural.json`), structuralVerdict)
+    writeArtifact(resolve(verdictsDir, `${stem}.iter${iter}.pedagogical.json`), pedagogicalVerdict)
 
     const outcome = outcomeFor(verdict)
     if (outcome !== null) {
