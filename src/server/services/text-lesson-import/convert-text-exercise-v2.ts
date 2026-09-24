@@ -12,6 +12,7 @@ import type {
   ContentBlock,
   InlineRichText,
   QuestionAttachment,
+  QuestionAxisBlock,
   QuestionFreeResponseBlock,
   QuestionGeometryBlock,
   QuestionSelectMcqBlock,
@@ -19,6 +20,7 @@ import type {
   SvgBlock,
 } from '@/server/payload/collections/Exercises/types'
 import { generateId } from '@/server/payload/collections/Exercises/types'
+import type { AxisSpecV1 } from '@/infra/contracts/graphics/axis.v1'
 import type { GeometrySpecV1 } from '@/infra/contracts/graphics/geometry.v1'
 
 import type { TextExerciseV2, TextSectionV2 } from './parse-text-v2'
@@ -43,6 +45,16 @@ function standaloneGeometryBlock(geometry: GeometrySpecV1): QuestionGeometryBloc
   }
 }
 
+function standaloneAxisBlock(axis: AxisSpecV1): QuestionAxisBlock {
+  return {
+    id: generateId(),
+    type: 'question_axis',
+    prompt: inlineRichText(''),
+    layout: 'textRight',
+    axis,
+  }
+}
+
 function svgBlock(value: string): SvgBlock {
   return { id: generateId(), type: 'svg', value }
 }
@@ -55,6 +67,14 @@ function geometryAttachment(geometry: GeometrySpecV1): QuestionAttachment {
   }
 }
 
+function axisAttachment(axis: AxisSpecV1): QuestionAttachment {
+  return {
+    kind: 'axis',
+    layout: 'textRight',
+    axis,
+  }
+}
+
 function svgAttachment(value: string): QuestionAttachment {
   return {
     kind: 'svg',
@@ -64,9 +84,11 @@ function svgAttachment(value: string): QuestionAttachment {
 }
 
 function sectionAttachment(section: TextSectionV2): QuestionAttachment | undefined {
-  // Geometry DSL wins if both are somehow set — geometry is richer and the
-  // parser makes them mutually exclusive today anyway.
+  // Preference order when multiple visuals somehow coexist: geometry DSL is
+  // richest, then function graph, then raw SVG. In practice the parser only
+  // fills one field per section so this is just belt-and-braces.
   if (section.geometry) return geometryAttachment(section.geometry)
+  if (section.functionGraph) return axisAttachment(section.functionGraph)
   if (section.svg) return svgAttachment(section.svg)
   return undefined
 }
@@ -190,12 +212,16 @@ export interface ConvertedExerciseV2 {
 export function convertTextExerciseV2ToSections(exercise: TextExerciseV2): ConvertedExerciseV2 {
   const sharedBlocks: ContentBlock[] = []
   if (exercise.intro) sharedBlocks.push(richTextBlock(exercise.intro))
-  // Shared sketch is emitted once at the exercise level. Sections deliberately
+  // Shared visual is emitted once at the exercise level. Sections deliberately
   // don't inherit it as an attachment — that would double-render the same
-  // drawing in every section.
+  // drawing in every section. Only one visual kind is expected per exercise;
+  // if the author somehow supplies more than one we prefer SVG → geometry →
+  // function graph (SVG is the most opaque so if it exists it's intentional).
   if (exercise.sharedSvg) sharedBlocks.push(svgBlock(exercise.sharedSvg))
   else if (exercise.sharedGeometry)
     sharedBlocks.push(standaloneGeometryBlock(exercise.sharedGeometry))
+  else if (exercise.sharedFunctionGraph)
+    sharedBlocks.push(standaloneAxisBlock(exercise.sharedFunctionGraph))
 
   return {
     sharedBlocks,
