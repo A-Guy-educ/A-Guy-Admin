@@ -231,4 +231,49 @@ describe('parseTextLesson — section-scoped SVG', () => {
     expect(sec.options).toEqual(['$A(-2,4)$', '$A(-1,3)$'])
     expect(sec.correctAnswer).toBe('$A(-2,4)$')
   })
+
+  it('recognises an exercise header without a `<category>:` prefix', () => {
+    // The generator's summary exercises use a plain `תרגיל N – <title>`
+    // shape with no colon (e.g. `תרגיל 10 – יישום עצמאי מלא`). Previously
+    // these were silently dropped — the client preview counted them but the
+    // server imported one less lesson than the preview promised.
+    const source = [
+      SEP_EQ,
+      'תרגיל 1 – מנחה: הקדמה',
+      SEP_EQ,
+      'first exercise intro',
+      '',
+      SEP_DASH,
+      '[תרגיל 1 - סעיף א]',
+      SEP_DASH,
+      '* תוכן השאלה: q1',
+      '* אופציות:',
+      '  - a',
+      '  - b',
+      '* פתרון נכון: a',
+      '* סוג תרגיל: בחירה בין 2 אפשרויות',
+      '',
+      SEP_EQ,
+      'תרגיל 2 – יישום עצמאי מלא',
+      SEP_EQ,
+      'summary exercise intro',
+      '',
+      SEP_DASH,
+      '[תרגיל 2 - סעיף א]',
+      SEP_DASH,
+      '* תוכן השאלה: q2',
+      '* אופציות:',
+      '  - x',
+      '  - y',
+      '* פתרון נכון: x',
+      '* סוג תרגיל: בחירה בין 2 אפשרויות',
+    ].join('\n')
+
+    const lesson = parseTextLesson(source)
+    expect(lesson.exercises).toHaveLength(2)
+    expect(lesson.exercises[0].subtopic).toBe('הקדמה')
+    expect(lesson.exercises[1].subtopic).toBe('יישום עצמאי מלא')
+    expect(lesson.exercises[1].intro).toBe('summary exercise intro')
+    expect(lesson.exercises[1].sections).toHaveLength(1)
+  })
 })
