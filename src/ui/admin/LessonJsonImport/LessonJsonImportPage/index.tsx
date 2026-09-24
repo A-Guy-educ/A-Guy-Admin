@@ -144,7 +144,12 @@ function safeParseLesson(json: unknown): {
 // The v2 form accepts both spaced and tight (`[תרגיל 1 - נתוני פתיחה]`)
 // brackets — the server-side signature is equally lax, so the preview
 // wouldn't be lying to the admin if we counted only one shape.
-const TEXT_EXERCISE_HEADER_RE = /^תרגיל\s+[^\s–-]+\s*[–-]\s*[^:]+:\s*(.*)$/gm
+// The `<category>:` prefix is optional (matches the server-side parser).
+// `[^:\n]+` was previously `[^:]+` — the newline in the class allowed the
+// engine to greedily swallow multiple lines to reach a later `:`, which
+// counted a colon-less `תרגיל 10 – title` as a match even though the server
+// dropped it. Both regexes now agree on the exercise count.
+const TEXT_EXERCISE_HEADER_RE = /^תרגיל\s+[^\s–-]+\s*[–-]\s*(?:[^:\n]+:\s*)?(.*)$/gm
 const V2_EXERCISE_HEADER_RE = /^\s*\[\s*תרגיל\s+\S+\s*[-–]\s*נתוני\s*פתיחה\s*\]\s*$/gm
 
 // Mirrors deriveLessonTitle in server/services/text-lesson-import/convert-text-exercise.ts

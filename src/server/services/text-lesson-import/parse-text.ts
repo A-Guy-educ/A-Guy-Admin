@@ -74,7 +74,13 @@ export interface TextLesson {
 // category is one of מנחה/בסיס/הבנה/שילוב/חזרה מסכמת/etc. We don't restrict
 // it — anything up to the first `:` after the en-dash counts as the category,
 // and the rest is the subtopic.
-const EXERCISE_HEADER_RE = /^תרגיל\s+([^\s–-]+)\s*[–-]\s*[^:]+:\s*(.*)$/
+//
+// The `<category>:` prefix is OPTIONAL — the generator's summary exercises
+// use a plain `תרגיל N – <title>` shape with no colon (e.g. `תרגיל 10 –
+// יישום עצמאי מלא`). Previously the parser dropped those silently, which
+// caused the client preview ("10 exercises detected") and the server import
+// ("Created lesson with 9 exercises") to disagree.
+const EXERCISE_HEADER_RE = /^תרגיל\s+([^\s–-]+)\s*[–-]\s*(?:[^:\n]+:\s*)?(.*?)\s*$/
 // The section header uses either en-dash or hyphen, matching the exercise
 // header regex above. Files authored with en-dashed section titles were
 // previously dropped silently.
