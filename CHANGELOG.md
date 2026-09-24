@@ -2079,6 +2079,7 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- fix(text-lesson-import): count colon-less exercise headers on both client and server ([#491](https://github.com/A-Guy-educ/A-Guy-Admin/pull/491)) — @aguyshayb
 - fix(text-lesson-import): catch section-scoped CONFIGURATION blocks in v1 files ([#490](https://github.com/A-Guy-educ/A-Guy-Admin/pull/490)) — @aguyshayb
 - fix(text-lesson-import): catch bare CONFIGURATION graph spec in v1 files ([#489](https://github.com/A-Guy-educ/A-Guy-Admin/pull/489)) — @aguyshayb
 - feat(course-lessons): review dot, status badge, exercise count ([#488](https://github.com/A-Guy-educ/A-Guy-Admin/pull/488)) — @aguyshayb
