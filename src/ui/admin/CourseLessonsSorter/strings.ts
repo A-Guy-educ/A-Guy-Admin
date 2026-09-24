@@ -19,6 +19,12 @@ interface Strings {
   moveDown: string
   failedToLoad: string
   failedToReorder: string
+  draft: string
+  published: string
+  archived: string
+  exercises: string
+  reviewDotTitle: string
+  failedToUpdateReview: string
 }
 
 const EN: Strings = {
@@ -35,6 +41,12 @@ const EN: Strings = {
   moveDown: 'Move down',
   failedToLoad: 'Failed to load lessons',
   failedToReorder: 'Failed to reorder lesson',
+  draft: 'Draft',
+  published: 'Published',
+  archived: 'Archived',
+  exercises: 'exercises',
+  reviewDotTitle: 'Click to cycle review status (red → orange → green)',
+  failedToUpdateReview: 'Failed to update review status',
 }
 
 const HE: Strings = {
@@ -51,6 +63,12 @@ const HE: Strings = {
   moveDown: 'הורד',
   failedToLoad: 'טעינת השיעורים נכשלה',
   failedToReorder: 'שינוי הסדר נכשל',
+  draft: 'טיוטה',
+  published: 'פורסם',
+  archived: 'בארכיון',
+  exercises: 'תרגילים',
+  reviewDotTitle: 'לחיצה מחליפה סטטוס ביקורת (אדום → כתום → ירוק)',
+  failedToUpdateReview: 'עדכון סטטוס הביקורת נכשל',
 }
 
 export function getStrings(lang: string): Strings {

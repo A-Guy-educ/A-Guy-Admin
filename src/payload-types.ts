@@ -1592,6 +1592,10 @@ export interface Lesson {
    */
   status: 'draft' | 'published' | 'archived';
   /**
+   * Editorial review indicator shown as a dot on the course page. Not exposed to students.
+   */
+  reviewStatus?: ('red' | 'orange' | 'green') | null;
+  /**
    * Whether this lesson is currently active
    */
   isActive: boolean;
@@ -4452,6 +4456,7 @@ export interface LessonsSelect<T extends boolean = true> {
   blocks?: T;
   course?: T;
   status?: T;
+  reviewStatus?: T;
   isActive?: T;
   tenant?: T;
   locale?: T;
