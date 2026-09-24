@@ -213,6 +213,7 @@ describe('Lessons Collection Config', () => {
         'lessonIdDisplay',
         'course',
         'status',
+        'reviewStatus',
         'isActive',
         'tenant',
         'locale',
