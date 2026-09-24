@@ -1,28 +1,36 @@
 'use client'
 
+import {
+  prepareHtmlDocumentSource,
+  isFullHtmlDocument,
+} from '@/server/payload/blocks/HtmlBlock/Component'
+
 interface HtmlPreviewProps {
   html: string | null | undefined
 }
 
-export const prepareHtmlPreviewSource = (html: string | null | undefined): string => {
-  const source = html || ''
-  const documentStart = source.search(/<!doctype html|<html\b/i)
+/**
+ * @deprecated Use `prepareHtmlDocumentSource` from
+ * `@/server/payload/blocks/HtmlBlock/Component` instead. Kept for backwards
+ * compatibility with admin components that imported it from here.
+ */
+export const prepareHtmlPreviewSource = prepareHtmlDocumentSource
 
-  return documentStart > 0 ? source.slice(documentStart) : source
-}
-
-export const isFullHtmlPreviewDocument = (html: string | null | undefined): boolean => {
-  return /<!doctype html|<html\b|<body\b/i.test(prepareHtmlPreviewSource(html))
-}
+/**
+ * @deprecated Use `isFullHtmlDocument` from
+ * `@/server/payload/blocks/HtmlBlock/Component` instead. Kept for backwards
+ * compatibility with admin components that imported it from here.
+ */
+export const isFullHtmlPreviewDocument = isFullHtmlDocument
 
 export const HtmlPreview: React.FC<HtmlPreviewProps> = ({ html }) => {
-  const source = prepareHtmlPreviewSource(html)
+  const source = prepareHtmlDocumentSource(html)
 
   if (!source.trim()) {
     return <div className="html-block-preview-pane" />
   }
 
-  if (isFullHtmlPreviewDocument(source)) {
+  if (isFullHtmlDocument(source)) {
     return (
       <iframe
         className="html-block-preview-pane html-block-preview-frame"

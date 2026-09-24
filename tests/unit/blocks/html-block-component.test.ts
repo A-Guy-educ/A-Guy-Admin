@@ -44,4 +44,44 @@ describe('prepareHtmlBlockMarkup', () => {
 
     expect(prepareHtmlBlockMarkup(html)).toBe(html)
   })
+
+  it('returns empty string for null/undefined input (issue #95)', () => {
+    expect(prepareHtmlBlockMarkup(null)).toBe('')
+    expect(prepareHtmlBlockMarkup(undefined)).toBe('')
+    expect(prepareHtmlBlockMarkup('')).toBe('')
+  })
+
+  it('preserves fragments containing <body> tag without closing tag (issue #95)', () => {
+    // When authors paste a malformed body tag, the source is preserved as-is
+    // so the rendered output still reflects what the user typed.
+    const html = '<body><div>Body content</div>'
+
+    expect(prepareHtmlBlockMarkup(html)).toBe(html)
+  })
+
+  it('preserves fragments with only style and content (issue #95)', () => {
+    const html = '<style>.x{color:red}</style><div>Content</div>'
+
+    expect(prepareHtmlBlockMarkup(html)).toBe(html)
+  })
+
+  it('detects full documents by <body> alone (issue #95)', () => {
+    expect(isFullHtmlDocument('<body>Content</body>')).toBe(true)
+    expect(isFullHtmlDocument('<BODY>Content</BODY>')).toBe(true)
+  })
+
+  it('treats fragments without html/body as not full documents (issue #95)', () => {
+    expect(isFullHtmlDocument('<div>Content</div>')).toBe(false)
+    expect(isFullHtmlDocument('Plain text content')).toBe(false)
+    expect(isFullHtmlDocument('')).toBe(false)
+  })
+
+  it('handles html content starting after the document marker (issue #95)', () => {
+    const html = 'prefix text<!DOCTYPE html><html><body>Real content</body></html>'
+
+    expect(prepareHtmlDocumentSource(html)).toBe(
+      '<!DOCTYPE html><html><body>Real content</body></html>',
+    )
+    expect(isFullHtmlDocument(html)).toBe(true)
+  })
 })
