@@ -89,6 +89,12 @@ const SVG_END_RE = /<\/svg>\s*$/i
 // without ambiguity.
 const FUNCTION_START_RE = /^<function>\s*$/i
 const FUNCTION_END_RE = /^<\/function>\s*$/i
+// The generator pipeline emits the boss's structured graph format inline —
+// no `<function>` wrapper, just a bare `CONFIGURATION:` block followed by
+// `## GRAPHS` / `## POINTS` / ... sections. Without this signature the whole
+// spec cascades into the exercise's intro as rich text. `parseFunctionDsl`
+// downstream auto-detects and routes to parse-function-block-v2.ts.
+const CONFIG_START_RE = /^\s*CONFIGURATION\s*:\s*$/i
 const HEADER_LINE_RE = /^(קורס|פרק|שם השיעור)\s*-\s*(.+)$/
 
 const isSeparator = (line: string, ch: string) => {
@@ -280,6 +286,18 @@ export function parseTextLesson(raw: string): TextLesson {
       if (FUNCTION_START_RE.test(line)) {
         currentEx.inFunction = true
         phase = 'svg' // reuse the "in-block" phase — nothing SVG-specific here
+        continue
+      }
+
+      // Bare `CONFIGURATION:` opens an inline boss-format graph block. Since
+      // there's no closing tag, we absorb every subsequent line as function
+      // content until the outer loop hits a top-level separator or the next
+      // exercise header — the separator check at the top of the loop closes
+      // the block for us on the next iteration.
+      if (CONFIG_START_RE.test(line)) {
+        currentEx.inFunction = true
+        currentEx.functionLines.push(line)
+        phase = 'svg'
         continue
       }
 
