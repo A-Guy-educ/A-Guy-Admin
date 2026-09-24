@@ -1,7 +1,7 @@
 # To use this Dockerfile, you have to set `output: 'standalone'` in your next.config.js file.
 # From https://github.com/vercel/next.js/blob/canary/examples/with-docker/Dockerfile
 
-FROM node:20-alpine AS base
+FROM node:26-alpine AS base
 
 # Install pnpm globally at the base layer so subsequent stages don't
 # need to re-install it. corepack was removed from Node in v25+, so
