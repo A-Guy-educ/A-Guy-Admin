@@ -44,6 +44,8 @@
 import type { AxisSpecV1 } from '@/infra/contracts/graphics/axis.v1'
 import type { LineStyle } from '@/infra/contracts/primitives'
 
+import { isFunctionBlockV2, parseFunctionBlockV2 } from './parse-function-block-v2'
+
 export interface ParsedFunctionDsl {
   spec: AxisSpecV1
   errors: string[]
@@ -337,6 +339,14 @@ export function parseFunctionDsl(input: string): ParsedFunctionDsl {
   if (!input || input.trim() === '') {
     errors.push('Function block is empty')
     return { spec, errors }
+  }
+
+  // Route to the boss's structured `[ גרף בסיס ]` format when it appears —
+  // it's the format the generator can reliably produce. The legacy `%%%`
+  // DSL below stays as a fallback for anything already stored in that shape.
+  if (isFunctionBlockV2(input)) {
+    const { spec: v2Spec, warnings } = parseFunctionBlockV2(input)
+    return { spec: v2Spec, errors: warnings }
   }
 
   const sections = splitSections(input)
