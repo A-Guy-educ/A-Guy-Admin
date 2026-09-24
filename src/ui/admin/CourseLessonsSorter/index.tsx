@@ -14,6 +14,9 @@ interface ChapterDoc {
   order: number
 }
 
+type ReviewStatus = 'red' | 'orange' | 'green'
+type LessonStatus = 'draft' | 'published' | 'archived'
+
 interface LessonDoc {
   id: string
   title: string
@@ -21,6 +24,57 @@ interface LessonDoc {
   type: 'learning' | 'practice' | 'exam'
   order: number
   chapter: string | { id: string }
+  status: LessonStatus
+  reviewStatus: ReviewStatus
+  exerciseCount: number
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type RawLesson = Record<string, any>
+
+const REVIEW_CYCLE: Record<ReviewStatus, ReviewStatus> = {
+  red: 'orange',
+  orange: 'green',
+  green: 'red',
+}
+
+const REVIEW_COLORS: Record<ReviewStatus, string> = {
+  red: 'var(--theme-error-500, #ef4444)',
+  orange: 'var(--theme-warning-500, #f59e0b)',
+  green: 'var(--theme-success-500, #22c55e)',
+}
+
+function parseBlocksField(raw: unknown): unknown[] {
+  if (Array.isArray(raw)) return raw
+  if (typeof raw === 'string' && raw.trim()) {
+    try {
+      const parsed = JSON.parse(raw)
+      if (Array.isArray(parsed)) return parsed
+    } catch {
+      // fall through
+    }
+  }
+  return []
+}
+
+function countExercises(raw: unknown): number {
+  return parseBlocksField(raw).filter(
+    (b) => b && typeof b === 'object' && (b as { blockType?: string }).blockType === 'exerciseRef',
+  ).length
+}
+
+function normalizeLesson(raw: RawLesson): LessonDoc {
+  return {
+    id: String(raw.id),
+    title: String(raw.title ?? ''),
+    intro: raw.intro ?? null,
+    type: raw.type ?? 'learning',
+    order: typeof raw.order === 'number' ? raw.order : 0,
+    chapter: raw.chapter,
+    status: (raw.status as LessonStatus | undefined) ?? 'draft',
+    reviewStatus: (raw.reviewStatus as ReviewStatus | undefined) ?? 'red',
+    exerciseCount: countExercises(raw.blocks),
+  }
 }
 
 interface GroupedChapter {
@@ -192,6 +246,48 @@ const filterBarStyle: React.CSSProperties = {
   flexWrap: 'wrap',
 }
 
+const reviewDotStyle = (color: ReviewStatus): React.CSSProperties => ({
+  width: 12,
+  height: 12,
+  borderRadius: '50%',
+  background: REVIEW_COLORS[color],
+  border: '1px solid var(--theme-elevation-200)',
+  cursor: 'pointer',
+  flexShrink: 0,
+  padding: 0,
+})
+
+const statusBadgeStyle = (status: LessonStatus): React.CSSProperties => ({
+  display: 'inline-flex',
+  alignItems: 'center',
+  padding: '2px 8px',
+  borderRadius: 4,
+  fontSize: 11,
+  fontWeight: 600,
+  flexShrink: 0,
+  background:
+    status === 'published'
+      ? 'var(--theme-success-100, #dcfce7)'
+      : status === 'archived'
+        ? 'var(--theme-elevation-100)'
+        : 'var(--theme-elevation-50)',
+  color:
+    status === 'published'
+      ? 'var(--theme-success-600, #16a34a)'
+      : status === 'archived'
+        ? 'var(--theme-elevation-500)'
+        : 'var(--theme-elevation-600)',
+  border: '1px solid var(--theme-elevation-200)',
+})
+
+const exerciseCountStyle: React.CSSProperties = {
+  fontSize: 11,
+  color: 'var(--theme-elevation-500)',
+  fontWeight: 600,
+  flexShrink: 0,
+  whiteSpace: 'nowrap',
+}
+
 const filterBtnStyle = (active: boolean): React.CSSProperties => ({
   display: 'inline-flex',
   alignItems: 'center',
@@ -289,7 +385,7 @@ export const CourseLessonsSorter: React.FC = () => {
         })
         if (!lessonsRes.ok) throw new Error('lessons fetch failed')
         const lessonsData = await lessonsRes.json()
-        const fetchedLessons: LessonDoc[] = lessonsData.docs ?? []
+        const fetchedLessons: LessonDoc[] = (lessonsData.docs ?? []).map(normalizeLesson)
 
         // Group lessons by chapter.id
         const chapterMap = new Map<string, LessonDoc[]>()
@@ -373,6 +469,45 @@ export const CourseLessonsSorter: React.FC = () => {
       }
     },
     [s.failedToReorder, setModified],
+  )
+
+  // Cycle a lesson's review dot: red → orange → green → red
+  const cycleReviewStatus = useCallback(
+    async (chapterId: string, lessonId: string) => {
+      const currentGroup = chaptersRef.current.find((g) => g.chapter.id === chapterId)
+      if (!currentGroup) return
+
+      const lesson = currentGroup.lessons.find((l) => l.id === lessonId)
+      if (!lesson) return
+
+      const next = REVIEW_CYCLE[lesson.reviewStatus]
+      const snapshot = chaptersRef.current
+
+      setChapters((prev) =>
+        prev.map((g) => {
+          if (g.chapter.id !== chapterId) return g
+          return {
+            ...g,
+            lessons: g.lessons.map((l) => (l.id === lessonId ? { ...l, reviewStatus: next } : l)),
+          }
+        }),
+      )
+
+      try {
+        const res = await fetch(`/api/lessons/${lessonId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ reviewStatus: next }),
+        })
+        if (!res.ok) throw new Error('patch failed')
+      } catch (err) {
+        console.error('[CourseLessonsSorter] failed to update reviewStatus:', err)
+        setErrorMsg(s.failedToUpdateReview)
+        setChapters(snapshot)
+      }
+    },
+    [s.failedToUpdateReview],
   )
 
   // Drag-and-drop handlers
@@ -541,6 +676,18 @@ export const CourseLessonsSorter: React.FC = () => {
                     <GripVertical size={16} />
                   </span>
 
+                  {/* Review status dot (click to cycle) */}
+                  <button
+                    type="button"
+                    aria-label={s.reviewDotTitle}
+                    title={s.reviewDotTitle}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      cycleReviewStatus(chapter.id, lesson.id)
+                    }}
+                    style={reviewDotStyle(lesson.reviewStatus)}
+                  />
+
                   {/* Index (per-type, cumulative across chapters) */}
                   <span style={lessonIndexStyle}>
                     {typeIndexByLessonId.get(lesson.id) ?? idx + 1}
@@ -575,6 +722,20 @@ export const CourseLessonsSorter: React.FC = () => {
                     </a>
                     {lesson.intro ? <span style={lessonIntroStyle}>{lesson.intro}</span> : null}
                   </div>
+
+                  {/* Exercise count */}
+                  <span style={exerciseCountStyle}>
+                    {lesson.exerciseCount} {s.exercises}
+                  </span>
+
+                  {/* Publication status badge */}
+                  <span style={statusBadgeStyle(lesson.status)}>
+                    {lesson.status === 'published'
+                      ? s.published
+                      : lesson.status === 'archived'
+                        ? s.archived
+                        : s.draft}
+                  </span>
 
                   {/* Chevron up */}
                   <button
