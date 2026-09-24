@@ -2091,6 +2091,8 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+## [v0.47.0] - 2026-09-24
+
 - promote: dev -> main (v0.47.0) ([#494](https://github.com/A-Guy-educ/A-Guy-Admin/pull/494)) — @aguyshayb
 - chore: release v0.47.0 ([#493](https://github.com/A-Guy-educ/A-Guy-Admin/pull/493)) — @aguyshayb
 - fix(geometry): always draw the minor angle at each vertex ([#492](https://github.com/A-Guy-educ/A-Guy-Admin/pull/492)) — @aguyshayb
