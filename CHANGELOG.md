@@ -2091,6 +2091,7 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- chore: release v0.47.0 ([#493](https://github.com/A-Guy-educ/A-Guy-Admin/pull/493)) — @aguyshayb
 - fix(geometry): always draw the minor angle at each vertex ([#492](https://github.com/A-Guy-educ/A-Guy-Admin/pull/492)) — @aguyshayb
 - fix(text-lesson-import): count colon-less exercise headers on both client and server ([#491](https://github.com/A-Guy-educ/A-Guy-Admin/pull/491)) — @aguyshayb
 - fix(text-lesson-import): catch section-scoped CONFIGURATION blocks in v1 files ([#490](https://github.com/A-Guy-educ/A-Guy-Admin/pull/490)) — @aguyshayb
