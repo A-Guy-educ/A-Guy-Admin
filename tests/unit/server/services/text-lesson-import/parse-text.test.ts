@@ -104,4 +104,70 @@ describe('parseTextLesson — section-scoped SVG', () => {
     expect(exercise.svg).toBe('<svg id="shared"><rect/></svg>')
     expect(exercise.sections[0].svg).toBeUndefined()
   })
+
+  it('captures an unfenced boss-format CONFIGURATION graph block on exercise.function', () => {
+    // The generator emits the boss's structured graph inline in the v1
+    // exercise intro — no `<function>` wrapper, just a bare `CONFIGURATION:`
+    // block followed by `GRAPHS` / `POINTS` sections. Before this change the
+    // whole spec cascaded into the rich-text intro; now it's captured as a
+    // proper function block so the converter can emit `question_axis`.
+    const source = [
+      SEP_EQ,
+      'תרגיל 1 – מנחה: היכרות עם פונקציות',
+      SEP_EQ,
+      'לפניכם גרף של $f(x)=x^2$.',
+      '',
+      'CONFIGURATION:',
+      '  Units: 1',
+      '  Grid: true',
+      '  Manual Range: true',
+      '  X Min: -5',
+      '  X Max: 5',
+      '  Y Min: -2',
+      '  Y Max: 10',
+      '',
+      '--------------------------------------------------------------------------------',
+      'GRAPHS',
+      '--------------------------------------------------------------------------------',
+      '',
+      'Graph 1:',
+      '  Function F(X): x^2',
+      '  Style: Solid',
+      '  Width: 2',
+      '  Color: Blue',
+      '',
+      '--------------------------------------------------------------------------------',
+      'POINTS',
+      '--------------------------------------------------------------------------------',
+      '',
+      'None',
+      '',
+      SEP_DASH,
+      '[תרגיל 1 - סעיף א]',
+      SEP_DASH,
+      '* תוכן השאלה: מה השטח?',
+      '* אופציות:',
+      '  - 20',
+      '  - 18',
+      '* פתרון נכון: 20',
+      '* סוג תרגיל: בחירה בין 2 אפשרויות',
+    ].join('\n')
+
+    const lesson = parseTextLesson(source)
+    const exercise = lesson.exercises[0]
+
+    // Intro is JUST the narrative — no CONFIG-related lines leaked in.
+    expect(exercise.intro).toBe('לפניכם גרף של $f(x)=x^2$.')
+    expect(exercise.intro).not.toContain('CONFIGURATION')
+    expect(exercise.intro).not.toContain('GRAPHS')
+
+    // Function block carries the whole boss spec, starting with CONFIGURATION.
+    expect(exercise.function).toBeDefined()
+    expect(exercise.function).toContain('CONFIGURATION:')
+    expect(exercise.function).toContain('Function F(X): x^2')
+
+    // Downstream section still parses normally.
+    expect(exercise.sections).toHaveLength(1)
+    expect(exercise.sections[0].correctAnswer).toBe('20')
+  })
 })
