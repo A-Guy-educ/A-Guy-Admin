@@ -5,7 +5,7 @@ import {
   getDefaultTextColor,
   sizeScaleToPixels,
 } from '@/infra/contracts/graphics/textColors'
-import { computeAngleLabelPos } from '@/infra/utils/graphics/angle-label'
+import { computeAngleLabelPos, orderRaysForMinorAngle } from '@/infra/utils/graphics/angle-label'
 
 type PointSpec = GeometrySpecV1['elements']['points'][number]
 type LineSpec = GeometrySpecV1['elements']['lines'][number]
@@ -151,7 +151,9 @@ function renderAngles(board: JXG.Board, angles: AngleSpec[], pointMap: Map<strin
     // along the bisector so admins can pick one of three preset distances.
     // Web mirrors that here so the rendered lesson matches what the editor
     // shows.
-    board.create('angle', [ray1, center, ray2], {
+    // Reorder rays so JSXGraph draws the minor angle, never the reflex one.
+    const [rA, rB] = orderRaysForMinorAngle(center, ray1, ray2)
+    board.create('angle', [rA, center, rB], {
       radius: arcRadius,
       type: shape,
       orthoType: shape,
