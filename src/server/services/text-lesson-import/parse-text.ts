@@ -279,8 +279,21 @@ export function parseTextLesson(raw: string): TextLesson {
           phase = 'exercise_intro'
           continue
         }
-        currentEx.functionLines.push(line)
-        continue
+        // CONFIG-style blocks have no end tag; a following `* field:` line
+        // (rare at the exercise level but possible for generators that write
+        // a top-level `* פונקציה: ...` or similar) closes the block.
+        const startedWithConfig = currentEx.functionLines[0]
+          ?.trim()
+          .toUpperCase()
+          .startsWith('CONFIGURATION')
+        if (startedWithConfig && FIELD_RE.test(line)) {
+          currentEx.inFunction = false
+          phase = 'exercise_intro'
+          // fall through so the line is consumed by the intro/field detection below
+        } else {
+          currentEx.functionLines.push(line)
+          continue
+        }
       }
 
       if (FUNCTION_START_RE.test(line)) {
@@ -343,12 +356,36 @@ export function parseTextLesson(raw: string): TextLesson {
           currentField = null
           continue
         }
-        currentSection.functionLines.push(line)
-        continue
+        // CONFIG-style blocks have no end tag. When the collected block was
+        // opened by a `CONFIGURATION:` marker, the next `* field:` line
+        // (options, correct answer, hint, …) ends the block. Fall through
+        // so the field handler below can consume that same line.
+        const startedWithConfig = currentSection.functionLines[0]
+          ?.trim()
+          .toUpperCase()
+          .startsWith('CONFIGURATION')
+        if (startedWithConfig && FIELD_RE.test(line)) {
+          currentSection.inFunction = false
+          // don't `continue` — let the normal field detection below run
+        } else {
+          currentSection.functionLines.push(line)
+          continue
+        }
       }
 
       if (FUNCTION_START_RE.test(line)) {
         currentSection.inFunction = true
+        currentField = null
+        continue
+      }
+
+      // Same inline `CONFIGURATION:` catch as the exercise-intro phase.
+      // Without this, a section-scoped graph spec leaks into whatever field
+      // was previously being read — typically the `תוכן השאלה` field,
+      // rendering the whole spec as raw text inside the question prompt.
+      if (CONFIG_START_RE.test(line)) {
+        currentSection.inFunction = true
+        currentSection.functionLines.push(line)
         currentField = null
         continue
       }

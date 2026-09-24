@@ -170,4 +170,65 @@ describe('parseTextLesson — section-scoped SVG', () => {
     expect(exercise.sections).toHaveLength(1)
     expect(exercise.sections[0].correctAnswer).toBe('20')
   })
+
+  it('captures a section-level CONFIGURATION block on section.function, not in the question text', () => {
+    // Same generator, section-scoped: the graph spec sits inside a section
+    // between `* תוכן השאלה:` and the options. Before the fix it cascaded
+    // into `question` because the parser treated every non-field line as a
+    // continuation of the current field.
+    const source = [
+      SEP_EQ,
+      'תרגיל 1 – מנחה: היכרות עם פונקציות',
+      SEP_EQ,
+      'הקדמה.',
+      '',
+      SEP_DASH,
+      '[תרגיל 1 - סעיף א]',
+      SEP_DASH,
+      '* תוכן השאלה: התבוננו בזוג הפרבולות החדש.',
+      '',
+      'CONFIGURATION:',
+      '  Units: 1',
+      '  Grid: true',
+      '  Manual Range: true',
+      '  X Min: -5',
+      '  X Max: 5',
+      '  Y Min: -5',
+      '  Y Max: 6',
+      '',
+      'GRAPHS',
+      '',
+      'Graph 1:',
+      '  Function F(X): x^2-3',
+      '  Style: Solid',
+      '  Width: 2',
+      '  Color: Green',
+      '',
+      'POINTS',
+      'None',
+      '',
+      '* אופציות:',
+      '  - $A(-2,4)$',
+      '  - $A(-1,3)$',
+      '* פתרון נכון: $A(-2,4)$',
+      '* סוג תרגיל: בחירה בין 2 אפשרויות',
+    ].join('\n')
+
+    const lesson = parseTextLesson(source)
+    const sec = lesson.exercises[0].sections[0]
+
+    // Question text is JUST the prompt — no CONFIG / GRAPHS / Function lines.
+    expect(sec.question).toBe('התבוננו בזוג הפרבולות החדש.')
+    expect(sec.question).not.toContain('CONFIGURATION')
+    expect(sec.question).not.toContain('Function F(X)')
+
+    // Section-level function block was captured.
+    expect(sec.function).toBeDefined()
+    expect(sec.function).toContain('CONFIGURATION:')
+    expect(sec.function).toContain('Function F(X): x^2-3')
+
+    // Options + correct answer still parsed normally.
+    expect(sec.options).toEqual(['$A(-2,4)$', '$A(-1,3)$'])
+    expect(sec.correctAnswer).toBe('$A(-2,4)$')
+  })
 })
