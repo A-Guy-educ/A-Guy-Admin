@@ -2079,6 +2079,7 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- fix(text-lesson-import): catch bare CONFIGURATION graph spec in v1 files ([#489](https://github.com/A-Guy-educ/A-Guy-Admin/pull/489)) — @aguyshayb
 - feat(course-lessons): review dot, status badge, exercise count ([#488](https://github.com/A-Guy-educ/A-Guy-Admin/pull/488)) — @aguyshayb
 - feat(text-lesson-import): parse boss's structured function-graph format ([#487](https://github.com/A-Guy-educ/A-Guy-Admin/pull/487)) — @aguyshayb
 ## [v0.46.1] - 2026-09-23
