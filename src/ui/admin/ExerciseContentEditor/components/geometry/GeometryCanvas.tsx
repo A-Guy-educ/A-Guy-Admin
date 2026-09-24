@@ -10,6 +10,7 @@ import {
 import { computeBoardSize } from '@/infra/utils/graphics/board-sizing'
 import {
   computeAngleLabelPos,
+  orderRaysForMinorAngle,
   snapAngleLabelDistance,
   type AngleLabelDistance,
   type BoardPixelScale,
@@ -561,7 +562,9 @@ function syncAngles(
     // Renderer fallback stays at 30 so legacy angles saved without an explicit
     // arcRadius don't grow. New-angle authoring defaults to 50 in AnglesPanel.
     const arcRadius = angle.arcRadius || 30
-    const el = board.create('angle', [ray1El, centerEl, ray2El], {
+    // Reorder rays so JSXGraph draws the minor angle, never the reflex one.
+    const [rA, rB] = orderRaysForMinorAngle(centerEl, ray1El, ray2El)
+    const el = board.create('angle', [rA, centerEl, rB], {
       radius: arcRadius,
       type: shape,
       orthoType: shape,
