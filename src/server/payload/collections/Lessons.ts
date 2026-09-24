@@ -711,6 +711,20 @@ export const Lessons: CollectionConfig = {
               },
             },
             {
+              name: 'reviewStatus',
+              type: 'select',
+              defaultValue: 'red',
+              options: [
+                { label: 'Red (needs work)', value: 'red' },
+                { label: 'Orange (in review)', value: 'orange' },
+                { label: 'Green (ready)', value: 'green' },
+              ],
+              admin: {
+                description:
+                  'Editorial review indicator shown as a dot on the course page. Not exposed to students.',
+              },
+            },
+            {
               name: 'isActive',
               type: 'checkbox',
               required: true,

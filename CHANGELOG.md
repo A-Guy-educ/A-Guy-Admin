@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.47.0 — 2026-09-24
+
+### Features
+- Course lessons: editorial review dot, publication-status badge, and per-lesson exercise count on the course page; new `reviewStatus` field on Lessons (red / orange / green, default `red`) surfaced in the system tab (#488)
+- Text-lesson import: parse the structured function-graph format (author's preferred syntax) into v2 function-graph blocks (#487)
+
+### Bug Fixes
+- Geometry rendering: always draw the minor angle at each vertex, regardless of point order (#492)
+- Text-lesson import: recognise colon-less exercise headers on both client and server; stop the client greedy-across-lines match (#491)
+- Text-lesson import: catch section-scoped CONFIGURATION blocks in v1 files (#490)
+- Text-lesson import (v1): handle inline graph specs — bare CONFIGURATION graph specs are now parsed correctly (#489)
+
 ## v0.46.1 — 2026-09-23
 
 ### Bug Fixes
@@ -2079,6 +2091,16 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- chore: release v0.47.0 ([#493](https://github.com/A-Guy-educ/A-Guy-Admin/pull/493)) — @aguyshayb
+- fix(geometry): always draw the minor angle at each vertex ([#492](https://github.com/A-Guy-educ/A-Guy-Admin/pull/492)) — @aguyshayb
+- fix(text-lesson-import): count colon-less exercise headers on both client and server ([#491](https://github.com/A-Guy-educ/A-Guy-Admin/pull/491)) — @aguyshayb
+- fix(text-lesson-import): catch section-scoped CONFIGURATION blocks in v1 files ([#490](https://github.com/A-Guy-educ/A-Guy-Admin/pull/490)) — @aguyshayb
+- fix(text-lesson-import): catch bare CONFIGURATION graph spec in v1 files ([#489](https://github.com/A-Guy-educ/A-Guy-Admin/pull/489)) — @aguyshayb
+- feat(course-lessons): review dot, status badge, exercise count ([#488](https://github.com/A-Guy-educ/A-Guy-Admin/pull/488)) — @aguyshayb
+- feat(text-lesson-import): parse boss's structured function-graph format ([#487](https://github.com/A-Guy-educ/A-Guy-Admin/pull/487)) — @aguyshayb
+## [v0.46.1] - 2026-09-23
+
+- promote: dev -> main (v0.46.1) ([#485](https://github.com/A-Guy-educ/A-Guy-Admin/pull/485)) — @aguyshayb
 - chore: release v0.46.1 ([#484](https://github.com/A-Guy-educ/A-Guy-Admin/pull/484)) — @aguyshayb
 - chore(ci): Disable auto vercel deploy on push ([#481](https://github.com/A-Guy-educ/A-Guy-Admin/pull/481)) — @aguyshayb
 - fix(text-lesson-import): stop פתרון מלא spill + accept generator field variants ([#480](https://github.com/A-Guy-educ/A-Guy-Admin/pull/480)) — @aguyshayb

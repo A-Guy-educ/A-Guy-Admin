@@ -71,6 +71,31 @@ export function computeAngleLabelPos(
 }
 
 /**
+ * Reorder two ray endpoints so that JSXGraph's `angle` element draws the
+ * minor (≤ 180°) angle at the vertex instead of the reflex one.
+ *
+ * JSXGraph sweeps `board.create('angle', [ray1, center, ray2])` counter-
+ * clockwise from ray1 to ray2. When that CCW sweep exceeds 180° the reflex
+ * angle is shown. The 2D cross product of the two centre→ray vectors tells us
+ * the sweep direction: negative means ray2 is clockwise from ray1, so the
+ * CCW sweep is > 180° and we swap.
+ *
+ * Ray order is irrelevant for the angle-label bisector (it uses the symmetric
+ * v1̂ + v2̂), so callers can keep passing the original rays to
+ * `computeAngleLabelPos`.
+ */
+export function orderRaysForMinorAngle<T extends { X: () => number; Y: () => number }>(
+  center: T,
+  ray1: T,
+  ray2: T,
+): [T, T] {
+  const cross =
+    (ray1.X() - center.X()) * (ray2.Y() - center.Y()) -
+    (ray1.Y() - center.Y()) * (ray2.X() - center.X())
+  return cross < 0 ? [ray2, ray1] : [ray1, ray2]
+}
+
+/**
  * Given the drag-drop position of an angle label, return the distance ring
  * whose target position is closest. All math done in pixel space.
  */

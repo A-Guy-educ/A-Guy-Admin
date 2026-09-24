@@ -104,4 +104,176 @@ describe('parseTextLesson — section-scoped SVG', () => {
     expect(exercise.svg).toBe('<svg id="shared"><rect/></svg>')
     expect(exercise.sections[0].svg).toBeUndefined()
   })
+
+  it('captures an unfenced boss-format CONFIGURATION graph block on exercise.function', () => {
+    // The generator emits the boss's structured graph inline in the v1
+    // exercise intro — no `<function>` wrapper, just a bare `CONFIGURATION:`
+    // block followed by `GRAPHS` / `POINTS` sections. Before this change the
+    // whole spec cascaded into the rich-text intro; now it's captured as a
+    // proper function block so the converter can emit `question_axis`.
+    const source = [
+      SEP_EQ,
+      'תרגיל 1 – מנחה: היכרות עם פונקציות',
+      SEP_EQ,
+      'לפניכם גרף של $f(x)=x^2$.',
+      '',
+      'CONFIGURATION:',
+      '  Units: 1',
+      '  Grid: true',
+      '  Manual Range: true',
+      '  X Min: -5',
+      '  X Max: 5',
+      '  Y Min: -2',
+      '  Y Max: 10',
+      '',
+      '--------------------------------------------------------------------------------',
+      'GRAPHS',
+      '--------------------------------------------------------------------------------',
+      '',
+      'Graph 1:',
+      '  Function F(X): x^2',
+      '  Style: Solid',
+      '  Width: 2',
+      '  Color: Blue',
+      '',
+      '--------------------------------------------------------------------------------',
+      'POINTS',
+      '--------------------------------------------------------------------------------',
+      '',
+      'None',
+      '',
+      SEP_DASH,
+      '[תרגיל 1 - סעיף א]',
+      SEP_DASH,
+      '* תוכן השאלה: מה השטח?',
+      '* אופציות:',
+      '  - 20',
+      '  - 18',
+      '* פתרון נכון: 20',
+      '* סוג תרגיל: בחירה בין 2 אפשרויות',
+    ].join('\n')
+
+    const lesson = parseTextLesson(source)
+    const exercise = lesson.exercises[0]
+
+    // Intro is JUST the narrative — no CONFIG-related lines leaked in.
+    expect(exercise.intro).toBe('לפניכם גרף של $f(x)=x^2$.')
+    expect(exercise.intro).not.toContain('CONFIGURATION')
+    expect(exercise.intro).not.toContain('GRAPHS')
+
+    // Function block carries the whole boss spec, starting with CONFIGURATION.
+    expect(exercise.function).toBeDefined()
+    expect(exercise.function).toContain('CONFIGURATION:')
+    expect(exercise.function).toContain('Function F(X): x^2')
+
+    // Downstream section still parses normally.
+    expect(exercise.sections).toHaveLength(1)
+    expect(exercise.sections[0].correctAnswer).toBe('20')
+  })
+
+  it('captures a section-level CONFIGURATION block on section.function, not in the question text', () => {
+    // Same generator, section-scoped: the graph spec sits inside a section
+    // between `* תוכן השאלה:` and the options. Before the fix it cascaded
+    // into `question` because the parser treated every non-field line as a
+    // continuation of the current field.
+    const source = [
+      SEP_EQ,
+      'תרגיל 1 – מנחה: היכרות עם פונקציות',
+      SEP_EQ,
+      'הקדמה.',
+      '',
+      SEP_DASH,
+      '[תרגיל 1 - סעיף א]',
+      SEP_DASH,
+      '* תוכן השאלה: התבוננו בזוג הפרבולות החדש.',
+      '',
+      'CONFIGURATION:',
+      '  Units: 1',
+      '  Grid: true',
+      '  Manual Range: true',
+      '  X Min: -5',
+      '  X Max: 5',
+      '  Y Min: -5',
+      '  Y Max: 6',
+      '',
+      'GRAPHS',
+      '',
+      'Graph 1:',
+      '  Function F(X): x^2-3',
+      '  Style: Solid',
+      '  Width: 2',
+      '  Color: Green',
+      '',
+      'POINTS',
+      'None',
+      '',
+      '* אופציות:',
+      '  - $A(-2,4)$',
+      '  - $A(-1,3)$',
+      '* פתרון נכון: $A(-2,4)$',
+      '* סוג תרגיל: בחירה בין 2 אפשרויות',
+    ].join('\n')
+
+    const lesson = parseTextLesson(source)
+    const sec = lesson.exercises[0].sections[0]
+
+    // Question text is JUST the prompt — no CONFIG / GRAPHS / Function lines.
+    expect(sec.question).toBe('התבוננו בזוג הפרבולות החדש.')
+    expect(sec.question).not.toContain('CONFIGURATION')
+    expect(sec.question).not.toContain('Function F(X)')
+
+    // Section-level function block was captured.
+    expect(sec.function).toBeDefined()
+    expect(sec.function).toContain('CONFIGURATION:')
+    expect(sec.function).toContain('Function F(X): x^2-3')
+
+    // Options + correct answer still parsed normally.
+    expect(sec.options).toEqual(['$A(-2,4)$', '$A(-1,3)$'])
+    expect(sec.correctAnswer).toBe('$A(-2,4)$')
+  })
+
+  it('recognises an exercise header without a `<category>:` prefix', () => {
+    // The generator's summary exercises use a plain `תרגיל N – <title>`
+    // shape with no colon (e.g. `תרגיל 10 – יישום עצמאי מלא`). Previously
+    // these were silently dropped — the client preview counted them but the
+    // server imported one less lesson than the preview promised.
+    const source = [
+      SEP_EQ,
+      'תרגיל 1 – מנחה: הקדמה',
+      SEP_EQ,
+      'first exercise intro',
+      '',
+      SEP_DASH,
+      '[תרגיל 1 - סעיף א]',
+      SEP_DASH,
+      '* תוכן השאלה: q1',
+      '* אופציות:',
+      '  - a',
+      '  - b',
+      '* פתרון נכון: a',
+      '* סוג תרגיל: בחירה בין 2 אפשרויות',
+      '',
+      SEP_EQ,
+      'תרגיל 2 – יישום עצמאי מלא',
+      SEP_EQ,
+      'summary exercise intro',
+      '',
+      SEP_DASH,
+      '[תרגיל 2 - סעיף א]',
+      SEP_DASH,
+      '* תוכן השאלה: q2',
+      '* אופציות:',
+      '  - x',
+      '  - y',
+      '* פתרון נכון: x',
+      '* סוג תרגיל: בחירה בין 2 אפשרויות',
+    ].join('\n')
+
+    const lesson = parseTextLesson(source)
+    expect(lesson.exercises).toHaveLength(2)
+    expect(lesson.exercises[0].subtopic).toBe('הקדמה')
+    expect(lesson.exercises[1].subtopic).toBe('יישום עצמאי מלא')
+    expect(lesson.exercises[1].intro).toBe('summary exercise intro')
+    expect(lesson.exercises[1].sections).toHaveLength(1)
+  })
 })

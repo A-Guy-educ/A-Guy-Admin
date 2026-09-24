@@ -29,7 +29,9 @@
  * capture the raw block text between the geometry field marker and the
  * next top-level field / separator.
  */
+import type { AxisSpecV1 } from '@/infra/contracts/graphics/axis.v1'
 import type { GeometrySpecV1 } from '@/infra/contracts/graphics/geometry.v1'
+import { parseFunctionDsl } from '@/server/services/lesson-json-import/parse-function-dsl'
 
 import { parseGeometryDsl } from './parse-geometry-dsl'
 
@@ -58,6 +60,8 @@ export interface TextSectionV2 {
   geometry?: GeometrySpecV1
   /** Raw SVG markup pulled from `שרטוט מותאם לסעיף` when the block was inline `<svg>` rather than DSL. Mutually exclusive with `geometry`. */
   svg?: string
+  /** Parsed function graph from `גרף מותאם לסעיף`. Follows the same "own-only, no shared fallback" rule as `geometry`. */
+  functionGraph?: AxisSpecV1
   geometryWarnings: string[]
 }
 
@@ -71,6 +75,8 @@ export interface TextExerciseV2 {
   sharedGeometry?: GeometrySpecV1
   /** Raw SVG markup pulled from `שרטוט בסיס` when the block was inline `<svg>` rather than DSL. Mutually exclusive with `sharedGeometry`. */
   sharedSvg?: string
+  /** Parsed function graph from `גרף בסיס` at the exercise level (the boss's structured `[ גרף בסיס ]` format). */
+  sharedFunctionGraph?: AxisSpecV1
   sharedGeometryWarnings: string[]
   sections: TextSectionV2[]
 }
@@ -145,6 +151,14 @@ function classifyType(raw: string): QuestionTypeV2 {
 // Parser state
 // ---------------------------------------------------------------------------
 
+/**
+ * Which kind of visual block is currently open. Both `שרטוט …` and
+ * `גרף …` markers absorb the same "indented content until the next
+ * top-level field" pattern; the mode remembers whether the collected
+ * lines should be handed to parseGeometryDsl or parseFunctionDsl.
+ */
+type BlockMode = 'geometry' | 'function'
+
 interface MutableSectionV2 {
   questionNumber: string
   headerRest: string
@@ -154,7 +168,8 @@ interface MutableSectionV2 {
   typeRaw: string
   options: TextOptionV2[]
   geometryLines: string[]
-  inGeometry: boolean
+  functionLines: string[]
+  inBlock: BlockMode | null
 }
 
 interface MutableExerciseV2 {
@@ -162,7 +177,8 @@ interface MutableExerciseV2 {
   headerRest: string
   intro: string
   sharedGeometryLines: string[]
-  inGeometry: boolean
+  sharedFunctionLines: string[]
+  inBlock: BlockMode | null
   sections: MutableSectionV2[]
 }
 
@@ -172,7 +188,8 @@ function newExercise(num: string, headerRest: string): MutableExerciseV2 {
     headerRest,
     intro: '',
     sharedGeometryLines: [],
-    inGeometry: false,
+    sharedFunctionLines: [],
+    inBlock: null,
     sections: [],
   }
 }
@@ -185,7 +202,8 @@ function newSection(num: string, headerRest: string): MutableSectionV2 {
     typeRaw: '',
     options: [],
     geometryLines: [],
-    inGeometry: false,
+    functionLines: [],
+    inBlock: null,
   }
 }
 
@@ -197,14 +215,14 @@ type SectionFieldSlot = 'question' | 'hint' | 'fullSolution'
 type ExerciseFieldSlot = 'intro'
 
 type ApplySectionResult =
-  | { kind: 'geometry-start' }
+  | { kind: 'block-start'; mode: BlockMode }
   | { kind: 'option' }
   | { kind: 'type' }
   | { kind: 'consumed'; slot: SectionFieldSlot }
   | { kind: 'passthrough' }
 
 type ApplyExerciseResult =
-  | { kind: 'geometry-start' }
+  | { kind: 'block-start'; mode: BlockMode }
   | { kind: 'consumed'; slot: ExerciseFieldSlot }
   | { kind: 'passthrough' }
 
@@ -236,8 +254,12 @@ function applyExerciseField(
     return { kind: 'consumed', slot: 'intro' }
   }
   if (k === 'שרטוט בסיס' || k === 'שרטוט בסיסי') {
-    ex.inGeometry = true
-    return { kind: 'geometry-start' }
+    ex.inBlock = 'geometry'
+    return { kind: 'block-start', mode: 'geometry' }
+  }
+  if (k === 'גרף בסיס' || k === 'גרף בסיסי' || k === 'גרף') {
+    ex.inBlock = 'function'
+    return { kind: 'block-start', mode: 'function' }
   }
   return { kind: 'passthrough' }
 }
@@ -265,8 +287,14 @@ function applySectionField(sec: MutableSectionV2, key: string, value: string): A
   // problem is revised mid-section — treating it as anything other than a
   // geometry block would cascade the DSL rows into fullSolution.
   if (k === 'שרטוט מותאם' || k === 'שרטוט מותאם לסעיף' || k === 'שרטוט בסיס') {
-    sec.inGeometry = true
-    return { kind: 'geometry-start' }
+    sec.inBlock = 'geometry'
+    return { kind: 'block-start', mode: 'geometry' }
+  }
+  // Same shape for function graphs (`* גרף מותאם לסעיף:` at the section
+  // level, `* גרף בסיס:` when the whole exercise focuses on one graph).
+  if (k === 'גרף מותאם' || k === 'גרף מותאם לסעיף' || k === 'גרף בסיס' || k === 'גרף') {
+    sec.inBlock = 'function'
+    return { kind: 'block-start', mode: 'function' }
   }
   const optionMatch = k.match(OPTION_FIELD_RE)
   if (optionMatch) {
@@ -316,8 +344,21 @@ function classifyBlockBody(rawLines: string[]): {
   return { spec: hasContent ? spec : undefined, warnings, hasContent }
 }
 
+function parseFunctionBlock(rawLines: string[]): {
+  spec?: AxisSpecV1
+  warnings: string[]
+} {
+  if (rawLines.length === 0) return { warnings: [] }
+  const joined = rawLines.join('\n')
+  if (!joined.trim()) return { warnings: [] }
+  const { spec, errors } = parseFunctionDsl(joined)
+  const hasContent = spec.elements.graphs.length > 0 || spec.elements.points.length > 0
+  return hasContent ? { spec, warnings: errors } : { warnings: errors }
+}
+
 function finalizeSection(sec: MutableSectionV2): TextSectionV2 {
-  const { svg, spec, warnings, hasContent } = classifyBlockBody(sec.geometryLines)
+  const geometryBody = classifyBlockBody(sec.geometryLines)
+  const functionBody = parseFunctionBlock(sec.functionLines)
   return {
     questionNumber: sec.questionNumber,
     headerRest: sec.headerRest,
@@ -326,25 +367,28 @@ function finalizeSection(sec: MutableSectionV2): TextSectionV2 {
     fullSolution: sec.fullSolution?.trim() || undefined,
     type: classifyType(sec.typeRaw),
     options: sec.options,
-    // Section geometry/svg is set ONLY when the section has its own block.
-    // We deliberately do NOT fall back to the exercise-level shared sketch —
-    // that would emit the same drawing twice (once via sharedBlocks, once
-    // per section as an attachment).
-    geometry: hasContent ? spec : undefined,
-    svg: hasContent ? svg : undefined,
-    geometryWarnings: warnings,
+    // Section geometry/svg/graph is set ONLY when the section has its own
+    // block. We deliberately do NOT fall back to the exercise-level shared
+    // drawing — that would emit the same visual twice (once via
+    // sharedBlocks, once per section as an attachment).
+    geometry: geometryBody.hasContent ? geometryBody.spec : undefined,
+    svg: geometryBody.hasContent ? geometryBody.svg : undefined,
+    functionGraph: functionBody.spec,
+    geometryWarnings: [...geometryBody.warnings, ...functionBody.warnings],
   }
 }
 
 function finalizeExercise(ex: MutableExerciseV2): TextExerciseV2 {
-  const { svg, spec, warnings, hasContent } = classifyBlockBody(ex.sharedGeometryLines)
+  const geometryBody = classifyBlockBody(ex.sharedGeometryLines)
+  const functionBody = parseFunctionBlock(ex.sharedFunctionLines)
   return {
     exerciseNumber: ex.exerciseNumber,
     headerRest: ex.headerRest,
     intro: ex.intro.trim(),
-    sharedGeometry: hasContent ? spec : undefined,
-    sharedSvg: hasContent ? svg : undefined,
-    sharedGeometryWarnings: warnings,
+    sharedGeometry: geometryBody.hasContent ? geometryBody.spec : undefined,
+    sharedSvg: geometryBody.hasContent ? geometryBody.svg : undefined,
+    sharedFunctionGraph: functionBody.spec,
+    sharedGeometryWarnings: [...geometryBody.warnings, ...functionBody.warnings],
     sections: ex.sections.map((s) => finalizeSection(s)),
   }
 }
@@ -464,21 +508,25 @@ export function parseTextLessonV2(raw: string): TextLessonV2 {
       continue
     }
 
-    // Inside an in-flight geometry block, greedily consume indented content
-    // until we hit a top-level field or a separator on the NEXT iteration.
-    if (currentSec && currentSec.inGeometry) {
+    // Inside an in-flight geometry/function block, greedily consume indented
+    // content until we hit a top-level field or a separator on the NEXT
+    // iteration. Function blocks reuse the same "capture until next top-level
+    // field" loop as geometry — only the destination buffer differs.
+    if (currentSec && currentSec.inBlock) {
       if (isTopLevelFieldStart(line)) {
-        currentSec.inGeometry = false
+        currentSec.inBlock = null
         // fall through to field-detection below
       } else {
-        currentSec.geometryLines.push(line)
+        if (currentSec.inBlock === 'function') currentSec.functionLines.push(line)
+        else currentSec.geometryLines.push(line)
         continue
       }
-    } else if (currentEx && currentEx.inGeometry && !currentSec) {
+    } else if (currentEx && currentEx.inBlock && !currentSec) {
       if (isTopLevelFieldStart(line)) {
-        currentEx.inGeometry = false
+        currentEx.inBlock = null
       } else {
-        currentEx.sharedGeometryLines.push(line)
+        if (currentEx.inBlock === 'function') currentEx.sharedFunctionLines.push(line)
+        else currentEx.sharedGeometryLines.push(line)
         continue
       }
     }
@@ -490,7 +538,7 @@ export function parseTextLessonV2(raw: string): TextLessonV2 {
       const value = fm[2]
       if (currentSec) {
         const status = applySectionField(currentSec, key, value)
-        if (status.kind === 'geometry-start') {
+        if (status.kind === 'block-start') {
           currentField = null
           continue
         }
@@ -516,7 +564,7 @@ export function parseTextLessonV2(raw: string): TextLessonV2 {
       }
       if (currentEx) {
         const status = applyExerciseField(currentEx, key, value)
-        if (status.kind === 'geometry-start') {
+        if (status.kind === 'block-start') {
           currentField = null
           continue
         }

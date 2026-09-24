@@ -382,4 +382,86 @@ describe('parseTextLessonV2 — basic shape', () => {
     expect(sec.fullSolution).not.toContain('--- נקודות ---')
     expect(sec.fullSolution).not.toContain('נקודה A')
   })
+
+  it('captures `* גרף בסיס:` at the exercise level as sharedFunctionGraph', () => {
+    // The boss's structured `[ גרף בסיס ]` format goes inside a `* גרף בסיס:`
+    // marker for v2 lessons — same shape as `שרטוט בסיס`, just routes to the
+    // function parser instead of the geometry DSL.
+    const source = [
+      SEP,
+      '[ תרגיל 1 - נתוני פתיחה ]',
+      SEP,
+      '* טקסט: לפניכם שתי פרבולות.',
+      '* גרף בסיס:',
+      '  CONFIGURATION:',
+      '  Units: 1',
+      '  Grid: true',
+      '  Manual Range: true',
+      '  X Min: -6',
+      '  X Max: 6',
+      '  Y Min: -6',
+      '  Y Max: 23',
+      '  ## GRAPHS',
+      '  Graph 1:',
+      '  Function F(X): x^2',
+      '  Style: Solid',
+      '  Width: 2',
+      '  Color: Red',
+      '',
+      SEP,
+      "[ תרגיל 1 - סעיף א' - שאלת ברירה יחידה ]",
+      SEP,
+      '* סוג השאלה: Single Choice',
+      '* הנחיה: prompt',
+      '* אפשרות 1: A [תשובה נכונה]',
+      '* אפשרות 2: B',
+    ].join('\n')
+
+    const lesson = parseTextLessonV2(source)
+    const ex = lesson.exercises[0]
+    expect(ex.sharedFunctionGraph).toBeDefined()
+    expect(ex.sharedFunctionGraph?.elements.graphs).toHaveLength(1)
+    expect(ex.sharedFunctionGraph?.elements.graphs[0].fn).toBe('x^2')
+    // Section did not inherit the shared graph — same "own-only" rule as
+    // sharedGeometry.
+    expect(ex.sections[0].functionGraph).toBeUndefined()
+  })
+
+  it('captures `* גרף מותאם לסעיף:` on a section as functionGraph', () => {
+    const source = [
+      SEP,
+      '[ תרגיל 1 - נתוני פתיחה ]',
+      SEP,
+      '* טקסט: intro',
+      '',
+      SEP,
+      "[ סעיף א' - שאלת ברירה יחידה ]",
+      SEP,
+      '* סוג השאלה: Single Choice',
+      '* הנחיה: prompt',
+      '* גרף מותאם לסעיף:',
+      '  CONFIGURATION:',
+      '  Grid: true',
+      '  Manual Range: true',
+      '  X Min: -5',
+      '  X Max: 5',
+      '  Y Min: -2',
+      '  Y Max: 10',
+      '  ## GRAPHS',
+      '  Graph 1:',
+      '  Function F(X): x^2',
+      '  Style: Solid',
+      '  Width: 2',
+      '  Color: Blue',
+      '* אפשרות 1: A [תשובה נכונה]',
+      '* אפשרות 2: B',
+    ].join('\n')
+
+    const lesson = parseTextLessonV2(source)
+    const sec = lesson.exercises[0].sections[0]
+    expect(sec.functionGraph).toBeDefined()
+    expect(sec.functionGraph?.elements.graphs[0].fn).toBe('x^2')
+    expect(sec.functionGraph?.elements.graphs[0].color).toBe('blue')
+    expect(sec.functionGraph?.viewport).toEqual({ xMin: -5, xMax: 5, yMin: -2, yMax: 10 })
+  })
 })

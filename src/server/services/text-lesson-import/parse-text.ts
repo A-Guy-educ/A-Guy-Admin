@@ -74,7 +74,13 @@ export interface TextLesson {
 // category is one of מנחה/בסיס/הבנה/שילוב/חזרה מסכמת/etc. We don't restrict
 // it — anything up to the first `:` after the en-dash counts as the category,
 // and the rest is the subtopic.
-const EXERCISE_HEADER_RE = /^תרגיל\s+([^\s–-]+)\s*[–-]\s*[^:]+:\s*(.*)$/
+//
+// The `<category>:` prefix is OPTIONAL — the generator's summary exercises
+// use a plain `תרגיל N – <title>` shape with no colon (e.g. `תרגיל 10 –
+// יישום עצמאי מלא`). Previously the parser dropped those silently, which
+// caused the client preview ("10 exercises detected") and the server import
+// ("Created lesson with 9 exercises") to disagree.
+const EXERCISE_HEADER_RE = /^תרגיל\s+([^\s–-]+)\s*[–-]\s*(?:[^:\n]+:\s*)?(.*?)\s*$/
 // The section header uses either en-dash or hyphen, matching the exercise
 // header regex above. Files authored with en-dashed section titles were
 // previously dropped silently.
@@ -89,6 +95,12 @@ const SVG_END_RE = /<\/svg>\s*$/i
 // without ambiguity.
 const FUNCTION_START_RE = /^<function>\s*$/i
 const FUNCTION_END_RE = /^<\/function>\s*$/i
+// The generator pipeline emits the boss's structured graph format inline —
+// no `<function>` wrapper, just a bare `CONFIGURATION:` block followed by
+// `## GRAPHS` / `## POINTS` / ... sections. Without this signature the whole
+// spec cascades into the exercise's intro as rich text. `parseFunctionDsl`
+// downstream auto-detects and routes to parse-function-block-v2.ts.
+const CONFIG_START_RE = /^\s*CONFIGURATION\s*:\s*$/i
 const HEADER_LINE_RE = /^(קורס|פרק|שם השיעור)\s*-\s*(.+)$/
 
 const isSeparator = (line: string, ch: string) => {
@@ -273,13 +285,38 @@ export function parseTextLesson(raw: string): TextLesson {
           phase = 'exercise_intro'
           continue
         }
-        currentEx.functionLines.push(line)
-        continue
+        // CONFIG-style blocks have no end tag; a following `* field:` line
+        // (rare at the exercise level but possible for generators that write
+        // a top-level `* פונקציה: ...` or similar) closes the block.
+        const startedWithConfig = currentEx.functionLines[0]
+          ?.trim()
+          .toUpperCase()
+          .startsWith('CONFIGURATION')
+        if (startedWithConfig && FIELD_RE.test(line)) {
+          currentEx.inFunction = false
+          phase = 'exercise_intro'
+          // fall through so the line is consumed by the intro/field detection below
+        } else {
+          currentEx.functionLines.push(line)
+          continue
+        }
       }
 
       if (FUNCTION_START_RE.test(line)) {
         currentEx.inFunction = true
         phase = 'svg' // reuse the "in-block" phase — nothing SVG-specific here
+        continue
+      }
+
+      // Bare `CONFIGURATION:` opens an inline boss-format graph block. Since
+      // there's no closing tag, we absorb every subsequent line as function
+      // content until the outer loop hits a top-level separator or the next
+      // exercise header — the separator check at the top of the loop closes
+      // the block for us on the next iteration.
+      if (CONFIG_START_RE.test(line)) {
+        currentEx.inFunction = true
+        currentEx.functionLines.push(line)
+        phase = 'svg'
         continue
       }
 
@@ -325,12 +362,36 @@ export function parseTextLesson(raw: string): TextLesson {
           currentField = null
           continue
         }
-        currentSection.functionLines.push(line)
-        continue
+        // CONFIG-style blocks have no end tag. When the collected block was
+        // opened by a `CONFIGURATION:` marker, the next `* field:` line
+        // (options, correct answer, hint, …) ends the block. Fall through
+        // so the field handler below can consume that same line.
+        const startedWithConfig = currentSection.functionLines[0]
+          ?.trim()
+          .toUpperCase()
+          .startsWith('CONFIGURATION')
+        if (startedWithConfig && FIELD_RE.test(line)) {
+          currentSection.inFunction = false
+          // don't `continue` — let the normal field detection below run
+        } else {
+          currentSection.functionLines.push(line)
+          continue
+        }
       }
 
       if (FUNCTION_START_RE.test(line)) {
         currentSection.inFunction = true
+        currentField = null
+        continue
+      }
+
+      // Same inline `CONFIGURATION:` catch as the exercise-intro phase.
+      // Without this, a section-scoped graph spec leaks into whatever field
+      // was previously being read — typically the `תוכן השאלה` field,
+      // rendering the whole spec as raw text inside the question prompt.
+      if (CONFIG_START_RE.test(line)) {
+        currentSection.inFunction = true
+        currentSection.functionLines.push(line)
         currentField = null
         continue
       }
