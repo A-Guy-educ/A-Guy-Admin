@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.47.0 — 2026-09-24
+
+### Features
+- Course lessons: editorial review dot, publication-status badge, and per-lesson exercise count on the course page; new `reviewStatus` field on Lessons (red / orange / green, default `red`) surfaced in the system tab (#488)
+- Text-lesson import: parse the structured function-graph format (author's preferred syntax) into v2 function-graph blocks (#487)
+
+### Bug Fixes
+- Geometry rendering: always draw the minor angle at each vertex, regardless of point order (#492)
+- Text-lesson import: recognise colon-less exercise headers on both client and server; stop the client greedy-across-lines match (#491)
+- Text-lesson import: catch section-scoped CONFIGURATION blocks in v1 files (#490)
+- Text-lesson import (v1): handle inline graph specs — bare CONFIGURATION graph specs are now parsed correctly (#489)
+
 ## v0.46.1 — 2026-09-23
 
 ### Bug Fixes
