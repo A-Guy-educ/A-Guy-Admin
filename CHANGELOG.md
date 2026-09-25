@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.47.1 — 2026-09-25
+
+### Bug Fixes
+- Text-lesson import: stop `findField` from swallowing the sibling `מיקום תווית` when looking up `מיקום` (#497)
+- Text-lesson import (v1): catch bare geometry DSL blocks so inline geometry specs are parsed correctly (#496)
+
 ## v0.47.0 — 2026-09-24
 
 ### Features
