@@ -2097,6 +2097,8 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+## [v0.47.1] - 2026-09-25
+
 - promote: dev -> main (v0.47.1) ([#499](https://github.com/A-Guy-educ/A-Guy-Admin/pull/499)) — @aguyshayb
 - chore: release v0.47.1 ([#498](https://github.com/A-Guy-educ/A-Guy-Admin/pull/498)) — @aguyshayb
 - fix(text-lesson-import): stop findField from swallowing sibling מיקום תווית ([#497](https://github.com/A-Guy-educ/A-Guy-Admin/pull/497)) — @aguyshayb
