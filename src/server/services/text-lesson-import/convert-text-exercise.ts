@@ -15,6 +15,7 @@ import type {
   InlineRichText,
   QuestionAxisBlock,
   QuestionFreeResponseBlock,
+  QuestionGeometryBlock,
   QuestionSelectMcqBlock,
   RichTextBlock,
   SvgBlock,
@@ -22,6 +23,7 @@ import type {
 import { generateId } from '@/server/payload/collections/Exercises/types'
 import { parseFunctionDsl } from '@/server/services/lesson-json-import/parse-function-dsl'
 
+import { parseGeometryDsl } from './parse-geometry-dsl'
 import type { TextExercise, TextSection } from './parse-text'
 
 const isNonEmpty = (s: string | undefined): s is string => typeof s === 'string' && s.trim() !== ''
@@ -51,6 +53,24 @@ function functionBlock(source: string): QuestionAxisBlock {
     layout: 'textRight',
     axis: spec,
     displaySize: 'full',
+  }
+}
+
+/**
+ * Emit a standalone geometry block from an inline `--- נקודות --- / קטעים / ...`
+ * DSL captured in the v1 parser. Skips emission when the DSL parsed to
+ * nothing useful (empty content, no recognisable primitives) — better to
+ * omit the block than render an empty canvas.
+ */
+function geometryBlock(source: string): QuestionGeometryBlock | null {
+  const { spec, hasContent } = parseGeometryDsl(source)
+  if (!hasContent) return null
+  return {
+    id: generateId(),
+    type: 'question_geometry',
+    prompt: inlineRichText(''),
+    layout: 'textRight',
+    geometry: spec,
   }
 }
 
@@ -167,6 +187,10 @@ function convertSectionToBlocks(section: TextSection): ContentBlock[] {
   const leading: ContentBlock[] = []
   if (isNonEmpty(section.svg)) leading.push(svgBlock(section.svg))
   if (isNonEmpty(section.function)) leading.push(functionBlock(section.function))
+  if (isNonEmpty(section.sketch)) {
+    const geom = geometryBlock(section.sketch)
+    if (geom) leading.push(geom)
+  }
 
   if (wantsMcq) {
     const mcq = tryBuildMcqBlock(section)
@@ -198,6 +222,10 @@ export function convertTextExerciseToSections(exercise: TextExercise): Converted
   if (isNonEmpty(exercise.intro)) sharedBlocks.push(richTextBlock(exercise.intro))
   if (isNonEmpty(exercise.svg)) sharedBlocks.push(svgBlock(exercise.svg))
   if (isNonEmpty(exercise.function)) sharedBlocks.push(functionBlock(exercise.function))
+  if (isNonEmpty(exercise.sketch)) {
+    const geom = geometryBlock(exercise.sketch)
+    if (geom) sharedBlocks.push(geom)
+  }
 
   return {
     sharedBlocks,
@@ -214,10 +242,18 @@ export function convertTextExerciseToBlocks(exercise: TextExercise): ContentBloc
   if (isNonEmpty(exercise.intro)) blocks.push(richTextBlock(exercise.intro))
   if (isNonEmpty(exercise.svg)) blocks.push(svgBlock(exercise.svg))
   if (isNonEmpty(exercise.function)) blocks.push(functionBlock(exercise.function))
+  if (isNonEmpty(exercise.sketch)) {
+    const geom = geometryBlock(exercise.sketch)
+    if (geom) blocks.push(geom)
+  }
 
   for (const section of exercise.sections) {
     if (isNonEmpty(section.svg)) blocks.push(svgBlock(section.svg))
     if (isNonEmpty(section.function)) blocks.push(functionBlock(section.function))
+    if (isNonEmpty(section.sketch)) {
+      const geom = geometryBlock(section.sketch)
+      if (geom) blocks.push(geom)
+    }
 
     const wantsMcq = section.type.kind !== 'free_response' && section.options.length >= 2
 
