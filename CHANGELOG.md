@@ -2097,6 +2097,7 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- chore: release v0.47.1 ([#498](https://github.com/A-Guy-educ/A-Guy-Admin/pull/498)) — @aguyshayb
 - fix(text-lesson-import): stop findField from swallowing sibling מיקום תווית ([#497](https://github.com/A-Guy-educ/A-Guy-Admin/pull/497)) — @aguyshayb
 - fix(text-lesson-import): catch bare geometry DSL blocks in v1 files ([#496](https://github.com/A-Guy-educ/A-Guy-Admin/pull/496)) — @aguyshayb
 ## [v0.47.0] - 2026-09-24
