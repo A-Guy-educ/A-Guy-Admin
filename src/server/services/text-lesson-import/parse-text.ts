@@ -48,6 +48,9 @@ export interface TextSection {
   /** Raw function-graph DSL between <function>…</function> tags, if present.
    * See lesson-json-import/parse-function-dsl.ts for the format spec. */
   function?: string
+  /** Raw geometry DSL block (`--- נקודות --- / --- קטעים --- / ...`) captured
+   * inline inside this section. Fed to parseGeometryDsl by the converter. */
+  sketch?: string
 }
 
 export interface TextExercise {
@@ -61,6 +64,9 @@ export interface TextExercise {
   svg?: string
   /** Raw function-graph DSL for the exercise-level graphic, if present. */
   function?: string
+  /** Raw geometry DSL block (`--- נקודות --- / --- קטעים --- / ...`) captured
+   * inline in the exercise intro. Fed to parseGeometryDsl by the converter. */
+  sketch?: string
   sections: TextSection[]
 }
 
@@ -101,6 +107,12 @@ const FUNCTION_END_RE = /^<\/function>\s*$/i
 // spec cascades into the exercise's intro as rich text. `parseFunctionDsl`
 // downstream auto-detects and routes to parse-function-block-v2.ts.
 const CONFIG_START_RE = /^\s*CONFIGURATION\s*:\s*$/i
+// Geometry DSL blocks open with a `--- <group> ---` sentinel (`--- נקודות ---`,
+// `--- קטעים ---`, `--- זוויות ---`, …). Analogous to CONFIG for functions:
+// the block sits inline in the exercise intro with no `* שרטוט:` wrapper,
+// so without this signature the whole DSL cascades into the rich-text
+// narrative. Converter passes the captured block to parseGeometryDsl.
+const SKETCH_GROUP_RE = /^\s*-{2,}\s*\S.*?\s*-{2,}\s*$/
 const HEADER_LINE_RE = /^(קורס|פרק|שם השיעור)\s*-\s*(.+)$/
 
 const isSeparator = (line: string, ch: string) => {
@@ -131,6 +143,8 @@ interface MutableSection {
   inSvg: boolean
   functionLines: string[]
   inFunction: boolean
+  sketchLines: string[]
+  inSketch: boolean
 }
 
 interface MutableExercise {
@@ -141,6 +155,8 @@ interface MutableExercise {
   inSvg: boolean
   functionLines: string[]
   inFunction: boolean
+  sketchLines: string[]
+  inSketch: boolean
   sections: MutableSection[]
 }
 
@@ -153,6 +169,8 @@ function newExercise(num: string, subtopic: string): MutableExercise {
     inSvg: false,
     functionLines: [],
     inFunction: false,
+    sketchLines: [],
+    inSketch: false,
     sections: [],
   }
 }
@@ -166,6 +184,8 @@ function newSection(num: string): MutableSection {
     inSvg: false,
     functionLines: [],
     inFunction: false,
+    sketchLines: [],
+    inSketch: false,
   }
 }
 
@@ -187,6 +207,7 @@ function finalizeSection(ms: MutableSection): TextSection {
     type: classifyType(get('סוג תרגיל')),
     svg: ms.svgLines.length > 0 ? ms.svgLines.join('\n').trim() : undefined,
     function: ms.functionLines.length > 0 ? ms.functionLines.join('\n').trim() : undefined,
+    sketch: ms.sketchLines.length > 0 ? ms.sketchLines.join('\n').trim() : undefined,
   }
 }
 
@@ -197,6 +218,7 @@ function finalizeExercise(me: MutableExercise): TextExercise {
     intro: me.introLines.join('\n').trim(),
     svg: me.svgLines.length > 0 ? me.svgLines.join('\n').trim() : undefined,
     function: me.functionLines.length > 0 ? me.functionLines.join('\n').trim() : undefined,
+    sketch: me.sketchLines.length > 0 ? me.sketchLines.join('\n').trim() : undefined,
     sections: me.sections.map(finalizeSection),
   }
 }
@@ -320,6 +342,27 @@ export function parseTextLesson(raw: string): TextLesson {
         continue
       }
 
+      // Same idea for the geometry DSL: a `--- <group> ---` header opens an
+      // inline sketch block. Absorbs following lines until a top-level
+      // separator or a `* field:` line at column 0 (the latter unlikely at
+      // the exercise level, but caught for safety).
+      if (currentEx.inSketch) {
+        if (FIELD_RE.test(line)) {
+          currentEx.inSketch = false
+          phase = 'exercise_intro'
+          // fall through to field detection
+        } else {
+          currentEx.sketchLines.push(line)
+          continue
+        }
+      }
+      if (!currentEx.inSketch && SKETCH_GROUP_RE.test(line)) {
+        currentEx.inSketch = true
+        currentEx.sketchLines.push(line)
+        phase = 'svg'
+        continue
+      }
+
       if (currentEx.inSvg) {
         currentEx.svgLines.push(line)
         if (SVG_END_RE.test(line)) {
@@ -392,6 +435,25 @@ export function parseTextLesson(raw: string): TextLesson {
       if (CONFIG_START_RE.test(line)) {
         currentSection.inFunction = true
         currentSection.functionLines.push(line)
+        currentField = null
+        continue
+      }
+
+      // Geometry DSL block at the section level. Same shape as the exercise
+      // handling: `--- <group> ---` opens, a `* field:` at column 0 closes.
+      if (currentSection.inSketch) {
+        if (FIELD_RE.test(line)) {
+          currentSection.inSketch = false
+          currentField = null
+          // fall through to field detection
+        } else {
+          currentSection.sketchLines.push(line)
+          continue
+        }
+      }
+      if (!currentSection.inSketch && SKETCH_GROUP_RE.test(line)) {
+        currentSection.inSketch = true
+        currentSection.sketchLines.push(line)
         currentField = null
         continue
       }

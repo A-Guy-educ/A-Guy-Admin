@@ -276,4 +276,55 @@ describe('parseTextLesson — section-scoped SVG', () => {
     expect(lesson.exercises[1].intro).toBe('summary exercise intro')
     expect(lesson.exercises[1].sections).toHaveLength(1)
   })
+
+  it('captures an unfenced geometry DSL block on exercise.sketch', () => {
+    // The generator emits geometry DSL inline in the exercise intro — no
+    // `* שרטוט:` marker, no `<function>` wrapper, just a bare
+    // `--- נקודות ---` block. Before this change the whole DSL cascaded
+    // into the intro rich text; now it's captured as `exercise.sketch`
+    // and the converter feeds it to parseGeometryDsl.
+    const source = [
+      SEP_EQ,
+      'תרגיל 1 – מנחה: משולש',
+      SEP_EQ,
+      'נתחיל בהיכרות עם משולש ABC.',
+      '',
+      '  --- נקודות ---',
+      '  * נקודה A | X=170, Y=40 | מיקום תווית: למעלה | צבע: שחור',
+      '  * נקודה B | X=50, Y=260 | מיקום תווית: שמאל-למטה | צבע: שחור',
+      '  * נקודה C | X=350, Y=260 | מיקום תווית: ימין-למטה | צבע: שחור',
+      '  --- קטעים ---',
+      '  * קטע AB | מנקודה A ל-B | צבע: שחור',
+      '  * קטע AC | מנקודה A ל-C | צבע: שחור',
+      '  * קטע BC | מנקודה B ל-C | צבע: שחור',
+      '',
+      SEP_DASH,
+      '[תרגיל 1 - סעיף א]',
+      SEP_DASH,
+      '* תוכן השאלה: איזה סוג משולש זה?',
+      '* אופציות:',
+      '  - חד-זווית',
+      '  - קהה-זווית',
+      '* פתרון נכון: חד-זווית',
+      '* סוג תרגיל: בחירה בין 2 אפשרויות',
+    ].join('\n')
+
+    const lesson = parseTextLesson(source)
+    const exercise = lesson.exercises[0]
+
+    // Intro is JUST the narrative — no DSL-related lines leaked in.
+    expect(exercise.intro).toBe('נתחיל בהיכרות עם משולש ABC.')
+    expect(exercise.intro).not.toContain('--- נקודות ---')
+    expect(exercise.intro).not.toContain('נקודה A')
+
+    // Sketch block carries the whole DSL, starting with the first group.
+    expect(exercise.sketch).toBeDefined()
+    expect(exercise.sketch).toContain('--- נקודות ---')
+    expect(exercise.sketch).toContain('* נקודה A')
+    expect(exercise.sketch).toContain('--- קטעים ---')
+
+    // Downstream section still parses normally.
+    expect(exercise.sections).toHaveLength(1)
+    expect(exercise.sections[0].correctAnswer).toBe('חד-זווית')
+  })
 })

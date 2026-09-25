@@ -240,6 +240,25 @@ describe('parseGeometryDsl', () => {
     expect(spec.canvas.boundingBox).toBeUndefined()
   })
 
+  it('does not confuse `מיקום` with the sibling `מיקום תווית` field', () => {
+    // Boss-format v1 geometry rows omit the `מיקום:` key and inline the
+    // coordinates as `X=…, Y=…` directly, while the label position lives
+    // in a separate `מיקום תווית:` field. Prior findField logic accepted
+    // `מיקום ` (with trailing space) as a prefix and returned the label
+    // position ("למעלה") as the coordinate value, dropping every point.
+    const raw = [
+      '  --- נקודות ---',
+      '  * נקודה A | X=170, Y=40 | מיקום תווית: למעלה | צבע: שחור',
+      '  * נקודה B | X=50, Y=260 | מיקום תווית: שמאל-למטה | צבע: שחור',
+    ].join('\n')
+
+    const { spec } = parseGeometryDsl(raw)
+    expect(spec.elements.points).toEqual([
+      { name: 'A', x: 170, y: 40, position: 't', color: 'black' },
+      { name: 'B', x: 50, y: 260, position: 'bl', color: 'black' },
+    ])
+  })
+
   it('records warnings for garbled rows without dropping later ones', () => {
     const raw = [
       '  --- נקודות ---',

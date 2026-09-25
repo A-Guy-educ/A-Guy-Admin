@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.47.1 — 2026-09-25
+
+### Bug Fixes
+- Text-lesson import: stop `findField` from swallowing the sibling `מיקום תווית` when looking up `מיקום` (#497)
+- Text-lesson import (v1): catch bare geometry DSL blocks so inline geometry specs are parsed correctly (#496)
+
 ## v0.47.0 — 2026-09-24
 
 ### Features
@@ -2091,6 +2097,12 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- chore: release v0.47.1 ([#498](https://github.com/A-Guy-educ/A-Guy-Admin/pull/498)) — @aguyshayb
+- fix(text-lesson-import): stop findField from swallowing sibling מיקום תווית ([#497](https://github.com/A-Guy-educ/A-Guy-Admin/pull/497)) — @aguyshayb
+- fix(text-lesson-import): catch bare geometry DSL blocks in v1 files ([#496](https://github.com/A-Guy-educ/A-Guy-Admin/pull/496)) — @aguyshayb
+## [v0.47.0] - 2026-09-24
+
+- promote: dev -> main (v0.47.0) ([#494](https://github.com/A-Guy-educ/A-Guy-Admin/pull/494)) — @aguyshayb
 - chore: release v0.47.0 ([#493](https://github.com/A-Guy-educ/A-Guy-Admin/pull/493)) — @aguyshayb
 - fix(geometry): always draw the minor angle at each vertex ([#492](https://github.com/A-Guy-educ/A-Guy-Admin/pull/492)) — @aguyshayb
 - fix(text-lesson-import): count colon-less exercise headers on both client and server ([#491](https://github.com/A-Guy-educ/A-Guy-Admin/pull/491)) — @aguyshayb
