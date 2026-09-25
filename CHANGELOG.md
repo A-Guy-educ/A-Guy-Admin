@@ -2091,6 +2091,7 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- fix(text-lesson-import): catch bare geometry DSL blocks in v1 files ([#496](https://github.com/A-Guy-educ/A-Guy-Admin/pull/496)) — @aguyshayb
 ## [v0.47.0] - 2026-09-24
 
 - promote: dev -> main (v0.47.0) ([#494](https://github.com/A-Guy-educ/A-Guy-Admin/pull/494)) — @aguyshayb
