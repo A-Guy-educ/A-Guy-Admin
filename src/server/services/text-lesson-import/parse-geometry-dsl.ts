@@ -82,7 +82,13 @@ function findField(fields: string[], keys: string[]): string | undefined {
     const name = field.slice(0, colonIdx).trim()
     const value = field.slice(colonIdx + 1).trim()
     for (const key of keys) {
-      if (name === key || name.startsWith(key + ' ') || name.startsWith(key + '(')) {
+      // Exact match, or the key followed by a parenthetical clarifier
+      // (`מיקום (canvas coords)`). We used to also accept `key + ' '`,
+      // which greedily matched siblings like `מיקום תווית` when looking
+      // up `מיקום` — the label position ("למעלה") was returned as the
+      // coordinate value, parseNumberPair failed on it, and the point
+      // was dropped. Anything past `key + ' '` is a different field.
+      if (name === key || name.startsWith(key + ' (')) {
         return value
       }
     }
