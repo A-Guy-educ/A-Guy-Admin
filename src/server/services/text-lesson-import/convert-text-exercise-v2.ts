@@ -36,6 +36,13 @@ function richTextBlock(value: string): RichTextBlock {
   return { id: generateId(), type: 'rich_text', format: 'md-math-v1', value, mediaIds: [] }
 }
 
+// `displaySize: 'full'` matches the shape the admin's AttachmentEditor /
+// GeometrySpecEditor emit when an author manually attaches or inserts a
+// visual. The web renderer draws the same block shape the admin produces;
+// omitting `displaySize` (even though it's typed as optional) results in
+// the sketch not rendering on web — the field is required in practice.
+const DEFAULT_DISPLAY_SIZE = 'full' as const
+
 function standaloneGeometryBlock(geometry: GeometrySpecV1): QuestionGeometryBlock {
   return {
     id: generateId(),
@@ -43,6 +50,7 @@ function standaloneGeometryBlock(geometry: GeometrySpecV1): QuestionGeometryBloc
     prompt: inlineRichText(''),
     layout: 'textRight',
     geometry,
+    displaySize: DEFAULT_DISPLAY_SIZE,
   }
 }
 
@@ -53,6 +61,7 @@ function standaloneAxisBlock(axis: AxisSpecV1): QuestionAxisBlock {
     prompt: inlineRichText(''),
     layout: 'textRight',
     axis,
+    displaySize: DEFAULT_DISPLAY_SIZE,
   }
 }
 
@@ -65,6 +74,7 @@ function geometryAttachment(geometry: GeometrySpecV1): QuestionAttachment {
     kind: 'geometry',
     layout: 'textRight',
     geometry,
+    displaySize: DEFAULT_DISPLAY_SIZE,
   }
 }
 
@@ -73,6 +83,7 @@ function axisAttachment(axis: AxisSpecV1): QuestionAttachment {
     kind: 'axis',
     layout: 'textRight',
     axis,
+    displaySize: DEFAULT_DISPLAY_SIZE,
   }
 }
 
@@ -81,6 +92,7 @@ function svgAttachment(value: string): QuestionAttachment {
     kind: 'svg',
     layout: 'textRight',
     svg: { value },
+    displaySize: DEFAULT_DISPLAY_SIZE,
   }
 }
 
