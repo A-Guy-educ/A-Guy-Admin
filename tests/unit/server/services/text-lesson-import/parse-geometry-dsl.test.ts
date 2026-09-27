@@ -272,4 +272,29 @@ describe('parseGeometryDsl', () => {
     expect(spec.elements.points).toHaveLength(1)
     expect(spec.elements.points[0].name).toBe('A')
   })
+
+  it('parses `סימן קטעים שווים AB, AC` into an equalSegments group', () => {
+    const raw = ['  --- סימונים ---', '  * סימן קטעים שווים AB, AC'].join('\n')
+    const { spec } = parseGeometryDsl(raw)
+    expect(spec.elements.equalSegments).toEqual([
+      [
+        { from: 'A', to: 'B' },
+        { from: 'A', to: 'C' },
+      ],
+    ])
+  })
+
+  it('parses `סימן זוויות שוות BAD, CAD` and stub-references matching angles', () => {
+    // `BAD` and `CAD` are 3-letter angle names (endpoint-vertex-endpoint).
+    // Both share the vertex `A`. The parser resolves them to indices in
+    // the `angles` array, pushing stubs if the angle wasn't listed under
+    // `--- זוויות ---`.
+    const raw = ['  --- סימונים ---', '  * סימן זוויות שוות BAD, CAD'].join('\n')
+    const { spec } = parseGeometryDsl(raw)
+    expect(spec.elements.angles).toEqual([
+      { center: 'A', ray1: 'B', ray2: 'D' },
+      { center: 'A', ray1: 'C', ray2: 'D' },
+    ])
+    expect(spec.elements.equalAngles).toEqual([[0, 1]])
+  })
 })

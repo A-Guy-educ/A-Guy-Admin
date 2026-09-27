@@ -15,6 +15,7 @@ import type {
   QuestionAxisBlock,
   QuestionFreeResponseBlock,
   QuestionGeometryBlock,
+  QuestionMatchingBlock,
   QuestionSelectMcqBlock,
   RichTextBlock,
   SvgBlock,
@@ -101,14 +102,20 @@ function buildPrompt(section: TextSectionV2): InlineRichText {
 }
 
 /**
- * Try to build an MCQ from the source's option list. Requires at least two
- * options and exactly one flagged as correct (multiSelect isn't supported by
- * the v2 authors yet — mirrors the legacy v1 converter).
+ * Try to build an MCQ from the source's option list. Handles both
+ * `Single Choice` (exactly one correct) and `Multiple Choice` (>=1
+ * correct). Reads `section.type.selectionMode` when the type is `mcq`;
+ * otherwise infers single/multiple from the number of `[תשובה נכונה]`
+ * markers so legacy sources still work.
  */
 function tryBuildMcqBlock(section: TextSectionV2): QuestionSelectMcqBlock | null {
   if (section.options.length < 2) return null
   const correctCount = section.options.filter((o) => o.correct).length
-  if (correctCount !== 1) return null
+  if (correctCount === 0) return null
+
+  const declaredMultiple = section.type.kind === 'mcq' && section.type.selectionMode === 'multiple'
+  const selectionMode: 'single' | 'multiple' =
+    declaredMultiple || correctCount > 1 ? 'multiple' : 'single'
 
   const pool = section.options.map((o) => ({ text: o.text, correct: o.correct }))
   for (let i = pool.length - 1; i > 0; i--) {
@@ -128,9 +135,48 @@ function tryBuildMcqBlock(section: TextSectionV2): QuestionSelectMcqBlock | null
     id: generateId(),
     type: 'question_select',
     variant: 'mcq',
-    selectionMode: 'single',
+    selectionMode,
     prompt: buildPrompt(section),
-    answer: { multiSelect: false, options, correctOptionIds },
+    answer: { multiSelect: selectionMode === 'multiple', options, correctOptionIds },
+  }
+  if (section.hint) block.hint = inlineRichText(section.hint)
+  if (section.fullSolution) block.fullSolution = inlineRichText(section.fullSolution)
+  const attachment = sectionAttachment(section)
+  if (attachment) block.attachment = attachment
+  return block
+}
+
+function tryBuildMatchingBlock(section: TextSectionV2): QuestionMatchingBlock | null {
+  if (section.matchingPairs.length < 2) return null
+  const leftColumn = section.matchingPairs.map((p, idx) => ({
+    id: `left-${idx + 1}`,
+    content: inlineRichText(p.left),
+  }))
+  // Right column is shuffled so the source order isn't the answer key. Studio
+  // authors can re-order it manually if they want a specific display layout.
+  const rightPool = section.matchingPairs.map((p, idx) => ({
+    id: `right-${idx + 1}`,
+    content: inlineRichText(p.right),
+    originalIdx: idx,
+  }))
+  for (let i = rightPool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[rightPool[i], rightPool[j]] = [rightPool[j], rightPool[i]]
+  }
+  const rightColumn = rightPool.map(({ id, content }) => ({ id, content }))
+  const correctPairs = section.matchingPairs.map((_, idx) => {
+    const right = rightPool.find((r) => r.originalIdx === idx)!
+    return { optionId: `left-${idx + 1}`, matchId: right.id }
+  })
+
+  const block: QuestionMatchingBlock = {
+    id: generateId(),
+    type: 'question_matching',
+    prompt: buildPrompt(section),
+    leftColumn,
+    rightColumn,
+    correctPairs,
+    shuffleRightColumn: true,
   }
   if (section.hint) block.hint = inlineRichText(section.hint)
   if (section.fullSolution) block.fullSolution = inlineRichText(section.fullSolution)
@@ -187,6 +233,12 @@ function convertSectionToBlocks(section: TextSectionV2): ContentBlock[] {
   // silently swallowing the section.
   if (section.type.kind === 'table') {
     return [unparsableSectionBlock(section, 'שאלת השלמת טבלה — אינה נתמכת עדיין בייבוא')]
+  }
+
+  if (section.type.kind === 'matching') {
+    const matching = tryBuildMatchingBlock(section)
+    if (matching) return [matching]
+    return [unparsableSectionBlock(section, 'שאלת התאמה ללא זוגות תקינים (צמד N: X <---> Y)')]
   }
 
   const wantsMcq = section.type.kind !== 'free_response' && section.options.length >= 2

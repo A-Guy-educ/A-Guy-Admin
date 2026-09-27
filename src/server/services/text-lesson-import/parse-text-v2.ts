@@ -36,14 +36,24 @@ import { parseFunctionDsl } from '@/server/services/lesson-json-import/parse-fun
 import { parseGeometryDsl } from './parse-geometry-dsl'
 
 export type QuestionTypeV2 =
-  | { kind: 'mcq'; optionsCount: number }
+  /** `Single Choice` — exactly one correct option. */
+  | { kind: 'mcq'; optionsCount: number; selectionMode: 'single' }
+  /** `Multiple Choice` — one or more correct options. */
+  | { kind: 'mcq'; optionsCount: number; selectionMode: 'multiple' }
   | { kind: 'free_response' }
+  | { kind: 'matching' }
   | { kind: 'table' }
   | { kind: 'unknown'; raw: string }
 
 export interface TextOptionV2 {
   text: string
   correct: boolean
+}
+
+/** A `* צמד N: <left> <---> <right>` pair, captured for `Matching` sections. */
+export interface TextMatchingPairV2 {
+  left: string
+  right: string
 }
 
 export interface TextSectionV2 {
@@ -56,6 +66,8 @@ export interface TextSectionV2 {
   fullSolution?: string
   type: QuestionTypeV2
   options: TextOptionV2[]
+  /** Left/right pairs captured from `* צמד N: <left> <---> <right>` rows. Only populated for `Matching` sections. */
+  matchingPairs: TextMatchingPairV2[]
   /** Parsed DSL geometry from `שרטוט מותאם לסעיף`. Set only when the section has its own DSL block — never falls back to the exercise's shared geometry (that would double-emit the sketch, once via sharedBlocks and once as an attachment). */
   geometry?: GeometrySpecV1
   /** Raw SVG markup pulled from `שרטוט מותאם לסעיף` when the block was inline `<svg>` rather than DSL. Mutually exclusive with `geometry`. */
@@ -93,7 +105,10 @@ export interface TextLessonV2 {
 // Accept both spaced (`[ תרגיל 1 - נתוני פתיחה ]`) and tight
 // (`[תרגיל 1 - נתוני פתיחה]`) bracket forms — otherwise the preview would
 // silently report "0 exercises" for a fixable, legitimately-v2 file.
-const V2_SIGNATURE_RE = /\[\s*תרגיל\s+\S+\s*[-–]\s*נתוני\s*פתיחה\s*\]/
+// The `<prefix> N -` chunk is optional so we also recognise a bare
+// `[ נתוני פתיחה ]` header (used in short single-exercise files) and
+// the `שאלה` prefix variant (`[ שאלה 1 - נתוני פתיחה ]`).
+const V2_SIGNATURE_RE = /\[\s*(?:(?:תרגיל|שאלה)\s+\S+\s*[-–]\s*)?נתוני\s*פתיחה\s*\]/
 // v1 files use section headers like `[תרגיל 1 - סעיף א]` which end at the
 // section letter with no further dash. v2 files use `[ סעיף X - <question
 // type> ]` — always a dash AFTER the label. Requiring that trailing dash
@@ -110,19 +125,41 @@ export function isV2Format(raw: string): boolean {
 // Line-classification regexes
 // ---------------------------------------------------------------------------
 
-// Exercise header inside [ ... ] — accepts trailing tokens after the number so
-// the header rest ("נתוני פתיחה" or a section-type label) can be captured.
-const EXERCISE_HEADER_RE = /^\[\s*תרגיל\s+(\S+?)\s*[-–]\s*(.+?)\s*\]\s*$/
-// Section header, either with or without a "תרגיל N -" prefix. The label is
-// captured with a greedy-lazy pattern that allows extras like "1 ויחיד" or a
-// comma-separated multi-label ("א', ב', ג', ד'") — anything up to the first
-// " - question-type" tail (or the closing bracket if no tail is present).
+// Exercise header inside [ ... ] — accepts trailing tokens after the number
+// so the header rest ("נתוני פתיחה" or a section-type label) can be
+// captured. Both `תרגיל` and `שאלה` are recognised as the prefix.
+const EXERCISE_HEADER_RE = /^\[\s*(?:תרגיל|שאלה)\s+(\S+?)\s*[-–]\s*(.+?)\s*\]\s*$/
+// Some short files start with a bare `[ נתוני פתיחה ]` — no `תרגיל N -`
+// prefix. Treated as opening a synthetic exercise so the following DSL and
+// sections still get attributed correctly.
+const BARE_INTRO_HEADER_RE = /^\[\s*נתוני\s*פתיחה\s*\]\s*$/
+// Section header, either with or without a `תרגיל|שאלה N -` prefix. The
+// label is captured with a greedy-lazy pattern that allows extras like
+// "1 ויחיד" or a comma-separated multi-label ("א', ב', ג', ד'") — anything
+// up to the first " - question-type" tail (or the closing bracket).
 const SECTION_HEADER_RE =
-  /^\[\s*(?:תרגיל\s+\S+\s*[-–]\s*)?סעיף\s+(.+?)\s*(?:[-–]\s*(.+?))?\s*\]\s*$/
+  /^\[\s*(?:(?:תרגיל|שאלה)\s+\S+\s*[-–]\s*)?סעיף\s+(.+?)\s*(?:[-–]\s*(.+?))?\s*\]\s*$/
+// `[ נתון נוסף ]` and similar intermezzos — the generator inserts these
+// between sections to add extra context. Recognised so they don't confuse
+// header detection; their content is folded back into the previous section
+// or the exercise intro downstream.
+const INTERMEZZO_HEADER_RE = /^\[\s*נתון\s+נוסף\s*\]\s*$/
 const FIELD_RE = /^\*\s+([^:]+?)\s*:\s*(.*)$/
 const OPTION_FIELD_RE = /^אפשרות\s+(\d+)$/
+/** `* צמד N: <left> <---> <right>` — a matching-pair row. */
+const PAIR_FIELD_RE = /^צמד\s+(\d+)$/
+/** Separator between left and right in matching pairs. `<--->`, `<-->`, `<->`, `↔`. */
+const PAIR_SEPARATOR_RE = /\s*(?:<-{2,}>|<->|↔)\s*/
 const CORRECT_MARKER_RE = /\s*\[\s*תשובה\s+נכונה\s*\]\s*$/
 const HEADER_LINE_RE = /^(קורס|פרק|שם השיעור)\s*[-–]\s*(.+)$/
+
+function splitMatchingPair(value: string): [string, string] | [] {
+  const parts = value.split(PAIR_SEPARATOR_RE)
+  if (parts.length !== 2) return []
+  const [left, right] = parts.map((p) => p.trim())
+  if (!left || !right) return []
+  return [left, right]
+}
 
 const isSeparator = (line: string) => {
   const trimmed = line.trim()
@@ -137,10 +174,16 @@ function classifyType(raw: string): QuestionTypeV2 {
   const singleChoice = t.match(/^single\s*choice(?:\s*\((\d+)\s*options?\))?/i)
   if (singleChoice) {
     const count = singleChoice[1] ? Number(singleChoice[1]) : 2
-    return { kind: 'mcq', optionsCount: count }
+    return { kind: 'mcq', optionsCount: count, selectionMode: 'single' }
+  }
+  const multiChoice = t.match(/^multiple\s*choice(?:\s*\((\d+)\s*options?\))?/i)
+  if (multiChoice) {
+    const count = multiChoice[1] ? Number(multiChoice[1]) : 2
+    return { kind: 'mcq', optionsCount: count, selectionMode: 'multiple' }
   }
   const hebrewMcq = t.match(/^בחירה\s+בין\s+(\d+)\s+אפשרויות\b/)
-  if (hebrewMcq) return { kind: 'mcq', optionsCount: Number(hebrewMcq[1]) }
+  if (hebrewMcq) return { kind: 'mcq', optionsCount: Number(hebrewMcq[1]), selectionMode: 'single' }
+  if (/^matching\b/i.test(t) || /^שאלת\s+התאמה/.test(t)) return { kind: 'matching' }
   if (/^fill[-\s]in\s+table$/i.test(t) || /^שאלת\s+השלמת\s+טבלה$/.test(t)) {
     return { kind: 'table' }
   }
@@ -167,6 +210,7 @@ interface MutableSectionV2 {
   fullSolution?: string
   typeRaw: string
   options: TextOptionV2[]
+  matchingPairs: TextMatchingPairV2[]
   geometryLines: string[]
   functionLines: string[]
   inBlock: BlockMode | null
@@ -201,6 +245,7 @@ function newSection(num: string, headerRest: string): MutableSectionV2 {
     question: '',
     typeRaw: '',
     options: [],
+    matchingPairs: [],
     geometryLines: [],
     functionLines: [],
     inBlock: null,
@@ -303,6 +348,14 @@ function applySectionField(sec: MutableSectionV2, key: string, value: string): A
     if (trimmed) sec.options.push({ text: trimmed, correct })
     return { kind: 'option' }
   }
+  // `* צמד N: <left> <---> <right>` — a matching-pair row. Both `<--->` and
+  // its Unicode variants (`↔`, `<->`) count as the separator.
+  const pairMatch = k.match(PAIR_FIELD_RE)
+  if (pairMatch) {
+    const [left, right] = splitMatchingPair(value)
+    if (left && right) sec.matchingPairs.push({ left, right })
+    return { kind: 'option' }
+  }
   return { kind: 'passthrough' }
 }
 
@@ -367,6 +420,7 @@ function finalizeSection(sec: MutableSectionV2): TextSectionV2 {
     fullSolution: sec.fullSolution?.trim() || undefined,
     type: classifyType(sec.typeRaw),
     options: sec.options,
+    matchingPairs: sec.matchingPairs,
     // Section geometry/svg/graph is set ONLY when the section has its own
     // block. We deliberately do NOT fall back to the exercise-level shared
     // drawing — that would emit the same visual twice (once via
@@ -501,6 +555,26 @@ export function parseTextLessonV2(raw: string): TextLessonV2 {
         flushExercise()
         currentEx = newExercise(num, rest)
         currentSec = null
+        currentField = null
+        continue
+      }
+      // Bare `[ נתוני פתיחה ]` — short single-exercise files skip the
+      // `תרגיל N -` / `שאלה N -` prefix. Open a synthetic exercise so the
+      // downstream DSL and sections still attribute correctly.
+      if (BARE_INTRO_HEADER_RE.test(bracketed)) {
+        flushExercise()
+        currentEx = newExercise('1', 'נתוני פתיחה')
+        currentSec = null
+        currentField = null
+        continue
+      }
+      // `[ נתון נוסף ]` intermezzo — the generator inserts these between
+      // sections to add supplementary context. Close any in-flight section
+      // so the following `* טקסט:` / `* שרטוט:` fields land back on the
+      // exercise (they act like an intro appendix). Otherwise the section
+      // that just closed would gobble up the intermezzo's fields.
+      if (INTERMEZZO_HEADER_RE.test(bracketed)) {
+        flushSection()
         currentField = null
         continue
       }
