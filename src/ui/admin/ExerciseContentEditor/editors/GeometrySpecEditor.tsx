@@ -6,6 +6,7 @@ import { CollapsibleSection } from '@/ui/admin/shared/CollapsibleSection'
 import { AnglesPanel } from '../components/geometry/AnglesPanel'
 import { CanvasConfigPanel } from '../components/geometry/CanvasConfigPanel'
 import { CirclesPanel } from '../components/geometry/CirclesPanel'
+import { EqualitiesPanel } from '../components/geometry/EqualitiesPanel'
 import { GeometryCanvasWithToolbar } from '../components/geometry/GeometryCanvasWithToolbar'
 import { LinesPanel } from '../components/geometry/LinesPanel'
 import { PointsPanel } from '../components/geometry/PointsPanel'
@@ -68,7 +69,10 @@ export const GeometrySpecEditor: React.FC<GeometrySpecEditorProps> = ({
       const nextIndex = spec.elements.points.length + 1
       const name = String.fromCharCode(64 + nextIndex)
       updateElements({
-        points: [...spec.elements.points, { name, x, y, position: 'r' as const, color: '#1a1a2e' }],
+        points: [
+          ...spec.elements.points,
+          { name, x, y, position: 'r' as const, color: '#1a1a2e', size: 2 },
+        ],
       })
     },
     [spec.elements.points, updateElements],
@@ -188,6 +192,20 @@ export const GeometrySpecEditor: React.FC<GeometrySpecEditorProps> = ({
           <TextsPanel
             texts={spec.elements.texts || []}
             onChange={(texts) => updateElements({ texts })}
+          />
+        </CollapsibleSection>
+
+        <CollapsibleSection
+          title={`Equalities (${(spec.elements.equalSegments || []).length + (spec.elements.equalAngles || []).length})`}
+          defaultExpanded={false}
+        >
+          <EqualitiesPanel
+            equalSegments={spec.elements.equalSegments || []}
+            equalAngles={spec.elements.equalAngles || []}
+            points={spec.elements.points}
+            angles={spec.elements.angles}
+            onEqualSegmentsChange={(equalSegments) => updateElements({ equalSegments })}
+            onEqualAnglesChange={(equalAngles) => updateElements({ equalAngles })}
           />
         </CollapsibleSection>
       </div>
