@@ -63,7 +63,8 @@ Each example below demonstrates the input exercise JSON and the expected output 
           "value": "Construct a triangle with sides 8 cm, 15 cm, and 17 cm. Verify if it is a right triangle.",
           "mediaIds": []
         },
-        "layout": { "displaySize": "large" },
+        "layout": "textLeft",
+        "displaySize": "large",
         "geometry": {
           "kind": "euclidean",
           "canvas": { "width": 450, "height": 350 },
@@ -127,7 +128,8 @@ Each example below demonstrates the input exercise JSON and the expected output 
           "value": "Given triangle XYZ with sides 9 cm, 12 cm, and 15 cm, determine whether it is a right triangle.",
           "mediaIds": []
         },
-        "layout": { "displaySize": "large" },
+        "layout": "textLeft",
+        "displaySize": "large",
         "geometry": {
           "kind": "euclidean",
           "canvas": { "width": 450, "height": 350 },
@@ -203,7 +205,8 @@ Each example below demonstrates the input exercise JSON and the expected output 
           "value": "Find the area of the parallelogram with base 10 cm and height 6 cm.",
           "mediaIds": []
         },
-        "layout": { "displaySize": "medium" },
+        "layout": "textLeft",
+        "displaySize": "medium",
         "geometry": {
           "kind": "euclidean",
           "canvas": { "width": 400, "height": 300 },
@@ -256,7 +259,8 @@ Each example below demonstrates the input exercise JSON and the expected output 
           "value": "Calculate the surface area of this four-sided figure with a 14 cm base and 8 cm perpendicular height.",
           "mediaIds": []
         },
-        "layout": { "displaySize": "medium" },
+        "layout": "textLeft",
+        "displaySize": "medium",
         "geometry": {
           "kind": "euclidean",
           "canvas": { "width": 400, "height": 300 },
@@ -321,7 +325,8 @@ Each example below demonstrates the input exercise JSON and the expected output 
           "value": "Two circles with radii 5 cm and 3 cm have their centers 10 cm apart. Find the length of their common external tangent.",
           "mediaIds": []
         },
-        "layout": { "displaySize": "large" },
+        "layout": "textLeft",
+        "displaySize": "large",
         "geometry": {
           "kind": "euclidean",
           "canvas": { "width": 500, "height": 300 },
@@ -378,7 +383,8 @@ Each example below demonstrates the input exercise JSON and the expected output 
           "value": "A circle of radius 7 cm and another circle of radius 4 cm have centers 13 cm apart. Determine the length of the direct common tangent.",
           "mediaIds": []
         },
-        "layout": { "displaySize": "large" },
+        "layout": "textLeft",
+        "displaySize": "large",
         "geometry": {
           "kind": "euclidean",
           "canvas": { "width": 500, "height": 300 },
@@ -441,7 +447,8 @@ Each example below demonstrates the input exercise JSON and the expected output 
           "value": "Find the area of a rectangle with length 8 cm and width 5 cm.",
           "mediaIds": []
         },
-        "layout": { "displaySize": "medium" },
+        "layout": "textLeft",
+        "displaySize": "medium",
         "geometry": {
           "kind": "euclidean",
           "canvas": { "width": 400, "height": 300 },
@@ -562,7 +569,8 @@ Each example below demonstrates the input exercise JSON and the expected output 
           "value": "Find the area of a rectangle with length 12 cm and width 6 cm.",
           "mediaIds": []
         },
-        "layout": { "displaySize": "medium" },
+        "layout": "textLeft",
+        "displaySize": "medium",
         "geometry": {
           "kind": "euclidean",
           "canvas": { "width": 400, "height": 300 },
