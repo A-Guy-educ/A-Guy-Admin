@@ -297,4 +297,52 @@ describe('parseGeometryDsl', () => {
     ])
     expect(spec.elements.equalAngles).toEqual([[0, 1]])
   })
+
+  it('parses the boss-template `* שוויון צלעות | DN, BM | סימון: קו אחד` row', () => {
+    // Newer marker shape emitted by the boss's generator: the head is just
+    // the label (`שוויון צלעות` / `שוויון קטעים`), and the equal segments
+    // live in a pipe-separated field. The `סימון: <style>` suffix carries
+    // the marker-tick style ("קו אחד" / "שני קווים") — the current schema
+    // has no field for style, so we accept and drop it.
+    const raw = ['  --- סימונים ---', '  * שוויון צלעות | DN, BM | סימון: קו אחד'].join('\n')
+    const { spec } = parseGeometryDsl(raw)
+    expect(spec.elements.equalSegments).toEqual([
+      [
+        { from: 'D', to: 'N' },
+        { from: 'B', to: 'M' },
+      ],
+    ])
+  })
+
+  it('parses multiple `* שוויון צלעות` rows as distinct equality groups', () => {
+    // Parallelogram fixture: opposite sides AB=CD (one-tick) and AD=BC
+    // (two-tick) are two SEPARATE equality groups, not one group of four
+    // segments. Marker-tick style differs per row and is dropped.
+    const raw = [
+      '  --- סימונים ---',
+      '  * שוויון צלעות | AB, CD | סימון: קו אחד',
+      '  * שוויון צלעות | AD, BC | סימון: שני קווים',
+    ].join('\n')
+    const { spec } = parseGeometryDsl(raw)
+    expect(spec.elements.equalSegments).toEqual([
+      [
+        { from: 'A', to: 'B' },
+        { from: 'C', to: 'D' },
+      ],
+      [
+        { from: 'A', to: 'D' },
+        { from: 'B', to: 'C' },
+      ],
+    ])
+  })
+
+  it('parses `* שוויון זוויות | DAB, BCD | סימון: קשת אחת` into equalAngles', () => {
+    const raw = ['  --- סימונים ---', '  * שוויון זוויות | DAB, BCD | סימון: קשת אחת'].join('\n')
+    const { spec } = parseGeometryDsl(raw)
+    expect(spec.elements.angles).toEqual([
+      { center: 'A', ray1: 'D', ray2: 'B' },
+      { center: 'C', ray1: 'B', ray2: 'D' },
+    ])
+    expect(spec.elements.equalAngles).toEqual([[0, 1]])
+  })
 })
