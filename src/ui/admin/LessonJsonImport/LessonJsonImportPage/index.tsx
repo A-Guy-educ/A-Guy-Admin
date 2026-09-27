@@ -141,16 +141,12 @@ function safeParseLesson(json: unknown): {
 // Two accepted header shapes:
 //   v1  → "תרגיל 1 – מנחה: <subtopic>"   (colon-separated, at column 0)
 //   v2  → "[ תרגיל 1 - נתוני פתיחה ]"     (bracketed, wrapped in ==== fences)
-// The v2 form accepts both spaced and tight (`[תרגיל 1 - נתוני פתיחה]`)
-// brackets — the server-side signature is equally lax, so the preview
-// wouldn't be lying to the admin if we counted only one shape.
-// The `<category>:` prefix is optional (matches the server-side parser).
-// `[^:\n]+` was previously `[^:]+` — the newline in the class allowed the
-// engine to greedily swallow multiple lines to reach a later `:`, which
-// counted a colon-less `תרגיל 10 – title` as a match even though the server
-// dropped it. Both regexes now agree on the exercise count.
+// The v2 form also accepts the bare `[ נתוני פתיחה ]` header (short
+// single-exercise files) and the `שאלה` prefix variant
+// (`[ שאלה 1 - נתוני פתיחה ]`) — mirrors V2_SIGNATURE_RE in parse-text-v2.ts
+// so the preview doesn't reject files the server would happily parse.
 const TEXT_EXERCISE_HEADER_RE = /^תרגיל\s+[^\s–-]+\s*[–-]\s*(?:[^:\n]+:\s*)?(.*)$/gm
-const V2_EXERCISE_HEADER_RE = /^\s*\[\s*תרגיל\s+\S+\s*[-–]\s*נתוני\s*פתיחה\s*\]\s*$/gm
+const V2_EXERCISE_HEADER_RE = /^\s*\[\s*(?:(?:תרגיל|שאלה)\s+\S+\s*[-–]\s*)?נתוני\s*פתיחה\s*\]\s*$/gm
 
 // Mirrors deriveLessonTitle in server/services/text-lesson-import/convert-text-exercise.ts
 // so the preview table shows the same title the server will store.
@@ -186,7 +182,8 @@ function safeParseTextLesson(
   const exerciseCount = v1Count + v2Count
   if (exerciseCount === 0) {
     return {
-      error: 'No exercise headers found — expected "תרגיל N – …:" or "[ תרגיל N - נתוני פתיחה ]".',
+      error:
+        'No exercise headers found — expected "תרגיל N – …:", "[ תרגיל N - נתוני פתיחה ]", "[ שאלה N - נתוני פתיחה ]", or "[ נתוני פתיחה ]".',
     }
   }
   return { topic: deriveTitleFromFilename(filename), exerciseCount }

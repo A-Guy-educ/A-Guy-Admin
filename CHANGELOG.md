@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.49.0 — 2026-09-27
+
+### Features
+- Text-lesson import (v2): parse matching questions, multi-select MCQ answers, per-shape equality markings, and bare intro / שאלה header shapes (#505)
+- Lesson-import (v2): recognise Fill-in Table sections and emit them as `question_table` blocks (#509)
+- Geometry DSL: accept `שוויון צלעות | ...` and `שוויון זוויות | ...` equality-marker syntax so authors can group congruent segments and angles from the DSL (#510)
+
+### Bug Fixes
+- Text-lesson import: stamp `displaySize: 'full'` on every emitted visual block so imported sketches match the block layout contract (#506)
+- LLM prompts: correct the geometry block layout/`displaySize` shape in the lesson-duplication prompts so generated content passes downstream schema checks (#507)
+- Lesson-import preview: accept bare and `שאלה`-prefixed v2 exercise headers on the client-side regex so preview matches the server parser (#508)
+
 ## v0.48.0 — 2026-09-27
 
 ### Features
@@ -2108,6 +2120,16 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- chore: release v0.49.0 ([#511](https://github.com/A-Guy-educ/A-Guy-Admin/pull/511)) — @aguyshayb
+- feat(geometry-dsl): accept 'שוויון צלעות/זוויות | ...' equality markers ([#510](https://github.com/A-Guy-educ/A-Guy-Admin/pull/510)) — @aguyshayb
+- feat(lesson-import): import Fill-in Table sections as question_table blocks ([#509](https://github.com/A-Guy-educ/A-Guy-Admin/pull/509)) — @aguyshayb
+- fix(lesson-import): accept bare and שאלה-prefix v2 headers in preview ([#508](https://github.com/A-Guy-educ/A-Guy-Admin/pull/508)) — @aguyshayb
+- fix(llm-prompts): geometry block layout/displaySize shape ([#507](https://github.com/A-Guy-educ/A-Guy-Admin/pull/507)) — @aguyshayb
+- fix(text-lesson-import): stamp displaySize:'full' on emitted visuals ([#506](https://github.com/A-Guy-educ/A-Guy-Admin/pull/506)) — @aguyshayb
+- feat(text-lesson-import): matching, multi-select MCQ, equality markings, alt header shapes ([#505](https://github.com/A-Guy-educ/A-Guy-Admin/pull/505)) — @aguyshayb
+## [v0.48.0] - 2026-09-27
+
+- promote: dev -> main (v0.48.0) ([#504](https://github.com/A-Guy-educ/A-Guy-Admin/pull/504)) — @aguyshayb
 - chore: release v0.48.0 ([#503](https://github.com/A-Guy-educ/A-Guy-Admin/pull/503)) — @aguyshayb
 - feat: Geometry equality markers + lesson renderer default swap ([#502](https://github.com/A-Guy-educ/A-Guy-Admin/pull/502)) — @aguyshayb
 ## [v0.47.1] - 2026-09-25

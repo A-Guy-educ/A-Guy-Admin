@@ -75,6 +75,22 @@ function splitItem(raw: string): Item {
   }
 }
 
+/**
+ * Pull alphabetic segment/angle name tokens out of a marker row like
+ * `AB, AC` or `BAD, CAD` — either directly (`head` split on commas) or
+ * across `|`-separated fields (`AB | AC`). Non-letter characters are
+ * stripped so `"AB,"` and `"AB;"` both work.
+ */
+function collectSegmentTokens(head: string, fields: string[]): string[] {
+  const out: string[] = []
+  const pieces = [head, ...fields].flatMap((p) => p.split(/[,;]/))
+  for (const piece of pieces) {
+    const cleaned = piece.trim().replace(/[^A-Za-z]/g, '')
+    if (cleaned.length >= 1) out.push(cleaned)
+  }
+  return out
+}
+
 function findField(fields: string[], keys: string[]): string | undefined {
   for (const field of fields) {
     const colonIdx = field.indexOf(':')
@@ -438,6 +454,10 @@ export function parseGeometryDsl(raw: string): ParseGeometryDslResult {
   const points: MutablePoint[] = []
   const lines: MutableLine[] = []
   const angles: MutableAngle[] = []
+  /** Equal-segment groups. Each entry is a list of segments that are equal to each other. Indices into `lines` aren't used — the schema takes {from, to} pairs directly. */
+  const equalSegments: Array<Array<{ from: string; to: string }>> = []
+  /** Equal-angle groups. Each entry is a list of angle INDICES (into the finalised `angles` array) that are equal to each other. */
+  const equalAngles: Array<number[]> = []
   let canvasWidth: number | undefined
   let canvasHeight: number | undefined
   let canvasGrid: boolean | undefined
@@ -526,6 +546,75 @@ export function parseGeometryDsl(raw: string): ParseGeometryDslResult {
         break
       }
       case 'markers': {
+        // Equal-segments marker. Accepted head shapes:
+        //   `סימן קטעים שווים AB, AC`  — segments in head (legacy).
+        //   `קטעים שווים AB, AC`       — same, without the `סימן` prefix.
+        //   `שוויון צלעות | DN, BM | סימון: קו אחד` — boss's newer template
+        //     where the head is just the label and the segments live in a
+        //     `|`-separated field. `סימון: <style>` is dropped because the
+        //     current EqualSegmentGroup schema has no marker-style field;
+        //     `collectSegmentTokens` naturally ignores it (only ASCII letters
+        //     survive its cleanup).
+        //   `שוויון קטעים | …`         — same as above, `קטעים` synonym.
+        // Each row emits ONE equality group. Multiple `שוויון צלעות` rows in
+        // the same `סימונים` block produce multiple groups (e.g. AB=CD and
+        // AD=BC as distinct pairs), which is what the boss's parallelogram
+        // template needs.
+        if (
+          /^סימן\s+קטעים\s+שוו/.test(item.head) ||
+          /^קטעים\s+שוו/.test(item.head) ||
+          /^שוויון\s+(?:קטעים|צלעות)/.test(item.head)
+        ) {
+          const rest = item.head
+            .replace(/^(?:סימן\s+)?קטעים\s+שוו\S*\s*:?\s*/, '')
+            .replace(/^שוויון\s+(?:קטעים|צלעות)\s*:?\s*/, '')
+          const tokens = collectSegmentTokens(rest, item.fields)
+          const group = tokens
+            .map((t) => (t.length === 2 ? { from: t[0], to: t[1] } : null))
+            .filter((s): s is { from: string; to: string } => s !== null)
+          if (group.length >= 2) {
+            equalSegments.push(group)
+            break
+          }
+          warnings.push(`Skipped equal-segments row: ${body}`)
+          break
+        }
+        // Equal-angles marker: `סימן זוויות שוות BAD, CAD` or the newer
+        // `שוויון זוויות | DAB, BCD | סימון: קשת אחת` shape. Angle names
+        // are 3-letter triples (endpoint-vertex-endpoint). Resolve to
+        // indices in the `angles` array. If an angle isn't in the array
+        // yet, we push a stub so the reference resolves.
+        if (
+          /^סימן\s+זוויות\s+שוו/.test(item.head) ||
+          /^זוויות\s+שוו/.test(item.head) ||
+          /^שוויון\s+זוויות/.test(item.head)
+        ) {
+          const rest = item.head
+            .replace(/^(?:סימן\s+)?זוויות\s+שוו\S*\s*:?\s*/, '')
+            .replace(/^שוויון\s+זוויות\s*:?\s*/, '')
+          const tokens = collectSegmentTokens(rest, item.fields)
+          const indices: number[] = []
+          for (const t of tokens) {
+            if (t.length !== 3) continue
+            const [a, b, c] = [t[0], t[1], t[2]]
+            let idx = angles.findIndex(
+              (ang) =>
+                ang.center === b &&
+                ((ang.ray1 === a && ang.ray2 === c) || (ang.ray1 === c && ang.ray2 === a)),
+            )
+            if (idx === -1) {
+              angles.push({ center: b, ray1: a, ray2: c })
+              idx = angles.length - 1
+            }
+            indices.push(idx)
+          }
+          if (indices.length >= 2) {
+            equalAngles.push(indices)
+            break
+          }
+          warnings.push(`Skipped equal-angles row: ${body}`)
+          break
+        }
         // Right-angle markers ("סימן זווית ישרה"). The vertex is a single
         // point name; ray fields typically arrive as 2-letter segment refs
         // (e.g. "EF" / "GH") where one letter is the vertex and the other
@@ -639,6 +728,8 @@ export function parseGeometryDsl(raw: string): ParseGeometryDslResult {
         ...(a.style ? { style: a.style } : {}),
         ...(a.label ? { label: a.label } : {}),
       })),
+      ...(equalSegments.length > 0 ? { equalSegments } : {}),
+      ...(equalAngles.length > 0 ? { equalAngles } : {}),
     },
   }
 

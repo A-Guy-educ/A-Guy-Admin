@@ -62,7 +62,8 @@ Each example below demonstrates the input exercise JSON and the expected output 
           "value": "In triangle ABC, AB = 4 cm, BC = 5 cm, and angle B = 60°. Find the length of AC.",
           "mediaIds": []
         },
-        "layout": { "displaySize": "medium" },
+        "layout": "textLeft",
+        "displaySize": "medium",
         "geometry": {
           "kind": "euclidean",
           "canvas": { "width": 400, "height": 300 },
@@ -116,7 +117,8 @@ Each example below demonstrates the input exercise JSON and the expected output 
           "value": "In triangle ABC, AB = 6 cm, BC = 8 cm, and angle B = 60°. Find the length of AC.",
           "mediaIds": []
         },
-        "layout": { "displaySize": "medium" },
+        "layout": "textLeft",
+        "displaySize": "medium",
         "geometry": {
           "kind": "euclidean",
           "canvas": { "width": 400, "height": 300 },
@@ -182,7 +184,8 @@ Each example below demonstrates the input exercise JSON and the expected output 
           "value": "Find the area of a circle with radius 7 cm.",
           "mediaIds": []
         },
-        "layout": { "displaySize": "medium" },
+        "layout": "textLeft",
+        "displaySize": "medium",
         "geometry": {
           "kind": "euclidean",
           "canvas": { "width": 300, "height": 300 },
@@ -220,7 +223,8 @@ Each example below demonstrates the input exercise JSON and the expected output 
           "value": "Find the area of a circle with radius 5 cm.",
           "mediaIds": []
         },
-        "layout": { "displaySize": "medium" },
+        "layout": "textLeft",
+        "displaySize": "medium",
         "geometry": {
           "kind": "euclidean",
           "canvas": { "width": 300, "height": 300 },
@@ -270,7 +274,8 @@ Each example below demonstrates the input exercise JSON and the expected output 
           "value": "Two parallel lines are cut by a transversal. If one corresponding angle measures 65°, find all other angles.",
           "mediaIds": []
         },
-        "layout": { "displaySize": "medium" },
+        "layout": "textLeft",
+        "displaySize": "medium",
         "geometry": {
           "kind": "euclidean",
           "canvas": { "width": 400, "height": 250 },
@@ -332,7 +337,8 @@ Each example below demonstrates the input exercise JSON and the expected output 
           "value": "Two parallel lines are cut by a transversal. If one corresponding angle measures 45°, find all other angles.",
           "mediaIds": []
         },
-        "layout": { "displaySize": "medium" },
+        "layout": "textLeft",
+        "displaySize": "medium",
         "geometry": {
           "kind": "euclidean",
           "canvas": { "width": 400, "height": 250 },

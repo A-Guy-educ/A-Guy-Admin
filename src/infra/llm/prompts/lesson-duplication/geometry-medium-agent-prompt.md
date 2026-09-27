@@ -62,7 +62,8 @@ Each example below demonstrates the input exercise JSON and the expected output 
           "value": "Calculate the perimeter of the trapezoid shown below.",
           "mediaIds": []
         },
-        "layout": { "displaySize": "medium" },
+        "layout": "textLeft",
+        "displaySize": "medium",
         "geometry": {
           "kind": "euclidean",
           "canvas": { "width": 400, "height": 280 },
@@ -130,7 +131,8 @@ Each example below demonstrates the input exercise JSON and the expected output 
           "value": "Determine the total distance around this quadrilateral.",
           "mediaIds": []
         },
-        "layout": { "displaySize": "medium" },
+        "layout": "textLeft",
+        "displaySize": "medium",
         "geometry": {
           "kind": "euclidean",
           "canvas": { "width": 400, "height": 280 },
@@ -210,7 +212,8 @@ Each example below demonstrates the input exercise JSON and the expected output 
           "value": "Find the measure of angle C in the triangle.",
           "mediaIds": []
         },
-        "layout": { "displaySize": "medium" },
+        "layout": "textLeft",
+        "displaySize": "medium",
         "geometry": {
           "kind": "euclidean",
           "canvas": { "width": 350, "height": 280 },
@@ -271,7 +274,8 @@ Each example below demonstrates the input exercise JSON and the expected output 
           "value": "What is the value of angle ACB in this triangle?",
           "mediaIds": []
         },
-        "layout": { "displaySize": "medium" },
+        "layout": "textLeft",
+        "displaySize": "medium",
         "geometry": {
           "kind": "euclidean",
           "canvas": { "width": 350, "height": 280 },
@@ -344,7 +348,8 @@ Each example below demonstrates the input exercise JSON and the expected output 
           "value": "In the diagram, find the length of the hypotenuse.",
           "mediaIds": []
         },
-        "layout": { "displaySize": "medium" },
+        "layout": "textLeft",
+        "displaySize": "medium",
         "geometry": {
           "kind": "euclidean",
           "canvas": { "width": 350, "height": 280 },
@@ -406,7 +411,8 @@ Each example below demonstrates the input exercise JSON and the expected output 
           "value": "Using the given dimensions, what is the distance from point A to point B?",
           "mediaIds": []
         },
-        "layout": { "displaySize": "medium" },
+        "layout": "textLeft",
+        "displaySize": "medium",
         "geometry": {
           "kind": "euclidean",
           "canvas": { "width": 350, "height": 280 },

@@ -71,6 +71,10 @@ function geometryBlock(source: string): QuestionGeometryBlock | null {
     prompt: inlineRichText(''),
     layout: 'textRight',
     geometry: spec,
+    // Matches the AttachmentEditor / GeometrySpecEditor emission shape. The
+    // web renderer requires `displaySize` to be set; omitting it (even though
+    // the type marks it optional) results in the sketch not rendering.
+    displaySize: 'full',
   }
 }
 

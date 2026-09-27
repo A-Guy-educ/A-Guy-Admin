@@ -15,7 +15,9 @@ import type {
   QuestionAxisBlock,
   QuestionFreeResponseBlock,
   QuestionGeometryBlock,
+  QuestionMatchingBlock,
   QuestionSelectMcqBlock,
+  QuestionTableBlock,
   RichTextBlock,
   SvgBlock,
 } from '@/server/payload/collections/Exercises/types'
@@ -35,6 +37,13 @@ function richTextBlock(value: string): RichTextBlock {
   return { id: generateId(), type: 'rich_text', format: 'md-math-v1', value, mediaIds: [] }
 }
 
+// `displaySize: 'full'` matches the shape the admin's AttachmentEditor /
+// GeometrySpecEditor emit when an author manually attaches or inserts a
+// visual. The web renderer draws the same block shape the admin produces;
+// omitting `displaySize` (even though it's typed as optional) results in
+// the sketch not rendering on web — the field is required in practice.
+const DEFAULT_DISPLAY_SIZE = 'full' as const
+
 function standaloneGeometryBlock(geometry: GeometrySpecV1): QuestionGeometryBlock {
   return {
     id: generateId(),
@@ -42,6 +51,7 @@ function standaloneGeometryBlock(geometry: GeometrySpecV1): QuestionGeometryBloc
     prompt: inlineRichText(''),
     layout: 'textRight',
     geometry,
+    displaySize: DEFAULT_DISPLAY_SIZE,
   }
 }
 
@@ -52,6 +62,7 @@ function standaloneAxisBlock(axis: AxisSpecV1): QuestionAxisBlock {
     prompt: inlineRichText(''),
     layout: 'textRight',
     axis,
+    displaySize: DEFAULT_DISPLAY_SIZE,
   }
 }
 
@@ -64,6 +75,7 @@ function geometryAttachment(geometry: GeometrySpecV1): QuestionAttachment {
     kind: 'geometry',
     layout: 'textRight',
     geometry,
+    displaySize: DEFAULT_DISPLAY_SIZE,
   }
 }
 
@@ -72,6 +84,7 @@ function axisAttachment(axis: AxisSpecV1): QuestionAttachment {
     kind: 'axis',
     layout: 'textRight',
     axis,
+    displaySize: DEFAULT_DISPLAY_SIZE,
   }
 }
 
@@ -80,6 +93,7 @@ function svgAttachment(value: string): QuestionAttachment {
     kind: 'svg',
     layout: 'textRight',
     svg: { value },
+    displaySize: DEFAULT_DISPLAY_SIZE,
   }
 }
 
@@ -101,14 +115,20 @@ function buildPrompt(section: TextSectionV2): InlineRichText {
 }
 
 /**
- * Try to build an MCQ from the source's option list. Requires at least two
- * options and exactly one flagged as correct (multiSelect isn't supported by
- * the v2 authors yet — mirrors the legacy v1 converter).
+ * Try to build an MCQ from the source's option list. Handles both
+ * `Single Choice` (exactly one correct) and `Multiple Choice` (>=1
+ * correct). Reads `section.type.selectionMode` when the type is `mcq`;
+ * otherwise infers single/multiple from the number of `[תשובה נכונה]`
+ * markers so legacy sources still work.
  */
 function tryBuildMcqBlock(section: TextSectionV2): QuestionSelectMcqBlock | null {
   if (section.options.length < 2) return null
   const correctCount = section.options.filter((o) => o.correct).length
-  if (correctCount !== 1) return null
+  if (correctCount === 0) return null
+
+  const declaredMultiple = section.type.kind === 'mcq' && section.type.selectionMode === 'multiple'
+  const selectionMode: 'single' | 'multiple' =
+    declaredMultiple || correctCount > 1 ? 'multiple' : 'single'
 
   const pool = section.options.map((o) => ({ text: o.text, correct: o.correct }))
   for (let i = pool.length - 1; i > 0; i--) {
@@ -128,9 +148,48 @@ function tryBuildMcqBlock(section: TextSectionV2): QuestionSelectMcqBlock | null
     id: generateId(),
     type: 'question_select',
     variant: 'mcq',
-    selectionMode: 'single',
+    selectionMode,
     prompt: buildPrompt(section),
-    answer: { multiSelect: false, options, correctOptionIds },
+    answer: { multiSelect: selectionMode === 'multiple', options, correctOptionIds },
+  }
+  if (section.hint) block.hint = inlineRichText(section.hint)
+  if (section.fullSolution) block.fullSolution = inlineRichText(section.fullSolution)
+  const attachment = sectionAttachment(section)
+  if (attachment) block.attachment = attachment
+  return block
+}
+
+function tryBuildMatchingBlock(section: TextSectionV2): QuestionMatchingBlock | null {
+  if (section.matchingPairs.length < 2) return null
+  const leftColumn = section.matchingPairs.map((p, idx) => ({
+    id: `left-${idx + 1}`,
+    content: inlineRichText(p.left),
+  }))
+  // Right column is shuffled so the source order isn't the answer key. Studio
+  // authors can re-order it manually if they want a specific display layout.
+  const rightPool = section.matchingPairs.map((p, idx) => ({
+    id: `right-${idx + 1}`,
+    content: inlineRichText(p.right),
+    originalIdx: idx,
+  }))
+  for (let i = rightPool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[rightPool[i], rightPool[j]] = [rightPool[j], rightPool[i]]
+  }
+  const rightColumn = rightPool.map(({ id, content }) => ({ id, content }))
+  const correctPairs = section.matchingPairs.map((_, idx) => {
+    const right = rightPool.find((r) => r.originalIdx === idx)!
+    return { optionId: `left-${idx + 1}`, matchId: right.id }
+  })
+
+  const block: QuestionMatchingBlock = {
+    id: generateId(),
+    type: 'question_matching',
+    prompt: buildPrompt(section),
+    leftColumn,
+    rightColumn,
+    correctPairs,
+    shuffleRightColumn: true,
   }
   if (section.hint) block.hint = inlineRichText(section.hint)
   if (section.fullSolution) block.fullSolution = inlineRichText(section.fullSolution)
@@ -181,12 +240,50 @@ function buildSectionTitle(section: TextSectionV2, index: number): string {
   return `סעיף ${index + 1}`
 }
 
+/**
+ * Emit a `question_table` block from a parsed `Fill-in Table` section. The
+ * table is always in solution-fill mode (that's the point of importing a
+ * table question — the student fills the blanks), with correct values in
+ * `answers` and blank cells left as empty strings in `rowsData`.
+ * Attachments (e.g. `שרטוט מותאם לסעיף`) still hang off the question block.
+ */
+function buildTableBlock(section: TextSectionV2): QuestionTableBlock | null {
+  if (!section.table) return null
+  const { headers, rowsData, answers } = section.table
+  const block: QuestionTableBlock = {
+    id: generateId(),
+    type: 'question_table',
+    prompt: buildPrompt(section),
+    table: {
+      solutionFill: true,
+      headers,
+      rowsData,
+      answers,
+      showBorders: true,
+      showHeader: true,
+    },
+  }
+  if (section.hint) block.hint = inlineRichText(section.hint)
+  if (section.fullSolution) block.fullSolution = inlineRichText(section.fullSolution)
+  const attachment = sectionAttachment(section)
+  if (attachment) block.attachment = attachment
+  return block
+}
+
 function convertSectionToBlocks(section: TextSectionV2): ContentBlock[] {
-  // Table / unknown types fall through to an unparsable placeholder so the
-  // author sees the raw content and can rebuild it manually — better than
-  // silently swallowing the section.
   if (section.type.kind === 'table') {
-    return [unparsableSectionBlock(section, 'שאלת השלמת טבלה — אינה נתמכת עדיין בייבוא')]
+    const table = buildTableBlock(section)
+    if (table) return [table]
+    // Body was missing (no `* מבנה טבלה (עמודות: …):` line, or no rows) —
+    // leave the author a placeholder with the raw prompt so they can rebuild
+    // it manually instead of silently swallowing the section.
+    return [unparsableSectionBlock(section, 'שאלת השלמת טבלה ללא מבנה טבלה תקין (עמודות/שורות)')]
+  }
+
+  if (section.type.kind === 'matching') {
+    const matching = tryBuildMatchingBlock(section)
+    if (matching) return [matching]
+    return [unparsableSectionBlock(section, 'שאלת התאמה ללא זוגות תקינים (צמד N: X <---> Y)')]
   }
 
   const wantsMcq = section.type.kind !== 'free_response' && section.options.length >= 2

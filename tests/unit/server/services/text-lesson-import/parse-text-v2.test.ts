@@ -96,7 +96,7 @@ describe('parseTextLessonV2 — basic shape', () => {
     const sec = ex.sections[0]
     expect(sec.questionNumber).toBe("א'")
     expect(sec.headerRest).toBe('שאלת ברירה יחידה')
-    expect(sec.type).toEqual({ kind: 'mcq', optionsCount: 2 })
+    expect(sec.type).toEqual({ kind: 'mcq', optionsCount: 2, selectionMode: 'single' })
     expect(sec.question).toContain('הקשר בין הזוויות')
     expect(sec.options).toEqual([
       { text: 'זוויות קודקודיות', correct: true },
@@ -125,7 +125,7 @@ describe('parseTextLessonV2 — basic shape', () => {
 
     const lesson = parseTextLessonV2(source)
     const sec = lesson.exercises[0].sections[0]
-    expect(sec.type).toEqual({ kind: 'mcq', optionsCount: 3 })
+    expect(sec.type).toEqual({ kind: 'mcq', optionsCount: 3, selectionMode: 'single' })
     expect(sec.options).toHaveLength(3)
     const correctIdx = sec.options.findIndex((o) => o.correct)
     expect(correctIdx).toBe(1)
@@ -463,5 +463,115 @@ describe('parseTextLessonV2 — basic shape', () => {
     expect(sec.functionGraph?.elements.graphs[0].fn).toBe('x^2')
     expect(sec.functionGraph?.elements.graphs[0].color).toBe('blue')
     expect(sec.functionGraph?.viewport).toEqual({ xMin: -5, xMax: 5, yMin: -2, yMax: 10 })
+  })
+
+  it('recognises the bare `[ נתוני פתיחה ]` header + Multiple Choice + Matching', () => {
+    // Short single-exercise generator files skip the `תרגיל N -` prefix on
+    // the intro header. Also verifies that Multiple Choice becomes a
+    // multi-select MCQ (multiple `[תשובה נכונה]` markers) and Matching
+    // captures the pair rows onto `section.matchingPairs`.
+    const source = [
+      SEP,
+      '[ נתוני פתיחה ]',
+      SEP,
+      '* טקסט: intro paragraph',
+      '',
+      SEP,
+      '[ סעיף 1 - שאלת ברירה מרובה ]',
+      SEP,
+      '* סוג השאלה: Multiple Choice',
+      '* הנחיה: pick all correct',
+      '* אפשרות 1: A [תשובה נכונה]',
+      '* אפשרות 2: B',
+      '* אפשרות 3: C [תשובה נכונה]',
+      '',
+      SEP,
+      '[ סעיף 2 - שאלת התאמה ]',
+      SEP,
+      '* סוג השאלה: Matching',
+      '* הנחיה: match pairs',
+      '* צמד 1: left1 <---> right1',
+      '* צמד 2: left2 <---> right2',
+      '* צמד 3: left3 <---> right3',
+    ].join('\n')
+
+    const lesson = parseTextLessonV2(source)
+    expect(lesson.exercises).toHaveLength(1)
+    const ex = lesson.exercises[0]
+    expect(ex.exerciseNumber).toBe('1')
+    expect(ex.headerRest).toBe('נתוני פתיחה')
+    expect(ex.intro).toBe('intro paragraph')
+    expect(ex.sections).toHaveLength(2)
+
+    const mc = ex.sections[0]
+    expect(mc.questionNumber).toBe('1')
+    expect(mc.type).toEqual({ kind: 'mcq', optionsCount: 2, selectionMode: 'multiple' })
+    expect(mc.options.filter((o) => o.correct)).toHaveLength(2)
+
+    const match = ex.sections[1]
+    expect(match.type).toEqual({ kind: 'matching' })
+    expect(match.matchingPairs).toEqual([
+      { left: 'left1', right: 'right1' },
+      { left: 'left2', right: 'right2' },
+      { left: 'left3', right: 'right3' },
+    ])
+  })
+
+  it('accepts `[ שאלה N - נתוני פתיחה ]` (שאלה prefix) as an exercise header', () => {
+    const source = [
+      SEP,
+      '[ שאלה 1 - נתוני פתיחה ]',
+      SEP,
+      '* טקסט: intro',
+      '',
+      SEP,
+      "[ סעיף א' - שאלת ברירה יחידה ]",
+      SEP,
+      '* סוג השאלה: Single Choice',
+      '* הנחיה: q',
+      '* אפשרות 1: A [תשובה נכונה]',
+      '* אפשרות 2: B',
+    ].join('\n')
+
+    const lesson = parseTextLessonV2(source)
+    expect(lesson.exercises).toHaveLength(1)
+    expect(lesson.exercises[0].exerciseNumber).toBe('1')
+    expect(lesson.exercises[0].sections).toHaveLength(1)
+  })
+
+  it('parses a `Fill-in Table` section body into headers, rowsData, and answers', () => {
+    // Mirrors the boss's `* מבנה טבלה (עמודות: X, Y, Z):` template. The row
+    // label (`שורה N`) fills the first column, and `[ שדה ריק - להשלמה: X ]`
+    // cells become blank strings with the correct value in `answers`.
+    const source = [
+      SEP,
+      '[ תרגיל 1 - נתוני פתיחה ]',
+      SEP,
+      '* טקסט: intro',
+      '',
+      SEP,
+      "[ סעיף ה' - שאלת השלמת טבלה ]",
+      SEP,
+      '* סוג השאלה: Fill-in Table',
+      '* הנחיה: השלימו את הטבלה.',
+      '* מבנה טבלה (עמודות: שלב, טענה, נימוק):',
+      '  * שורה 1 | טענה: DE || BC | נימוק: [ שדה ריק - נתון ]',
+      '  * שורה 2 | טענה: [ שדה ריק - להשלמה: זווית A = זווית A ] | נימוק: זווית משותפת',
+    ].join('\n')
+
+    const lesson = parseTextLessonV2(source)
+    const section = lesson.exercises[0].sections[0]
+    expect(section.type.kind).toBe('table')
+    expect(section.table).toEqual({
+      headers: ['שלב', 'טענה', 'נימוק'],
+      rowsData: [
+        ['1', 'DE || BC', ''],
+        ['2', '', 'זווית משותפת'],
+      ],
+      answers: {
+        '0-2': 'נתון',
+        '1-1': 'זווית A = זווית A',
+      },
+    })
   })
 })
