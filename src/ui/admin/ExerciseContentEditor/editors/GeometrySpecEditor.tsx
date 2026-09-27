@@ -161,6 +161,8 @@ export const GeometrySpecEditor: React.FC<GeometrySpecEditorProps> = ({
             angles={spec.elements.angles}
             points={spec.elements.points}
             onChange={(angles) => updateElements({ angles })}
+            equalAngles={spec.elements.equalAngles}
+            onEqualAnglesChange={(equalAngles) => updateElements({ equalAngles })}
           />
         </CollapsibleSection>
 

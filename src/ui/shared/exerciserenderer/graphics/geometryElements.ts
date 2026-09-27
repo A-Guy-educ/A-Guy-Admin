@@ -287,9 +287,17 @@ function renderEqualAngles(
       const l2 = Math.hypot(v2x, v2y) || 1
       let bx = v1x / l1 + v2x / l2
       let by = v1y / l1 + v2y / l2
-      const bl = Math.hypot(bx, by) || 1
-      bx /= bl
-      by /= bl
+      const bl = Math.hypot(bx, by)
+      if (bl < 1e-6) {
+        // Anti-parallel rays: sum-of-unit-vectors degenerates to (0,0). Mirror
+        // the perpendicular fallback used by computeAngleLabelPos so ticks
+        // don't collapse to the vertex.
+        bx = -v1y / l1
+        by = v1x / l1
+      } else {
+        bx /= bl
+        by /= bl
+      }
       // Tangent to arc at bisector = perpendicular to radial direction.
       const tanX = -by
       const tanY = bx

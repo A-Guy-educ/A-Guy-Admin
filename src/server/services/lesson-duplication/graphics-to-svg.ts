@@ -399,9 +399,16 @@ export function geometrySpecToSvg(spec: unknown): string {
       const l2 = Math.hypot(v2x, v2y) || 1
       let bx = v1x / l1 + v2x / l2
       let by = v1y / l1 + v2y / l2
-      const bl = Math.hypot(bx, by) || 1
-      bx /= bl
-      by /= bl
+      const bl = Math.hypot(bx, by)
+      if (bl < 1e-6) {
+        // Anti-parallel rays: mirror the perpendicular fallback used by
+        // computeAngleLabelPos so ticks don't collapse to the vertex.
+        bx = -v1y / l1
+        by = v1x / l1
+      } else {
+        bx /= bl
+        by /= bl
+      }
       const tanX = -by
       const tanY = bx
       const arcRadius = angle.arcRadius || 30

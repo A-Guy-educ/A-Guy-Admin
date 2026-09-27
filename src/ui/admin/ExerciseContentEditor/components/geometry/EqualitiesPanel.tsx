@@ -20,8 +20,7 @@ interface EqualitiesPanelProps {
 
 const TICK_LABELS = ['single', 'double', 'triple', 'quadruple', 'quintuple']
 
-const groupTickLabel = (index: number) =>
-  TICK_LABELS[index] ?? `${index + 1} ticks`
+const groupTickLabel = (index: number) => TICK_LABELS[index] ?? `${index + 1} ticks`
 
 const angleDisplay = (angle: GeoAngle) => `∠${angle.ray1}${angle.center}${angle.ray2}`
 
@@ -78,9 +77,7 @@ export const EqualitiesPanel: React.FC<EqualitiesPanelProps> = ({
   }
 
   const addAngleToGroup = (groupIndex: number) => {
-    onEqualAnglesChange(
-      equalAngles.map((g, i) => (i === groupIndex ? [...g, 0] : g)),
-    )
+    onEqualAnglesChange(equalAngles.map((g, i) => (i === groupIndex ? [...g, 0] : g)))
   }
 
   const removeAngleFromGroup = (groupIndex: number, memberIndex: number) => {
@@ -138,7 +135,9 @@ export const EqualitiesPanel: React.FC<EqualitiesPanelProps> = ({
                     <select
                       className="panel-field-select"
                       value={seg.from}
-                      onChange={(e) => updateSegment(groupIndex, segIndex, { from: e.target.value })}
+                      onChange={(e) =>
+                        updateSegment(groupIndex, segIndex, { from: e.target.value })
+                      }
                     >
                       {points.map((p) => (
                         <option key={p.name} value={p.name}>
