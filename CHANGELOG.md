@@ -2108,6 +2108,7 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- feat(lesson-import): import Fill-in Table sections as question_table blocks ([#509](https://github.com/A-Guy-educ/A-Guy-Admin/pull/509)) — @aguyshayb
 - fix(lesson-import): accept bare and שאלה-prefix v2 headers in preview ([#508](https://github.com/A-Guy-educ/A-Guy-Admin/pull/508)) — @aguyshayb
 - fix(llm-prompts): geometry block layout/displaySize shape ([#507](https://github.com/A-Guy-educ/A-Guy-Admin/pull/507)) — @aguyshayb
 - fix(text-lesson-import): stamp displaySize:'full' on emitted visuals ([#506](https://github.com/A-Guy-educ/A-Guy-Admin/pull/506)) — @aguyshayb
