@@ -546,11 +546,28 @@ export function parseGeometryDsl(raw: string): ParseGeometryDslResult {
         break
       }
       case 'markers': {
-        // Equal-segments marker: `סימן קטעים שווים AB, AC` (or with a colon
-        // after שווים, or fields split on `|`). Collect the segment names as
-        // {from, to} pairs and add the whole list as one equality group.
-        if (/^סימן\s+קטעים\s+שוו/.test(item.head) || /^קטעים\s+שוו/.test(item.head)) {
-          const rest = item.head.replace(/^(?:סימן\s+)?קטעים\s+שוו\S*\s*:?\s*/, '')
+        // Equal-segments marker. Accepted head shapes:
+        //   `סימן קטעים שווים AB, AC`  — segments in head (legacy).
+        //   `קטעים שווים AB, AC`       — same, without the `סימן` prefix.
+        //   `שוויון צלעות | DN, BM | סימון: קו אחד` — boss's newer template
+        //     where the head is just the label and the segments live in a
+        //     `|`-separated field. `סימון: <style>` is dropped because the
+        //     current EqualSegmentGroup schema has no marker-style field;
+        //     `collectSegmentTokens` naturally ignores it (only ASCII letters
+        //     survive its cleanup).
+        //   `שוויון קטעים | …`         — same as above, `קטעים` synonym.
+        // Each row emits ONE equality group. Multiple `שוויון צלעות` rows in
+        // the same `סימונים` block produce multiple groups (e.g. AB=CD and
+        // AD=BC as distinct pairs), which is what the boss's parallelogram
+        // template needs.
+        if (
+          /^סימן\s+קטעים\s+שוו/.test(item.head) ||
+          /^קטעים\s+שוו/.test(item.head) ||
+          /^שוויון\s+(?:קטעים|צלעות)/.test(item.head)
+        ) {
+          const rest = item.head
+            .replace(/^(?:סימן\s+)?קטעים\s+שוו\S*\s*:?\s*/, '')
+            .replace(/^שוויון\s+(?:קטעים|צלעות)\s*:?\s*/, '')
           const tokens = collectSegmentTokens(rest, item.fields)
           const group = tokens
             .map((t) => (t.length === 2 ? { from: t[0], to: t[1] } : null))
@@ -562,12 +579,19 @@ export function parseGeometryDsl(raw: string): ParseGeometryDslResult {
           warnings.push(`Skipped equal-segments row: ${body}`)
           break
         }
-        // Equal-angles marker: `סימן זוויות שוות BAD, CAD` — angle names are
-        // 3-letter triples (endpoint-vertex-endpoint). Resolve to indices in
-        // the `angles` array. If an angle isn't in the array yet, we push a
-        // stub so the reference resolves.
-        if (/^סימן\s+זוויות\s+שוו/.test(item.head) || /^זוויות\s+שוו/.test(item.head)) {
-          const rest = item.head.replace(/^(?:סימן\s+)?זוויות\s+שוו\S*\s*:?\s*/, '')
+        // Equal-angles marker: `סימן זוויות שוות BAD, CAD` or the newer
+        // `שוויון זוויות | DAB, BCD | סימון: קשת אחת` shape. Angle names
+        // are 3-letter triples (endpoint-vertex-endpoint). Resolve to
+        // indices in the `angles` array. If an angle isn't in the array
+        // yet, we push a stub so the reference resolves.
+        if (
+          /^סימן\s+זוויות\s+שוו/.test(item.head) ||
+          /^זוויות\s+שוו/.test(item.head) ||
+          /^שוויון\s+זוויות/.test(item.head)
+        ) {
+          const rest = item.head
+            .replace(/^(?:סימן\s+)?זוויות\s+שוו\S*\s*:?\s*/, '')
+            .replace(/^שוויון\s+זוויות\s*:?\s*/, '')
           const tokens = collectSegmentTokens(rest, item.fields)
           const indices: number[] = []
           for (const t of tokens) {
