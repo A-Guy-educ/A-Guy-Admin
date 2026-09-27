@@ -11,6 +11,13 @@ type PointSpec = GeometrySpecV1['elements']['points'][number]
 type LineSpec = GeometrySpecV1['elements']['lines'][number]
 type CircleSpec = GeometrySpecV1['elements']['circles'][number]
 type AngleSpec = GeometrySpecV1['elements']['angles'][number]
+type EqualSegmentGroup = NonNullable<GeometrySpecV1['elements']['equalSegments']>[number]
+type EqualAngleGroup = NonNullable<GeometrySpecV1['elements']['equalAngles']>[number]
+
+/** Tick styling for equality markers. Pixel-based so ticks look consistent
+ *  across boards with different user-unit scales. */
+const EQ_TICK_LENGTH_PX = 8
+const EQ_TICK_SPACING_PX = 5
 
 /** Map compass direction to a pixel [x, y] offset for JSXGraph labels. */
 function mapLabelOffset(pos?: string): [number, number] {
@@ -198,6 +205,137 @@ function renderAngles(board: JXG.Board, angles: AngleSpec[], pointMap: Map<strin
   }
 }
 
+function renderEqualSegments(
+  board: JXG.Board,
+  groups: EqualSegmentGroup[],
+  pointMap: Map<string, any>,
+) {
+  const { unitX, unitY } = getBoardScale(board)
+  groups.forEach((group, groupIndex) => {
+    const tickCount = groupIndex + 1
+    for (const seg of group) {
+      const from = pointMap.get(seg.from)
+      const to = pointMap.get(seg.to)
+      if (!from || !to) continue
+      const fx = from.X()
+      const fy = from.Y()
+      const tx = to.X()
+      const ty = to.Y()
+      // Work in pixel space so tick length/spacing stay visually consistent
+      // regardless of the board's aspect ratio.
+      const dxPx = (tx - fx) * unitX
+      const dyPx = (ty - fy) * unitY
+      const lenPx = Math.hypot(dxPx, dyPx) || 1
+      const uxPx = dxPx / lenPx
+      const uyPx = dyPx / lenPx
+      const perpXPx = -uyPx
+      const perpYPx = uxPx
+      const midX = (fx + tx) / 2
+      const midY = (fy + ty) / 2
+      for (let k = 0; k < tickCount; k++) {
+        const alongPx = (k - (tickCount - 1) / 2) * EQ_TICK_SPACING_PX
+        const cx = midX + (uxPx * alongPx) / unitX
+        const cy = midY + (uyPx * alongPx) / unitY
+        const halfLen = EQ_TICK_LENGTH_PX / 2
+        const e1x = cx + (perpXPx * halfLen) / unitX
+        const e1y = cy + (perpYPx * halfLen) / unitY
+        const e2x = cx - (perpXPx * halfLen) / unitX
+        const e2y = cy - (perpYPx * halfLen) / unitY
+        board.create(
+          'segment',
+          [
+            [e1x, e1y],
+            [e2x, e2y],
+          ],
+          {
+            strokeColor: getDefaultTextColor(),
+            strokeWidth: 1.5,
+            fixed: true,
+            visible: true,
+            highlight: false,
+          },
+        )
+      }
+    }
+  })
+}
+
+function renderEqualAngles(
+  board: JXG.Board,
+  groups: EqualAngleGroup[],
+  angles: AngleSpec[],
+  pointMap: Map<string, any>,
+) {
+  const { unitX, unitY } = getBoardScale(board)
+  groups.forEach((group, groupIndex) => {
+    const tickCount = groupIndex + 1
+    for (const angleIdx of group) {
+      const angle = angles[angleIdx]
+      if (!angle) continue
+      const center = pointMap.get(angle.center)
+      const ray1 = pointMap.get(angle.ray1)
+      const ray2 = pointMap.get(angle.ray2)
+      if (!center || !ray1 || !ray2) continue
+      const cxU = center.X()
+      const cyU = center.Y()
+      // Bisector direction in pixel space (mirrors computeAngleLabelPos).
+      const v1x = (ray1.X() - cxU) * unitX
+      const v1y = (ray1.Y() - cyU) * unitY
+      const v2x = (ray2.X() - cxU) * unitX
+      const v2y = (ray2.Y() - cyU) * unitY
+      const l1 = Math.hypot(v1x, v1y) || 1
+      const l2 = Math.hypot(v2x, v2y) || 1
+      let bx = v1x / l1 + v2x / l2
+      let by = v1y / l1 + v2y / l2
+      const bl = Math.hypot(bx, by)
+      if (bl < 1e-6) {
+        // Anti-parallel rays: sum-of-unit-vectors degenerates to (0,0). Mirror
+        // the perpendicular fallback used by computeAngleLabelPos so ticks
+        // don't collapse to the vertex.
+        bx = -v1y / l1
+        by = v1x / l1
+      } else {
+        bx /= bl
+        by /= bl
+      }
+      // Tangent to arc at bisector = perpendicular to radial direction.
+      const tanX = -by
+      const tanY = bx
+      const arcRadiusPx = angle.arcRadius || 30
+      // Center of the tick cluster: on the arc along the bisector.
+      const clusterCxU = cxU + (bx * arcRadiusPx) / unitX
+      const clusterCyU = cyU + (by * arcRadiusPx) / unitY
+      const halfLen = EQ_TICK_LENGTH_PX / 2
+      for (let k = 0; k < tickCount; k++) {
+        const alongPx = (k - (tickCount - 1) / 2) * EQ_TICK_SPACING_PX
+        // Tick center sits on the arc, shifted tangentially so ticks line up
+        // across the arc's midpoint area.
+        const centerXU = clusterCxU + (tanX * alongPx) / unitX
+        const centerYU = clusterCyU + (tanY * alongPx) / unitY
+        // Tick extends radially (perpendicular to arc).
+        const e1x = centerXU + (bx * halfLen) / unitX
+        const e1y = centerYU + (by * halfLen) / unitY
+        const e2x = centerXU - (bx * halfLen) / unitX
+        const e2y = centerYU - (by * halfLen) / unitY
+        board.create(
+          'segment',
+          [
+            [e1x, e1y],
+            [e2x, e2y],
+          ],
+          {
+            strokeColor: angle.color || getDefaultAngleColor(),
+            strokeWidth: 1.5,
+            fixed: true,
+            visible: true,
+            highlight: false,
+          },
+        )
+      }
+    }
+  })
+}
+
 /**
  * Render all geometry elements from a GeometrySpecV1 onto a JSXGraph board.
  */
@@ -206,6 +344,13 @@ export function renderGeometrySpec(board: JXG.Board, spec: GeometrySpecV1): void
   renderLines(board, spec.elements.lines, pointMap, spec.canvas.height)
   renderCircles(board, spec.elements.circles, pointMap)
   renderAngles(board, spec.elements.angles, pointMap)
+
+  if (spec.elements.equalSegments) {
+    renderEqualSegments(board, spec.elements.equalSegments, pointMap)
+  }
+  if (spec.elements.equalAngles) {
+    renderEqualAngles(board, spec.elements.equalAngles, spec.elements.angles, pointMap)
+  }
 
   if (spec.elements.vectors) {
     for (const v of spec.elements.vectors) {

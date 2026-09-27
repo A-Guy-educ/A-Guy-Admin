@@ -131,7 +131,7 @@ describe('Lesson visibleRenderers field', () => {
     contentStatusVisible: true,
   })
 
-  it('defaults to all three renderers on create', async () => {
+  it('defaults to media + pdf + chat on create', async () => {
     const lesson = await payload.create({
       collection: 'lessons',
       data: {
@@ -140,7 +140,7 @@ describe('Lesson visibleRenderers field', () => {
       draft: false,
     })
     lessonIds.push(lesson.id)
-    expect(lesson.visibleRenderers).toEqual(['media', 'pdf', 'interactive'])
+    expect(lesson.visibleRenderers).toEqual(['media', 'pdf', 'chat'])
   })
 
   it('accepts a subset of renderers on create', async () => {

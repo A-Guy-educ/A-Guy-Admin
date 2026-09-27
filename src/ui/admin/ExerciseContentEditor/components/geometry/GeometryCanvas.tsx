@@ -43,6 +43,11 @@ const INITIAL_BOARD_PX = 500
 const MIN_BOARD_PX = 320
 const MAX_BOARD_PX = 600
 
+// Equality-marker tick styling, in pixels so ticks stay consistent across
+// boards with different user-unit scales.
+const EQ_TICK_LENGTH_PX = 8
+const EQ_TICK_SPACING_PX = 5
+
 const round1 = (n: number) => Math.round(n * 10) / 10
 
 /** Map compass direction to a pixel [x, y] offset for JSXGraph labels. */
@@ -164,6 +169,8 @@ export const GeometryCanvas: React.FC<GeometryCanvasProps> = ({
         onMultiPointMovedRef,
       )
       syncTexts(board, geometry, newIds, elementsRef, isSyncingRef, isDraggingRef, onTextMovedRef)
+      syncEqualSegments(board, geometry, newIds, elementsRef)
+      syncEqualAngles(board, geometry, newIds, elementsRef)
 
       for (const oldId of existingIds) {
         if (!newIds.has(oldId)) {
@@ -784,4 +791,240 @@ function syncTexts(
     })
     elementsRef.current.set(elemId, el)
   }
+}
+
+type XY = { X: () => number; Y: () => number }
+
+/** Compute one endpoint coord (user-space) for a perpendicular tick centered
+ *  on a segment. `side = +1|-1` picks the two ends of the tick. Passed as JXG
+ *  function-form coords so ticks track live during point drag. */
+function segmentTickCoord(
+  fromEl: XY,
+  toEl: XY,
+  tickIndex: number,
+  totalTicks: number,
+  side: 1 | -1,
+  axis: 'x' | 'y',
+  unitX: number,
+  unitY: number,
+): number {
+  const fx = fromEl.X()
+  const fy = fromEl.Y()
+  const tx = toEl.X()
+  const ty = toEl.Y()
+  const dxPx = (tx - fx) * unitX
+  const dyPx = (ty - fy) * unitY
+  const lenPx = Math.hypot(dxPx, dyPx) || 1
+  const uxPx = dxPx / lenPx
+  const uyPx = dyPx / lenPx
+  const perpXPx = -uyPx
+  const perpYPx = uxPx
+  const alongPx = (tickIndex - (totalTicks - 1) / 2) * EQ_TICK_SPACING_PX
+  const halfLen = (EQ_TICK_LENGTH_PX / 2) * side
+  if (axis === 'x') {
+    const cx = (fx + tx) / 2 + (uxPx * alongPx) / unitX
+    return cx + (perpXPx * halfLen) / unitX
+  }
+  const cy = (fy + ty) / 2 + (uyPx * alongPx) / unitY
+  return cy + (perpYPx * halfLen) / unitY
+}
+
+/** Compute one endpoint coord (user-space) for a radial tick across an angle
+ *  arc. Uses the same anti-parallel perpendicular fallback as
+ *  computeAngleLabelPos so ticks don't collapse to the vertex. */
+function angleTickCoord(
+  centerEl: XY,
+  ray1El: XY,
+  ray2El: XY,
+  arcRadiusPx: number,
+  tickIndex: number,
+  totalTicks: number,
+  side: 1 | -1,
+  axis: 'x' | 'y',
+  unitX: number,
+  unitY: number,
+): number {
+  const cxU = centerEl.X()
+  const cyU = centerEl.Y()
+  const v1x = (ray1El.X() - cxU) * unitX
+  const v1y = (ray1El.Y() - cyU) * unitY
+  const v2x = (ray2El.X() - cxU) * unitX
+  const v2y = (ray2El.Y() - cyU) * unitY
+  const l1 = Math.hypot(v1x, v1y) || 1
+  const l2 = Math.hypot(v2x, v2y) || 1
+  let bx = v1x / l1 + v2x / l2
+  let by = v1y / l1 + v2y / l2
+  const bl = Math.hypot(bx, by)
+  if (bl < 1e-6) {
+    bx = -v1y / l1
+    by = v1x / l1
+  } else {
+    bx /= bl
+    by /= bl
+  }
+  const tanX = -by
+  const tanY = bx
+  const clusterCxU = cxU + (bx * arcRadiusPx) / unitX
+  const clusterCyU = cyU + (by * arcRadiusPx) / unitY
+  const alongPx = (tickIndex - (totalTicks - 1) / 2) * EQ_TICK_SPACING_PX
+  const halfLen = (EQ_TICK_LENGTH_PX / 2) * side
+  if (axis === 'x') {
+    const centerXU = clusterCxU + (tanX * alongPx) / unitX
+    return centerXU + (bx * halfLen) / unitX
+  }
+  const centerYU = clusterCyU + (tanY * alongPx) / unitY
+  return centerYU + (by * halfLen) / unitY
+}
+
+function syncEqualSegments(
+  board: JXGBoard,
+  geometry: GeometrySpecV1,
+  newIds: Set<string>,
+  elementsRef: React.MutableRefObject<Map<string, JXGElement>>,
+) {
+  const groups = geometry.elements.equalSegments || []
+  const { unitX, unitY } = getBoardScale(board)
+  groups.forEach((group, groupIndex) => {
+    const tickCount = groupIndex + 1
+    group.forEach((seg, segIndex) => {
+      const fromEl = elementsRef.current.get(`point-${seg.from}`) as unknown as XY | undefined
+      const toEl = elementsRef.current.get(`point-${seg.to}`) as unknown as XY | undefined
+      if (!fromEl || !toEl) return
+      for (let k = 0; k < tickCount; k++) {
+        const elemId = `eqseg-${groupIndex}-${segIndex}-${k}`
+        newIds.add(elemId)
+        // Recreate every sync so structural changes (group order, tick count,
+        // which segment maps to which slot) take effect. Point-drag movement
+        // stays live between syncs because coords below are JXG functions
+        // that recompute against the point elements.
+        const existing = elementsRef.current.get(elemId)
+        if (existing) {
+          board.removeObject(existing)
+          elementsRef.current.delete(elemId)
+        }
+        const el = board.create(
+          'segment',
+          [
+            [
+              () => segmentTickCoord(fromEl, toEl, k, tickCount, 1, 'x', unitX, unitY),
+              () => segmentTickCoord(fromEl, toEl, k, tickCount, 1, 'y', unitX, unitY),
+            ],
+            [
+              () => segmentTickCoord(fromEl, toEl, k, tickCount, -1, 'x', unitX, unitY),
+              () => segmentTickCoord(fromEl, toEl, k, tickCount, -1, 'y', unitX, unitY),
+            ],
+          ],
+          {
+            strokeColor: getDefaultCanvasElementColor(),
+            strokeWidth: 1.5,
+            fixed: true,
+            visible: true,
+            highlight: false,
+          },
+        )
+        elementsRef.current.set(elemId, el)
+      }
+    })
+  })
+}
+
+function syncEqualAngles(
+  board: JXGBoard,
+  geometry: GeometrySpecV1,
+  newIds: Set<string>,
+  elementsRef: React.MutableRefObject<Map<string, JXGElement>>,
+) {
+  const groups = geometry.elements.equalAngles || []
+  const angles = geometry.elements.angles
+  const { unitX, unitY } = getBoardScale(board)
+  groups.forEach((group, groupIndex) => {
+    const tickCount = groupIndex + 1
+    group.forEach((angleIdx, memberIndex) => {
+      const angle = angles[angleIdx]
+      if (!angle) return
+      const centerEl = elementsRef.current.get(`point-${angle.center}`) as unknown as XY | undefined
+      const ray1El = elementsRef.current.get(`point-${angle.ray1}`) as unknown as XY | undefined
+      const ray2El = elementsRef.current.get(`point-${angle.ray2}`) as unknown as XY | undefined
+      if (!centerEl || !ray1El || !ray2El) return
+      const arcRadiusPx = angle.arcRadius || 30
+      for (let k = 0; k < tickCount; k++) {
+        const elemId = `eqang-${groupIndex}-${memberIndex}-${k}`
+        newIds.add(elemId)
+        const existing = elementsRef.current.get(elemId)
+        if (existing) {
+          board.removeObject(existing)
+          elementsRef.current.delete(elemId)
+        }
+        const el = board.create(
+          'segment',
+          [
+            [
+              () =>
+                angleTickCoord(
+                  centerEl,
+                  ray1El,
+                  ray2El,
+                  arcRadiusPx,
+                  k,
+                  tickCount,
+                  1,
+                  'x',
+                  unitX,
+                  unitY,
+                ),
+              () =>
+                angleTickCoord(
+                  centerEl,
+                  ray1El,
+                  ray2El,
+                  arcRadiusPx,
+                  k,
+                  tickCount,
+                  1,
+                  'y',
+                  unitX,
+                  unitY,
+                ),
+            ],
+            [
+              () =>
+                angleTickCoord(
+                  centerEl,
+                  ray1El,
+                  ray2El,
+                  arcRadiusPx,
+                  k,
+                  tickCount,
+                  -1,
+                  'x',
+                  unitX,
+                  unitY,
+                ),
+              () =>
+                angleTickCoord(
+                  centerEl,
+                  ray1El,
+                  ray2El,
+                  arcRadiusPx,
+                  k,
+                  tickCount,
+                  -1,
+                  'y',
+                  unitX,
+                  unitY,
+                ),
+            ],
+          ],
+          {
+            strokeColor: angle.color || getDefaultAngleColor(),
+            strokeWidth: 1.5,
+            fixed: true,
+            visible: true,
+            highlight: false,
+          },
+        )
+        elementsRef.current.set(elemId, el)
+      }
+    })
+  })
 }

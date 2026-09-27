@@ -8,6 +8,7 @@ import { ColorSwatchPicker } from '../shared/ColorSwatchPicker'
 
 type GeoAngle = GeometrySpecV1['elements']['angles'][number]
 type GeoPoint = GeometrySpecV1['elements']['points'][number]
+type EqualAnglesGroup = NonNullable<GeometrySpecV1['elements']['equalAngles']>[number]
 
 const GREEK_LETTERS = ['α', 'β', 'γ', 'δ', 'θ', 'φ'] as const
 
@@ -15,9 +16,17 @@ interface AnglesPanelProps {
   angles: GeoAngle[]
   points: GeoPoint[]
   onChange: (angles: GeoAngle[]) => void
+  equalAngles?: EqualAnglesGroup[]
+  onEqualAnglesChange?: (groups: EqualAnglesGroup[]) => void
 }
 
-export const AnglesPanel: React.FC<AnglesPanelProps> = ({ angles, points, onChange }) => {
+export const AnglesPanel: React.FC<AnglesPanelProps> = ({
+  angles,
+  points,
+  onChange,
+  equalAngles,
+  onEqualAnglesChange,
+}) => {
   const labelInputRefs = useRef<Map<number, HTMLInputElement | null>>(new Map())
   const handleAdd = () => {
     const names = points.map((p) => p.name)
@@ -34,6 +43,15 @@ export const AnglesPanel: React.FC<AnglesPanelProps> = ({ angles, points, onChan
 
   const handleRemove = (index: number) => {
     onChange(angles.filter((_, i) => i !== index))
+    // equalAngles stores integer indices into the angles array. Without this
+    // reindex, deleting an angle silently shifts every equality reference past
+    // it — producing mathematically wrong diagrams with no error surface.
+    if (equalAngles && onEqualAnglesChange) {
+      const remapped = equalAngles
+        .map((group) => group.filter((i) => i !== index).map((i) => (i > index ? i - 1 : i)))
+        .filter((group) => group.length > 0)
+      onEqualAnglesChange(remapped)
+    }
   }
 
   const handleUpdate = (index: number, updates: Partial<GeoAngle>) => {
