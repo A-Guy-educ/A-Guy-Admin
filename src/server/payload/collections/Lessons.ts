@@ -760,7 +760,7 @@ export const Lessons: CollectionConfig = {
               name: 'visibleRenderers',
               type: 'select',
               hasMany: true,
-              defaultValue: ['media', 'pdf', 'interactive'],
+              defaultValue: ['media', 'pdf', 'chat'],
               options: [
                 { label: 'Media (attached files)', value: 'media' },
                 { label: 'Scroll view', value: 'pdf' },
@@ -769,7 +769,7 @@ export const Lessons: CollectionConfig = {
               ],
               admin: {
                 description:
-                  'Which renderers are visible to students. At least one must be selected. Note: Media tab only appears when the lesson has attached files regardless of this toggle. Chat is opt-in per lesson.',
+                  'Which renderers are visible to students. At least one must be selected. Note: Media tab only appears when the lesson has attached files regardless of this toggle. Interactive is opt-in per lesson.',
               },
             },
             {

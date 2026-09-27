@@ -342,8 +342,11 @@ export function geometrySpecToSvg(spec: unknown): string {
     )
   }
 
-  // Equal segment markers
-  for (const group of elements.equalSegments || []) {
+  // Equal segment markers — one tick for group 0, two for group 1, etc.
+  const EQ_TICK_LEN = 8
+  const EQ_TICK_SPACING = 5
+  ;(elements.equalSegments || []).forEach((group, groupIndex) => {
+    const tickCount = groupIndex + 1
     for (const seg of group) {
       const fromPt = elements.points.find((p) => p.name === seg.from)
       const toPt = elements.points.find((p) => p.name === seg.to)
@@ -353,20 +356,76 @@ export function geometrySpecToSvg(spec: unknown): string {
       const y1 = height - fromPt.y
       const x2 = toPt.x
       const y2 = height - toPt.y
-      const midX = (x1 + x2) / 2
-      const midY = (y1 + y2) / 2
       const dx = x2 - x1
       const dy = y2 - y1
       const len = Math.sqrt(dx * dx + dy * dy) || 1
-      const perpX = (-dy / len) * 6
-      const perpY = (dx / len) * 6
-
-      // Draw double-tick mark
-      parts.push(
-        `<line x1="${midX - perpX}" y1="${midY - perpY}" x2="${midX + perpX}" y2="${midY + perpY}" stroke="${DEFAULT_STROKE}" stroke-width="1"/>`,
-      )
+      const ux = dx / len
+      const uy = dy / len
+      const perpX = -uy
+      const perpY = ux
+      const midX = (x1 + x2) / 2
+      const midY = (y1 + y2) / 2
+      for (let k = 0; k < tickCount; k++) {
+        const along = (k - (tickCount - 1) / 2) * EQ_TICK_SPACING
+        const cx = midX + ux * along
+        const cy = midY + uy * along
+        const half = EQ_TICK_LEN / 2
+        parts.push(
+          `<line x1="${cx - perpX * half}" y1="${cy - perpY * half}" x2="${cx + perpX * half}" y2="${cy + perpY * half}" stroke="${DEFAULT_STROKE}" stroke-width="1.5"/>`,
+        )
+      }
     }
-  }
+  })
+
+  // Equal angle markers — one tick across arc for group 0, two for group 1, etc.
+  ;(elements.equalAngles || []).forEach((group, groupIndex) => {
+    const tickCount = groupIndex + 1
+    for (const angleIdx of group) {
+      const angle = elements.angles?.[angleIdx]
+      if (!angle) continue
+      const centerPt = elements.points.find((p) => p.name === angle.center)
+      const ray1Pt = elements.points.find((p) => p.name === angle.ray1)
+      const ray2Pt = elements.points.find((p) => p.name === angle.ray2)
+      if (!centerPt || !ray1Pt || !ray2Pt) continue
+
+      const cx = centerPt.x
+      const cy = height - centerPt.y
+      // SVG uses inverted Y — bisector is computed in that flipped frame.
+      const v1x = ray1Pt.x - centerPt.x
+      const v1y = -(ray1Pt.y - centerPt.y)
+      const v2x = ray2Pt.x - centerPt.x
+      const v2y = -(ray2Pt.y - centerPt.y)
+      const l1 = Math.hypot(v1x, v1y) || 1
+      const l2 = Math.hypot(v2x, v2y) || 1
+      let bx = v1x / l1 + v2x / l2
+      let by = v1y / l1 + v2y / l2
+      const bl = Math.hypot(bx, by)
+      if (bl < 1e-6) {
+        // Anti-parallel rays: mirror the perpendicular fallback used by
+        // computeAngleLabelPos so ticks don't collapse to the vertex.
+        bx = -v1y / l1
+        by = v1x / l1
+      } else {
+        bx /= bl
+        by /= bl
+      }
+      const tanX = -by
+      const tanY = bx
+      const arcRadius = angle.arcRadius || 30
+      const clusterCx = cx + bx * arcRadius
+      const clusterCy = cy + by * arcRadius
+      const color = angle.color || DEFAULT_STROKE
+      const half = EQ_TICK_LEN / 2
+      for (let k = 0; k < tickCount; k++) {
+        const along = (k - (tickCount - 1) / 2) * EQ_TICK_SPACING
+        const centerX = clusterCx + tanX * along
+        const centerY = clusterCy + tanY * along
+        parts.push(
+          `<line x1="${centerX - bx * half}" y1="${centerY - by * half}" x2="${centerX + bx * half}" y2="${centerY + by * half}" stroke="${escapeXml(color)}" stroke-width="1.5"/>`,
+        )
+      }
+    }
+  })
 
   // Tangents
   for (const tangent of elements.tangents || []) {

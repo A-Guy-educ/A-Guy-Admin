@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.48.0 — 2026-09-27
+
+### Features
+- Geometry editor: new equalities section for authoring segment and angle equivalence groups; group N renders with N tick marks (perpendicular on segments, radial across angle arcs) in the shared web renderer, admin canvas, and SVG export (#502)
+- Lessons: default new points to size 2 on canvas click; default `visibleRenderers` swapped from `[media, pdf, interactive]` to `[media, pdf, chat]` for new lessons (existing lessons unchanged) (#502)
+
+### Bug Fixes
+- Geometry: reindex `equalAngles` when an angle is deleted so equality references don't silently shift onto the wrong angles (#502)
+- Geometry: add the perpendicular anti-parallel-ray fallback in `computeAngleLabelPos` so angle equality ticks don't collapse to the vertex when rays are opposite (#502)
+- Geometry: bind admin-canvas tick endpoints via JXG function-form coordinates so ticks track live during point drag instead of pinning to the pre-drag midpoint (#502)
+
 ## v0.47.1 — 2026-09-25
 
 ### Bug Fixes
@@ -2097,6 +2108,11 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- chore: release v0.48.0 ([#503](https://github.com/A-Guy-educ/A-Guy-Admin/pull/503)) — @aguyshayb
+- feat: Geometry equality markers + lesson renderer default swap ([#502](https://github.com/A-Guy-educ/A-Guy-Admin/pull/502)) — @aguyshayb
+## [v0.47.1] - 2026-09-25
+
+- promote: dev -> main (v0.47.1) ([#499](https://github.com/A-Guy-educ/A-Guy-Admin/pull/499)) — @aguyshayb
 - chore: release v0.47.1 ([#498](https://github.com/A-Guy-educ/A-Guy-Admin/pull/498)) — @aguyshayb
 - fix(text-lesson-import): stop findField from swallowing sibling מיקום תווית ([#497](https://github.com/A-Guy-educ/A-Guy-Admin/pull/497)) — @aguyshayb
 - fix(text-lesson-import): catch bare geometry DSL blocks in v1 files ([#496](https://github.com/A-Guy-educ/A-Guy-Admin/pull/496)) — @aguyshayb
