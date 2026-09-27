@@ -56,6 +56,22 @@ export interface TextMatchingPairV2 {
   right: string
 }
 
+/**
+ * Parsed table body for `Fill-in Table` sections. Shape mirrors the
+ * `question_table` block's `table` field so the converter can hand this
+ * straight through:
+ *   - `headers`: column names, in declaration order.
+ *   - `rowsData`: per-row cell strings; blanks (to fill in) are empty strings.
+ *   - `answers`: `{ "rowIdx-colIdx": correctValue }` for each fillable cell.
+ * The converter always emits with `solutionFill: true` — that's the whole
+ * point of importing a table question (student fills the blanks).
+ */
+export interface TextTableV2 {
+  headers: string[]
+  rowsData: string[][]
+  answers: Record<string, string>
+}
+
 export interface TextSectionV2 {
   /** Hebrew section letter, e.g. "א". Empty when not detected. */
   questionNumber: string
@@ -68,6 +84,8 @@ export interface TextSectionV2 {
   options: TextOptionV2[]
   /** Left/right pairs captured from `* צמד N: <left> <---> <right>` rows. Only populated for `Matching` sections. */
   matchingPairs: TextMatchingPairV2[]
+  /** Parsed table body — set for `Fill-in Table` sections whose `* מבנה טבלה (עמודות: …):` block yielded ≥1 row. */
+  table?: TextTableV2
   /** Parsed DSL geometry from `שרטוט מותאם לסעיף`. Set only when the section has its own DSL block — never falls back to the exercise's shared geometry (that would double-emit the sketch, once via sharedBlocks and once as an attachment). */
   geometry?: GeometrySpecV1
   /** Raw SVG markup pulled from `שרטוט מותאם לסעיף` when the block was inline `<svg>` rather than DSL. Mutually exclusive with `geometry`. */
@@ -152,6 +170,24 @@ const PAIR_FIELD_RE = /^צמד\s+(\d+)$/
 const PAIR_SEPARATOR_RE = /\s*(?:<-{2,}>|<->|↔)\s*/
 const CORRECT_MARKER_RE = /\s*\[\s*תשובה\s+נכונה\s*\]\s*$/
 const HEADER_LINE_RE = /^(קורס|פרק|שם השיעור)\s*[-–]\s*(.+)$/
+// `* מבנה טבלה (עמודות: X, Y, Z):` — opens a table block. FIELD_RE can't
+// parse this because the `(עמודות: …)` parenthetical contains a colon, which
+// its `[^:]+?` key group can't cross. Matched BEFORE FIELD_RE in the main
+// loop. `מבנה` is optional so the shorter `* טבלה (עמודות: …):` variant works
+// too. The parenthetical itself is optional — a bare `* מבנה טבלה:` still
+// opens the block, but without headers the finalizer will discard the body
+// (there's no safe way to guess column names).
+const TABLE_HEADER_RE = /^\*\s+(?:מבנה\s+)?טבלה(?:\s*\(\s*עמודות\s*:\s*([^)]+)\))?\s*:/
+/** `  * שורה N | col: val | col: val | …` — one table row. */
+const TABLE_ROW_RE = /^\s*\*\s+שורה\s+(\S+)\s*\|(.*)$/
+/**
+ * A fillable cell placeholder. Two shapes are observed in the boss's output:
+ *   `[ שדה ריק - להשלמה: <correct answer> ]`
+ *   `[ שדה ריק - <correct answer> ]`
+ * `להשלמה` is a meta-instruction ("to be completed") and always precedes
+ * the correct value when present.
+ */
+const TABLE_BLANK_CELL_RE = /^\[\s*שדה\s+ריק\s*[-–]\s*(?:להשלמה\s*:\s*)?(.+?)\s*\]$/
 
 function splitMatchingPair(value: string): [string, string] | [] {
   const parts = value.split(PAIR_SEPARATOR_RE)
@@ -195,12 +231,13 @@ function classifyType(raw: string): QuestionTypeV2 {
 // ---------------------------------------------------------------------------
 
 /**
- * Which kind of visual block is currently open. Both `שרטוט …` and
- * `גרף …` markers absorb the same "indented content until the next
- * top-level field" pattern; the mode remembers whether the collected
- * lines should be handed to parseGeometryDsl or parseFunctionDsl.
+ * Which kind of indented block is currently open. `שרטוט …`, `גרף …`, and
+ * `מבנה טבלה …` all follow the same "capture indented content until the
+ * next top-level field" pattern; the mode remembers whether the collected
+ * lines should be handed to parseGeometryDsl, parseFunctionDsl, or the
+ * table-row parser.
  */
-type BlockMode = 'geometry' | 'function'
+type BlockMode = 'geometry' | 'function' | 'table'
 
 interface MutableSectionV2 {
   questionNumber: string
@@ -213,6 +250,9 @@ interface MutableSectionV2 {
   matchingPairs: TextMatchingPairV2[]
   geometryLines: string[]
   functionLines: string[]
+  tableLines: string[]
+  /** Column names captured from the `(עמודות: …)` parenthetical on the `* מבנה טבלה` line. Empty when the parenthetical was missing. */
+  tableHeaders: string[]
   inBlock: BlockMode | null
 }
 
@@ -248,6 +288,8 @@ function newSection(num: string, headerRest: string): MutableSectionV2 {
     matchingPairs: [],
     geometryLines: [],
     functionLines: [],
+    tableLines: [],
+    tableHeaders: [],
     inBlock: null,
   }
 }
@@ -409,9 +451,78 @@ function parseFunctionBlock(rawLines: string[]): {
   return hasContent ? { spec, warnings: errors } : { warnings: errors }
 }
 
+/**
+ * Parse captured `* מבנה טבלה (עמודות: X, Y, Z):` body lines into a
+ * `TextTableV2`. Each row line is `  * שורה N | col: val | col: val | …`:
+ *   - The `שורה N` label becomes the value of the FIRST column (usually
+ *     `שלב` — the step number). If the first column happens to declare a
+ *     different name, the row label is still slotted at index 0.
+ *   - Remaining `|`-separated segments are `colName: value` pairs. Each is
+ *     matched to its column by name — segments whose colName isn't in the
+ *     header list are dropped with a warning (misspelled colName in source).
+ *   - A `[ שדה ריק - … ]` value marks a fillable cell: the visible cell
+ *     becomes `""` and the correct answer lands in `answers["rowIdx-colIdx"]`.
+ *
+ * Returns `undefined` when there's nothing usable (no headers, no rows, or
+ * only zero-cell rows) so the converter can fall back cleanly.
+ */
+function parseTableBody(
+  headers: string[],
+  lines: string[],
+): { table?: TextTableV2; warnings: string[] } {
+  const warnings: string[] = []
+  if (headers.length === 0) {
+    if (lines.some((l) => TABLE_ROW_RE.test(l))) {
+      warnings.push('טבלה: חסרה רשימת עמודות (עמודות: X, Y, Z) — הטבלה לא יובאה.')
+    }
+    return { warnings }
+  }
+  const rowsData: string[][] = []
+  const answers: Record<string, string> = {}
+  for (const raw of lines) {
+    const m = raw.match(TABLE_ROW_RE)
+    if (!m) continue
+    const rowLabel = m[1].trim()
+    const rest = m[2]
+    const cells = new Array<string>(headers.length).fill('')
+    // First column: the `שורה N` label. Boss's template always puts the step
+    // number here (first column = שלב); we slot it at index 0 unconditionally.
+    cells[0] = rowLabel
+    // Split on ` | ` (whitespace-pipe-whitespace) instead of plain `|` — the
+    // "parallel lines" notation `DE || BC` appears inline in cell values and
+    // has no whitespace between its two pipes, so a plain-pipe split would
+    // shred that value in half.
+    for (const seg of rest
+      .split(/\s+\|\s+/)
+      .map((s) => s.trim())
+      .filter(Boolean)) {
+      const colonIdx = seg.indexOf(':')
+      if (colonIdx < 0) continue
+      const colName = seg.slice(0, colonIdx).trim()
+      const value = seg.slice(colonIdx + 1).trim()
+      const colIdx = headers.indexOf(colName)
+      if (colIdx < 0) {
+        warnings.push(`טבלה: עמודה "${colName}" אינה מופיעה ברשימת העמודות — הערך הושמט.`)
+        continue
+      }
+      const blank = value.match(TABLE_BLANK_CELL_RE)
+      if (blank) {
+        cells[colIdx] = ''
+        answers[`${rowsData.length}-${colIdx}`] = blank[1].trim()
+      } else {
+        cells[colIdx] = value
+      }
+    }
+    rowsData.push(cells)
+  }
+  if (rowsData.length === 0) return { warnings }
+  return { table: { headers, rowsData, answers }, warnings }
+}
+
 function finalizeSection(sec: MutableSectionV2): TextSectionV2 {
   const geometryBody = classifyBlockBody(sec.geometryLines)
   const functionBody = parseFunctionBlock(sec.functionLines)
+  const tableBody = parseTableBody(sec.tableHeaders, sec.tableLines)
   return {
     questionNumber: sec.questionNumber,
     headerRest: sec.headerRest,
@@ -421,6 +532,7 @@ function finalizeSection(sec: MutableSectionV2): TextSectionV2 {
     type: classifyType(sec.typeRaw),
     options: sec.options,
     matchingPairs: sec.matchingPairs,
+    table: tableBody.table,
     // Section geometry/svg/graph is set ONLY when the section has its own
     // block. We deliberately do NOT fall back to the exercise-level shared
     // drawing — that would emit the same visual twice (once via
@@ -428,7 +540,7 @@ function finalizeSection(sec: MutableSectionV2): TextSectionV2 {
     geometry: geometryBody.hasContent ? geometryBody.spec : undefined,
     svg: geometryBody.hasContent ? geometryBody.svg : undefined,
     functionGraph: functionBody.spec,
-    geometryWarnings: [...geometryBody.warnings, ...functionBody.warnings],
+    geometryWarnings: [...geometryBody.warnings, ...functionBody.warnings, ...tableBody.warnings],
   }
 }
 
@@ -582,16 +694,18 @@ export function parseTextLessonV2(raw: string): TextLessonV2 {
       continue
     }
 
-    // Inside an in-flight geometry/function block, greedily consume indented
-    // content until we hit a top-level field or a separator on the NEXT
-    // iteration. Function blocks reuse the same "capture until next top-level
-    // field" loop as geometry — only the destination buffer differs.
+    // Inside an in-flight geometry/function/table block, greedily consume
+    // indented content until we hit a top-level field or a separator on the
+    // NEXT iteration. Function and table blocks reuse the same "capture until
+    // next top-level field" loop as geometry — only the destination buffer
+    // differs.
     if (currentSec && currentSec.inBlock) {
       if (isTopLevelFieldStart(line)) {
         currentSec.inBlock = null
         // fall through to field-detection below
       } else {
         if (currentSec.inBlock === 'function') currentSec.functionLines.push(line)
+        else if (currentSec.inBlock === 'table') currentSec.tableLines.push(line)
         else currentSec.geometryLines.push(line)
         continue
       }
@@ -601,6 +715,24 @@ export function parseTextLessonV2(raw: string): TextLessonV2 {
       } else {
         if (currentEx.inBlock === 'function') currentEx.sharedFunctionLines.push(line)
         else currentEx.sharedGeometryLines.push(line)
+        continue
+      }
+    }
+
+    // Table header (`* מבנה טבלה (עמודות: X, Y, Z):`) has a colon inside its
+    // parenthetical, which FIELD_RE can't handle — its `[^:]+?` key stops at
+    // the first `:`. Match this special-case shape BEFORE FIELD_RE so the
+    // right block mode opens.
+    if (currentSec) {
+      const tm = line.match(TABLE_HEADER_RE)
+      if (tm) {
+        const cols = (tm[1] ?? '')
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean)
+        currentSec.tableHeaders = cols
+        currentSec.inBlock = 'table'
+        currentField = null
         continue
       }
     }

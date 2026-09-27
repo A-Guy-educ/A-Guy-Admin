@@ -538,4 +538,40 @@ describe('parseTextLessonV2 — basic shape', () => {
     expect(lesson.exercises[0].exerciseNumber).toBe('1')
     expect(lesson.exercises[0].sections).toHaveLength(1)
   })
+
+  it('parses a `Fill-in Table` section body into headers, rowsData, and answers', () => {
+    // Mirrors the boss's `* מבנה טבלה (עמודות: X, Y, Z):` template. The row
+    // label (`שורה N`) fills the first column, and `[ שדה ריק - להשלמה: X ]`
+    // cells become blank strings with the correct value in `answers`.
+    const source = [
+      SEP,
+      '[ תרגיל 1 - נתוני פתיחה ]',
+      SEP,
+      '* טקסט: intro',
+      '',
+      SEP,
+      "[ סעיף ה' - שאלת השלמת טבלה ]",
+      SEP,
+      '* סוג השאלה: Fill-in Table',
+      '* הנחיה: השלימו את הטבלה.',
+      '* מבנה טבלה (עמודות: שלב, טענה, נימוק):',
+      '  * שורה 1 | טענה: DE || BC | נימוק: [ שדה ריק - נתון ]',
+      '  * שורה 2 | טענה: [ שדה ריק - להשלמה: זווית A = זווית A ] | נימוק: זווית משותפת',
+    ].join('\n')
+
+    const lesson = parseTextLessonV2(source)
+    const section = lesson.exercises[0].sections[0]
+    expect(section.type.kind).toBe('table')
+    expect(section.table).toEqual({
+      headers: ['שלב', 'טענה', 'נימוק'],
+      rowsData: [
+        ['1', 'DE || BC', ''],
+        ['2', '', 'זווית משותפת'],
+      ],
+      answers: {
+        '0-2': 'נתון',
+        '1-1': 'זווית A = זווית A',
+      },
+    })
+  })
 })
