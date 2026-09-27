@@ -2108,6 +2108,8 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+## [v0.48.0] - 2026-09-27
+
 - promote: dev -> main (v0.48.0) ([#504](https://github.com/A-Guy-educ/A-Guy-Admin/pull/504)) — @aguyshayb
 - chore: release v0.48.0 ([#503](https://github.com/A-Guy-educ/A-Guy-Admin/pull/503)) — @aguyshayb
 - feat: Geometry equality markers + lesson renderer default swap ([#502](https://github.com/A-Guy-educ/A-Guy-Admin/pull/502)) — @aguyshayb
