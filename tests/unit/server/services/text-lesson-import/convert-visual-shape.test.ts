@@ -69,4 +69,54 @@ describe('v2 converter — emitted visual block shape', () => {
     expect(geomBlock).toBeDefined()
     expect(geomBlock).toMatchObject({ displaySize: 'full', layout: 'textRight' })
   })
+
+  it('emits a `question_table` with solutionFill for `Fill-in Table` sections', () => {
+    // Boss's proof-table template with two rows and a `[ שדה ריק - X ]` blank
+    // in each. Regression against the old converter which emitted an
+    // "unparsable" rich_text placeholder instead of a real question block.
+    const source = [
+      SEP,
+      '[ תרגיל 1 - נתוני פתיחה ]',
+      SEP,
+      '* טקסט: intro',
+      '',
+      SEP,
+      "[ סעיף ה' - שאלת השלמת טבלה ]",
+      SEP,
+      '* סוג השאלה: Fill-in Table',
+      '* הנחיה: השלימו את הטבלה.',
+      '* מבנה טבלה (עמודות: שלב, טענה, נימוק):',
+      '  * שורה 1 | טענה: DE || BC | נימוק: [ שדה ריק - נתון ]',
+      '  * שורה 2 | טענה: [ שדה ריק - להשלמה: זווית A = זווית A ] | נימוק: זווית משותפת',
+    ].join('\n')
+
+    const lesson = parseTextLessonV2(source)
+    const conv = convertTextExerciseV2ToSections(lesson.exercises[0])
+    const tableBlock = conv.sections[0].blocks[0] as {
+      type: string
+      table?: {
+        solutionFill?: boolean
+        headers?: string[]
+        rowsData?: string[][]
+        answers?: Record<string, string>
+        showBorders?: boolean
+        showHeader?: boolean
+      }
+    }
+    expect(tableBlock.type).toBe('question_table')
+    expect(tableBlock.table).toEqual({
+      solutionFill: true,
+      headers: ['שלב', 'טענה', 'נימוק'],
+      rowsData: [
+        ['1', 'DE || BC', ''],
+        ['2', '', 'זווית משותפת'],
+      ],
+      answers: {
+        '0-2': 'נתון',
+        '1-1': 'זווית A = זווית A',
+      },
+      showBorders: true,
+      showHeader: true,
+    })
+  })
 })
