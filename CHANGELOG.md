@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.49.0 — 2026-09-27
+
+### Features
+- Text-lesson import (v2): parse matching questions, multi-select MCQ answers, per-shape equality markings, and bare intro / שאלה header shapes (#505)
+- Lesson-import (v2): recognise Fill-in Table sections and emit them as `question_table` blocks (#509)
+- Geometry DSL: accept `שוויון צלעות | ...` and `שוויון זוויות | ...` equality-marker syntax so authors can group congruent segments and angles from the DSL (#510)
+
+### Bug Fixes
+- Text-lesson import: stamp `displaySize: 'full'` on every emitted visual block so imported sketches match the block layout contract (#506)
+- LLM prompts: correct the geometry block layout/`displaySize` shape in the lesson-duplication prompts so generated content passes downstream schema checks (#507)
+- Lesson-import preview: accept bare and `שאלה`-prefixed v2 exercise headers on the client-side regex so preview matches the server parser (#508)
+
 ## v0.48.0 — 2026-09-27
 
 ### Features
