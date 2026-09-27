@@ -2108,6 +2108,7 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- feat(text-lesson-import): matching, multi-select MCQ, equality markings, alt header shapes ([#505](https://github.com/A-Guy-educ/A-Guy-Admin/pull/505)) — @aguyshayb
 ## [v0.48.0] - 2026-09-27
 
 - promote: dev -> main (v0.48.0) ([#504](https://github.com/A-Guy-educ/A-Guy-Admin/pull/504)) — @aguyshayb
