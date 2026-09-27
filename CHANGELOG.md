@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.48.0 — 2026-09-27
+
+### Features
+- Geometry editor: new equalities section for authoring segment and angle equivalence groups; group N renders with N tick marks (perpendicular on segments, radial across angle arcs) in the shared web renderer, admin canvas, and SVG export (#502)
+- Lessons: default new points to size 2 on canvas click; default `visibleRenderers` swapped from `[media, pdf, interactive]` to `[media, pdf, chat]` for new lessons (existing lessons unchanged) (#502)
+
+### Bug Fixes
+- Geometry: reindex `equalAngles` when an angle is deleted so equality references don't silently shift onto the wrong angles (#502)
+- Geometry: add the perpendicular anti-parallel-ray fallback in `computeAngleLabelPos` so angle equality ticks don't collapse to the vertex when rays are opposite (#502)
+- Geometry: bind admin-canvas tick endpoints via JXG function-form coordinates so ticks track live during point drag instead of pinning to the pre-drag midpoint (#502)
+
 ## v0.47.1 — 2026-09-25
 
 ### Bug Fixes
