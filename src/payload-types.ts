@@ -1568,7 +1568,11 @@ export interface Lesson {
    */
   nextLessons?: (string | Lesson)[] | null;
   /**
-   * AI system prompt for this lesson (uses default if not set)
+   * Inline AI system prompt for this lesson. When non-empty, overrides the attached Prompt below. Leave blank to use the attached Prompt (or the site default).
+   */
+  promptOverride?: string | null;
+  /**
+   * Legacy attached prompt from the Prompts collection. Used only when the inline override above is empty.
    */
   prompt?: (string | null) | Prompt;
   /**
@@ -1616,7 +1620,7 @@ export interface Lesson {
    */
   accessType: 'inherit' | 'free' | 'mandatory' | 'gated' | 'paid';
   /**
-   * Which renderers are visible to students. At least one must be selected. Note: Media tab only appears when the lesson has attached files regardless of this toggle. Chat is opt-in per lesson.
+   * Which renderers are visible to students. At least one must be selected. Note: Media tab only appears when the lesson has attached files regardless of this toggle. Interactive is opt-in per lesson.
    */
   visibleRenderers?: ('media' | 'pdf' | 'interactive' | 'chat')[] | null;
   /**
@@ -4450,6 +4454,7 @@ export interface LessonsSelect<T extends boolean = true> {
   order?: T;
   prerequisites?: T;
   nextLessons?: T;
+  promptOverride?: T;
   prompt?: T;
   contentFiles?: T;
   lessonContextText?: T;
