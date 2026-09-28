@@ -2120,6 +2120,7 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- feat: Add subscription tier model with derived currentTier ([#514](https://github.com/A-Guy-educ/A-Guy-Admin/pull/514)) — @aguyshayb
 ## [v0.49.0] - 2026-09-27
 
 - promote: dev -> main (v0.49.0) ([#512](https://github.com/A-Guy-educ/A-Guy-Admin/pull/512)) — @aguyshayb
