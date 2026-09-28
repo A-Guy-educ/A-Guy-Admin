@@ -16,6 +16,13 @@ import { getPayload } from 'payload'
 
 import config from '@payload-config'
 
+// Tier recompute intentionally lives in a Transactions afterChange hook
+// (recomputeTierOnSuccess-hook) rather than here. Webhook handlers call
+// this function BEFORE flipping the transaction to 'succeeded', so
+// recomputing here would see the tx as pending and exclude it — dropping
+// buyers back to Free until the next entitlement event. Firing on the
+// tx-status commit closes that timing window.
+
 type FeaturePeriod = 'day' | 'month' | 'lifetime'
 
 interface FeatureGrant {
