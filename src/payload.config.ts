@@ -40,6 +40,7 @@ import { Pages } from '@/server/payload/collections/Pages'
 import { Posts } from '@/server/payload/collections/Posts'
 import { PricingPlans } from '@/server/payload/collections/PricingPlans'
 import { Products } from '@/server/payload/collections/Products'
+import { Tiers } from '@/server/payload/collections/Tiers'
 import { Prompts } from '@/server/payload/collections/Prompts'
 import { Subscriptions } from '@/server/payload/collections/Subscriptions'
 import { TeacherProfiles } from '@/server/payload/collections/TeacherProfiles'
@@ -77,6 +78,7 @@ import { pdfToExercisesV2Task } from '@/server/payload/jobs/pdf-to-exercises-v2-
 import type { JobDocument } from '@/server/payload/jobs/types'
 import { runBackfillOnInit } from '@/server/payload/migrations/backfillAdminTitle'
 import { runDropStaleCoursesValidatorOnInit } from '@/server/payload/migrations/dropStaleCoursesValidator'
+import { runEnsureTiersIndexesOnInit } from '@/server/payload/migrations/ensureTiersIndexes'
 import { runLocalizeTeacherProfilesOnInit } from '@/server/payload/migrations/localize-teacher-profiles'
 import { runPopulateLessonBlocksOnInit } from '@/server/payload/migrations/populateLessonBlocks'
 import { runSeedTtsSettingsOnInit } from '@/server/payload/migrations/seedTtsSettings'
@@ -326,6 +328,7 @@ export default buildConfig({
     Posts,
     PricingPlans,
     Features,
+    Tiers,
     Products,
     AccessCodes,
     Transactions,
@@ -584,6 +587,11 @@ export default buildConfig({
     // all. The check itself is a single `listCollections` when the validator
     // is already gone — cheap enough to run on every serverless cold start.
     await timedInit('dropStaleCoursesValidator', () => runDropStaleCoursesValidatorOnInit(payload))
+
+    // Partial unique index on Tiers.isDefault — the hard backstop for
+    // "at most one default tier" (the collection's beforeValidate check
+    // has a TOCTOU window that this index closes).
+    await timedInit('ensureTiersIndexes', () => runEnsureTiersIndexesOnInit(payload))
 
     // NOTE: verifyTransactionsUniqueness was moved out of onInit into a
     // daily Vercel cron (`/api/cron/verify-tx-indexes`, see vercel.json).

@@ -69,6 +69,7 @@ export const revokeEntitlementsOnRefund: CollectionAfterChangeHook = async ({
       payload: req.payload,
       userId,
       transactionId: String(doc.id),
+      req,
     })
   } catch (error) {
     // Log but do not block the transaction update — the refund itself has

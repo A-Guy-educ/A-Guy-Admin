@@ -22,6 +22,7 @@ import type { CollectionConfig } from 'payload'
 import { adminOnly } from '../access/adminOnly'
 import { createdByField } from '../fields/createdBy'
 import { tenantField } from '../fields/tenant'
+import { recomputeTierOnStatusChange } from './Subscriptions/hooks/recomputeTierOnStatusChange-hook'
 
 export const Subscriptions: CollectionConfig = {
   slug: 'subscriptions',
@@ -38,6 +39,9 @@ export const Subscriptions: CollectionConfig = {
     defaultColumns: ['createdAt', 'user', 'product', 'status', 'currentPeriodEnd', 'provider'],
     listSearchableFields: ['paypalSubscriptionId'],
     group: 'Payments',
+  },
+  hooks: {
+    afterChange: [recomputeTierOnStatusChange],
   },
   fields: [
     tenantField,

@@ -16,18 +16,25 @@
  */
 
 import { ObjectId } from 'mongodb'
-import type { Payload } from 'payload'
+import type { Payload, PayloadRequest } from 'payload'
+
+import { recomputeUserTier } from './recompute-tier'
 
 interface RevokeParams {
   payload: Payload
   userId: string
   transactionId: string
+  // Optional: pass the driving PayloadRequest so read/write ops share the
+  // same MongoDB session as the caller's transaction. Threaded into
+  // recomputeUserTier so its reads see the just-committed refund status.
+  req?: PayloadRequest
 }
 
 export async function revokeProductEntitlements({
   payload,
   userId,
   transactionId,
+  req,
 }: RevokeParams): Promise<void> {
   // 1. Cancel matching Enrollments. Match on (user, metadata.paymentId)
   // because Enrollments persist a transactionId in `metadata.paymentId`.
@@ -42,6 +49,7 @@ export async function revokeProductEntitlements({
     pagination: false,
     depth: 0,
     overrideAccess: true,
+    req,
   })
   if (enrollments.docs.length > 25) {
     payload.logger.warn(
@@ -62,6 +70,7 @@ export async function revokeProductEntitlements({
           cancelledAt: new Date().toISOString(),
         },
         overrideAccess: true,
+        req,
       })
     } catch (error) {
       // Log and continue — a single failed cancellation must not skip the
@@ -84,4 +93,16 @@ export async function revokeProductEntitlements({
       },
     },
   )
+
+  // 3. Recompute derived tier — a revoke can drop the user back to a lower
+  // tier or to Free. Non-fatal on failure; the tier can be re-derived on
+  // the next entitlement change.
+  try {
+    await recomputeUserTier(payload, userId, req)
+  } catch (error) {
+    payload.logger.error(
+      { err: error, userId, transactionId },
+      'revokeProductEntitlements: recomputeUserTier failed; currentTier may be stale',
+    )
+  }
 }
