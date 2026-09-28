@@ -70,6 +70,15 @@ interface TransactionRow {
 const MS_PER_DAY = 24 * 60 * 60 * 1000
 const CAS_MAX_ATTEMPTS = 5
 
+// Defensive caps on the subs/txs fan-out reads. Recompute runs on the
+// webhook critical path with a small Mongo pool (maxPoolSize=3); a
+// user with pathological history (many renewals or admin-seeded rows)
+// would otherwise pull every row into memory and stall the pool. Real
+// users should be nowhere near these — hitting either limit logs a
+// warn so ops can chase the outlier.
+const MAX_SUBS_PER_USER = 200
+const MAX_TXS_PER_USER = 500
+
 function idOf(rel: string | { id: string } | null | undefined): string | null {
   if (!rel) return null
   return typeof rel === 'string' ? rel : rel.id
@@ -119,11 +128,17 @@ async function resolveWinningTier(
         },
       ],
     },
-    pagination: false,
+    limit: MAX_SUBS_PER_USER,
     depth: 0,
     overrideAccess: true,
     req,
   })
+  if (subs.totalDocs > MAX_SUBS_PER_USER) {
+    payload.logger.warn(
+      { userId, totalDocs: subs.totalDocs, capped: MAX_SUBS_PER_USER },
+      'recomputeUserTier: active-subs count exceeded cap; tier may be under-derived for this user',
+    )
+  }
 
   // 2. Live one-time transactions — succeeded, non-renewal. Sub-linked
   // txs are filtered out below (application-side, so behaviour is
@@ -140,11 +155,17 @@ async function resolveWinningTier(
         { isRenewal: { not_equals: true } },
       ],
     },
-    pagination: false,
+    limit: MAX_TXS_PER_USER,
     depth: 0,
     overrideAccess: true,
     req,
   })
+  if (txs.totalDocs > MAX_TXS_PER_USER) {
+    payload.logger.warn(
+      { userId, totalDocs: txs.totalDocs, capped: MAX_TXS_PER_USER },
+      'recomputeUserTier: succeeded-txs count exceeded cap; tier may be under-derived for this user',
+    )
+  }
 
   const productIds = new Set<string>()
   for (const row of subs.docs as SubscriptionRow[]) {

@@ -27,6 +27,7 @@
 import type { CollectionAfterChangeHook } from 'payload'
 
 import { recomputeUserTier } from '@/lib/payment/recompute-tier'
+import { canTransitionFlipTier } from '@/lib/payment/tier-transitions'
 
 export const recomputeTierOnStatusChange: CollectionAfterChangeHook = async ({
   doc,
@@ -37,10 +38,14 @@ export const recomputeTierOnStatusChange: CollectionAfterChangeHook = async ({
   const currentStatus = doc.status as string | undefined
   const prevStatus = previousDoc?.status as string | undefined
 
-  // Only run on actual status transitions, not on cosmetic updates
-  // (currentPeriodEnd rolls forward, cancelAtPeriodEnd toggles, etc.).
-  // Those don't change what the recompute would derive.
-  if (operation === 'update' && currentStatus === prevStatus) return doc
+  // Skip cosmetic updates (currentPeriodEnd rolls forward,
+  // cancelAtPeriodEnd toggles) and transitions that can't flip tier —
+  // the shared gate in tier-transitions.ts encodes the exact set. On
+  // create we still recompute unconditionally: `previousDoc` is
+  // undefined so the helper treats it as a boundary-crossing
+  // transition, which matches the "sub just came into existence"
+  // semantics.
+  if (operation === 'update' && !canTransitionFlipTier(prevStatus, currentStatus)) return doc
 
   const userId = typeof doc.user === 'string' ? doc.user : (doc.user as { id?: string })?.id
   if (!userId) {

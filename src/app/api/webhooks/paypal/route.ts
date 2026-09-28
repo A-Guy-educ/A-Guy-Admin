@@ -29,6 +29,7 @@ import {
 import { verifyPayPalWebhook } from '@/lib/payment/paypal'
 import { recomputeUserTier } from '@/lib/payment/recompute-tier'
 import { revokeProductEntitlements } from '@/lib/payment/revoke-entitlements'
+import { canTransitionFlipTier } from '@/lib/payment/tier-transitions'
 import { sendPurchaseReceipt } from '@/server/email/services/purchase-receipt-service'
 
 interface PayPalWebhookResource {
@@ -1131,16 +1132,22 @@ async function updateSubscriptionState(
   }
 
   // Raw driver writes don't fire the Subscriptions afterChange hook, so
-  // when we flip a sub through this path (CANCELLED, SUSPENDED,
-  // PAYMENT_FAILED → past_due) we must trigger the tier recompute
-  // explicitly. Terminal transitions here can drop the user off a paid
-  // tier; leaving currentTier stale until the next unrelated event is
-  // the same bug the reviewer flagged for handleSubscriptionExpired.
+  // when we flip a sub through this path we must trigger the tier
+  // recompute explicitly. Gate on transitions that can actually flip
+  // tier membership — active↔past_due and no-op shifts (same status)
+  // don't move the user between the tier-granting set and the terminal
+  // set, so we skip the recompute round-trip on those.
   const userId =
     typeof subscription.user === 'string'
       ? subscription.user
       : (subscription.user as { id?: string } | null)?.id
-  if (userId && typeof (update as { status?: unknown }).status === 'string') {
+  const newStatus = (update as { status?: unknown }).status
+  const oldStatus = subscription.status as string | undefined
+  if (
+    userId &&
+    typeof newStatus === 'string' &&
+    canTransitionFlipTier(oldStatus, newStatus)
+  ) {
     try {
       await recomputeUserTier(payload, userId)
     } catch (err) {
@@ -1151,6 +1158,7 @@ async function updateSubscriptionState(
     }
   }
 }
+
 
 async function handleSubscriptionExpired(
   payload: Awaited<ReturnType<typeof getPayload>>,
