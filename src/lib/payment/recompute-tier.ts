@@ -36,7 +36,7 @@
  * @ai-summary Derives user.currentTier from active subscriptions + one-time transactions; highest-rank wins; CAS-guarded write; req threaded so reads see the same tx session
  */
 
-import { ObjectId } from 'mongodb'
+import { ObjectId, type Collection, type Db, type Document } from 'mongodb'
 import type { Payload, PayloadRequest } from 'payload'
 
 interface TierRow {
@@ -64,6 +64,7 @@ interface TransactionRow {
   id: string
   product?: string | { id: string } | null
   createdAt?: string
+  subscription?: string | { id: string } | null
 }
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000
@@ -87,8 +88,17 @@ async function resolveWinningTier(
   const nowIso = new Date().toISOString()
   const nowMs = Date.now()
 
-  // 1. Active subscriptions — includes cancelled subs still in their paid
-  // period (cancelAtPeriodEnd=true AND currentPeriodEnd > now).
+  // 1. Live subscription grants — the sub filter is the AUTHORITATIVE
+  // source for subscription-derived tier grants:
+  //  - `active`             — normal in-period state
+  //  - `past_due`           — payment failing but access continues during grace
+  //  - `cancelled` + within period (cancelAtPeriodEnd=true, currentPeriodEnd
+  //     in the future) — user cancelled but paid through the end of the
+  //     current period.
+  // Terminal states (`expired`, `suspended`, `cancelled` past the period end)
+  // are excluded here; the tx loop below MUST skip any tx linked to a
+  // subscription so those subs don't leak lifetime grants via their initial
+  // succeeded tx (which is never refunded — only the sub row is flipped).
   const subs = await payload.find({
     collection: 'subscriptions',
     where: {
@@ -97,6 +107,7 @@ async function resolveWinningTier(
         {
           or: [
             { status: { equals: 'active' } },
+            { status: { equals: 'past_due' } },
             {
               and: [
                 { status: { equals: 'cancelled' } },
@@ -114,9 +125,12 @@ async function resolveWinningTier(
     req,
   })
 
-  // 2. Live one-time transactions — succeeded, non-renewal. durationDays
-  // expiry is applied per-tx below because it needs createdAt +
-  // durationDays arithmetic that Payload's where syntax cannot express.
+  // 2. Live one-time transactions — succeeded, non-renewal. Sub-linked
+  // txs are filtered out below (application-side, so behaviour is
+  // insensitive to whether Payload stores an unset relationship as
+  // missing or null). durationDays expiry is also applied per-tx below
+  // because it needs createdAt + durationDays arithmetic that Payload's
+  // where syntax cannot express directly.
   const txs = await payload.find({
     collection: 'transactions',
     where: {
@@ -138,6 +152,11 @@ async function resolveWinningTier(
     if (pid) productIds.add(pid)
   }
   for (const row of txs.docs as TransactionRow[]) {
+    // Skip sub-linked txs — their tier grant is governed by the sub filter
+    // above. A subscription that has expired keeps its initial succeeded
+    // tx (only the sub row flips to 'expired'); counting it here would
+    // grant lifetime tier to users whose subscription has ended.
+    if (row.subscription) continue
     const pid = idOf(row.product ?? null)
     if (pid) productIds.add(pid)
   }
@@ -173,6 +192,9 @@ async function resolveWinningTier(
     if (tierId) activeTierIds.add(tierId)
   }
   for (const row of txs.docs as TransactionRow[]) {
+    // Same skip as above — the sub filter already contributed this tier
+    // (or not, if the sub is in a terminal state).
+    if (row.subscription) continue
     const pid = idOf(row.product ?? null)
     if (!pid) continue
     const durationDays = productDurationDays.get(pid) ?? null
@@ -249,9 +271,7 @@ export async function recomputeUserTier(
   // hook context. The tier write is derived state and does not need to
   // participate in the caller's transaction — but the CAS read MUST see
   // globally committed state to detect concurrent hook updates.
-  const db = (payload.db as unknown as { connection?: { db?: unknown } }).connection?.db as
-    | { collection: (name: string) => { findOne: Function; updateOne: Function } }
-    | undefined
+  const db = (payload.db as unknown as { connection?: { db?: Db } }).connection?.db
   if (!db) {
     payload.logger.error(
       { userId },
@@ -259,16 +279,7 @@ export async function recomputeUserTier(
     )
     return
   }
-  const usersCollection = db.collection('users') as unknown as {
-    findOne: (
-      filter: Record<string, unknown>,
-      options: Record<string, unknown>,
-    ) => Promise<{ currentTier?: ObjectId | string | null } | null>
-    updateOne: (
-      filter: Record<string, unknown>,
-      update: Record<string, unknown>,
-    ) => Promise<{ matchedCount: number }>
-  }
+  const usersCollection: Collection<Document> = db.collection<Document>('users')
   const userObjectId = new ObjectId(userId)
 
   for (let attempt = 0; attempt < CAS_MAX_ATTEMPTS; attempt++) {
@@ -310,8 +321,12 @@ export async function recomputeUserTier(
         ? { _id: userObjectId, $or: [{ currentTier: { $exists: false } }, { currentTier: null }] }
         : { _id: userObjectId, currentTier: normalizeCasValue(priorTier) }
 
+    // Refresh updatedAt alongside currentTier so admins auditing the User
+    // row see the tier change reflected in the "last modified" column.
+    // The raw driver write bypasses Mongoose's timestamp middleware, so
+    // we have to bump it explicitly.
     const result = await usersCollection.updateOne(casFilter, {
-      $set: { currentTier: winnerObjectId },
+      $set: { currentTier: winnerObjectId, updatedAt: new Date() },
     })
 
     if (result.matchedCount === 1) return

@@ -27,6 +27,7 @@ import {
   grantProductEntitlements,
 } from '@/lib/payment/grant-entitlements'
 import { verifyPayPalWebhook } from '@/lib/payment/paypal'
+import { recomputeUserTier } from '@/lib/payment/recompute-tier'
 import { revokeProductEntitlements } from '@/lib/payment/revoke-entitlements'
 import { sendPurchaseReceipt } from '@/server/email/services/purchase-receipt-service'
 
@@ -1126,6 +1127,28 @@ async function updateSubscriptionState(
       { subscriptionId: subscription.id, eventType: event.event_type, update },
       'PayPal webhook: state-update skipped — sub already in a terminal state',
     )
+    return
+  }
+
+  // Raw driver writes don't fire the Subscriptions afterChange hook, so
+  // when we flip a sub through this path (CANCELLED, SUSPENDED,
+  // PAYMENT_FAILED → past_due) we must trigger the tier recompute
+  // explicitly. Terminal transitions here can drop the user off a paid
+  // tier; leaving currentTier stale until the next unrelated event is
+  // the same bug the reviewer flagged for handleSubscriptionExpired.
+  const userId =
+    typeof subscription.user === 'string'
+      ? subscription.user
+      : (subscription.user as { id?: string } | null)?.id
+  if (userId && typeof (update as { status?: unknown }).status === 'string') {
+    try {
+      await recomputeUserTier(payload, userId)
+    } catch (err) {
+      payload.logger.error(
+        { err, subscriptionId: subscription.id },
+        'PayPal webhook: recomputeUserTier failed after subscription state change',
+      )
+    }
   }
 }
 
@@ -1189,6 +1212,13 @@ async function handleSubscriptionExpired(
   // leaks through EXPIRED.
   txIds.push(String(subscription.id))
 
+  // No `req` threaded — this webhook handler doesn't have a PayloadRequest.
+  // The inner recomputeUserTier reads subs+txs from globally committed
+  // state, which is what we want here anyway: during this loop the sub
+  // is still status='active' (the flip happens below), and recompute's
+  // sub-linked-tx skip means the sub's own succeeded txs don't leak
+  // lifetime tier via this path. The tier drop lands via the
+  // Subscriptions afterChange hook fired by the payload.update below.
   for (const txId of txIds) {
     await revokeProductEntitlements({ payload, userId, transactionId: txId })
   }

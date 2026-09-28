@@ -33,6 +33,7 @@ const trackedTierIds: string[] = []
 const trackedProductIds: string[] = []
 const trackedUserIds: string[] = []
 const trackedTxIds: string[] = []
+const trackedSubscriptionIds: string[] = []
 
 async function ensureAdmin(): Promise<string> {
   const admin = await payload.create({
@@ -161,6 +162,49 @@ async function readUser(userId: string): Promise<Record<string, unknown>> {
   })) as unknown as Record<string, unknown>
 }
 
+// Simulate a subscription-backed purchase: creates a Subscription row
+// linked to the user + product, then a `succeeded` initial Transaction
+// that references that subscription. Mirrors the state left by a
+// PayPal BILLING.SUBSCRIPTION.ACTIVATED webhook.
+async function createActiveSubscription(
+  userId: string,
+  productId: string,
+): Promise<{ subscriptionId: string; initialTxId: string }> {
+  const paypalId = `I-TEST-${Date.now()}-${Math.random().toString(36).slice(2)}`
+  const sub = await payload.create({
+    collection: 'subscriptions',
+    data: {
+      user: userId,
+      product: productId,
+      provider: 'paypal',
+      paypalSubscriptionId: paypalId,
+      status: 'active',
+      currentPeriodStart: new Date().toISOString(),
+      currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+    } as any,
+    overrideAccess: true,
+  })
+  trackedSubscriptionIds.push(sub.id)
+
+  const tx = await payload.create({
+    collection: 'transactions',
+    data: {
+      user: userId,
+      product: productId,
+      subscription: sub.id,
+      amount: 100,
+      currency: 'USD',
+      status: 'succeeded',
+      provider: 'paypal',
+      providerTransactionId: `sub-init-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      isRenewal: false,
+    } as any,
+    overrideAccess: true,
+  })
+  trackedTxIds.push(tx.id)
+  return { subscriptionId: sub.id, initialTxId: tx.id }
+}
+
 beforeAll(async () => {
   if (!hasDatabaseUrl) return
   payload = await getPayload({ config })
@@ -171,6 +215,9 @@ afterEach(async () => {
   if (!payload) return
   for (const id of trackedTxIds.splice(0)) {
     await payload.delete({ collection: 'transactions', id, overrideAccess: true }).catch(() => {})
+  }
+  for (const id of trackedSubscriptionIds.splice(0)) {
+    await payload.delete({ collection: 'subscriptions', id, overrideAccess: true }).catch(() => {})
   }
   for (const id of trackedProductIds.splice(0)) {
     await payload.delete({ collection: 'products', id, overrideAccess: true }).catch(() => {})
@@ -315,5 +362,102 @@ describe.skipIf(!hasDatabaseUrl)('Tier recompute — through the tx afterChange 
 
     user = (await readUser(userId)) as { currentTier?: string }
     expect(user.currentTier).toBe(basicId)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Subscription lifecycle
+// ---------------------------------------------------------------------------
+
+describe.skipIf(!hasDatabaseUrl)('Tier recompute — subscription lifecycle', () => {
+  it('grants the sub tier while the subscription is active', async () => {
+    await createTierRow('free-s1', 1500, { isDefault: true })
+    const proId = await createTierRow('pro-s1', 1502)
+    const productId = await createProductWithTier('Pro Sub Product', proId)
+    const userId = await createStudent()
+
+    await createActiveSubscription(userId, productId)
+    // The initial-tx create (status='succeeded') fires the recompute hook.
+
+    const user = (await readUser(userId)) as { currentTier?: string }
+    expect(user.currentTier).toBe(proId)
+  })
+
+  it('drops the user to Free when the subscription expires (Subscriptions afterChange hook)', async () => {
+    const freeId = await createTierRow('free-s2', 1600, { isDefault: true })
+    const proId = await createTierRow('pro-s2', 1602)
+    const productId = await createProductWithTier('Pro Sub Product', proId)
+    const userId = await createStudent()
+
+    const { subscriptionId } = await createActiveSubscription(userId, productId)
+    let user = (await readUser(userId)) as { currentTier?: string }
+    expect(user.currentTier).toBe(proId)
+
+    // Regression for the reviewer's High: the initial succeeded tx has no
+    // durationDays and is never itself refunded, so the previous
+    // implementation kept counting it as a lifetime grant after the sub
+    // ended. The fix is to skip sub-linked txs entirely and let the sub
+    // filter govern; this expire → Free flip is the test that catches it.
+    await payload.update({
+      collection: 'subscriptions',
+      id: subscriptionId,
+      data: { status: 'expired' } as any,
+      overrideAccess: true,
+    })
+
+    user = (await readUser(userId)) as { currentTier?: string }
+    expect(user.currentTier).toBe(freeId)
+  })
+
+  it('keeps the tier while a sub is past_due (grace-period), drops it on suspend', async () => {
+    const freeId = await createTierRow('free-s3', 1700, { isDefault: true })
+    const proId = await createTierRow('pro-s3', 1702)
+    const productId = await createProductWithTier('Pro Sub Product', proId)
+    const userId = await createStudent()
+
+    const { subscriptionId } = await createActiveSubscription(userId, productId)
+    let user = (await readUser(userId)) as { currentTier?: string }
+    expect(user.currentTier).toBe(proId)
+
+    await payload.update({
+      collection: 'subscriptions',
+      id: subscriptionId,
+      data: { status: 'past_due' } as any,
+      overrideAccess: true,
+    })
+    user = (await readUser(userId)) as { currentTier?: string }
+    expect(user.currentTier).toBe(proId)
+
+    await payload.update({
+      collection: 'subscriptions',
+      id: subscriptionId,
+      data: { status: 'suspended' } as any,
+      overrideAccess: true,
+    })
+    user = (await readUser(userId)) as { currentTier?: string }
+    expect(user.currentTier).toBe(freeId)
+  })
+
+  it('keeps the tier when a sub is cancelled but still within its paid period', async () => {
+    await createTierRow('free-s4', 1800, { isDefault: true })
+    const proId = await createTierRow('pro-s4', 1802)
+    const productId = await createProductWithTier('Pro Sub Product', proId)
+    const userId = await createStudent()
+
+    const { subscriptionId } = await createActiveSubscription(userId, productId)
+
+    await payload.update({
+      collection: 'subscriptions',
+      id: subscriptionId,
+      data: {
+        status: 'cancelled',
+        cancelAtPeriodEnd: true,
+        // currentPeriodEnd is already ~30 days out from createActiveSubscription
+      } as any,
+      overrideAccess: true,
+    })
+
+    const user = (await readUser(userId)) as { currentTier?: string }
+    expect(user.currentTier).toBe(proId)
   })
 })
