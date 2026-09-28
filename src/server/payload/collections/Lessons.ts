@@ -587,13 +587,30 @@ export const Lessons: CollectionConfig = {
               },
             },
             {
-              name: 'prompt',
-              type: 'relationship',
-              relationTo: 'prompts',
-              index: true,
-              admin: {
-                description: 'AI system prompt for this lesson (uses default if not set)',
-              },
+              type: 'collapsible',
+              label: 'AI Prompt',
+              admin: { initCollapsed: true },
+              fields: [
+                {
+                  name: 'promptOverride',
+                  type: 'textarea',
+                  admin: {
+                    description:
+                      'Inline AI system prompt for this lesson. When non-empty, overrides the attached Prompt below. Leave blank to use the attached Prompt (or the site default).',
+                    rows: 12,
+                  },
+                },
+                {
+                  name: 'prompt',
+                  type: 'relationship',
+                  relationTo: 'prompts',
+                  index: true,
+                  admin: {
+                    description:
+                      'Legacy attached prompt from the Prompts collection. Used only when the inline override above is empty.',
+                  },
+                },
+              ],
             },
             {
               name: 'contentFiles',
