@@ -73,10 +73,19 @@ const findField = (fields: Field[], name: string): InspectableField | undefined 
 
 const fieldNames = (fields: Field[]) => fields.map((field) => asInspectableField(field).name)
 
-const visibleFieldNames = (fields: Field[]) =>
+const visibleFieldNames = (fields: Field[]): Array<string | undefined> =>
   fields
     .filter((field) => asInspectableField(field).admin?.hidden !== true)
-    .map((field) => asInspectableField(field).name)
+    .flatMap((field) => {
+      const inspectable = asInspectableField(field)
+      // Collapsible fields have no `name` — flatten to their children so the
+      // on-screen field order stays assertable when we group fields into
+      // labeled collapsible sections.
+      if (inspectable.type === 'collapsible' && inspectable.fields) {
+        return visibleFieldNames(inspectable.fields)
+      }
+      return [inspectable.name]
+    })
 
 const collectSidebarFields = (fields: Field[]): string[] =>
   fields.flatMap((field) => {
@@ -143,6 +152,7 @@ describe('Lessons Collection Config', () => {
         'order',
         'prerequisites',
         'nextLessons',
+        'promptOverride',
         'prompt',
         'contentFiles',
         'conversionPanel',
