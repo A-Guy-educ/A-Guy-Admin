@@ -1143,11 +1143,7 @@ async function updateSubscriptionState(
       : (subscription.user as { id?: string } | null)?.id
   const newStatus = (update as { status?: unknown }).status
   const oldStatus = subscription.status as string | undefined
-  if (
-    userId &&
-    typeof newStatus === 'string' &&
-    canTransitionFlipTier(oldStatus, newStatus)
-  ) {
+  if (userId && typeof newStatus === 'string' && canTransitionFlipTier(oldStatus, newStatus)) {
     try {
       await recomputeUserTier(payload, userId)
     } catch (err) {
@@ -1158,7 +1154,6 @@ async function updateSubscriptionState(
     }
   }
 }
-
 
 async function handleSubscriptionExpired(
   payload: Awaited<ReturnType<typeof getPayload>>,

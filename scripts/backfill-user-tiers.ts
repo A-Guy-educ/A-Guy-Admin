@@ -34,9 +34,7 @@ async function main() {
     overrideAccess: true,
   })
   if (defaults.docs.length === 0) {
-    console.error(
-      'No default (isDefault=true) tier is seeded. Run scripts/seed-tiers.ts first.',
-    )
+    console.error('No default (isDefault=true) tier is seeded. Run scripts/seed-tiers.ts first.')
     process.exit(2)
   }
 
@@ -102,10 +100,7 @@ async function main() {
     }
   }
 
-  payload.logger.info(
-    { processed, promoted, unchanged, failed },
-    '[backfill-user-tiers] done',
-  )
+  payload.logger.info({ processed, promoted, unchanged, failed }, '[backfill-user-tiers] done')
   console.log(
     `[backfill-user-tiers] processed=${processed} promoted=${promoted} unchanged=${unchanged} failed=${failed}`,
   )
