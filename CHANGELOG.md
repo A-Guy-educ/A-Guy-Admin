@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.50.0 — 2026-09-29
+
+### Features
+- Subscription tier model: users derive a `currentTier` from their active subscription and one-off tier grants; new `Tiers` collection with partial unique index on default, tier-aware entitlement grant/revoke, PayPal webhook recomputes tier on subscription state changes, and refund/expiry paths restore prior tier (#514)
+- Lessons: inline prompt override field lets authors customise the LLM prompt on a per-lesson basis (#515)
+- Geometry DSL: parse `--- מעגלים ---` sections into circle shapes and inherit circles across sections (#517)
+- Geometry: auto-fitted `boundingBox` now includes circles so frames don't clip circle-only sketches (#519)
+
+### Bug Fixes
+- Geometry: anchor angle equality ticks to the arc in user coordinates so they stay locked to the vertex through zoom/pan (#518)
+
 ## v0.49.0 — 2026-09-27
 
 ### Features
