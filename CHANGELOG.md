@@ -2120,6 +2120,7 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- feat(geometry): Include circles in auto-fitted boundingBox ([#519](https://github.com/A-Guy-educ/A-Guy-Admin/pull/519)) — @aguyshayb
 - fix(geometry): anchor angle equality ticks to arc in user coords ([#518](https://github.com/A-Guy-educ/A-Guy-Admin/pull/518)) — @aguyshayb
 - feat(geometry-dsl): parse '--- מעגלים ---' circles and inherit into sections ([#517](https://github.com/A-Guy-educ/A-Guy-Admin/pull/517)) — @aguyshayb
 - feat: Inline prompt override on lessons ([#515](https://github.com/A-Guy-educ/A-Guy-Admin/pull/515)) — @aguyshayb
