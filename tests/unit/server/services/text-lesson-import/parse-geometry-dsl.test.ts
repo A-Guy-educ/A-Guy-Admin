@@ -345,4 +345,40 @@ describe('parseGeometryDsl', () => {
     ])
     expect(spec.elements.equalAngles).toEqual([[0, 1]])
   })
+
+  it('parses `* מעגל 1 | מרכז: O | רדיוס גרפי: 113 | צבע: שחור | עובי: 2` into a circle', () => {
+    // Full circle definition used at the exercise level (`שרטוט בסיס`).
+    // `רדיוס גרפי` is the canvas-pixel radius the renderer uses; `עובי`
+    // (thickness) has no schema counterpart and is dropped intentionally.
+    const raw = [
+      '  --- מעגלים ---',
+      '  * מעגל 1 | מרכז: O | רדיוס גרפי: 113 | צבע: שחור | עובי: 2',
+    ].join('\n')
+    const { spec, bareCircleRefs } = parseGeometryDsl(raw)
+    expect(spec.elements.circles).toEqual([
+      { center: 'O', style: 'solid', radius: 113, color: 'black' },
+    ])
+    expect(bareCircleRefs).toEqual([])
+  })
+
+  it('captures bare `* מעגל 1` rows as unresolved references', () => {
+    // The boss's per-section sketches reference the exercise-level circle by
+    // bare ID with no `מרכז` field. The parser can't resolve it on its own,
+    // so it records the ID in `bareCircleRefs` for the converter to inherit
+    // the exercise's shared circle from.
+    const raw = ['  --- מעגלים ---', '  * מעגל 1'].join('\n')
+    const { spec, bareCircleRefs, hasContent } = parseGeometryDsl(raw)
+    expect(spec.elements.circles).toEqual([])
+    expect(bareCircleRefs).toEqual(['1'])
+    expect(hasContent).toBe(true)
+  })
+
+  it('emits a circle for `* מעגל | מרכז: O | עובר דרך: A | מקווקו: כן`', () => {
+    // Alternative form: no numeric ID, radius implied via a `עובר דרך`
+    // point reference, and dashed style. `through` is a point name (schema
+    // accepts string), and the parser flips `style` to `dashed`.
+    const raw = ['  --- מעגלים ---', '  * מעגל | מרכז: O | עובר דרך: A | מקווקו: כן'].join('\n')
+    const { spec } = parseGeometryDsl(raw)
+    expect(spec.elements.circles).toEqual([{ center: 'O', style: 'dashed', through: 'A' }])
+  })
 })
