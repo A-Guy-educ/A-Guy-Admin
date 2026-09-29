@@ -234,6 +234,55 @@ describe('parseGeometryDsl', () => {
     expect(yMax - yMin).toBe(40)
   })
 
+  it('grows the boundingBox to include a numeric-radius circle', () => {
+    // A ring around the last point would previously get clipped because the
+    // auto-fit only looked at point coordinates. Radius = 50 pushes the box
+    // out from the [200, 200] center to [150..250] on each axis.
+    const raw = [
+      '  --- נקודות ---',
+      '  * נקודה A | X=100, Y=100',
+      '  * נקודה O | X=200, Y=200',
+      '  --- מעגלים ---',
+      '  * מעגל 1 | מרכז: O | רדיוס גרפי: 50',
+    ].join('\n')
+    const { spec } = parseGeometryDsl(raw)
+    // x∈[100, 250] (range 150) and y∈[100, 250] (range 150).
+    // 10% padding → 15 on each side.
+    expect(spec.canvas.boundingBox).toEqual([85, 265, 265, 85])
+  })
+
+  it('grows the boundingBox to include a `עובר דרך` circle', () => {
+    // Center O = (100, 100), through A = (100, 160) → radius = 60.
+    // Box before circle: x∈[100, 100], y∈[100, 160] (flat x).
+    // After circle: x∈[40, 160], y∈[40, 160].
+    const raw = [
+      '  --- נקודות ---',
+      '  * נקודה O | X=100, Y=100',
+      '  * נקודה A | X=100, Y=160',
+      '  --- מעגלים ---',
+      '  * מעגל | מרכז: O | עובר דרך: A',
+    ].join('\n')
+    const { spec } = parseGeometryDsl(raw)
+    // xRange = 120, yRange = 120 → 12 padding on each side.
+    expect(spec.canvas.boundingBox).toEqual([28, 172, 172, 28])
+  })
+
+  it('ignores circles whose center is not a local point (inherited/unresolved)', () => {
+    // Section-attachment style: circle references a center defined at the
+    // exercise level. The block itself only has a stray label point; the
+    // circle center `O` isn't resolvable so the fit must not crash and must
+    // fall back to the point-only extents.
+    const raw = [
+      '  --- נקודות ---',
+      '  * נקודה A | X=100, Y=100',
+      '  * נקודה B | X=200, Y=200',
+      '  --- מעגלים ---',
+      '  * מעגל | מרכז: O | רדיוס גרפי: 500',
+    ].join('\n')
+    const { spec } = parseGeometryDsl(raw)
+    expect(spec.canvas.boundingBox).toEqual([90, 210, 210, 90])
+  })
+
   it('omits boundingBox when the block has no points (SVG-only paths)', () => {
     const raw = ['  --- ישרים וקטעים ---', '  * קטע AB | מנקודה A ל-B'].join('\n')
     const { spec } = parseGeometryDsl(raw)
