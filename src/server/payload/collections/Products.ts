@@ -213,6 +213,20 @@ export const Products: CollectionConfig = {
         description: 'סוג החיוב: חד-פעמי או מנוי חוזר',
       },
     },
+    // Tier this product grants on purchase. Optional so legacy products
+    // (pre-tier model) remain valid; new products should always set a
+    // tier. The grant flow reads this field and promotes the user to the
+    // highest-rank active tier across their entitlements.
+    {
+      name: 'tier',
+      type: 'relationship',
+      relationTo: 'tiers',
+      admin: {
+        description:
+          'Tier granted on purchase. Leave empty for legacy/one-off products that do not participate in the tier model.',
+        position: 'sidebar',
+      },
+    },
     {
       name: 'interval',
       type: 'select',

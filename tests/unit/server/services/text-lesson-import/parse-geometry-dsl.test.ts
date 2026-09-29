@@ -234,6 +234,55 @@ describe('parseGeometryDsl', () => {
     expect(yMax - yMin).toBe(40)
   })
 
+  it('grows the boundingBox to include a numeric-radius circle', () => {
+    // A ring around the last point would previously get clipped because the
+    // auto-fit only looked at point coordinates. Radius = 50 pushes the box
+    // out from the [200, 200] center to [150..250] on each axis.
+    const raw = [
+      '  --- נקודות ---',
+      '  * נקודה A | X=100, Y=100',
+      '  * נקודה O | X=200, Y=200',
+      '  --- מעגלים ---',
+      '  * מעגל 1 | מרכז: O | רדיוס גרפי: 50',
+    ].join('\n')
+    const { spec } = parseGeometryDsl(raw)
+    // x∈[100, 250] (range 150) and y∈[100, 250] (range 150).
+    // 10% padding → 15 on each side.
+    expect(spec.canvas.boundingBox).toEqual([85, 265, 265, 85])
+  })
+
+  it('grows the boundingBox to include a `עובר דרך` circle', () => {
+    // Center O = (100, 100), through A = (100, 160) → radius = 60.
+    // Box before circle: x∈[100, 100], y∈[100, 160] (flat x).
+    // After circle: x∈[40, 160], y∈[40, 160].
+    const raw = [
+      '  --- נקודות ---',
+      '  * נקודה O | X=100, Y=100',
+      '  * נקודה A | X=100, Y=160',
+      '  --- מעגלים ---',
+      '  * מעגל | מרכז: O | עובר דרך: A',
+    ].join('\n')
+    const { spec } = parseGeometryDsl(raw)
+    // xRange = 120, yRange = 120 → 12 padding on each side.
+    expect(spec.canvas.boundingBox).toEqual([28, 172, 172, 28])
+  })
+
+  it('ignores circles whose center is not a local point (inherited/unresolved)', () => {
+    // Section-attachment style: circle references a center defined at the
+    // exercise level. The block itself only has a stray label point; the
+    // circle center `O` isn't resolvable so the fit must not crash and must
+    // fall back to the point-only extents.
+    const raw = [
+      '  --- נקודות ---',
+      '  * נקודה A | X=100, Y=100',
+      '  * נקודה B | X=200, Y=200',
+      '  --- מעגלים ---',
+      '  * מעגל | מרכז: O | רדיוס גרפי: 500',
+    ].join('\n')
+    const { spec } = parseGeometryDsl(raw)
+    expect(spec.canvas.boundingBox).toEqual([90, 210, 210, 90])
+  })
+
   it('omits boundingBox when the block has no points (SVG-only paths)', () => {
     const raw = ['  --- ישרים וקטעים ---', '  * קטע AB | מנקודה A ל-B'].join('\n')
     const { spec } = parseGeometryDsl(raw)
@@ -344,5 +393,41 @@ describe('parseGeometryDsl', () => {
       { center: 'C', ray1: 'B', ray2: 'D' },
     ])
     expect(spec.elements.equalAngles).toEqual([[0, 1]])
+  })
+
+  it('parses `* מעגל 1 | מרכז: O | רדיוס גרפי: 113 | צבע: שחור | עובי: 2` into a circle', () => {
+    // Full circle definition used at the exercise level (`שרטוט בסיס`).
+    // `רדיוס גרפי` is the canvas-pixel radius the renderer uses; `עובי`
+    // (thickness) has no schema counterpart and is dropped intentionally.
+    const raw = [
+      '  --- מעגלים ---',
+      '  * מעגל 1 | מרכז: O | רדיוס גרפי: 113 | צבע: שחור | עובי: 2',
+    ].join('\n')
+    const { spec, bareCircleRefs } = parseGeometryDsl(raw)
+    expect(spec.elements.circles).toEqual([
+      { center: 'O', style: 'solid', radius: 113, color: 'black' },
+    ])
+    expect(bareCircleRefs).toEqual([])
+  })
+
+  it('captures bare `* מעגל 1` rows as unresolved references', () => {
+    // The boss's per-section sketches reference the exercise-level circle by
+    // bare ID with no `מרכז` field. The parser can't resolve it on its own,
+    // so it records the ID in `bareCircleRefs` for the converter to inherit
+    // the exercise's shared circle from.
+    const raw = ['  --- מעגלים ---', '  * מעגל 1'].join('\n')
+    const { spec, bareCircleRefs, hasContent } = parseGeometryDsl(raw)
+    expect(spec.elements.circles).toEqual([])
+    expect(bareCircleRefs).toEqual(['1'])
+    expect(hasContent).toBe(true)
+  })
+
+  it('emits a circle for `* מעגל | מרכז: O | עובר דרך: A | מקווקו: כן`', () => {
+    // Alternative form: no numeric ID, radius implied via a `עובר דרך`
+    // point reference, and dashed style. `through` is a point name (schema
+    // accepts string), and the parser flips `style` to `dashed`.
+    const raw = ['  --- מעגלים ---', '  * מעגל | מרכז: O | עובר דרך: A | מקווקו: כן'].join('\n')
+    const { spec } = parseGeometryDsl(raw)
+    expect(spec.elements.circles).toEqual([{ center: 'O', style: 'dashed', through: 'A' }])
   })
 })

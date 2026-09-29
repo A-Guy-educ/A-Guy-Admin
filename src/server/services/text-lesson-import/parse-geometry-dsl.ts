@@ -16,8 +16,16 @@ import type { PositionEnum } from '@/infra/contracts/primitives'
 export interface ParseGeometryDslResult {
   spec: GeometrySpecV1
   warnings: string[]
-  /** True when at least one point/segment/angle was successfully parsed. */
+  /** True when at least one point/segment/angle/circle was successfully parsed, OR when a bare circle reference was recorded (section attachments referencing a circle defined at the exercise level). */
   hasContent: boolean
+  /**
+   * IDs from bare `* מעגל N` rows the parser couldn't fully resolve (no
+   * `מרכז` field). Section attachments emit these when they mean to
+   * reference a circle that was defined in the exercise's `שרטוט בסיס`;
+   * the converter uses this to inherit the parent's circles so the
+   * section still renders the ring.
+   */
+  bareCircleRefs: string[]
 }
 
 const DEFAULT_CANVAS_WIDTH = 400
@@ -333,6 +341,61 @@ interface MutableAngle {
   label?: { value?: string; position: 'inside' | 'outside' }
 }
 
+interface MutableCircle {
+  center: string
+  radius?: number
+  through?: string
+  style: 'solid' | 'dashed'
+  color?: string
+}
+
+/**
+ * Best-effort circle parser. Accepts:
+ *   * מעגל 1 | מרכז: O | רדיוס גרפי: 113 | צבע: שחור | עובי: 2
+ *   * מעגל | מרכז: O | עובר דרך: A | צבע: כחול | מקווקו: כן
+ *
+ * The bare form `* מעגל 1` (used in section attachments to reference a
+ * circle defined at the exercise level) has no `מרכז`/`רדיוס` fields — the
+ * caller receives `null` and typically inherits the parent exercise's
+ * circles at the converter layer.
+ *
+ * `עובי` (thickness) is intentionally dropped — the schema has no matching
+ * field, and every circle in the corpus so far has been thickness=2 which
+ * matches the renderer default anyway.
+ */
+function parseCircleRow(head: string, fields: string[]): MutableCircle | null {
+  const centerField = findField(fields, ['מרכז'])
+  if (!centerField) return null
+  const centerName = centerField.match(/[A-Za-z][A-Za-z0-9_]*(?:'|′)?/)?.[0]
+  if (!centerName) return null
+
+  const circle: MutableCircle = { center: centerName, style: 'solid' }
+
+  // `רדיוס גרפי` = canvas-pixel radius; `רדיוס` alone is the semantic label.
+  // Prefer the graphical one so the renderer draws the right size; fall back
+  // to a numeric-only `רדיוס` if that's all the author supplied.
+  const radiusField =
+    findField(fields, ['רדיוס גרפי']) ?? findField(fields, ['רדיוס', 'רדיוס לוגי'])
+  if (radiusField) {
+    const n = Number(radiusField.match(/-?\d+(?:\.\d+)?/)?.[0])
+    if (Number.isFinite(n) && n > 0) circle.radius = n
+  }
+
+  const throughField = findField(fields, ['עובר דרך', 'דרך'])
+  if (throughField) {
+    const m = throughField.match(/[A-Za-z][A-Za-z0-9_]*(?:'|′)?/)
+    if (m) circle.through = m[0]
+  }
+
+  const dashedField = findField(fields, ['מקווקו'])
+  if (dashedField && /^כן|^yes/i.test(dashedField.trim())) circle.style = 'dashed'
+
+  const colorField = normalizeColor(findField(fields, ['צבע']))
+  if (colorField) circle.color = colorField
+
+  return circle
+}
+
 function parseAngleRow(head: string, fields: string[]): MutableAngle | null {
   // Head: "זווית AOC" or "זווית A"
   const nameMatch = head.match(/זווית\s+([A-Za-z][A-Za-z0-9_]*)/)
@@ -454,6 +517,9 @@ export function parseGeometryDsl(raw: string): ParseGeometryDslResult {
   const points: MutablePoint[] = []
   const lines: MutableLine[] = []
   const angles: MutableAngle[] = []
+  const circles: MutableCircle[] = []
+  /** IDs from bare `* מעגל N` rows (no `מרכז` field). Section attachments emit these when they reference a circle defined at the exercise level. */
+  const bareCircleRefs: string[] = []
   /** Equal-segment groups. Each entry is a list of segments that are equal to each other. Indices into `lines` aren't used — the schema takes {from, to} pairs directly. */
   const equalSegments: Array<Array<{ from: string; to: string }>> = []
   /** Equal-angle groups. Each entry is a list of angle INDICES (into the finalised `angles` array) that are equal to each other. */
@@ -543,6 +609,19 @@ export function parseGeometryDsl(raw: string): ParseGeometryDslResult {
         const parsed = parseAngleRow(item.head, item.fields)
         if (parsed) angles.push(parsed)
         else warnings.push(`Skipped angle row: ${body}`)
+        break
+      }
+      case 'circles': {
+        const parsed = parseCircleRow(item.head, item.fields)
+        if (parsed) {
+          circles.push(parsed)
+          break
+        }
+        // Bare `* מעגל 1` — no `מרכז` field. Capture the row's head so the
+        // converter can inherit the exercise's shared circles when the
+        // section clearly meant to reference one that was defined upstream.
+        const bareId = item.head.replace(/^\s*מעגל\s*/, '').trim() || item.head.trim()
+        bareCircleRefs.push(bareId)
         break
       }
       case 'markers': {
@@ -668,21 +747,43 @@ export function parseGeometryDsl(raw: string): ParseGeometryDslResult {
       height: canvasHeight ?? DEFAULT_CANVAS_HEIGHT,
       ...(canvasGrid ? { grid: true } : {}),
       ...(() => {
-        // Fit the JSXGraph viewport to the actual points so a small shape
+        // Fit the JSXGraph viewport to the actual content so a small shape
         // in the top-left doesn't render as a tiny fragment against a full
         // 400×400 canvas. GeometryRenderer defaults `boundingBox` to
-        // [0, height, width, 0] when unset; we override with the point
-        // extents plus ~10% padding. Skipped when there are no points
-        // (SVG-only blocks bypass this path anyway) or when only one axis
-        // has spread (still add flat padding so range isn't zero).
+        // [0, height, width, 0] when unset; we override with the point +
+        // circle extents plus ~10% padding. Skipped when there are no
+        // points (SVG-only blocks bypass this path anyway) or when only
+        // one axis has spread (still add flat padding so range isn't zero).
+        //
+        // Circles are included so a ring drawn around the last point
+        // doesn't get clipped: for each circle whose center resolves to a
+        // parsed point, we grow the box by the radius (numeric `רדיוס גרפי`
+        // or the distance from center to the `עובר דרך` point). Circles
+        // referencing an inherited center that isn't in this block's
+        // points are skipped — the converter will re-fit at that layer.
         const usable = points.filter((p) => p.name && Number.isFinite(p.x) && Number.isFinite(p.y))
         if (usable.length === 0) return {}
-        const xs = usable.map((p) => p.x)
-        const ys = usable.map((p) => p.y)
-        const xMin = Math.min(...xs)
-        const xMax = Math.max(...xs)
-        const yMin = Math.min(...ys)
-        const yMax = Math.max(...ys)
+        const pointByName = new Map(usable.map((p) => [p.name, p]))
+        let xMin = Math.min(...usable.map((p) => p.x))
+        let xMax = Math.max(...usable.map((p) => p.x))
+        let yMin = Math.min(...usable.map((p) => p.y))
+        let yMax = Math.max(...usable.map((p) => p.y))
+        for (const c of circles) {
+          const center = pointByName.get(c.center)
+          if (!center) continue
+          let r: number | undefined
+          if (typeof c.radius === 'number' && c.radius > 0) {
+            r = c.radius
+          } else if (c.through) {
+            const t = pointByName.get(c.through)
+            if (t) r = Math.hypot(t.x - center.x, t.y - center.y)
+          }
+          if (!r || !Number.isFinite(r) || r <= 0) continue
+          xMin = Math.min(xMin, center.x - r)
+          xMax = Math.max(xMax, center.x + r)
+          yMin = Math.min(yMin, center.y - r)
+          yMax = Math.max(yMax, center.y + r)
+        }
         const xRange = xMax - xMin
         const yRange = yMax - yMin
         const padX = xRange > 0 ? xRange * 0.1 : 20
@@ -718,7 +819,13 @@ export function parseGeometryDsl(raw: string): ParseGeometryDslResult {
         ...(l.color ? { color: l.color } : {}),
         ...(l.label ? { label: l.label } : {}),
       })),
-      circles: [],
+      circles: circles.map((c) => ({
+        center: c.center,
+        style: c.style,
+        ...(c.radius !== undefined ? { radius: c.radius } : {}),
+        ...(c.through ? { through: c.through } : {}),
+        ...(c.color ? { color: c.color } : {}),
+      })),
       angles: angles.map((a) => ({
         center: a.center,
         ray1: a.ray1,
@@ -736,9 +843,11 @@ export function parseGeometryDsl(raw: string): ParseGeometryDslResult {
   const hasContent =
     spec.elements.points.length > 0 ||
     spec.elements.lines.length > 0 ||
-    spec.elements.angles.length > 0
+    spec.elements.angles.length > 0 ||
+    spec.elements.circles.length > 0 ||
+    bareCircleRefs.length > 0
 
-  return { spec, warnings, hasContent }
+  return { spec, warnings, hasContent, bareCircleRefs }
 }
 
 // --- Group header normalisation --------------------------------------------
@@ -749,6 +858,7 @@ function normalizeGroupHeader(raw: string): string | null {
   if (/נקודות/.test(t)) return 'points'
   if (/ישרים|קטעים/.test(t)) return 'segments'
   if (/^זוויות/.test(t) || /לתצוגה/.test(t)) return 'angles'
+  if (/^מעגלים$|^מעגל$/.test(t)) return 'circles'
   if (/סימונים|סימון/.test(t)) return 'markers'
   return null
 }
@@ -758,6 +868,7 @@ function inferGroupFromHead(head: string): string | null {
   if (/^נקודה[\s|]/.test(head) || /^[A-Za-z][A-Za-z0-9_]*\s*\(/.test(head)) return 'points'
   if (/^(?:קטע|ישר)[\s|]/.test(head)) return 'segments'
   if (/^זווית[\s|]/.test(head)) return 'angles'
+  if (/^מעגל[\s|]/.test(head)) return 'circles'
   if (/^סימן[\s|]/.test(head)) return 'markers'
   if (/רוחב\s*קנבס|גריד|רשת/.test(head)) return 'canvas'
   return null

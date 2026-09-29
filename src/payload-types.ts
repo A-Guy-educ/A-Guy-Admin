@@ -106,6 +106,7 @@ export interface Config {
     posts: Post;
     'pricing-plans': PricingPlan;
     features: Feature;
+    tiers: Tier;
     products: Product;
     'access-codes': AccessCode;
     transactions: Transaction;
@@ -164,6 +165,7 @@ export interface Config {
     posts: PostsSelect<false> | PostsSelect<true>;
     'pricing-plans': PricingPlansSelect<false> | PricingPlansSelect<true>;
     features: FeaturesSelect<false> | FeaturesSelect<true>;
+    tiers: TiersSelect<false> | TiersSelect<true>;
     products: ProductsSelect<false> | ProductsSelect<true>;
     'access-codes': AccessCodesSelect<false> | AccessCodesSelect<true>;
     transactions: TransactionsSelect<false> | TransactionsSelect<true>;
@@ -526,6 +528,10 @@ export interface User {
         id?: string | null;
       }[]
     | null;
+  /**
+   * Computed from active entitlements. Highest-rank tier wins; Free is the fallback. Do not edit by hand — the grant/revoke flow rewrites it.
+   */
+  currentTier?: (string | null) | Tier;
   /**
    * Standalone feature access granted via payment
    */
@@ -953,6 +959,53 @@ export interface TableBlock {
   id?: string | null;
   blockName?: string | null;
   blockType: 'tableBlock';
+}
+/**
+ * Subscription tiers. Every Product links to one Tier; buying the Product promotes the user to that Tier (highest rank wins on overlap).
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "tiers".
+ */
+export interface Tier {
+  id: string;
+  /**
+   * Stable identifier used by runtime code (e.g. "free", "basic", "pro", "elite"). kebab-case, lowercase. Changing this after grants exist orphans user.currentTier references.
+   */
+  slug: string;
+  /**
+   * Numeric level for "higher includes lower" comparisons. Free = 0, top tier gets the largest number. Ranks should be unique but the schema does not enforce it — allowing a temporary duplicate is the only way to reorder tiers via two individual writes. Ties resolve arbitrarily but deterministically in the recompute helper.
+   */
+  rank: number;
+  /**
+   * Display name (localized, EN + HE).
+   */
+  name: string;
+  /**
+   * Marketing copy shown on the pricing page (localized).
+   */
+  description?: string | null;
+  /**
+   * Fallback tier assigned to users with no active paid grants. Exactly one tier should have this on (Free).
+   */
+  isDefault?: boolean | null;
+  /**
+   * Hex badge colour used in the admin + pricing UI (e.g. #4F46E5).
+   */
+  color?: string | null;
+  /**
+   * Display order on the pricing page (ascending).
+   */
+  sortOrder?: number | null;
+  /**
+   * When off, the tier is hidden from the pricing page. Existing grants remain valid.
+   */
+  isActive?: boolean | null;
+  /**
+   * User who created this document
+   */
+  createdBy?: (string | null) | User;
+  updatedAt: string;
+  createdAt: string;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -1568,7 +1621,11 @@ export interface Lesson {
    */
   nextLessons?: (string | Lesson)[] | null;
   /**
-   * AI system prompt for this lesson (uses default if not set)
+   * Inline AI system prompt for this lesson. When non-empty, overrides the attached Prompt below. Leave blank to use the attached Prompt (or the site default).
+   */
+  promptOverride?: string | null;
+  /**
+   * Legacy attached prompt from the Prompts collection. Used only when the inline override above is empty.
    */
   prompt?: (string | null) | Prompt;
   /**
@@ -1616,7 +1673,7 @@ export interface Lesson {
    */
   accessType: 'inherit' | 'free' | 'mandatory' | 'gated' | 'paid';
   /**
-   * Which renderers are visible to students. At least one must be selected. Note: Media tab only appears when the lesson has attached files regardless of this toggle. Chat is opt-in per lesson.
+   * Which renderers are visible to students. At least one must be selected. Note: Media tab only appears when the lesson has attached files regardless of this toggle. Interactive is opt-in per lesson.
    */
   visibleRenderers?: ('media' | 'pdf' | 'interactive' | 'chat')[] | null;
   /**
@@ -1977,6 +2034,10 @@ export interface Product {
    * סוג החיוב: חד-פעמי או מנוי חוזר
    */
   billingType: 'one_time' | 'subscription';
+  /**
+   * Tier granted on purchase. Leave empty for legacy/one-off products that do not participate in the tier model.
+   */
+  tier?: (string | null) | Tier;
   /**
    * מרווח החיוב (למנוי בלבד)
    */
@@ -3921,6 +3982,10 @@ export interface PayloadLockedDocument {
         value: string | Feature;
       } | null)
     | ({
+        relationTo: 'tiers';
+        value: string | Tier;
+      } | null)
+    | ({
         relationTo: 'products';
         value: string | Product;
       } | null)
@@ -4450,6 +4515,7 @@ export interface LessonsSelect<T extends boolean = true> {
   order?: T;
   prerequisites?: T;
   nextLessons?: T;
+  promptOverride?: T;
   prompt?: T;
   contentFiles?: T;
   lessonContextText?: T;
@@ -4868,6 +4934,7 @@ export interface UsersSelect<T extends boolean = true> {
         transactionId?: T;
         id?: T;
       };
+  currentTier?: T;
   featureEntitlements?:
     | T
     | {
@@ -5124,6 +5191,23 @@ export interface FeaturesSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "tiers_select".
+ */
+export interface TiersSelect<T extends boolean = true> {
+  slug?: T;
+  rank?: T;
+  name?: T;
+  description?: T;
+  isDefault?: T;
+  color?: T;
+  sortOrder?: T;
+  isActive?: T;
+  createdBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "products_select".
  */
 export interface ProductsSelect<T extends boolean = true> {
@@ -5131,6 +5215,7 @@ export interface ProductsSelect<T extends boolean = true> {
   name?: T;
   slug?: T;
   billingType?: T;
+  tier?: T;
   interval?: T;
   price?: T;
   currency?: T;

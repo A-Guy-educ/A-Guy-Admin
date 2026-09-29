@@ -301,10 +301,15 @@ function renderEqualAngles(
       // Tangent to arc at bisector = perpendicular to radial direction.
       const tanX = -by
       const tanY = bx
-      const arcRadiusPx = angle.arcRadius || 30
-      // Center of the tick cluster: on the arc along the bisector.
-      const clusterCxU = cxU + (bx * arcRadiusPx) / unitX
-      const clusterCyU = cyU + (by * arcRadiusPx) / unitY
+      const arcRadius = angle.arcRadius || 30
+      // Center of the tick cluster: on the arc along the bisector. JSXGraph's
+      // angle `radius` attribute is in user coordinates, so the arc is drawn
+      // at `arcRadius` user units from the vertex. Move the same distance in
+      // user coords here — dividing by unitX/unitY (as if arcRadius were
+      // pixels) would land the ticks well inside the arc on any board whose
+      // bounding box isn't 1:1 with pixels.
+      const clusterCxU = cxU + bx * arcRadius
+      const clusterCyU = cyU + by * arcRadius
       const halfLen = EQ_TICK_LENGTH_PX / 2
       for (let k = 0; k < tickCount; k++) {
         const alongPx = (k - (tickCount - 1) / 2) * EQ_TICK_SPACING_PX

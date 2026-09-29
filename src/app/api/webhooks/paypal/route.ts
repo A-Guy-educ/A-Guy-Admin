@@ -27,7 +27,9 @@ import {
   grantProductEntitlements,
 } from '@/lib/payment/grant-entitlements'
 import { verifyPayPalWebhook } from '@/lib/payment/paypal'
+import { recomputeUserTier } from '@/lib/payment/recompute-tier'
 import { revokeProductEntitlements } from '@/lib/payment/revoke-entitlements'
+import { canTransitionFlipTier } from '@/lib/payment/tier-transitions'
 import { sendPurchaseReceipt } from '@/server/email/services/purchase-receipt-service'
 
 interface PayPalWebhookResource {
@@ -1126,6 +1128,30 @@ async function updateSubscriptionState(
       { subscriptionId: subscription.id, eventType: event.event_type, update },
       'PayPal webhook: state-update skipped — sub already in a terminal state',
     )
+    return
+  }
+
+  // Raw driver writes don't fire the Subscriptions afterChange hook, so
+  // when we flip a sub through this path we must trigger the tier
+  // recompute explicitly. Gate on transitions that can actually flip
+  // tier membership — active↔past_due and no-op shifts (same status)
+  // don't move the user between the tier-granting set and the terminal
+  // set, so we skip the recompute round-trip on those.
+  const userId =
+    typeof subscription.user === 'string'
+      ? subscription.user
+      : (subscription.user as { id?: string } | null)?.id
+  const newStatus = (update as { status?: unknown }).status
+  const oldStatus = subscription.status as string | undefined
+  if (userId && typeof newStatus === 'string' && canTransitionFlipTier(oldStatus, newStatus)) {
+    try {
+      await recomputeUserTier(payload, userId)
+    } catch (err) {
+      payload.logger.error(
+        { err, subscriptionId: subscription.id },
+        'PayPal webhook: recomputeUserTier failed after subscription state change',
+      )
+    }
   }
 }
 
@@ -1189,6 +1215,13 @@ async function handleSubscriptionExpired(
   // leaks through EXPIRED.
   txIds.push(String(subscription.id))
 
+  // No `req` threaded — this webhook handler doesn't have a PayloadRequest.
+  // The inner recomputeUserTier reads subs+txs from globally committed
+  // state, which is what we want here anyway: during this loop the sub
+  // is still status='active' (the flip happens below), and recompute's
+  // sub-linked-tx skip means the sub's own succeeded txs don't leak
+  // lifetime tier via this path. The tier drop lands via the
+  // Subscriptions afterChange hook fired by the payload.update below.
   for (const txId of txIds) {
     await revokeProductEntitlements({ payload, userId, transactionId: txId })
   }

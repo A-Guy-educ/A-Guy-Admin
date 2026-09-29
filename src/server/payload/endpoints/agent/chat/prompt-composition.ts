@@ -298,6 +298,52 @@ async function resolveRel(
 }
 
 /**
+ * Resolve the effective lesson prompt.
+ *
+ * Precedence:
+ *  1. `lesson.promptOverride` (inline textarea on the lesson) — when non-empty,
+ *     synthesized into a Prompt-shaped object so downstream resolver code is
+ *     unchanged. The attached `prompt` relationship is intentionally ignored
+ *     in this case.
+ *  2. `lesson.prompt` (legacy relationship to Prompts collection).
+ *  3. `null` — caller falls back to course prompt / default.
+ */
+export async function resolveLessonPrompt(
+  payload: Payload,
+  lesson: Record<string, unknown>,
+  lessonId: string,
+  reqLogger: Logger,
+): Promise<Prompt | null> {
+  const override = (lesson as { promptOverride?: string | null }).promptOverride
+  if (typeof override === 'string' && override.trim().length > 0) {
+    return {
+      id: `lesson-${lessonId}-override`,
+      title: 'Lesson inline prompt override',
+      template: override.trim(),
+      status: 'published',
+      type: 'system',
+    } as unknown as Prompt
+  }
+
+  if (!lesson.prompt) return null
+
+  const promptId =
+    typeof lesson.prompt === 'string' ? lesson.prompt : (lesson.prompt as { id: string }).id
+
+  try {
+    return (await payload.findByID({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      collection: 'prompts' as any,
+      id: promptId,
+      overrideAccess: true, // Prompts are admin-only
+    })) as Prompt | null
+  } catch (error) {
+    reqLogger.warn({ err: error, promptId, lessonId }, 'Failed to fetch lesson prompt')
+    return null
+  }
+}
+
+/**
  * Fetch lesson context and prompt for direct lesson context
  */
 async function fetchLessonContext(
@@ -321,6 +367,7 @@ async function fetchLessonContext(
       lessonContextText: true,
       description: true,
       prompt: true,
+      promptOverride: true,
     },
     user,
     overrideAccess: false,
@@ -329,24 +376,7 @@ async function fetchLessonContext(
   const lessonContextText = (lesson as { lessonContextText?: string }).lessonContextText
   const lessonDescription = (lesson as { description?: string }).description
 
-  let lessonPrompt: Prompt | null = null
-
-  // Fetch prompt separately if lesson has one (admin-only, requires override)
-  if (lesson.prompt) {
-    const promptId =
-      typeof lesson.prompt === 'string' ? lesson.prompt : (lesson.prompt as { id: string }).id
-
-    try {
-      lessonPrompt = (await payload.findByID({
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        collection: 'prompts' as any,
-        id: promptId,
-        overrideAccess: true, // Prompts are admin-only
-      })) as Prompt | null
-    } catch (error) {
-      reqLogger.warn({ err: error, promptId, lessonId }, 'Failed to fetch lesson prompt')
-    }
-  }
+  const lessonPrompt = await resolveLessonPrompt(payload, lesson, lessonId, reqLogger)
 
   // Build a context block from the lesson hierarchy (lesson → chapter → course)
   const chapter = await resolveRel(payload, 'chapters', lesson.chapter)
@@ -401,7 +431,12 @@ async function fetchExerciseLessonContext(
       collection: 'lessons',
       id: lessonId,
       depth: 0,
-      select: { lessonContextText: true, description: true, prompt: true },
+      select: {
+        lessonContextText: true,
+        description: true,
+        prompt: true,
+        promptOverride: true,
+      },
       user,
       overrideAccess: true, // Use overrideAccess since student role may not have lesson read access
     })) as unknown as Record<string, unknown>
@@ -409,24 +444,7 @@ async function fetchExerciseLessonContext(
     const lessonContextText = (lesson as { lessonContextText?: string }).lessonContextText
     const lessonDescription = (lesson as { description?: string }).description
 
-    let lessonPrompt: Prompt | null = null
-
-    // Fetch prompt separately if lesson has one
-    if (lesson.prompt) {
-      const promptId =
-        typeof lesson.prompt === 'string' ? lesson.prompt : (lesson.prompt as { id: string }).id
-
-      try {
-        lessonPrompt = (await payload.findByID({
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          collection: 'prompts' as any,
-          id: promptId,
-          overrideAccess: true,
-        })) as Prompt | null
-      } catch (error) {
-        reqLogger.warn({ err: error, promptId, lessonId }, 'Failed to fetch lesson prompt')
-      }
-    }
+    const lessonPrompt = await resolveLessonPrompt(payload, lesson, lessonId, reqLogger)
 
     const chapter = await resolveRel(payload, 'chapters', lesson.chapter)
     const course = chapter ? await resolveRel(payload, 'courses', chapter.course) : null

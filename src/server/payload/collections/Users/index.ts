@@ -256,6 +256,27 @@ export const Users: CollectionConfig = {
         },
       ],
     },
+    // Current subscription tier. Computed by the grant/revoke flow — the
+    // highest-rank Tier across the user's active paid entitlements, falling
+    // back to the Tier flagged `isDefault: true` (Free). Blocked from
+    // client-side create/update so signup POSTs and self-PATCHes cannot
+    // forge a tier; admin writes still go through overrideAccess.
+    {
+      name: 'currentTier',
+      type: 'relationship',
+      relationTo: 'tiers',
+      maxDepth: 0,
+      access: {
+        create: () => false,
+        update: () => false,
+      },
+      admin: {
+        readOnly: true,
+        position: 'sidebar',
+        description:
+          'Computed from active entitlements. Highest-rank tier wins; Free is the fallback. Do not edit by hand — the grant/revoke flow rewrites it.',
+      },
+    },
     {
       name: 'featureEntitlements',
       type: 'array',

@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.50.0 — 2026-09-29
+
+### Features
+- Subscription tier model: users derive a `currentTier` from their active subscription and one-off tier grants; new `Tiers` collection with partial unique index on default, tier-aware entitlement grant/revoke, PayPal webhook recomputes tier on subscription state changes, and refund/expiry paths restore prior tier (#514)
+- Lessons: inline prompt override field lets authors customise the LLM prompt on a per-lesson basis (#515)
+- Geometry DSL: parse `--- מעגלים ---` sections into circle shapes and inherit circles across sections (#517)
+- Geometry: auto-fitted `boundingBox` now includes circles so frames don't clip circle-only sketches (#519)
+
+### Bug Fixes
+- Geometry: anchor angle equality ticks to the arc in user coordinates so they stay locked to the vertex through zoom/pan (#518)
+
 ## v0.49.0 — 2026-09-27
 
 ### Features
@@ -2120,6 +2131,15 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- chore: release v0.50.0 ([#520](https://github.com/A-Guy-educ/A-Guy-Admin/pull/520)) — @aguyshayb
+- feat(geometry): Include circles in auto-fitted boundingBox ([#519](https://github.com/A-Guy-educ/A-Guy-Admin/pull/519)) — @aguyshayb
+- fix(geometry): anchor angle equality ticks to arc in user coords ([#518](https://github.com/A-Guy-educ/A-Guy-Admin/pull/518)) — @aguyshayb
+- feat(geometry-dsl): parse '--- מעגלים ---' circles and inherit into sections ([#517](https://github.com/A-Guy-educ/A-Guy-Admin/pull/517)) — @aguyshayb
+- feat: Inline prompt override on lessons ([#515](https://github.com/A-Guy-educ/A-Guy-Admin/pull/515)) — @aguyshayb
+- feat: Add subscription tier model with derived currentTier ([#514](https://github.com/A-Guy-educ/A-Guy-Admin/pull/514)) — @aguyshayb
+## [v0.49.0] - 2026-09-27
+
+- promote: dev -> main (v0.49.0) ([#512](https://github.com/A-Guy-educ/A-Guy-Admin/pull/512)) — @aguyshayb
 - chore: release v0.49.0 ([#511](https://github.com/A-Guy-educ/A-Guy-Admin/pull/511)) — @aguyshayb
 - feat(geometry-dsl): accept 'שוויון צלעות/זוויות | ...' equality markers ([#510](https://github.com/A-Guy-educ/A-Guy-Admin/pull/510)) — @aguyshayb
 - feat(lesson-import): import Fill-in Table sections as question_table blocks ([#509](https://github.com/A-Guy-educ/A-Guy-Admin/pull/509)) — @aguyshayb

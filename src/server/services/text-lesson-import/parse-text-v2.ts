@@ -90,6 +90,14 @@ export interface TextSectionV2 {
   geometry?: GeometrySpecV1
   /** Raw SVG markup pulled from `שרטוט מותאם לסעיף` when the block was inline `<svg>` rather than DSL. Mutually exclusive with `geometry`. */
   svg?: string
+  /**
+   * IDs from bare `* מעגל N` rows in the section's own geometry block. The
+   * boss's per-section sketches often repeat points/segments in compressed
+   * form but reference the exercise-level circle by ID only (no `מרכז`).
+   * The converter uses this to copy in the exercise's shared circles so the
+   * section attachment still shows the ring.
+   */
+  bareCircleRefs: string[]
   /** Parsed function graph from `גרף מותאם לסעיף`. Follows the same "own-only, no shared fallback" rule as `geometry`. */
   functionGraph?: AxisSpecV1
   geometryWarnings: string[]
@@ -426,17 +434,19 @@ function classifyBlockBody(rawLines: string[]): {
   spec?: GeometrySpecV1
   warnings: string[]
   hasContent: boolean
+  /** Bare `* מעגל N` references the section couldn't resolve on its own. Surfaced so the converter can inherit the exercise's shared circles. */
+  bareCircleRefs: string[]
 } {
   if (rawLines.length === 0) {
-    return { warnings: [], hasContent: false }
+    return { warnings: [], hasContent: false, bareCircleRefs: [] }
   }
   const joined = rawLines.join('\n')
   const firstNonBlank = joined.replace(/^\s+/, '')
   if (/^<svg\b/i.test(firstNonBlank)) {
-    return { svg: joined.trim(), warnings: [], hasContent: true }
+    return { svg: joined.trim(), warnings: [], hasContent: true, bareCircleRefs: [] }
   }
-  const { spec, warnings, hasContent } = parseGeometryDsl(joined)
-  return { spec: hasContent ? spec : undefined, warnings, hasContent }
+  const { spec, warnings, hasContent, bareCircleRefs } = parseGeometryDsl(joined)
+  return { spec: hasContent ? spec : undefined, warnings, hasContent, bareCircleRefs }
 }
 
 function parseFunctionBlock(rawLines: string[]): {
@@ -539,6 +549,7 @@ function finalizeSection(sec: MutableSectionV2): TextSectionV2 {
     // sharedBlocks, once per section as an attachment).
     geometry: geometryBody.hasContent ? geometryBody.spec : undefined,
     svg: geometryBody.hasContent ? geometryBody.svg : undefined,
+    bareCircleRefs: geometryBody.bareCircleRefs,
     functionGraph: functionBody.spec,
     geometryWarnings: [...geometryBody.warnings, ...functionBody.warnings, ...tableBody.warnings],
   }

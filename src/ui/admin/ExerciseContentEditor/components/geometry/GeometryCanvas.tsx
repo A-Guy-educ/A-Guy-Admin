@@ -836,7 +836,7 @@ function angleTickCoord(
   centerEl: XY,
   ray1El: XY,
   ray2El: XY,
-  arcRadiusPx: number,
+  arcRadius: number,
   tickIndex: number,
   totalTicks: number,
   side: 1 | -1,
@@ -864,8 +864,12 @@ function angleTickCoord(
   }
   const tanX = -by
   const tanY = bx
-  const clusterCxU = cxU + (bx * arcRadiusPx) / unitX
-  const clusterCyU = cyU + (by * arcRadiusPx) / unitY
+  // Cluster center: on the arc, at `arcRadius` user units from the vertex.
+  // JSXGraph draws the angle's arc at `radius` user coords (not pixels), so
+  // the tick anchor has to match that or ticks land well inside the arc on
+  // any board whose bounding box isn't 1:1 with pixels.
+  const clusterCxU = cxU + bx * arcRadius
+  const clusterCyU = cyU + by * arcRadius
   const alongPx = (tickIndex - (totalTicks - 1) / 2) * EQ_TICK_SPACING_PX
   const halfLen = (EQ_TICK_LENGTH_PX / 2) * side
   if (axis === 'x') {
@@ -946,7 +950,7 @@ function syncEqualAngles(
       const ray1El = elementsRef.current.get(`point-${angle.ray1}`) as unknown as XY | undefined
       const ray2El = elementsRef.current.get(`point-${angle.ray2}`) as unknown as XY | undefined
       if (!centerEl || !ray1El || !ray2El) return
-      const arcRadiusPx = angle.arcRadius || 30
+      const arcRadius = angle.arcRadius || 30
       for (let k = 0; k < tickCount; k++) {
         const elemId = `eqang-${groupIndex}-${memberIndex}-${k}`
         newIds.add(elemId)
@@ -964,7 +968,7 @@ function syncEqualAngles(
                   centerEl,
                   ray1El,
                   ray2El,
-                  arcRadiusPx,
+                  arcRadius,
                   k,
                   tickCount,
                   1,
@@ -977,7 +981,7 @@ function syncEqualAngles(
                   centerEl,
                   ray1El,
                   ray2El,
-                  arcRadiusPx,
+                  arcRadius,
                   k,
                   tickCount,
                   1,
@@ -992,7 +996,7 @@ function syncEqualAngles(
                   centerEl,
                   ray1El,
                   ray2El,
-                  arcRadiusPx,
+                  arcRadius,
                   k,
                   tickCount,
                   -1,
@@ -1005,7 +1009,7 @@ function syncEqualAngles(
                   centerEl,
                   ray1El,
                   ray2El,
-                  arcRadiusPx,
+                  arcRadius,
                   k,
                   tickCount,
                   -1,

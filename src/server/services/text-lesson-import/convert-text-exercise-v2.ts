@@ -107,6 +107,39 @@ function sectionAttachment(section: TextSectionV2): QuestionAttachment | undefin
   return undefined
 }
 
+/**
+ * Boss's per-section sketches include the exercise's points/segments in a
+ * compressed form but reference the exercise-level circle by bare `* מעגל N`
+ * — no `מרכז`/`רדיוס` fields. The section's parsed geometry has zero circles
+ * as a result. When that happens, inherit the exercise's shared circles so
+ * the section attachment renders the ring the author obviously meant.
+ *
+ * Preconditions for the inheritance:
+ *   - The section HAS its own geometry (points, segments) — we're augmenting,
+ *     not injecting from thin air.
+ *   - The section recorded at least one bare `מעגל N` reference.
+ *   - The section defines no circles of its own (don't overwrite intent).
+ *   - The exercise has shared circles to copy.
+ *
+ * Returns a NEW section object (immutable pattern — the section list came
+ * from a fresh parse but the wider codebase treats these objects as frozen).
+ */
+function withInheritedCircles(section: TextSectionV2, exercise: TextExerciseV2): TextSectionV2 {
+  const sharedCircles = exercise.sharedGeometry?.elements.circles
+  if (!sharedCircles || sharedCircles.length === 0) return section
+  if (!section.geometry) return section
+  if ((section.geometry.elements.circles?.length ?? 0) > 0) return section
+  if (section.bareCircleRefs.length === 0) return section
+  const geometry: GeometrySpecV1 = {
+    ...section.geometry,
+    elements: {
+      ...section.geometry.elements,
+      circles: sharedCircles,
+    },
+  }
+  return { ...section, geometry }
+}
+
 function buildPrompt(section: TextSectionV2): InlineRichText {
   const number = section.questionNumber?.trim()
   const text = section.question ?? ''
@@ -322,10 +355,13 @@ export function convertTextExerciseV2ToSections(exercise: TextExerciseV2): Conve
 
   return {
     sharedBlocks,
-    sections: exercise.sections.map((section, index) => ({
-      title: buildSectionTitle(section, index),
-      blocks: convertSectionToBlocks(section),
-    })),
+    sections: exercise.sections.map((section, index) => {
+      const withCircles = withInheritedCircles(section, exercise)
+      return {
+        title: buildSectionTitle(withCircles, index),
+        blocks: convertSectionToBlocks(withCircles),
+      }
+    }),
   }
 }
 

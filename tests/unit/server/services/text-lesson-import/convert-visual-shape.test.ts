@@ -70,6 +70,48 @@ describe('v2 converter — emitted visual block shape', () => {
     expect(geomBlock).toMatchObject({ displaySize: 'full', layout: 'textRight' })
   })
 
+  it('inherits the exercise-level circle onto sections that reference it bare', () => {
+    // Boss's per-section sketches redeclare points/segments in compressed
+    // form and reference the shared circle by bare `* מעגל 1` (no `מרכז`).
+    // The section's parsed geometry has zero circles until the converter
+    // copies the exercise's shared circle in — otherwise the ring is missing
+    // from every per-section attachment.
+    const source = [
+      SEP,
+      '[ תרגיל 1 - נתוני פתיחה ]',
+      SEP,
+      '* טקסט: intro',
+      '* שרטוט בסיס:',
+      '  --- נקודות ---',
+      '  * נקודה O | מיקום: X=200, Y=200',
+      '  * נקודה A | מיקום: X=120, Y=120',
+      '  --- מעגלים ---',
+      '  * מעגל 1 | מרכז: O | רדיוס גרפי: 113 | צבע: שחור',
+      '',
+      SEP,
+      "[ סעיף א' - שאלת ברירה יחידה ]",
+      SEP,
+      '* סוג השאלה: Single Choice',
+      '* הנחיה: q',
+      '* שרטוט מותאם לסעיף:',
+      '  --- נקודות ---',
+      '  * O (200,200), A (120,120)',
+      '  --- מעגלים ---',
+      '  * מעגל 1',
+      '* אפשרות 1: A [תשובה נכונה]',
+      '* אפשרות 2: B',
+    ].join('\n')
+
+    const lesson = parseTextLessonV2(source)
+    const conv = convertTextExerciseV2ToSections(lesson.exercises[0])
+    const questionBlock = conv.sections[0].blocks[0] as {
+      attachment?: { geometry?: { elements: { circles: Array<Record<string, unknown>> } } }
+    }
+    expect(questionBlock.attachment?.geometry?.elements.circles).toEqual([
+      { center: 'O', style: 'solid', radius: 113, color: 'black' },
+    ])
+  })
+
   it('emits a `question_table` with solutionFill for `Fill-in Table` sections', () => {
     // Boss's proof-table template with two rows and a `[ שדה ריק - X ]` blank
     // in each. Regression against the old converter which emitted an
