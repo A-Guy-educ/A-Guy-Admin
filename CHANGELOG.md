@@ -2131,6 +2131,7 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- promote: dev -> main (v0.50.0) ([#521](https://github.com/A-Guy-educ/A-Guy-Admin/pull/521)) — @aguyshayb
 - chore: release v0.50.0 ([#520](https://github.com/A-Guy-educ/A-Guy-Admin/pull/520)) — @aguyshayb
 - feat(geometry): Include circles in auto-fitted boundingBox ([#519](https://github.com/A-Guy-educ/A-Guy-Admin/pull/519)) — @aguyshayb
 - fix(geometry): anchor angle equality ticks to arc in user coords ([#518](https://github.com/A-Guy-educ/A-Guy-Admin/pull/518)) — @aguyshayb
