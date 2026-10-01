@@ -28,6 +28,7 @@ import { CourseDuplicateAction as CourseDuplicateAction_aeb770de8c5a3a0e0616f9c1
 import { default as default_e58163153fefd12dc30a297002eae182 } from '@/ui/admin/CourseSelectionsPopularity/PopularityLinkButton'
 import { TranslateChapterAction as TranslateChapterAction_5e03fe73ee4379dfd96d492849856d43 } from '@/ui/admin/TranslationButton'
 import { ChapterCascadeDelete as ChapterCascadeDelete_8b707dd02fbf8886630a64bffcae6998 } from '@/ui/admin/CascadeDeleteButton'
+import { ChapterDuplicateAction as ChapterDuplicateAction_2c502084afdb0d3ac82e3f239b643032 } from '@/ui/admin/ChapterDuplicateButton/ChapterDuplicateButton'
 import { LessonConversionPanel as LessonConversionPanel_057daf3b86f654d90edf003b44c43703 } from '@/ui/admin/exercise-conversion/LessonConversionPanel'
 import { LessonBlocksField as LessonBlocksField_c3ff48da65f411ef372b497cb7c724ee } from '@/ui/admin/LessonBlocksField'
 import { ContextExerciseViewer as ContextExerciseViewer_00433017acccf596fc613f093ab15a2d } from '@/ui/admin/context-exercise-viewer'
@@ -113,6 +114,7 @@ export const importMap = {
   "@/ui/admin/CourseSelectionsPopularity/PopularityLinkButton#default": default_e58163153fefd12dc30a297002eae182,
   "@/ui/admin/TranslationButton#TranslateChapterAction": TranslateChapterAction_5e03fe73ee4379dfd96d492849856d43,
   "@/ui/admin/CascadeDeleteButton#ChapterCascadeDelete": ChapterCascadeDelete_8b707dd02fbf8886630a64bffcae6998,
+  "@/ui/admin/ChapterDuplicateButton/ChapterDuplicateButton#ChapterDuplicateAction": ChapterDuplicateAction_2c502084afdb0d3ac82e3f239b643032,
   "@/ui/admin/exercise-conversion/LessonConversionPanel#LessonConversionPanel": LessonConversionPanel_057daf3b86f654d90edf003b44c43703,
   "@/ui/admin/LessonBlocksField#LessonBlocksField": LessonBlocksField_c3ff48da65f411ef372b497cb7c724ee,
   "@/ui/admin/context-exercise-viewer#ContextExerciseViewer": ContextExerciseViewer_00433017acccf596fc613f093ab15a2d,
