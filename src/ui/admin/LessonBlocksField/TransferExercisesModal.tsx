@@ -49,14 +49,16 @@ export const TransferExercisesModal: React.FC<TransferExercisesModalProps> = ({
   const [result, setResult] = useState<TransferResultSummary | null>(null)
   const debouncedQuery = useDebounce(searchQuery, 300)
 
-  // Escape to close (blocked while transfer is in flight)
+  // Escape to close (blocked while transfer is in flight). Routing through the
+  // close callback below is deferred until after it's declared.
+  const closeRef = useRef<() => void>(() => {})
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !isTransferring) onClose()
+      if (e.key === 'Escape' && !isTransferring) closeRef.current()
     }
     document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
-  }, [onClose, isTransferring])
+  }, [isTransferring])
 
   useEffect(() => {
     previouslyFocusedRef.current = document.activeElement
@@ -161,12 +163,11 @@ export const TransferExercisesModal: React.FC<TransferExercisesModalProps> = ({
         failures: data.failures,
       }
       setResult(summary)
-      // Reload whenever anything was transferred, even on partial failure. The
-      // server already flipped those refs' lesson field; if we don't refresh,
-      // the stale blocks array in the parent form still contains them and a
-      // subsequent Save would re-insert playlist entries pointing at
-      // exercises that now officially belong to the target lesson.
-      if (summary.transferred > 0) {
+      // Full success → auto-reload so the parent form re-reads from the server.
+      // Partial success → keep the modal open so the admin can see the per-ref
+      // failure list; reload still fires on Close (handleCloseAfterPartial)
+      // so the stale blocks array in the parent form can't be re-saved.
+      if (summary.transferred > 0 && summary.failed === 0) {
         onTransferred()
       }
     } catch (err) {
@@ -178,6 +179,18 @@ export const TransferExercisesModal: React.FC<TransferExercisesModalProps> = ({
 
   const canTransfer = Boolean(selectedLesson && !isTransferring && selectedRefs.length > 0)
 
+  // After a partial-success transfer, the server already flipped some refs'
+  // lesson field. Closing without reloading would leave the parent form's
+  // blocks array stale — a subsequent Save would re-insert those refs. So:
+  // any time result.transferred > 0, Close triggers the parent reload.
+  const needsReloadOnClose = Boolean(result && result.transferred > 0)
+  const handleClose = useCallback(() => {
+    if (isTransferring) return
+    if (needsReloadOnClose) onTransferred()
+    else onClose()
+  }, [isTransferring, needsReloadOnClose, onTransferred, onClose])
+  closeRef.current = handleClose
+
   return (
     <div
       className="import-exercises-overlay"
@@ -185,7 +198,7 @@ export const TransferExercisesModal: React.FC<TransferExercisesModalProps> = ({
       aria-modal="true"
       aria-label="Transfer selected items to another lesson"
       onClick={(e) => {
-        if (e.target === e.currentTarget && !isTransferring) onClose()
+        if (e.target === e.currentTarget) handleClose()
       }}
     >
       <div
@@ -202,7 +215,7 @@ export const TransferExercisesModal: React.FC<TransferExercisesModalProps> = ({
           <button
             type="button"
             className="import-exercises-close"
-            onClick={onClose}
+            onClick={handleClose}
             disabled={isTransferring}
             aria-label="Close"
             title="Close"
@@ -276,9 +289,27 @@ export const TransferExercisesModal: React.FC<TransferExercisesModalProps> = ({
           <div
             className={result.failed > 0 ? 'import-exercises-error' : 'import-exercises-success'}
           >
-            {result.failed > 0
-              ? `Transferred ${result.transferred}, ${result.failed} failed. First error: ${result.failures?.[0]?.error ?? 'unknown'}`
-              : `Transferred ${result.transferred} item(s). Reloading…`}
+            {result.failed > 0 ? (
+              <>
+                <div>
+                  Transferred {result.transferred}, {result.failed} failed. Close this dialog to
+                  reload — the {result.transferred} that moved will be removed from this
+                  lesson&apos;s playlist.
+                </div>
+                {result.failures && result.failures.length > 0 && (
+                  <ul style={{ margin: '6px 0 0 16px', padding: 0 }}>
+                    {result.failures.slice(0, 5).map((f, i) => (
+                      <li key={`${f.refId}-${i}`}>
+                        <code>{f.refId.slice(0, 8)}…</code> — {f.error}
+                      </li>
+                    ))}
+                    {result.failures.length > 5 && <li>…and {result.failures.length - 5} more</li>}
+                  </ul>
+                )}
+              </>
+            ) : (
+              `Transferred ${result.transferred} item(s). Reloading…`
+            )}
           </div>
         )}
 
@@ -286,16 +317,16 @@ export const TransferExercisesModal: React.FC<TransferExercisesModalProps> = ({
           <button
             type="button"
             className="import-exercises-secondary"
-            onClick={onClose}
+            onClick={handleClose}
             disabled={isTransferring}
           >
-            Cancel
+            {needsReloadOnClose ? 'Close & reload' : 'Cancel'}
           </button>
           <button
             type="button"
             className="import-exercises-primary"
             onClick={handleTransfer}
-            disabled={!canTransfer}
+            disabled={!canTransfer || Boolean(result)}
           >
             {isTransferring ? (
               <>
