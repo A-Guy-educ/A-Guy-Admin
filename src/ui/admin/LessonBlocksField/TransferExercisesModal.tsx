@@ -51,6 +51,13 @@ export const TransferExercisesModal: React.FC<TransferExercisesModalProps> = ({
   const dialogRef = useRef<HTMLDivElement>(null)
   const previouslyFocusedRef = useRef<Element | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  // Re-entry guard: setState is async, so two synchronous click events (double
+  // click, keyboard+mouse in the same tick) can both pass the isTransferring
+  // check before React commits the state update.
+  const transferInFlightRef = useRef(false)
+  // Reload timeout handle so unmount cancels a pending window.location.reload
+  // (admin closed the modal before the 2.5s message window elapsed).
+  const reloadTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const [searchQuery, setSearchQuery] = useState('')
   const [results, setResults] = useState<LessonOption[]>([])
@@ -61,6 +68,15 @@ export const TransferExercisesModal: React.FC<TransferExercisesModalProps> = ({
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<TransferResultSummary | null>(null)
   const debouncedQuery = useDebounce(searchQuery, 300)
+
+  useEffect(() => {
+    return () => {
+      if (reloadTimeoutRef.current !== null) {
+        clearTimeout(reloadTimeoutRef.current)
+        reloadTimeoutRef.current = null
+      }
+    }
+  }, [])
 
   // Escape to close (blocked while transfer is in flight). Routing through the
   // close callback below is deferred until after it's declared.
@@ -150,10 +166,21 @@ export const TransferExercisesModal: React.FC<TransferExercisesModalProps> = ({
 
   const handleTransfer = useCallback(async () => {
     if (!selectedLesson || selectedRefs.length === 0) return
+    if (transferInFlightRef.current) return
+    transferInFlightRef.current = true
     setIsTransferring(true)
     setError(null)
     setResult(null)
     try {
+      // Defensive client-side dedupe. The parent builds selectedRefs by
+      // iterating selected block.ids, so if a lesson has two different
+      // block entries pointing at the same (blockType, refId) (legacy
+      // imports), both land here as duplicates. The server's Zod guard
+      // would 400 the whole batch — dedupe here so a legacy-data case
+      // doesn't surface as an opaque validation error.
+      const dedupedRefs = Array.from(
+        new Map(selectedRefs.map((r) => [`${r.blockType}::${r.refId}`, r])).values(),
+      )
       const res = await fetch('/api/lessons/transfer-blocks', {
         method: 'POST',
         credentials: 'include',
@@ -161,7 +188,7 @@ export const TransferExercisesModal: React.FC<TransferExercisesModalProps> = ({
         body: JSON.stringify({
           sourceLessonId,
           targetLessonId: selectedLesson.id,
-          refs: selectedRefs,
+          refs: dedupedRefs,
         }),
       })
       const envelope = await res.json()
@@ -183,12 +210,15 @@ export const TransferExercisesModal: React.FC<TransferExercisesModalProps> = ({
       // the moved refs on next Save. Force a full reload so the admin sees
       // canonical server state. Delay briefly so the message is readable.
       if (summary.needsReload) {
-        setTimeout(() => window.location.reload(), 2500)
+        reloadTimeoutRef.current = setTimeout(() => window.location.reload(), 2500)
         return
       }
       // Compute successes = selectedRefs − failures and hand them to the
       // parent so it can prune its local blocks state. Doing this instead
       // of a hard reload preserves other unsaved field edits on the lesson.
+      // Match against the full selectedRefs set (not the deduped list) so
+      // the parent removes every local block entry that points at a moved
+      // ref, even if the ref had duplicate block rows.
       const failedKeys = new Set(
         (summary.failures ?? []).map((f) => `${f.blockType ?? 'exerciseRef'}::${f.refId}`),
       )
@@ -203,6 +233,7 @@ export const TransferExercisesModal: React.FC<TransferExercisesModalProps> = ({
       setError(err instanceof Error ? err.message : 'Network error')
     } finally {
       setIsTransferring(false)
+      transferInFlightRef.current = false
     }
   }, [selectedLesson, selectedRefs, sourceLessonId, onTransferred, onClose])
 

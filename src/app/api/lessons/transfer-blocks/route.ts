@@ -164,65 +164,65 @@ export const POST = withApiHandler<TransferBody, unknown>(
     if (successfulRefs.length > 0) {
       const successKeys = new Set(successfulRefs.map((r) => refKey(r.blockType, r.refId)))
 
-      // Re-fetch both lessons right before the rewrite so we don't clobber
-      // another admin's write (drag-reorder, importer, duplicator) that
-      // landed on lesson.blocks during our ref-update loop. The initial
-      // findByID above only served to validate existence.
-      const [freshSource, freshTarget] = await Promise.all([
-        payload.findByID({
-          collection: 'lessons',
-          id: sourceLessonId,
-          depth: 0,
-          req: payloadReq,
-        }),
-        payload.findByID({
-          collection: 'lessons',
-          id: targetLessonId,
-          depth: 0,
-          req: payloadReq,
-        }),
-      ])
-
-      const sourceBlocks = parseBlocks((freshSource as { blocks?: unknown }).blocks)
-      const nextSourceBlocks = sourceBlocks.filter((b) => {
-        const id = b.blockType === 'exerciseRef' ? b.exercise : b.contentPage
-        return !id || !successKeys.has(refKey(b.blockType, id))
-      })
-
-      const targetBlocks = parseBlocks((freshTarget as { blocks?: unknown }).blocks)
-      const alreadyInTarget = new Set(
-        targetBlocks
-          .map((b) => {
-            const id = b.blockType === 'exerciseRef' ? b.exercise : b.contentPage
-            return id ? refKey(b.blockType, id) : null
-          })
-          .filter((v): v is string => Boolean(v)),
-      )
-      const appended: BlockEntry[] = []
-      for (const ref of successfulRefs) {
-        if (alreadyInTarget.has(refKey(ref.blockType, ref.refId))) continue
-        appended.push({
-          id: generateBlockId(),
-          blockType: ref.blockType,
-          ...(ref.blockType === 'exerciseRef'
-            ? { exercise: ref.refId }
-            : { contentPage: ref.refId }),
-        })
-      }
-      const nextTargetBlocks = [...targetBlocks, ...appended]
-
-      // Serial so we know exactly which rewrite failed — parallelizing would
-      // hide which side is stale when one throws. Both still happen in a
-      // single Promise chain; the real latency cost is one extra RTT, not
-      // worth the diagnostic ambiguity.
-      //
-      // If either rewrite fails after the ref docs already committed, we're
-      // in a durably inconsistent state: exercise.lesson === target but one
-      // of the blocks arrays doesn't match. There's no safe local recovery
-      // on the client — surface a `needsReload` flag so the UI force-reloads
-      // instead of pruning local blocks (which would silently re-attach the
-      // moved refs on next Save).
+      // Everything after the ref-update loop runs inside this try/catch. If
+      // ANY step (re-fetch, parse, rewrite) throws after the ref docs already
+      // committed, we're in a durably inconsistent state: exercise.lesson ===
+      // target but a lesson's blocks array doesn't match. There's no safe
+      // local recovery on the client — surface `needsReload: true` so the UI
+      // force-reloads instead of pruning local blocks (which would silently
+      // re-attach the moved refs on next Save).
       try {
+        // Re-fetch both lessons right before the rewrite so we don't clobber
+        // another admin's write (drag-reorder, importer, duplicator) that
+        // landed on lesson.blocks during our ref-update loop. The initial
+        // findByID above only served to validate existence.
+        const [freshSource, freshTarget] = await Promise.all([
+          payload.findByID({
+            collection: 'lessons',
+            id: sourceLessonId,
+            depth: 0,
+            req: payloadReq,
+          }),
+          payload.findByID({
+            collection: 'lessons',
+            id: targetLessonId,
+            depth: 0,
+            req: payloadReq,
+          }),
+        ])
+
+        const sourceBlocks = parseBlocks((freshSource as { blocks?: unknown }).blocks)
+        const nextSourceBlocks = sourceBlocks.filter((b) => {
+          const id = b.blockType === 'exerciseRef' ? b.exercise : b.contentPage
+          return !id || !successKeys.has(refKey(b.blockType, id))
+        })
+
+        const targetBlocks = parseBlocks((freshTarget as { blocks?: unknown }).blocks)
+        const alreadyInTarget = new Set(
+          targetBlocks
+            .map((b) => {
+              const id = b.blockType === 'exerciseRef' ? b.exercise : b.contentPage
+              return id ? refKey(b.blockType, id) : null
+            })
+            .filter((v): v is string => Boolean(v)),
+        )
+        const appended: BlockEntry[] = []
+        for (const ref of successfulRefs) {
+          if (alreadyInTarget.has(refKey(ref.blockType, ref.refId))) continue
+          appended.push({
+            id: generateBlockId(),
+            blockType: ref.blockType,
+            ...(ref.blockType === 'exerciseRef'
+              ? { exercise: ref.refId }
+              : { contentPage: ref.refId }),
+          })
+        }
+        const nextTargetBlocks = [...targetBlocks, ...appended]
+
+        // Serial so we know exactly which rewrite failed — parallelizing would
+        // hide which side is stale when one throws. Both still happen in a
+        // single Promise chain; the real latency cost is one extra RTT, not
+        // worth the diagnostic ambiguity.
         if (nextSourceBlocks.length !== sourceBlocks.length) {
           await payload.update({
             collection: 'lessons',
