@@ -2141,6 +2141,7 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- feat: Chapter deep clone + course-move cascade ([#529](https://github.com/A-Guy-educ/A-Guy-Admin/pull/529)) — @aguyshayb
 ## [v0.51.0] - 2026-10-01
 
 - promote: dev -> main (v0.51.0) ([#528](https://github.com/A-Guy-educ/A-Guy-Admin/pull/528)) — @aguyshayb
