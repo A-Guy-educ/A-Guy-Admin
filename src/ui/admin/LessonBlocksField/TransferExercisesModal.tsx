@@ -161,7 +161,12 @@ export const TransferExercisesModal: React.FC<TransferExercisesModalProps> = ({
         failures: data.failures,
       }
       setResult(summary)
-      if (summary.failed === 0 && summary.transferred > 0) {
+      // Reload whenever anything was transferred, even on partial failure. The
+      // server already flipped those refs' lesson field; if we don't refresh,
+      // the stale blocks array in the parent form still contains them and a
+      // subsequent Save would re-insert playlist entries pointing at
+      // exercises that now officially belong to the target lesson.
+      if (summary.transferred > 0) {
         onTransferred()
       }
     } catch (err) {

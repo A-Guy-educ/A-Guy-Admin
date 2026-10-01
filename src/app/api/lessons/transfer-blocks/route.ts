@@ -7,6 +7,8 @@
  * Exercises and ContentPages take care of removing the block from the source
  * lesson's `blocks` playlist and appending it to the target's.
  */
+import type { PayloadRequest } from 'payload'
+
 import { apiError, apiSuccess } from '@/server/api/responses'
 import { withApiHandler } from '@/server/api/with-api-handler'
 import { z } from 'zod'
@@ -40,12 +42,29 @@ export const POST = withApiHandler<TransferBody, unknown>(
     auth: 'admin',
     bodySchema: transferBodySchema,
   },
-  async ({ payload, body }) => {
+  async ({ payload, user, body, request }) => {
     const { sourceLessonId, targetLessonId, refs } = body
 
+    // Thread request context into Payload Local API calls so the sync hooks
+    // on Exercises/ContentPages (afterChange → remove/addBlockFromLesson)
+    // run with the acting user and can propagate transactionID — mirrors the
+    // import-from-json route convention.
+    const payloadReq = {
+      payload,
+      user: user!,
+      url: request.url,
+      headers: request.headers,
+      routeParams: {},
+      context: {},
+    } as unknown as PayloadRequest
+
     const [source, target] = await Promise.all([
-      payload.findByID({ collection: 'lessons', id: sourceLessonId, depth: 0 }).catch(() => null),
-      payload.findByID({ collection: 'lessons', id: targetLessonId, depth: 0 }).catch(() => null),
+      payload
+        .findByID({ collection: 'lessons', id: sourceLessonId, depth: 0, req: payloadReq })
+        .catch(() => null),
+      payload
+        .findByID({ collection: 'lessons', id: targetLessonId, depth: 0, req: payloadReq })
+        .catch(() => null),
     ])
 
     if (!source) return apiError('LESSON_NOT_FOUND', `Source lesson ${sourceLessonId} not found`, 404)
@@ -60,6 +79,7 @@ export const POST = withApiHandler<TransferBody, unknown>(
           collection,
           id: ref.refId,
           data: { lesson: targetLessonId },
+          req: payloadReq,
         })
         result.transferred += 1
       } catch (err) {
