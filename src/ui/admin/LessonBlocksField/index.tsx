@@ -12,9 +12,12 @@ import {
   Trash2,
   Pencil,
   FileUp,
+  ArrowRightLeft,
 } from 'lucide-react'
 
 import { ImportExercisesModal } from './ImportExercisesModal'
+import { TransferExercisesModal } from './TransferExercisesModal'
+import { ConfirmDeleteModal } from './ConfirmDeleteModal'
 import { InlineExerciseEditor } from './InlineExerciseEditor'
 import './inline-exercise-editor.css'
 
@@ -70,6 +73,7 @@ function normalizeBlock(block: RawBlock): RawBlock | null {
 
 interface ResolvedRow {
   index: number
+  blockId: string
   blockType: string
   refId: string
   title: string
@@ -111,6 +115,9 @@ const LessonBlocksList: React.FC<{ path: string; mode: BlocksMode }> = ({ path, 
   const activationRef = useRef<HTMLDivElement>(null)
   const [hasBeenActivated, setHasBeenActivated] = useState(false)
   const [isImportOpen, setIsImportOpen] = useState(false)
+  const [isTransferOpen, setIsTransferOpen] = useState(false)
+  const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false)
+  const [selectedBlockIds, setSelectedBlockIds] = useState<Set<string>>(new Set())
 
   // Drag-and-drop state
   const [dragIndex, setDragIndex] = useState<number | null>(null)
@@ -219,6 +226,7 @@ const LessonBlocksList: React.FC<{ path: string; mode: BlocksMode }> = ({ path, 
         const title = titleCache[refId] || ''
         return {
           index,
+          blockId: typeof block.id === 'string' && block.id ? block.id : `__idx_${index}`,
           blockType: block.blockType as string,
           refId,
           title,
@@ -259,6 +267,73 @@ const LessonBlocksList: React.FC<{ path: string; mode: BlocksMode }> = ({ path, 
     },
     [blocks, updateBlocks, setModified],
   )
+
+  // Prune selection: if the underlying blocks array changes (reorder, delete,
+  // reload after transfer/import), drop any ids that no longer exist. Without
+  // this, stale ids linger in the selection and the "Delete N" / "Transfer N"
+  // counters lie.
+  useEffect(() => {
+    setSelectedBlockIds((prev) => {
+      if (prev.size === 0) return prev
+      const liveIds = new Set(
+        blocks
+          .map((b) => (typeof b.id === 'string' && b.id ? b.id : null))
+          .filter((v): v is string => Boolean(v)),
+      )
+      const next = new Set<string>()
+      prev.forEach((id) => {
+        if (liveIds.has(id)) next.add(id)
+      })
+      return next.size === prev.size ? prev : next
+    })
+  }, [blocks])
+
+  const toggleRowSelected = useCallback((blockId: string) => {
+    setSelectedBlockIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(blockId)) next.delete(blockId)
+      else next.add(blockId)
+      return next
+    })
+  }, [])
+
+  const toggleAllSelected = useCallback(
+    (allRowBlockIds: string[], shouldSelect: boolean) => {
+      setSelectedBlockIds((prev) => {
+        const next = new Set(prev)
+        if (shouldSelect) allRowBlockIds.forEach((id) => next.add(id))
+        else allRowBlockIds.forEach((id) => next.delete(id))
+        return next
+      })
+    },
+    [],
+  )
+
+  const bulkDeleteSelected = useCallback(() => {
+    if (selectedBlockIds.size === 0) return
+    const next = blocks.filter((b) => {
+      const id = typeof b.id === 'string' ? b.id : null
+      return !(id && selectedBlockIds.has(id))
+    })
+    updateBlocks(next)
+    setSelectedBlockIds(new Set())
+    if (setModified) setModified(true)
+    setIsConfirmDeleteOpen(false)
+  }, [blocks, selectedBlockIds, updateBlocks, setModified])
+
+  const selectedRefsForTransfer = useMemo(() => {
+    const refs: Array<{ refId: string; blockType: 'exerciseRef' | 'contentPageRef' }> = []
+    for (const block of blocks) {
+      const id = typeof block.id === 'string' ? block.id : null
+      if (!id || !selectedBlockIds.has(id)) continue
+      if (block.blockType !== 'exerciseRef' && block.blockType !== 'contentPageRef') continue
+      const refField = block.blockType === 'exerciseRef' ? block.exercise : block.contentPage
+      const refId = extractId(refField)
+      if (!refId) continue
+      refs.push({ refId, blockType: block.blockType })
+    }
+    return refs
+  }, [blocks, selectedBlockIds])
 
   const editBlock = useCallback(
     (refId: string, blockType: string) => {
@@ -324,26 +399,85 @@ const LessonBlocksList: React.FC<{ path: string; mode: BlocksMode }> = ({ path, 
           {mode === 'quick' ? 'Exercises (quick view)' : 'Lesson Blocks'}
         </label>
         {lessonId && (
-          <button
-            type="button"
-            onClick={() => setIsImportOpen(true)}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 4,
-              padding: '4px 10px',
-              fontSize: 12,
-              fontWeight: 500,
-              color: 'var(--theme-elevation-700)',
-              background: 'var(--theme-elevation-0)',
-              border: '1px solid var(--theme-elevation-200)',
-              borderRadius: 4,
-              cursor: 'pointer',
-            }}
-            title="Import exercises from a .txt or .json lesson file into this lesson"
-          >
-            <FileUp size={12} /> Import exercises
-          </button>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <button
+              type="button"
+              onClick={() => setIsConfirmDeleteOpen(true)}
+              disabled={selectedBlockIds.size === 0}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+                padding: '4px 10px',
+                fontSize: 12,
+                fontWeight: 500,
+                color:
+                  selectedBlockIds.size === 0
+                    ? 'var(--theme-elevation-400)'
+                    : 'var(--theme-error-600, #dc2626)',
+                background: 'var(--theme-elevation-0)',
+                border: '1px solid var(--theme-elevation-200)',
+                borderRadius: 4,
+                cursor: selectedBlockIds.size === 0 ? 'not-allowed' : 'pointer',
+                opacity: selectedBlockIds.size === 0 ? 0.6 : 1,
+              }}
+              title={
+                selectedBlockIds.size === 0
+                  ? 'Select items with the checkboxes to enable'
+                  : `Remove ${selectedBlockIds.size} selected item(s) from this lesson's playlist`
+              }
+            >
+              <Trash2 size={12} /> Delete
+              {selectedBlockIds.size > 0 ? ` (${selectedBlockIds.size})` : ''}
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsTransferOpen(true)}
+              disabled={selectedBlockIds.size === 0}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+                padding: '4px 10px',
+                fontSize: 12,
+                fontWeight: 500,
+                color: 'var(--theme-elevation-700)',
+                background: 'var(--theme-elevation-0)',
+                border: '1px solid var(--theme-elevation-200)',
+                borderRadius: 4,
+                cursor: selectedBlockIds.size === 0 ? 'not-allowed' : 'pointer',
+                opacity: selectedBlockIds.size === 0 ? 0.6 : 1,
+              }}
+              title={
+                selectedBlockIds.size === 0
+                  ? 'Select items with the checkboxes to enable'
+                  : `Move ${selectedBlockIds.size} selected item(s) to another lesson`
+              }
+            >
+              <ArrowRightLeft size={12} /> Transfer
+              {selectedBlockIds.size > 0 ? ` (${selectedBlockIds.size})` : ''}
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsImportOpen(true)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+                padding: '4px 10px',
+                fontSize: 12,
+                fontWeight: 500,
+                color: 'var(--theme-elevation-700)',
+                background: 'var(--theme-elevation-0)',
+                border: '1px solid var(--theme-elevation-200)',
+                borderRadius: 4,
+                cursor: 'pointer',
+              }}
+              title="Import exercises from a .txt or .json lesson file into this lesson"
+            >
+              <FileUp size={12} /> Import exercises
+            </button>
+          </div>
         )}
       </div>
       <p
@@ -369,6 +503,25 @@ const LessonBlocksList: React.FC<{ path: string; mode: BlocksMode }> = ({ path, 
             // enough for Payload's admin field state.
             window.location.reload()
           }}
+        />
+      )}
+
+      {isTransferOpen && lessonId && (
+        <TransferExercisesModal
+          sourceLessonId={lessonId}
+          selectedRefs={selectedRefsForTransfer}
+          onClose={() => setIsTransferOpen(false)}
+          onTransferred={() => {
+            window.location.reload()
+          }}
+        />
+      )}
+
+      {isConfirmDeleteOpen && (
+        <ConfirmDeleteModal
+          count={selectedBlockIds.size}
+          onCancel={() => setIsConfirmDeleteOpen(false)}
+          onConfirm={bulkDeleteSelected}
         />
       )}
 
@@ -407,6 +560,46 @@ const LessonBlocksList: React.FC<{ path: string; mode: BlocksMode }> = ({ path, 
           </div>
         )}
 
+        {hasBeenActivated && rows.length > 0 && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '6px 12px',
+              borderBottom: '1px solid var(--theme-elevation-100)',
+              background: 'var(--theme-elevation-100)',
+              fontSize: 12,
+              color: 'var(--theme-elevation-600)',
+            }}
+          >
+            <input
+              type="checkbox"
+              aria-label="Select all"
+              style={{ cursor: 'pointer', margin: 0, flexShrink: 0 }}
+              checked={
+                rows.length > 0 && rows.every((r) => selectedBlockIds.has(r.blockId))
+              }
+              ref={(el) => {
+                if (!el) return
+                const selectedCount = rows.filter((r) => selectedBlockIds.has(r.blockId)).length
+                el.indeterminate = selectedCount > 0 && selectedCount < rows.length
+              }}
+              onChange={(e) =>
+                toggleAllSelected(
+                  rows.map((r) => r.blockId),
+                  e.target.checked,
+                )
+              }
+            />
+            <span>
+              {selectedBlockIds.size > 0
+                ? `${selectedBlockIds.size} selected`
+                : 'Select all'}
+            </span>
+          </div>
+        )}
+
         {hasBeenActivated &&
           rows.map((row, idx) => (
             <div key={`${row.blockType}-${row.refId}-${idx}`}>
@@ -437,6 +630,16 @@ const LessonBlocksList: React.FC<{ path: string; mode: BlocksMode }> = ({ path, 
                   cursor: 'grab',
                 }}
               >
+                <input
+                  type="checkbox"
+                  aria-label={`Select ${row.title || row.refId}`}
+                  checked={selectedBlockIds.has(row.blockId)}
+                  onChange={() => toggleRowSelected(row.blockId)}
+                  onClick={(e) => e.stopPropagation()}
+                  onDragStart={(e) => e.stopPropagation()}
+                  style={{ cursor: 'pointer', margin: 0, flexShrink: 0 }}
+                />
+
                 <span style={{ color: 'var(--theme-elevation-300)', flexShrink: 0 }}>
                   <GripVertical size={16} />
                 </span>
