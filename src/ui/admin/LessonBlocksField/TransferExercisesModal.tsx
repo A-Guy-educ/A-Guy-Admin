@@ -38,6 +38,8 @@ interface TransferResultSummary {
   transferred: number
   failed: number
   failures?: TransferFailure[]
+  needsReload?: boolean
+  reloadReason?: string
 }
 
 export const TransferExercisesModal: React.FC<TransferExercisesModalProps> = ({
@@ -172,8 +174,18 @@ export const TransferExercisesModal: React.FC<TransferExercisesModalProps> = ({
         transferred: data.transferred ?? 0,
         failed: data.failed ?? 0,
         failures: data.failures,
+        needsReload: Boolean(data.needsReload),
+        reloadReason: data.reloadReason,
       }
       setResult(summary)
+      // Server reports inconsistent state (ref docs updated but a lesson
+      // playlist rewrite failed) — local pruning would silently re-attach
+      // the moved refs on next Save. Force a full reload so the admin sees
+      // canonical server state. Delay briefly so the message is readable.
+      if (summary.needsReload) {
+        setTimeout(() => window.location.reload(), 2500)
+        return
+      }
       // Compute successes = selectedRefs − failures and hand them to the
       // parent so it can prune its local blocks state. Doing this instead
       // of a hard reload preserves other unsaved field edits on the lesson.
@@ -296,7 +308,17 @@ export const TransferExercisesModal: React.FC<TransferExercisesModalProps> = ({
 
         {error && <div className="import-exercises-error">{error}</div>}
 
-        {result && (
+        {result?.needsReload && (
+          <div className="import-exercises-error">
+            Server state is inconsistent — {result.transferred} ref doc(s) were moved but the lesson
+            playlist rewrite failed. Reloading in a moment to recover canonical state…
+            {result.reloadReason && (
+              <div style={{ marginTop: 6, fontSize: 11, opacity: 0.8 }}>{result.reloadReason}</div>
+            )}
+          </div>
+        )}
+
+        {result && !result.needsReload && (
           <div
             className={result.failed > 0 ? 'import-exercises-error' : 'import-exercises-success'}
           >

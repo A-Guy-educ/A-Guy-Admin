@@ -39,6 +39,16 @@ const transferBodySchema = z
     message: 'sourceLessonId and targetLessonId must differ',
     path: ['targetLessonId'],
   })
+  .refine(
+    (data) => {
+      // Prevent duplicate (refId, blockType) tuples: the UI's Set stops this
+      // today but a direct API caller sending the same ref twice would land
+      // two entries with different generated block ids in target.blocks.
+      const keys = data.refs.map((r) => `${r.blockType}::${r.refId}`)
+      return new Set(keys).size === keys.length
+    },
+    { message: 'refs must contain unique (blockType, refId) tuples', path: ['refs'] },
+  )
 
 type TransferBody = z.infer<typeof transferBodySchema>
 
@@ -46,6 +56,15 @@ interface TransferResult {
   transferred: number
   failed: number
   failures: Array<{ refId: string; blockType: string; error: string }>
+  /**
+   * Server-side state is inconsistent — some ref docs' `lesson` field was
+   * flipped to target, but the subsequent source or target `blocks` rewrite
+   * failed. The client MUST hard-reload to see canonical server state
+   * instead of surgically pruning its local blocks (which would silently
+   * re-attach the moved refs on next Save).
+   */
+  needsReload: boolean
+  reloadReason?: string
 }
 
 interface BlockEntry {
@@ -111,7 +130,12 @@ export const POST = withApiHandler<TransferBody, unknown>(
     if (!target)
       return apiError('LESSON_NOT_FOUND', `Target lesson ${targetLessonId} not found`, 404)
 
-    const result: TransferResult = { transferred: 0, failed: 0, failures: [] }
+    const result: TransferResult = {
+      transferred: 0,
+      failed: 0,
+      failures: [],
+      needsReload: false,
+    }
     const successfulRefs: Array<{ refId: string; blockType: 'exerciseRef' | 'contentPageRef' }> = []
 
     for (const ref of refs) {
@@ -187,26 +211,43 @@ export const POST = withApiHandler<TransferBody, unknown>(
       }
       const nextTargetBlocks = [...targetBlocks, ...appended]
 
-      await Promise.all([
-        nextSourceBlocks.length === sourceBlocks.length
-          ? Promise.resolve()
-          : payload.update({
-              collection: 'lessons',
-              id: sourceLessonId,
-              data: { blocks: JSON.stringify(nextSourceBlocks) },
-              req: payloadReq,
-              overrideAccess: true,
-            }),
-        appended.length === 0
-          ? Promise.resolve()
-          : payload.update({
-              collection: 'lessons',
-              id: targetLessonId,
-              data: { blocks: JSON.stringify(nextTargetBlocks) },
-              req: payloadReq,
-              overrideAccess: true,
-            }),
-      ])
+      // Serial so we know exactly which rewrite failed — parallelizing would
+      // hide which side is stale when one throws. Both still happen in a
+      // single Promise chain; the real latency cost is one extra RTT, not
+      // worth the diagnostic ambiguity.
+      //
+      // If either rewrite fails after the ref docs already committed, we're
+      // in a durably inconsistent state: exercise.lesson === target but one
+      // of the blocks arrays doesn't match. There's no safe local recovery
+      // on the client — surface a `needsReload` flag so the UI force-reloads
+      // instead of pruning local blocks (which would silently re-attach the
+      // moved refs on next Save).
+      try {
+        if (nextSourceBlocks.length !== sourceBlocks.length) {
+          await payload.update({
+            collection: 'lessons',
+            id: sourceLessonId,
+            data: { blocks: JSON.stringify(nextSourceBlocks) },
+            req: payloadReq,
+            overrideAccess: true,
+          })
+        }
+        if (appended.length > 0) {
+          await payload.update({
+            collection: 'lessons',
+            id: targetLessonId,
+            data: { blocks: JSON.stringify(nextTargetBlocks) },
+            req: payloadReq,
+            overrideAccess: true,
+          })
+        }
+      } catch (err) {
+        result.needsReload = true
+        result.reloadReason =
+          err instanceof Error
+            ? `Lesson playlist rewrite failed after ${result.transferred} ref(s) moved: ${err.message}`
+            : 'Lesson playlist rewrite failed after ref docs were updated'
+      }
     }
 
     return apiSuccess(result)
