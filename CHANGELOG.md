@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.51.0 — 2026-10-01
+
+### Features
+- Lesson blocks: bulk delete and transfer selected exercise/content-page refs between lessons from the admin lesson editor (#524)
+
+### Bug Fixes
+- Lesson blocks: batched source+target rewrite with partial-transfer failure surfacing, re-fetch recovery via `needsReload`, tightened modal UX, and threaded `req` into the transfer endpoint (#524)
+- Axis editor preview now renders trig and sqrt graphs (#525)
+- PayPal subscription webhook: stabilised two-renewal CAS test against date-rollover flake (#526)
+
 ## v0.50.0 — 2026-09-29
 
 ### Features
@@ -2131,6 +2141,11 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- chore: release v0.51.0 ([#527](https://github.com/A-Guy-educ/A-Guy-Admin/pull/527)) — @aguyshayb
+- feat: Bulk delete and transfer for lesson exercises quick view ([#524](https://github.com/A-Guy-educ/A-Guy-Admin/pull/524)) — @aguyshayb
+- test: Fix flaky two-renewal CAS test date rollover ([#526](https://github.com/A-Guy-educ/A-Guy-Admin/pull/526)) — @aguyshayb
+- fix: Axis editor preview renders trig and sqrt graphs ([#525](https://github.com/A-Guy-educ/A-Guy-Admin/pull/525)) — @aguyshayb
+- promote: dev -> main (v0.50.0) ([#521](https://github.com/A-Guy-educ/A-Guy-Admin/pull/521)) — @aguyshayb
 - chore: release v0.50.0 ([#520](https://github.com/A-Guy-educ/A-Guy-Admin/pull/520)) — @aguyshayb
 - feat(geometry): Include circles in auto-fitted boundingBox ([#519](https://github.com/A-Guy-educ/A-Guy-Admin/pull/519)) — @aguyshayb
 - fix(geometry): anchor angle equality ticks to arc in user coords ([#518](https://github.com/A-Guy-educ/A-Guy-Admin/pull/518)) — @aguyshayb

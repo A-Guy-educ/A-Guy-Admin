@@ -6,6 +6,7 @@ import type { JXGBoard, JXGElement } from 'jsxgraph'
 import { JSXGraphBoard } from '../shared/JSXGraphBoard'
 import { resolveViewport } from '@/infra/utils/graphics/viewport-utils'
 import { createLocusOnBoard } from '@/ui/shared/exerciserenderer/graphics/axisElements'
+import { parseMathExpression } from '@/ui/shared/exerciserenderer/utils/safeMathEval'
 
 /** Map a compass label position to a JSXGraph pixel offset. */
 function mapLabelOffset(pos?: string): [number, number] {
@@ -144,18 +145,15 @@ export const AxisCanvas: React.FC<AxisCanvasProps> = ({ id, axis, onPointMoved }
           elementsRef.current.delete(elemId)
         }
 
-        try {
-          const fn = new Function('x', `return ${graph.fn.replace(/\^/g, '**')}`)
-          const dashMap: Record<string, number> = { solid: 0, dashed: 2, dotted: 4 }
-          const el = board.create('functiongraph', [fn], {
-            strokeColor: graph.color || '#3366cc',
-            strokeWidth: graph.thickness || 2,
-            dash: dashMap[graph.style] || 0,
-          })
-          elementsRef.current.set(elemId, el)
-        } catch {
-          // Invalid function expression - skip rendering
-        }
+        const parsed = parseMathExpression(graph.fn)
+        if (!parsed.valid) return
+        const dashMap: Record<string, number> = { solid: 0, dashed: 2, dotted: 4 }
+        const el = board.create('functiongraph', [parsed.evaluate], {
+          strokeColor: graph.color || '#3366cc',
+          strokeWidth: graph.thickness || 2,
+          dash: dashMap[graph.style] || 0,
+        })
+        elementsRef.current.set(elemId, el)
       })
 
       // Sync asymptotes

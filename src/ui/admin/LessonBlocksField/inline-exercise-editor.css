@@ -223,3 +223,134 @@
 .import-exercises-spin {
   animation: import-exercises-spin 1s linear infinite;
 }
+
+/* ---------- Confirm delete modal ---------- */
+.confirm-delete-modal {
+  width: min(440px, 100%);
+}
+
+.confirm-delete-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--theme-elevation-0);
+  background: var(--theme-error-500, #ef4444);
+  border: 1px solid transparent;
+}
+
+.confirm-delete-primary:hover:not(:disabled) {
+  background: var(--theme-error-600, #dc2626);
+}
+
+.confirm-delete-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ---------- Transfer lesson picker ---------- */
+.transfer-lesson-picker {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.transfer-lesson-picker-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--theme-elevation-700);
+}
+
+.transfer-lesson-picker-input {
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 13px;
+  color: var(--theme-text);
+  background: var(--theme-elevation-0);
+  border: 1px solid var(--theme-elevation-200);
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+.transfer-lesson-picker-input:focus {
+  outline: none;
+  border-color: var(--theme-elevation-400);
+}
+
+.transfer-lesson-picker-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.transfer-lesson-picker-status {
+  font-size: 12px;
+  color: var(--theme-elevation-500);
+}
+
+.transfer-lesson-picker-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin: 4px 0 0 0;
+  padding: 4px 0;
+  list-style: none;
+  max-height: 240px;
+  overflow-y: auto;
+  background: var(--theme-elevation-0);
+  border: 1px solid var(--theme-elevation-200);
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  z-index: 10;
+}
+
+.transfer-lesson-picker-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.transfer-lesson-picker-item:hover {
+  background: var(--theme-elevation-100);
+}
+
+.transfer-lesson-picker-item-title {
+  font-weight: 500;
+  color: var(--theme-text);
+}
+
+.transfer-lesson-picker-item-chapter {
+  font-size: 11px;
+  color: var(--theme-elevation-500);
+  margin-top: 2px;
+}
+
+.transfer-lesson-picker-selected {
+  font-size: 12px;
+  color: var(--theme-elevation-700);
+}
+
+.transfer-lesson-picker-clear {
+  margin-left: 8px;
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--theme-elevation-500);
+  font-size: 12px;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.transfer-lesson-picker-clear:hover {
+  color: var(--theme-text);
+}
+
+.transfer-failures-list {
+  margin: 6px 0 0 16px;
+  padding: 0;
+}

@@ -1308,10 +1308,14 @@ describe('PayPal subscription webhooks', () => {
     })
     const finalExpiresAt = new Date((postEnr.docs[0] as any).expiresAt).getTime()
 
-    // Expected: initial + 2 calendar months (using the same math the code
-    // uses, to avoid drift on 30-day vs 31-day months)
-    const expectedDate = new Date(initialExpiresAt)
-    expectedDate.setMonth(expectedDate.getMonth() + 2)
-    expect(finalExpiresAt).toBe(expectedDate.getTime())
+    // Expected: initial + 2 calendar months, applied one renewal at a time,
+    // using the exact helper the server uses. Raw `setMonth(getMonth() + 2)`
+    // would diverge from the server when the +1-step overflows into a shorter
+    // month (e.g. Oct 31 + 1mo → server clamps to Nov 30; raw setMonth +2
+    // would skip straight to Dec 31). Each real renewal anchors on the prior
+    // write, so the test must do the same.
+    const afterFirst = addCalendarMonths(new Date(initialExpiresAt), 1)
+    const afterSecond = addCalendarMonths(afterFirst, 1)
+    expect(finalExpiresAt).toBe(afterSecond.getTime())
   })
 })
