@@ -2131,6 +2131,7 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- feat: Bulk delete and transfer for lesson exercises quick view ([#524](https://github.com/A-Guy-educ/A-Guy-Admin/pull/524)) — @aguyshayb
 - test: Fix flaky two-renewal CAS test date rollover ([#526](https://github.com/A-Guy-educ/A-Guy-Admin/pull/526)) — @aguyshayb
 - fix: Axis editor preview renders trig and sqrt graphs ([#525](https://github.com/A-Guy-educ/A-Guy-Admin/pull/525)) — @aguyshayb
 - promote: dev -> main (v0.50.0) ([#521](https://github.com/A-Guy-educ/A-Guy-Admin/pull/521)) — @aguyshayb
