@@ -60,6 +60,7 @@ import { importExerciseFromLatex } from '@/server/payload/endpoints/exercises/im
 import { importExerciseFromLesson } from '@/server/payload/endpoints/exercises/import-from-lesson'
 import { translateContentEndpoint } from '@/server/payload/endpoints/translation/translate-content'
 import { cascadeDeleteEndpoint } from '@/server/payload/endpoints/cascade-delete'
+import { duplicateChapterEndpoint } from '@/server/payload/endpoints/chapters/duplicate'
 import { duplicateCourseEndpoint } from '@/server/payload/endpoints/courses/duplicate'
 import { duplicateExerciseEndpoint } from '@/server/payload/endpoints/exercises/duplicate'
 import { duplicateLessonEndpoint } from '@/server/payload/endpoints/lessons/duplicate'
@@ -410,6 +411,11 @@ export default buildConfig({
       path: '/exercises/:id/duplicate-exercise',
       method: 'post',
       handler: (req: PayloadRequest) => duplicateExerciseEndpoint(req),
+    },
+    {
+      path: '/chapters/:id/duplicate-chapter',
+      method: 'post',
+      handler: (req: PayloadRequest) => duplicateChapterEndpoint(req),
     },
     {
       path: '/lessons/:id/export',
