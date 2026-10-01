@@ -349,3 +349,8 @@
 .transfer-lesson-picker-clear:hover {
   color: var(--theme-text);
 }
+
+.transfer-failures-list {
+  margin: 6px 0 0 16px;
+  padding: 0;
+}

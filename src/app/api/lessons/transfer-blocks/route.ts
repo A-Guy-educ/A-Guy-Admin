@@ -140,13 +140,32 @@ export const POST = withApiHandler<TransferBody, unknown>(
     if (successfulRefs.length > 0) {
       const successKeys = new Set(successfulRefs.map((r) => refKey(r.blockType, r.refId)))
 
-      const sourceBlocks = parseBlocks((source as { blocks?: unknown }).blocks)
+      // Re-fetch both lessons right before the rewrite so we don't clobber
+      // another admin's write (drag-reorder, importer, duplicator) that
+      // landed on lesson.blocks during our ref-update loop. The initial
+      // findByID above only served to validate existence.
+      const [freshSource, freshTarget] = await Promise.all([
+        payload.findByID({
+          collection: 'lessons',
+          id: sourceLessonId,
+          depth: 0,
+          req: payloadReq,
+        }),
+        payload.findByID({
+          collection: 'lessons',
+          id: targetLessonId,
+          depth: 0,
+          req: payloadReq,
+        }),
+      ])
+
+      const sourceBlocks = parseBlocks((freshSource as { blocks?: unknown }).blocks)
       const nextSourceBlocks = sourceBlocks.filter((b) => {
         const id = b.blockType === 'exerciseRef' ? b.exercise : b.contentPage
         return !id || !successKeys.has(refKey(b.blockType, id))
       })
 
-      const targetBlocks = parseBlocks((target as { blocks?: unknown }).blocks)
+      const targetBlocks = parseBlocks((freshTarget as { blocks?: unknown }).blocks)
       const alreadyInTarget = new Set(
         targetBlocks
           .map((b) => {

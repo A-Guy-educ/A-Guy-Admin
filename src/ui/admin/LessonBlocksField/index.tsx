@@ -508,8 +508,22 @@ const LessonBlocksList: React.FC<{ path: string; mode: BlocksMode }> = ({ path, 
           sourceLessonId={lessonId}
           selectedRefs={selectedRefsForTransfer}
           onClose={() => setIsTransferOpen(false)}
-          onTransferred={() => {
-            window.location.reload()
+          onTransferred={(successes) => {
+            // Server has already rewritten source/target lesson.blocks and
+            // flipped each exercise's `lesson` field. Prune the matching
+            // entries from local form state so the admin UI matches reality
+            // without a reload — preserving other unsaved edits on the
+            // lesson (title, chapter, reorderings of the remaining blocks).
+            const successKeys = new Set(successes.map((s) => `${s.blockType}::${s.refId}`))
+            const next = blocks.filter((b) => {
+              if (b.blockType !== 'exerciseRef' && b.blockType !== 'contentPageRef') return true
+              const refField = b.blockType === 'exerciseRef' ? b.exercise : b.contentPage
+              const refId = extractId(refField)
+              if (!refId) return true
+              return !successKeys.has(`${b.blockType}::${refId}`)
+            })
+            updateBlocks(next)
+            setSelectedBlockIds(new Set())
           }}
         />
       )}
@@ -574,15 +588,23 @@ const LessonBlocksList: React.FC<{ path: string; mode: BlocksMode }> = ({ path, 
               type="checkbox"
               aria-label="Select all"
               style={{ cursor: 'pointer', margin: 0, flexShrink: 0 }}
-              checked={rows.length > 0 && rows.every((r) => selectedBlockIds.has(r.blockId))}
+              checked={(() => {
+                const selectable = rows.filter((r) => !r.blockId.startsWith('__idx_'))
+                return (
+                  selectable.length > 0 && selectable.every((r) => selectedBlockIds.has(r.blockId))
+                )
+              })()}
               ref={(el) => {
                 if (!el) return
-                const selectedCount = rows.filter((r) => selectedBlockIds.has(r.blockId)).length
-                el.indeterminate = selectedCount > 0 && selectedCount < rows.length
+                const selectable = rows.filter((r) => !r.blockId.startsWith('__idx_'))
+                const selectedCount = selectable.filter((r) =>
+                  selectedBlockIds.has(r.blockId),
+                ).length
+                el.indeterminate = selectedCount > 0 && selectedCount < selectable.length
               }}
               onChange={(e) =>
                 toggleAllSelected(
-                  rows.map((r) => r.blockId),
+                  rows.filter((r) => !r.blockId.startsWith('__idx_')).map((r) => r.blockId),
                   e.target.checked,
                 )
               }
@@ -630,7 +652,20 @@ const LessonBlocksList: React.FC<{ path: string; mode: BlocksMode }> = ({ path, 
                   onChange={() => toggleRowSelected(row.blockId)}
                   onClick={(e) => e.stopPropagation()}
                   onDragStart={(e) => e.stopPropagation()}
-                  style={{ cursor: 'pointer', margin: 0, flexShrink: 0 }}
+                  // Rows synthesize an id as `__idx_N` only when the stored
+                  // block has no id (legacy/pre-normalizeBlock data). Bulk
+                  // delete/transfer key off real block.id, so skip these.
+                  disabled={row.blockId.startsWith('__idx_')}
+                  title={
+                    row.blockId.startsWith('__idx_')
+                      ? 'This row has no stable id — save the lesson once to enable bulk actions'
+                      : undefined
+                  }
+                  style={{
+                    cursor: row.blockId.startsWith('__idx_') ? 'not-allowed' : 'pointer',
+                    margin: 0,
+                    flexShrink: 0,
+                  }}
                 />
 
                 <span style={{ color: 'var(--theme-elevation-300)', flexShrink: 0 }}>
