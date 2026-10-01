@@ -2141,6 +2141,8 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+## [v0.51.0] - 2026-10-01
+
 - promote: dev -> main (v0.51.0) ([#528](https://github.com/A-Guy-educ/A-Guy-Admin/pull/528)) — @aguyshayb
 - chore: release v0.51.0 ([#527](https://github.com/A-Guy-educ/A-Guy-Admin/pull/527)) — @aguyshayb
 - feat: Bulk delete and transfer for lesson exercises quick view ([#524](https://github.com/A-Guy-educ/A-Guy-Admin/pull/524)) — @aguyshayb
