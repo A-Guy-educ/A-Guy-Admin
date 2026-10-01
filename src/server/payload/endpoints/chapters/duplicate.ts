@@ -32,6 +32,7 @@ import { ObjectId } from 'mongodb'
 
 import type { PayloadRequest } from 'payload'
 
+import { formatSlug } from '@/server/payload/fields/formatSlug'
 import { markRequestAsContentPromotionImport } from '@/server/services/content-promotion/import-context'
 import { cloneChapterTree } from '@/server/services/duplication/bulk-clone-tree'
 import { stripManagedFields } from '@/server/services/duplication/strip-managed-fields'
@@ -124,13 +125,12 @@ export async function duplicateChapterEndpoint(req: PayloadRequest): Promise<Res
   //    but drop fields that shouldn't carry over to a fresh doc.
   const stripped = stripManagedFields(source)
   const {
-    slug: _sourceSlug,
+    slug: sourceSlug,
     translatedFrom: _tf,
     createdBy: _cb,
     adminTitle: _at,
     ...rest
   } = stripped as Record<string, unknown>
-  void _sourceSlug
   void _tf
   void _cb
   void _at
@@ -139,18 +139,39 @@ export async function duplicateChapterEndpoint(req: PayloadRequest): Promise<Res
   const newChapterTitle = `${baseTitle} - Copy`
   const suffix = shortSuffix()
 
+  // Pre-compute the slug with a random suffix. The Chapters `slug` field has a
+  // global unique index (Chapters.ts). If we omit `slug` here, Chapters'
+  // `beforeChange` deterministically derives `formatSlug(title)` — so a second
+  // duplicate of the same chapter produces the same slug and crashes on the
+  // unique index. Chapters, unlike Lessons, has no numeric-suffix retry
+  // fallback, so we have to produce a unique slug ourselves. Mirrors the
+  // course-duplicate endpoint's `${baseSlug}-copy-${suffix}` pattern.
+  const baseSlug =
+    typeof sourceSlug === 'string' && sourceSlug.trim() ? sourceSlug : formatSlug(baseTitle)
+
   const newChapterData = {
     ...rest,
     title: newChapterTitle,
+    slug: `${baseSlug}-copy-${suffix}`,
     status: 'draft',
   }
 
-  const newChapter = await req.payload.create({
-    collection: 'chapters',
-    data: newChapterData as never,
-    overrideAccess: true,
-    req,
-  })
+  let newChapter: { id: string }
+  try {
+    newChapter = (await req.payload.create({
+      collection: 'chapters',
+      data: newChapterData as never,
+      overrideAccess: true,
+      req,
+    })) as unknown as { id: string }
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : 'unknown'
+    req.payload.logger.error(
+      { err, sourceChapterId, newChapterData: { ...newChapterData, mediaFiles: '[redacted]' } },
+      '[duplicateChapterEndpoint] failed to create new chapter',
+    )
+    return Response.json({ error: `Failed to create new chapter: ${reason}` }, { status: 500 })
+  }
 
   const newChapterObjectId = toObjectIdIfHex(newChapter.id) as ObjectId
   const courseObjectId = toObjectIdIfHex(courseId) as ObjectId

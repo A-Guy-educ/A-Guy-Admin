@@ -102,11 +102,18 @@ export const cascadeCourseChange: CollectionAfterChangeHook<ChapterLike> = async
 
   const targets: Array<'lessons' | 'exercises' | 'sections'> = ['lessons', 'exercises', 'sections']
   const results: Record<string, { matched: number; modified: number } | { error: string }> = {}
+  const failures: Array<{ slug: string; error: string }> = []
 
+  // Best-effort: run every updateMany even if an earlier one failed, so we
+  // minimize the split-brain window. Collect failures and surface them at the
+  // end — do NOT silently swallow (previous version did and left the chapter
+  // on course B with descendants partially on A).
   for (const slug of targets) {
     const mongo = mongoCollections[slug]?.collection
     if (!mongo) {
-      results[slug] = { error: 'collection not found on payload.db' }
+      const msg = 'collection not found on payload.db'
+      results[slug] = { error: msg }
+      failures.push({ slug, error: msg })
       continue
     }
     try {
@@ -119,8 +126,37 @@ export const cascadeCourseChange: CollectionAfterChangeHook<ChapterLike> = async
         modified: res.modifiedCount ?? 0,
       }
     } catch (err) {
-      results[slug] = { error: err instanceof Error ? err.message : 'updateMany failed' }
+      const msg = err instanceof Error ? err.message : 'updateMany failed'
+      results[slug] = { error: msg }
+      failures.push({ slug, error: msg })
     }
+  }
+
+  if (failures.length > 0) {
+    // Log at error so ops dashboards pick it up, then throw to surface the
+    // failure to the admin via the HTTP response. The chapter.course update
+    // itself has already been committed (we're in afterChange), so re-saving
+    // the chapter won't re-trigger this hook — the prevCourseId === nextCourseId
+    // guard will skip. The admin's recovery path is to run the backfill
+    // (sync-chapter-descendants, future endpoint) or edit a descendant lesson
+    // directly to retrigger its own beforeChange, which re-derives `course`
+    // from the chapter. Known-tracked tradeoff; good-enough until retries are
+    // automated.
+    req.payload.logger.error(
+      {
+        chapterId: chapterIdString,
+        from: prevCourseId,
+        to: nextCourseId,
+        results,
+        failures,
+      },
+      '[chapters.cascadeCourseChange] partial failure — descendant course FKs may be split-brain',
+    )
+    throw new Error(
+      `Chapter move cascade failed on ${failures.map((f) => f.slug).join(', ')}: ${failures
+        .map((f) => `${f.slug}=${f.error}`)
+        .join('; ')}`,
+    )
   }
 
   req.payload.logger.info(
