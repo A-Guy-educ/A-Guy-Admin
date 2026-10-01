@@ -26,6 +26,10 @@ interface DuplicateResponse {
   counts?: {
     lessonsCloned: number
     lessonsFailed: number
+    exercisesCloned: number
+    exercisesFailed: number
+    sectionsCloned: number
+    sectionsFailed: number
   }
   error?: string
 }
@@ -174,6 +178,18 @@ export const ChapterDuplicateAction: React.FC = () => {
                       Lessons: {result.counts.lessonsCloned}
                       {result.counts.lessonsFailed > 0
                         ? ` (${result.counts.lessonsFailed} failed)`
+                        : ''}
+                    </li>
+                    <li>
+                      Exercises: {result.counts.exercisesCloned}
+                      {result.counts.exercisesFailed > 0
+                        ? ` (${result.counts.exercisesFailed} failed)`
+                        : ''}
+                    </li>
+                    <li>
+                      Sections: {result.counts.sectionsCloned}
+                      {result.counts.sectionsFailed > 0
+                        ? ` (${result.counts.sectionsFailed} failed)`
                         : ''}
                     </li>
                   </ul>
