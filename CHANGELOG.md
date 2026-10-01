@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.51.0 — 2026-10-01
+
+### Features
+- Lesson blocks: bulk delete and transfer selected exercise/content-page refs between lessons from the admin lesson editor (#524)
+
+### Bug Fixes
+- Lesson blocks: batched source+target rewrite with partial-transfer failure surfacing, re-fetch recovery via `needsReload`, tightened modal UX, and threaded `req` into the transfer endpoint (#524)
+- Axis editor preview now renders trig and sqrt graphs (#525)
+- PayPal subscription webhook: stabilised two-renewal CAS test against date-rollover flake (#526)
+
 ## v0.50.0 — 2026-09-29
 
 ### Features
