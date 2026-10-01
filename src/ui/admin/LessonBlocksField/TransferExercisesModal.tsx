@@ -248,9 +248,7 @@ export const TransferExercisesModal: React.FC<TransferExercisesModalProps> = ({
                 >
                   <div className="transfer-lesson-picker-item-title">{lesson.title}</div>
                   {lesson.chapterTitle && (
-                    <div className="transfer-lesson-picker-item-chapter">
-                      {lesson.chapterTitle}
-                    </div>
+                    <div className="transfer-lesson-picker-item-chapter">{lesson.chapterTitle}</div>
                   )}
                 </li>
               ))}
@@ -276,9 +274,7 @@ export const TransferExercisesModal: React.FC<TransferExercisesModalProps> = ({
 
         {result && (
           <div
-            className={
-              result.failed > 0 ? 'import-exercises-error' : 'import-exercises-success'
-            }
+            className={result.failed > 0 ? 'import-exercises-error' : 'import-exercises-success'}
           >
             {result.failed > 0
               ? `Transferred ${result.transferred}, ${result.failed} failed. First error: ${result.failures?.[0]?.error ?? 'unknown'}`

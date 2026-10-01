@@ -297,17 +297,14 @@ const LessonBlocksList: React.FC<{ path: string; mode: BlocksMode }> = ({ path, 
     })
   }, [])
 
-  const toggleAllSelected = useCallback(
-    (allRowBlockIds: string[], shouldSelect: boolean) => {
-      setSelectedBlockIds((prev) => {
-        const next = new Set(prev)
-        if (shouldSelect) allRowBlockIds.forEach((id) => next.add(id))
-        else allRowBlockIds.forEach((id) => next.delete(id))
-        return next
-      })
-    },
-    [],
-  )
+  const toggleAllSelected = useCallback((allRowBlockIds: string[], shouldSelect: boolean) => {
+    setSelectedBlockIds((prev) => {
+      const next = new Set(prev)
+      if (shouldSelect) allRowBlockIds.forEach((id) => next.add(id))
+      else allRowBlockIds.forEach((id) => next.delete(id))
+      return next
+    })
+  }, [])
 
   const bulkDeleteSelected = useCallback(() => {
     if (selectedBlockIds.size === 0) return
@@ -577,9 +574,7 @@ const LessonBlocksList: React.FC<{ path: string; mode: BlocksMode }> = ({ path, 
               type="checkbox"
               aria-label="Select all"
               style={{ cursor: 'pointer', margin: 0, flexShrink: 0 }}
-              checked={
-                rows.length > 0 && rows.every((r) => selectedBlockIds.has(r.blockId))
-              }
+              checked={rows.length > 0 && rows.every((r) => selectedBlockIds.has(r.blockId))}
               ref={(el) => {
                 if (!el) return
                 const selectedCount = rows.filter((r) => selectedBlockIds.has(r.blockId)).length
@@ -593,9 +588,7 @@ const LessonBlocksList: React.FC<{ path: string; mode: BlocksMode }> = ({ path, 
               }
             />
             <span>
-              {selectedBlockIds.size > 0
-                ? `${selectedBlockIds.size} selected`
-                : 'Select all'}
+              {selectedBlockIds.size > 0 ? `${selectedBlockIds.size} selected` : 'Select all'}
             </span>
           </div>
         )}

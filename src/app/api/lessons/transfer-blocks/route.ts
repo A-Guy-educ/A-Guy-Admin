@@ -67,8 +67,10 @@ export const POST = withApiHandler<TransferBody, unknown>(
         .catch(() => null),
     ])
 
-    if (!source) return apiError('LESSON_NOT_FOUND', `Source lesson ${sourceLessonId} not found`, 404)
-    if (!target) return apiError('LESSON_NOT_FOUND', `Target lesson ${targetLessonId} not found`, 404)
+    if (!source)
+      return apiError('LESSON_NOT_FOUND', `Source lesson ${sourceLessonId} not found`, 404)
+    if (!target)
+      return apiError('LESSON_NOT_FOUND', `Target lesson ${targetLessonId} not found`, 404)
 
     const result: TransferResult = { transferred: 0, failed: 0, failures: [] }
 

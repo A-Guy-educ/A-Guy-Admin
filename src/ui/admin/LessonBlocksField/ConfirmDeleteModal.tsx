@@ -66,10 +66,10 @@ export const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({
         </header>
 
         <p className="import-exercises-hint">
-          Are you sure you want to remove <strong>{count}</strong>{' '}
-          {count === 1 ? 'item' : 'items'} from this lesson&apos;s playlist? The underlying
-          exercises and content pages will still exist — you&apos;re only removing them from this
-          lesson&apos;s ordering. Save the lesson to persist the change.
+          Are you sure you want to remove <strong>{count}</strong> {count === 1 ? 'item' : 'items'}{' '}
+          from this lesson&apos;s playlist? The underlying exercises and content pages will still
+          exist — you&apos;re only removing them from this lesson&apos;s ordering. Save the lesson
+          to persist the change.
         </p>
 
         <footer className="import-exercises-footer">
