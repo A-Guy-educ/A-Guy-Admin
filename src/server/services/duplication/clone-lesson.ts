@@ -4,24 +4,18 @@
  * @fileType service
  * @domain duplication
  * @pattern clone-and-rewire
- * @ai-summary Lesson-tree deep clone, shared by the lesson-level and chapter-level duplicate endpoints.
+ * @ai-summary Lesson-tree deep clone used by the lesson-duplicate endpoint (level=none).
  *
- * Extracted from `endpoints/lessons/duplicate.ts` so the chapter-duplicate
- * endpoint can clone each lesson under a chapter without re-implementing the
- * same create-exercise + rewire-sections dance.
+ * Scope: single-lesson deep clone via `payload.create`. Every exercise + its
+ * sections go through hooks + validators, which is fine for a single lesson's
+ * blast radius (~1 lesson + its exercises + their sections ≈ 75 docs).
  *
- * Caller contract:
- *   - Passes the source lesson id.
- *   - Optionally overrides the resulting lesson's `chapter` FK. Used by the
- *     chapter-duplicate flow so cloned lessons land under the newly-cloned
- *     chapter instead of the source lesson's chapter. The lesson's
- *     `beforeChange` hook refreshes `course` from the overriding chapter.
+ * The chapter- and course-level duplicates deliberately do NOT use this helper —
+ * they clone hundreds-to-thousands of docs and need the raw `insertMany` path
+ * in `bulk-clone-tree.ts` to stay sub-minute. See that file's header for the
+ * perf rationale.
  *
  * Returns the id of the new lesson.
- *
- * The course-level duplicate (`endpoints/courses/duplicate.ts`) deliberately
- * does NOT use this helper — it clones ~1000 docs via raw `insertMany` to stay
- * sub-minute on real-world courses. See that file's header for context.
  */
 import type { PayloadRequest } from 'payload'
 
@@ -31,20 +25,9 @@ import {
 } from './clone-sections-for-exercises'
 import { stripManagedFields } from './strip-managed-fields'
 
-export interface DeepCloneLessonOptions {
-  /**
-   * Override the `chapter` FK on the cloned lesson. If omitted the clone
-   * inherits the source lesson's chapter (matches the standalone lesson-duplicate
-   * flow). When set, the lesson's `beforeChange` hook recomputes `course` from
-   * the overriding chapter's `course`, keeping the denormalized FK coherent.
-   */
-  overrideChapterId?: string
-}
-
 export async function deepCloneLesson(
   req: PayloadRequest,
   sourceLessonId: string,
-  options: DeepCloneLessonOptions = {},
 ): Promise<string> {
   const source = await req.payload.findByID({
     collection: 'lessons',
@@ -80,9 +63,6 @@ export async function deepCloneLesson(
     ...restSource,
     title: `${baseTitle} - Copy`,
     status: 'draft',
-  }
-  if (options.overrideChapterId) {
-    newLessonData.chapter = options.overrideChapterId
   }
 
   const newLesson = await req.payload.create({
