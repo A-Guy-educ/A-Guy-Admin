@@ -7,10 +7,17 @@ import { publishedAndActive } from '../access/publishedAndActive'
 import { createdByField } from '../fields/createdBy'
 import { formatSlug } from '../fields/formatSlug'
 import { translatedFromField } from '../fields/translatedFrom'
+import { cascadeCourseChange } from '../hooks/chapters/cascadeCourseChange'
 import { computeAdminTitle } from '../hooks/chapters/computeAdminTitle'
 
 export const Chapters: CollectionConfig = {
   slug: 'chapters',
+  // Hide Payload's built-in Duplicate action so admins can only use our
+  // custom modal button. The built-in does a dumb field-copy that would create
+  // a new chapter with the same scalar fields but zero lessons under it —
+  // mirrors courses/lessons/exercises/sections which disabled the built-in
+  // for the same reason.
+  disableDuplicate: true,
   access: {
     create: adminOnly,
     delete: adminOnly,
@@ -30,6 +37,7 @@ export const Chapters: CollectionConfig = {
       },
       computeAdminTitle,
     ],
+    afterChange: [cascadeCourseChange],
   },
   admin: {
     useAsTitle: 'adminTitle',
@@ -38,6 +46,7 @@ export const Chapters: CollectionConfig = {
         beforeDocumentControls: [
           '@/ui/admin/TranslationButton#TranslateChapterAction',
           '@/ui/admin/CascadeDeleteButton#ChapterCascadeDelete',
+          '@/ui/admin/ChapterDuplicateButton/ChapterDuplicateButton#ChapterDuplicateAction',
         ],
       },
     },
