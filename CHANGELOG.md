@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.52.0 — 2026-10-02
+
+### Features
+- Chapters: deep clone action on the chapter edit view duplicates the chapter plus every descendant lesson, exercise, and section; shallow Payload Duplicate is disabled on Chapters (#529)
+- Chapters: `afterChange` cascade moves the denormalized `course` FK on all descendant lessons, exercises, and sections when a chapter's course changes, so admin lesson lists reflect the move (#529)
+
+### Performance
+- Chapter duplicate switched onto the shared bulk-insert engine (`cloneCourseTree` / `cloneChapterTree` under `services/duplication/bulk-clone-tree.ts`), bringing fat chapter clones from ~40min to sub-minute (#529)
+
+### Bug Fixes
+- Chapter duplicate: pre-compute slug with random suffix to avoid unique-index collisions, wrap top-level `payload.create` in try/catch for typed error envelope, and surface partial cascade failures with full-context error logging (#529)
+- Chapter duplicate: add the Next.js `/api/chapters/[id]/duplicate-chapter` route wrapper — Payload 3.x REST adapter only resolves custom endpoints under their collection path, so `payload.config.ts` registration alone was returning 404 (#530)
+
+### Refactor
+- Drop unused `overrideChapterId` option on `deepCloneLesson` — no caller remains after the bulk-insert refactor (#529)
+
 ## v0.51.0 — 2026-10-01
 
 ### Features
