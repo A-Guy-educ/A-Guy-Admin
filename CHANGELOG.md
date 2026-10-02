@@ -2157,6 +2157,8 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+## [v0.52.0] - 2026-10-02
+
 - promote: dev -> main (v0.52.0) ([#532](https://github.com/A-Guy-educ/A-Guy-Admin/pull/532)) — @aguyshayb
 - chore: release v0.52.0 ([#531](https://github.com/A-Guy-educ/A-Guy-Admin/pull/531)) — @aguyshayb
 - fix: Add Next.js route wrapper for chapter duplicate ([#530](https://github.com/A-Guy-educ/A-Guy-Admin/pull/530)) — @aguyshayb
