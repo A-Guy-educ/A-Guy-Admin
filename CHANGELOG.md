@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.53.0 — 2026-10-04
+
+### Features
+- Geometry DSL: route `* וקטור AB | ...` rows into a new `vectors` array so parser emits structured vectors instead of generic segments (#537)
+- Payments: new Grow (Meshulam) smoke-test harness and admin test endpoint under `/api/admin/grow-test` for exercising the Grow integration end-to-end (#538)
+- Function DSL: parse `GEOMETRIC LOCI` entries into `geometricLoci` so loci definitions survive the function-block round-trip (#540)
+- Geometry: scale equal-angle tick marks up ~30% for improved on-canvas legibility (#541)
+
+### Bug Fixes
+- Geometry DSL: handle `* קטע מקווקו XY` head-prefix lines and primed point names like `A'B'` without dropping the segment (#537)
+- Payments: stringify Grow error responses so webhook failure diagnostics surface the full payload instead of `[object Object]` (#539)
+
 ## v0.52.0 — 2026-10-02
 
 ### Features
