@@ -2157,6 +2157,7 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- feat(function-dsl): parse 'GEOMETRIC LOCI' entries into geometricLoci ([#540](https://github.com/A-Guy-educ/A-Guy-Admin/pull/540)) — @aguyshayb
 - fix(payments): stringify grow error response for visibility ([#539](https://github.com/A-Guy-educ/A-Guy-Admin/pull/539)) — @aguyshayb
 - feat(payments): grow smoke test harness ([#538](https://github.com/A-Guy-educ/A-Guy-Admin/pull/538)) — @aguyshayb
 - feat(geometry-dsl): route '* וקטור AB | ...' rows into vectors array ([#537](https://github.com/A-Guy-educ/A-Guy-Admin/pull/537)) — @aguyshayb
