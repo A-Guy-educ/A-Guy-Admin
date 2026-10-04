@@ -225,6 +225,68 @@ describe('parseFunctionBlockV2 — embedded/indented shape', () => {
   })
 })
 
+describe('parseFunctionBlockV2 — GEOMETRIC LOCI', () => {
+  it('parses bare `GEOMETRIC LOCI` entries (circle + parabola) into spec.elements.geometricLoci', () => {
+    // The analytic-geometry lesson files embed implicit curves (circles,
+    // parabolas) via a bare `GEOMETRIC LOCI` section inside the inline
+    // CONFIGURATION block. Each Locus has an Equation + Style + Width +
+    // Color — the entry header ("Locus 1") is informational.
+    const raw = [
+      'CONFIGURATION:',
+      '  Manual Range: true',
+      '  X Min: -6',
+      '  X Max: 6',
+      '  Y Min: -6',
+      '  Y Max: 6',
+      '',
+      'GEOMETRIC LOCI',
+      '',
+      'Locus 1:',
+      '  Equation: x^2+y^2=25',
+      '  Style: Solid',
+      '  Width: 2',
+      '  Color: Blue',
+      '',
+      'Locus 2:',
+      '  Equation: y^2=4x',
+      '  Style: Solid',
+      '  Width: 2',
+      '  Color: Red',
+    ].join('\n')
+    const { spec, warnings } = parseFunctionBlockV2(raw)
+    expect(warnings).toEqual([])
+    expect(spec.elements.geometricLoci).toEqual([
+      { equation: 'x^2+y^2=25', style: 'solid', thickness: 2, color: 'blue' },
+      { equation: 'y^2=4x', style: 'solid', thickness: 2, color: 'red' },
+    ])
+  })
+
+  it('also accepts the markdown-style `## GEOMETRIC LOCI` header', () => {
+    const raw = [
+      'CONFIGURATION:',
+      '  Grid: true',
+      '',
+      '## GEOMETRIC LOCI',
+      '',
+      'Locus 1:',
+      '  Equation: x^2+y^2=1',
+      '  Style: Dashed',
+      '  Width: 1',
+    ].join('\n')
+    const { spec } = parseFunctionBlockV2(raw)
+    expect(spec.elements.geometricLoci).toEqual([
+      { equation: 'x^2+y^2=1', style: 'dashed', thickness: 1 },
+    ])
+  })
+
+  it('warns and skips a locus entry with no Equation property', () => {
+    const raw = ['CONFIGURATION:', '', 'GEOMETRIC LOCI', '', 'Locus 1:', '  Color: Blue'].join('\n')
+    const { spec, warnings } = parseFunctionBlockV2(raw)
+    expect(spec.elements.geometricLoci).toBeUndefined()
+    expect(warnings.some((w) => /missing Equation/i.test(w))).toBe(true)
+  })
+})
+
 describe('parseFunctionDsl auto-detection', () => {
   it('routes the boss format through parseFunctionBlockV2', () => {
     const { spec, errors } = parseFunctionDsl(STANDALONE_FIXTURE)

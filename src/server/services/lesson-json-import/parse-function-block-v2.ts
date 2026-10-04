@@ -219,6 +219,7 @@ function cleanFunctionExpression(value: string): string {
 type SectionName =
   | 'CONFIGURATION'
   | 'GRAPHS'
+  | 'GEOMETRIC_LOCI'
   | 'POINTS'
   | 'LINES_BETWEEN_POINTS'
   | 'ASYMPTOTES'
@@ -228,6 +229,7 @@ type SectionName =
 function normalizeSectionName(raw: string): SectionName {
   const t = raw.trim().toUpperCase()
   if (t === 'GRAPHS') return 'GRAPHS'
+  if (t.startsWith('GEOMETRIC LOCI') || t === 'LOCI') return 'GEOMETRIC_LOCI'
   if (t === 'POINTS') return 'POINTS'
   if (t.startsWith('LINES BETWEEN')) return 'LINES_BETWEEN_POINTS'
   if (t === 'ASYMPTOTES') return 'ASYMPTOTES'
@@ -278,6 +280,7 @@ export function parseFunctionBlockV2(raw: string): ParsedFunctionBlockV2 {
   const config = new Map<string, string>()
   const entries: Record<Exclude<SectionName, null | 'CONFIGURATION'>, Entry[]> = {
     GRAPHS: [],
+    GEOMETRIC_LOCI: [],
     POINTS: [],
     LINES_BETWEEN_POINTS: [],
     ASYMPTOTES: [],
@@ -370,6 +373,7 @@ export function parseFunctionBlockV2(raw: string): ParsedFunctionBlockV2 {
 
   applyConfiguration(spec, config)
   buildGraphs(spec, entries.GRAPHS, warnings)
+  buildGeometricLoci(spec, entries.GEOMETRIC_LOCI, warnings)
   buildPoints(spec, entries.POINTS, warnings)
   buildLines(spec, entries.LINES_BETWEEN_POINTS, warnings)
   buildAsymptotes(spec, entries.ASYMPTOTES, warnings)
@@ -452,6 +456,38 @@ function buildGraphs(spec: AxisSpecV1, list: Entry[], warnings: string[]) {
       ...(color ? { color } : {}),
     })
   })
+}
+
+/**
+ * `## GEOMETRIC LOCI` / bare `GEOMETRIC LOCI` entries carry implicit-curve
+ * equations like `x^2+y^2=25` (circles) or `y^2=4x` (parabolas) — anything
+ * that isn't a function-of-x and so can't live in `graphs`. Each entry:
+ *
+ *   Locus 1:
+ *     Equation: x^2+y^2=25
+ *     Style: Solid
+ *     Width: 2
+ *     Color: Blue
+ *
+ * The schema's `geometricLoci` field takes {equation, style, thickness,
+ * color?} — the entry header (`Locus 1`) is informational and dropped.
+ * Width defaults to 2 to match graphs.
+ */
+function buildGeometricLoci(spec: AxisSpecV1, list: Entry[], warnings: string[]) {
+  if (list.length === 0) return
+  const loci: NonNullable<AxisSpecV1['elements']['geometricLoci']> = []
+  list.forEach((entry, idx) => {
+    const equation = entry.props.get('equation')?.trim()
+    if (!equation) {
+      warnings.push(`Locus ${entry.header || idx + 1}: missing Equation`)
+      return
+    }
+    const style = normalizeStyle(entry.props.get('style'))
+    const thickness = parseNumber(entry.props.get('width')) ?? 2
+    const color = normalizeColor(entry.props.get('color'))
+    loci.push({ equation, style, thickness, ...(color ? { color } : {}) })
+  })
+  if (loci.length > 0) spec.elements.geometricLoci = loci
 }
 
 function buildPoints(spec: AxisSpecV1, list: Entry[], warnings: string[]) {

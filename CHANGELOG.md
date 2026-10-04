@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.53.0 — 2026-10-04
+
+### Features
+- Geometry DSL: route `* וקטור AB | ...` rows into a new `vectors` array so parser emits structured vectors instead of generic segments (#537)
+- Payments: new Grow (Meshulam) smoke-test harness and admin test endpoint under `/api/admin/grow-test` for exercising the Grow integration end-to-end (#538)
+- Function DSL: parse `GEOMETRIC LOCI` entries into `geometricLoci` so loci definitions survive the function-block round-trip (#540)
+- Geometry: scale equal-angle tick marks up ~30% for improved on-canvas legibility (#541)
+
+### Bug Fixes
+- Geometry DSL: handle `* קטע מקווקו XY` head-prefix lines and primed point names like `A'B'` without dropping the segment (#537)
+- Payments: stringify Grow error responses so webhook failure diagnostics surface the full payload instead of `[object Object]` (#539)
+
 ## v0.52.0 — 2026-10-02
 
 ### Features
@@ -2157,6 +2169,15 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- chore: release v0.53.0 ([#542](https://github.com/A-Guy-educ/A-Guy-Admin/pull/542)) — @aguyshayb
+- feat(geometry): scale equal-angle ticks up 30% ([#541](https://github.com/A-Guy-educ/A-Guy-Admin/pull/541)) — @aguyshayb
+- feat(function-dsl): parse 'GEOMETRIC LOCI' entries into geometricLoci ([#540](https://github.com/A-Guy-educ/A-Guy-Admin/pull/540)) — @aguyshayb
+- fix(payments): stringify grow error response for visibility ([#539](https://github.com/A-Guy-educ/A-Guy-Admin/pull/539)) — @aguyshayb
+- feat(payments): grow smoke test harness ([#538](https://github.com/A-Guy-educ/A-Guy-Admin/pull/538)) — @aguyshayb
+- feat(geometry-dsl): route '* וקטור AB | ...' rows into vectors array ([#537](https://github.com/A-Guy-educ/A-Guy-Admin/pull/537)) — @aguyshayb
+## [v0.52.0] - 2026-10-02
+
+- promote: dev -> main (v0.52.0) ([#532](https://github.com/A-Guy-educ/A-Guy-Admin/pull/532)) — @aguyshayb
 - chore: release v0.52.0 ([#531](https://github.com/A-Guy-educ/A-Guy-Admin/pull/531)) — @aguyshayb
 - fix: Add Next.js route wrapper for chapter duplicate ([#530](https://github.com/A-Guy-educ/A-Guy-Admin/pull/530)) — @aguyshayb
 - feat: Chapter deep clone + course-move cascade ([#529](https://github.com/A-Guy-educ/A-Guy-Admin/pull/529)) — @aguyshayb

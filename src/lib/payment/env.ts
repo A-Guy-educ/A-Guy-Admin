@@ -27,10 +27,15 @@ export interface PaymentEnv {
   paypalClientSecret: string
   paypalWebhookId: string
   paypalSandbox: boolean
+  growUserId: string
+  growPageCode: string
+  growWebhookKey: string
+  growSandbox: boolean
 }
 
 const STRIPE_REQUIRED = ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET'] as const
 const PAYPAL_REQUIRED = ['PAYPAL_CLIENT_ID', 'PAYPAL_CLIENT_SECRET', 'PAYPAL_WEBHOOK_ID'] as const
+const GROW_REQUIRED = ['GROW_USER_ID', 'GROW_PAGE_CODE', 'GROW_WEBHOOK_KEY'] as const
 
 let validatedEnv: PaymentEnv | null = null
 
@@ -54,10 +59,11 @@ export function getPaymentEnv(): PaymentEnv {
 
   const stripeTouched = anySet(STRIPE_REQUIRED)
   const paypalTouched = anySet(PAYPAL_REQUIRED)
+  const growTouched = anySet(GROW_REQUIRED)
 
-  if (!stripeTouched && !paypalTouched) {
+  if (!stripeTouched && !paypalTouched && !growTouched) {
     throw new Error(
-      'No payment provider configured. Set either the Stripe (STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET) or PayPal (PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET, PAYPAL_WEBHOOK_ID) environment variables, or both.',
+      'No payment provider configured. Set Stripe (STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET), PayPal (PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET, PAYPAL_WEBHOOK_ID), or Grow (GROW_USER_ID, GROW_PAGE_CODE, GROW_WEBHOOK_KEY) environment variables.',
     )
   }
 
@@ -79,6 +85,15 @@ export function getPaymentEnv(): PaymentEnv {
     }
   }
 
+  if (growTouched) {
+    const missing = missingFrom(GROW_REQUIRED)
+    if (missing.length > 0) {
+      throw new Error(
+        `Grow is partially configured — missing: ${missing.join(', ')}. Set the full set or clear all Grow env vars to disable Grow.`,
+      )
+    }
+  }
+
   validatedEnv = {
     stripeSecretKey: process.env.STRIPE_SECRET_KEY ?? '',
     stripePublishableKey: process.env.STRIPE_PUBLISHABLE_KEY ?? '',
@@ -88,6 +103,10 @@ export function getPaymentEnv(): PaymentEnv {
     paypalClientSecret: process.env.PAYPAL_CLIENT_SECRET ?? '',
     paypalWebhookId: process.env.PAYPAL_WEBHOOK_ID ?? '',
     paypalSandbox: process.env.PAYPAL_SANDBOX !== 'false',
+    growUserId: process.env.GROW_USER_ID ?? '',
+    growPageCode: process.env.GROW_PAGE_CODE ?? '',
+    growWebhookKey: process.env.GROW_WEBHOOK_KEY ?? '',
+    growSandbox: process.env.GROW_SANDBOX !== 'false',
   }
 
   return validatedEnv
