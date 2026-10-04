@@ -35,10 +35,7 @@ export async function POST(request: NextRequest) {
   if (!verifyGrowWebhook(body)) {
     const sourceIp =
       request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
-    payload.logger.warn(
-      { sourceIp, body },
-      '[grow-webhook] webhookKey mismatch — rejecting',
-    )
+    payload.logger.warn({ sourceIp, body }, '[grow-webhook] webhookKey mismatch — rejecting')
     return NextResponse.json({ error: 'Invalid webhookKey' }, { status: 401 })
   }
 

@@ -81,9 +81,7 @@ export async function createGrowCheckout(
   const response = await fetch(`${getGrowApiBase()}/api/light/server/1.0/createPaymentProcess`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams(
-      Object.entries(body).map(([k, v]) => [k, String(v)]),
-    ).toString(),
+    body: new URLSearchParams(Object.entries(body).map(([k, v]) => [k, String(v)])).toString(),
   })
 
   if (!response.ok) {
