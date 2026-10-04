@@ -2157,6 +2157,7 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- feat(geometry-dsl): route '* וקטור AB | ...' rows into vectors array ([#537](https://github.com/A-Guy-educ/A-Guy-Admin/pull/537)) — @aguyshayb
 ## [v0.52.0] - 2026-10-02
 
 - promote: dev -> main (v0.52.0) ([#532](https://github.com/A-Guy-educ/A-Guy-Admin/pull/532)) — @aguyshayb
