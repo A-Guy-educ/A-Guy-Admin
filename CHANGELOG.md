@@ -2169,6 +2169,8 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+## [v0.53.0] - 2026-10-04
+
 - promote: dev -> main (v0.53.0) ([#543](https://github.com/A-Guy-educ/A-Guy-Admin/pull/543)) — @aguyshayb
 - chore: release v0.53.0 ([#542](https://github.com/A-Guy-educ/A-Guy-Admin/pull/542)) — @aguyshayb
 - feat(geometry): scale equal-angle ticks up 30% ([#541](https://github.com/A-Guy-educ/A-Guy-Admin/pull/541)) — @aguyshayb
