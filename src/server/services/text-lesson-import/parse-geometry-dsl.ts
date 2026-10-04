@@ -273,8 +273,20 @@ interface MutableLine {
  * Compressed lists ("* קטע AB, קטע BC, …") are handled by the caller.
  */
 function parseSegmentRow(head: string, fields: string[]): MutableLine | null {
-  // Try to pull the segment endpoints directly from "AB" (2 letters) in the head.
-  const inlineAB = head.match(/(?:קטע|ישר|וקטור)\s+(?:\d+\s*\()?([A-Za-z])\s*([A-Za-z])\)?/)
+  // `* קטע מקווקו AB` / `* וקטור מקווקו AD` — authors write the dashed-style
+  // marker between the type keyword and the endpoint letters. Strip it from
+  // the head before matching inline AB so the inline shortcut still fires,
+  // and remember we saw it so we can set style:'dashed' below. JS `\b` is
+  // ASCII-only and doesn't fire between Hebrew letters, so the trailing
+  // boundary is written as explicit whitespace / end-of-string.
+  const headDashedPrefix = /^(קטע|ישר|וקטור)\s+מקווקו(?:\s|$)/.test(head)
+  const strippedHead = head.replace(/^(קטע|ישר|וקטור)\s+מקווקו\s+/, '$1 ')
+  // Try to pull the segment endpoints directly from the two letters in the
+  // head. `A'B'` style primed names are allowed on each side so bare rows
+  // like `* קטע A'B'` and `* וקטור AA'` resolve without `מנקודה`/`לנקודה`.
+  const inlineAB = strippedHead.match(
+    /(?:קטע|ישר|וקטור)\s+(?:\d+\s*\()?([A-Za-z](?:'|′)?)\s*([A-Za-z](?:'|′)?)\)?/,
+  )
   const fromField = findField(fields, ['מנקודה', 'מ'])
   const toField = findField(fields, ['לנקודה', 'ל'])
 
@@ -311,6 +323,9 @@ function parseSegmentRow(head: string, fields: string[]): MutableLine | null {
 
   const line: MutableLine = { from, to, style: 'solid' }
 
+  // Dashed style can come from either a `מקווקו: כן` field OR a head-level
+  // `קטע מקווקו XY` prefix the boss's generator now uses.
+  if (headDashedPrefix) line.style = 'dashed'
   const dashedField = findField(fields, ['מקווקו'])
   if (dashedField && /^כן|^yes/i.test(dashedField.trim())) line.style = 'dashed'
 

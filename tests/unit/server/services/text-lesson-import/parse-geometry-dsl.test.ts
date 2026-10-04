@@ -436,6 +436,34 @@ describe('parseGeometryDsl', () => {
     expect(spec.elements.vectors).toEqual([{ from: 'C', to: 'D', thickness: 2, color: 'black' }])
   })
 
+  it('parses `* קטע מקווקו DC` (head-level dashed marker) as a dashed segment', () => {
+    // The boss's updated template writes dashed style between the keyword
+    // and the endpoints: `* קטע מקווקו DC` / `* וקטור מקווקו AD | ...`.
+    // Previously the inline-AB regex couldn't skip past `מקווקו` to reach
+    // the letters, so every such row was dropped with "Skipped segment row".
+    const raw = [
+      '  --- ישרים וקטעים ---',
+      '  * קטע מקווקו DC',
+      '  * וקטור מקווקו AD | מנקודה A לנקודה D | צבע: שחור | עובי: 2',
+    ].join('\n')
+    const { spec } = parseGeometryDsl(raw)
+    expect(spec.elements.lines).toEqual([{ from: 'D', to: 'C', style: 'dashed' }])
+    expect(spec.elements.vectors).toEqual([
+      { from: 'A', to: 'D', style: 'dashed', thickness: 2, color: 'black' },
+    ])
+  })
+
+  it("parses bare `* קטע A'B'` with primed point names on both sides", () => {
+    // Boss's per-section sketches use primed point names (A', B', …) for
+    // the back face of a parallelepiped. The old inline-AB shortcut only
+    // captured single letters, so `* קטע A'B'` resolved to `AB` (prime
+    // dropped). Now both sides accept an optional `'` / `′` suffix.
+    const raw = ['  --- ישרים וקטעים ---', "  * קטע A'B'", "  * וקטור AA'"].join('\n')
+    const { spec } = parseGeometryDsl(raw)
+    expect(spec.elements.lines).toEqual([{ from: "A'", to: "B'", style: 'solid' }])
+    expect(spec.elements.vectors).toEqual([{ from: 'A', to: "A'" }])
+  })
+
   it('parses bare `* וקטור AB` using the inline-letter shortcut', () => {
     // The boss's per-section sketches emit vectors as bare `* וקטור AB` with
     // no `מנקודה/לנקודה` fields — endpoints come from the two letters after
