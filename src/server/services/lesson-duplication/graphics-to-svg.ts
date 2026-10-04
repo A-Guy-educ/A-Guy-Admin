@@ -415,7 +415,7 @@ export function geometrySpecToSvg(spec: unknown): string {
       const clusterCx = cx + bx * arcRadius
       const clusterCy = cy + by * arcRadius
       const color = angle.color || DEFAULT_STROKE
-      const half = EQ_TICK_LEN / 2
+      const half = (EQ_TICK_LEN * 1.3) / 2
       for (let k = 0; k < tickCount; k++) {
         const along = (k - (tickCount - 1) / 2) * EQ_TICK_SPACING
         const centerX = clusterCx + tanX * along
