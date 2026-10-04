@@ -2169,6 +2169,7 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- chore: release v0.53.0 ([#542](https://github.com/A-Guy-educ/A-Guy-Admin/pull/542)) — @aguyshayb
 - feat(geometry): scale equal-angle ticks up 30% ([#541](https://github.com/A-Guy-educ/A-Guy-Admin/pull/541)) — @aguyshayb
 - feat(function-dsl): parse 'GEOMETRIC LOCI' entries into geometricLoci ([#540](https://github.com/A-Guy-educ/A-Guy-Admin/pull/540)) — @aguyshayb
 - fix(payments): stringify grow error response for visibility ([#539](https://github.com/A-Guy-educ/A-Guy-Admin/pull/539)) — @aguyshayb
