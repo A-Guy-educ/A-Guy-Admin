@@ -422,6 +422,33 @@ describe('parseGeometryDsl', () => {
     expect(hasContent).toBe(true)
   })
 
+  it('parses `* וקטור AB | מנקודה A לנקודה B | צבע: שחור | עובי: 2` into a vector', () => {
+    // The vectors group shares the `--- ישרים וקטעים ---` header with
+    // segments, but each `* וקטור` row needs to land in `vectors` (so the
+    // renderer draws an arrowhead) instead of `lines`.
+    const raw = [
+      '  --- ישרים וקטעים ---',
+      '  * קטע AB | מנקודה A לנקודה B | צבע: שחור',
+      '  * וקטור CD | מנקודה C לנקודה D | צבע: שחור | עובי: 2',
+    ].join('\n')
+    const { spec } = parseGeometryDsl(raw)
+    expect(spec.elements.lines).toEqual([{ from: 'A', to: 'B', style: 'solid', color: 'black' }])
+    expect(spec.elements.vectors).toEqual([{ from: 'C', to: 'D', thickness: 2, color: 'black' }])
+  })
+
+  it('parses bare `* וקטור AB` using the inline-letter shortcut', () => {
+    // The boss's per-section sketches emit vectors as bare `* וקטור AB` with
+    // no `מנקודה/לנקודה` fields — endpoints come from the two letters after
+    // `וקטור` directly. Mirrors the compressed-segment behaviour.
+    const raw = ['  --- ישרים וקטעים ---', '  * וקטור AB', '  * וקטור CD'].join('\n')
+    const { spec } = parseGeometryDsl(raw)
+    expect(spec.elements.vectors).toEqual([
+      { from: 'A', to: 'B' },
+      { from: 'C', to: 'D' },
+    ])
+    expect(spec.elements.lines).toEqual([])
+  })
+
   it('emits a circle for `* מעגל | מרכז: O | עובר דרך: A | מקווקו: כן`', () => {
     // Alternative form: no numeric ID, radius implied via a `עובר דרך`
     // point reference, and dashed style. `through` is a point name (schema

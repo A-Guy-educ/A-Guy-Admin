@@ -267,11 +267,14 @@ interface MutableLine {
  *   * קטע AB | מנקודה A לנקודה B [ | …fields ]
  *   * קטע AB
  *   * ישר 1 (AB) | מנקודה A ל- B | …
+ *   * וקטור AB | מנקודה A לנקודה B | …   (dispatched to the vectors array
+ *     at the switch level — this helper just returns from/to/color/thickness
+ *     and lets the caller decide where to push the result).
  * Compressed lists ("* קטע AB, קטע BC, …") are handled by the caller.
  */
 function parseSegmentRow(head: string, fields: string[]): MutableLine | null {
   // Try to pull the segment endpoints directly from "AB" (2 letters) in the head.
-  const inlineAB = head.match(/(?:קטע|ישר)\s+(?:\d+\s*\()?([A-Za-z])\s*([A-Za-z])\)?/)
+  const inlineAB = head.match(/(?:קטע|ישר|וקטור)\s+(?:\d+\s*\()?([A-Za-z])\s*([A-Za-z])\)?/)
   const fromField = findField(fields, ['מנקודה', 'מ'])
   const toField = findField(fields, ['לנקודה', 'ל'])
 
@@ -516,6 +519,8 @@ export function parseGeometryDsl(raw: string): ParseGeometryDslResult {
   const warnings: string[] = []
   const points: MutablePoint[] = []
   const lines: MutableLine[] = []
+  /** Directed arrows. Share `parseSegmentRow`'s shape but go into a separate output array per the GeometrySpecV1 schema. */
+  const vectors: MutableLine[] = []
   const angles: MutableAngle[] = []
   const circles: MutableCircle[] = []
   /** IDs from bare `* מעגל N` rows (no `מרכז` field). Section attachments emit these when they reference a circle defined at the exercise level. */
@@ -585,23 +590,32 @@ export function parseGeometryDsl(raw: string): ParseGeometryDslResult {
         break
       }
       case 'segments': {
-        // Compressed "קטע AB, קטע BC, …" (word-boundary check omitted — JS
-        // `\b` doesn't fire for Hebrew.) When any comma-separated part starts
-        // with a קטע/ישר header, treat the whole row as a compressed list.
-        if (item.fields.length === 0 && /(?:קטע|ישר)\s+\S+.*,/.test(item.head)) {
+        // `* וקטור AB | ...` lives in the same `--- ישרים וקטעים ---` group
+        // as segments but needs to land in `spec.elements.vectors` so the
+        // renderer draws an arrowhead. Pick the destination array once per
+        // row/part based on the leading keyword.
+        // JS `\b` is ASCII-only — it doesn't fire between Hebrew letters and
+        // whitespace, so match on `וקטור` + explicit whitespace/EOL instead.
+        const destFor = (head: string): MutableLine[] =>
+          /^\s*וקטור(?:\s|$)/.test(head) ? vectors : lines
+        // Compressed "קטע AB, קטע BC, …" / "וקטור AB, וקטור BC, …" (word-boundary
+        // check omitted — JS `\b` doesn't fire for Hebrew.) When any comma-
+        // separated part starts with a known segment/vector keyword, treat
+        // the whole row as a compressed list and route each part individually.
+        if (item.fields.length === 0 && /(?:קטע|ישר|וקטור)\s+\S+.*,/.test(item.head)) {
           const parts = item.head.split(/,\s*/)
           let ok = false
           for (const part of parts) {
             const line = parseSegmentRow(part.trim(), [])
             if (line) {
-              lines.push(line)
+              destFor(part).push(line)
               ok = true
             }
           }
           if (ok) break
         }
         const parsed = parseSegmentRow(item.head, item.fields)
-        if (parsed) lines.push(parsed)
+        if (parsed) destFor(item.head).push(parsed)
         else warnings.push(`Skipped segment row: ${body}`)
         break
       }
@@ -826,6 +840,19 @@ export function parseGeometryDsl(raw: string): ParseGeometryDslResult {
         ...(c.through ? { through: c.through } : {}),
         ...(c.color ? { color: c.color } : {}),
       })),
+      ...(vectors.length > 0
+        ? {
+            // VectorSchema has no `label` field, so we deliberately drop
+            // any `l.label` the shared parseSegmentRow may have attached.
+            vectors: vectors.map((v) => ({
+              from: v.from,
+              to: v.to,
+              ...(v.style !== 'solid' ? { style: v.style } : {}),
+              ...(v.thickness ? { thickness: v.thickness } : {}),
+              ...(v.color ? { color: v.color } : {}),
+            })),
+          }
+        : {}),
       angles: angles.map((a) => ({
         center: a.center,
         ray1: a.ray1,
@@ -845,6 +872,7 @@ export function parseGeometryDsl(raw: string): ParseGeometryDslResult {
     spec.elements.lines.length > 0 ||
     spec.elements.angles.length > 0 ||
     spec.elements.circles.length > 0 ||
+    (spec.elements.vectors?.length ?? 0) > 0 ||
     bareCircleRefs.length > 0
 
   return { spec, warnings, hasContent, bareCircleRefs }
