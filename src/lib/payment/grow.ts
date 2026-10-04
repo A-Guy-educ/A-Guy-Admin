@@ -45,7 +45,7 @@ export interface GrowCheckoutResult {
 
 interface GrowCreateProcessResponse {
   status: 0 | 1
-  err?: string
+  err?: unknown
   data?: {
     url?: string
     processId?: string
@@ -91,7 +91,7 @@ export async function createGrowCheckout(
 
   const data = (await response.json()) as GrowCreateProcessResponse
   if (data.status !== 1 || !data.data?.url) {
-    throw new Error(`Grow createPaymentProcess failed: ${data.err ?? JSON.stringify(data)}`)
+    throw new Error(`Grow createPaymentProcess failed: ${JSON.stringify(data)}`)
   }
 
   return {
