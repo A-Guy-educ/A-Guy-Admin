@@ -1,0 +1,1531 @@
+================================================================================
+תרגיל 1 – מנחה: הבנת מושג התלילות באופן אינטואיטיבי וחזותי על ידי השוואת…
+================================================================================
+לפנינו מערכת צירים ברשת משובצת ועליה משורטטים שני ישרים עולים. עבור כל ישר מודגש "משולש מדרגה" המראה כמה יחידות עולים לגובה בכל התקדמות אופקית ימינה.
+
+  <svg width="450" height="350" viewBox="0 0 450 350" xmlns="http://www.w3.org/2000/svg" font-family="Arial, sans-serif">
+    <defs>
+      <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#333"/>
+      </marker>
+    </defs>
+
+    <!-- רשת משובצת -->
+    <g stroke="#e2e8f0" stroke-width="1">
+      <line x1="60" y1="280" x2="380" y2="280"/>
+      <line x1="60" y1="230" x2="380" y2="230"/>
+      <line x1="60" y1="180" x2="380" y2="180"/>
+      <line x1="60" y1="130" x2="380" y2="130"/>
+      <line x1="60" y1="80" x2="380" y2="80"/>
+      <line x1="60" y1="30" x2="380" y2="30"/>
+
+      <line x1="60" y1="30" x2="60" y2="280"/>
+      <line x1="110" y1="30" x2="110" y2="280"/>
+      <line x1="160" y1="30" x2="160" y2="280"/>
+      <line x1="210" y1="30" x2="210" y2="280"/>
+      <line x1="260" y1="30" x2="260" y2="280"/>
+      <line x1="310" y1="30" x2="310" y2="280"/>
+      <line x1="360" y1="30" x2="360" y2="280"/>
+    </g>
+
+    <!-- צירים -->
+    <line x1="40" y1="280" x2="400" y2="280" stroke="#1f2937" stroke-width="2" marker-end="url(#arrow)"/>
+    <line x1="60" y1="300" x2="60" y2="15" stroke="#1f2937" stroke-width="2" marker-end="url(#arrow)"/>
+
+    <text x="410" y="284" font-size="14" font-weight="bold" fill="#1f2937">x</text>
+    <text x="60" y="10" font-size="14" font-weight="bold" fill="#1f2937" text-anchor="middle">y</text>
+    <text x="48" y="295" font-size="12" fill="#64748b">0</text>
+
+    <!-- שנתות ומספרים על הצירים -->
+    <g font-size="12" fill="#64748b" text-anchor="middle">
+      <text x="110" y="298">1</text>
+      <text x="160" y="298">2</text>
+      <text x="210" y="298">3</text>
+      <text x="260" y="298">4</text>
+      <text x="310" y="298">5</text>
+      <text x="360" y="298">6</text>
+    </g>
+
+    <g font-size="12" fill="#64748b" text-anchor="end" dominant-baseline="middle">
+      <text x="52" y="230">1</text>
+      <text x="52" y="180">2</text>
+      <text x="52" y="130">3</text>
+      <text x="52" y="80">4</text>
+      <text x="52" y="30">5</text>
+    </g>
+
+    <!-- משולש מדרגה לישר ב' (כתום בהיר) -->
+    <polygon points="110,230 160,230 160,180" fill="#fed7aa" fill-opacity="0.6" stroke="#f97316" stroke-width="1.5" stroke-dasharray="3,3"/>
+    <text x="135" y="244" font-size="11" fill="#ea580c" text-anchor="middle" font-weight="bold">1</text>
+    <text x="168" y="208" font-size="11" fill="#ea580c" text-anchor="start" font-weight="bold">1</text>
+
+    <!-- משולש מדרגה לישר א' (כחול בהיר) -->
+    <polygon points="110,180 160,180 160,80" fill="#bae6fd" fill-opacity="0.6" stroke="#0284c7" stroke-width="1.5" stroke-dasharray="3,3"/>
+    <text x="135" y="174" font-size="11" fill="#0284c7" text-anchor="middle" font-weight="bold">1</text>
+    <text x="168" y="133" font-size="11" fill="#0284c7" text-anchor="start" font-weight="bold">2</text>
+
+    <!-- ישר ב' (כתום) -->
+    <line x1="40" y1="300" x2="330" y2="10" stroke="#f97316" stroke-width="2.5"/>
+    <text x="335" y="20" font-size="13" font-weight="bold" fill="#ea580c" direction="rtl">ישר ב'</text>
+
+    <!-- ישר א' (כחול) -->
+    <line x1="45" y1="310" x2="185" y2="30" stroke="#0284c7" stroke-width="2.5"/>
+    <text x="190" y="35" font-size="13" font-weight="bold" fill="#0284c7" direction="rtl">ישר א'</text>
+
+    <!-- נקודות על ישר א' (כחול) -->
+    <circle cx="60" cy="280" r="4" fill="#0284c7"/>
+    <circle cx="110" cy="180" r="4" fill="#0284c7"/>
+    <circle cx="160" cy="80" r="4" fill="#0284c7"/>
+
+    <!-- נקודות על ישר ב' (כתום) -->
+    <circle cx="110" cy="230" r="4" fill="#ea580c"/>
+    <circle cx="160" cy="180" r="4" fill="#ea580c"/>
+    <circle cx="210" cy="130" r="4" fill="#ea580c"/>
+  </svg>
+
+<svg width="450" height="350" viewBox="0 0 450 350" xmlns="http://www.w3.org/2000/svg" font-family="Arial, sans-serif">
+    <defs>
+      <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#333"/>
+      </marker>
+    </defs>
+
+    <!-- רשת משובצת -->
+    <g stroke="#e2e8f0" stroke-width="1">
+      <line x1="60" y1="280" x2="380" y2="280"/>
+      <line x1="60" y1="230" x2="380" y2="230"/>
+      <line x1="60" y1="180" x2="380" y2="180"/>
+      <line x1="60" y1="130" x2="380" y2="130"/>
+      <line x1="60" y1="80" x2="380" y2="80"/>
+      <line x1="60" y1="30" x2="380" y2="30"/>
+
+      <line x1="60" y1="30" x2="60" y2="280"/>
+      <line x1="110" y1="30" x2="110" y2="280"/>
+      <line x1="160" y1="30" x2="160" y2="280"/>
+      <line x1="210" y1="30" x2="210" y2="280"/>
+      <line x1="260" y1="30" x2="260" y2="280"/>
+      <line x1="310" y1="30" x2="310" y2="280"/>
+      <line x1="360" y1="30" x2="360" y2="280"/>
+    </g>
+
+    <!-- צירים -->
+    <line x1="40" y1="280" x2="400" y2="280" stroke="#1f2937" stroke-width="2" marker-end="url(#arrow)"/>
+    <line x1="60" y1="300" x2="60" y2="15" stroke="#1f2937" stroke-width="2" marker-end="url(#arrow)"/>
+
+    <text x="410" y="284" font-size="14" font-weight="bold" fill="#1f2937">x</text>
+    <text x="60" y="10" font-size="14" font-weight="bold" fill="#1f2937" text-anchor="middle">y</text>
+    <text x="48" y="295" font-size="12" fill="#64748b">0</text>
+
+    <!-- שנתות ומספרים על הצירים -->
+    <g font-size="12" fill="#64748b" text-anchor="middle">
+      <text x="110" y="298">1</text>
+      <text x="160" y="298">2</text>
+      <text x="210" y="298">3</text>
+      <text x="260" y="298">4</text>
+      <text x="310" y="298">5</text>
+      <text x="360" y="298">6</text>
+    </g>
+
+    <g font-size="12" fill="#64748b" text-anchor="end" dominant-baseline="middle">
+      <text x="52" y="230">1</text>
+      <text x="52" y="180">2</text>
+      <text x="52" y="130">3</text>
+      <text x="52" y="80">4</text>
+      <text x="52" y="30">5</text>
+    </g>
+
+    <!-- משולש מדרגה לישר ב' (כתום בהיר) -->
+    <polygon points="110,230 160,230 160,180" fill="#fed7aa" fill-opacity="0.6" stroke="#f97316" stroke-width="1.5" stroke-dasharray="3,3"/>
+    <text x="135" y="244" font-size="11" fill="#ea580c" text-anchor="middle" font-weight="bold">1</text>
+    <text x="168" y="208" font-size="11" fill="#ea580c" text-anchor="start" font-weight="bold">1</text>
+
+    <!-- משולש מדרגה לישר א' (כחול בהיר) -->
+    <polygon points="110,180 160,180 160,80" fill="#bae6fd" fill-opacity="0.6" stroke="#0284c7" stroke-width="1.5" stroke-dasharray="3,3"/>
+    <text x="135" y="174" font-size="11" fill="#0284c7" text-anchor="middle" font-weight="bold">1</text>
+    <text x="168" y="133" font-size="11" fill="#0284c7" text-anchor="start" font-weight="bold">2</text>
+
+    <!-- ישר ב' (כתום) -->
+    <line x1="40" y1="300" x2="330" y2="10" stroke="#f97316" stroke-width="2.5"/>
+    <text x="335" y="20" font-size="13" font-weight="bold" fill="#ea580c" direction="rtl">ישר ב'</text>
+
+    <!-- ישר א' (כחול) -->
+    <line x1="45" y1="310" x2="185" y2="30" stroke="#0284c7" stroke-width="2.5"/>
+    <text x="190" y="35" font-size="13" font-weight="bold" fill="#0284c7" direction="rtl">ישר א'</text>
+
+    <!-- נקודות על ישר א' (כחול) -->
+    <circle cx="60" cy="280" r="4" fill="#0284c7"/>
+    <circle cx="110" cy="180" r="4" fill="#0284c7"/>
+    <circle cx="160" cy="80" r="4" fill="#0284c7"/>
+
+    <!-- נקודות על ישר ב' (כתום) -->
+    <circle cx="110" cy="230" r="4" fill="#ea580c"/>
+    <circle cx="160" cy="180" r="4" fill="#ea580c"/>
+    <circle cx="210" cy="130" r="4" fill="#ea580c"/>
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 1 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: התבוננו בשני הישרים בשרטוט. איזה מבין שני הישרים נראה תלול יותר (יוצר זווית גדולה יותר עם הכיוון החיובי של ציר ה-x)?
+* אופציות:
+  - ישר א' (הכחול)
+  - ישר ב' (הכתום)
+* פתרון נכון: ישר א' (הכחול)
+* פתרון מלא: במבט חזותי בגרף, ישר א' מזדקר מהר יותר כלפי מעלה ויוצר זווית גדולה יותר עם הציר האופקי, ולכן הוא תלול יותר מישר ב'.
+
+--------------------------------------------------------------------------------
+[תרגיל 1 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: כאשר אנחנו מתקדמים בדיוק משבצת אחת ימינה לאורך ציר ה-x, באיזה ישר אנחנו עולים יותר משבצות לגובה?
+* אופציות:
+  - בישר א'
+  - בישר ב'
+* פתרון נכון: בישר א'
+* פתרון מלא: בישר א' עלייה של 2 משבצות לגובה על כל משבצת אחת ימינה, ואילו בישר ב' עולים רק משבצת אחת לגובה על כל משבצת אחת ימינה.
+
+--------------------------------------------------------------------------------
+[תרגיל 1 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: מהו מספר המשבצות שישר א' עולה לגובה בכל התקדמות של משבצת אחת ימינה?
+* אופציות:
+  - משבצת 1
+  - 2 משבצות
+  - 3 משבצות
+* פתרון נכון: 2 משבצות
+* פתרון מלא: לפי משולש המדרגה של ישר א', על כל צעד אופקי של 1 יחידה ימינה מתרחשת עלייה אנכית של 2 יחידות למעלה.
+
+--------------------------------------------------------------------------------
+[תרגיל 1 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: ישר א' שומר על קצב עלייה קבוע. חשבו כמה יחידות בסך הכול יעלה הישר לגובה אם נתקדם 4 יחידות ימינה.
+* פתרון נכון: מכיוון שעל כל יחידה אחת ימינה הישר עולה 2 יחידות לגובה, עבור 4 יחידות ימינה נקבל עלייה של: 4 כפול 2 שווה 8 יחידות לגובה.
+* פתרון מלא: מכיוון שעל כל יחידה אחת ימינה הישר עולה 2 יחידות לגובה, עבור 4 יחידות ימינה נקבל עלייה של: 4 כפול 2 שווה 8 יחידות לגובה.
+
+================================================================================
+תרגיל 2 – מנחה: הגדרת המושג 'שיפוע' כמספר הצעדים האנכיים שנעשים עבור צעד…
+================================================================================
+במתמטיקה אנחנו מגדירים את ה"שיפוע" של ישר (המסומן באות m) כמספר היחידות שהישר עולה או יורד בציר ה-y בעבור התקדמות של יחידה אחת ימינה בציר ה-x.
+
+  <svg width="420" height="320" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1 L 10 5 L 0 9 z" fill="#333333"/>
+      </marker>
+      <marker id="stepArrowX" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1 L 10 5 L 0 9 z" fill="#0284c7"/>
+      </marker>
+      <marker id="stepArrowY" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1 L 10 5 L 0 9 z" fill="#dc2626"/>
+      </marker>
+    </defs>
+
+    <!-- רשת משובצת -->
+    <g stroke="#e2e8f0" stroke-width="1">
+      <!-- קווים אנכיים -->
+      <line x1="60" y1="20" x2="60" y2="280"/>
+      <line x1="140" y1="20" x2="140" y2="280"/>
+      <line x1="220" y1="20" x2="220" y2="280"/>
+      <line x1="300" y1="20" x2="300" y2="280"/>
+      <line x1="380" y1="20" x2="380" y2="280"/>
+
+      <!-- קווים אופקיים -->
+      <line x1="40" y1="270" x2="400" y2="270"/>
+      <line x1="40" y1="235" x2="400" y2="235"/>
+      <line x1="40" y1="200" x2="400" y2="200"/>
+      <line x1="40" y1="165" x2="400" y2="165"/>
+      <line x1="40" y1="130" x2="400" y2="130"/>
+      <line x1="40" y1="95" x2="400" y2="95"/>
+      <line x1="40" y1="60" x2="400" y2="60"/>
+      <line x1="40" y1="25" x2="400" y2="25"/>
+    </g>
+
+    <!-- צירים -->
+    <line x1="40" y1="270" x2="400" y2="270" stroke="#333333" stroke-width="2" marker-end="url(#arrow)"/>
+    <line x1="60" y1="285" x2="60" y2="25" stroke="#333333" stroke-width="2" marker-end="url(#arrow)"/>
+
+    <text x="395" y="290" font-family="sans-serif" font-size="14" font-weight="bold">x</text>
+    <text x="45" y="25" font-family="sans-serif" font-size="14" font-weight="bold">y</text>
+
+    <!-- שנתות ומספרים על ציר X -->
+    <text x="55" y="288" font-family="sans-serif" font-size="12" fill="#555">0</text>
+    <line x1="140" y1="267" x2="140" y2="273" stroke="#333" stroke-width="1.5"/>
+    <text x="137" y="288" font-family="sans-serif" font-size="12" fill="#555">1</text>
+    <line x1="220" y1="267" x2="220" y2="273" stroke="#333" stroke-width="1.5"/>
+    <text x="217" y="288" font-family="sans-serif" font-size="12" fill="#555">2</text>
+    <line x1="300" y1="267" x2="300" y2="273" stroke="#333" stroke-width="1.5"/>
+    <text x="297" y="288" font-family="sans-serif" font-size="12" fill="#555">3</text>
+
+    <!-- שנתות ומספרים על ציר Y -->
+    <line x1="57" y1="165" x2="63" y2="165" stroke="#333" stroke-width="1.5"/>
+    <text x="43" y="169" font-family="sans-serif" font-size="12" fill="#555">3</text>
+    <line x1="57" y1="60" x2="63" y2="60" stroke="#333" stroke-width="1.5"/>
+    <text x="43" y="64" font-family="sans-serif" font-size="12" fill="#555">6</text>
+
+    <!-- הישר הירוק -->
+    <line x1="60" y1="270" x2="245" y2="27" stroke="#16a34a" stroke-width="3.5" stroke-linecap="round"/>
+
+    <!-- מדרגה 1: מ-(0,0) ל-(1,3) -->
+    <!-- חץ אופקי: 1 ימינה -->
+    <line x1="60" y1="270" x2="135" y2="270" stroke="#0284c7" stroke-width="2" stroke-dasharray="4,3" marker-end="url(#stepArrowX)"/>
+    <text x="75" y="262" font-family="sans-serif" font-size="12" fill="#0284c7" font-weight="bold" direction="rtl">1 ימינה</text>
+
+    <!-- חץ אנכי: 3 למעלה -->
+    <line x1="140" y1="270" x2="140" y2="172" stroke="#dc2626" stroke-width="2" stroke-dasharray="4,3" marker-end="url(#stepArrowY)"/>
+    <text x="145" y="225" font-family="sans-serif" font-size="12" fill="#dc2626" font-weight="bold" direction="rtl">3 למעלה</text>
+
+    <!-- מדרגה 2: מ-(1,3) ל-(2,6) -->
+    <!-- חץ אופקי: 1 ימינה -->
+    <line x1="140" y1="165" x2="215" y2="165" stroke="#0284c7" stroke-width="2" stroke-dasharray="4,3" marker-end="url(#stepArrowX)"/>
+    <text x="155" y="157" font-family="sans-serif" font-size="12" fill="#0284c7" font-weight="bold" direction="rtl">1 ימינה</text>
+
+    <!-- חץ אנכי: 3 למעלה -->
+    <line x1="220" y1="165" x2="220" y2="67" stroke="#dc2626" stroke-width="2" stroke-dasharray="4,3" marker-end="url(#stepArrowY)"/>
+    <text x="225" y="120" font-family="sans-serif" font-size="12" fill="#dc2626" font-weight="bold" direction="rtl">3 למעלה</text>
+
+    <!-- נקודות מודגשות לאורך הישר -->
+    <circle cx="60" cy="270" r="5" fill="#15803d"/>
+    <circle cx="140" cy="165" r="5" fill="#15803d"/>
+    <circle cx="220" cy="60" r="5" fill="#15803d"/>
+
+    <!-- תוויות הנקודות -->
+    <text x="65" y="255" font-family="sans-serif" font-size="11" font-weight="bold" fill="#15803d">(0,0)</text>
+    <text x="100" y="155" font-family="sans-serif" font-size="11" font-weight="bold" fill="#15803d">(1,3)</text>
+    <text x="180" y="50" font-family="sans-serif" font-size="11" font-weight="bold" fill="#15803d">(2,6)</text>
+  </svg>
+
+<svg width="420" height="320" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1 L 10 5 L 0 9 z" fill="#333333"/>
+      </marker>
+      <marker id="stepArrowX" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1 L 10 5 L 0 9 z" fill="#0284c7"/>
+      </marker>
+      <marker id="stepArrowY" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1 L 10 5 L 0 9 z" fill="#dc2626"/>
+      </marker>
+    </defs>
+
+    <!-- רשת משובצת -->
+    <g stroke="#e2e8f0" stroke-width="1">
+      <!-- קווים אנכיים -->
+      <line x1="60" y1="20" x2="60" y2="280"/>
+      <line x1="140" y1="20" x2="140" y2="280"/>
+      <line x1="220" y1="20" x2="220" y2="280"/>
+      <line x1="300" y1="20" x2="300" y2="280"/>
+      <line x1="380" y1="20" x2="380" y2="280"/>
+
+      <!-- קווים אופקיים -->
+      <line x1="40" y1="270" x2="400" y2="270"/>
+      <line x1="40" y1="235" x2="400" y2="235"/>
+      <line x1="40" y1="200" x2="400" y2="200"/>
+      <line x1="40" y1="165" x2="400" y2="165"/>
+      <line x1="40" y1="130" x2="400" y2="130"/>
+      <line x1="40" y1="95" x2="400" y2="95"/>
+      <line x1="40" y1="60" x2="400" y2="60"/>
+      <line x1="40" y1="25" x2="400" y2="25"/>
+    </g>
+
+    <!-- צירים -->
+    <line x1="40" y1="270" x2="400" y2="270" stroke="#333333" stroke-width="2" marker-end="url(#arrow)"/>
+    <line x1="60" y1="285" x2="60" y2="25" stroke="#333333" stroke-width="2" marker-end="url(#arrow)"/>
+
+    <text x="395" y="290" font-family="sans-serif" font-size="14" font-weight="bold">x</text>
+    <text x="45" y="25" font-family="sans-serif" font-size="14" font-weight="bold">y</text>
+
+    <!-- שנתות ומספרים על ציר X -->
+    <text x="55" y="288" font-family="sans-serif" font-size="12" fill="#555">0</text>
+    <line x1="140" y1="267" x2="140" y2="273" stroke="#333" stroke-width="1.5"/>
+    <text x="137" y="288" font-family="sans-serif" font-size="12" fill="#555">1</text>
+    <line x1="220" y1="267" x2="220" y2="273" stroke="#333" stroke-width="1.5"/>
+    <text x="217" y="288" font-family="sans-serif" font-size="12" fill="#555">2</text>
+    <line x1="300" y1="267" x2="300" y2="273" stroke="#333" stroke-width="1.5"/>
+    <text x="297" y="288" font-family="sans-serif" font-size="12" fill="#555">3</text>
+
+    <!-- שנתות ומספרים על ציר Y -->
+    <line x1="57" y1="165" x2="63" y2="165" stroke="#333" stroke-width="1.5"/>
+    <text x="43" y="169" font-family="sans-serif" font-size="12" fill="#555">3</text>
+    <line x1="57" y1="60" x2="63" y2="60" stroke="#333" stroke-width="1.5"/>
+    <text x="43" y="64" font-family="sans-serif" font-size="12" fill="#555">6</text>
+
+    <!-- הישר הירוק -->
+    <line x1="60" y1="270" x2="245" y2="27" stroke="#16a34a" stroke-width="3.5" stroke-linecap="round"/>
+
+    <!-- מדרגה 1: מ-(0,0) ל-(1,3) -->
+    <!-- חץ אופקי: 1 ימינה -->
+    <line x1="60" y1="270" x2="135" y2="270" stroke="#0284c7" stroke-width="2" stroke-dasharray="4,3" marker-end="url(#stepArrowX)"/>
+    <text x="75" y="262" font-family="sans-serif" font-size="12" fill="#0284c7" font-weight="bold" direction="rtl">1 ימינה</text>
+
+    <!-- חץ אנכי: 3 למעלה -->
+    <line x1="140" y1="270" x2="140" y2="172" stroke="#dc2626" stroke-width="2" stroke-dasharray="4,3" marker-end="url(#stepArrowY)"/>
+    <text x="145" y="225" font-family="sans-serif" font-size="12" fill="#dc2626" font-weight="bold" direction="rtl">3 למעלה</text>
+
+    <!-- מדרגה 2: מ-(1,3) ל-(2,6) -->
+    <!-- חץ אופקי: 1 ימינה -->
+    <line x1="140" y1="165" x2="215" y2="165" stroke="#0284c7" stroke-width="2" stroke-dasharray="4,3" marker-end="url(#stepArrowX)"/>
+    <text x="155" y="157" font-family="sans-serif" font-size="12" fill="#0284c7" font-weight="bold" direction="rtl">1 ימינה</text>
+
+    <!-- חץ אנכי: 3 למעלה -->
+    <line x1="220" y1="165" x2="220" y2="67" stroke="#dc2626" stroke-width="2" stroke-dasharray="4,3" marker-end="url(#stepArrowY)"/>
+    <text x="225" y="120" font-family="sans-serif" font-size="12" fill="#dc2626" font-weight="bold" direction="rtl">3 למעלה</text>
+
+    <!-- נקודות מודגשות לאורך הישר -->
+    <circle cx="60" cy="270" r="5" fill="#15803d"/>
+    <circle cx="140" cy="165" r="5" fill="#15803d"/>
+    <circle cx="220" cy="60" r="5" fill="#15803d"/>
+
+    <!-- תוויות הנקודות -->
+    <text x="65" y="255" font-family="sans-serif" font-size="11" font-weight="bold" fill="#15803d">(0,0)</text>
+    <text x="100" y="155" font-family="sans-serif" font-size="11" font-weight="bold" fill="#15803d">(1,3)</text>
+    <text x="180" y="50" font-family="sans-serif" font-size="11" font-weight="bold" fill="#15803d">(2,6)</text>
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 2 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: כאשר אנחנו מתבוננים בגרף הישר ומתקדמים משמאל לימין (עם כיוון ציר ה-x), האם הישר עולה או יורד?
+* אופציות:
+  - הישר עולה
+  - הישר יורד
+* פתרון נכון: הישר עולה
+* פתרון מלא: כאשר נעים משמאל לימין לאורך ציר ה-x, קו הישר מטפס כלפי מעלה, ולכן זהו ישר עולה.
+
+--------------------------------------------------------------------------------
+[תרגיל 2 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: האם קצב העלייה לגובה של הישר נשאר קבוע בכל נקודה, או שהוא משתנה מקטע לקטע?
+* אופציות:
+  - קצב העלייה קבוע לכל אורך הישר
+  - קצב העלייה משתנה מקטע לקטע
+* פתרון נכון: קצב העלייה קבוע לכל אורך הישר
+* פתרון מלא: אחד המאפיינים הבסיסיים של קו ישר הוא שקצב השינוי (השיפוע) שלו קבוע לכל אורכו — בכל צעד של 1 ימינה עולים תמיד בדיוק 3 יחידות לגובה.
+
+--------------------------------------------------------------------------------
+[תרגיל 2 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: מהו ערך השיפוע (m) של הישר המשורטט?
+* אופציות:
+  - m = 1
+  - m = 2
+  - m = 3
+* פתרון נכון: m = 3
+* פתרון מלא: שיפוע הישר מוגדר כמספר היחידות שעולים לגובה עבור צעד 1 ימינה. בשרטוט רואים שעל כל 1 צעד ימינה עולים 3 יחידות, ולכן m = 3.
+
+--------------------------------------------------------------------------------
+[תרגיל 2 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: הישר מתחיל בנקודה (0,0) ועולה בשיפוע קבוע m = 3. מצאו את שיעור ה-y של נקודה על הישר ששיעור ה-x שלה הוא 5.
+* פתרון נכון: אם על כל התקדמות של יחידה אחת ב-x ערך y גדל ב-3, אז כאשר x = 5 ערך y יהיה: 5 כפול 3 שווה 15. הנקודה היא (5, 15).
+* פתרון מלא: אם על כל התקדמות של יחידה אחת ב-x ערך y גדל ב-3, אז כאשר x = 5 ערך y יהיה: 5 כפול 3 שווה 15. הנקודה היא (5, 15).
+
+================================================================================
+תרגיל 3 – מנחה: חישוב שיפוע כאשר המדרגה האופקית גדולה מ-1 באמצעות מנת…
+================================================================================
+לעיתים נוח יותר למדוד מדרגה שאינה ברוחב של יחידה אחת בלבד. במקרה זה, שיפוע הישר מחושב כיחס: השינוי האנכי (בציר y) חלקי השינוי האופקי (בציר x).
+
+  <svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#333"/>
+      </marker>
+    </defs>
+
+    <!-- רשת רקע עדינה -->
+    <g stroke="#f0f0f0" stroke-width="1">
+      <line x1="105" y1="30" x2="105" y2="250" />
+      <line x1="150" y1="30" x2="150" y2="250" />
+      <line x1="195" y1="30" x2="195" y2="250" />
+      <line x1="240" y1="30" x2="240" y2="250" />
+      <line x1="285" y1="30" x2="285" y2="250" />
+      <line x1="330" y1="30" x2="330" y2="250" />
+      <line x1="50" y1="210" x2="360" y2="210" />
+      <line x1="50" y1="170" x2="360" y2="170" />
+      <line x1="50" y1="130" x2="360" y2="130" />
+      <line x1="50" y1="90" x2="360" y2="90" />
+      <line x1="50" y1="50" x2="360" y2="50" />
+    </g>
+
+    <!-- ציר X וציר Y -->
+    <line x1="50" y1="250" x2="370" y2="250" stroke="#333" stroke-width="1.5" marker-end="url(#arrow)" />
+    <line x1="60" y1="260" x2="60" y2="25" stroke="#333" stroke-width="1.5" marker-end="url(#arrow)" />
+    <text x="365" y="268" font-size="12" font-family="sans-serif" font-weight="bold">x</text>
+    <text x="45" y="30" font-size="12" font-family="sans-serif" font-weight="bold">y</text>
+    <text x="50" y="265" font-size="11" font-family="sans-serif">0</text>
+
+    <!-- שנתות ציר X -->
+    <line x1="105" y1="247" x2="105" y2="253" stroke="#333" stroke-width="1.5"/>
+    <text x="102" y="266" font-size="11" font-family="sans-serif">1</text>
+    <line x1="285" y1="247" x2="285" y2="253" stroke="#333" stroke-width="1.5"/>
+    <text x="282" y="266" font-size="11" font-family="sans-serif">5</text>
+
+    <!-- שנתות ציר Y -->
+    <line x1="57" y1="170" x2="63" y2="170" stroke="#333" stroke-width="1.5"/>
+    <text x="45" y="174" font-size="11" font-family="sans-serif">2</text>
+    <line x1="57" y1="90" x2="63" y2="90" stroke="#333" stroke-width="1.5"/>
+    <text x="45" y="94" font-size="11" font-family="sans-serif">4</text>
+
+    <!-- משולש מדרגה -->
+    <polygon points="105,170 285,170 285,90" fill="#f59e0b" fill-opacity="0.1" />
+    <line x1="105" y1="170" x2="285" y2="170" stroke="#d97706" stroke-width="2" stroke-dasharray="4,3" />
+    <line x1="285" y1="170" x2="285" y2="90" stroke="#d97706" stroke-width="2" stroke-dasharray="4,3" />
+
+    <!-- סימון זווית ישרה ב-(5,2) -->
+    <path d="M 273 170 L 273 158 L 285 158" fill="none" stroke="#d97706" stroke-width="1.5" />
+
+    <!-- תוויות מדרגת שיפוע -->
+    <text x="195" y="188" font-size="12" font-family="sans-serif" text-anchor="middle" fill="#b45309" direction="rtl">שינוי ב-x = 4</text>
+    <text x="295" y="135" font-size="12" font-family="sans-serif" text-anchor="start" fill="#b45309" direction="rtl">שינוי ב-y = 2</text>
+
+    <!-- ישר סגול -->
+    <line x1="60" y1="190" x2="350" y2="61" stroke="#7e22ce" stroke-width="2.5" />
+
+    <!-- נקודות מודגשות וקואורדינטות -->
+    <circle cx="105" cy="170" r="4.5" fill="#7e22ce" stroke="#ffffff" stroke-width="1.5" />
+    <text x="100" y="155" font-size="12" font-family="sans-serif" font-weight="bold" fill="#581c87" text-anchor="end">A(1, 2)</text>
+
+    <circle cx="285" cy="90" r="4.5" fill="#7e22ce" stroke="#ffffff" stroke-width="1.5" />
+    <text x="280" y="78" font-size="12" font-family="sans-serif" font-weight="bold" fill="#581c87" text-anchor="end">B(5, 4)</text>
+  </svg>
+
+<svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#333"/>
+      </marker>
+    </defs>
+
+    <!-- רשת רקע עדינה -->
+    <g stroke="#f0f0f0" stroke-width="1">
+      <line x1="105" y1="30" x2="105" y2="250" />
+      <line x1="150" y1="30" x2="150" y2="250" />
+      <line x1="195" y1="30" x2="195" y2="250" />
+      <line x1="240" y1="30" x2="240" y2="250" />
+      <line x1="285" y1="30" x2="285" y2="250" />
+      <line x1="330" y1="30" x2="330" y2="250" />
+      <line x1="50" y1="210" x2="360" y2="210" />
+      <line x1="50" y1="170" x2="360" y2="170" />
+      <line x1="50" y1="130" x2="360" y2="130" />
+      <line x1="50" y1="90" x2="360" y2="90" />
+      <line x1="50" y1="50" x2="360" y2="50" />
+    </g>
+
+    <!-- ציר X וציר Y -->
+    <line x1="50" y1="250" x2="370" y2="250" stroke="#333" stroke-width="1.5" marker-end="url(#arrow)" />
+    <line x1="60" y1="260" x2="60" y2="25" stroke="#333" stroke-width="1.5" marker-end="url(#arrow)" />
+    <text x="365" y="268" font-size="12" font-family="sans-serif" font-weight="bold">x</text>
+    <text x="45" y="30" font-size="12" font-family="sans-serif" font-weight="bold">y</text>
+    <text x="50" y="265" font-size="11" font-family="sans-serif">0</text>
+
+    <!-- שנתות ציר X -->
+    <line x1="105" y1="247" x2="105" y2="253" stroke="#333" stroke-width="1.5"/>
+    <text x="102" y="266" font-size="11" font-family="sans-serif">1</text>
+    <line x1="285" y1="247" x2="285" y2="253" stroke="#333" stroke-width="1.5"/>
+    <text x="282" y="266" font-size="11" font-family="sans-serif">5</text>
+
+    <!-- שנתות ציר Y -->
+    <line x1="57" y1="170" x2="63" y2="170" stroke="#333" stroke-width="1.5"/>
+    <text x="45" y="174" font-size="11" font-family="sans-serif">2</text>
+    <line x1="57" y1="90" x2="63" y2="90" stroke="#333" stroke-width="1.5"/>
+    <text x="45" y="94" font-size="11" font-family="sans-serif">4</text>
+
+    <!-- משולש מדרגה -->
+    <polygon points="105,170 285,170 285,90" fill="#f59e0b" fill-opacity="0.1" />
+    <line x1="105" y1="170" x2="285" y2="170" stroke="#d97706" stroke-width="2" stroke-dasharray="4,3" />
+    <line x1="285" y1="170" x2="285" y2="90" stroke="#d97706" stroke-width="2" stroke-dasharray="4,3" />
+
+    <!-- סימון זווית ישרה ב-(5,2) -->
+    <path d="M 273 170 L 273 158 L 285 158" fill="none" stroke="#d97706" stroke-width="1.5" />
+
+    <!-- תוויות מדרגת שיפוע -->
+    <text x="195" y="188" font-size="12" font-family="sans-serif" text-anchor="middle" fill="#b45309" direction="rtl">שינוי ב-x = 4</text>
+    <text x="295" y="135" font-size="12" font-family="sans-serif" text-anchor="start" fill="#b45309" direction="rtl">שינוי ב-y = 2</text>
+
+    <!-- ישר סגול -->
+    <line x1="60" y1="190" x2="350" y2="61" stroke="#7e22ce" stroke-width="2.5" />
+
+    <!-- נקודות מודגשות וקואורדינטות -->
+    <circle cx="105" cy="170" r="4.5" fill="#7e22ce" stroke="#ffffff" stroke-width="1.5" />
+    <text x="100" y="155" font-size="12" font-family="sans-serif" font-weight="bold" fill="#581c87" text-anchor="end">A(1, 2)</text>
+
+    <circle cx="285" cy="90" r="4.5" fill="#7e22ce" stroke="#ffffff" stroke-width="1.5" />
+    <text x="280" y="78" font-size="12" font-family="sans-serif" font-weight="bold" fill="#581c87" text-anchor="end">B(5, 4)</text>
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 3 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: מה מייצג הבסיס האופקי של משולש המדרגה (באורך 4 יחידות)?
+* אופציות:
+  - את השינוי בערכי x בין שתי הנקודות
+  - את השינוי בערכי y בין שתי הנקודות
+* פתרון נכון: את השינוי בערכי x בין שתי הנקודות
+* פתרון מלא: כיוון אופקי הוא כיוון ציר ה-x, ולכן המרחק האופקי בין 1 ל-5 מייצג את השינוי בשיעורי ה-x (כלומר: 5 פחות 1 שווה 4).
+
+--------------------------------------------------------------------------------
+[תרגיל 3 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: במשולש המדרגה שנוצר, העלייה האנכית (2) קטנה מההתקדמות האופקית (4). האם שיפוע הישר קטן מ-1 או גדול מ-1?
+* אופציות:
+  - קטן מ-1
+  - גדול מ-1
+* פתרון נכון: קטן מ-1
+* פתרון מלא: כאשר העלייה האנכית קטנה מההתקדמות האופקית, מנת החלוקה (היחס) קטנה מ-1.
+
+--------------------------------------------------------------------------------
+[תרגיל 3 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: חשבו את שיפוע הישר על ידי חלוקת השינוי ב-y בשינוי ב-x:
+* אופציות:
+  - 0.5 (חצי)
+  - 2
+  - 4
+* פתרון נכון: 0.5 (חצי)
+* פתרון מלא: היחס הוא השינוי ב-y חלקי השינוי ב-x: 2 חלקי 4, ששווה לאחר צמצום ל-1/2, כלומר 0.5.
+
+--------------------------------------------------------------------------------
+[תרגיל 3 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: בהסתמך על שיפוע הישר (m = 0.5), חשבו מה יהיה השינוי ב-y אם השינוי ב-x יהיה 10 יחידות.
+* פתרון נכון: השינוי ב-y שווה למכפלת השיפוע בשינוי ב-x: 0.5 כפול 10 שווה 5. השינוי ב-y יהיה 5 יחידות.
+* פתרון מלא: השינוי ב-y שווה למכפלת השיפוע בשינוי ב-x: 0.5 כפול 10 שווה 5. השינוי ב-y יהיה 5 יחידות.
+
+================================================================================
+תרגיל 4 – בסיס: הבחנה בין ישר עולה (שיפוע חיובי) לישר יורד (שיפוע שלילי)
+================================================================================
+נבחן את הקשר בין כיוון הישר לבין הסימן של שיפועו (חיובי או שלילי).
+
+  <svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <!-- חץ לצירים -->
+      <marker id="arrow-axis" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#333"/>
+      </marker>
+      <!-- חץ לישר ירוק -->
+      <marker id="arrow-green" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#2e7d32"/>
+      </marker>
+      <!-- חץ לישר אדום -->
+      <marker id="arrow-red" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#c62828"/>
+      </marker>
+    </defs>
+
+    <!-- ציר X -->
+    <line x1="30" y1="170" x2="375" y2="170" stroke="#333" stroke-width="1.5" marker-end="url(#arrow-axis)"/>
+    <text x="385" y="175" font-family="sans-serif" font-size="14" font-weight="bold" fill="#333">x</text>
+
+    <!-- ציר Y -->
+    <line x1="200" y1="280" x2="200" y2="25" stroke="#333" stroke-width="1.5" marker-end="url(#arrow-axis)"/>
+    <text x="200" y="18" font-family="sans-serif" font-size="14" font-weight="bold" fill="#333" text-anchor="middle">y</text>
+
+    <!-- ראשית הצירים -->
+    <text x="188" y="188" font-family="sans-serif" font-size="12" fill="#666">O</text>
+
+    <!-- ישר א' (ירוק, עולה משמאל לימין) -->
+    <line x1="60" y1="194" x2="340" y2="26" stroke="#2e7d32" stroke-width="2.5" marker-end="url(#arrow-green)"/>
+    <text x="345" y="42" font-family="sans-serif" font-size="13" font-weight="bold" fill="#2e7d32" direction="rtl">ישר א׳</text>
+
+    <!-- ישר ב' (אדום, יורד משמאל לימין) -->
+    <line x1="60" y1="26" x2="340" y2="194" stroke="#c62828" stroke-width="2.5" marker-end="url(#arrow-red)"/>
+    <text x="345" y="208" font-family="sans-serif" font-size="13" font-weight="bold" fill="#c62828" direction="rtl">ישר ב׳</text>
+
+    <!-- נקודת חיתוך על ציר ה-Y -->
+    <circle cx="200" cy="110" r="4" fill="#1565c0"/>
+  </svg>
+
+<svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <!-- חץ לצירים -->
+      <marker id="arrow-axis" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#333"/>
+      </marker>
+      <!-- חץ לישר ירוק -->
+      <marker id="arrow-green" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#2e7d32"/>
+      </marker>
+      <!-- חץ לישר אדום -->
+      <marker id="arrow-red" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#c62828"/>
+      </marker>
+    </defs>
+
+    <!-- ציר X -->
+    <line x1="30" y1="170" x2="375" y2="170" stroke="#333" stroke-width="1.5" marker-end="url(#arrow-axis)"/>
+    <text x="385" y="175" font-family="sans-serif" font-size="14" font-weight="bold" fill="#333">x</text>
+
+    <!-- ציר Y -->
+    <line x1="200" y1="280" x2="200" y2="25" stroke="#333" stroke-width="1.5" marker-end="url(#arrow-axis)"/>
+    <text x="200" y="18" font-family="sans-serif" font-size="14" font-weight="bold" fill="#333" text-anchor="middle">y</text>
+
+    <!-- ראשית הצירים -->
+    <text x="188" y="188" font-family="sans-serif" font-size="12" fill="#666">O</text>
+
+    <!-- ישר א' (ירוק, עולה משמאל לימין) -->
+    <line x1="60" y1="194" x2="340" y2="26" stroke="#2e7d32" stroke-width="2.5" marker-end="url(#arrow-green)"/>
+    <text x="345" y="42" font-family="sans-serif" font-size="13" font-weight="bold" fill="#2e7d32" direction="rtl">ישר א׳</text>
+
+    <!-- ישר ב' (אדום, יורד משמאל לימין) -->
+    <line x1="60" y1="26" x2="340" y2="194" stroke="#c62828" stroke-width="2.5" marker-end="url(#arrow-red)"/>
+    <text x="345" y="208" font-family="sans-serif" font-size="13" font-weight="bold" fill="#c62828" direction="rtl">ישר ב׳</text>
+
+    <!-- נקודת חיתוך על ציר ה-Y -->
+    <circle cx="200" cy="110" r="4" fill="#1565c0"/>
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 4 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: התבוננו בישר האדום. כאשר נעים משמאל לימין לאורך ציר ה-x, מה קורה לערכי ה-y על הישר?
+* אופציות:
+  - ערכי ה-y גדלים
+  - ערכי ה-y קטנים
+* פתרון נכון: ערכי ה-y קטנים
+* פתרון מלא: בישר יורד, ככל שערכי ה-x גדלים (נעים ימינה), הגובה של הישר הולך ופוחת, ולכן ערכי ה-y קטנים.
+
+--------------------------------------------------------------------------------
+[תרגיל 4 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: מכיוון שבישר האדום ערכי ה-y קטנים ככל שמתקדמים ימינה, האם השינוי ב-y הוא חיובי או שלילי?
+* אופציות:
+  - חיובי
+  - שלילי
+* פתרון נכון: שלילי
+* פתרון מלא: ירידה בגובה פירושה שהערך הסופי קטן מהערך ההתחלתי, ולכן השינוי ב-y (הפרש הגבהים) הוא שלילי.
+
+--------------------------------------------------------------------------------
+[תרגיל 4 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: מהו סימן השיפוע (m) של ישר יורד?
+* אופציות:
+  - חיובי (m > 0)
+  - שלילי (m < 0)
+  - שווה לאפס (m = 0)
+* פתרון נכון: שלילי (m < 0)
+* פתרון מלא: שיפוע מוגדר כשינוי ב-y חלקי השינוי ב-x. עבור התקדמות חיובית ב-x יש ירידה (שינוי שלילי) ב-y, ומספר שלילי חלקי מספר חיובי נותן מספר שלילי.
+
+--------------------------------------------------------------------------------
+[תרגיל 4 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: רשמו דוגמה למספר שיכול לייצג שיפוע של ישר שיורד במתינות (ירידה איטית ולא תלולה).
+* פתרון נכון: כדי שהישר ירד השיפוע חייב להיות שלילי, וכדי שהירידה תהיה מתונה הערך המוחלט שלו צריך להיות קטן מ-1. דוגמאות מתאימות: 0.5- או 0.25- (או כל מספר שלילי בין 0 ל-1-).
+* פתרון מלא: כדי שהישר ירד השיפוע חייב להיות שלילי, וכדי שהירידה תהיה מתונה הערך המוחלט שלו צריך להיות קטן מ-1. דוגמאות מתאימות: 0.5- או 0.25- (או כל מספר שלילי בין 0 ל-1-).
+
+================================================================================
+תרגיל 5 – בסיס: חישוב מספרי של שיפוע שלילי מתוך שרטוט גרפי
+================================================================================
+לפנינו ישר יורד המשורטט במערכת צירים, ועליו מסומנות שתי נקודות ברורות. נחשב את שיפועו המספרי.
+
+  <svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <!-- חץ לצירים -->
+      <marker id="axis-arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+        <path d="M0,0 L6,3 L0,6 Z" fill="#333" />
+      </marker>
+      <!-- חץ למדרגה אופקית -->
+      <marker id="step-arrow-x" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+        <path d="M0,0 L6,3 L0,6 Z" fill="#2563eb" />
+      </marker>
+      <!-- חץ למדרגה אנכית -->
+      <marker id="step-arrow-y" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+        <path d="M0,0 L6,3 L0,6 Z" fill="#dc2626" />
+      </marker>
+    </defs>
+
+    <!-- ציר Y -->
+    <line x1="80" y1="270" x2="80" y2="25" stroke="#333" stroke-width="2" marker-end="url(#axis-arrow)" />
+    <text x="70" y="25" font-size="14" font-weight="bold" fill="#333">y</text>
+
+    <!-- ציר X -->
+    <line x1="50" y1="240" x2="360" y2="240" stroke="#333" stroke-width="2" marker-end="url(#axis-arrow)" />
+    <text x="365" y="245" font-size="14" font-weight="bold" fill="#333">x</text>
+
+    <!-- ראשית הצירים -->
+    <text x="68" y="255" font-size="12" fill="#666">0</text>
+
+    <!-- הישר היורד בצבע חום -->
+    <line x1="50" y1="30" x2="290" y2="270" stroke="#8B4513" stroke-width="3" stroke-linecap="round" />
+
+    <!-- מדרגה: קטע אופקי מ-(0,6) ל-(3,6) -->
+    <line x1="80" y1="60" x2="260" y2="60" stroke="#2563eb" stroke-width="2" stroke-dasharray="4 3" marker-end="url(#step-arrow-x)" />
+    <text x="170" y="50" font-size="13" font-weight="bold" fill="#2563eb" text-anchor="middle" direction="rtl">3 ימינה</text>
+
+    <!-- מדרגה: קטע אנכי יורד מ-(3,6) ל-(3,0) -->
+    <line x1="260" y1="60" x2="260" y2="240" stroke="#dc2626" stroke-width="2" stroke-dasharray="4 3" marker-end="url(#step-arrow-y)" />
+    <text x="270" y="155" font-size="13" font-weight="bold" fill="#dc2626" direction="rtl">6 למטה</text>
+
+    <!-- נקודה A(0,6) -->
+    <circle cx="80" cy="60" r="5" fill="#8B4513" stroke="#fff" stroke-width="1.5" />
+    <text x="25" y="65" font-size="13" font-weight="bold" fill="#111">A(0,6)</text>
+
+    <!-- נקודה B(3,0) -->
+    <circle cx="260" cy="240" r="5" fill="#8B4513" stroke="#fff" stroke-width="1.5" />
+    <text x="245" y="265" font-size="13" font-weight="bold" fill="#111">B(3,0)</text>
+  </svg>
+
+<svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <!-- חץ לצירים -->
+      <marker id="axis-arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+        <path d="M0,0 L6,3 L0,6 Z" fill="#333" />
+      </marker>
+      <!-- חץ למדרגה אופקית -->
+      <marker id="step-arrow-x" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+        <path d="M0,0 L6,3 L0,6 Z" fill="#2563eb" />
+      </marker>
+      <!-- חץ למדרגה אנכית -->
+      <marker id="step-arrow-y" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+        <path d="M0,0 L6,3 L0,6 Z" fill="#dc2626" />
+      </marker>
+    </defs>
+
+    <!-- ציר Y -->
+    <line x1="80" y1="270" x2="80" y2="25" stroke="#333" stroke-width="2" marker-end="url(#axis-arrow)" />
+    <text x="70" y="25" font-size="14" font-weight="bold" fill="#333">y</text>
+
+    <!-- ציר X -->
+    <line x1="50" y1="240" x2="360" y2="240" stroke="#333" stroke-width="2" marker-end="url(#axis-arrow)" />
+    <text x="365" y="245" font-size="14" font-weight="bold" fill="#333">x</text>
+
+    <!-- ראשית הצירים -->
+    <text x="68" y="255" font-size="12" fill="#666">0</text>
+
+    <!-- הישר היורד בצבע חום -->
+    <line x1="50" y1="30" x2="290" y2="270" stroke="#8B4513" stroke-width="3" stroke-linecap="round" />
+
+    <!-- מדרגה: קטע אופקי מ-(0,6) ל-(3,6) -->
+    <line x1="80" y1="60" x2="260" y2="60" stroke="#2563eb" stroke-width="2" stroke-dasharray="4 3" marker-end="url(#step-arrow-x)" />
+    <text x="170" y="50" font-size="13" font-weight="bold" fill="#2563eb" text-anchor="middle" direction="rtl">3 ימינה</text>
+
+    <!-- מדרגה: קטע אנכי יורד מ-(3,6) ל-(3,0) -->
+    <line x1="260" y1="60" x2="260" y2="240" stroke="#dc2626" stroke-width="2" stroke-dasharray="4 3" marker-end="url(#step-arrow-y)" />
+    <text x="270" y="155" font-size="13" font-weight="bold" fill="#dc2626" direction="rtl">6 למטה</text>
+
+    <!-- נקודה A(0,6) -->
+    <circle cx="80" cy="60" r="5" fill="#8B4513" stroke="#fff" stroke-width="1.5" />
+    <text x="25" y="65" font-size="13" font-weight="bold" fill="#111">A(0,6)</text>
+
+    <!-- נקודה B(3,0) -->
+    <circle cx="260" cy="240" r="5" fill="#8B4513" stroke="#fff" stroke-width="1.5" />
+    <text x="245" y="265" font-size="13" font-weight="bold" fill="#111">B(3,0)</text>
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 5 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: מבלי לבצע חישוב מדויק, האם שיפוע הישר בשרטוט יהיה חיובי או שלילי?
+* אופציות:
+  - חיובי
+  - שלילי
+* פתרון נכון: שלילי
+* פתרון מלא: הישר יורד משמאל לימין, ולכן שיפועו חייב להיות שלילי.
+
+--------------------------------------------------------------------------------
+[תרגיל 5 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: במעבר מהנקודה A(0,6) לנקודה B(3,0), מהו השינוי בשיעור ה-y?
+* אופציות:
+  - 6
+  - 6-
+* פתרון נכון: 6-
+* פתרון מלא: שיעור ה-y ירד מ-6 ל-0. החישוב הוא: 0 פחות 6 שווה 6-.
+
+--------------------------------------------------------------------------------
+[תרגיל 5 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: חשבו את שיפוע הישר: חלקו את השינוי ב-y (שהוא 6-) בשינוי ב-x (שהוא 3).
+* אופציות:
+  - m = -2
+  - m = 2
+  - m = -0.5
+* פתרון נכון: m = -2
+* פתרון מלא: השיפוע m מחושב על ידי: (6-) חלקי 3 שווה 2-.
+
+--------------------------------------------------------------------------------
+[תרגיל 5 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: הישר עובר בנקודה (3,0) ושיפועו m = -2. מצאו את שיעור ה-y של נקודה על ישר זה ששיעור ה-x שלה הוא 4.
+* פתרון נכון: בכל התקדמות של 1 יחידה ימינה ב-x, ערך ה-y יורד ב-2 יחידות. כאשר מתקדמים מ-x=3 ל-x=4, ערך ה-y יורד מ-0 ב-2 יחידות: 0 פחות 2 שווה 2-. הנקודה היא (4, -2).
+* פתרון מלא: בכל התקדמות של 1 יחידה ימינה ב-x, ערך ה-y יורד ב-2 יחידות. כאשר מתקדמים מ-x=3 ל-x=4, ערך ה-y יורד מ-0 ב-2 יחידות: 0 פחות 2 שווה 2-. הנקודה היא (4, -2).
+
+================================================================================
+תרגיל 6 – בסיס: שימוש בנוסחה הפורמלית לחישוב שיפוע משתי נקודות נתונות ללא…
+================================================================================
+כדי לחשב שיפוע ללא צורך בספירת משבצות בשרטוט, משתמשים בנוסחה האלגברית המבוססת על שיעורי שתי נקודות: m = (y2 - y1) / (x2 - x1).
+
+  <svg width="450" height="340" viewBox="0 0 450 340" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <!-- חץ לצירים -->
+      <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-angle">
+        <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#333333" />
+      </marker>
+    </defs>
+
+    <!-- רקע לבן נקי -->
+    <rect width="100%" height="100%" fill="#ffffff" />
+
+    <!-- מערכת צירים -->
+    <line x1="40" y1="280" x2="410" y2="280" stroke="#333333" stroke-width="2" marker-end="url(#arrow)" />
+    <line x1="60" y1="300" x2="60" y2="30" stroke="#333333" stroke-width="2" marker-end="url(#arrow)" />
+    <text x="405" y="272" font-family="sans-serif" font-size="14" font-weight="bold" fill="#333333">x</text>
+    <text x="70" y="38" font-family="sans-serif" font-size="14" font-weight="bold" fill="#333333">y</text>
+    <text x="48" y="295" font-family="sans-serif" font-size="12" fill="#666666">0</text>
+
+    <!-- משולש מדרגה (קווים מקווקווים) -->
+    <!-- ניצב אופקי -->
+    <line x1="140" y1="210" x2="280" y2="210" stroke="#e67e22" stroke-width="2" stroke-dasharray="4,4" />
+    <!-- ניצב אנכי -->
+    <line x1="280" y1="210" x2="280" y2="90" stroke="#e67e22" stroke-width="2" stroke-dasharray="4,4" />
+
+    <!-- סימון זווית ישרה במשולש המדרגה -->
+    <path d="M 268 210 L 268 198 L 280 198" fill="none" stroke="#e67e22" stroke-width="1.5" />
+
+    <!-- קו הישר העובר בין הנקודות -->
+    <line x1="100" y1="240" x2="320" y2="60" stroke="#2563eb" stroke-width="3" stroke-linecap="round" />
+
+    <!-- נקודות A ו-B -->
+    <circle cx="140" cy="210" r="5" fill="#1d4ed8" />
+    <circle cx="280" cy="90" r="5" fill="#1d4ed8" />
+
+    <!-- תוויות הנקודות -->
+    <text x="75" y="215" font-family="sans-serif" font-size="14" font-weight="bold" fill="#1d4ed8">A(x₁, y₁)</text>
+    <text x="290" y="85" font-family="sans-serif" font-size="14" font-weight="bold" fill="#1d4ed8">B(x₂, y₂)</text>
+
+    <!-- תוויות צלעות המדרגה -->
+    <text x="210" y="230" font-family="sans-serif" font-size="14" font-weight="bold" fill="#d97706" text-anchor="middle">x₂ - x₁</text>
+    <text x="330" y="155" font-family="sans-serif" font-size="14" font-weight="bold" fill="#d97706" text-anchor="middle">y₂ - y₁</text>
+
+    <!-- תיבת נוסחה מודגשת -->
+    <rect x="50" y="55" width="130" height="70" rx="8" fill="#f8fafc" stroke="#2563eb" stroke-width="2" />
+  
+    <!-- כיתוב נוסחה: m = (y2 - y1) / (x2 - x1) -->
+    <text x="65" y="95" font-family="sans-serif" font-size="16" font-style="italic" font-weight="bold" fill="#1e293b">m =</text>
+    <text x="135" y="80" font-family="sans-serif" font-size="13" font-weight="bold" fill="#1e293b" text-anchor="middle">y₂ - y₁</text>
+    <line x1="100" y1="90" x2="170" y2="90" stroke="#1e293b" stroke-width="1.5" />
+    <text x="135" y="110" font-family="sans-serif" font-size="13" font-weight="bold" fill="#1e293b" text-anchor="middle">x₂ - x₁</text>
+  </svg>
+
+<svg width="450" height="340" viewBox="0 0 450 340" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <!-- חץ לצירים -->
+      <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-angle">
+        <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#333333" />
+      </marker>
+    </defs>
+
+    <!-- רקע לבן נקי -->
+    <rect width="100%" height="100%" fill="#ffffff" />
+
+    <!-- מערכת צירים -->
+    <line x1="40" y1="280" x2="410" y2="280" stroke="#333333" stroke-width="2" marker-end="url(#arrow)" />
+    <line x1="60" y1="300" x2="60" y2="30" stroke="#333333" stroke-width="2" marker-end="url(#arrow)" />
+    <text x="405" y="272" font-family="sans-serif" font-size="14" font-weight="bold" fill="#333333">x</text>
+    <text x="70" y="38" font-family="sans-serif" font-size="14" font-weight="bold" fill="#333333">y</text>
+    <text x="48" y="295" font-family="sans-serif" font-size="12" fill="#666666">0</text>
+
+    <!-- משולש מדרגה (קווים מקווקווים) -->
+    <!-- ניצב אופקי -->
+    <line x1="140" y1="210" x2="280" y2="210" stroke="#e67e22" stroke-width="2" stroke-dasharray="4,4" />
+    <!-- ניצב אנכי -->
+    <line x1="280" y1="210" x2="280" y2="90" stroke="#e67e22" stroke-width="2" stroke-dasharray="4,4" />
+
+    <!-- סימון זווית ישרה במשולש המדרגה -->
+    <path d="M 268 210 L 268 198 L 280 198" fill="none" stroke="#e67e22" stroke-width="1.5" />
+
+    <!-- קו הישר העובר בין הנקודות -->
+    <line x1="100" y1="240" x2="320" y2="60" stroke="#2563eb" stroke-width="3" stroke-linecap="round" />
+
+    <!-- נקודות A ו-B -->
+    <circle cx="140" cy="210" r="5" fill="#1d4ed8" />
+    <circle cx="280" cy="90" r="5" fill="#1d4ed8" />
+
+    <!-- תוויות הנקודות -->
+    <text x="75" y="215" font-family="sans-serif" font-size="14" font-weight="bold" fill="#1d4ed8">A(x₁, y₁)</text>
+    <text x="290" y="85" font-family="sans-serif" font-size="14" font-weight="bold" fill="#1d4ed8">B(x₂, y₂)</text>
+
+    <!-- תוויות צלעות המדרגה -->
+    <text x="210" y="230" font-family="sans-serif" font-size="14" font-weight="bold" fill="#d97706" text-anchor="middle">x₂ - x₁</text>
+    <text x="330" y="155" font-family="sans-serif" font-size="14" font-weight="bold" fill="#d97706" text-anchor="middle">y₂ - y₁</text>
+
+    <!-- תיבת נוסחה מודגשת -->
+    <rect x="50" y="55" width="130" height="70" rx="8" fill="#f8fafc" stroke="#2563eb" stroke-width="2" />
+  
+    <!-- כיתוב נוסחה: m = (y2 - y1) / (x2 - x1) -->
+    <text x="65" y="95" font-family="sans-serif" font-size="16" font-style="italic" font-weight="bold" fill="#1e293b">m =</text>
+    <text x="135" y="80" font-family="sans-serif" font-size="13" font-weight="bold" fill="#1e293b" text-anchor="middle">y₂ - y₁</text>
+    <line x1="100" y1="90" x2="170" y2="90" stroke="#1e293b" stroke-width="1.5" />
+    <text x="135" y="110" font-family="sans-serif" font-size="13" font-weight="bold" fill="#1e293b" text-anchor="middle">x₂ - x₁</text>
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 6 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: על פי נוסחת השיפוע, איזה הפרש מופיע במונה (החלק העליון של השבר)?
+* אופציות:
+  - הפרש שיעורי ה-y
+  - הפרש שיעורי ה-x
+* פתרון נכון: הפרש שיעורי ה-y
+* פתרון מלא: שיפוע מודד את היחס שבין השינוי האנכי לשינוי האופקי, ולכן במונה תמיד מופיע הפרש ערכי ה-y: y2 - y1.
+
+--------------------------------------------------------------------------------
+[תרגיל 6 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: אם בחרנו להחסיר במונה את שיעורי הנקודה הראשונה מהנקודה השנייה (y2 - y1), האם חובה לשמור על אותו הסדר גם במכנה (x2 - x1)?
+* אופציות:
+  - כן, חובה לשמור על אותו סדר חיסור
+  - לא, אפשר להחסיר בכל סדר שרוצים
+* פתרון נכון: כן, חובה לשמור על אותו סדר חיסור
+* פתרון מלא: עקביות בסדר החיסור קריטית כדי לקבל את הסימן הנכון של השיפוע. אם מחסירים נקודה 1 מנקודה 2 במונה, חייבים לעשות זאת גם במכנה.
+
+--------------------------------------------------------------------------------
+[תרגיל 6 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: חשבו בעזרת הנוסחה את שיפוע הישר העובר דרך הנקודות A(2, 5) ו-B(6, 17):
+* אופציות:
+  - m = 2
+  - m = 3
+  - m = 4
+* פתרון נכון: m = 3
+* פתרון מלא: נציב בנוסחה: m = (17 - 5) / (6 - 2) = 12 / 4 = 3.
+
+--------------------------------------------------------------------------------
+[תרגיל 6 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: חשבו בעזרת הנוסחה את שיפוע הישר העובר דרך הנקודות C(1, -2) ו-D(4, 7). היזהרו בחיסור מספרים שליליים!
+* פתרון נכון: נציב בנוסחה: m = (7 - (-2)) / (4 - 1). במונה נקבל: 7 פלוס 2 שווה 9. במכנה: 4 פחות 1 שווה 3. לכן: m = 9 / 3 = 3.
+* פתרון מלא: נציב בנוסחה: m = (7 - (-2)) / (4 - 1). במונה נקבל: 7 פלוס 2 שווה 9. במכנה: 4 פחות 1 שווה 3. לכן: m = 9 / 3 = 3.
+
+================================================================================
+תרגיל 7 – מורכב: חקירת המקרים המיוחדים: ישר אופקי (שיפוע 0) מול ישר אנכי…
+================================================================================
+נבחן כעת שני מקרים מיוחדים של ישרים: ישר המקביל לציר ה-x (ישר אופקי) וישר המקביל לציר ה-y (ישר אנכי).
+
+  <svg width="400" height="320" xmlns="http://www.w3.org/2000/svg" font-family="Arial, sans-serif">
+    <!-- רשת צירים משנית -->
+    <g stroke="#E2E8F0" stroke-width="1" stroke-dasharray="3,3">
+      <!-- קווי רשת אנכיים -->
+      <line x1="102" y1="20" x2="102" y2="270"/>
+      <line x1="144" y1="20" x2="144" y2="270"/>
+      <line x1="186" y1="20" x2="186" y2="270"/>
+      <line x1="228" y1="20" x2="228" y2="270"/>
+      <line x1="270" y1="20" x2="270" y2="270"/>
+      <line x1="312" y1="20" x2="312" y2="270"/>
+      <!-- קווי רשת אופקיים -->
+      <line x1="60" y1="228" x2="360" y2="228"/>
+      <line x1="60" y1="186" x2="360" y2="186"/>
+      <line x1="60" y1="144" x2="360" y2="144"/>
+      <line x1="60" y1="102" x2="360" y2="102"/>
+      <line x1="60" y1="60" x2="360" y2="60"/>
+    </g>
+
+    <!-- ציר ה-X -->
+    <line x1="40" y1="270" x2="360" y2="270" stroke="#1E293B" stroke-width="2"/>
+    <polygon points="360,266 360,274 370,270" fill="#1E293B"/>
+    <text x="368" y="286" font-size="14" font-weight="bold" fill="#1E293B">x</text>
+
+    <!-- ציר ה-Y -->
+    <line x1="60" y1="290" x2="60" y2="20" stroke="#1E293B" stroke-width="2"/>
+    <polygon points="56,20 64,20 60,10" fill="#1E293B"/>
+    <text x="44" y="20" font-size="14" font-weight="bold" fill="#1E293B">y</text>
+
+    <!-- שנתות ומספרים על ציר ה-X -->
+    <text x="48" y="285" font-size="11" fill="#64748B">0</text>
+    <line x1="102" y1="267" x2="102" y2="273" stroke="#1E293B" stroke-width="1.5"/>
+    <text x="102" y="285" font-size="11" fill="#64748B" text-anchor="middle">1</text>
+    <line x1="144" y1="267" x2="144" y2="273" stroke="#1E293B" stroke-width="1.5"/>
+    <text x="144" y="285" font-size="11" fill="#64748B" text-anchor="middle">2</text>
+    <line x1="186" y1="267" x2="186" y2="273" stroke="#1E293B" stroke-width="1.5"/>
+    <text x="186" y="285" font-size="11" fill="#64748B" text-anchor="middle">3</text>
+    <line x1="228" y1="267" x2="228" y2="273" stroke="#1E293B" stroke-width="1.5"/>
+    <text x="228" y="285" font-size="11" fill="#64748B" text-anchor="middle">4</text>
+    <line x1="270" y1="267" x2="270" y2="273" stroke="#1E293B" stroke-width="1.5"/>
+    <text x="270" y="285" font-size="11" fill="#64748B" text-anchor="middle">5</text>
+    <line x1="312" y1="267" x2="312" y2="273" stroke="#1E293B" stroke-width="1.5"/>
+    <text x="312" y="285" font-size="11" fill="#64748B" text-anchor="middle">6</text>
+
+    <!-- שנתות ומספרים על ציר ה-Y -->
+    <line x1="57" y1="228" x2="63" y2="228" stroke="#1E293B" stroke-width="1.5"/>
+    <text x="48" y="232" font-size="11" fill="#64748B" text-anchor="end">1</text>
+    <line x1="57" y1="186" x2="63" y2="186" stroke="#1E293B" stroke-width="1.5"/>
+    <text x="48" y="190" font-size="11" fill="#64748B" text-anchor="end">2</text>
+    <line x1="57" y1="144" x2="63" y2="144" stroke="#1E293B" stroke-width="1.5"/>
+    <text x="48" y="148" font-size="11" fill="#64748B" text-anchor="end">3</text>
+    <line x1="57" y1="102" x2="63" y2="102" stroke="#1E293B" stroke-width="1.5"/>
+    <text x="48" y="106" font-size="11" fill="#64748B" text-anchor="end">4</text>
+    <line x1="57" y1="60" x2="63" y2="60" stroke="#1E293B" stroke-width="1.5"/>
+    <text x="48" y="64" font-size="11" fill="#64748B" text-anchor="end">5</text>
+
+    <!-- ישר אופקי כחול: y = 4 -->
+    <line x1="45" y1="102" x2="355" y2="102" stroke="#2563EB" stroke-width="2.5"/>
+    <text x="315" y="93" font-size="14" font-weight="bold" fill="#2563EB">y = 4</text>
+
+    <!-- ישר אנכי סגול: x = 3 -->
+    <line x1="186" y1="285" x2="186" y2="30" stroke="#7C3AED" stroke-width="2.5"/>
+    <text x="194" y="44" font-size="14" font-weight="bold" fill="#7C3AED">x = 3</text>
+
+    <!-- נקודות מודגשות על הישר y = 4 (כחול) -->
+    <!-- נקודה (1, 4) -->
+    <circle cx="102" cy="102" r="5" fill="#2563EB"/>
+    <text x="102" y="88" font-size="12" font-weight="bold" fill="#2563EB" text-anchor="middle">(1, 4)</text>
+
+    <!-- נקודה (5, 4) -->
+    <circle cx="270" cy="102" r="5" fill="#2563EB"/>
+    <text x="270" y="88" font-size="12" font-weight="bold" fill="#2563EB" text-anchor="middle">(5, 4)</text>
+
+    <!-- נקודות מודגשות על הישר x = 3 (סגול) -->
+    <!-- נקודה (3, 1) -->
+    <circle cx="186" cy="228" r="5" fill="#7C3AED"/>
+    <text x="196" y="232" font-size="12" font-weight="bold" fill="#7C3AED" text-anchor="start">(3, 1)</text>
+
+    <!-- נקודה (3, 5) -->
+    <circle cx="186" cy="60" r="5" fill="#7C3AED"/>
+    <text x="196" y="64" font-size="12" font-weight="bold" fill="#7C3AED" text-anchor="start">(3, 5)</text>
+  </svg>
+
+<svg width="400" height="320" xmlns="http://www.w3.org/2000/svg" font-family="Arial, sans-serif">
+    <!-- רשת צירים משנית -->
+    <g stroke="#E2E8F0" stroke-width="1" stroke-dasharray="3,3">
+      <!-- קווי רשת אנכיים -->
+      <line x1="102" y1="20" x2="102" y2="270"/>
+      <line x1="144" y1="20" x2="144" y2="270"/>
+      <line x1="186" y1="20" x2="186" y2="270"/>
+      <line x1="228" y1="20" x2="228" y2="270"/>
+      <line x1="270" y1="20" x2="270" y2="270"/>
+      <line x1="312" y1="20" x2="312" y2="270"/>
+      <!-- קווי רשת אופקיים -->
+      <line x1="60" y1="228" x2="360" y2="228"/>
+      <line x1="60" y1="186" x2="360" y2="186"/>
+      <line x1="60" y1="144" x2="360" y2="144"/>
+      <line x1="60" y1="102" x2="360" y2="102"/>
+      <line x1="60" y1="60" x2="360" y2="60"/>
+    </g>
+
+    <!-- ציר ה-X -->
+    <line x1="40" y1="270" x2="360" y2="270" stroke="#1E293B" stroke-width="2"/>
+    <polygon points="360,266 360,274 370,270" fill="#1E293B"/>
+    <text x="368" y="286" font-size="14" font-weight="bold" fill="#1E293B">x</text>
+
+    <!-- ציר ה-Y -->
+    <line x1="60" y1="290" x2="60" y2="20" stroke="#1E293B" stroke-width="2"/>
+    <polygon points="56,20 64,20 60,10" fill="#1E293B"/>
+    <text x="44" y="20" font-size="14" font-weight="bold" fill="#1E293B">y</text>
+
+    <!-- שנתות ומספרים על ציר ה-X -->
+    <text x="48" y="285" font-size="11" fill="#64748B">0</text>
+    <line x1="102" y1="267" x2="102" y2="273" stroke="#1E293B" stroke-width="1.5"/>
+    <text x="102" y="285" font-size="11" fill="#64748B" text-anchor="middle">1</text>
+    <line x1="144" y1="267" x2="144" y2="273" stroke="#1E293B" stroke-width="1.5"/>
+    <text x="144" y="285" font-size="11" fill="#64748B" text-anchor="middle">2</text>
+    <line x1="186" y1="267" x2="186" y2="273" stroke="#1E293B" stroke-width="1.5"/>
+    <text x="186" y="285" font-size="11" fill="#64748B" text-anchor="middle">3</text>
+    <line x1="228" y1="267" x2="228" y2="273" stroke="#1E293B" stroke-width="1.5"/>
+    <text x="228" y="285" font-size="11" fill="#64748B" text-anchor="middle">4</text>
+    <line x1="270" y1="267" x2="270" y2="273" stroke="#1E293B" stroke-width="1.5"/>
+    <text x="270" y="285" font-size="11" fill="#64748B" text-anchor="middle">5</text>
+    <line x1="312" y1="267" x2="312" y2="273" stroke="#1E293B" stroke-width="1.5"/>
+    <text x="312" y="285" font-size="11" fill="#64748B" text-anchor="middle">6</text>
+
+    <!-- שנתות ומספרים על ציר ה-Y -->
+    <line x1="57" y1="228" x2="63" y2="228" stroke="#1E293B" stroke-width="1.5"/>
+    <text x="48" y="232" font-size="11" fill="#64748B" text-anchor="end">1</text>
+    <line x1="57" y1="186" x2="63" y2="186" stroke="#1E293B" stroke-width="1.5"/>
+    <text x="48" y="190" font-size="11" fill="#64748B" text-anchor="end">2</text>
+    <line x1="57" y1="144" x2="63" y2="144" stroke="#1E293B" stroke-width="1.5"/>
+    <text x="48" y="148" font-size="11" fill="#64748B" text-anchor="end">3</text>
+    <line x1="57" y1="102" x2="63" y2="102" stroke="#1E293B" stroke-width="1.5"/>
+    <text x="48" y="106" font-size="11" fill="#64748B" text-anchor="end">4</text>
+    <line x1="57" y1="60" x2="63" y2="60" stroke="#1E293B" stroke-width="1.5"/>
+    <text x="48" y="64" font-size="11" fill="#64748B" text-anchor="end">5</text>
+
+    <!-- ישר אופקי כחול: y = 4 -->
+    <line x1="45" y1="102" x2="355" y2="102" stroke="#2563EB" stroke-width="2.5"/>
+    <text x="315" y="93" font-size="14" font-weight="bold" fill="#2563EB">y = 4</text>
+
+    <!-- ישר אנכי סגול: x = 3 -->
+    <line x1="186" y1="285" x2="186" y2="30" stroke="#7C3AED" stroke-width="2.5"/>
+    <text x="194" y="44" font-size="14" font-weight="bold" fill="#7C3AED">x = 3</text>
+
+    <!-- נקודות מודגשות על הישר y = 4 (כחול) -->
+    <!-- נקודה (1, 4) -->
+    <circle cx="102" cy="102" r="5" fill="#2563EB"/>
+    <text x="102" y="88" font-size="12" font-weight="bold" fill="#2563EB" text-anchor="middle">(1, 4)</text>
+
+    <!-- נקודה (5, 4) -->
+    <circle cx="270" cy="102" r="5" fill="#2563EB"/>
+    <text x="270" y="88" font-size="12" font-weight="bold" fill="#2563EB" text-anchor="middle">(5, 4)</text>
+
+    <!-- נקודות מודגשות על הישר x = 3 (סגול) -->
+    <!-- נקודה (3, 1) -->
+    <circle cx="186" cy="228" r="5" fill="#7C3AED"/>
+    <text x="196" y="232" font-size="12" font-weight="bold" fill="#7C3AED" text-anchor="start">(3, 1)</text>
+
+    <!-- נקודה (3, 5) -->
+    <circle cx="186" cy="60" r="5" fill="#7C3AED"/>
+    <text x="196" y="64" font-size="12" font-weight="bold" fill="#7C3AED" text-anchor="start">(3, 5)</text>
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 7 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: התבוננו בשתי הנקודות על הישר האופקי: (1,4) ו-(5,4). מהו השינוי בשיעור ה-y ביניהן (y2 - y1)?
+* אופציות:
+  - 0
+  - 4
+* פתרון נכון: 0
+* פתרון מלא: שתי הנקודות נמצאות באותו גובה בדיוק, ולכן הפרש ה-y הוא: 4 פחות 4 שווה 0.
+
+--------------------------------------------------------------------------------
+[תרגיל 7 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: כאשר ננסה לחשב את שיפוע הישר האנכי דרך הנקודות (3,1) ו-(3,5), הפרש ה-x במכנה יהיה: 3 פחות 3 שווה 0. מה משמעות הדבר?
+* אופציות:
+  - פעולת חילוק באפס אינה מוגדרת, ולכן לישר אנכי אין שיפוע מוגדר
+  - התוצאה היא 0, ולכן שיפוע הישר האנכי הוא 0
+* פתרון נכון: פעולת חילוק באפס אינה מוגדרת, ולכן לישר אנכי אין שיפוע מוגדר
+* פתרון מלא: במתמטיקה חלוקה באפס אינה מוגדרת. מכיוון שהפרש ה-x במכנה הוא 0, השיפוע של ישר אנכי אינו מוגדר.
+
+--------------------------------------------------------------------------------
+[תרגיל 7 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: מהו שיפועו של ישר אופקי?
+* אופציות:
+  - m = 0
+  - m = 1
+  - השיפוע אינו מוגדר
+* פתרון נכון: m = 0
+* פתרון מלא: עבור ישר אופקי, הפרש ה-y במונה הוא 0, וחילוק של 0 בכל מספר שונה מאפס נותן 0. לכן שיפוע כל ישר אופקי הוא בדיוק 0.
+
+--------------------------------------------------------------------------------
+[תרגיל 7 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: תנו דוגמה לשתי נקודות שיוצרות ישר ששיפועו אינו מוגדר (ישר אנכי).
+* פתרון נכון: כל שתי נקודות בעלות אותו שיעור x אך שיעורי y שונים יוצרות ישר אנכי. לדוגמה: (2, 3) ו-(2, 8).
+* פתרון מלא: כל שתי נקודות בעלות אותו שיעור x אך שיעורי y שונים יוצרות ישר אנכי. לדוגמה: (2, 3) ו-(2, 8).
+
+================================================================================
+תרגיל 8 – מורכב: השוואת מידת התלילות בין ישרים שונים לפי הערך המוחלט של…
+================================================================================
+מידת התלילות של ישר נקבעת על פי הגודל המספרי של השיפוע ללא התחשבות בסימן (הערך המוחלט |m|). הסימן פלוס או מינוס קובע רק האם הישר עולה או יורד.
+
+  <svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <!-- חץ לצירים -->
+      <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#333" />
+      </marker>
+    </defs>
+
+    <!-- רשת רקע עדינה -->
+    <g stroke="#f0f0f0" stroke-width="1">
+      <line x1="50" y1="0" x2="50" y2="300" />
+      <line x1="100" y1="0" x2="100" y2="300" />
+      <line x1="150" y1="0" x2="150" y2="300" />
+      <line x1="250" y1="0" x2="250" y2="300" />
+      <line x1="300" y1="0" x2="300" y2="300" />
+      <line x1="350" y1="0" x2="350" y2="300" />
+      <line x1="0" y1="50" x2="400" y2="50" />
+      <line x1="0" y1="100" x2="400" y2="100" />
+      <line x1="0" y1="200" x2="400" y2="200" />
+      <line x1="0" y1="250" x2="400" y2="250" />
+    </g>
+
+    <!-- ציר X -->
+    <line x1="20" y1="150" x2="380" y2="150" stroke="#333" stroke-width="1.5" marker-end="url(#arrow)" />
+    <text x="385" y="154" font-size="14" font-family="Arial" font-weight="bold" fill="#333">x</text>
+
+    <!-- ציר Y -->
+    <line x1="200" y1="280" x2="200" y2="20" stroke="#333" stroke-width="1.5" marker-end="url(#arrow)" />
+    <text x="195" y="15" font-size="14" font-family="Arial" font-weight="bold" fill="#333">y</text>
+
+    <!-- ראשית הצירים (0,0) -->
+    <circle cx="200" cy="150" r="3" fill="#333" />
+    <text x="186" y="166" font-size="12" font-family="Arial" fill="#555">(0,0)</text>
+
+    <!-- ישר א' (ירוק, שיפוע m = 1) -->
+    <line x1="70" y1="280" x2="330" y2="20" stroke="#16a34a" stroke-width="2.5" />
+    <text x="315" y="45" font-size="13" font-family="Arial" font-weight="bold" fill="#16a34a" direction="rtl">ישר א' (m = 1)</text>
+
+    <!-- ישר ב' (אדום, שיפוע m = -4) -->
+    <line x1="168" y1="20" x2="232" y2="280" stroke="#dc2626" stroke-width="2.5" />
+    <text x="110" y="35" font-size="13" font-family="Arial" font-weight="bold" fill="#dc2626" direction="rtl">ישר ב' (m = -4)</text>
+  </svg>
+
+<svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <!-- חץ לצירים -->
+      <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#333" />
+      </marker>
+    </defs>
+
+    <!-- רשת רקע עדינה -->
+    <g stroke="#f0f0f0" stroke-width="1">
+      <line x1="50" y1="0" x2="50" y2="300" />
+      <line x1="100" y1="0" x2="100" y2="300" />
+      <line x1="150" y1="0" x2="150" y2="300" />
+      <line x1="250" y1="0" x2="250" y2="300" />
+      <line x1="300" y1="0" x2="300" y2="300" />
+      <line x1="350" y1="0" x2="350" y2="300" />
+      <line x1="0" y1="50" x2="400" y2="50" />
+      <line x1="0" y1="100" x2="400" y2="100" />
+      <line x1="0" y1="200" x2="400" y2="200" />
+      <line x1="0" y1="250" x2="400" y2="250" />
+    </g>
+
+    <!-- ציר X -->
+    <line x1="20" y1="150" x2="380" y2="150" stroke="#333" stroke-width="1.5" marker-end="url(#arrow)" />
+    <text x="385" y="154" font-size="14" font-family="Arial" font-weight="bold" fill="#333">x</text>
+
+    <!-- ציר Y -->
+    <line x1="200" y1="280" x2="200" y2="20" stroke="#333" stroke-width="1.5" marker-end="url(#arrow)" />
+    <text x="195" y="15" font-size="14" font-family="Arial" font-weight="bold" fill="#333">y</text>
+
+    <!-- ראשית הצירים (0,0) -->
+    <circle cx="200" cy="150" r="3" fill="#333" />
+    <text x="186" y="166" font-size="12" font-family="Arial" fill="#555">(0,0)</text>
+
+    <!-- ישר א' (ירוק, שיפוע m = 1) -->
+    <line x1="70" y1="280" x2="330" y2="20" stroke="#16a34a" stroke-width="2.5" />
+    <text x="315" y="45" font-size="13" font-family="Arial" font-weight="bold" fill="#16a34a" direction="rtl">ישר א' (m = 1)</text>
+
+    <!-- ישר ב' (אדום, שיפוע m = -4) -->
+    <line x1="168" y1="20" x2="232" y2="280" stroke="#dc2626" stroke-width="2.5" />
+    <text x="110" y="35" font-size="13" font-family="Arial" font-weight="bold" fill="#dc2626" direction="rtl">ישר ב' (m = -4)</text>
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 8 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: איזה מבין שני המספרים הבאים גדול יותר מבחינה אלגברית על ציר המספרים: 1 או 4-?
+* אופציות:
+  - המספר 1
+  - המספר 4-
+* פתרון נכון: המספר 1
+* פתרון מלא: כל מספר חיובי גדול מכל מספר שלילי, לכן 1 גדול מ- 4-.
+
+--------------------------------------------------------------------------------
+[תרגיל 8 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: התבוננו בשרטוט מבחינה גיאומטרית. איזה ישר נראה תלול וחד יותר ביחס לציר האופקי?
+* אופציות:
+  - ישר א' (m = 1)
+  - ישר ב' (m = -4)
+* פתרון נכון: ישר ב' (m = -4)
+* פתרון מלא: ישר ב' קרוב הרבה יותר למצב אנכי ומזדקר בחדות, ולכן הוא תלול יותר באופן מובהק.
+
+--------------------------------------------------------------------------------
+[תרגיל 8 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: נתונים שיפועיהם של שלושה ישרים: m1 = 2, m2 = 0.5, m3 = -5. איזה ישר הוא התלול ביותר?
+* אופציות:
+  - הישר בעל השיפוע m = 2
+  - הישר בעל השיפוע m = 0.5
+  - הישר בעל השיפוע m = -5
+* פתרון נכון: הישר בעל השיפוע m = -5
+* פתרון מלא: תלילות נקבעת על פי הערך המוחלט של השיפוע. הערכים המוחלטים הם: 2, 0.5 ו-5. הערך 5 הוא הגדול ביותר, ולכן הישר עם שיפוע 5- הוא התלול ביותר.
+
+--------------------------------------------------------------------------------
+[תרגיל 8 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: סדרו את ארבעת השיפועים הבאים לפי מידת תלילות הישרים, מהמתון ביותר לתלול ביותר: m = 3, m = -6, m = 0.2, m = -1.
+* פתרון נכון: נחשב את הערך המוחלט של כל שיפוע: |0.2| = 0.2, |-1| = 1, |3| = 3, |-6| = 6. לכן הסדר מהמתון ביותר לתלול ביותר הוא: 0.2, לאחר מכן 1-, לאחר מכן 3, והתלול ביותר הוא 6-.
+* פתרון מלא: נחשב את הערך המוחלט של כל שיפוע: |0.2| = 0.2, |-1| = 1, |3| = 3, |-6| = 6. לכן הסדר מהמתון ביותר לתלול ביותר הוא: 0.2, לאחר מכן 1-, לאחר מכן 3, והתלול ביותר הוא 6-.
+
+================================================================================
+תרגיל 9 – מורכב: קישור בין המקדם m במשוואה המפורשת y = mx + b לבין התנהגות…
+================================================================================
+במשוואת ישר מפורשת מהצורה y = mx + b, המקדם m הוא שיפוע הישר. נלמד לזהות את תכונות הגרף ישירות מתוך המשוואה.
+
+  <svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#555" />
+      </marker>
+    </defs>
+
+    <!-- רשת רקע קלה -->
+    <g stroke="#f0f0f0" stroke-width="1">
+      <line x1="40" y1="60" x2="360" y2="60" />
+      <line x1="40" y1="95" x2="360" y2="95" />
+      <line x1="40" y1="130" x2="360" y2="130" />
+      <line x1="40" y1="165" x2="360" y2="165" />
+      <line x1="40" y1="200" x2="360" y2="200" />
+      <line x1="40" y1="235" x2="360" y2="235" />
+      <line x1="75" y1="30" x2="75" y2="270" />
+      <line x1="110" y1="30" x2="110" y2="270" />
+      <line x1="145" y1="30" x2="145" y2="270" />
+      <line x1="180" y1="30" x2="180" y2="270" />
+      <line x1="215" y1="30" x2="215" y2="270" />
+      <line x1="250" y1="30" x2="250" y2="270" />
+      <line x1="285" y1="30" x2="285" y2="270" />
+      <line x1="320" y1="30" x2="320" y2="270" />
+    </g>
+
+    <!-- צירים -->
+    <line x1="30" y1="200" x2="370" y2="200" stroke="#333" stroke-width="1.5" marker-end="url(#arrow)" />
+    <line x1="180" y1="270" x2="180" y2="30" stroke="#333" stroke-width="1.5" marker-end="url(#arrow)" />
+    <text x="375" y="204" font-size="13" font-family="sans-serif">x</text>
+    <text x="180" y="22" font-size="13" font-family="sans-serif" text-anchor="middle">y</text>
+    <text x="172" y="214" font-size="11" font-family="sans-serif" fill="#666">0</text>
+
+    <!-- ישר כחול: y = 2x + 2 -->
+    <line x1="117" y1="256" x2="232" y2="26" stroke="#2563eb" stroke-width="2.5" />
+    <text x="236" y="32" font-size="12" font-weight="bold" fill="#2563eb" font-family="sans-serif">y = 2x + 2</text>
+
+    <!-- ישר ירוק: y = 0.5x + 2 -->
+    <line x1="35" y1="202.5" x2="365" y2="37.5" stroke="#16a34a" stroke-width="2.5" />
+    <text x="325" y="30" font-size="12" font-weight="bold" fill="#16a34a" font-family="sans-serif">y = 0.5x + 2</text>
+
+    <!-- ישר כתום: y = -x + 2 -->
+    <line x1="90" y1="40" x2="310" y2="260" stroke="#ea580c" stroke-width="2.5" />
+    <text x="50" y="35" font-size="12" font-weight="bold" fill="#ea580c" font-family="sans-serif">y = -x + 2</text>
+
+    <!-- נקודת חיתוך (0,2) -->
+    <circle cx="180" cy="130" r="4.5" fill="#111" />
+    <text x="190" y="126" font-size="12" font-weight="bold" font-family="sans-serif">(0, 2)</text>
+  </svg>
+
+<svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#555" />
+      </marker>
+    </defs>
+
+    <!-- רשת רקע קלה -->
+    <g stroke="#f0f0f0" stroke-width="1">
+      <line x1="40" y1="60" x2="360" y2="60" />
+      <line x1="40" y1="95" x2="360" y2="95" />
+      <line x1="40" y1="130" x2="360" y2="130" />
+      <line x1="40" y1="165" x2="360" y2="165" />
+      <line x1="40" y1="200" x2="360" y2="200" />
+      <line x1="40" y1="235" x2="360" y2="235" />
+      <line x1="75" y1="30" x2="75" y2="270" />
+      <line x1="110" y1="30" x2="110" y2="270" />
+      <line x1="145" y1="30" x2="145" y2="270" />
+      <line x1="180" y1="30" x2="180" y2="270" />
+      <line x1="215" y1="30" x2="215" y2="270" />
+      <line x1="250" y1="30" x2="250" y2="270" />
+      <line x1="285" y1="30" x2="285" y2="270" />
+      <line x1="320" y1="30" x2="320" y2="270" />
+    </g>
+
+    <!-- צירים -->
+    <line x1="30" y1="200" x2="370" y2="200" stroke="#333" stroke-width="1.5" marker-end="url(#arrow)" />
+    <line x1="180" y1="270" x2="180" y2="30" stroke="#333" stroke-width="1.5" marker-end="url(#arrow)" />
+    <text x="375" y="204" font-size="13" font-family="sans-serif">x</text>
+    <text x="180" y="22" font-size="13" font-family="sans-serif" text-anchor="middle">y</text>
+    <text x="172" y="214" font-size="11" font-family="sans-serif" fill="#666">0</text>
+
+    <!-- ישר כחול: y = 2x + 2 -->
+    <line x1="117" y1="256" x2="232" y2="26" stroke="#2563eb" stroke-width="2.5" />
+    <text x="236" y="32" font-size="12" font-weight="bold" fill="#2563eb" font-family="sans-serif">y = 2x + 2</text>
+
+    <!-- ישר ירוק: y = 0.5x + 2 -->
+    <line x1="35" y1="202.5" x2="365" y2="37.5" stroke="#16a34a" stroke-width="2.5" />
+    <text x="325" y="30" font-size="12" font-weight="bold" fill="#16a34a" font-family="sans-serif">y = 0.5x + 2</text>
+
+    <!-- ישר כתום: y = -x + 2 -->
+    <line x1="90" y1="40" x2="310" y2="260" stroke="#ea580c" stroke-width="2.5" />
+    <text x="50" y="35" font-size="12" font-weight="bold" fill="#ea580c" font-family="sans-serif">y = -x + 2</text>
+
+    <!-- נקודת חיתוך (0,2) -->
+    <circle cx="180" cy="130" r="4.5" fill="#111" />
+    <text x="190" y="126" font-size="12" font-weight="bold" font-family="sans-serif">(0, 2)</text>
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 9 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: נתונה משוואת הישר y = -3x + 5. האם ישר זה עולה או יורד?
+* אופציות:
+  - הישר עולה
+  - הישר יורד
+* פתרון נכון: הישר יורד
+* פתרון מלא: המקדם של x הוא m = -3. מכיוון שהשיפוע שלילי, הישר יורד.
+
+--------------------------------------------------------------------------------
+[תרגיל 9 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: נתונים שני ישרים עולים: ישר 1 שמשוואתו y = 4x - 1, וישר 2 שמשוואתו y = 2x + 7. איזה מבין שני הישרים תלול יותר?
+* אופציות:
+  - ישר 1 (y = 4x - 1)
+  - ישר 2 (y = 2x + 7)
+* פתרון נכון: ישר 1 (y = 4x - 1)
+* פתרון מלא: השיפוע של ישר 1 הוא 4, ושל ישר 2 הוא 2. ככל שערך השיפוע גדול יותר, הישר תלול יותר, ולכן ישר 1 תלול יותר.
+
+--------------------------------------------------------------------------------
+[תרגיל 9 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: מבין המשוואות בשרטוט, איזו משוואה מתאימה לישר העולה במתינות דרך הנקודה (0,2)?
+* אופציות:
+  - y = 2x + 2
+  - y = 0.5x + 2
+  - y = -x + 2
+* פתרון נכון: y = 0.5x + 2
+* פתרון מלא: הישר עולה ולכן שיפועו חיובי, והוא מתון (פחות משיפוע 1), לכן המשוואה המתאימה בעלת השיפוע m = 0.5 היא y = 0.5x + 2.
+
+--------------------------------------------------------------------------------
+[תרגיל 9 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: כתבו את משוואתו של ישר אופקי העובר דרך הנקודה (0, -4).
+* פתרון נכון: שיפוע של ישר אופקי הוא m = 0, ונקודת החיתוך עם ציר y היא b = -4. נציב במשוואה y = mx + b ונקבל: y = 0x - 4, כלומר y = -4.
+* פתרון מלא: שיפוע של ישר אופקי הוא m = 0, ונקודת החיתוך עם ציר y היא b = -4. נציב במשוואה y = mx + b ונקבל: y = 0x - 4, כלומר y = -4.
+
+================================================================================
+תרגיל 10 – אתגר: סינתזה כוללת: חישוב שיפועים של צלעות במצולע
+================================================================================
+נסכם את הנושא על ידי חקירת שיפועי הצלעות של מרובע ABCD במערכת צירים.
+
+  --- נקודות ---
+  * נקודה O | X=50, Y=260 | תווית: (0,0) | צבע: שחור
+  * נקודה E | X=370, Y=260 | תווית: x | צבע: שחור
+  * נקודה F | X=50, Y=36 | תווית: y | צבע: שחור
+  * נקודה A | X=90, Y=232 | תווית: A(1,1) | צבע: שחור
+  * נקודה B | X=210, Y=64 | תווית: B(4,7) | צבע: שחור
+  * נקודה C | X=330, Y=64 | תווית: C(7,7) | צבע: שחור
+  * נקודה D | X=250, Y=176 | תווית: D(5,3) | צבע: שחור
+  --- קטעים ---
+  * קטע OE | מנקודה O ל-E | צבע: שחור
+  * קטע OF | מנקודה O ל-F | צבע: שחור
+  * קטע AB | מנקודה A ל-B | צבע: כחול
+  * קטע BC | מנקודה B ל-C | צבע: ירוק
+  * קטע CD | מנקודה C ל-D | צבע: אדום
+  * קטע DA | מנקודה D ל-A | צבע: כתום
+
+--------------------------------------------------------------------------------
+[תרגיל 10 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: התבוננו בצלע AB המחברת את A(1,1) עם B(4,7). האם צלע זו עולה או יורדת כאשר נעים מ-A ל-B?
+* אופציות:
+  - עולה
+  - יורדת
+* פתרון נכון: עולה
+* פתרון מלא: כאשר נעים מ-A ל-B שיעור ה-x גדל (מ-1 ל-4) וגם שיעור ה-y גדל (מ-1 ל-7), ולכן הקטע עולה משמאל לימין.
+
+--------------------------------------------------------------------------------
+[תרגיל 10 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: התבוננו בצלע BC המחברת את B(4,7) עם C(7,7). מהו שיפוע הצלע BC?
+* אופציות:
+  - 0
+  - השיפוע אינו מוגדר
+* פתרון נכון: 0
+* פתרון מלא: לנקודות B ו-C יש אותו שיעור y (הן באותו גובה 7), ולכן זוהי צלע אופקית ששיפועה הוא 0.
+
+--------------------------------------------------------------------------------
+[תרגיל 10 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: חשבו בעזרת נוסחת השיפוע את שיפוע הצלע AB בין הנקודות A(1,1) ו-B(4,7):
+* אופציות:
+  - m = 1
+  - m = 2
+  - m = 3
+* פתרון נכון: m = 2
+* פתרון מלא: נחשב לפי הנוסחה: m = (7 - 1) / (4 - 1) = 6 / 3 = 2.
+
+--------------------------------------------------------------------------------
+[תרגיל 10 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: חשבו את שיפוע הצלע CD בין הנקודות C(7,7) ו-D(5,3). השוו את התוצאה לשיפוע הצלע AB ומצאו מה אפשר להסיק על שתי הצלעות.
+* פתרון נכון: חישוב שיפוע CD: (3 פחות 7) חלקי (5 פחות 7) שווה (4-) חלקי (2-) שווה 2. קיבלנו שלשתי הצלעות יש בדיוק אותו שיפוע (m = 2), ומכאן שהצלעות AB ו-CD הן בעלות אותה תלילות וכיוון, ולכן הן צלעות מקבילות.
+* פתרון מלא: חישוב שיפוע CD: (3 פחות 7) חלקי (5 פחות 7) שווה (4-) חלקי (2-) שווה 2. קיבלנו שלשתי הצלעות יש בדיוק אותו שיפוע (m = 2), ומכאן שהצלעות AB ו-CD הן בעלות אותה תלילות וכיוון, ולכן הן צלעות מקבילות.

@@ -1,0 +1,109 @@
+{
+  "verdicts": [
+    {
+      "exerciseNumber": 1,
+      "passed": false,
+      "summary": "Reader critic call failed for exercise 1: [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent: [503 Service Unavailable] This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.",
+      "findings": [
+        {
+          "severity": "MEDIUM",
+          "sectionLetter": "exercise",
+          "kind": "other",
+          "issue": "שגיאה בקריאה של תרגיל 1: [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent: [503 Service Unavailable] This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.",
+          "suggestedFix": "הפעל שוב את ה-reader critic"
+        }
+      ]
+    },
+    {
+      "exerciseNumber": 2,
+      "passed": true,
+      "summary": "התרגיל בהיר, מדויק ומלווה באיור גרפי ברור התואם היטב את כל ארבעת הסעיפים. השאלות מדורגות בצורה הגיונית וממחישות היטב את ההבדל בין שימור כמות במערכת סגורה לפעולות חיצוניות.",
+      "findings": []
+    },
+    {
+      "exerciseNumber": 3,
+      "passed": true,
+      "summary": "",
+      "findings": []
+    },
+    {
+      "exerciseNumber": 4,
+      "passed": false,
+      "summary": "Reader critic call failed for exercise 4: [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent: [503 Service Unavailable] This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.",
+      "findings": [
+        {
+          "severity": "MEDIUM",
+          "sectionLetter": "exercise",
+          "kind": "other",
+          "issue": "שגיאה בקריאה של תרגיל 4: [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent: [503 Service Unavailable] This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.",
+          "suggestedFix": "הפעל שוב את ה-reader critic"
+        }
+      ]
+    },
+    {
+      "exerciseNumber": 5,
+      "passed": true,
+      "summary": "התרגיל מצוין, בנוי בצורה הדרגתית וברורה מתוך נתוני השרטוט והטקסט. המעבר מהגדרת המשתנים, דרך ביטוי ההעברה ובניית המשוואה ועד לפתרון המלא, תואם היטב את כוונת התכנון ומאפשר לתלמיד/ה לפתור בהצלחה ללא מכשולים.",
+      "findings": []
+    },
+    {
+      "exerciseNumber": 6,
+      "passed": true,
+      "summary": "התרגיל בנוי בצורה פדגוגית מצוינת: שרטוט הבסיס ממחיש בבירור את הכפלת הכמות הקטנה, סעיפים א'-ג' מובילים צעד אחר צעד מבחירת האגף הנכון, דרך חובת הסוגריים ועד לבניית המשוואה המלאה. בסעיף ד' המשוואה נפתרת נכון אך הפתרון הוא שבר והושמט ההקשר המילולי מהתכנון המקורי.",
+      "findings": [
+        {
+          "severity": "MEDIUM",
+          "sectionLetter": "ד",
+          "kind": "plan-fidelity",
+          "issue": "הסעיף מבקש פתרון אלגברי בלבד ובדיקה באגפים, ללא ההקשר המילולי ('בסיפור המקורי') שהוגדר בתכנית, והפתרון המתקבל אינו שלם (x = 20/3).",
+          "suggestedFix": "מומלץ לשנות את המספרים במשוואה כך שיתקבל מספר שלם (למשל 30 פחות x שווה ל-2 כפול (3 ועוד x), שנותן x = 8) ולקשור חזרה לסיפור המדפים והספרים."
+        }
+      ]
+    },
+    {
+      "exerciseNumber": 7,
+      "passed": true,
+      "summary": "התרגיל מובנה בצורה מדורגת, בהירה ומדויקת מתמטית. הוא מוביל את התלמיד/ה בהצלחה מהבנת החלק המשלים לסכום קבוע, דרך הוספת כמות וכינוס איברים, ועד לבניית משוואה ופתרונה. השרטוט ברור ומסייע מאוד להבנת הסיטואציה, למעט הצגת הביטוי הסופי של דן שעלולה להסגיר את התשובה לסעיף א'.",
+      "findings": [
+        {
+          "severity": "MEDIUM",
+          "sectionLetter": "א",
+          "kind": "content-issue",
+          "issue": "בשרטוט הבסיס כבר מופיע הכיתוב '50 - x' מתחת לשמו של דן, מה שמסגיר ישירות לתלמיד/ה את התשובה הנכונה לסעיף א' ללא צורך בהסקה עצמאית.",
+          "suggestedFix": "בשרטוט הבסיס מומלץ לשים סימן שאלה '?' או להשאיר ריק תחת שמו של דן, ולהוסיף את '50 - x' לשרטוט רק לאחר פתרון סעיף א'."
+        }
+      ]
+    },
+    {
+      "exerciseNumber": 8,
+      "passed": true,
+      "summary": "",
+      "findings": []
+    },
+    {
+      "exerciseNumber": 9,
+      "passed": true,
+      "summary": "התרגיל מצוין, תואם היטב את כוונת התכנון ומוביל את התלמיד בצורה הדרגתית וברורה מהבנה מושגית של עבודה לאחור ועד ליישום כפול של פתרון בעיה. כל הסעיפים פתירים לחלוטין. השרטוט נכשל ברינדור טכני אך התרגיל עומד בפני עצמו גם ללא השרטוט.",
+      "findings": [
+        {
+          "severity": "MEDIUM",
+          "sectionLetter": "exercise",
+          "kind": "other",
+          "issue": "שרטוט הבסיס נכשל ברינדור עקב שגיאת שרת (503 Service Unavailable) ומוצגת שגיאה גולמית במקום תרשים הזרימה.",
+          "suggestedFix": "יש לרנדר מחדש את שרטוט ה-SVG של דיאגרמת שני המסלולים המקבילים."
+        }
+      ]
+    },
+    {
+      "exerciseNumber": 10,
+      "passed": true,
+      "summary": "התרגיל מעולה, בנוי בצורה מדורגת וקוהרנטית, ומממש במלואו את כוונת המתכנן לסינתזה מסכמת. האיור ברור מאוד וממחיש היטב את תהליך ההעברה ואת יחס הכמויות בסיום, הניסוחים של השאלות מדויקים והמסיחים מייצגים טעויות תלמידים נפוצות.",
+      "findings": []
+    }
+  ],
+  "flaggedExerciseNumbers": [],
+  "totalCritical": 0,
+  "totalHigh": 0,
+  "totalMedium": 5,
+  "totalLow": 0
+}

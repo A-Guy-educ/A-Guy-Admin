@@ -1,0 +1,77 @@
+{
+  "verdicts": [
+    {
+      "exerciseNumber": 1,
+      "passed": true,
+      "summary": "התרגיל מנוסח בבהירות ועוקב בצורה מצוינת אחר תכנית השיעור. השרטוט תואם לחלוטין את השאלות, הסעיפים מדורגים בצורה נכונה וברורה לתלמיד/ה, והתשובות מוגדרות היטב.",
+      "findings": []
+    },
+    {
+      "exerciseNumber": 2,
+      "passed": true,
+      "summary": "התרגיל בהיר, בנוי היטב ומלווה את התלמיד/ה שלב אחר שלב לקראת ההבנה של שני ממדי המיקום הבלתי תלויים. השרטוט תואם לחלוטין את השאלות, והמעבר מסעיפי ההשוואה (א', ב') אל שילוב הכיוונים (ג', ד') נעשה בצורה חלקה וברורה.",
+      "findings": [
+        {
+          "severity": "LOW",
+          "sectionLetter": "ד",
+          "kind": "content-issue",
+          "issue": "בהנחיה נאמר שהנקודה R נמוכה מ-P, אך לא צוין במפורש שהיא נשארת מעל ציר ה-x (ברביע הראשון), מה שעלול תיאורטית לאפשר תנועה 'למטה' מתחת לציר.",
+          "suggestedFix": "להוסיף להנחיה את המילים 'מעל ציר x' (למשל: 'נקודה חדשה R שנמצאת מעל ציר x, נמוך יותר מ-P אך ימינה יותר מ-Q')."
+        }
+      ]
+    },
+    {
+      "exerciseNumber": 3,
+      "passed": true,
+      "summary": "",
+      "findings": []
+    },
+    {
+      "exerciseNumber": 4,
+      "passed": true,
+      "summary": "",
+      "findings": []
+    },
+    {
+      "exerciseNumber": 5,
+      "passed": true,
+      "summary": "התרגיל מצוין, ברור ומדויק מתמטית. שרטוט ה-SVG מציג היטב את ארבעת הרביעים, כיוון המספור והנקודה לדוגמה, וכל הסעיפים מובילים את התלמיד/ה באופן הדרגתי להבנת המושגים בהתאם לתכנית המתכנן.",
+      "findings": []
+    },
+    {
+      "exerciseNumber": 6,
+      "passed": true,
+      "summary": "",
+      "findings": []
+    },
+    {
+      "exerciseNumber": 7,
+      "passed": true,
+      "summary": "",
+      "findings": []
+    },
+    {
+      "exerciseNumber": 8,
+      "passed": true,
+      "summary": "",
+      "findings": []
+    },
+    {
+      "exerciseNumber": 9,
+      "passed": true,
+      "summary": "התרגיל בנוי בצורה מצוינת, בהיר לתלמיד/ה ותואם באופן מלא לשרטוט ולתכנית המקורית. המעבר מהבנת שיקוף סביב ציר y בעזרת השרטוט, למרחקים שווים, ומשם להכללה לציר x ולרביע ברור ומדורג היטב.",
+      "findings": []
+    },
+    {
+      "exerciseNumber": 10,
+      "passed": true,
+      "summary": "",
+      "findings": []
+    }
+  ],
+  "flaggedExerciseNumbers": [],
+  "totalCritical": 0,
+  "totalHigh": 0,
+  "totalMedium": 0,
+  "totalLow": 1
+}

@@ -11,6 +11,8 @@
 import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai'
 import { z } from 'zod'
 
+import { withHttpRetry } from './http-retry.js'
+
 const DEFAULT_MODEL = 'gemini-2.5-flash'
 
 interface GenerateJsonInput<TSchema extends z.ZodTypeAny> {
@@ -109,23 +111,32 @@ export async function generateJson<TSchema extends z.ZodTypeAny>(
     },
   })
 
-  const result = await model.generateContent(input.userPrompt)
-  const text = result.response.text()
+  // Wrap the generateContent + parse cycle in a retry: 503/429/network
+  // errors get exponential backoff (5s → 405s). JSON-parse and schema
+  // failures throw immediately (they're not retriable and usually indicate
+  // a prompt/schema issue we need to fix explicitly).
+  return withHttpRetry(
+    async () => {
+      const result = await model.generateContent(input.userPrompt)
+      const text = result.response.text()
 
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(text)
-  } catch (err) {
-    throw new Error(
-      `Gemini returned non-JSON output: ${text.slice(0, 200)}… (${(err as Error).message})`,
-    )
-  }
+      let parsed: unknown
+      try {
+        parsed = JSON.parse(text)
+      } catch (err) {
+        throw new Error(
+          `Gemini returned non-JSON output: ${text.slice(0, 200)}… (${(err as Error).message})`,
+        )
+      }
 
-  const validation = input.schema.safeParse(parsed)
-  if (!validation.success) {
-    throw new Error(
-      `Gemini output failed schema validation: ${JSON.stringify(validation.error.issues, null, 2)}\nRaw: ${text.slice(0, 500)}`,
-    )
-  }
-  return validation.data
+      const validation = input.schema.safeParse(parsed)
+      if (!validation.success) {
+        throw new Error(
+          `Gemini output failed schema validation: ${JSON.stringify(validation.error.issues, null, 2)}\nRaw: ${text.slice(0, 500)}`,
+        )
+      }
+      return validation.data
+    },
+    { label: `generateJson ${input.modelName ?? DEFAULT_MODEL}` },
+  )
 }

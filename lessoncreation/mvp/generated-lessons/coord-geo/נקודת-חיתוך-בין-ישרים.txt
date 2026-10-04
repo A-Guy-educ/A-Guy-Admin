@@ -1,0 +1,1519 @@
+================================================================================
+תרגיל 1 – מנחה: זיהוי תפיסתי של נקודת מפגש משותפת בין שני ישרים מתוך…
+================================================================================
+לפניכם מערכת צירים שבה משורטטים שני ישרים: ישר כחול וישר אדום. שני הישרים נפגשים בנקודה אחת מודגשת. בנוסף מסומנות נקודות נוספות במערכת הצירים.
+
+  <svg width="400" height="380" xmlns="http://www.w3.org/2000/svg" font-family="Arial, sans-serif">
+    <defs>
+      <!-- חץ לצירים -->
+      <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#333" />
+      </marker>
+    </defs>
+
+    <!-- רשת משובצת -->
+    <g stroke="#e0e0e0" stroke-width="1">
+      <!-- קווים אנכיים -->
+      <line x1="40" y1="30" x2="40" y2="350" />
+      <line x1="80" y1="30" x2="80" y2="350" />
+      <line x1="120" y1="30" x2="120" y2="350" />
+      <line x1="160" y1="30" x2="160" y2="350" />
+      <line x1="200" y1="30" x2="200" y2="350" />
+      <line x1="240" y1="30" x2="240" y2="350" />
+      <line x1="280" y1="30" x2="280" y2="350" />
+      <line x1="320" y1="30" x2="320" y2="350" />
+      <line x1="360" y1="30" x2="360" y2="350" />
+
+      <!-- קווים אופקיים -->
+      <line x1="30" y1="60" x2="370" y2="60" />
+      <line x1="30" y1="100" x2="370" y2="100" />
+      <line x1="30" y1="140" x2="370" y2="140" />
+      <line x1="30" y1="180" x2="370" y2="180" />
+      <line x1="30" y1="220" x2="370" y2="220" />
+      <line x1="30" y1="260" x2="370" y2="260" />
+      <line x1="30" y1="300" x2="370" y2="300" />
+      <line x1="30" y1="340" x2="370" y2="340" />
+    </g>
+
+    <!-- צירים -->
+    <g stroke="#333" stroke-width="1.8">
+      <!-- ציר X -->
+      <line x1="30" y1="300" x2="370" y2="300" marker-end="url(#arrow)" />
+      <!-- ציר Y -->
+      <line x1="80" y1="350" x2="80" y2="25" marker-end="url(#arrow)" />
+    </g>
+
+    <!-- תוויות צירים ומספרים -->
+    <g font-size="12" fill="#555" text-anchor="middle">
+      <!-- שם הצירים -->
+      <text x="375" y="304" font-weight="bold" fill="#000">x</text>
+      <text x="80" y="18" font-weight="bold" fill="#000">y</text>
+
+      <!-- ראשית -->
+      <text x="70" y="315">0</text>
+
+      <!-- שנתות ציר X -->
+      <text x="120" y="316">1</text>
+      <text x="160" y="316">2</text>
+      <text x="200" y="316">3</text>
+      <text x="240" y="316">4</text>
+      <text x="280" y="316">5</text>
+      <text x="320" y="316">6</text>
+
+      <!-- שנתות ציר Y -->
+      <text x="68" y="264">1</text>
+      <text x="68" y="224">2</text>
+      <text x="68" y="184">3</text>
+      <text x="68" y="144">4</text>
+      <text x="68" y="104">5</text>
+      <text x="68" y="64">6</text>
+    </g>
+
+    <!-- הישר הכחול (עולה: y = x + 1) -->
+    <line x1="50" y1="290" x2="230" y2="110" stroke="#1976D2" stroke-width="2.5" stroke-linecap="round" />
+
+    <!-- הישר האדום (יורד: y = -x + 5) -->
+    <line x1="90" y1="110" x2="270" y2="290" stroke="#D32F2F" stroke-width="2.5" stroke-linecap="round" />
+
+    <!-- נקודות מודגשות -->
+    <!-- נקודה P (חיתוך) -->
+    <circle cx="160" cy="180" r="5" fill="#2E7D32" stroke="#fff" stroke-width="1.5" />
+    <text x="160" y="168" font-size="13" font-weight="bold" fill="#2E7D32" text-anchor="middle">P (2, 3)</text>
+
+    <!-- נקודה A (על הישר הכחול) -->
+    <circle cx="80" cy="260" r="4.5" fill="#1976D2" stroke="#fff" stroke-width="1.5" />
+    <text x="50" y="258" font-size="12" font-weight="bold" fill="#1976D2">A (0, 1)</text>
+
+    <!-- נקודה B (על הישר האדום) -->
+    <circle cx="240" cy="260" r="4.5" fill="#D32F2F" stroke="#fff" stroke-width="1.5" />
+    <text x="250" y="258" font-size="12" font-weight="bold" fill="#D32F2F">B (4, 1)</text>
+
+    <!-- נקודה C (מחוץ לישרים) -->
+    <circle cx="120" cy="100" r="4.5" fill="#000" stroke="#fff" stroke-width="1.5" />
+    <text x="120" y="88" font-size="12" font-weight="bold" fill="#000" text-anchor="middle">C (1, 5)</text>
+  </svg>
+
+<svg width="400" height="380" xmlns="http://www.w3.org/2000/svg" font-family="Arial, sans-serif">
+    <defs>
+      <!-- חץ לצירים -->
+      <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#333" />
+      </marker>
+    </defs>
+
+    <!-- רשת משובצת -->
+    <g stroke="#e0e0e0" stroke-width="1">
+      <!-- קווים אנכיים -->
+      <line x1="40" y1="30" x2="40" y2="350" />
+      <line x1="80" y1="30" x2="80" y2="350" />
+      <line x1="120" y1="30" x2="120" y2="350" />
+      <line x1="160" y1="30" x2="160" y2="350" />
+      <line x1="200" y1="30" x2="200" y2="350" />
+      <line x1="240" y1="30" x2="240" y2="350" />
+      <line x1="280" y1="30" x2="280" y2="350" />
+      <line x1="320" y1="30" x2="320" y2="350" />
+      <line x1="360" y1="30" x2="360" y2="350" />
+
+      <!-- קווים אופקיים -->
+      <line x1="30" y1="60" x2="370" y2="60" />
+      <line x1="30" y1="100" x2="370" y2="100" />
+      <line x1="30" y1="140" x2="370" y2="140" />
+      <line x1="30" y1="180" x2="370" y2="180" />
+      <line x1="30" y1="220" x2="370" y2="220" />
+      <line x1="30" y1="260" x2="370" y2="260" />
+      <line x1="30" y1="300" x2="370" y2="300" />
+      <line x1="30" y1="340" x2="370" y2="340" />
+    </g>
+
+    <!-- צירים -->
+    <g stroke="#333" stroke-width="1.8">
+      <!-- ציר X -->
+      <line x1="30" y1="300" x2="370" y2="300" marker-end="url(#arrow)" />
+      <!-- ציר Y -->
+      <line x1="80" y1="350" x2="80" y2="25" marker-end="url(#arrow)" />
+    </g>
+
+    <!-- תוויות צירים ומספרים -->
+    <g font-size="12" fill="#555" text-anchor="middle">
+      <!-- שם הצירים -->
+      <text x="375" y="304" font-weight="bold" fill="#000">x</text>
+      <text x="80" y="18" font-weight="bold" fill="#000">y</text>
+
+      <!-- ראשית -->
+      <text x="70" y="315">0</text>
+
+      <!-- שנתות ציר X -->
+      <text x="120" y="316">1</text>
+      <text x="160" y="316">2</text>
+      <text x="200" y="316">3</text>
+      <text x="240" y="316">4</text>
+      <text x="280" y="316">5</text>
+      <text x="320" y="316">6</text>
+
+      <!-- שנתות ציר Y -->
+      <text x="68" y="264">1</text>
+      <text x="68" y="224">2</text>
+      <text x="68" y="184">3</text>
+      <text x="68" y="144">4</text>
+      <text x="68" y="104">5</text>
+      <text x="68" y="64">6</text>
+    </g>
+
+    <!-- הישר הכחול (עולה: y = x + 1) -->
+    <line x1="50" y1="290" x2="230" y2="110" stroke="#1976D2" stroke-width="2.5" stroke-linecap="round" />
+
+    <!-- הישר האדום (יורד: y = -x + 5) -->
+    <line x1="90" y1="110" x2="270" y2="290" stroke="#D32F2F" stroke-width="2.5" stroke-linecap="round" />
+
+    <!-- נקודות מודגשות -->
+    <!-- נקודה P (חיתוך) -->
+    <circle cx="160" cy="180" r="5" fill="#2E7D32" stroke="#fff" stroke-width="1.5" />
+    <text x="160" y="168" font-size="13" font-weight="bold" fill="#2E7D32" text-anchor="middle">P (2, 3)</text>
+
+    <!-- נקודה A (על הישר הכחול) -->
+    <circle cx="80" cy="260" r="4.5" fill="#1976D2" stroke="#fff" stroke-width="1.5" />
+    <text x="50" y="258" font-size="12" font-weight="bold" fill="#1976D2">A (0, 1)</text>
+
+    <!-- נקודה B (על הישר האדום) -->
+    <circle cx="240" cy="260" r="4.5" fill="#D32F2F" stroke="#fff" stroke-width="1.5" />
+    <text x="250" y="258" font-size="12" font-weight="bold" fill="#D32F2F">B (4, 1)</text>
+
+    <!-- נקודה C (מחוץ לישרים) -->
+    <circle cx="120" cy="100" r="4.5" fill="#000" stroke="#fff" stroke-width="1.5" />
+    <text x="120" y="88" font-size="12" font-weight="bold" fill="#000" text-anchor="middle">C (1, 5)</text>
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 1 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: התבוננו בנקודת המפגש P ששיעוריה (2,3). על אילו ישרים מונחת נקודה זו?
+* אופציות:
+  - על שני הישרים בו-זמנית (הכחול והאדום).
+  - על הישר הכחול בלבד.
+* פתרון נכון: על שני הישרים בו-זמנית (הכחול והאדום).
+* פתרון מלא: נקודת החיתוך היא הנקודה המשותפת לשני הישרים, ולכן היא שייכת לשניהם בו-זמנית.
+
+--------------------------------------------------------------------------------
+[תרגיל 1 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: התבוננו בנקודה A ששיעוריה (0,1) הנמצאת על הישר הכחול. האם נקודה זו נמצאת גם על הישר האדום?
+* אופציות:
+  - כן, כל נקודה של ישר אחד שייכת גם לשני.
+  - לא, היא נמצאת רק על הישר הכחול.
+* פתרון נכון: לא, היא נמצאת רק על הישר הכחול.
+* פתרון מלא: נקודה רגילה שנמצאת על גבי ישר אחד אינה שייכת לישר האחר, למעט נקודת המפגש המשותפת.
+
+--------------------------------------------------------------------------------
+[תרגיל 1 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: מבין הנקודות A, B ו-C המסומנות בשרטוט, איזו נקודה אינה שייכת לאף אחד משני הישרים?
+* אופציות:
+  - נקודה A
+  - נקודה B
+  - נקודה C
+* פתרון נכון: נקודה C
+* פתרון מלא: נקודה C נמצאת ב-(1,5) בחלל המישורי שבין הישרים ומחוץ לשניהם, ולכן אינה שייכת לאף אחד מהם.
+
+--------------------------------------------------------------------------------
+[תרגיל 1 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: מצאו מתוך השרטוט נקודה נוספת (מלבד נקודת המפגש) המונחת על הישר האדום בלבד, ורשמו את שיעוריה.
+* פתרון נכון: נקודה הנמצאת על הישר האדום בלבד היא למשל נקודה B בשיעורים (4,1), או נקודת החיתוך עם ציר y בשיעורים (0,5).
+* פתרון מלא: נקודה הנמצאת על הישר האדום בלבד היא למשל נקודה B בשיעורים (4,1), או נקודת החיתוך עם ציר y בשיעורים (0,5).
+
+================================================================================
+תרגיל 2 – מנחה: הבנה תפיסתית ששני ישרים בעלי כיוונים שונים נפגשים בנקודה…
+================================================================================
+נבחן את ההתנהגות של שני קווים ישרים לפני נקודת המפגש ולאחריה.
+
+  <svg width="400" height="300" viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg" font-family="Arial, sans-serif">
+    <defs>
+      <!-- חץ לצירים -->
+      <marker id="axis-arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+        <path d="M0,0 L6,3 L0,6 Z" fill="#64748b"/>
+      </marker>
+      <!-- חצי מרחק -->
+      <marker id="dist-arrow-down" markerWidth="6" markerHeight="6" refX="3" refY="5" orient="auto">
+        <path d="M0,0 L3,5 L6,0 Z" fill="#e11d48"/>
+      </marker>
+      <marker id="dist-arrow-up" markerWidth="6" markerHeight="6" refX="3" refY="1" orient="auto">
+        <path d="M0,6 L3,1 L6,6 Z" fill="#e11d48"/>
+      </marker>
+    </defs>
+
+    <!-- רקע רשת עדין -->
+    <rect width="400" height="300" fill="#ffffff"/>
+
+    <!-- מערכת צירים -->
+    <!-- ציר X -->
+    <line x1="30" y1="200" x2="375" y2="200" stroke="#64748b" stroke-width="1.5" marker-end="url(#axis-arrow)"/>
+    <text x="382" y="204" font-size="13" fill="#64748b" font-weight="bold">x</text>
+
+    <!-- ציר Y -->
+    <line x1="100" y1="275" x2="100" y2="25" stroke="#64748b" stroke-width="1.5" marker-end="url(#axis-arrow)"/>
+    <text x="100" y="16" font-size="13" fill="#64748b" font-weight="bold" text-anchor="middle">y</text>
+
+    <!-- ראשית הצירים -->
+    <text x="92" y="214" font-size="11" fill="#94a3b8">0</text>
+
+    <!-- ישר עולה -->
+    <line x1="50" y1="230" x2="350" y2="50" stroke="#2563eb" stroke-width="2.5"/>
+    <text x="355" y="48" font-size="11" fill="#2563eb" font-weight="bold">ישר עולה</text>
+
+    <!-- ישר יורד -->
+    <line x1="50" y1="50" x2="350" y2="230" stroke="#059669" stroke-width="2.5"/>
+    <text x="355" y="235" font-size="11" fill="#059669" font-weight="bold">ישר יורד</text>
+
+    <!-- חצי מרחק משמאל לנקודת המפגש -->
+    <!-- מרחק קטן יותר (קרוב לנקודה) -->
+    <line x1="150" y1="114" x2="150" y2="166" stroke="#e11d48" stroke-width="1.8" stroke-dasharray="3,2" marker-start="url(#dist-arrow-up)" marker-end="url(#dist-arrow-down)"/>
+    <!-- מרחק גדול יותר (רחוק מהנקודה) -->
+    <line x1="80" y1="72" x2="80" y2="208" stroke="#e11d48" stroke-width="2" stroke-dasharray="3,2" marker-start="url(#dist-arrow-up)" marker-end="url(#dist-arrow-down)"/>
+
+    <!-- חצי מרחק מימין לנקודת המפגש -->
+    <!-- מרחק קטן יותר (קרוב לנקודה) -->
+    <line x1="250" y1="114" x2="250" y2="166" stroke="#e11d48" stroke-width="1.8" stroke-dasharray="3,2" marker-start="url(#dist-arrow-up)" marker-end="url(#dist-arrow-down)"/>
+    <!-- מרחק גדול יותר (רחוק מהנקודה) -->
+    <line x1="320" y1="72" x2="320" y2="208" stroke="#e11d48" stroke-width="2" stroke-dasharray="3,2" marker-start="url(#dist-arrow-up)" marker-end="url(#dist-arrow-down)"/>
+
+    <!-- נקודת המפגש -->
+    <circle cx="200" cy="140" r="4.5" fill="#1e293b"/>
+    <text x="200" y="125" font-size="12" fill="#1e293b" font-weight="bold" text-anchor="middle" direction="rtl">נקודת חיתוך</text>
+
+    <!-- כיתובים המדגישים את הגידול במרחק -->
+    <text x="60" y="260" font-size="11" fill="#e11d48" text-anchor="middle" direction="rtl">מרחק גדל ←</text>
+    <text x="340" y="260" font-size="11" fill="#e11d48" text-anchor="middle" direction="rtl">→ מרחק גדל</text>
+  </svg>
+
+<svg width="400" height="300" viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg" font-family="Arial, sans-serif">
+    <defs>
+      <!-- חץ לצירים -->
+      <marker id="axis-arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+        <path d="M0,0 L6,3 L0,6 Z" fill="#64748b"/>
+      </marker>
+      <!-- חצי מרחק -->
+      <marker id="dist-arrow-down" markerWidth="6" markerHeight="6" refX="3" refY="5" orient="auto">
+        <path d="M0,0 L3,5 L6,0 Z" fill="#e11d48"/>
+      </marker>
+      <marker id="dist-arrow-up" markerWidth="6" markerHeight="6" refX="3" refY="1" orient="auto">
+        <path d="M0,6 L3,1 L6,6 Z" fill="#e11d48"/>
+      </marker>
+    </defs>
+
+    <!-- רקע רשת עדין -->
+    <rect width="400" height="300" fill="#ffffff"/>
+
+    <!-- מערכת צירים -->
+    <!-- ציר X -->
+    <line x1="30" y1="200" x2="375" y2="200" stroke="#64748b" stroke-width="1.5" marker-end="url(#axis-arrow)"/>
+    <text x="382" y="204" font-size="13" fill="#64748b" font-weight="bold">x</text>
+
+    <!-- ציר Y -->
+    <line x1="100" y1="275" x2="100" y2="25" stroke="#64748b" stroke-width="1.5" marker-end="url(#axis-arrow)"/>
+    <text x="100" y="16" font-size="13" fill="#64748b" font-weight="bold" text-anchor="middle">y</text>
+
+    <!-- ראשית הצירים -->
+    <text x="92" y="214" font-size="11" fill="#94a3b8">0</text>
+
+    <!-- ישר עולה -->
+    <line x1="50" y1="230" x2="350" y2="50" stroke="#2563eb" stroke-width="2.5"/>
+    <text x="355" y="48" font-size="11" fill="#2563eb" font-weight="bold">ישר עולה</text>
+
+    <!-- ישר יורד -->
+    <line x1="50" y1="50" x2="350" y2="230" stroke="#059669" stroke-width="2.5"/>
+    <text x="355" y="235" font-size="11" fill="#059669" font-weight="bold">ישר יורד</text>
+
+    <!-- חצי מרחק משמאל לנקודת המפגש -->
+    <!-- מרחק קטן יותר (קרוב לנקודה) -->
+    <line x1="150" y1="114" x2="150" y2="166" stroke="#e11d48" stroke-width="1.8" stroke-dasharray="3,2" marker-start="url(#dist-arrow-up)" marker-end="url(#dist-arrow-down)"/>
+    <!-- מרחק גדול יותר (רחוק מהנקודה) -->
+    <line x1="80" y1="72" x2="80" y2="208" stroke="#e11d48" stroke-width="2" stroke-dasharray="3,2" marker-start="url(#dist-arrow-up)" marker-end="url(#dist-arrow-down)"/>
+
+    <!-- חצי מרחק מימין לנקודת המפגש -->
+    <!-- מרחק קטן יותר (קרוב לנקודה) -->
+    <line x1="250" y1="114" x2="250" y2="166" stroke="#e11d48" stroke-width="1.8" stroke-dasharray="3,2" marker-start="url(#dist-arrow-up)" marker-end="url(#dist-arrow-down)"/>
+    <!-- מרחק גדול יותר (רחוק מהנקודה) -->
+    <line x1="320" y1="72" x2="320" y2="208" stroke="#e11d48" stroke-width="2" stroke-dasharray="3,2" marker-start="url(#dist-arrow-up)" marker-end="url(#dist-arrow-down)"/>
+
+    <!-- נקודת המפגש -->
+    <circle cx="200" cy="140" r="4.5" fill="#1e293b"/>
+    <text x="200" y="125" font-size="12" fill="#1e293b" font-weight="bold" text-anchor="middle" direction="rtl">נקודת חיתוך</text>
+
+    <!-- כיתובים המדגישים את הגידול במרחק -->
+    <text x="60" y="260" font-size="11" fill="#e11d48" text-anchor="middle" direction="rtl">מרחק גדל ←</text>
+    <text x="340" y="260" font-size="11" fill="#e11d48" text-anchor="middle" direction="rtl">→ מרחק גדל</text>
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 2 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: הביטו בישרים משני צדי נקודת המפגש. מה קורה למרחק ביניהם ככל שמתרחקים מנקודת המפגש ימינה או שמאלה?
+* אופציות:
+  - הישרים מתרחקים זה מזה.
+  - הישרים מתקרבים זה לזה שוב.
+* פתרון נכון: הישרים מתרחקים זה מזה.
+* פתרון מלא: לאחר נקודת המפגש, הישרים ממשיכים בכיווניהם ומתרחקים זה מזה ללא סוף.
+
+--------------------------------------------------------------------------------
+[תרגיל 2 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: מכיוון שמדובר בקווים ישרים שאינם מתעקלים, האם הם יכולים להסתובב ולהיפגש שוב במקום אחר?
+* אופציות:
+  - לא, קו ישר שומר על כיוונו ולעולם לא יפנה לאחור.
+  - כן, אם נמשיך את הצירים מספיק רחוק הם ייפגשו שוב.
+* פתרון נכון: לא, קו ישר שומר על כיוונו ולעולם לא יפנה לאחור.
+* פתרון מלא: קווים ישרים אינם מתעקלים, ולכן אם הם נחתכו פעם אחת הם ממשיכים להתרחק ולעולם לא ייפגשו שנית.
+
+--------------------------------------------------------------------------------
+[תרגיל 2 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: כמה נקודות חיתוך לכל היותר יכולות להיות לשני ישרים שנחתכים במישור?
+* אופציות:
+  - נקודה אחת בדיוק
+  - שתי נקודות
+  - אינסוף נקודות
+* פתרון נכון: נקודה אחת בדיוק
+* פתרון מלא: שני ישרים שנחתכים במישור יכולים להיפגש בנקודה אחת בלבד.
+
+--------------------------------------------------------------------------------
+[תרגיל 2 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: חשבו מהו המרחק האנכי בין שני הישרים בדיוק ברגע המפגש שלהם (כלומר באותו ערך x של נקודת החיתוך).
+* פתרון נכון: המרחק האנכי בין שני הישרים בנקודת המפגש שווה ל-0, מכיוון ששני הישרים חולקים בדיוק את אותו ערך y בנקודה זו.
+* פתרון מלא: המרחק האנכי בין שני הישרים בנקודת המפגש שווה ל-0, מכיוון ששני הישרים חולקים בדיוק את אותו ערך y בנקודה זו.
+
+================================================================================
+תרגיל 3 – מנחה: הבנת הצורך בשיטה אלגברית כאשר נקודת החיתוך אינה שלמה או…
+================================================================================
+לפעמים קשה לקרוא את שיעורי נקודת החיתוך מתוך שרטוט בעין בלבד, במיוחד כאשר הנקודה אינה שלמה.
+
+  <svg width="400" height="350" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <!-- חץ לצירים -->
+      <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#222"/>
+      </marker>
+    </defs>
+
+    <!-- רשת משובצת -->
+    <g stroke="#e2e8f0" stroke-width="1.5">
+      <!-- קווים אנכיים -->
+      <line x1="50" y1="30" x2="50" y2="310"/>
+      <line x1="150" y1="30" x2="150" y2="310"/>
+      <line x1="200" y1="30" x2="200" y2="310"/>
+      <line x1="250" y1="30" x2="250" y2="310"/>
+      <line x1="300" y1="30" x2="300" y2="310"/>
+      <line x1="350" y1="30" x2="350" y2="310"/>
+
+      <!-- קווים אופקיים -->
+      <line x1="30" y1="50" x2="370" y2="50"/>
+      <line x1="30" y1="100" x2="370" y2="100"/>
+      <line x1="30" y1="150" x2="370" y2="150"/>
+      <line x1="30" y1="200" x2="370" y2="200"/>
+      <line x1="30" y1="300" x2="370" y2="300"/>
+    </g>
+
+    <!-- ציר X -->
+    <line x1="30" y1="250" x2="375" y2="250" stroke="#222" stroke-width="2" marker-end="url(#arrow)"/>
+    <text x="375" y="245" font-size="14" font-family="Arial" font-weight="bold" fill="#222">x</text>
+
+    <!-- ציר Y -->
+    <line x1="100" y1="320" x2="100" y2="25" stroke="#222" stroke-width="2" marker-end="url(#arrow)"/>
+    <text x="108" y="25" font-size="14" font-family="Arial" font-weight="bold" fill="#222">y</text>
+
+    <!-- שנתות ומספרים על ציר X -->
+    <g font-size="12" font-family="Arial" fill="#444" text-anchor="middle">
+      <line x1="150" y1="247" x2="150" y2="253" stroke="#222" stroke-width="1.5"/>
+      <text x="150" y="268">1</text>
+      <line x1="200" y1="247" x2="200" y2="253" stroke="#222" stroke-width="1.5"/>
+      <text x="200" y="268">2</text>
+      <line x1="250" y1="247" x2="250" y2="253" stroke="#222" stroke-width="1.5"/>
+      <text x="250" y="268">3</text>
+      <line x1="300" y1="247" x2="300" y2="253" stroke="#222" stroke-width="1.5"/>
+      <text x="300" y="268">4</text>
+      <line x1="350" y1="247" x2="350" y2="253" stroke="#222" stroke-width="1.5"/>
+      <text x="350" y="268">5</text>
+      <text x="88" y="266">0</text>
+    </g>
+
+    <!-- שנתות ומספרים על ציר Y -->
+    <g font-size="12" font-family="Arial" fill="#444" text-anchor="end">
+      <line x1="97" y1="200" x2="103" y2="200" stroke="#222" stroke-width="1.5"/>
+      <text x="92" y="204">1</text>
+      <line x1="97" y1="150" x2="103" y2="150" stroke="#222" stroke-width="1.5"/>
+      <text x="92" y="154">2</text>
+      <line x1="97" y1="100" x2="103" y2="100" stroke="#222" stroke-width="1.5"/>
+      <text x="92" y="104">3</text>
+      <line x1="97" y1="50" x2="103" y2="50" stroke="#222" stroke-width="1.5"/>
+      <text x="92" y="54">4</text>
+    </g>
+
+    <!-- ישר 1 (עולה: y = x + 1) -->
+    <line x1="60" y1="240" x2="280" y2="20" stroke="#2563eb" stroke-width="2.5"/>
+
+    <!-- ישר 2 (יורד: y = -x + 4) -->
+    <line x1="65" y1="15" x2="325" y2="275" stroke="#059669" stroke-width="2.5"/>
+
+    <!-- נקודת החיתוך (1.5, 2.5) -> (175, 125) -->
+    <circle cx="175" cy="125" r="5" fill="#dc2626"/>
+
+    <!-- סימן שאלה ליד נקודת המפגש -->
+    <text x="190" y="122" font-size="22" font-family="Arial" font-weight="bold" fill="#dc2626">?</text>
+  </svg>
+
+<svg width="400" height="350" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <!-- חץ לצירים -->
+      <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#222"/>
+      </marker>
+    </defs>
+
+    <!-- רשת משובצת -->
+    <g stroke="#e2e8f0" stroke-width="1.5">
+      <!-- קווים אנכיים -->
+      <line x1="50" y1="30" x2="50" y2="310"/>
+      <line x1="150" y1="30" x2="150" y2="310"/>
+      <line x1="200" y1="30" x2="200" y2="310"/>
+      <line x1="250" y1="30" x2="250" y2="310"/>
+      <line x1="300" y1="30" x2="300" y2="310"/>
+      <line x1="350" y1="30" x2="350" y2="310"/>
+
+      <!-- קווים אופקיים -->
+      <line x1="30" y1="50" x2="370" y2="50"/>
+      <line x1="30" y1="100" x2="370" y2="100"/>
+      <line x1="30" y1="150" x2="370" y2="150"/>
+      <line x1="30" y1="200" x2="370" y2="200"/>
+      <line x1="30" y1="300" x2="370" y2="300"/>
+    </g>
+
+    <!-- ציר X -->
+    <line x1="30" y1="250" x2="375" y2="250" stroke="#222" stroke-width="2" marker-end="url(#arrow)"/>
+    <text x="375" y="245" font-size="14" font-family="Arial" font-weight="bold" fill="#222">x</text>
+
+    <!-- ציר Y -->
+    <line x1="100" y1="320" x2="100" y2="25" stroke="#222" stroke-width="2" marker-end="url(#arrow)"/>
+    <text x="108" y="25" font-size="14" font-family="Arial" font-weight="bold" fill="#222">y</text>
+
+    <!-- שנתות ומספרים על ציר X -->
+    <g font-size="12" font-family="Arial" fill="#444" text-anchor="middle">
+      <line x1="150" y1="247" x2="150" y2="253" stroke="#222" stroke-width="1.5"/>
+      <text x="150" y="268">1</text>
+      <line x1="200" y1="247" x2="200" y2="253" stroke="#222" stroke-width="1.5"/>
+      <text x="200" y="268">2</text>
+      <line x1="250" y1="247" x2="250" y2="253" stroke="#222" stroke-width="1.5"/>
+      <text x="250" y="268">3</text>
+      <line x1="300" y1="247" x2="300" y2="253" stroke="#222" stroke-width="1.5"/>
+      <text x="300" y="268">4</text>
+      <line x1="350" y1="247" x2="350" y2="253" stroke="#222" stroke-width="1.5"/>
+      <text x="350" y="268">5</text>
+      <text x="88" y="266">0</text>
+    </g>
+
+    <!-- שנתות ומספרים על ציר Y -->
+    <g font-size="12" font-family="Arial" fill="#444" text-anchor="end">
+      <line x1="97" y1="200" x2="103" y2="200" stroke="#222" stroke-width="1.5"/>
+      <text x="92" y="204">1</text>
+      <line x1="97" y1="150" x2="103" y2="150" stroke="#222" stroke-width="1.5"/>
+      <text x="92" y="154">2</text>
+      <line x1="97" y1="100" x2="103" y2="100" stroke="#222" stroke-width="1.5"/>
+      <text x="92" y="104">3</text>
+      <line x1="97" y1="50" x2="103" y2="50" stroke="#222" stroke-width="1.5"/>
+      <text x="92" y="54">4</text>
+    </g>
+
+    <!-- ישר 1 (עולה: y = x + 1) -->
+    <line x1="60" y1="240" x2="280" y2="20" stroke="#2563eb" stroke-width="2.5"/>
+
+    <!-- ישר 2 (יורד: y = -x + 4) -->
+    <line x1="65" y1="15" x2="325" y2="275" stroke="#059669" stroke-width="2.5"/>
+
+    <!-- נקודת החיתוך (1.5, 2.5) -> (175, 125) -->
+    <circle cx="175" cy="125" r="5" fill="#dc2626"/>
+
+    <!-- סימן שאלה ליד נקודת המפגש -->
+    <text x="190" y="122" font-size="22" font-family="Arial" font-weight="bold" fill="#dc2626">?</text>
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 3 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: התבוננו בנקודת החיתוך בשרטוט. האם היא נופלת בדיוק על מפגש של קווי הרשת המשובצת?
+* אופציות:
+  - לא, היא נופלת בתוך משבצת בין הקווים.
+  - כן, היא נופלת בדיוק על פינת משבצת שלמה.
+* פתרון נכון: לא, היא נופלת בתוך משבצת בין הקווים.
+* פתרון מלא: נקודת החיתוך אינה ממוקמת על הצטלבות שלמה של קווי הרשת, אלא בין המשבצות.
+
+--------------------------------------------------------------------------------
+[תרגיל 3 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: האם קריאה מתוך הגרף בעין בלבד יכולה להבטיח לנו דיוק מוחלט בשיעורי הנקודה במקרה זה?
+* אופציות:
+  - לא, מראה עיניים בלבד נותן רק הערכה מקורבת ועלול להטעות.
+  - כן, תמיד אפשר לנחש במדויק לפי השרטוט.
+* פתרון נכון: לא, מראה עיניים בלבד נותן רק הערכה מקורבת ועלול להטעות.
+* פתרון מלא: כאשר הנקודה אינה נופלת על מספר שלם, קריאה חזותית היא משוערת בלבד ונדרש חישוב אלגברי מדויק.
+
+--------------------------------------------------------------------------------
+[תרגיל 3 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: לפי השרטוט, באיזה תחום נמצא שיעור ה-x של נקודת החיתוך?
+* אופציות:
+  - בין 0 ל-1
+  - בין 1 ל-2
+  - בין 3 ל-4
+* פתרון נכון: בין 1 ל-2
+* פתרון מלא: ניתן לראות על גבי ציר ה-x שהנקודה נמצאת מימין ל-1 ומשמאל ל-2, כלומר בתחום שבין 1 ל-2.
+
+--------------------------------------------------------------------------------
+[תרגיל 3 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: נסחו מהו הקשר בין ערך ה-y של הישר הראשון לבין ערך ה-y של הישר השני בדיוק בנקודת המפגש.
+* פתרון נכון: בנקודת המפגש ערכי ה-y של שתי הפונקציות שווים לחלוטין (y1 = y2), ולכן שני הביטויים האלגבריים המייצגים את y שווים זה לזה.
+* פתרון מלא: בנקודת המפגש ערכי ה-y של שתי הפונקציות שווים לחלוטין (y1 = y2), ולכן שני הביטויים האלגבריים המייצגים את y שווים זה לזה.
+
+================================================================================
+תרגיל 4 – בסיס: הפעלת השוואת ביטויים (y = y) למציאת שיעור ה-x של נקודת…
+================================================================================
+כדי למצוא את נקודת החיתוך בדיוק מתמטי, נשתמש בהשוואת ביטויים אלגבריים. נתונים שני ישרים: y = 2x - 1 ו-y = x + 3.
+
+  <svg width="400" height="300" viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg">
+    <!-- בסיס ועמוד המאזניים -->
+    <path d="M150 260 L250 260 L240 245 L160 245 Z" fill="#4A5568"/>
+    <rect x="194" y="95" width="12" height="150" fill="#718096" rx="3"/>
+    <polygon points="200,80 185,105 215,105" fill="#2D3748"/>
+
+    <!-- זרוע המאזניים המאוזנת -->
+    <line x1="70" y1="100" x2="330" y2="100" stroke="#2D3748" stroke-width="6" stroke-linecap="round"/>
+    <circle cx="200" cy="100" r="7" fill="#E2E8F0" stroke="#2D3748" stroke-width="3"/>
+
+    <!-- נקודת מרכז: סימן שוויון וערך y -->
+    <circle cx="200" cy="55" r="22" fill="#EDF2F7" stroke="#3182CE" stroke-width="2"/>
+    <text x="200" y="52" font-family="sans-serif" font-size="14" font-weight="bold" fill="#2B6CB0" text-anchor="middle">y</text>
+    <text x="200" y="68" font-family="sans-serif" font-size="14" font-weight="bold" fill="#2B6CB0" text-anchor="middle">=</text>
+
+    <!-- מתלי כף שמאל -->
+    <circle cx="90" cy="100" r="4" fill="#4A5568"/>
+    <line x1="90" y1="100" x2="55" y2="175" stroke="#A0AEC0" stroke-width="2"/>
+    <line x1="90" y1="100" x2="125" y2="175" stroke="#A0AEC0" stroke-width="2"/>
+    <!-- צלחת שמאל -->
+    <path d="M45 175 Q90 195 135 175 Z" fill="#CBD5E0" stroke="#718096" stroke-width="2"/>
+
+    <!-- משקולת / ביטוי כף שמאל -->
+    <rect x="52" y="130" width="76" height="42" rx="6" fill="#EBF8FF" stroke="#3182CE" stroke-width="2"/>
+    <text x="90" y="157" font-family="sans-serif" font-size="16" font-weight="bold" fill="#2B6CB0" text-anchor="middle">2x − 1</text>
+
+    <!-- מתלי כף ימין -->
+    <circle cx="310" cy="100" r="4" fill="#4A5568"/>
+    <line x1="310" y1="100" x2="275" y2="175" stroke="#A0AEC0" stroke-width="2"/>
+    <line x1="310" y1="100" x2="345" y2="175" stroke="#A0AEC0" stroke-width="2"/>
+    <!-- צלחת ימין -->
+    <path d="M265 175 Q310 195 355 175 Z" fill="#CBD5E0" stroke="#718096" stroke-width="2"/>
+
+    <!-- משקולת / ביטוי כף ימין -->
+    <rect x="272" y="130" width="76" height="42" rx="6" fill="#FEFCBF" stroke="#D69E2E" stroke-width="2"/>
+    <text x="310" y="157" font-family="sans-serif" font-size="16" font-weight="bold" fill="#B7791F" text-anchor="middle">x + 3</text>
+  </svg>
+
+<svg width="400" height="300" viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg">
+    <!-- בסיס ועמוד המאזניים -->
+    <path d="M150 260 L250 260 L240 245 L160 245 Z" fill="#4A5568"/>
+    <rect x="194" y="95" width="12" height="150" fill="#718096" rx="3"/>
+    <polygon points="200,80 185,105 215,105" fill="#2D3748"/>
+
+    <!-- זרוע המאזניים המאוזנת -->
+    <line x1="70" y1="100" x2="330" y2="100" stroke="#2D3748" stroke-width="6" stroke-linecap="round"/>
+    <circle cx="200" cy="100" r="7" fill="#E2E8F0" stroke="#2D3748" stroke-width="3"/>
+
+    <!-- נקודת מרכז: סימן שוויון וערך y -->
+    <circle cx="200" cy="55" r="22" fill="#EDF2F7" stroke="#3182CE" stroke-width="2"/>
+    <text x="200" y="52" font-family="sans-serif" font-size="14" font-weight="bold" fill="#2B6CB0" text-anchor="middle">y</text>
+    <text x="200" y="68" font-family="sans-serif" font-size="14" font-weight="bold" fill="#2B6CB0" text-anchor="middle">=</text>
+
+    <!-- מתלי כף שמאל -->
+    <circle cx="90" cy="100" r="4" fill="#4A5568"/>
+    <line x1="90" y1="100" x2="55" y2="175" stroke="#A0AEC0" stroke-width="2"/>
+    <line x1="90" y1="100" x2="125" y2="175" stroke="#A0AEC0" stroke-width="2"/>
+    <!-- צלחת שמאל -->
+    <path d="M45 175 Q90 195 135 175 Z" fill="#CBD5E0" stroke="#718096" stroke-width="2"/>
+
+    <!-- משקולת / ביטוי כף שמאל -->
+    <rect x="52" y="130" width="76" height="42" rx="6" fill="#EBF8FF" stroke="#3182CE" stroke-width="2"/>
+    <text x="90" y="157" font-family="sans-serif" font-size="16" font-weight="bold" fill="#2B6CB0" text-anchor="middle">2x − 1</text>
+
+    <!-- מתלי כף ימין -->
+    <circle cx="310" cy="100" r="4" fill="#4A5568"/>
+    <line x1="310" y1="100" x2="275" y2="175" stroke="#A0AEC0" stroke-width="2"/>
+    <line x1="310" y1="100" x2="345" y2="175" stroke="#A0AEC0" stroke-width="2"/>
+    <!-- צלחת ימין -->
+    <path d="M265 175 Q310 195 355 175 Z" fill="#CBD5E0" stroke="#718096" stroke-width="2"/>
+
+    <!-- משקולת / ביטוי כף ימין -->
+    <rect x="272" y="130" width="76" height="42" rx="6" fill="#FEFCBF" stroke="#D69E2E" stroke-width="2"/>
+    <text x="310" y="157" font-family="sans-serif" font-size="16" font-weight="bold" fill="#B7791F" text-anchor="middle">x + 3</text>
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 4 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: מאחר שבנקודת החיתוך ערך ה-y משותף לשני הישרים, האם מותר להשוות בין שני הביטויים ולכתוב 2x - 1 = x + 3?
+* אופציות:
+  - כן, כיוון ששני הביטויים שווים לאותו y בדיוק.
+  - לא, אסור לחבר ביטויים של שני ישרים שונים.
+* פתרון נכון: כן, כיוון ששני הביטויים שווים לאותו y בדיוק.
+* פתרון מלא: מאחר ש-y שווה לשני הביטויים בו-זמנית בנקודת החיתוך, מתקיים שוויון ישיר ביניהם: 2x - 1 = x + 3.
+
+--------------------------------------------------------------------------------
+[תרגיל 4 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: התבוננו במשוואה שהתקבלה: 2x - 1 = x + 3. בכמה נעלמים מופיעה משוואה זו?
+* אופציות:
+  - בנעלם אחד בלבד (x).
+  - בשני נעלמים (גם x וגם y).
+* פתרון נכון: בנעלם אחד בלבד (x).
+* פתרון מלא: בעזרת השוואת הביטויים ביטלנו את התלות ב-y וקיבלנו משוואה בנעלם יחיד x.
+
+--------------------------------------------------------------------------------
+[תרגיל 4 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: פתרו את המשוואה 2x - 1 = x + 3. מהו ערכו של x?
+* אופציות:
+  - x = 2
+  - x = 4
+  - x = -4
+* פתרון נכון: x = 4
+* פתרון מלא: מחסרים x משני האגפים ומקבלים x - 1 = 3. מוסיפים 1 לשני האגפים ומקבלים x = 4.
+
+--------------------------------------------------------------------------------
+[תרגיל 4 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: בנו משוואת השוואה עבור הישרים y = 3x - 2 ו-y = x + 4, ופתרו אותה למציאת שיעור ה-x של נקודת החיתוך.
+* פתרון נכון: משווים: 3x - 2 = x + 4. מחסרים x משני האגפים: 2x - 2 = 4. מוסיפים 2: 2x = 6. מחלקים ב-2 ומקבלים: x = 3.
+* פתרון מלא: משווים: 3x - 2 = x + 4. מחסרים x משני האגפים: 2x - 2 = 4. מוסיפים 2: 2x = 6. מחלקים ב-2 ומקבלים: x = 3.
+
+================================================================================
+תרגיל 5 – בסיס: השלמת שיעור ה-y של נקודת החיתוך ובדיקה עצמית
+================================================================================
+לאחר שמצאנו את שיעור ה-x של נקודת החיתוך, עלינו להשלים את שיעור ה-y ולבצע בדיקה עצמית על ידי הצבה.
+
+  <svg width="540" height="260" viewBox="0 0 540 260" xmlns="http://www.w3.org/2000/svg" font-family="Arial, sans-serif">
+    <defs>
+      <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#334155" />
+      </marker>
+    </defs>
+
+    <!-- חיצים ומסלולים מימין לשמאל -->
+    <!-- מבלוק התחלה למסלול עליון -->
+    <path d="M 390 120 L 370 120 L 370 58 L 348 58" fill="none" stroke="#334155" stroke-width="2" marker-end="url(#arrow)" />
+
+    <!-- מבלוק התחלה למסלול תחתון -->
+    <path d="M 390 140 L 370 140 L 370 202 L 348 202" fill="none" stroke="#334155" stroke-width="2" marker-end="url(#arrow)" />
+
+    <!-- ממסלול עליון לבלוק סיום -->
+    <path d="M 195 58 L 175 58 L 175 120 L 158 120" fill="none" stroke="#334155" stroke-width="2" marker-end="url(#arrow)" />
+
+    <!-- ממסלול תחתון לבלוק סיום -->
+    <path d="M 195 202 L 175 202 L 175 140 L 158 140" fill="none" stroke="#334155" stroke-width="2" marker-end="url(#arrow)" />
+
+    <!-- בלוק 1: התחלה (ימין) -->
+    <rect x="390" y="100" width="130" height="60" rx="8" fill="#EFF6FF" stroke="#3B82F6" stroke-width="2" />
+    <text x="455" y="127" text-anchor="middle" font-size="14" font-weight="bold" fill="#1E3A8A">שלב 1</text>
+    <text x="455" y="147" text-anchor="middle" font-size="14" fill="#1E40AF">מציאת x = 4</text>
+
+    <!-- בלוק 2: מסלול עליון (מרכז עליון) -->
+    <rect x="195" y="25" width="150" height="66" rx="8" fill="#F0FDF4" stroke="#22C55E" stroke-width="2" />
+    <text x="270" y="49" text-anchor="middle" font-size="13" fill="#166534">הצבה ב: y = x + 3</text>
+    <text x="270" y="73" text-anchor="middle" font-size="14" font-weight="bold" fill="#15803D">y = 4 + 3 = 7</text>
+
+    <!-- בלוק 3: מסלול תחתון (מרכז תחתון) -->
+    <rect x="195" y="169" width="150" height="66" rx="8" fill="#F0FDF4" stroke="#22C55E" stroke-width="2" />
+    <text x="270" y="193" text-anchor="middle" font-size="13" fill="#166534">הצבה ב: y = 2x - 1</text>
+    <text x="270" y="217" text-anchor="middle" font-size="14" font-weight="bold" fill="#15803D">y = 8 - 1 = 7</text>
+
+    <!-- בלוק 4: סיום (שמאל) -->
+    <rect x="18" y="100" width="136" height="60" rx="8" fill="#FAF5FF" stroke="#A855F7" stroke-width="2" />
+    <text x="86" y="125" text-anchor="middle" font-size="13" fill="#6B21A8">נקודת החיתוך:</text>
+    <text x="86" y="147" text-anchor="middle" font-size="15" font-weight="bold" fill="#581C87">(4, 7)</text>
+  </svg>
+
+<svg width="540" height="260" viewBox="0 0 540 260" xmlns="http://www.w3.org/2000/svg" font-family="Arial, sans-serif">
+    <defs>
+      <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#334155" />
+      </marker>
+    </defs>
+
+    <!-- חיצים ומסלולים מימין לשמאל -->
+    <!-- מבלוק התחלה למסלול עליון -->
+    <path d="M 390 120 L 370 120 L 370 58 L 348 58" fill="none" stroke="#334155" stroke-width="2" marker-end="url(#arrow)" />
+
+    <!-- מבלוק התחלה למסלול תחתון -->
+    <path d="M 390 140 L 370 140 L 370 202 L 348 202" fill="none" stroke="#334155" stroke-width="2" marker-end="url(#arrow)" />
+
+    <!-- ממסלול עליון לבלוק סיום -->
+    <path d="M 195 58 L 175 58 L 175 120 L 158 120" fill="none" stroke="#334155" stroke-width="2" marker-end="url(#arrow)" />
+
+    <!-- ממסלול תחתון לבלוק סיום -->
+    <path d="M 195 202 L 175 202 L 175 140 L 158 140" fill="none" stroke="#334155" stroke-width="2" marker-end="url(#arrow)" />
+
+    <!-- בלוק 1: התחלה (ימין) -->
+    <rect x="390" y="100" width="130" height="60" rx="8" fill="#EFF6FF" stroke="#3B82F6" stroke-width="2" />
+    <text x="455" y="127" text-anchor="middle" font-size="14" font-weight="bold" fill="#1E3A8A">שלב 1</text>
+    <text x="455" y="147" text-anchor="middle" font-size="14" fill="#1E40AF">מציאת x = 4</text>
+
+    <!-- בלוק 2: מסלול עליון (מרכז עליון) -->
+    <rect x="195" y="25" width="150" height="66" rx="8" fill="#F0FDF4" stroke="#22C55E" stroke-width="2" />
+    <text x="270" y="49" text-anchor="middle" font-size="13" fill="#166534">הצבה ב: y = x + 3</text>
+    <text x="270" y="73" text-anchor="middle" font-size="14" font-weight="bold" fill="#15803D">y = 4 + 3 = 7</text>
+
+    <!-- בלוק 3: מסלול תחתון (מרכז תחתון) -->
+    <rect x="195" y="169" width="150" height="66" rx="8" fill="#F0FDF4" stroke="#22C55E" stroke-width="2" />
+    <text x="270" y="193" text-anchor="middle" font-size="13" fill="#166534">הצבה ב: y = 2x - 1</text>
+    <text x="270" y="217" text-anchor="middle" font-size="14" font-weight="bold" fill="#15803D">y = 8 - 1 = 7</text>
+
+    <!-- בלוק 4: סיום (שמאל) -->
+    <rect x="18" y="100" width="136" height="60" rx="8" fill="#FAF5FF" stroke="#A855F7" stroke-width="2" />
+    <text x="86" y="125" text-anchor="middle" font-size="13" fill="#6B21A8">נקודת החיתוך:</text>
+    <text x="86" y="147" text-anchor="middle" font-size="15" font-weight="bold" fill="#581C87">(4, 7)</text>
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 5 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: מצאנו כי שיעור ה-x בנקודת החיתוך הוא 4. הציבו x = 4 במשוואת הישר y = x + 3. מהו ערך ה-y המתקבל?
+* אופציות:
+  - y = 7
+  - y = 1
+* פתרון נכון: y = 7
+* פתרון מלא: מציבים x = 4: y = 4 + 3 = 7.
+
+--------------------------------------------------------------------------------
+[תרגיל 5 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: נבדוק כעת בישר השני: האם הצבת x = 4 במשוואה y = 2x - 1 חייבת לתת גם היא y = 7?
+* אופציות:
+  - כן, משום שנקודת החיתוך מקיימת את שתי המשוואות בו-זמנית.
+  - לא, בכל ישר מתקבל y אחר לגמרי.
+* פתרון נכון: כן, משום שנקודת החיתוך מקיימת את שתי המשוואות בו-זמנית.
+* פתרון מלא: בנקודת החיתוך שתי המשוואות מתקיימות בו-זמנית. חישוב: y = 2*4 - 1 = 8 - 1 = 7. התוצאה זהה!
+
+--------------------------------------------------------------------------------
+[תרגיל 5 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: מהו הזוג הסדור (x,y) המייצג את נקודת החיתוך המלאה של שני הישרים?
+* אופציות:
+  - (7,4)
+  - (4,7)
+  - (4,4)
+* פתרון נכון: (4,7)
+* פתרון מלא: הזוג הסדור נכתב תמיד במבנה (x,y), ומאחר ש-x = 4 ו-y = 7, הנקודה היא (4,7).
+
+--------------------------------------------------------------------------------
+[תרגיל 5 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: בתרגיל הקודם מצאתם x = 3 עבור הישרים y = 3x - 2 ו-y = x + 4. חשבו את שיעור ה-y באמצעות הצבה בשתי המשוואות, ורשמו את נקודת החיתוך המלאה.
+* פתרון נכון: הצבה בישר ראשון: y = 3*(3) - 2 = 9 - 2 = 7. הצבה בישר שני לבדיקה: y = 3 + 4 = 7. נקודת החיתוך המלאה היא (3,7).
+* פתרון מלא: הצבה בישר ראשון: y = 3*(3) - 2 = 9 - 2 = 7. הצבה בישר שני לבדיקה: y = 3 + 4 = 7. נקודת החיתוך המלאה היא (3,7).
+
+================================================================================
+תרגיל 6 – בסיס: מציאת נקודת חיתוך של ישרים בעלי שיפועים עם סימנים מנוגדים
+================================================================================
+נתונים שני ישרים במערכת צירים: ישר אחד עולה שמשוואתו y = 2x + 1, וישר שני יורד שמשוואתו y = -x + 7.
+
+  <svg width="400" height="320" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="black"/>
+      </marker>
+    </defs>
+
+    <!-- ציר X -->
+    <line x1="40" y1="260" x2="370" y2="260" stroke="black" stroke-width="1.5" marker-end="url(#arrow)"/>
+    <text x="375" y="264" font-family="sans-serif" font-size="15" font-style="italic">x</text>
+
+    <!-- ציר Y -->
+    <line x1="70" y1="290" x2="70" y2="30" stroke="black" stroke-width="1.5" marker-end="url(#arrow)"/>
+    <text x="66" y="20" font-family="sans-serif" font-size="15" font-style="italic">y</text>
+
+    <!-- ראשית הצירים -->
+    <text x="54" y="275" font-family="sans-serif" font-size="13">O</text>
+
+    <!-- ישר עולה כחול: y = 2x + 1 -->
+    <line x1="50" y1="272" x2="225" y2="53" stroke="blue" stroke-width="2.5"/>
+    <text x="135" y="55" font-family="sans-serif" font-size="14" font-weight="bold" fill="blue">y = 2x + 1</text>
+
+    <!-- ישר יורד אדום: y = -x + 7 -->
+    <line x1="60" y1="72" x2="365" y2="263" stroke="red" stroke-width="2.5"/>
+    <text x="275" y="190" font-family="sans-serif" font-size="14" font-weight="bold" fill="red">y = -x + 7</text>
+
+    <!-- נקודת חיתוך מודגשת ברביע הראשון -->
+    <circle cx="160" cy="135" r="4.5" fill="black"/>
+  </svg>
+
+<svg width="400" height="320" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="black"/>
+      </marker>
+    </defs>
+
+    <!-- ציר X -->
+    <line x1="40" y1="260" x2="370" y2="260" stroke="black" stroke-width="1.5" marker-end="url(#arrow)"/>
+    <text x="375" y="264" font-family="sans-serif" font-size="15" font-style="italic">x</text>
+
+    <!-- ציר Y -->
+    <line x1="70" y1="290" x2="70" y2="30" stroke="black" stroke-width="1.5" marker-end="url(#arrow)"/>
+    <text x="66" y="20" font-family="sans-serif" font-size="15" font-style="italic">y</text>
+
+    <!-- ראשית הצירים -->
+    <text x="54" y="275" font-family="sans-serif" font-size="13">O</text>
+
+    <!-- ישר עולה כחול: y = 2x + 1 -->
+    <line x1="50" y1="272" x2="225" y2="53" stroke="blue" stroke-width="2.5"/>
+    <text x="135" y="55" font-family="sans-serif" font-size="14" font-weight="bold" fill="blue">y = 2x + 1</text>
+
+    <!-- ישר יורד אדום: y = -x + 7 -->
+    <line x1="60" y1="72" x2="365" y2="263" stroke="red" stroke-width="2.5"/>
+    <text x="275" y="190" font-family="sans-serif" font-size="14" font-weight="bold" fill="red">y = -x + 7</text>
+
+    <!-- נקודת חיתוך מודגשת ברביע הראשון -->
+    <circle cx="160" cy="135" r="4.5" fill="black"/>
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 6 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: האם ישר עולה (בעל שיפוע חיובי) וישר יורד (בעל שיפוע שלילי) חייבים בהכרח להיחתך בנקודה אחת?
+* אופציות:
+  - כן, כיוון שלשני הישרים יש שיפועים שונים הם אינם מקבילים ולכן ייחתכו.
+  - לא, ייתכן שישר עולה וישר יורד יהיו מקבילים זה לזה.
+* פתרון נכון: כן, כיוון שלשני הישרים יש שיפועים שונים הם אינם מקבילים ולכן ייחתכו.
+* פתרון מלא: ישרים מקבילים הם ישרים בעלי אותו שיפוע בדיוק. מכיוון שלישר אחד שיפוע חיובי ולשני שיפוע שלילי, השיפועים בהכרח שונים, ולכן הישרים אינם מקבילים וחייבים להיפגש בנקודה אחת.
+
+--------------------------------------------------------------------------------
+[תרגיל 6 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: כדי למצוא את נקודת החיתוך משווים בין הביטויים: 2x + 1 = -x + 7. כאשר מעבירים את הביטוי -x מאגף ימין לאגף שמאל, איזו פעולה יש לבצע?
+* אופציות:
+  - מוסיפים x לשני האגפים (+x), כי פעולה הפוכה לחיסור היא חיבור.
+  - מחסרים x משני האגפים (-x), כי יש סימן מינוס לפני x.
+* פתרון נכון: מוסיפים x לשני האגפים (+x), כי פעולה הפוכה לחיסור היא חיבור.
+* פתרון מלא: כדי לבטל את הביטוי -x באגף ימין, מבצעים את הפעולה ההפוכה שהיא חיבור x לשני האגפים. מקבלים: 2x + x + 1 = 7, כלומר 3x + 1 = 7.
+
+--------------------------------------------------------------------------------
+[תרגיל 6 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: לאחר חיסור 1 משני האגפים מתקבלת המשוואה: 3x = 6. מהו ערכו של שיעור ה-x של נקודת החיתוך?
+* אופציות:
+  - x = 2
+  - x = 3
+  - x = 18
+* פתרון נכון: x = 2
+* פתרון מלא: מחלקים את שני אגפי המשוואה ב-3: נקבל x = 6 / 3 = 2.
+
+--------------------------------------------------------------------------------
+[תרגיל 6 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: הציבו x = 2 באחת ממשוואות הישרים, חשבו את שיעור ה-y, ורשמו את שיעורי נקודת החיתוך המלאה (x,y).
+* פתרון נכון: מציבים x = 2 במשוואה הראשונה: y = 2 * 2 + 1 = 4 + 1 = 5 (או במשוואה השנייה לבדיקה: y = -2 + 7 = 5). שיעורי נקודת החיתוך הם (2, 5).
+* פתרון מלא: מציבים x = 2 במשוואה הראשונה: y = 2 * 2 + 1 = 4 + 1 = 5 (או במשוואה השנייה לבדיקה: y = -2 + 7 = 5). שיעורי נקודת החיתוך הם (2, 5).
+
+================================================================================
+תרגיל 7 – מורכב: מציאת חיתוך כאשר אחד הישרים מקביל לציר ה-x (ישר בעל משוואה…
+================================================================================
+נלמד כעת למצוא נקודת חיתוך כאשר אחד הישרים הוא ישר אופקי מיוחד מהצורה y = c.
+
+  <svg width="400" height="300" xmlns="http://www.w3.org/2000/svg" font-family="sans-serif">
+    <defs>
+      <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#333" />
+      </marker>
+    </defs>
+
+    <!-- ציר X -->
+    <line x1="40" y1="180" x2="370" y2="180" stroke="#333" stroke-width="1.5" marker-end="url(#arrow)" />
+    <text x="375" y="184" font-size="14" fill="#333">x</text>
+
+    <!-- ציר Y -->
+    <line x1="120" y1="285" x2="120" y2="25" stroke="#333" stroke-width="1.5" marker-end="url(#arrow)" />
+    <text x="115" y="18" font-size="14" fill="#333">y</text>
+
+    <!-- ראשית הצירים -->
+    <text x="105" y="195" font-size="12" fill="#666">0</text>
+
+    <!-- שנתות על ציר X -->
+    <line x1="160" y1="177" x2="160" y2="183" stroke="#666" />
+    <text x="157" y="196" font-size="11" fill="#666">1</text>
+    <line x1="200" y1="177" x2="200" y2="183" stroke="#666" />
+    <text x="197" y="196" font-size="11" fill="#666">2</text>
+    <line x1="240" y1="177" x2="240" y2="183" stroke="#666" />
+    <text x="237" y="196" font-size="11" fill="#666">3</text>
+
+    <!-- שנתות על ציר Y -->
+    <line x1="117" y1="130" x2="123" y2="130" stroke="#666" />
+    <text x="105" y="134" font-size="11" fill="#666">2</text>
+
+    <!-- קווי עזר מקווקווים לנקודת החיתוך (3,2) -->
+    <line x1="240" y1="180" x2="240" y2="130" stroke="#888" stroke-width="1" stroke-dasharray="4,4" />
+    <line x1="120" y1="130" x2="240" y2="130" stroke="#888" stroke-width="1" stroke-dasharray="4,4" />
+
+    <!-- ישר אופקי y = 2 (אדום) -->
+    <line x1="50" y1="130" x2="360" y2="130" stroke="#e53935" stroke-width="2.5" />
+    <text x="310" y="120" font-size="13" fill="#e53935" font-weight="bold">y = 2</text>
+
+    <!-- ישר משופע y = 2x - 4 (כחול) -->
+    <line x1="110" y1="292.5" x2="305" y2="48.75" stroke="#1e88e5" stroke-width="2.5" />
+    <text x="285" y="42" font-size="13" fill="#1e88e5" font-weight="bold">y = 2x - 4</text>
+
+    <!-- נקודת חיתוך (3,2) -->
+    <circle cx="240" cy="130" r="4.5" fill="#111" />
+    <text x="248" y="122" font-size="13" fill="#111" font-weight="bold">(3, 2)</text>
+  </svg>
+
+<svg width="400" height="300" xmlns="http://www.w3.org/2000/svg" font-family="sans-serif">
+    <defs>
+      <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#333" />
+      </marker>
+    </defs>
+
+    <!-- ציר X -->
+    <line x1="40" y1="180" x2="370" y2="180" stroke="#333" stroke-width="1.5" marker-end="url(#arrow)" />
+    <text x="375" y="184" font-size="14" fill="#333">x</text>
+
+    <!-- ציר Y -->
+    <line x1="120" y1="285" x2="120" y2="25" stroke="#333" stroke-width="1.5" marker-end="url(#arrow)" />
+    <text x="115" y="18" font-size="14" fill="#333">y</text>
+
+    <!-- ראשית הצירים -->
+    <text x="105" y="195" font-size="12" fill="#666">0</text>
+
+    <!-- שנתות על ציר X -->
+    <line x1="160" y1="177" x2="160" y2="183" stroke="#666" />
+    <text x="157" y="196" font-size="11" fill="#666">1</text>
+    <line x1="200" y1="177" x2="200" y2="183" stroke="#666" />
+    <text x="197" y="196" font-size="11" fill="#666">2</text>
+    <line x1="240" y1="177" x2="240" y2="183" stroke="#666" />
+    <text x="237" y="196" font-size="11" fill="#666">3</text>
+
+    <!-- שנתות על ציר Y -->
+    <line x1="117" y1="130" x2="123" y2="130" stroke="#666" />
+    <text x="105" y="134" font-size="11" fill="#666">2</text>
+
+    <!-- קווי עזר מקווקווים לנקודת החיתוך (3,2) -->
+    <line x1="240" y1="180" x2="240" y2="130" stroke="#888" stroke-width="1" stroke-dasharray="4,4" />
+    <line x1="120" y1="130" x2="240" y2="130" stroke="#888" stroke-width="1" stroke-dasharray="4,4" />
+
+    <!-- ישר אופקי y = 2 (אדום) -->
+    <line x1="50" y1="130" x2="360" y2="130" stroke="#e53935" stroke-width="2.5" />
+    <text x="310" y="120" font-size="13" fill="#e53935" font-weight="bold">y = 2</text>
+
+    <!-- ישר משופע y = 2x - 4 (כחול) -->
+    <line x1="110" y1="292.5" x2="305" y2="48.75" stroke="#1e88e5" stroke-width="2.5" />
+    <text x="285" y="42" font-size="13" fill="#1e88e5" font-weight="bold">y = 2x - 4</text>
+
+    <!-- נקודת חיתוך (3,2) -->
+    <circle cx="240" cy="130" r="4.5" fill="#111" />
+    <text x="248" y="122" font-size="13" fill="#111" font-weight="bold">(3, 2)</text>
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 7 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: נתון הישר האופקי y = 2. האם שיעור ה-y של נקודת החיתוך ידוע לנו כבר מראש?
+* אופציות:
+  - כן, בכל נקודה על ישר זה מתקיים y = 2, ולכן גם בנקודת החיתוך y = 2.
+  - לא, חייבים לחשב תחילה את x כדי לדעת את y.
+* פתרון נכון: כן, בכל נקודה על ישר זה מתקיים y = 2, ולכן גם בנקודת החיתוך y = 2.
+* פתרון מלא: בישר אופקי מהצורה y = 2, ערך ה-y קבוע ושווה ל-2 לכל אורך הישר, כולל בנקודת החיתוך.
+
+--------------------------------------------------------------------------------
+[תרגיל 7 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: כדי למצוא את שיעור ה-x של נקודת החיתוך עם הישר y = 2x - 4, כיצד נפעל?
+* אופציות:
+  - נציב y = 2 במשוואה y = 2x - 4 ונפתור עבור x.
+  - נציב x = 2 במשוואה.
+* פתרון נכון: נציב y = 2 במשוואה y = 2x - 4 ונפתור עבור x.
+* פתרון מלא: מאחר שערך ה-y ידוע (y = 2), מציבים אותו ישירות במשוואת הישר המשופע: 2 = 2x - 4.
+
+--------------------------------------------------------------------------------
+[תרגיל 7 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: פתרו את המשוואה 2 = 2x - 4. מהו ערכו של x?
+* אופציות:
+  - x = 1
+  - x = 3
+  - x = 6
+* פתרון נכון: x = 3
+* פתרון מלא: מוסיפים 4 לשני האגפים: 2x = 6. מחלקים ב-2 ומקבלים x = 3.
+
+--------------------------------------------------------------------------------
+[תרגיל 7 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: מצאו את נקודת החיתוך בין הישר y = -3x + 10 לבין הישר האופקי y = 1. רשמו את החישוב ואת הנקודה המלאה.
+* פתרון נכון: מציבים y = 1 במשוואה: 1 = -3x + 10. מעבירים אגפים: 3x = 10 - 1 = 9. מחלקים ב-3: x = 3. שיעור ה-y הוא 1, ולכן נקודת החיתוך היא (3,1).
+* פתרון מלא: מציבים y = 1 במשוואה: 1 = -3x + 10. מעבירים אגפים: 3x = 10 - 1 = 9. מחלקים ב-3: x = 3. שיעור ה-y הוא 1, ולכן נקודת החיתוך היא (3,1).
+
+================================================================================
+תרגיל 8 – מורכב: בדיקת היתכנות לחיתוך על פי שיפועי הישרים (ישרים מקבילים…
+================================================================================
+האם כל שני ישרים במישור תמיד נחתכים? נבחן מה תפקידו של השיפוע (m) בקביעת נקודת החיתוך.
+
+  <svg width="400" height="300" viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#374151"/>
+      </marker>
+    </defs>
+
+    <!-- רשת רקע עדינה -->
+    <g stroke="#e5e7eb" stroke-width="1">
+      <line x1="48" y1="20" x2="48" y2="280"/>
+      <line x1="92" y1="20" x2="92" y2="280"/>
+      <line x1="136" y1="20" x2="136" y2="280"/>
+      <line x1="224" y1="20" x2="224" y2="280"/>
+      <line x1="268" y1="20" x2="268" y2="280"/>
+      <line x1="312" y1="20" x2="312" y2="280"/>
+      <line x1="356" y1="20" x2="356" y2="280"/>
+      <line x1="30" y1="50" x2="370" y2="50"/>
+      <line x1="30" y1="94" x2="370" y2="94"/>
+      <line x1="30" y1="138" x2="370" y2="138"/>
+      <line x1="30" y1="182" x2="370" y2="182"/>
+      <line x1="30" y1="226" x2="370" y2="226"/>
+      <line x1="30" y1="270" x2="370" y2="270"/>
+    </g>
+
+    <!-- צירים -->
+    <!-- ציר X -->
+    <line x1="30" y1="160" x2="375" y2="160" stroke="#374151" stroke-width="1.8" marker-end="url(#arrow)"/>
+    <text x="382" y="164" font-family="sans-serif" font-size="14" font-weight="bold" fill="#374151">x</text>
+
+    <!-- ציר Y -->
+    <line x1="180" y1="280" x2="180" y2="25" stroke="#374151" stroke-width="1.8" marker-end="url(#arrow)"/>
+    <text x="175" y="16" font-family="sans-serif" font-size="14" font-weight="bold" fill="#374151">y</text>
+
+    <!-- ראשית הצירים -->
+    <text x="166" y="175" font-family="sans-serif" font-size="11" fill="#6b7280">0</text>
+
+    <!-- ישר ראשון: y = 2x + 3 -->
+    <line x1="95" y1="270" x2="225" y2="10" stroke="#2563eb" stroke-width="2.5"/>
+    <text x="100" y="32" font-family="sans-serif" font-size="12" font-weight="bold" fill="#2563eb">y = 2x + 3</text>
+
+    <!-- ישר שני מקביל: y = 2x - 1 -->
+    <line x1="139" y1="270" x2="269" y2="10" stroke="#2563eb" stroke-width="2.5"/>
+    <text x="272" y="45" font-family="sans-serif" font-size="12" font-weight="bold" fill="#2563eb">y = 2x - 1</text>
+
+    <!-- ישר שלישי חותך: y = -x + 2 -->
+    <line x1="70" y1="28" x2="325" y2="283" stroke="#dc2626" stroke-width="2.5"/>
+    <text x="315" y="270" font-family="sans-serif" font-size="12" font-weight="bold" fill="#dc2626">y = -x + 2</text>
+
+    <!-- נקודות חיתוך עם הישר השלישי -->
+    <circle cx="173" cy="167" r="4" fill="#dc2626"/>
+    <circle cx="202" cy="138" r="4" fill="#dc2626"/>
+  </svg>
+
+<svg width="400" height="300" viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#374151"/>
+      </marker>
+    </defs>
+
+    <!-- רשת רקע עדינה -->
+    <g stroke="#e5e7eb" stroke-width="1">
+      <line x1="48" y1="20" x2="48" y2="280"/>
+      <line x1="92" y1="20" x2="92" y2="280"/>
+      <line x1="136" y1="20" x2="136" y2="280"/>
+      <line x1="224" y1="20" x2="224" y2="280"/>
+      <line x1="268" y1="20" x2="268" y2="280"/>
+      <line x1="312" y1="20" x2="312" y2="280"/>
+      <line x1="356" y1="20" x2="356" y2="280"/>
+      <line x1="30" y1="50" x2="370" y2="50"/>
+      <line x1="30" y1="94" x2="370" y2="94"/>
+      <line x1="30" y1="138" x2="370" y2="138"/>
+      <line x1="30" y1="182" x2="370" y2="182"/>
+      <line x1="30" y1="226" x2="370" y2="226"/>
+      <line x1="30" y1="270" x2="370" y2="270"/>
+    </g>
+
+    <!-- צירים -->
+    <!-- ציר X -->
+    <line x1="30" y1="160" x2="375" y2="160" stroke="#374151" stroke-width="1.8" marker-end="url(#arrow)"/>
+    <text x="382" y="164" font-family="sans-serif" font-size="14" font-weight="bold" fill="#374151">x</text>
+
+    <!-- ציר Y -->
+    <line x1="180" y1="280" x2="180" y2="25" stroke="#374151" stroke-width="1.8" marker-end="url(#arrow)"/>
+    <text x="175" y="16" font-family="sans-serif" font-size="14" font-weight="bold" fill="#374151">y</text>
+
+    <!-- ראשית הצירים -->
+    <text x="166" y="175" font-family="sans-serif" font-size="11" fill="#6b7280">0</text>
+
+    <!-- ישר ראשון: y = 2x + 3 -->
+    <line x1="95" y1="270" x2="225" y2="10" stroke="#2563eb" stroke-width="2.5"/>
+    <text x="100" y="32" font-family="sans-serif" font-size="12" font-weight="bold" fill="#2563eb">y = 2x + 3</text>
+
+    <!-- ישר שני מקביל: y = 2x - 1 -->
+    <line x1="139" y1="270" x2="269" y2="10" stroke="#2563eb" stroke-width="2.5"/>
+    <text x="272" y="45" font-family="sans-serif" font-size="12" font-weight="bold" fill="#2563eb">y = 2x - 1</text>
+
+    <!-- ישר שלישי חותך: y = -x + 2 -->
+    <line x1="70" y1="28" x2="325" y2="283" stroke="#dc2626" stroke-width="2.5"/>
+    <text x="315" y="270" font-family="sans-serif" font-size="12" font-weight="bold" fill="#dc2626">y = -x + 2</text>
+
+    <!-- נקודות חיתוך עם הישר השלישי -->
+    <circle cx="173" cy="167" r="4" fill="#dc2626"/>
+    <circle cx="202" cy="138" r="4" fill="#dc2626"/>
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 8 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: נתונים שני ישרים בעלי שיפוע זהה (m1 = m2) ונקודות חיתוך שונות עם ציר y. האם תיתכן ביניהם נקודת חיתוך?
+* אופציות:
+  - לא, אלו ישרים מקבילים שלעולם אינם נחתכים.
+  - כן, הם ייחתכו במרחק רב מראשית הצירים.
+* פתרון נכון: לא, אלו ישרים מקבילים שלעולם אינם נחתכים.
+* פתרון מלא: ישרים בעלי שיפוע זהה עולים או יורדים באותו קצב בדיוק, ולכן שומרים על מרחק קבוע ואינם נפגשים לעולם.
+
+--------------------------------------------------------------------------------
+[תרגיל 8 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: נתונים הישרים y = 4x + 1 ו-y = 2x + 1. האם לישרים אלו יש נקודת חיתוך?
+* אופציות:
+  - כן, כיוון שיש להם שיפועים שונים (4 לעומת 2).
+  - לא, כיוון שיש להם אותו מספר חופשי (+1).
+* פתרון נכון: כן, כיוון שיש להם שיפועים שונים (4 לעומת 2).
+* פתרון מלא: כל עוד השיפועים שונים (m1 ≠ m2), הישרים בהכרח ייחתכו בנקודה אחת ויחידה.
+
+--------------------------------------------------------------------------------
+[תרגיל 8 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: מבין זוגות הישרים הבאים, איזה זוג ייחתך בהכרח בנקודה אחת?
+* אופציות:
+  - y = 3x + 2 ו-y = 3x - 5
+  - y = -x + 4 ו-y = -x + 1
+  - y = 5x - 2 ו-y = 2x + 7
+* פתרון נכון: y = 5x - 2 ו-y = 2x + 7
+* פתרון מלא: בזוג השלישי השיפועים שונים (5 לעומת 2), ולכן הישרים ייחתכו. בשני הזוגות האחרים השיפועים זהים ולכן הם מקבילים.
+
+--------------------------------------------------------------------------------
+[תרגיל 8 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: השוו בין הביטויים של הישרים המקבילים y = 2x + 3 ו-y = 2x - 1, וכתבו מה קורה לנעלם x ואיזו תוצאה מתקבלת.
+* פתרון נכון: משווים: 2x + 3 = 2x - 1. מחסרים 2x משני האגפים והנעלם x מתבטל לחלוטין. מקבלים 3 = -1, שזהו פסוק שקר. משמעות הדבר היא שלמשוואה אין פתרון, ולכן אין לישרים נקודת חיתוך.
+* פתרון מלא: משווים: 2x + 3 = 2x - 1. מחסרים 2x משני האגפים והנעלם x מתבטל לחלוטין. מקבלים 3 = -1, שזהו פסוק שקר. משמעות הדבר היא שלמשוואה אין פתרון, ולכן אין לישרים נקודת חיתוך.
+
+================================================================================
+תרגיל 9 – מורכב: פתרון בעיה מילולית/הקשרית שבה נקודת החיתוך מייצגת נקודת…
+================================================================================
+לנקודת חיתוך יש משמעות מעשית בפתרון בעיות מחיי היומיום: היא מייצגת נקודת איזון ושוויון בין שתי הצעות מחיר שונות.
+
+  <svg width="450" height="350" xmlns="http://www.w3.org/2000/svg" font-family="Arial, sans-serif">
+    <defs>
+      <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#333" />
+      </marker>
+    </defs>
+
+    <!-- צירים -->
+    <line x1="60" y1="290" x2="410" y2="290" stroke="#333" stroke-width="2" marker-end="url(#arrow)" />
+    <line x1="70" y1="300" x2="70" y2="30" stroke="#333" stroke-width="2" marker-end="url(#arrow)" />
+
+    <!-- תוויות צירים -->
+    <text x="415" y="295" font-size="13" fill="#333" direction="rtl">מספר שיעורים (x)</text>
+    <text x="70" y="20" font-size="13" fill="#333" text-anchor="middle" direction="rtl">עלות בש"ח (y)</text>
+    <text x="58" y="305" font-size="12" fill="#666">0</text>
+
+    <!-- שנתות וערכים על הצירים -->
+    <!-- ציר Y: 10 -->
+    <line x1="66" y1="210" x2="74" y2="210" stroke="#333" stroke-width="1.5" />
+    <text x="55" y="214" font-size="12" fill="#333" text-anchor="end">10</text>
+
+    <!-- ציר Y: 20 -->
+    <line x1="66" y1="130" x2="74" y2="130" stroke="#333" stroke-width="1.5" />
+    <text x="55" y="134" font-size="12" fill="#333" text-anchor="end">20</text>
+
+    <!-- ציר X: 5 -->
+    <line x1="245" y1="286" x2="245" y2="294" stroke="#333" stroke-width="1.5" />
+    <text x="245" y="308" font-size="12" fill="#333" text-anchor="middle">5</text>
+
+    <!-- קווי עזר מקווקוים לנקודת החיתוך -->
+    <line x1="70" y1="130" x2="245" y2="130" stroke="#999" stroke-width="1.5" stroke-dasharray="4,4" />
+    <line x1="245" y1="290" x2="245" y2="130" stroke="#999" stroke-width="1.5" stroke-dasharray="4,4" />
+
+    <!-- גרף חברה א' (כחול): y = 2x + 10 -->
+    <line x1="70" y1="210" x2="350" y2="82" stroke="#1D4ED8" stroke-width="2.5" />
+    <text x="355" y="80" font-size="12" font-weight="bold" fill="#1D4ED8" direction="rtl">חברה א' (y = 2x + 10)</text>
+
+    <!-- גרף חברה ב' (אדום): y = 4x -->
+    <line x1="70" y1="290" x2="320" y2="60" stroke="#DC2626" stroke-width="2.5" />
+    <text x="325" y="55" font-size="12" font-weight="bold" fill="#DC2626" direction="rtl">חברה ב' (y = 4x)</text>
+
+    <!-- נקודת חיתוך (5, 20) -->
+    <circle cx="245" cy="130" r="5" fill="#111827" />
+    <text x="245" y="118" font-size="12" font-weight="bold" fill="#111827" text-anchor="middle">(5, 20)</text>
+  </svg>
+
+<svg width="450" height="350" xmlns="http://www.w3.org/2000/svg" font-family="Arial, sans-serif">
+    <defs>
+      <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#333" />
+      </marker>
+    </defs>
+
+    <!-- צירים -->
+    <line x1="60" y1="290" x2="410" y2="290" stroke="#333" stroke-width="2" marker-end="url(#arrow)" />
+    <line x1="70" y1="300" x2="70" y2="30" stroke="#333" stroke-width="2" marker-end="url(#arrow)" />
+
+    <!-- תוויות צירים -->
+    <text x="415" y="295" font-size="13" fill="#333" direction="rtl">מספר שיעורים (x)</text>
+    <text x="70" y="20" font-size="13" fill="#333" text-anchor="middle" direction="rtl">עלות בש"ח (y)</text>
+    <text x="58" y="305" font-size="12" fill="#666">0</text>
+
+    <!-- שנתות וערכים על הצירים -->
+    <!-- ציר Y: 10 -->
+    <line x1="66" y1="210" x2="74" y2="210" stroke="#333" stroke-width="1.5" />
+    <text x="55" y="214" font-size="12" fill="#333" text-anchor="end">10</text>
+
+    <!-- ציר Y: 20 -->
+    <line x1="66" y1="130" x2="74" y2="130" stroke="#333" stroke-width="1.5" />
+    <text x="55" y="134" font-size="12" fill="#333" text-anchor="end">20</text>
+
+    <!-- ציר X: 5 -->
+    <line x1="245" y1="286" x2="245" y2="294" stroke="#333" stroke-width="1.5" />
+    <text x="245" y="308" font-size="12" fill="#333" text-anchor="middle">5</text>
+
+    <!-- קווי עזר מקווקוים לנקודת החיתוך -->
+    <line x1="70" y1="130" x2="245" y2="130" stroke="#999" stroke-width="1.5" stroke-dasharray="4,4" />
+    <line x1="245" y1="290" x2="245" y2="130" stroke="#999" stroke-width="1.5" stroke-dasharray="4,4" />
+
+    <!-- גרף חברה א' (כחול): y = 2x + 10 -->
+    <line x1="70" y1="210" x2="350" y2="82" stroke="#1D4ED8" stroke-width="2.5" />
+    <text x="355" y="80" font-size="12" font-weight="bold" fill="#1D4ED8" direction="rtl">חברה א' (y = 2x + 10)</text>
+
+    <!-- גרף חברה ב' (אדום): y = 4x -->
+    <line x1="70" y1="290" x2="320" y2="60" stroke="#DC2626" stroke-width="2.5" />
+    <text x="325" y="55" font-size="12" font-weight="bold" fill="#DC2626" direction="rtl">חברה ב' (y = 4x)</text>
+
+    <!-- נקודת חיתוך (5, 20) -->
+    <circle cx="245" cy="130" r="5" fill="#111827" />
+    <text x="245" y="118" font-size="12" font-weight="bold" fill="#111827" text-anchor="middle">(5, 20)</text>
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 9 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: מה מייצגת נקודת החיתוך (5,20) בהקשר של הצעות המחיר של שתי החברות?
+* אופציות:
+  - כמות שיעורים (5) שבה העלות בשתי החברות שווה בדיוק (20 ש"ח).
+  - את מספר השיעורים המקסימלי שניתן לקבל.
+* פתרון נכון: כמות שיעורים (5) שבה העלות בשתי החברות שווה בדיוק (20 ש"ח).
+* פתרון מלא: נקודת החיתוך היא נקודת השוויון (איזון), שבה עבור אותו מספר שיעורים משלמים בדיוק את אותו הסכום בשני המסלולים.
+
+--------------------------------------------------------------------------------
+[תרגיל 9 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: התבוננו בגרף עבור מספר שיעורים הגדול מ-5 (מימין לנקודת החיתוך). איזה מסלול זול יותר?
+* אופציות:
+  - חברה א' (הישר הכחול נמוך יותר).
+  - חברה ב' (הישר האדום גבוה יותר).
+* פתרון נכון: חברה א' (הישר הכחול נמוך יותר).
+* פתרון מלא: מימין לנקודת החיתוך, הישר של חברה א' עובר מתחת לישר של חברה ב', ולכן עבור יותר מ-5 שיעורים חברה א' זולה ומשתלמת יותר.
+
+--------------------------------------------------------------------------------
+[תרגיל 9 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: נפתור אלגברית את נקודת השוויון: 2x + 10 = 4x. מהו ערכו של x?
+* אופציות:
+  - x = 10
+  - x = 5
+  - x = 2
+* פתרון נכון: x = 5
+* פתרון מלא: מחסרים 2x משני האגפים ומקבלים 2x = 10. מחלקים ב-2 ומקבלים x = 5 שיעורים.
+
+--------------------------------------------------------------------------------
+[תרגיל 9 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: חברת מוניות ראשונה גובה 15 ש"ח דמי כניסה ועוד 2 ש"ח לכל קילומטר (y = 15 + 2x). חברה שנייה גובה 5 ש"ח דמי כניסה ועוד 4 ש"ח לכל קילומטר (y = 5 + 4x). בנו משוואת השוואה ומצאו עבור איזה מרחק נסיעה x מחיר הנסיעה יהיה זהה.
+* פתרון נכון: משווים: 15 + 2x = 5 + 4x. מחסרים 2x: 15 = 5 + 2x. מחסרים 5: 2x = 10. מחלקים ב-2: x = 5. מחיר הנסיעה יהיה זהה עבור מרחק של 5 ק"מ.
+* פתרון מלא: משווים: 15 + 2x = 5 + 4x. מחסרים 2x: 15 = 5 + 2x. מחסרים 5: 2x = 10. מחלקים ב-2: x = 5. מחיר הנסיעה יהיה זהה עבור מרחק של 5 ק"מ.
+
+================================================================================
+תרגיל 10 – אתגר: סינתזה של מציאת נקודת חיתוך אלגברית והצלבתה עם ישר אופקי…
+================================================================================
+נסכם את מציאת נקודת החיתוך ונחבר בין ישרים משופעים לישר אופקי העובר דרך אותה נקודה משותפת.
+
+  <svg width="400" height="300" xmlns="http://www.w3.org/2000/svg" font-family="Arial, sans-serif">
+    <defs>
+      <!-- חץ לצירים -->
+      <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-flow">
+        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#333" />
+      </marker>
+    </defs>
+
+    <!-- רקע רשת עדין -->
+    <g stroke="#f0f0f0" stroke-width="1">
+      <line x1="60" y1="50" x2="360" y2="50" />
+      <line x1="60" y1="85" x2="360" y2="85" />
+      <line x1="60" y1="120" x2="360" y2="120" />
+      <line x1="60" y1="155" x2="360" y2="155" />
+      <line x1="60" y1="190" x2="360" y2="190" />
+      <line x1="60" y1="225" x2="360" y2="225" />
+    
+      <line x1="105" y1="30" x2="105" y2="260" />
+      <line x1="150" y1="30" x2="150" y2="260" />
+      <line x1="195" y1="30" x2="195" y2="260" />
+      <line x1="240" y1="30" x2="240" y2="260" />
+      <line x1="285" y1="30" x2="285" y2="260" />
+      <line x1="330" y1="30" x2="330" y2="260" />
+    </g>
+
+    <!-- צירים -->
+    <line x1="40" y1="260" x2="375" y2="260" stroke="#333" stroke-width="1.5" marker-end="url(#arrow)" />
+    <line x1="60" y1="280" x2="60" y2="20" stroke="#333" stroke-width="1.5" marker-end="url(#arrow)" />
+  
+    <text x="375" y="275" font-size="13" font-weight="bold" fill="#333">x</text>
+    <text x="45" y="25" font-size="13" font-weight="bold" fill="#333">y</text>
+    <text x="48" y="275" font-size="11" fill="#666">0</text>
+
+    <!-- שנתות על הצירים -->
+    <!-- x = 2 -->
+    <line x1="150" y1="257" x2="150" y2="263" stroke="#333" stroke-width="1.5" />
+    <text x="147" y="276" font-size="11" fill="#333">2</text>
+    <!-- x = 6 -->
+    <line x1="330" y1="257" x2="330" y2="263" stroke="#333" stroke-width="1.5" />
+    <text x="327" y="276" font-size="11" fill="#333">6</text>
+    <!-- y = 4 -->
+    <line x1="57" y1="120" x2="63" y2="120" stroke="#333" stroke-width="1.5" />
+    <text x="45" y="124" font-size="11" fill="#333">4</text>
+    <!-- y = 6 -->
+    <line x1="57" y1="50" x2="63" y2="50" stroke="#333" stroke-width="1.5" />
+    <text x="45" y="54" font-size="11" fill="#333">6</text>
+
+    <!-- קו מקווקו מנקודת החיתוך לציר x -->
+    <line x1="150" y1="120" x2="150" y2="260" stroke="#888" stroke-dasharray="4,4" stroke-width="1.2" />
+
+    <!-- ישר y = 4 (אופקי) -->
+    <line x1="45" y1="120" x2="365" y2="120" stroke="#2b8a3e" stroke-width="2" />
+    <text x="315" y="112" font-size="12" font-weight="bold" fill="#2b8a3e">y = 4</text>
+
+    <!-- ישר y = 2x (עולה) -->
+    <line x1="45" y1="295" x2="205" y2="25" stroke="#1c7ed6" stroke-width="2" />
+    <text x="210" y="40" font-size="12" font-weight="bold" fill="#1c7ed6">y = 2x</text>
+
+    <!-- ישר y = -x + 6 (יורד) -->
+    <line x1="45" y1="35" x2="350" y2="280" stroke="#e03131" stroke-width="2" />
+    <text x="280" y="240" font-size="12" font-weight="bold" fill="#e03131">y = -x + 6</text>
+
+    <!-- נקודת חיתוך (2,4) -->
+    <circle cx="150" cy="120" r="4.5" fill="#212529" stroke="#fff" stroke-width="1.5" />
+    <text x="155" y="112" font-size="12" font-weight="bold" fill="#212529">(2, 4)</text>
+  </svg>
+
+<svg width="400" height="300" xmlns="http://www.w3.org/2000/svg" font-family="Arial, sans-serif">
+    <defs>
+      <!-- חץ לצירים -->
+      <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-flow">
+        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#333" />
+      </marker>
+    </defs>
+
+    <!-- רקע רשת עדין -->
+    <g stroke="#f0f0f0" stroke-width="1">
+      <line x1="60" y1="50" x2="360" y2="50" />
+      <line x1="60" y1="85" x2="360" y2="85" />
+      <line x1="60" y1="120" x2="360" y2="120" />
+      <line x1="60" y1="155" x2="360" y2="155" />
+      <line x1="60" y1="190" x2="360" y2="190" />
+      <line x1="60" y1="225" x2="360" y2="225" />
+    
+      <line x1="105" y1="30" x2="105" y2="260" />
+      <line x1="150" y1="30" x2="150" y2="260" />
+      <line x1="195" y1="30" x2="195" y2="260" />
+      <line x1="240" y1="30" x2="240" y2="260" />
+      <line x1="285" y1="30" x2="285" y2="260" />
+      <line x1="330" y1="30" x2="330" y2="260" />
+    </g>
+
+    <!-- צירים -->
+    <line x1="40" y1="260" x2="375" y2="260" stroke="#333" stroke-width="1.5" marker-end="url(#arrow)" />
+    <line x1="60" y1="280" x2="60" y2="20" stroke="#333" stroke-width="1.5" marker-end="url(#arrow)" />
+  
+    <text x="375" y="275" font-size="13" font-weight="bold" fill="#333">x</text>
+    <text x="45" y="25" font-size="13" font-weight="bold" fill="#333">y</text>
+    <text x="48" y="275" font-size="11" fill="#666">0</text>
+
+    <!-- שנתות על הצירים -->
+    <!-- x = 2 -->
+    <line x1="150" y1="257" x2="150" y2="263" stroke="#333" stroke-width="1.5" />
+    <text x="147" y="276" font-size="11" fill="#333">2</text>
+    <!-- x = 6 -->
+    <line x1="330" y1="257" x2="330" y2="263" stroke="#333" stroke-width="1.5" />
+    <text x="327" y="276" font-size="11" fill="#333">6</text>
+    <!-- y = 4 -->
+    <line x1="57" y1="120" x2="63" y2="120" stroke="#333" stroke-width="1.5" />
+    <text x="45" y="124" font-size="11" fill="#333">4</text>
+    <!-- y = 6 -->
+    <line x1="57" y1="50" x2="63" y2="50" stroke="#333" stroke-width="1.5" />
+    <text x="45" y="54" font-size="11" fill="#333">6</text>
+
+    <!-- קו מקווקו מנקודת החיתוך לציר x -->
+    <line x1="150" y1="120" x2="150" y2="260" stroke="#888" stroke-dasharray="4,4" stroke-width="1.2" />
+
+    <!-- ישר y = 4 (אופקי) -->
+    <line x1="45" y1="120" x2="365" y2="120" stroke="#2b8a3e" stroke-width="2" />
+    <text x="315" y="112" font-size="12" font-weight="bold" fill="#2b8a3e">y = 4</text>
+
+    <!-- ישר y = 2x (עולה) -->
+    <line x1="45" y1="295" x2="205" y2="25" stroke="#1c7ed6" stroke-width="2" />
+    <text x="210" y="40" font-size="12" font-weight="bold" fill="#1c7ed6">y = 2x</text>
+
+    <!-- ישר y = -x + 6 (יורד) -->
+    <line x1="45" y1="35" x2="350" y2="280" stroke="#e03131" stroke-width="2" />
+    <text x="280" y="240" font-size="12" font-weight="bold" fill="#e03131">y = -x + 6</text>
+
+    <!-- נקודת חיתוך (2,4) -->
+    <circle cx="150" cy="120" r="4.5" fill="#212529" stroke="#fff" stroke-width="1.5" />
+    <text x="155" y="112" font-size="12" font-weight="bold" fill="#212529">(2, 4)</text>
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 10 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: השוו בין הביטויים של שני הישרים: 2x = -x + 6. האם הפתרון עבור x הוא x = 2?
+* אופציות:
+  - כן, לאחר הוספת x מקבלים 3x = 6 ולכן x = 2.
+  - לא, הפתרון הוא x = 6.
+* פתרון נכון: כן, לאחר הוספת x מקבלים 3x = 6 ולכן x = 2.
+* פתרון מלא: מוסיפים x לשני האגפים: 3x = 6. מחלקים ב-3 ומקבלים x = 2.
+
+--------------------------------------------------------------------------------
+[תרגיל 10 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: הציבו x = 2 במשוואה y = 2x. האם שיעור ה-y המתקבל הוא 4?
+* אופציות:
+  - כן, כיוון ש-2 כפול 2 שווה 4.
+  - לא, מקבלים y = 2.
+* פתרון נכון: כן, כיוון ש-2 כפול 2 שווה 4.
+* פתרון מלא: מציבים x = 2 ומקבלים y = 2*2 = 4. נקודת החיתוך היא (2,4).
+
+--------------------------------------------------------------------------------
+[תרגיל 10 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: מהו הקשר בין הישר האופקי y = 4 לבין נקודת החיתוך (2,4) שמצאנו?
+* אופציות:
+  - הישר האופקי אינו עובר דרך הנקודה.
+  - הישר האופקי עובר בדיוק דרך נקודת החיתוך.
+  - הישר האופקי מקביל לישר y = 2x.
+* פתרון נכון: הישר האופקי עובר בדיוק דרך נקודת החיתוך.
+* פתרון מלא: מאחר ששיעור ה-y של נקודת החיתוך הוא 4, הישר האופקי שמשוואתו y = 4 מכיל נקודה זו ועובר דרכה בדיוק.
+
+--------------------------------------------------------------------------------
+[תרגיל 10 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: מצאו את נקודת החיתוך של הישר y = 2x עם ישר אופקי אחר y = 6, וקבעו האם נקודה זו נמצאת מימין או משמאל לנקודת המפגש הקודמת (2,4).
+* פתרון נכון: מציבים y = 6 במשוואה: 6 = 2x, ומקבלים x = 3. נקודת החיתוך היא (3,6). מאחר ש-3 גדול מ-2, נקודה זו נמצאת מימין לנקודה (2,4).
+* פתרון מלא: מציבים y = 6 במשוואה: 6 = 2x, ומקבלים x = 3. נקודת החיתוך היא (3,6). מאחר ש-3 גדול מ-2, נקודה זו נמצאת מימין לנקודה (2,4).

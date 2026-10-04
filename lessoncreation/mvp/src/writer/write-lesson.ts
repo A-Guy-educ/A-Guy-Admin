@@ -10,6 +10,8 @@
  */
 import { GoogleGenerativeAI } from '@google/generative-ai'
 
+import { withHttpRetry } from '../http-retry.js'
+
 // Reuse the main repo's parser — the writer's whole job is to produce
 // what this parser accepts. Import via relative path since the MVP lives
 // outside `src/`.
@@ -206,11 +208,15 @@ export async function writeLesson(
     },
   })
 
-  const result = await model.generateContent(
-    buildWriterUserPrompt(skeleton, {
-      onlyExercises: options.onlyExercises,
-      feedbackPerExercise: options.feedbackPerExercise,
-    }),
+  const result = await withHttpRetry(
+    () =>
+      model.generateContent(
+        buildWriterUserPrompt(skeleton, {
+          onlyExercises: options.onlyExercises,
+          feedbackPerExercise: options.feedbackPerExercise,
+        }),
+      ),
+    { label: `writer ${DEFAULT_MODEL}` },
   )
   const rawWriterText = cleanOutput(result.response.text())
 

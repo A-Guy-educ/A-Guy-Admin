@@ -17,6 +17,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
+import { emitBossFormat } from './boss-format/emit.js'
 import { critiqueSkeleton } from './critic/critique-skeleton.js'
 import { critiquePedagogically } from './critic/pedagogical-critic.js'
 import type { CriticVerdict } from './critic/schema.js'
@@ -197,7 +198,9 @@ export async function runPipeline(
   // there's nothing coherent to read). Max 2 iterations: initial read +
   // 1 fix pass. Second read verifies the fix; a second fix pass is
   // deferred to keep costs bounded.
-  const READER_MAX_ITERATIONS = 2
+  const READER_MAX_ITERATIONS = process.env.READER_MAX_ITERATIONS
+    ? Math.max(1, Number(process.env.READER_MAX_ITERATIONS))
+    : 2
   if (writeResult.parseOk) {
     for (let iter = 1; iter <= READER_MAX_ITERATIONS; iter++) {
       console.log(`━━━ [Reader Critic iter ${iter}] ${input.lessonName} ━━━`)
@@ -298,6 +301,19 @@ export async function runPipeline(
     mkdirSync(lessonsDir, { recursive: true })
     const txtPath = resolve(lessonsDir, `${stem}.txt`)
     writeFileSync(txtPath, lessonText, 'utf8')
+    // Also emit the boss-approved format alongside our internal v2 so the
+    // lesson drops directly into boss's approved import flow. Silent-fail
+    // on error — the internal .txt is always authoritative and saved first.
+    if (writeResult.parseOk) {
+      try {
+        const bossText = emitBossFormat(lessonText, skeleton)
+        writeFileSync(resolve(lessonsDir, `${stem}.boss.txt`), bossText, 'utf8')
+      } catch (err) {
+        console.warn(
+          `  boss-format emit failed: ${err instanceof Error ? err.message : err}`,
+        )
+      }
+    }
     // Also persist reader-critic verdicts for traceability.
     if (readerCriticIterations.length > 0) {
       for (const { iterationNumber, result } of readerCriticIterations) {

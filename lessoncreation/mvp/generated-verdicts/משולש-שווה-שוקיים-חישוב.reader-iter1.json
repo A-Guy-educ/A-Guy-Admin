@@ -1,0 +1,95 @@
+{
+  "verdicts": [
+    {
+      "exerciseNumber": 1,
+      "passed": true,
+      "summary": "",
+      "findings": []
+    },
+    {
+      "exerciseNumber": 2,
+      "passed": false,
+      "summary": "התרגיל מפתח היטב את ההבנה האיכותנית של הקשר בין זווית הראש לזוויות הבסיס במשולש שווה-שוקיים, אך בסעיף ג' קיימת אי-התאמה מבלבלת בין שמות המשולשים באפשרויות (A, B, C) לבין סימון הקודקודים בשרטוט בפועל (ABC, DEF, GHI).",
+      "findings": [
+        {
+          "severity": "HIGH",
+          "sectionLetter": "ג",
+          "kind": "sketch-mismatch",
+          "issue": "השאלה והאפשרויות מתייחסות למשולשים בשמות 'משולש A, B, C', אך בשרטוט האותיות A, B, C הן בכלל קודקודי המשולש הראשון, בעוד המשולשים הם ABC, DEF ו-GHI.",
+          "suggestedFix": "לשנות את הניסוח בסעיף ג' ובאפשרויות לשמות המשולשים המלאים (משולש ABC, משולש DEF, משולש GHI) או להתייחס אליהם לפי מיקומם (השמאלי, האמצעי, הימני)."
+        }
+      ]
+    },
+    {
+      "exerciseNumber": 3,
+      "passed": true,
+      "summary": "התרגיל מצוין, מדויק ופדגוגי. כל הסעיפים קוהרנטיים לשרטוט, נשענים על הגדרות ברורות ועוקבים בצורה מדויקת אחר כוונת המתכנן וההתקדמות ההדרגתית בהבנת מושג ההיקף במשולש שווה-שוקיים.",
+      "findings": [
+        {
+          "severity": "LOW",
+          "sectionLetter": "exercise",
+          "kind": "sketch-mismatch",
+          "issue": "בשרטוט הבסיס מופיע סימון קו כפול רק על קטע KM ולא על קטע KL, למרות ששניהם שוקיים שוות.",
+          "suggestedFix": "הוסף סימון קו כפול גם לקטע KL כדי לשמור על סימטריה וייצוג חזותי מלא של שוויון השוקיים."
+        }
+      ]
+    },
+    {
+      "exerciseNumber": 4,
+      "passed": true,
+      "summary": "",
+      "findings": []
+    },
+    {
+      "exerciseNumber": 5,
+      "passed": true,
+      "summary": "",
+      "findings": []
+    },
+    {
+      "exerciseNumber": 6,
+      "passed": true,
+      "summary": "",
+      "findings": []
+    },
+    {
+      "exerciseNumber": 7,
+      "passed": true,
+      "summary": "התרגיל בנוי בצורה מצוינת, עוקב במדויק אחר תכנית המתכנן ומספק פיגום (scaffolding) הדרגתי וברור עבור התלמיד/ה. המתמטיקה מדויקת והשרטוט תואם היטב לשאלות.",
+      "findings": [
+        {
+          "severity": "LOW",
+          "sectionLetter": "exercise",
+          "kind": "content-issue",
+          "issue": "בטקסט הפתיחה לא מצוין במפורש שהמשולש ABC הוא שווה-שוקיים ושאילו צלעות הן השוקיים (AB = AC), אלא הדבר משתמע בלבד מההקשר.",
+          "suggestedFix": "להוסיף בטקסט הפתיחה את המשפט: 'נתון משולש שווה-שוקיים ABC שבו AB = AC'."
+        }
+      ]
+    },
+    {
+      "exerciseNumber": 8,
+      "passed": true,
+      "summary": "התרגיל בנוי בצורה מצוינת, ברורה ומדורגת. השרטוט תואם לחלוטין את הנתונים, והסעיפים מובילים את התלמיד/ה צעד אחר צעד מהבנת הזוויות הצמודות ועד ליישום מלא של חישוב זוויות במשולש שווה-שוקיים.",
+      "findings": []
+    },
+    {
+      "exerciseNumber": 9,
+      "passed": true,
+      "summary": "",
+      "findings": []
+    },
+    {
+      "exerciseNumber": 10,
+      "passed": true,
+      "summary": "",
+      "findings": []
+    }
+  ],
+  "flaggedExerciseNumbers": [
+    2
+  ],
+  "totalCritical": 0,
+  "totalHigh": 1,
+  "totalMedium": 0,
+  "totalLow": 2
+}

@@ -1,0 +1,1177 @@
+================================================================================
+תרגיל 1 – מנחה: הבנת עקרון השוויון והפעולות הזהות באמצעות מודל המאזניים
+================================================================================
+לפניכם שרטוט של מאזניים. המאזניים עוזרים לנו להבין כיצד פועלות משוואות מתמטיות.
+
+  <svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+    <!-- בסיס המאזניים -->
+    <polygon points="150,280 250,280 210,200 190,200" fill="#7f8c8d" stroke="#2c3e50" stroke-width="2" />
+    <rect x="195" y="80" width="10" height="120" fill="#95a5a6" stroke="#2c3e50" stroke-width="2" />
+  
+    <!-- קורת המאזניים (מאוזנת לחלוטין) -->
+    <rect x="80" y="75" width="240" height="10" rx="5" fill="#34495e" />
+    <circle cx="200" cy="80" r="8" fill="#e74c3c" stroke="#c0392b" stroke-width="2" />
+
+    <!-- חוטים כף שמאלית -->
+    <line x1="85" y1="80" x2="45" y2="180" stroke="#7f8c8d" stroke-width="2" />
+    <line x1="85" y1="80" x2="125" y2="180" stroke="#7f8c8d" stroke-width="2" />
+  
+    <!-- כף שמאלית -->
+    <rect x="40" y="180" width="90" height="6" rx="3" fill="#bdc3c7" stroke="#7f8c8d" stroke-width="2" />
+
+    <!-- חוטים כף ימנית -->
+    <line x1="315" y1="80" x2="275" y2="180" stroke="#7f8c8d" stroke-width="2" />
+    <line x1="315" y1="80" x2="355" y2="180" stroke="#7f8c8d" stroke-width="2" />
+  
+    <!-- כף ימנית -->
+    <rect x="270" y="180" width="90" height="6" rx="3" fill="#bdc3c7" stroke="#7f8c8d" stroke-width="2" />
+
+    <!-- תכולת כף שמאלית: קופסה x ו-2 מטבעות -->
+    <rect x="50" y="140" width="40" height="40" rx="4" fill="#3498db" stroke="#2980b9" stroke-width="2" />
+    <text x="70" y="167" font-family="Arial" font-size="22" font-weight="bold" text-anchor="middle" fill="#ffffff">x</text>
+  
+    <circle cx="102" cy="174" r="6" fill="#f1c40f" stroke="#d35400" stroke-width="1.5" />
+    <circle cx="116" cy="174" r="6" fill="#f1c40f" stroke="#d35400" stroke-width="1.5" />
+
+    <!-- תכולת כף ימנית: ערימת מטבעות גדולה -->
+    <!-- שורה 1 (בסיס) -->
+    <circle cx="285" cy="174" r="6" fill="#f1c40f" stroke="#d35400" stroke-width="1.5" />
+    <circle cx="297" cy="174" r="6" fill="#f1c40f" stroke="#d35400" stroke-width="1.5" />
+    <circle cx="309" cy="174" r="6" fill="#f1c40f" stroke="#d35400" stroke-width="1.5" />
+    <circle cx="321" cy="174" r="6" fill="#f1c40f" stroke="#d35400" stroke-width="1.5" />
+    <circle cx="333" cy="174" r="6" fill="#f1c40f" stroke="#d35400" stroke-width="1.5" />
+    <circle cx="345" cy="174" r="6" fill="#f1c40f" stroke="#d35400" stroke-width="1.5" />
+  
+    <!-- שורה 2 -->
+    <circle cx="291" cy="164" r="6" fill="#f1c40f" stroke="#d35400" stroke-width="1.5" />
+    <circle cx="303" cy="164" r="6" fill="#f1c40f" stroke="#d35400" stroke-width="1.5" />
+    <circle cx="315" cy="164" r="6" fill="#f1c40f" stroke="#d35400" stroke-width="1.5" />
+    <circle cx="327" cy="164" r="6" fill="#f1c40f" stroke="#d35400" stroke-width="1.5" />
+    <circle cx="339" cy="164" r="6" fill="#f1c40f" stroke="#d35400" stroke-width="1.5" />
+  
+    <!-- שורה 3 -->
+    <circle cx="297" cy="154" r="6" fill="#f1c40f" stroke="#d35400" stroke-width="1.5" />
+    <circle cx="309" cy="154" r="6" fill="#f1c40f" stroke="#d35400" stroke-width="1.5" />
+    <circle cx="321" cy="154" r="6" fill="#f1c40f" stroke="#d35400" stroke-width="1.5" />
+    <circle cx="333" cy="154" r="6" fill="#f1c40f" stroke="#d35400" stroke-width="1.5" />
+  
+    <!-- שורה 4 -->
+    <circle cx="303" cy="144" r="6" fill="#f1c40f" stroke="#d35400" stroke-width="1.5" />
+    <circle cx="315" cy="144" r="6" fill="#f1c40f" stroke="#d35400" stroke-width="1.5" />
+    <circle cx="327" cy="144" r="6" fill="#f1c40f" stroke="#d35400" stroke-width="1.5" />
+  
+    <!-- שורה 5 -->
+    <circle cx="309" cy="134" r="6" fill="#f1c40f" stroke="#d35400" stroke-width="1.5" />
+    <circle cx="321" cy="134" r="6" fill="#f1c40f" stroke="#d35400" stroke-width="1.5" />
+  
+    <!-- שורה 6 (קודקוד) -->
+    <circle cx="315" cy="124" r="6" fill="#f1c40f" stroke="#d35400" stroke-width="1.5" />
+  </svg>
+
+<svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+    <!-- בסיס המאזניים -->
+    <polygon points="150,280 250,280 210,200 190,200" fill="#7f8c8d" stroke="#2c3e50" stroke-width="2" />
+    <rect x="195" y="80" width="10" height="120" fill="#95a5a6" stroke="#2c3e50" stroke-width="2" />
+  
+    <!-- קורת המאזניים (מאוזנת לחלוטין) -->
+    <rect x="80" y="75" width="240" height="10" rx="5" fill="#34495e" />
+    <circle cx="200" cy="80" r="8" fill="#e74c3c" stroke="#c0392b" stroke-width="2" />
+
+    <!-- חוטים כף שמאלית -->
+    <line x1="85" y1="80" x2="45" y2="180" stroke="#7f8c8d" stroke-width="2" />
+    <line x1="85" y1="80" x2="125" y2="180" stroke="#7f8c8d" stroke-width="2" />
+  
+    <!-- כף שמאלית -->
+    <rect x="40" y="180" width="90" height="6" rx="3" fill="#bdc3c7" stroke="#7f8c8d" stroke-width="2" />
+
+    <!-- חוטים כף ימנית -->
+    <line x1="315" y1="80" x2="275" y2="180" stroke="#7f8c8d" stroke-width="2" />
+    <line x1="315" y1="80" x2="355" y2="180" stroke="#7f8c8d" stroke-width="2" />
+  
+    <!-- כף ימנית -->
+    <rect x="270" y="180" width="90" height="6" rx="3" fill="#bdc3c7" stroke="#7f8c8d" stroke-width="2" />
+
+    <!-- תכולת כף שמאלית: קופסה x ו-2 מטבעות -->
+    <rect x="50" y="140" width="40" height="40" rx="4" fill="#3498db" stroke="#2980b9" stroke-width="2" />
+    <text x="70" y="167" font-family="Arial" font-size="22" font-weight="bold" text-anchor="middle" fill="#ffffff">x</text>
+  
+    <circle cx="102" cy="174" r="6" fill="#f1c40f" stroke="#d35400" stroke-width="1.5" />
+    <circle cx="116" cy="174" r="6" fill="#f1c40f" stroke="#d35400" stroke-width="1.5" />
+
+    <!-- תכולת כף ימנית: ערימת מטבעות גדולה -->
+    <!-- שורה 1 (בסיס) -->
+    <circle cx="285" cy="174" r="6" fill="#f1c40f" stroke="#d35400" stroke-width="1.5" />
+    <circle cx="297" cy="174" r="6" fill="#f1c40f" stroke="#d35400" stroke-width="1.5" />
+    <circle cx="309" cy="174" r="6" fill="#f1c40f" stroke="#d35400" stroke-width="1.5" />
+    <circle cx="321" cy="174" r="6" fill="#f1c40f" stroke="#d35400" stroke-width="1.5" />
+    <circle cx="333" cy="174" r="6" fill="#f1c40f" stroke="#d35400" stroke-width="1.5" />
+    <circle cx="345" cy="174" r="6" fill="#f1c40f" stroke="#d35400" stroke-width="1.5" />
+  
+    <!-- שורה 2 -->
+    <circle cx="291" cy="164" r="6" fill="#f1c40f" stroke="#d35400" stroke-width="1.5" />
+    <circle cx="303" cy="164" r="6" fill="#f1c40f" stroke="#d35400" stroke-width="1.5" />
+    <circle cx="315" cy="164" r="6" fill="#f1c40f" stroke="#d35400" stroke-width="1.5" />
+    <circle cx="327" cy="164" r="6" fill="#f1c40f" stroke="#d35400" stroke-width="1.5" />
+    <circle cx="339" cy="164" r="6" fill="#f1c40f" stroke="#d35400" stroke-width="1.5" />
+  
+    <!-- שורה 3 -->
+    <circle cx="297" cy="154" r="6" fill="#f1c40f" stroke="#d35400" stroke-width="1.5" />
+    <circle cx="309" cy="154" r="6" fill="#f1c40f" stroke="#d35400" stroke-width="1.5" />
+    <circle cx="321" cy="154" r="6" fill="#f1c40f" stroke="#d35400" stroke-width="1.5" />
+    <circle cx="333" cy="154" r="6" fill="#f1c40f" stroke="#d35400" stroke-width="1.5" />
+  
+    <!-- שורה 4 -->
+    <circle cx="303" cy="144" r="6" fill="#f1c40f" stroke="#d35400" stroke-width="1.5" />
+    <circle cx="315" cy="144" r="6" fill="#f1c40f" stroke="#d35400" stroke-width="1.5" />
+    <circle cx="327" cy="144" r="6" fill="#f1c40f" stroke="#d35400" stroke-width="1.5" />
+  
+    <!-- שורה 5 -->
+    <circle cx="309" cy="134" r="6" fill="#f1c40f" stroke="#d35400" stroke-width="1.5" />
+    <circle cx="321" cy="134" r="6" fill="#f1c40f" stroke="#d35400" stroke-width="1.5" />
+  
+    <!-- שורה 6 (קודקוד) -->
+    <circle cx="315" cy="124" r="6" fill="#f1c40f" stroke="#d35400" stroke-width="1.5" />
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 1 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: התבוננו בשרטוט וקבעו האם המאזניים מאוזנים, ומה זה אומר על המשקל בשני הצדדים.
+* אופציות:
+  - המאזניים מאוזנים, ולכן המשקל בצד שמאל שווה למשקל בצד ימין.
+  - המאזניים נוטים לצד אחד, ולכן המשקל בצד ימין גדול יותר.
+* פתרון נכון: המאזניים מאוזנים, ולכן המשקל בצד שמאל שווה למשקל בצד ימין.
+* פתרון מלא: כפות המאזניים נמצאות באותו גובה, מה שמעיד על שוויון משקלים בין צד שמאל לצד ימין. זהו הבסיס לכל משוואה.
+
+--------------------------------------------------------------------------------
+[תרגיל 1 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: קבעו מה יקרה לאיזון המאזניים אם נסיר 2 מטבעות רק מהכף השמאלית.
+* אופציות:
+  - המאזניים יישארו מאוזנים כי הקופסה x עדיין שם.
+  - המאזניים יצאו מאיזון והכף הימנית תרד למטה (תהיה כבדה יותר).
+* פתרון נכון: המאזניים יצאו מאיזון והכף הימנית תרד למטה (תהיה כבדה יותר).
+* פתרון מלא: ברגע שאנחנו משנים צד אחד בלבד (מורידים משקל משמאל), אנחנו מפרים את השוויון. הצד הימני הופך לכבד יותר.
+
+--------------------------------------------------------------------------------
+[תרגיל 1 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: בחרו את הפעולה שתחזיר את המאזניים לאיזון לאחר שהורדנו 2 מטבעות מהכף השמאלית.
+* אופציות:
+  - הוספת 2 מטבעות לכף הימנית.
+  - הורדת 2 מטבעות מהכף הימנית.
+  - הורדת קופסה x מהכף השמאלית.
+* פתרון נכון: הורדת 2 מטבעות מהכף הימנית.
+* פתרון מלא: כדי לשמור על השוויון, כל פעולה שאנו עושים בצד אחד חייבת להיעשות בדיוק באותו אופן בצד השני. לכן, נוריד 2 מטבעות גם מימין.
+
+--------------------------------------------------------------------------------
+[תרגיל 1 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: רשמו מה נותר על הכף השמאלית ומה נותר על הכף הימנית לאחר שהורדנו 2 מטבעות מכל צד.
+* פתרון נכון: על הכף השמאלית נותרה רק הקופסה x. על הכף הימנית נותרה ערימת המטבעות פחות 2 מטבעות. כעת המשקל של הקופסה x שווה בדיוק למשקל המטבעות שנותרו מימין.
+* פתרון מלא: על הכף השמאלית נותרה רק הקופסה x. על הכף הימנית נותרה ערימת המטבעות פחות 2 מטבעות. כעת המשקל של הקופסה x שווה בדיוק למשקל המטבעות שנותרו מימין.
+
+================================================================================
+תרגיל 2 – מנחה: הבנת עקרון הפעולות הזהות באמצעות מודל המאזניים (כפל וחילוק)
+================================================================================
+כעת נתבונן במצב חדש על המאזניים, בו יש מספר קופסאות זהות.
+
+  <svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+    <!-- Base and Stand -->
+    <polygon points="140,280 260,280 200,200" fill="#D2B48C" stroke="#8B4513" stroke-width="3"/>
+    <rect x="192" y="80" width="16" height="120" fill="#8B4513"/>
+
+    <!-- Balance Beam -->
+    <rect x="75" y="75" width="250" height="10" fill="#8B4513" rx="5"/>
+
+    <!-- Center Pivot -->
+    <polygon points="200,65 185,90 215,90" fill="#DAA520" stroke="#B8860B" stroke-width="2"/>
+    <circle cx="200" cy="80" r="4" fill="#333"/>
+
+    <!-- Left Pan -->
+    <line x1="85" y1="80" x2="40" y2="180" stroke="#666" stroke-width="2"/>
+    <line x1="85" y1="80" x2="130" y2="180" stroke="#666" stroke-width="2"/>
+    <path d="M 30 180 Q 85 210 140 180" fill="#E0E0E0" stroke="#888" stroke-width="3"/>
+
+    <!-- Right Pan -->
+    <line x1="315" y1="80" x2="270" y2="180" stroke="#666" stroke-width="2"/>
+    <line x1="315" y1="80" x2="360" y2="180" stroke="#666" stroke-width="2"/>
+    <path d="M 260 180 Q 315 210 370 180" fill="#E0E0E0" stroke="#888" stroke-width="3"/>
+
+    <!-- Left Pan Contents: 3 Boxes -->
+    <g>
+        <rect x="52" y="158" width="22" height="22" fill="#87CEEB" stroke="#333" stroke-width="1.5"/>
+        <text x="63" y="174" font-family="Arial" font-size="14" text-anchor="middle" font-weight="bold" fill="#333">x</text>
+
+        <rect x="74" y="158" width="22" height="22" fill="#87CEEB" stroke="#333" stroke-width="1.5"/>
+        <text x="85" y="174" font-family="Arial" font-size="14" text-anchor="middle" font-weight="bold" fill="#333">x</text>
+
+        <rect x="96" y="158" width="22" height="22" fill="#87CEEB" stroke="#333" stroke-width="1.5"/>
+        <text x="107" y="174" font-family="Arial" font-size="14" text-anchor="middle" font-weight="bold" fill="#333">x</text>
+    </g>
+
+    <!-- Right Pan Contents: 12 Coins -->
+    <g fill="#FFD700" stroke="#B8860B" stroke-width="1.5">
+        <!-- Row 1 (Bottom) -->
+        <circle cx="291" cy="174" r="6"/>
+        <circle cx="303" cy="174" r="6"/>
+        <circle cx="315" cy="174" r="6"/>
+        <circle cx="327" cy="174" r="6"/>
+        <circle cx="339" cy="174" r="6"/>
+        <!-- Row 2 -->
+        <circle cx="297" cy="164" r="6"/>
+        <circle cx="309" cy="164" r="6"/>
+        <circle cx="321" cy="164" r="6"/>
+        <circle cx="333" cy="164" r="6"/>
+        <!-- Row 3 -->
+        <circle cx="303" cy="154" r="6"/>
+        <circle cx="315" cy="154" r="6"/>
+        <circle cx="327" cy="154" r="6"/>
+    </g>
+  </svg>
+
+<svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+    <!-- Base and Stand -->
+    <polygon points="140,280 260,280 200,200" fill="#D2B48C" stroke="#8B4513" stroke-width="3"/>
+    <rect x="192" y="80" width="16" height="120" fill="#8B4513"/>
+
+    <!-- Balance Beam -->
+    <rect x="75" y="75" width="250" height="10" fill="#8B4513" rx="5"/>
+
+    <!-- Center Pivot -->
+    <polygon points="200,65 185,90 215,90" fill="#DAA520" stroke="#B8860B" stroke-width="2"/>
+    <circle cx="200" cy="80" r="4" fill="#333"/>
+
+    <!-- Left Pan -->
+    <line x1="85" y1="80" x2="40" y2="180" stroke="#666" stroke-width="2"/>
+    <line x1="85" y1="80" x2="130" y2="180" stroke="#666" stroke-width="2"/>
+    <path d="M 30 180 Q 85 210 140 180" fill="#E0E0E0" stroke="#888" stroke-width="3"/>
+
+    <!-- Right Pan -->
+    <line x1="315" y1="80" x2="270" y2="180" stroke="#666" stroke-width="2"/>
+    <line x1="315" y1="80" x2="360" y2="180" stroke="#666" stroke-width="2"/>
+    <path d="M 260 180 Q 315 210 370 180" fill="#E0E0E0" stroke="#888" stroke-width="3"/>
+
+    <!-- Left Pan Contents: 3 Boxes -->
+    <g>
+        <rect x="52" y="158" width="22" height="22" fill="#87CEEB" stroke="#333" stroke-width="1.5"/>
+        <text x="63" y="174" font-family="Arial" font-size="14" text-anchor="middle" font-weight="bold" fill="#333">x</text>
+
+        <rect x="74" y="158" width="22" height="22" fill="#87CEEB" stroke="#333" stroke-width="1.5"/>
+        <text x="85" y="174" font-family="Arial" font-size="14" text-anchor="middle" font-weight="bold" fill="#333">x</text>
+
+        <rect x="96" y="158" width="22" height="22" fill="#87CEEB" stroke="#333" stroke-width="1.5"/>
+        <text x="107" y="174" font-family="Arial" font-size="14" text-anchor="middle" font-weight="bold" fill="#333">x</text>
+    </g>
+
+    <!-- Right Pan Contents: 12 Coins -->
+    <g fill="#FFD700" stroke="#B8860B" stroke-width="1.5">
+        <!-- Row 1 (Bottom) -->
+        <circle cx="291" cy="174" r="6"/>
+        <circle cx="303" cy="174" r="6"/>
+        <circle cx="315" cy="174" r="6"/>
+        <circle cx="327" cy="174" r="6"/>
+        <circle cx="339" cy="174" r="6"/>
+        <!-- Row 2 -->
+        <circle cx="297" cy="164" r="6"/>
+        <circle cx="309" cy="164" r="6"/>
+        <circle cx="321" cy="164" r="6"/>
+        <circle cx="333" cy="164" r="6"/>
+        <!-- Row 3 -->
+        <circle cx="303" cy="154" r="6"/>
+        <circle cx="315" cy="154" r="6"/>
+        <circle cx="327" cy="154" r="6"/>
+    </g>
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 2 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: על פי השרטוט, מהו המשקל הכולל של 3 הקופסאות יחד?
+* אופציות:
+  - המשקל של 3 הקופסאות שווה למשקל של 12 מטבעות.
+  - המשקל של 3 הקופסאות שווה למשקל של 3 מטבעות.
+* פתרון נכון: המשקל של 3 הקופסאות שווה למשקל של 12 מטבעות.
+* פתרון מלא: המאזניים מאוזנים, ולכן כל מה שנמצא בצד שמאל (3 קופסאות) שווה לכל מה שנמצא בצד ימין (12 מטבעות).
+
+--------------------------------------------------------------------------------
+[תרגיל 2 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: אם אנו רוצים למצוא את המשקל של קופסה אחת בלבד, לאיזה מספר עלינו לחלק את הכמות שבכל אחת משתי הכפות?
+* אופציות:
+  - עלינו לחלק את שתי הכפות ב-12.
+  - עלינו לחלק את שתי הכפות ב-3.
+* פתרון נכון: עלינו לחלק את שתי הכפות ב-3.
+* פתרון מלא: מכיוון שיש לנו 3 קופסאות זהות, כדי למצוא את הערך של אחת מהן, נחלק את הכמות בשני הצדדים ב-3.
+
+--------------------------------------------------------------------------------
+[תרגיל 2 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: איזו משוואה מתמטית מתארת את המצב המוצג במאזניים לפני החלוקה?
+* אופציות:
+  - x + 3 = 12
+  - 3x = 12
+  - 12x = 3
+* פתרון נכון: 3x = 12
+* פתרון מלא: 3 קופסאות של x נכתבות באלגברה כ-3x. השוויון ל-12 מטבעות נכתב כ- = 12. לכן המשוואה היא 3x = 12.
+
+--------------------------------------------------------------------------------
+[תרגיל 2 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: חלקו את 12 המטבעות שבכף הימנית ל-3 קבוצות שוות. רשמו כמה מטבעות יהיו בכל קבוצה, ומהו הערך של x.
+* פתרון נכון: 12 לחלק ל-3 שווה 4. בכל קבוצה יהיו 4 מטבעות. לכן, המשקל של קופסה אחת (x) שווה ל-4 מטבעות, כלומר x = 4.
+* פתרון מלא: 12 לחלק ל-3 שווה 4. בכל קבוצה יהיו 4 מטבעות. לכן, המשקל של קופסה אחת (x) שווה ל-4 מטבעות, כלומר x = 4.
+
+================================================================================
+תרגיל 3 – מנחה: שילוב של חיסור וחילוק לפתרון משוואה דו-שלבית
+================================================================================
+לפניכם מאזניים מאוזנים. על הכף השמאלית מונחות 2 קופסאות זהות שעליהן כתוב 'x' וכן 3 מטבעות. על הכף הימנית מונחים 11 מטבעות. המשקל של כל מטבע הוא יחידה אחת.
+
+  <svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+    <!-- בסיס ועמוד המאזניים -->
+    <polygon points="170,280 230,280 200,100" fill="#8B4513" stroke="black" stroke-width="2"/>
+    <line x1="140" y1="280" x2="260" y2="280" stroke="black" stroke-width="4" stroke-linecap="round"/>
+  
+    <!-- זרוע המאזניים -->
+    <line x1="80" y1="100" x2="320" y2="100" stroke="#8B4513" stroke-width="6" stroke-linecap="round"/>
+    <circle cx="200" cy="100" r="6" fill="gold" stroke="black" stroke-width="1"/>
+  
+    <!-- כף שמאלית -->
+    <line x1="80" y1="100" x2="40" y2="210" stroke="gray" stroke-width="2"/>
+    <line x1="80" y1="100" x2="120" y2="210" stroke="gray" stroke-width="2"/>
+    <line x1="30" y1="210" x2="130" y2="210" stroke="#CD853F" stroke-width="6" stroke-linecap="round"/>
+  
+    <!-- כף ימנית -->
+    <line x1="320" y1="100" x2="280" y2="210" stroke="gray" stroke-width="2"/>
+    <line x1="320" y1="100" x2="360" y2="210" stroke="gray" stroke-width="2"/>
+    <line x1="270" y1="210" x2="370" y2="210" stroke="#CD853F" stroke-width="6" stroke-linecap="round"/>
+  
+    <!-- פריטים על הכף השמאלית (2 קופסאות x, 3 מטבעות 1) -->
+    <!-- קופסה 1 -->
+    <rect x="45" y="180" width="30" height="30" fill="#87CEFA" stroke="black" stroke-width="1"/>
+    <text x="60" y="195" font-family="Arial" font-size="16" text-anchor="middle" dominant-baseline="central" font-weight="bold">x</text>
+    <!-- קופסה 2 -->
+    <rect x="75" y="180" width="30" height="30" fill="#87CEFA" stroke="black" stroke-width="1"/>
+    <text x="90" y="195" font-family="Arial" font-size="16" text-anchor="middle" dominant-baseline="central" font-weight="bold">x</text>
+    <!-- 3 מטבעות -->
+    <circle cx="115" cy="202" r="8" fill="gold" stroke="black" stroke-width="1"/>
+    <text x="115" y="202" font-family="Arial" font-size="12" text-anchor="middle" dominant-baseline="central">1</text>
+    <circle cx="115" cy="186" r="8" fill="gold" stroke="black" stroke-width="1"/>
+    <text x="115" y="186" font-family="Arial" font-size="12" text-anchor="middle" dominant-baseline="central">1</text>
+    <circle cx="115" cy="170" r="8" fill="gold" stroke="black" stroke-width="1"/>
+    <text x="115" y="170" font-family="Arial" font-size="12" text-anchor="middle" dominant-baseline="central">1</text>
+
+    <!-- פריטים על הכף הימנית (11 מטבעות 1) -->
+    <!-- ערימה 1 (4 מטבעות) -->
+    <circle cx="295" cy="202" r="8" fill="gold" stroke="black" stroke-width="1"/>
+    <text x="295" y="202" font-family="Arial" font-size="12" text-anchor="middle" dominant-baseline="central">1</text>
+    <circle cx="295" cy="186" r="8" fill="gold" stroke="black" stroke-width="1"/>
+    <text x="295" y="186" font-family="Arial" font-size="12" text-anchor="middle" dominant-baseline="central">1</text>
+    <circle cx="295" cy="170" r="8" fill="gold" stroke="black" stroke-width="1"/>
+    <text x="295" y="170" font-family="Arial" font-size="12" text-anchor="middle" dominant-baseline="central">1</text>
+    <circle cx="295" cy="154" r="8" fill="gold" stroke="black" stroke-width="1"/>
+    <text x="295" y="154" font-family="Arial" font-size="12" text-anchor="middle" dominant-baseline="central">1</text>
+  
+    <!-- ערימה 2 (4 מטבעות) -->
+    <circle cx="320" cy="202" r="8" fill="gold" stroke="black" stroke-width="1"/>
+    <text x="320" y="202" font-family="Arial" font-size="12" text-anchor="middle" dominant-baseline="central">1</text>
+    <circle cx="320" cy="186" r="8" fill="gold" stroke="black" stroke-width="1"/>
+    <text x="320" y="186" font-family="Arial" font-size="12" text-anchor="middle" dominant-baseline="central">1</text>
+    <circle cx="320" cy="170" r="8" fill="gold" stroke="black" stroke-width="1"/>
+    <text x="320" y="170" font-family="Arial" font-size="12" text-anchor="middle" dominant-baseline="central">1</text>
+    <circle cx="320" cy="154" r="8" fill="gold" stroke="black" stroke-width="1"/>
+    <text x="320" y="154" font-family="Arial" font-size="12" text-anchor="middle" dominant-baseline="central">1</text>
+  
+    <!-- ערימה 3 (3 מטבעות) -->
+    <circle cx="345" cy="202" r="8" fill="gold" stroke="black" stroke-width="1"/>
+    <text x="345" y="202" font-family="Arial" font-size="12" text-anchor="middle" dominant-baseline="central">1</text>
+    <circle cx="345" cy="186" r="8" fill="gold" stroke="black" stroke-width="1"/>
+    <text x="345" y="186" font-family="Arial" font-size="12" text-anchor="middle" dominant-baseline="central">1</text>
+    <circle cx="345" cy="170" r="8" fill="gold" stroke="black" stroke-width="1"/>
+    <text x="345" y="170" font-family="Arial" font-size="12" text-anchor="middle" dominant-baseline="central">1</text>
+  </svg>
+
+<svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+    <!-- בסיס ועמוד המאזניים -->
+    <polygon points="170,280 230,280 200,100" fill="#8B4513" stroke="black" stroke-width="2"/>
+    <line x1="140" y1="280" x2="260" y2="280" stroke="black" stroke-width="4" stroke-linecap="round"/>
+  
+    <!-- זרוע המאזניים -->
+    <line x1="80" y1="100" x2="320" y2="100" stroke="#8B4513" stroke-width="6" stroke-linecap="round"/>
+    <circle cx="200" cy="100" r="6" fill="gold" stroke="black" stroke-width="1"/>
+  
+    <!-- כף שמאלית -->
+    <line x1="80" y1="100" x2="40" y2="210" stroke="gray" stroke-width="2"/>
+    <line x1="80" y1="100" x2="120" y2="210" stroke="gray" stroke-width="2"/>
+    <line x1="30" y1="210" x2="130" y2="210" stroke="#CD853F" stroke-width="6" stroke-linecap="round"/>
+  
+    <!-- כף ימנית -->
+    <line x1="320" y1="100" x2="280" y2="210" stroke="gray" stroke-width="2"/>
+    <line x1="320" y1="100" x2="360" y2="210" stroke="gray" stroke-width="2"/>
+    <line x1="270" y1="210" x2="370" y2="210" stroke="#CD853F" stroke-width="6" stroke-linecap="round"/>
+  
+    <!-- פריטים על הכף השמאלית (2 קופסאות x, 3 מטבעות 1) -->
+    <!-- קופסה 1 -->
+    <rect x="45" y="180" width="30" height="30" fill="#87CEFA" stroke="black" stroke-width="1"/>
+    <text x="60" y="195" font-family="Arial" font-size="16" text-anchor="middle" dominant-baseline="central" font-weight="bold">x</text>
+    <!-- קופסה 2 -->
+    <rect x="75" y="180" width="30" height="30" fill="#87CEFA" stroke="black" stroke-width="1"/>
+    <text x="90" y="195" font-family="Arial" font-size="16" text-anchor="middle" dominant-baseline="central" font-weight="bold">x</text>
+    <!-- 3 מטבעות -->
+    <circle cx="115" cy="202" r="8" fill="gold" stroke="black" stroke-width="1"/>
+    <text x="115" y="202" font-family="Arial" font-size="12" text-anchor="middle" dominant-baseline="central">1</text>
+    <circle cx="115" cy="186" r="8" fill="gold" stroke="black" stroke-width="1"/>
+    <text x="115" y="186" font-family="Arial" font-size="12" text-anchor="middle" dominant-baseline="central">1</text>
+    <circle cx="115" cy="170" r="8" fill="gold" stroke="black" stroke-width="1"/>
+    <text x="115" y="170" font-family="Arial" font-size="12" text-anchor="middle" dominant-baseline="central">1</text>
+
+    <!-- פריטים על הכף הימנית (11 מטבעות 1) -->
+    <!-- ערימה 1 (4 מטבעות) -->
+    <circle cx="295" cy="202" r="8" fill="gold" stroke="black" stroke-width="1"/>
+    <text x="295" y="202" font-family="Arial" font-size="12" text-anchor="middle" dominant-baseline="central">1</text>
+    <circle cx="295" cy="186" r="8" fill="gold" stroke="black" stroke-width="1"/>
+    <text x="295" y="186" font-family="Arial" font-size="12" text-anchor="middle" dominant-baseline="central">1</text>
+    <circle cx="295" cy="170" r="8" fill="gold" stroke="black" stroke-width="1"/>
+    <text x="295" y="170" font-family="Arial" font-size="12" text-anchor="middle" dominant-baseline="central">1</text>
+    <circle cx="295" cy="154" r="8" fill="gold" stroke="black" stroke-width="1"/>
+    <text x="295" y="154" font-family="Arial" font-size="12" text-anchor="middle" dominant-baseline="central">1</text>
+  
+    <!-- ערימה 2 (4 מטבעות) -->
+    <circle cx="320" cy="202" r="8" fill="gold" stroke="black" stroke-width="1"/>
+    <text x="320" y="202" font-family="Arial" font-size="12" text-anchor="middle" dominant-baseline="central">1</text>
+    <circle cx="320" cy="186" r="8" fill="gold" stroke="black" stroke-width="1"/>
+    <text x="320" y="186" font-family="Arial" font-size="12" text-anchor="middle" dominant-baseline="central">1</text>
+    <circle cx="320" cy="170" r="8" fill="gold" stroke="black" stroke-width="1"/>
+    <text x="320" y="170" font-family="Arial" font-size="12" text-anchor="middle" dominant-baseline="central">1</text>
+    <circle cx="320" cy="154" r="8" fill="gold" stroke="black" stroke-width="1"/>
+    <text x="320" y="154" font-family="Arial" font-size="12" text-anchor="middle" dominant-baseline="central">1</text>
+  
+    <!-- ערימה 3 (3 מטבעות) -->
+    <circle cx="345" cy="202" r="8" fill="gold" stroke="black" stroke-width="1"/>
+    <text x="345" y="202" font-family="Arial" font-size="12" text-anchor="middle" dominant-baseline="central">1</text>
+    <circle cx="345" cy="186" r="8" fill="gold" stroke="black" stroke-width="1"/>
+    <text x="345" y="186" font-family="Arial" font-size="12" text-anchor="middle" dominant-baseline="central">1</text>
+    <circle cx="345" cy="170" r="8" fill="gold" stroke="black" stroke-width="1"/>
+    <text x="345" y="170" font-family="Arial" font-size="12" text-anchor="middle" dominant-baseline="central">1</text>
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 3 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: המטרה שלנו היא למצוא את המשקל של קופסת 'x' אחת. כדי לבודד את הקופסאות, מהו השלב הראשון וההגיוני ביותר שנעשה בשתי כפות המאזניים כדי לשמור על האיזון?
+* אופציות:
+  - נוריד 3 מטבעות מכל אחת מכפות המאזניים.
+  - נחלק את הכמות בכל כף ל-2.
+* פתרון נכון: נוריד 3 מטבעות מכל אחת מכפות המאזניים.
+* פתרון מלא: עדיף קודם להסיר את המספרים החופשיים (המטבעות) כדי להשאיר רק את הקופסאות בצד אחד. אם נוריד 3 מטבעות משני הצדדים, המאזניים יישארו מאוזנים.
+
+--------------------------------------------------------------------------------
+[תרגיל 3 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: לאחר שהורדנו 3 מטבעות מכל צד, איזה מצב נשאר לנו על המאזניים?
+* אופציות:
+  - 2 קופסאות 'x' בכף השמאלית ו-8 מטבעות בכף הימנית.
+  - קופסת 'x' אחת בכף השמאלית ו-11 מטבעות בכף הימנית.
+* פתרון נכון: 2 קופסאות 'x' בכף השמאלית ו-8 מטבעות בכף הימנית.
+* פתרון מלא: בכף השמאלית היו 3 מטבעות, והורדנו אותם, אז נשארו 2 קופסאות. בכף הימנית היו 11 מטבעות, הורדנו 3, ולכן נשארו 8 מטבעות. המשוואה החדשה היא 2x = 8.
+
+--------------------------------------------------------------------------------
+[תרגיל 3 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: כעת יש לנו 2 קופסאות 'x' בכף השמאלית ו-8 מטבעות בכף הימנית (2x = 8). מהו השלב האחרון שעלינו לבצע כדי למצוא את המשקל של קופסה אחת?
+* אופציות:
+  - נחסר 2 מכל צד.
+  - נחלק את הכמות בכל צד ב-2.
+  - נוסיף 2 לכל צד.
+* פתרון נכון: נחלק את הכמות בכל צד ב-2.
+* פתרון מלא: מכיוון שיש לנו 2 קופסאות שוות במשקלן ל-8 מטבעות, נחלק את הכמות בשתי הכפות ב-2. כך נמצא שקופסה אחת שוקלת כמו 4 מטבעות.
+
+--------------------------------------------------------------------------------
+[תרגיל 3 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: פתרו את המשוואה 2x + 3 = 11 המייצגת את המצב ההתחלתי, וכתבו את ערכו של x.
+* פתרון נכון: נחסר 3 משני אגפי המשוואה ונקבל 2x = 8. לאחר מכן נחלק את שני האגפים ב-2 ונקבל x = 4.
+* פתרון מלא: נחסר 3 משני אגפי המשוואה ונקבל 2x = 8. לאחר מכן נחלק את שני האגפים ב-2 ונקבל x = 4.
+
+================================================================================
+תרגיל 4 – בסיס: מעבר לפתרון אלגברי פורמלי באמצעות פעולות הפוכות ומודל תרשים…
+================================================================================
+דרך נוספת להסתכל על פתרון משוואות היא בעזרת "מכונת מספרים" (תרשים זרימה), שבה מבצעים פעולות הפוכות כדי לחזור להתחלה.
+
+  <svg width="500" height="150" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+        <path d="M 0 0 L 10 5 L 0 10 z" fill="black" />
+      </marker>
+    </defs>
+
+    <!-- x -->
+    <text x="40" y="83" font-size="24" font-family="sans-serif" text-anchor="middle">x</text>
+
+    <!-- Arrow 1 -->
+    <line x1="60" y1="75" x2="110" y2="75" stroke="black" stroke-width="2" marker-end="url(#arrow)" />
+
+    <!-- Box 1 -->
+    <rect x="120" y="50" width="90" height="50" rx="5" fill="#e8f4f8" stroke="#2980b9" stroke-width="2" />
+    <text x="165" y="80" font-size="18" font-family="sans-serif" text-anchor="middle" fill="#2c3e50" direction="rtl">כפול 3</text>
+
+    <!-- Arrow 2 -->
+    <line x1="220" y1="75" x2="270" y2="75" stroke="black" stroke-width="2" marker-end="url(#arrow)" />
+
+    <!-- Box 2 -->
+    <rect x="280" y="50" width="90" height="50" rx="5" fill="#e8f4f8" stroke="#2980b9" stroke-width="2" />
+    <text x="325" y="80" font-size="18" font-family="sans-serif" text-anchor="middle" fill="#2c3e50" direction="rtl">ועוד 2</text>
+
+    <!-- Arrow 3 -->
+    <line x1="380" y1="75" x2="430" y2="75" stroke="black" stroke-width="2" marker-end="url(#arrow)" />
+
+    <!-- 14 -->
+    <text x="465" y="83" font-size="24" font-family="sans-serif" text-anchor="middle">14</text>
+  </svg>
+
+<svg width="500" height="150" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+        <path d="M 0 0 L 10 5 L 0 10 z" fill="black" />
+      </marker>
+    </defs>
+
+    <!-- x -->
+    <text x="40" y="83" font-size="24" font-family="sans-serif" text-anchor="middle">x</text>
+
+    <!-- Arrow 1 -->
+    <line x1="60" y1="75" x2="110" y2="75" stroke="black" stroke-width="2" marker-end="url(#arrow)" />
+
+    <!-- Box 1 -->
+    <rect x="120" y="50" width="90" height="50" rx="5" fill="#e8f4f8" stroke="#2980b9" stroke-width="2" />
+    <text x="165" y="80" font-size="18" font-family="sans-serif" text-anchor="middle" fill="#2c3e50" direction="rtl">כפול 3</text>
+
+    <!-- Arrow 2 -->
+    <line x1="220" y1="75" x2="270" y2="75" stroke="black" stroke-width="2" marker-end="url(#arrow)" />
+
+    <!-- Box 2 -->
+    <rect x="280" y="50" width="90" height="50" rx="5" fill="#e8f4f8" stroke="#2980b9" stroke-width="2" />
+    <text x="325" y="80" font-size="18" font-family="sans-serif" text-anchor="middle" fill="#2c3e50" direction="rtl">ועוד 2</text>
+
+    <!-- Arrow 3 -->
+    <line x1="380" y1="75" x2="430" y2="75" stroke="black" stroke-width="2" marker-end="url(#arrow)" />
+
+    <!-- 14 -->
+    <text x="465" y="83" font-size="24" font-family="sans-serif" text-anchor="middle">14</text>
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 4 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: כדי לגלות את x, עלינו ללכת מהסוף להתחלה ולבצע פעולות הפוכות. בחרו את הפעולה ההפוכה הראשונה שיש לבצע על התוצאה 14.
+* אופציות:
+  - לחסר 2.
+  - לחלק ב-3.
+* פתרון נכון: לחסר 2.
+* פתרון מלא: הפעולה האחרונה שנעשתה הייתה חיבור 2. לכן, הפעולה ההפוכה הראשונה שנבצע בדרך חזרה היא חיסור 2.
+
+--------------------------------------------------------------------------------
+[תרגיל 4 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: תרשים הזרימה מתאר את המשוואה 3x + 2 = 14. מצאו את המשוואה שתתקבל אם נחסר 2 משני אגפי המשוואה.
+* אופציות:
+  - 3x = 12
+  - 3x = 16
+* פתרון נכון: 3x = 12
+* פתרון מלא: באגף שמאל, 2 פחות 2 מתבטל ונשאר 3x. באגף ימין, 14 פחות 2 שווה 12. המשוואה החדשה היא 3x = 12.
+
+--------------------------------------------------------------------------------
+[תרגיל 4 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: חשבו את ערכו של x במשוואה החדשה שקיבלנו (3x = 12).
+* אופציות:
+  - x = 9
+  - x = 4
+  - x = 36
+* פתרון נכון: x = 4
+* פתרון מלא: הפעולה ההפוכה לכפל ב-3 היא חילוק ב-3. נחלק את 12 ב-3 ונקבל ש-x שווה 4.
+
+--------------------------------------------------------------------------------
+[תרגיל 4 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: פתרו את המשוואה 4x + 7 = 19 בעזרת ביצוע פעולות זהות על שני האגפים, וכתבו את ערכו של x.
+* פתרון נכון: נחסר 7 משני האגפים: 4x = 12. נחלק את שני האגפים ב-4: x = 3.
+* פתרון מלא: נחסר 7 משני האגפים: 4x = 12. נחלק את שני האגפים ב-4: x = 3.
+
+================================================================================
+תרגיל 5 – בסיס: התמודדות עם נעלמים בשני אגפי המשוואה (חזרה למודל ויזואלי)
+================================================================================
+עד כה פתרנו משוואות שבהן הנעלם הופיע רק בצד אחד. מה קורה כשהנעלם נמצא בשני הצדדים?
+
+  <svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+    <!-- שולחן / בסיס -->
+    <line x1="50" y1="250" x2="350" y2="250" stroke="#8b4513" stroke-width="4" />
+  
+    <!-- עמוד המאזניים -->
+    <polygon points="180,250 220,250 200,100" fill="#555" />
+  
+    <!-- זרוע המאזניים (מאוזנת) -->
+    <line x1="80" y1="100" x2="320" y2="100" stroke="#555" stroke-width="4" />
+    <circle cx="200" cy="100" r="6" fill="#333" />
+  
+    <!-- כף שמאלית -->
+    <line x1="80" y1="100" x2="40" y2="180" stroke="#888" stroke-width="2" />
+    <line x1="80" y1="100" x2="120" y2="180" stroke="#888" stroke-width="2" />
+    <line x1="40" y1="180" x2="120" y2="180" stroke="#555" stroke-width="4" />
+  
+    <!-- כף ימנית -->
+    <line x1="320" y1="100" x2="280" y2="180" stroke="#888" stroke-width="2" />
+    <line x1="320" y1="100" x2="360" y2="180" stroke="#888" stroke-width="2" />
+    <line x1="280" y1="180" x2="360" y2="180" stroke="#555" stroke-width="4" />
+  
+    <!-- תכולת כף שמאלית: 3 קופסאות x ו-2 מטבעות -->
+    <!-- קופסה 1 -->
+    <rect x="45" y="155" width="20" height="25" fill="#4da6ff" stroke="#0059b3" stroke-width="1" />
+    <text x="55" y="172" font-family="Arial" font-size="14" text-anchor="middle" fill="white">x</text>
+    <!-- קופסה 2 -->
+    <rect x="67" y="155" width="20" height="25" fill="#4da6ff" stroke="#0059b3" stroke-width="1" />
+    <text x="77" y="172" font-family="Arial" font-size="14" text-anchor="middle" fill="white">x</text>
+    <!-- קופסה 3 -->
+    <rect x="89" y="155" width="20" height="25" fill="#4da6ff" stroke="#0059b3" stroke-width="1" />
+    <text x="99" y="172" font-family="Arial" font-size="14" text-anchor="middle" fill="white">x</text>
+    <!-- 2 מטבעות -->
+    <circle cx="114" cy="175" r="5" fill="#ffd700" stroke="#b8860b" stroke-width="1" />
+    <circle cx="114" cy="165" r="5" fill="#ffd700" stroke="#b8860b" stroke-width="1" />
+  
+    <!-- תכולת כף ימנית: קופסה אחת x ו-10 מטבעות -->
+    <!-- קופסה 1 -->
+    <rect x="285" y="155" width="20" height="25" fill="#4da6ff" stroke="#0059b3" stroke-width="1" />
+    <text x="295" y="172" font-family="Arial" font-size="14" text-anchor="middle" fill="white">x</text>
+    <!-- 10 מטבעות (מסודרים בפירמידה) -->
+    <!-- שורה 1 (תחתונה) -->
+    <circle cx="315" cy="175" r="5" fill="#ffd700" stroke="#b8860b" stroke-width="1" />
+    <circle cx="326" cy="175" r="5" fill="#ffd700" stroke="#b8860b" stroke-width="1" />
+    <circle cx="337" cy="175" r="5" fill="#ffd700" stroke="#b8860b" stroke-width="1" />
+    <circle cx="348" cy="175" r="5" fill="#ffd700" stroke="#b8860b" stroke-width="1" />
+    <!-- שורה 2 -->
+    <circle cx="320.5" cy="166" r="5" fill="#ffd700" stroke="#b8860b" stroke-width="1" />
+    <circle cx="331.5" cy="166" r="5" fill="#ffd700" stroke="#b8860b" stroke-width="1" />
+    <circle cx="342.5" cy="166" r="5" fill="#ffd700" stroke="#b8860b" stroke-width="1" />
+    <!-- שורה 3 -->
+    <circle cx="326" cy="157" r="5" fill="#ffd700" stroke="#b8860b" stroke-width="1" />
+    <circle cx="337" cy="157" r="5" fill="#ffd700" stroke="#b8860b" stroke-width="1" />
+    <!-- שורה 4 (עליונה) -->
+    <circle cx="331.5" cy="148" r="5" fill="#ffd700" stroke="#b8860b" stroke-width="1" />
+  </svg>
+
+<svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+    <!-- שולחן / בסיס -->
+    <line x1="50" y1="250" x2="350" y2="250" stroke="#8b4513" stroke-width="4" />
+  
+    <!-- עמוד המאזניים -->
+    <polygon points="180,250 220,250 200,100" fill="#555" />
+  
+    <!-- זרוע המאזניים (מאוזנת) -->
+    <line x1="80" y1="100" x2="320" y2="100" stroke="#555" stroke-width="4" />
+    <circle cx="200" cy="100" r="6" fill="#333" />
+  
+    <!-- כף שמאלית -->
+    <line x1="80" y1="100" x2="40" y2="180" stroke="#888" stroke-width="2" />
+    <line x1="80" y1="100" x2="120" y2="180" stroke="#888" stroke-width="2" />
+    <line x1="40" y1="180" x2="120" y2="180" stroke="#555" stroke-width="4" />
+  
+    <!-- כף ימנית -->
+    <line x1="320" y1="100" x2="280" y2="180" stroke="#888" stroke-width="2" />
+    <line x1="320" y1="100" x2="360" y2="180" stroke="#888" stroke-width="2" />
+    <line x1="280" y1="180" x2="360" y2="180" stroke="#555" stroke-width="4" />
+  
+    <!-- תכולת כף שמאלית: 3 קופסאות x ו-2 מטבעות -->
+    <!-- קופסה 1 -->
+    <rect x="45" y="155" width="20" height="25" fill="#4da6ff" stroke="#0059b3" stroke-width="1" />
+    <text x="55" y="172" font-family="Arial" font-size="14" text-anchor="middle" fill="white">x</text>
+    <!-- קופסה 2 -->
+    <rect x="67" y="155" width="20" height="25" fill="#4da6ff" stroke="#0059b3" stroke-width="1" />
+    <text x="77" y="172" font-family="Arial" font-size="14" text-anchor="middle" fill="white">x</text>
+    <!-- קופסה 3 -->
+    <rect x="89" y="155" width="20" height="25" fill="#4da6ff" stroke="#0059b3" stroke-width="1" />
+    <text x="99" y="172" font-family="Arial" font-size="14" text-anchor="middle" fill="white">x</text>
+    <!-- 2 מטבעות -->
+    <circle cx="114" cy="175" r="5" fill="#ffd700" stroke="#b8860b" stroke-width="1" />
+    <circle cx="114" cy="165" r="5" fill="#ffd700" stroke="#b8860b" stroke-width="1" />
+  
+    <!-- תכולת כף ימנית: קופסה אחת x ו-10 מטבעות -->
+    <!-- קופסה 1 -->
+    <rect x="285" y="155" width="20" height="25" fill="#4da6ff" stroke="#0059b3" stroke-width="1" />
+    <text x="295" y="172" font-family="Arial" font-size="14" text-anchor="middle" fill="white">x</text>
+    <!-- 10 מטבעות (מסודרים בפירמידה) -->
+    <!-- שורה 1 (תחתונה) -->
+    <circle cx="315" cy="175" r="5" fill="#ffd700" stroke="#b8860b" stroke-width="1" />
+    <circle cx="326" cy="175" r="5" fill="#ffd700" stroke="#b8860b" stroke-width="1" />
+    <circle cx="337" cy="175" r="5" fill="#ffd700" stroke="#b8860b" stroke-width="1" />
+    <circle cx="348" cy="175" r="5" fill="#ffd700" stroke="#b8860b" stroke-width="1" />
+    <!-- שורה 2 -->
+    <circle cx="320.5" cy="166" r="5" fill="#ffd700" stroke="#b8860b" stroke-width="1" />
+    <circle cx="331.5" cy="166" r="5" fill="#ffd700" stroke="#b8860b" stroke-width="1" />
+    <circle cx="342.5" cy="166" r="5" fill="#ffd700" stroke="#b8860b" stroke-width="1" />
+    <!-- שורה 3 -->
+    <circle cx="326" cy="157" r="5" fill="#ffd700" stroke="#b8860b" stroke-width="1" />
+    <circle cx="337" cy="157" r="5" fill="#ffd700" stroke="#b8860b" stroke-width="1" />
+    <!-- שורה 4 (עליונה) -->
+    <circle cx="331.5" cy="148" r="5" fill="#ffd700" stroke="#b8860b" stroke-width="1" />
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 5 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: האם נוכל להוריד קופסה אחת של x מכל כף מבלי להפר את האיזון?
+* אופציות:
+  - כן, כי אנו מבצעים פעולה זהה (הורדת אותו משקל) משני הצדדים.
+  - לא, מותר להוריד רק מטבעות (מספרים) משני הצדדים.
+* פתרון נכון: כן, כי אנו מבצעים פעולה זהה (הורדת אותו משקל) משני הצדדים.
+* פתרון מלא: חוק הפעולות הזהות חל על כל גודל, כולל נעלמים. אם נוריד כמות שווה של קופסאות משני הצדדים, המאזניים יישארו מאוזנים.
+
+--------------------------------------------------------------------------------
+[תרגיל 5 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: לאחר שהורדנו קופסה אחת (x) מכל צד, כמה קופסאות נשארו על הכף השמאלית?
+* אופציות:
+  - נשארו 2 קופסאות.
+  - נשארה קופסה אחת.
+* פתרון נכון: נשארו 2 קופסאות.
+* פתרון מלא: היו 3 קופסאות בצד שמאל. הורדנו אחת, ולכן נשארו 2 קופסאות. בצד ימין הקופסה היחידה שהייתה ירדה, ולא נשארו קופסאות כלל.
+
+--------------------------------------------------------------------------------
+[תרגיל 5 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: איזו משוואה מתארת את המצב החדש על המאזניים (לאחר הורדת קופסה אחת מכל צד)?
+* אופציות:
+  - 3x + 2 = 10
+  - 2x + 2 = 10
+  - 2x = 10
+* פתרון נכון: 2x + 2 = 10
+* פתרון מלא: משמאל נשארו 2 קופסאות ו-2 מטבעות (2x + 2). מימין נשארו רק 10 מטבעות. לכן המשוואה היא 2x + 2 = 10.
+
+--------------------------------------------------------------------------------
+[תרגיל 5 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: פתרו את המשוואה החדשה 2x + 2 = 10 ורשמו מהו המשקל של קופסה אחת x.
+* פתרון נכון: נחסר 2 משני האגפים ונקבל 2x = 8. נחלק ב-2 ונקבל x = 4. משקל קופסה אחת הוא 4.
+* פתרון מלא: נחסר 2 משני האגפים ונקבל 2x = 8. נחלק ב-2 ונקבל x = 4. משקל קופסה אחת הוא 4.
+
+================================================================================
+תרגיל 6 – בסיס: העברת אגפים פורמלית של נעלמים על ידי ביצוע פעולות זהות
+================================================================================
+כעת נעבור לפתרון אלגברי פורמלי של משוואות עם נעלמים בשני האגפים, ללא ציור של מאזניים.
+
+  <svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+    <text x="120" y="140" font-size="40" font-family="Arial, sans-serif" text-anchor="middle" fill="black">5x</text>
+    <text x="180" y="140" font-size="40" font-family="Arial, sans-serif" text-anchor="middle" fill="black">=</text>
+    <text x="240" y="140" font-size="40" font-family="Arial, sans-serif" text-anchor="middle" fill="black">2x</text>
+    <text x="310" y="140" font-size="40" font-family="Arial, sans-serif" text-anchor="middle" fill="black">+ 12</text>
+  
+    <text x="120" y="190" font-size="32" font-family="Arial, sans-serif" text-anchor="middle" fill="red">-2x</text>
+    <text x="240" y="190" font-size="32" font-family="Arial, sans-serif" text-anchor="middle" fill="red">-2x</text>
+  </svg>
+
+<svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+    <text x="120" y="140" font-size="40" font-family="Arial, sans-serif" text-anchor="middle" fill="black">5x</text>
+    <text x="180" y="140" font-size="40" font-family="Arial, sans-serif" text-anchor="middle" fill="black">=</text>
+    <text x="240" y="140" font-size="40" font-family="Arial, sans-serif" text-anchor="middle" fill="black">2x</text>
+    <text x="310" y="140" font-size="40" font-family="Arial, sans-serif" text-anchor="middle" fill="black">+ 12</text>
+  
+    <text x="120" y="190" font-size="32" font-family="Arial, sans-serif" text-anchor="middle" fill="red">-2x</text>
+    <text x="240" y="190" font-size="32" font-family="Arial, sans-serif" text-anchor="middle" fill="red">-2x</text>
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 6 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: כדי לרכז את כל ה-x-ים באגף שמאל, איזו פעולה עלינו לבצע על שני אגפי המשוואה?
+* אופציות:
+  - לחסר 2x משני האגפים.
+  - לחבר 2x לשני האגפים.
+* פתרון נכון: לחסר 2x משני האגפים.
+* פתרון מלא: כדי להעלים את ה-2x מאגף ימין, עלינו לבצע את הפעולה ההפוכה, כלומר לחסר 2x. כדי לשמור על שוויון, נחסר 2x גם מאגף שמאל.
+
+--------------------------------------------------------------------------------
+[תרגיל 6 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: לאחר חיסור 2x משני האגפים, מהו הביטוי שיישאר באגף שמאל?
+* אופציות:
+  - 7x
+  - 3x
+* פתרון נכון: 3x
+* פתרון מלא: באגף שמאל היה לנו 5x. אם נחסר ממנו 2x, נקבל 3x (כי 5 פחות 2 שווה 3).
+
+--------------------------------------------------------------------------------
+[תרגיל 6 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: איזו משוואה חדשה ופשוטה יותר נקבל לאחר הפעולה הזו?
+* אופציות:
+  - 3x = 12
+  - 7x = 12
+  - 3x = 10
+* פתרון נכון: 3x = 12
+* פתרון מלא: אגף שמאל הפך ל-3x. באגף ימין ה-2x התבטל ונשאר רק 12. לכן המשוואה היא 3x = 12.
+
+--------------------------------------------------------------------------------
+[תרגיל 6 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: רשמו את המשוואה שתתקבל אם נחסר 3x משני האגפים של המשוואה 7x = 3x + 16, ולאחר מכן מצאו את x.
+* פתרון נכון: נחסר 3x משני האגפים ונקבל 4x = 16. נחלק ב-4 ונקבל x = 4.
+* פתרון מלא: נחסר 3x משני האגפים ונקבל 4x = 16. נחלק ב-4 ונקבל x = 4.
+
+================================================================================
+תרגיל 7 – מורכב: כינוס איברים דומים לפני תחילת העברת האגפים
+================================================================================
+לפני שמתחילים להעביר איברים מאגף לאגף, חשוב לבדוק אם אפשר לפשט כל אגף בנפרד על ידי כינוס איברים דומים.
+
+  <svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+    <!-- כותרת -->
+    <text x="200" y="35" font-family="Arial" font-size="22" fill="#333" text-anchor="middle" font-weight="bold" direction="rtl">כינוס איברים</text>
+
+    <!-- קבוצה 1: 4x -->
+    <rect x="40" y="60" width="30" height="30" fill="#4A90E2" stroke="#2C3E50" stroke-width="2" rx="4" />
+    <text x="55" y="81" font-family="Arial" font-size="16" fill="white" text-anchor="middle">x</text>
+    <rect x="75" y="60" width="30" height="30" fill="#4A90E2" stroke="#2C3E50" stroke-width="2" rx="4" />
+    <text x="90" y="81" font-family="Arial" font-size="16" fill="white" text-anchor="middle">x</text>
+    <rect x="110" y="60" width="30" height="30" fill="#4A90E2" stroke="#2C3E50" stroke-width="2" rx="4" />
+    <text x="125" y="81" font-family="Arial" font-size="16" fill="white" text-anchor="middle">x</text>
+    <rect x="145" y="60" width="30" height="30" fill="#4A90E2" stroke="#2C3E50" stroke-width="2" rx="4" />
+    <text x="160" y="81" font-family="Arial" font-size="16" fill="white" text-anchor="middle">x</text>
+    <text x="107.5" y="115" font-family="Arial" font-size="20" fill="#333" text-anchor="middle" font-weight="bold">4x</text>
+
+    <!-- סימן חיבור -->
+    <text x="200" y="85" font-family="Arial" font-size="30" fill="#333" text-anchor="middle" font-weight="bold">+</text>
+
+    <!-- קבוצה 2: 3x -->
+    <rect x="225" y="60" width="30" height="30" fill="#4A90E2" stroke="#2C3E50" stroke-width="2" rx="4" />
+    <text x="240" y="81" font-family="Arial" font-size="16" fill="white" text-anchor="middle">x</text>
+    <rect x="260" y="60" width="30" height="30" fill="#4A90E2" stroke="#2C3E50" stroke-width="2" rx="4" />
+    <text x="275" y="81" font-family="Arial" font-size="16" fill="white" text-anchor="middle">x</text>
+    <rect x="295" y="60" width="30" height="30" fill="#4A90E2" stroke="#2C3E50" stroke-width="2" rx="4" />
+    <text x="310" y="81" font-family="Arial" font-size="16" fill="white" text-anchor="middle">x</text>
+    <text x="275" y="115" font-family="Arial" font-size="20" fill="#333" text-anchor="middle" font-weight="bold">3x</text>
+
+    <!-- סימן שווה -->
+    <text x="200" y="155" font-family="Arial" font-size="30" fill="#333" text-anchor="middle" font-weight="bold">=</text>
+
+    <!-- קבוצה 3: 7x -->
+    <rect x="80" y="180" width="30" height="30" fill="#4A90E2" stroke="#2C3E50" stroke-width="2" rx="4" />
+    <text x="95" y="201" font-family="Arial" font-size="16" fill="white" text-anchor="middle">x</text>
+    <rect x="115" y="180" width="30" height="30" fill="#4A90E2" stroke="#2C3E50" stroke-width="2" rx="4" />
+    <text x="130" y="201" font-family="Arial" font-size="16" fill="white" text-anchor="middle">x</text>
+    <rect x="150" y="180" width="30" height="30" fill="#4A90E2" stroke="#2C3E50" stroke-width="2" rx="4" />
+    <text x="165" y="201" font-family="Arial" font-size="16" fill="white" text-anchor="middle">x</text>
+    <rect x="185" y="180" width="30" height="30" fill="#4A90E2" stroke="#2C3E50" stroke-width="2" rx="4" />
+    <text x="200" y="201" font-family="Arial" font-size="16" fill="white" text-anchor="middle">x</text>
+    <rect x="220" y="180" width="30" height="30" fill="#4A90E2" stroke="#2C3E50" stroke-width="2" rx="4" />
+    <text x="235" y="201" font-family="Arial" font-size="16" fill="white" text-anchor="middle">x</text>
+    <rect x="255" y="180" width="30" height="30" fill="#4A90E2" stroke="#2C3E50" stroke-width="2" rx="4" />
+    <text x="270" y="201" font-family="Arial" font-size="16" fill="white" text-anchor="middle">x</text>
+    <rect x="290" y="180" width="30" height="30" fill="#4A90E2" stroke="#2C3E50" stroke-width="2" rx="4" />
+    <text x="305" y="201" font-family="Arial" font-size="16" fill="white" text-anchor="middle">x</text>
+    <text x="200" y="240" font-family="Arial" font-size="22" fill="#333" text-anchor="middle" font-weight="bold">7x</text>
+  </svg>
+
+<svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+    <!-- כותרת -->
+    <text x="200" y="35" font-family="Arial" font-size="22" fill="#333" text-anchor="middle" font-weight="bold" direction="rtl">כינוס איברים</text>
+
+    <!-- קבוצה 1: 4x -->
+    <rect x="40" y="60" width="30" height="30" fill="#4A90E2" stroke="#2C3E50" stroke-width="2" rx="4" />
+    <text x="55" y="81" font-family="Arial" font-size="16" fill="white" text-anchor="middle">x</text>
+    <rect x="75" y="60" width="30" height="30" fill="#4A90E2" stroke="#2C3E50" stroke-width="2" rx="4" />
+    <text x="90" y="81" font-family="Arial" font-size="16" fill="white" text-anchor="middle">x</text>
+    <rect x="110" y="60" width="30" height="30" fill="#4A90E2" stroke="#2C3E50" stroke-width="2" rx="4" />
+    <text x="125" y="81" font-family="Arial" font-size="16" fill="white" text-anchor="middle">x</text>
+    <rect x="145" y="60" width="30" height="30" fill="#4A90E2" stroke="#2C3E50" stroke-width="2" rx="4" />
+    <text x="160" y="81" font-family="Arial" font-size="16" fill="white" text-anchor="middle">x</text>
+    <text x="107.5" y="115" font-family="Arial" font-size="20" fill="#333" text-anchor="middle" font-weight="bold">4x</text>
+
+    <!-- סימן חיבור -->
+    <text x="200" y="85" font-family="Arial" font-size="30" fill="#333" text-anchor="middle" font-weight="bold">+</text>
+
+    <!-- קבוצה 2: 3x -->
+    <rect x="225" y="60" width="30" height="30" fill="#4A90E2" stroke="#2C3E50" stroke-width="2" rx="4" />
+    <text x="240" y="81" font-family="Arial" font-size="16" fill="white" text-anchor="middle">x</text>
+    <rect x="260" y="60" width="30" height="30" fill="#4A90E2" stroke="#2C3E50" stroke-width="2" rx="4" />
+    <text x="275" y="81" font-family="Arial" font-size="16" fill="white" text-anchor="middle">x</text>
+    <rect x="295" y="60" width="30" height="30" fill="#4A90E2" stroke="#2C3E50" stroke-width="2" rx="4" />
+    <text x="310" y="81" font-family="Arial" font-size="16" fill="white" text-anchor="middle">x</text>
+    <text x="275" y="115" font-family="Arial" font-size="20" fill="#333" text-anchor="middle" font-weight="bold">3x</text>
+
+    <!-- סימן שווה -->
+    <text x="200" y="155" font-family="Arial" font-size="30" fill="#333" text-anchor="middle" font-weight="bold">=</text>
+
+    <!-- קבוצה 3: 7x -->
+    <rect x="80" y="180" width="30" height="30" fill="#4A90E2" stroke="#2C3E50" stroke-width="2" rx="4" />
+    <text x="95" y="201" font-family="Arial" font-size="16" fill="white" text-anchor="middle">x</text>
+    <rect x="115" y="180" width="30" height="30" fill="#4A90E2" stroke="#2C3E50" stroke-width="2" rx="4" />
+    <text x="130" y="201" font-family="Arial" font-size="16" fill="white" text-anchor="middle">x</text>
+    <rect x="150" y="180" width="30" height="30" fill="#4A90E2" stroke="#2C3E50" stroke-width="2" rx="4" />
+    <text x="165" y="201" font-family="Arial" font-size="16" fill="white" text-anchor="middle">x</text>
+    <rect x="185" y="180" width="30" height="30" fill="#4A90E2" stroke="#2C3E50" stroke-width="2" rx="4" />
+    <text x="200" y="201" font-family="Arial" font-size="16" fill="white" text-anchor="middle">x</text>
+    <rect x="220" y="180" width="30" height="30" fill="#4A90E2" stroke="#2C3E50" stroke-width="2" rx="4" />
+    <text x="235" y="201" font-family="Arial" font-size="16" fill="white" text-anchor="middle">x</text>
+    <rect x="255" y="180" width="30" height="30" fill="#4A90E2" stroke="#2C3E50" stroke-width="2" rx="4" />
+    <text x="270" y="201" font-family="Arial" font-size="16" fill="white" text-anchor="middle">x</text>
+    <rect x="290" y="180" width="30" height="30" fill="#4A90E2" stroke="#2C3E50" stroke-width="2" rx="4" />
+    <text x="305" y="201" font-family="Arial" font-size="16" fill="white" text-anchor="middle">x</text>
+    <text x="200" y="240" font-family="Arial" font-size="22" fill="#333" text-anchor="middle" font-weight="bold">7x</text>
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 7 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: נתונה המשוואה 4x + 3x - 2 = 19. האם נוכל לפשט את אגף שמאל לפני שנעביר איברים?
+* אופציות:
+  - כן, אפשר לחבר את 4x ואת 3x כי הם איברים דומים.
+  - לא, חייבים קודם להעביר את ה-2 לאגף ימין.
+* פתרון נכון: כן, אפשר לחבר את 4x ואת 3x כי הם איברים דומים.
+* פתרון מלא: תמיד מומלץ לכנס איברים דומים באותו אגף לפני שמתחילים לבצע פעולות על שני האגפים. זה מפשט את המשוואה.
+
+--------------------------------------------------------------------------------
+[תרגיל 7 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: מהו הביטוי המפושט של אגף שמאל לאחר כינוס האיברים הדומים?
+* אופציות:
+  - 7x - 2
+  - 5x
+* פתרון נכון: 7x - 2
+* פתרון מלא: מחברים את המקדמים של ה-x: 4 + 3 = 7, לכן מקבלים 7x. המספר החופשי (-2) נשאר כפי שהוא. הביטוי הוא 7x - 2.
+
+--------------------------------------------------------------------------------
+[תרגיל 7 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: איזו משוואה שקולה נקבל לאחר הפישוט?
+* אופציות:
+  - 7x = 19
+  - 7x - 2 = 19
+  - 12x - 2 = 19
+* פתרון נכון: 7x - 2 = 19
+* פתרון מלא: החלפנו את הביטוי הארוך באגף שמאל בביטוי המפושט שלו. אגף ימין נשאר ללא שינוי. המשוואה היא 7x - 2 = 19.
+
+--------------------------------------------------------------------------------
+[תרגיל 7 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: פתרו את המשוואה 2x + 5x + 4 = 25. התחילו בכינוס איברים דומים באגף שמאל, וכתבו את ערכו של x.
+* פתרון נכון: נכנס איברים באגף שמאל: 7x + 4 = 25. נחסר 4 משני האגפים: 7x = 21. נחלק ב-7 ונקבל x = 3.
+* פתרון מלא: נכנס איברים באגף שמאל: 7x + 4 = 25. נחסר 4 משני האגפים: 7x = 21. נחלק ב-7 ונקבל x = 3.
+
+================================================================================
+תרגיל 8 – מורכב: שימוש בחוק הפילוג (פתיחת סוגריים) כשלב ראשון בפתרון משוואה
+================================================================================
+לעיתים המשוואה כוללת סוגריים. במקרה כזה, השלב הראשון יהיה פתיחת הסוגריים בעזרת חוק הפילוג.
+
+  --- נקודות ---
+  * נקודה A | X=50, Y=250 | מיקום תווית: שמאל-למטה | צבע: שחור
+  * נקודה B | X=350, Y=250 | מיקום תווית: ימין-למטה | צבע: שחור
+  * נקודה C | X=350, Y=50 | מיקום תווית: ימין-למעלה | צבע: שחור
+  * נקודה D | X=50, Y=50 | מיקום תווית: שמאל-למעלה | צבע: שחור
+  * נקודה E | X=230, Y=250 | מיקום תווית: למטה | צבע: שחור
+  * נקודה F | X=230, Y=50 | מיקום תווית: למעלה | צבע: שחור
+  --- קטעים ---
+  * קטע AD | מנקודה D ל-A | צבע: שחור | תווית: 3
+  * קטע AE | מנקודה A ל-E | צבע: שחור | תווית: x
+  * קטע EB | מנקודה E ל-B | צבע: שחור | תווית: 2
+  * קטע BC | מנקודה B ל-C | צבע: שחור
+  * קטע CF | מנקודה C ל-F | צבע: שחור
+  * קטע FD | מנקודה F ל-D | צבע: שחור
+  * קטע EF | מנקודה E ל-F | צבע: שחור
+
+--------------------------------------------------------------------------------
+[תרגיל 8 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: לפי חוק הפילוג (ושטח המלבן בשרטוט), למה שווה הביטוי 3(x + 2)?
+* אופציות:
+  - 3x + 6
+  - 3x + 2
+* פתרון נכון: 3x + 6
+* פתרון מלא: כופלים את המספר שמחוץ לסוגריים בכל אחד מהאיברים שבתוך הסוגריים. 3 כפול x זה 3x, ו-3 כפול 2 זה 6. לכן התוצאה היא 3x + 6.
+
+--------------------------------------------------------------------------------
+[תרגיל 8 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: אם נתונה המשוואה 3(x + 2) = 15, מה תהיה המשוואה לאחר פתיחת הסוגריים?
+* אופציות:
+  - 3x + 2 = 15
+  - 3x + 6 = 15
+* פתרון נכון: 3x + 6 = 15
+* פתרון מלא: החלפנו את אגף שמאל בביטוי המפושט שלו לאחר פתיחת הסוגריים. אגף ימין נשאר 15.
+
+--------------------------------------------------------------------------------
+[תרגיל 8 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: מהו השלב הבא שעלינו לעשות כדי למצוא את x במשוואה 3x + 6 = 15?
+* אופציות:
+  - לחלק את שני האגפים ב-3.
+  - לחסר 6 משני האגפים.
+  - לחבר 6 לשני האגפים.
+* פתרון נכון: לחסר 6 משני האגפים.
+* פתרון מלא: כדי לבודד את האיבר עם ה-x, עלינו קודם כל להיפטר מהמספר החופשי באותו אגף. לכן נחסר 6 משני האגפים.
+
+--------------------------------------------------------------------------------
+[תרגיל 8 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: פתרו את המשוואה 4(x - 1) = 16. פתחו סוגריים תחילה, וכתבו את ערכו של x.
+* פתרון נכון: נפתח סוגריים: 4x - 4 = 16. נוסיף 4 לשני האגפים: 4x = 20. נחלק ב-4 ונקבל x = 5.
+* פתרון מלא: נפתח סוגריים: 4x - 4 = 16. נוסיף 4 לשני האגפים: 4x = 20. נחלק ב-4 ונקבל x = 5.
+
+================================================================================
+תרגיל 9 – מורכב: שילוב של פתיחת סוגריים ונעלמים בשני האגפים
+================================================================================
+לפניכם מאזניים מאוזנים. על הכף השמאלית יש 3 קבוצות נפרדות, שבכל אחת מהן קופסת 'x' ו-2 מטבעות. על הכף הימנית יש קופסת 'x' אחת ו-10 מטבעות.
+
+  <svg width="600" height="400" xmlns="http://www.w3.org/2000/svg">
+    <!-- Scale Base -->
+    <polygon points="250,350 350,350 300,300" fill="#7f8c8d" />
+    <line x1="200" y1="350" x2="400" y2="350" stroke="#2c3e50" stroke-width="3" />
+  
+    <!-- Scale Pillar -->
+    <rect x="295" y="100" width="10" height="200" fill="#95a5a6" />
+  
+    <!-- Scale Beam -->
+    <rect x="100" y="95" width="400" height="10" fill="#34495e" rx="3" />
+    <circle cx="300" cy="100" r="8" fill="#e74c3c" />
+  
+    <!-- Left Pan Strings -->
+    <line x1="105" y1="100" x2="35" y2="250" stroke="#bdc3c7" stroke-width="2" />
+    <line x1="105" y1="100" x2="165" y2="250" stroke="#bdc3c7" stroke-width="2" />
+  
+    <!-- Right Pan Strings -->
+    <line x1="495" y1="100" x2="435" y2="250" stroke="#bdc3c7" stroke-width="2" />
+    <line x1="495" y1="100" x2="565" y2="250" stroke="#bdc3c7" stroke-width="2" />
+  
+    <!-- Left Pan -->
+    <rect x="30" y="250" width="140" height="6" fill="#2c3e50" rx="3" />
+  
+    <!-- Right Pan -->
+    <rect x="430" y="250" width="140" height="6" fill="#2c3e50" rx="3" />
+  
+    <!-- LEFT PAN ITEMS -->
+    <!-- Group 1 -->
+    <rect x="40" y="224" width="26" height="26" fill="#3498db" stroke="#2980b9" stroke-width="2" rx="2" />
+    <text x="53" y="238" font-family="Arial" font-size="16" font-weight="bold" fill="#fff" text-anchor="middle" dominant-baseline="central">x</text>
+    <circle cx="47" cy="216" r="8" fill="#f1c40f" stroke="#f39c12" stroke-width="1" />
+    <text x="47" y="217" font-family="Arial" font-size="10" font-weight="bold" fill="#d35400" text-anchor="middle" dominant-baseline="central">1</text>
+    <circle cx="61" cy="216" r="8" fill="#f1c40f" stroke="#f3
+
+<svg width="600" height="400" xmlns="http://www.w3.org/2000/svg">
+    <!-- Scale Base -->
+    <polygon points="250,350 350,350 300,300" fill="#7f8c8d" />
+    <line x1="200" y1="350" x2="400" y2="350" stroke="#2c3e50" stroke-width="3" />
+  
+    <!-- Scale Pillar -->
+    <rect x="295" y="100" width="10" height="200" fill="#95a5a6" />
+  
+    <!-- Scale Beam -->
+    <rect x="100" y="95" width="400" height="10" fill="#34495e" rx="3" />
+    <circle cx="300" cy="100" r="8" fill="#e74c3c" />
+  
+    <!-- Left Pan Strings -->
+    <line x1="105" y1="100" x2="35" y2="250" stroke="#bdc3c7" stroke-width="2" />
+    <line x1="105" y1="100" x2="165" y2="250" stroke="#bdc3c7" stroke-width="2" />
+  
+    <!-- Right Pan Strings -->
+    <line x1="495" y1="100" x2="435" y2="250" stroke="#bdc3c7" stroke-width="2" />
+    <line x1="495" y1="100" x2="565" y2="250" stroke="#bdc3c7" stroke-width="2" />
+  
+    <!-- Left Pan -->
+    <rect x="30" y="250" width="140" height="6" fill="#2c3e50" rx="3" />
+  
+    <!-- Right Pan -->
+    <rect x="430" y="250" width="140" height="6" fill="#2c3e50" rx="3" />
+  
+    <!-- LEFT PAN ITEMS -->
+    <!-- Group 1 -->
+    <rect x="40" y="224" width="26" height="26" fill="#3498db" stroke="#2980b9" stroke-width="2" rx="2" />
+    <text x="53" y="238" font-family="Arial" font-size="16" font-weight="bold" fill="#fff" text-anchor="middle" dominant-baseline="central">x</text>
+    <circle cx="47" cy="216" r="8" fill="#f1c40f" stroke="#f39c12" stroke-width="1" />
+    <text x="47" y="217" font-family="Arial" font-size="10" font-weight="bold" fill="#d35400" text-anchor="middle" dominant-baseline="central">1</text>
+    <circle cx="61" cy="216" r="8" fill="#f1c40f" stroke="#f3
+
+--------------------------------------------------------------------------------
+[תרגיל 9 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: התבוננו בכף השמאלית. אם נקבץ את כל הפריטים יחד, כמה קופסאות 'x' וכמה מטבעות יש בסך הכל על הכף השמאלית?
+* אופציות:
+  - 3 קופסאות 'x' ו-2 מטבעות.
+  - 3 קופסאות 'x' ו-6 מטבעות.
+* פתרון נכון: 3 קופסאות 'x' ו-6 מטבעות.
+* פתרון מלא: יש 3 קבוצות, ובכל קבוצה קופסה אחת ו-2 מטבעות. לכן בסך הכל יש 3 כפול 1 קופסאות (3 קופסאות) ו-3 כפול 2 מטבעות (6 מטבעות). פעולה זו מקבילה לפתיחת סוגריים: 3(x + 2) = 3x + 6.
+
+--------------------------------------------------------------------------------
+[תרגיל 9 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: בחרו את המשוואה המייצגת את המצב על המאזניים לאחר חישוב הסך הכל בכף השמאלית.
+* אופציות:
+  - 3x + 6 = x + 10
+  - 3x + 2 = x + 10
+* פתרון נכון: 3x + 6 = x + 10
+* פתרון מלא: בכף השמאלית מצאנו שיש 3x + 6. בכף הימנית יש קופסת x אחת ו-10 מטבעות, כלומר x + 10. לכן המשוואה היא 3x + 6 = x + 10.
+
+--------------------------------------------------------------------------------
+[תרגיל 9 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: כעת אנו רוצים לרכז את כל הקופסאות (הנעלמים) באגף שמאל של המשוואה 3x + 6 = x + 10. מהו השלב הבא שעלינו לבצע?
+* אופציות:
+  - נחסר x משני אגפי המשוואה.
+  - נחלק את שני אגפי המשוואה ב-3.
+  - נוסיף x לשני אגפי המשוואה.
+* פתרון נכון: נחסר x משני אגפי המשוואה.
+* פתרון מלא: כדי להעלים את ה-x מהאגף הימני ולרכז את הנעלמים בשמאל, נחסר x משני האגפים. נקבל: 2x + 6 = 10.
+
+--------------------------------------------------------------------------------
+[תרגיל 9 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: פתרו את המשוואה 3(x + 2) = x + 10 וכתבו את ערכו של x.
+נפתח סוגריים: 3x + 6 = x + 10.
+נחסר x משני האגפים: 2x + 6 = 10.
+נחסר 6 משני האגפים: 2x = 4.
+נחלק ב-2: x = 2.
+
+================================================================================
+תרגיל 10 – אתגר: סיכום ויישום כל שלבי הפתרון: פתיחת סוגריים
+================================================================================
+בתרגיל המסכם ניישם את כל השלבים שלמדנו: פתיחת סוגריים, כינוס איברים דומים, והעברת אגפים.
+
+  <svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+  </svg>
+
+<svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 10 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: נתונה המשוואה 3(2x - 1) - x = 2x + 12. מה יתקבל באגף שמאל מיד לאחר פתיחת הסוגריים בלבד?
+* אופציות:
+  - 6x - 3 - x
+  - 6x - 1 - x
+* פתרון נכון: 6x - 3 - x
+* פתרון מלא: נכפול את 3 ב-2x ונקבל 6x. נכפול את 3 ב-(-1) ונקבל -3. ה- (-x) שבחוץ נשאר כפי שהוא. לכן נקבל 6x - 3 - x.
+
+--------------------------------------------------------------------------------
+[תרגיל 10 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: לאחר פתיחת הסוגריים קיבלנו באגף שמאל 6x - 3 - x. כיצד ייראה אגף שמאל לאחר כינוס איברים דומים?
+* אופציות:
+  - 5x - 3
+  - 7x - 3
+* פתרון נכון: 5x - 3
+* פתרון מלא: נכנס את האיברים עם x: 6x פחות x שווה 5x. המספר -3 נשאר. לכן הביטוי המפושט הוא 5x - 3.
+
+--------------------------------------------------------------------------------
+[תרגיל 10 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: כעת הגענו למשוואה 5x - 3 = 2x + 12. אילו פעולות נבצע על שני האגפים כדי לרכז נעלמים משמאל ומספרים מימין?
+* אופציות:
+  - נחסר 2x ונוסיף 3.
+  - נוסיף 2x ונחסר 3.
+  - נחסר 5x ונוסיף 12.
+* פתרון נכון: נחסר 2x ונוסיף 3.
+* פתרון מלא: כדי להעביר את 2x שמאלה, נחסר 2x משני האגפים. כדי להעביר את -3 ימינה, נוסיף 3 לשני האגפים.
+
+--------------------------------------------------------------------------------
+[תרגיל 10 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: פתרו את המשוואה המלאה 4(x + 2) - 2x = x + 11. בצעו את כל השלבים וכתבו את ערכו הסופי של x.
+* פתרון נכון: פתיחת סוגריים: 4x + 8 - 2x = x + 11. כינוס איברים משמאל: 2x + 8 = x + 11. חיסור x משני האגפים: x + 8 = 11. חיסור 8 משני האגפים: x = 3.
+* פתרון מלא: פתיחת סוגריים: 4x + 8 - 2x = x + 11. כינוס איברים משמאל: 2x + 8 = x + 11. חיסור x משני האגפים: x + 8 = 11. חיסור 8 משני האגפים: x = 3.

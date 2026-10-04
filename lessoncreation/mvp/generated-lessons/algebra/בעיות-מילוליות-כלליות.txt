@@ -1,0 +1,1171 @@
+================================================================================
+תרגיל 1 – מנחה: המרת קשר חיבורי בין שתי כמויות למודל אלגברי בעזרת מודל פסים…
+================================================================================
+דיאגרמת פסים (Tape Diagram) היא כלי חזותי יעיל לתרגום קשרים מילוליים למשוואה. נתונות שתי כמויות: כמות א' וכמות ב'. סכום שתי הכמויות יחד הוא 28.
+
+  <svg width="460" height="220" viewBox="0 0 460 220" xmlns="http://www.w3.org/2000/svg" font-family="sans-serif">
+    <!-- כותרות פסים -->
+    <text x="80" y="85" font-size="15" font-weight="bold" text-anchor="end" fill="#333" direction="rtl">כמות א׳</text>
+    <text x="80" y="145" font-size="15" font-weight="bold" text-anchor="end" fill="#333" direction="rtl">כמות ב׳</text>
+
+    <!-- פס עליון - כמות א' -->
+    <rect x="90" y="60" width="150" height="40" rx="4" fill="#90caf9" stroke="#1565c0" stroke-width="2"/>
+    <text x="165" y="85" font-size="16" font-weight="bold" fill="#0d47a1" text-anchor="middle">x</text>
+
+    <!-- פס תחתון - כמות ב' (חלק x) -->
+    <rect x="90" y="120" width="150" height="40" rx="4" fill="#90caf9" stroke="#1565c0" stroke-width="2"/>
+    <text x="165" y="145" font-size="16" font-weight="bold" fill="#0d47a1" text-anchor="middle">x</text>
+
+    <!-- פס תחתון - כמות ב' (חלק 6) -->
+    <rect x="240" y="120" width="80" height="40" rx="4" fill="#a5d6a7" stroke="#2e7d32" stroke-width="2"/>
+    <text x="280" y="145" font-size="16" font-weight="bold" fill="#1b5e20" text-anchor="middle">6</text>
+
+    <!-- סוגר מסולסל מימין המקיף את שני הפסים -->
+    <path d="M 335,60 Q 345,60 345,85 Q 345,110 355,110 Q 345,110 345,135 Q 345,160 335,160" fill="none" stroke="#444" stroke-width="2"/>
+
+    <!-- תווית הסכום -->
+    <text x="365" y="115" font-size="15" font-weight="bold" fill="#222" direction="rtl">סכום = 28</text>
+  </svg>
+
+<svg width="460" height="220" viewBox="0 0 460 220" xmlns="http://www.w3.org/2000/svg" font-family="sans-serif">
+    <!-- כותרות פסים -->
+    <text x="80" y="85" font-size="15" font-weight="bold" text-anchor="end" fill="#333" direction="rtl">כמות א׳</text>
+    <text x="80" y="145" font-size="15" font-weight="bold" text-anchor="end" fill="#333" direction="rtl">כמות ב׳</text>
+
+    <!-- פס עליון - כמות א' -->
+    <rect x="90" y="60" width="150" height="40" rx="4" fill="#90caf9" stroke="#1565c0" stroke-width="2"/>
+    <text x="165" y="85" font-size="16" font-weight="bold" fill="#0d47a1" text-anchor="middle">x</text>
+
+    <!-- פס תחתון - כמות ב' (חלק x) -->
+    <rect x="90" y="120" width="150" height="40" rx="4" fill="#90caf9" stroke="#1565c0" stroke-width="2"/>
+    <text x="165" y="145" font-size="16" font-weight="bold" fill="#0d47a1" text-anchor="middle">x</text>
+
+    <!-- פס תחתון - כמות ב' (חלק 6) -->
+    <rect x="240" y="120" width="80" height="40" rx="4" fill="#a5d6a7" stroke="#2e7d32" stroke-width="2"/>
+    <text x="280" y="145" font-size="16" font-weight="bold" fill="#1b5e20" text-anchor="middle">6</text>
+
+    <!-- סוגר מסולסל מימין המקיף את שני הפסים -->
+    <path d="M 335,60 Q 345,60 345,85 Q 345,110 355,110 Q 345,110 345,135 Q 345,160 335,160" fill="none" stroke="#444" stroke-width="2"/>
+
+    <!-- תווית הסכום -->
+    <text x="365" y="115" font-size="15" font-weight="bold" fill="#222" direction="rtl">סכום = 28</text>
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 1 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: התבוננו בדיאגרמת הפסים. מה הקשר בין כמות ב' לבין כמות א'?
+* אופציות:
+  - כמות ב' גדולה ב-6 מכמות א'.
+  - כמות ב' קטנה ב-6 מכמות א'.
+* פתרון נכון: כמות ב' גדולה ב-6 מכמות א'.
+* פתרון מלא: הפס התחתון (כמות ב') כולל את האורך x ובנוסף לו תוספת של 6 יחידות, ולכן כמות ב' גדולה ב-6 מכמות א'.
+
+--------------------------------------------------------------------------------
+[תרגיל 1 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: איזה ביטוי אלגברי מייצג את האורך הכולל של שני הפסים יחד?
+* אופציות:
+  - x + 6
+  - x + (x + 6)
+* פתרון נכון: x + (x + 6)
+* פתרון מלא: האורך הכולל הוא חיבור הפס הראשון (x) עם הפס השני (x + 6), כלומר הביטוי הוא x + (x + 6).
+
+--------------------------------------------------------------------------------
+[תרגיל 1 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: בהתבסס על הנתון שסכום שני הפסים הוא 28, בחרו את המשוואה המתאימה לאחר כינוס איברים:
+* אופציות:
+  - 2x + 6 = 28
+  - x + 6 = 28
+  - 2x = 28
+* פתרון נכון: 2x + 6 = 28
+* פתרון מלא: חיבור האיברים הדומים נותן x + x + 6 = 2x + 6. מכיוון שהסכום הכולל שווה ל-28, המשוואה המתקבלת היא 2x + 6 = 28.
+
+--------------------------------------------------------------------------------
+[תרגיל 1 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: פתרו את המשוואה 2x + 6 = 28, ומצאו את ערכה של כמות א' ואת ערכה של כמות ב'.
+* פתרון נכון: נחסר 6 משני האגפים: 2x = 22. נחלק ב-2: x = 11. לכן כמות א' היא 11, וכמות ב' היא 11 + 6 = 17. בדיקה: 11 + 17 = 28.
+* פתרון מלא: נחסר 6 משני האגפים: 2x = 22. נחלק ב-2: x = 11. לכן כמות א' היא 11, וכמות ב' היא 11 + 6 = 17. בדיקה: 11 + 17 = 28.
+
+================================================================================
+תרגיל 2 – מנחה: הבחנה תפיסתית ומודל פסים לקשר כפלי ('פי 3') לעומת קשר…
+================================================================================
+בבעיות מילוליות חשוב להבדיל בין קשר כפלי ("פי כמה") לבין קשר חיבורי ("גדול ב-"). לפניכם שני מודלים של פסים הממחישים את ההבדל בין שני הקשרים.
+
+  <svg width="500" height="210" xmlns="http://www.w3.org/2000/svg" font-family="sans-serif">
+    <!-- קו מפריד בין המודלים -->
+    <line x1="250" y1="20" x2="250" y2="200" stroke="#D0D7DE" stroke-width="1.5" stroke-dasharray="5,5"/>
+
+    <!-- ==================== מודל כפלי (שמאל) ==================== -->
+    <text x="125" y="30" text-anchor="middle" font-size="16" font-weight="bold" fill="#1F2937">מודל כפלי</text>
+
+    <!-- פס עליון: x -->
+    <rect x="95" y="50" width="60" height="30" rx="4" fill="#60A5FA" stroke="#2563EB" stroke-width="1.5"/>
+    <text x="125" y="70" text-anchor="middle" font-size="14" font-weight="bold" fill="#FFFFFF">x</text>
+
+    <!-- פס תחתון: 3 משבצות של x -->
+    <rect x="35" y="95" width="60" height="30" rx="4" fill="#60A5FA" stroke="#2563EB" stroke-width="1.5"/>
+    <text x="65" y="115" text-anchor="middle" font-size="14" font-weight="bold" fill="#FFFFFF">x</text>
+
+    <rect x="95" y="95" width="60" height="30" rx="4" fill="#60A5FA" stroke="#2563EB" stroke-width="1.5"/>
+    <text x="125" y="115" text-anchor="middle" font-size="14" font-weight="bold" fill="#FFFFFF">x</text>
+
+    <rect x="155" y="95" width="60" height="30" rx="4" fill="#60A5FA" stroke="#2563EB" stroke-width="1.5"/>
+    <text x="185" y="115" text-anchor="middle" font-size="14" font-weight="bold" fill="#FFFFFF">x</text>
+
+    <!-- סוגר מסולסל מודל כפלי -->
+    <path d="M 35 132 c 0 6 5 8 10 8 h 70 c 10 0 10 7 10 7 c 0 -7 10 -7 10 -7 h 70 c 5 0 10 -2 10 -8" fill="none" stroke="#4B5563" stroke-width="1.5"/>
+
+    <!-- תווית סוגר כפלי -->
+    <text x="125" y="165" text-anchor="middle" font-size="14" font-weight="bold" fill="#1D4ED8">3x</text>
+    <text x="125" y="185" text-anchor="middle" font-size="12" fill="#4B5563">(פי 3 מ-x)</text>
+
+    <!-- ==================== מודל חיבורי (ימין) ==================== -->
+    <text x="375" y="30" text-anchor="middle" font-size="16" font-weight="bold" fill="#1F2937">מודל חיבורי</text>
+
+    <!-- פס עליון: x -->
+    <rect x="335" y="50" width="60" height="30" rx="4" fill="#60A5FA" stroke="#2563EB" stroke-width="1.5"/>
+    <text x="365" y="70" text-anchor="middle" font-size="14" font-weight="bold" fill="#FFFFFF">x</text>
+
+    <!-- פס תחתון: משבצת x + משבצת 3 -->
+    <rect x="315" y="95" width="60" height="30" rx="4" fill="#60A5FA" stroke="#2563EB" stroke-width="1.5"/>
+    <text x="345" y="115" text-anchor="middle" font-size="14" font-weight="bold" fill="#FFFFFF">x</text>
+
+    <rect x="375" y="95" width="50" height="30" rx="4" fill="#4ADE80" stroke="#16A34A" stroke-width="1.5"/>
+    <text x="400" y="115" text-anchor="middle" font-size="14" font-weight="bold" fill="#FFFFFF">3</text>
+
+    <!-- סוגר מסולסל מודל חיבורי -->
+    <path d="M 315 132 c 0 6 5 8 10 8 h 35 c 10 0 10 7 10 7 c 0 -7 10 -7 10 -7 h 35 c 5 0 10 -2 10 -8" fill="none" stroke="#4B5563" stroke-width="1.5"/>
+
+    <!-- תווית סוגר חיבורי -->
+    <text x="370" y="165" text-anchor="middle" font-size="14" font-weight="bold" fill="#15803D">x + 3</text>
+    <text x="370" y="185" text-anchor="middle" font-size="12" fill="#4B5563">(גדול ב-3 מ-x)</text>
+  </svg>
+
+<svg width="500" height="210" xmlns="http://www.w3.org/2000/svg" font-family="sans-serif">
+    <!-- קו מפריד בין המודלים -->
+    <line x1="250" y1="20" x2="250" y2="200" stroke="#D0D7DE" stroke-width="1.5" stroke-dasharray="5,5"/>
+
+    <!-- ==================== מודל כפלי (שמאל) ==================== -->
+    <text x="125" y="30" text-anchor="middle" font-size="16" font-weight="bold" fill="#1F2937">מודל כפלי</text>
+
+    <!-- פס עליון: x -->
+    <rect x="95" y="50" width="60" height="30" rx="4" fill="#60A5FA" stroke="#2563EB" stroke-width="1.5"/>
+    <text x="125" y="70" text-anchor="middle" font-size="14" font-weight="bold" fill="#FFFFFF">x</text>
+
+    <!-- פס תחתון: 3 משבצות של x -->
+    <rect x="35" y="95" width="60" height="30" rx="4" fill="#60A5FA" stroke="#2563EB" stroke-width="1.5"/>
+    <text x="65" y="115" text-anchor="middle" font-size="14" font-weight="bold" fill="#FFFFFF">x</text>
+
+    <rect x="95" y="95" width="60" height="30" rx="4" fill="#60A5FA" stroke="#2563EB" stroke-width="1.5"/>
+    <text x="125" y="115" text-anchor="middle" font-size="14" font-weight="bold" fill="#FFFFFF">x</text>
+
+    <rect x="155" y="95" width="60" height="30" rx="4" fill="#60A5FA" stroke="#2563EB" stroke-width="1.5"/>
+    <text x="185" y="115" text-anchor="middle" font-size="14" font-weight="bold" fill="#FFFFFF">x</text>
+
+    <!-- סוגר מסולסל מודל כפלי -->
+    <path d="M 35 132 c 0 6 5 8 10 8 h 70 c 10 0 10 7 10 7 c 0 -7 10 -7 10 -7 h 70 c 5 0 10 -2 10 -8" fill="none" stroke="#4B5563" stroke-width="1.5"/>
+
+    <!-- תווית סוגר כפלי -->
+    <text x="125" y="165" text-anchor="middle" font-size="14" font-weight="bold" fill="#1D4ED8">3x</text>
+    <text x="125" y="185" text-anchor="middle" font-size="12" fill="#4B5563">(פי 3 מ-x)</text>
+
+    <!-- ==================== מודל חיבורי (ימין) ==================== -->
+    <text x="375" y="30" text-anchor="middle" font-size="16" font-weight="bold" fill="#1F2937">מודל חיבורי</text>
+
+    <!-- פס עליון: x -->
+    <rect x="335" y="50" width="60" height="30" rx="4" fill="#60A5FA" stroke="#2563EB" stroke-width="1.5"/>
+    <text x="365" y="70" text-anchor="middle" font-size="14" font-weight="bold" fill="#FFFFFF">x</text>
+
+    <!-- פס תחתון: משבצת x + משבצת 3 -->
+    <rect x="315" y="95" width="60" height="30" rx="4" fill="#60A5FA" stroke="#2563EB" stroke-width="1.5"/>
+    <text x="345" y="115" text-anchor="middle" font-size="14" font-weight="bold" fill="#FFFFFF">x</text>
+
+    <rect x="375" y="95" width="50" height="30" rx="4" fill="#4ADE80" stroke="#16A34A" stroke-width="1.5"/>
+    <text x="400" y="115" text-anchor="middle" font-size="14" font-weight="bold" fill="#FFFFFF">3</text>
+
+    <!-- סוגר מסולסל מודל חיבורי -->
+    <path d="M 315 132 c 0 6 5 8 10 8 h 35 c 10 0 10 7 10 7 c 0 -7 10 -7 10 -7 h 35 c 5 0 10 -2 10 -8" fill="none" stroke="#4B5563" stroke-width="1.5"/>
+
+    <!-- תווית סוגר חיבורי -->
+    <text x="370" y="165" text-anchor="middle" font-size="14" font-weight="bold" fill="#15803D">x + 3</text>
+    <text x="370" y="185" text-anchor="middle" font-size="12" fill="#4B5563">(גדול ב-3 מ-x)</text>
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 2 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: התבוננו במודל הכפלי בשרטוט. הפס התחתון מורכב מ-3 משבצות זהות שכל אחת מהן באורך x. איזה קשר מתאר פס זה ביחס ל-x?
+* אופציות:
+  - קשר כפלי: כמות הגדולה פי 3 (כלומר 3x).
+  - קשר חיבורי: כמות הגדולה ב-3 (כלומר x + 3).
+* פתרון נכון: קשר כפלי: כמות הגדולה פי 3 (כלומר 3x).
+* פתרון מלא: כאשר כמות מורכבת מ-3 יחידות שוות של x, אנו כופלים 3 ב-x ומקבלים 3x (פי 3), בניגוד לחיבור מספר קבוע 3.
+
+--------------------------------------------------------------------------------
+[תרגיל 2 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: נחבר את שני הפסים של המודל הכפלי (הפס העליון שאורכו x והפס התחתון שאורכו 3x). כמה פעמים מופיע הנעלם x בסכום הכולל?
+* אופציות:
+  - 4 פעמים, כלומר הסכום הוא 4x.
+  - 3 פעמים, כלומר הסכום הוא 3x.
+* פתרון נכון: 4 פעמים, כלומר הסכום הוא 4x.
+* פתרון מלא: הפס הראשון שווה ל-x (פעם אחת), והפס השני שווה ל-3x (3 פעמים). חיבור שניהם נותן x + 3x = 4x.
+
+--------------------------------------------------------------------------------
+[תרגיל 2 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: התבוננו במודל החיבורי שמימין. איזה ביטוי אלגברי מייצג את הסכום הכולל של שני הפסים במודל זה (הפס העליון והפס התחתון יחד)?
+* אופציות:
+  - 4x
+  - 2x + 3
+  - x + 3
+* פתרון נכון: 2x + 3
+* פתרון מלא: הפס העליון אורכו x, והפס התחתון אורכו x + 3. חיבור שני הפסים יחד נותן x + (x + 3) = 2x + 3.
+
+--------------------------------------------------------------------------------
+[תרגיל 2 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: הציבו ערך כלשהו עבור x הגדול מ-2 (למשל x = 5). חשבו את אורכו של הפס הכפלי (3x) לעומת אורכו של הפס החיבורי (x + 3), וקבעו איזה מודל גדל מהר יותר ככל שערכו של x עולה.
+* פתרון נכון: עבור x = 5: הפס הכפלי שווה ל-3 * 5 = 15, ואילו הפס החיבורי שווה ל-5 + 3 = 8. המודל הכפלי גדל בקצב מהיר בהרבה, משום שבכל הגדלה של x ב-1 הפס הכפלי גדל ב-3, בעוד שהתוספת במודל החיבורי נשארת קבועה.
+* פתרון מלא: עבור x = 5: הפס הכפלי שווה ל-3 * 5 = 15, ואילו הפס החיבורי שווה ל-5 + 3 = 8. המודל הכפלי גדל בקצב מהיר בהרבה, משום שבכל הגדלה של x ב-1 הפס הכפלי גדל ב-3, בעוד שהתוספת במודל החיבורי נשארת קבועה.
+
+================================================================================
+תרגיל 3 – מנחה: שילוב של קשר כפלי ותוספת מספרית (ביטוי מהצורה ax + b)
+================================================================================
+לעיתים כמות מורכבת משילוב של קשר כפלי ותוספת מספרית: "גדולה ב-5 מפי 2 מכמות א'".
+
+  <svg width="400" height="200" xmlns="http://www.w3.org/2000/svg">
+    <!-- סוגר מסולסל מצד שמאל המאחד את שני המלבנים -->
+    <path d="M 80 50 Q 68 50 68 65 L 68 90 Q 68 100 55 100 Q 68 100 68 110 L 68 135 Q 68 150 80 150" fill="none" stroke="#333333" stroke-width="2.5" stroke-linecap="round"/>
+    <text x="35" y="107" font-family="Arial, sans-serif" font-size="22" font-weight="bold" fill="#333333" text-anchor="middle">35</text>
+
+    <!-- מלבן עליון -->
+    <rect x="90" y="50" width="100" height="40" rx="3" fill="#4DD0E1" stroke="#00838F" stroke-width="2"/>
+    <text x="140" y="76" font-family="Arial, sans-serif" font-size="20" font-weight="bold" fill="#004D40" text-anchor="middle">x</text>
+
+    <!-- מלבן תחתון - חלק ראשון (x) -->
+    <rect x="90" y="110" width="100" height="40" rx="3" fill="#4DD0E1" stroke="#00838F" stroke-width="2"/>
+    <text x="140" y="136" font-family="Arial, sans-serif" font-size="20" font-weight="bold" fill="#004D40" text-anchor="middle">x</text>
+
+    <!-- מלבן תחתון - חלק שני (x) -->
+    <rect x="195" y="110" width="100" height="40" rx="3" fill="#4DD0E1" stroke="#00838F" stroke-width="2"/>
+    <text x="245" y="136" font-family="Arial, sans-serif" font-size="20" font-weight="bold" fill="#004D40" text-anchor="middle">x</text>
+
+    <!-- מלבן תחתון - חלק שלישי (5) -->
+    <rect x="300" y="110" width="55" height="40" rx="3" fill="#FFF176" stroke="#FBC02D" stroke-width="2"/>
+    <text x="327" y="136" font-family="Arial, sans-serif" font-size="20" font-weight="bold" fill="#5D4037" text-anchor="middle">5</text>
+  </svg>
+
+<svg width="400" height="200" xmlns="http://www.w3.org/2000/svg">
+    <!-- סוגר מסולסל מצד שמאל המאחד את שני המלבנים -->
+    <path d="M 80 50 Q 68 50 68 65 L 68 90 Q 68 100 55 100 Q 68 100 68 110 L 68 135 Q 68 150 80 150" fill="none" stroke="#333333" stroke-width="2.5" stroke-linecap="round"/>
+    <text x="35" y="107" font-family="Arial, sans-serif" font-size="22" font-weight="bold" fill="#333333" text-anchor="middle">35</text>
+
+    <!-- מלבן עליון -->
+    <rect x="90" y="50" width="100" height="40" rx="3" fill="#4DD0E1" stroke="#00838F" stroke-width="2"/>
+    <text x="140" y="76" font-family="Arial, sans-serif" font-size="20" font-weight="bold" fill="#004D40" text-anchor="middle">x</text>
+
+    <!-- מלבן תחתון - חלק ראשון (x) -->
+    <rect x="90" y="110" width="100" height="40" rx="3" fill="#4DD0E1" stroke="#00838F" stroke-width="2"/>
+    <text x="140" y="136" font-family="Arial, sans-serif" font-size="20" font-weight="bold" fill="#004D40" text-anchor="middle">x</text>
+
+    <!-- מלבן תחתון - חלק שני (x) -->
+    <rect x="195" y="110" width="100" height="40" rx="3" fill="#4DD0E1" stroke="#00838F" stroke-width="2"/>
+    <text x="245" y="136" font-family="Arial, sans-serif" font-size="20" font-weight="bold" fill="#004D40" text-anchor="middle">x</text>
+
+    <!-- מלבן תחתון - חלק שלישי (5) -->
+    <rect x="300" y="110" width="55" height="40" rx="3" fill="#FFF176" stroke="#FBC02D" stroke-width="2"/>
+    <text x="327" y="136" font-family="Arial, sans-serif" font-size="20" font-weight="bold" fill="#5D4037" text-anchor="middle">5</text>
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 3 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: איזה ביטוי אלגברי מייצג נכונה את הכמות השנייה (הפס התחתון)?
+* אופציות:
+  - 2x + 5
+  - 2(x + 5)
+* פתרון נכון: 2x + 5
+* פתרון מלא: הפס מורכב מפעמיים x ועוד תוספת קבועה של 5, כלומר 2x + 5. הביטוי 2(x + 5) מייצג הכפלה של התוספת ב-2, ואינו מתאים לשרטוט.
+
+--------------------------------------------------------------------------------
+[תרגיל 3 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: כאשר מחברים את הכמות הראשונה (x) עם הכמות השנייה (2x + 5), מהו מקדם ה-x לאחר כינוס איברים?
+* אופציות:
+  - 3
+  - 2
+* פתרון נכון: 3
+* פתרון מלא: כינוס האיברים הדומים הוא x + 2x = 3x, לכן המקדם של x הוא 3.
+
+--------------------------------------------------------------------------------
+[תרגיל 3 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: בחרו את המשוואה המתאימה לפתרון הבעיה כאשר סכום שתי הכמויות הוא 35:
+* אופציות:
+  - 3x + 5 = 35
+  - 2x + 5 = 35
+  - 3x = 35
+* פתרון נכון: 3x + 5 = 35
+* פתרון מלא: סכום שתי הכמויות הוא x + (2x + 5) = 3x + 5. השוואה ל-35 נותנת את המשוואה 3x + 5 = 35.
+
+--------------------------------------------------------------------------------
+[תרגיל 3 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: פתרו את המשוואה 3x + 5 = 35 ומצאו את ערכה של כל אחת משתי הכמויות.
+* פתרון נכון: 3x = 35 - 5 => 3x = 30 => x = 10. הכמות הראשונה היא 10. הכמות השנייה היא 2 * 10 + 5 = 25. בדיקה: 10 + 25 = 35.
+* פתרון מלא: 3x = 35 - 5 => 3x = 30 => x = 10. הכמות הראשונה היא 10. הכמות השנייה היא 2 * 10 + 5 = 25. בדיקה: 10 + 25 = 35.
+
+================================================================================
+תרגיל 4 – בסיס: הבעת חלק מתוך שלם ידוע באמצעות חיסור (מודל N פחות x)
+================================================================================
+כאשר סכום שני חלקים ידוע מראש, אין צורך להשתמש בשני נעלמים שונים. ניתן להביע את החלק השני באמצעות חיסור מהשלם.
+
+  <svg width="400" height="200" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="arrow-left" viewBox="0 0 10 10" refX="0" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 10 0 L 0 5 L 10 10 z" fill="#475569"/>
+      </marker>
+      <marker id="arrow-right" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+        <path d="M 0 0 L 10 5 L 0 10 z" fill="#475569"/>
+      </marker>
+    </defs>
+
+    <!-- קווי עזר עליונים לאורך כולל -->
+    <line x1="50" y1="65" x2="50" y2="105" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="3,3"/>
+    <line x1="350" y1="65" x2="350" y2="105" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="3,3"/>
+  
+    <!-- חצי מידה כוללת -->
+    <line x1="55" y1="75" x2="180" y2="75" stroke="#475569" stroke-width="1.5" marker-start="url(#arrow-left)"/>
+    <line x1="220" y1="75" x2="345" y2="75" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow-right)"/>
+    <text x="200" y="81" font-size="18" font-family="sans-serif" font-weight="bold" fill="#1e293b" text-anchor="middle">40</text>
+
+    <!-- מקטע שמאלי כחול -->
+    <line x1="50" y1="120" x2="170" y2="120" stroke="#2563eb" stroke-width="6" stroke-linecap="round"/>
+  
+    <!-- מקטע ימני ירוק -->
+    <line x1="170" y1="120" x2="350" y2="120" stroke="#16a34a" stroke-width="6" stroke-linecap="round"/>
+
+    <!-- נקודות חלוקה וקצוות -->
+    <circle cx="50" cy="120" r="5" fill="#1e293b"/>
+    <circle cx="170" cy="120" r="5" fill="#1e293b"/>
+    <circle cx="350" cy="120" r="5" fill="#1e293b"/>
+
+    <!-- תוויות מקטעים -->
+    <text x="110" y="155" font-size="20" font-family="sans-serif" font-weight="bold" fill="#2563eb" text-anchor="middle">x</text>
+    <text x="260" y="155" font-size="20" font-family="sans-serif" font-weight="bold" fill="#16a34a" text-anchor="middle">?</text>
+  </svg>
+
+<svg width="400" height="200" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="arrow-left" viewBox="0 0 10 10" refX="0" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 10 0 L 0 5 L 10 10 z" fill="#475569"/>
+      </marker>
+      <marker id="arrow-right" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+        <path d="M 0 0 L 10 5 L 0 10 z" fill="#475569"/>
+      </marker>
+    </defs>
+
+    <!-- קווי עזר עליונים לאורך כולל -->
+    <line x1="50" y1="65" x2="50" y2="105" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="3,3"/>
+    <line x1="350" y1="65" x2="350" y2="105" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="3,3"/>
+  
+    <!-- חצי מידה כוללת -->
+    <line x1="55" y1="75" x2="180" y2="75" stroke="#475569" stroke-width="1.5" marker-start="url(#arrow-left)"/>
+    <line x1="220" y1="75" x2="345" y2="75" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow-right)"/>
+    <text x="200" y="81" font-size="18" font-family="sans-serif" font-weight="bold" fill="#1e293b" text-anchor="middle">40</text>
+
+    <!-- מקטע שמאלי כחול -->
+    <line x1="50" y1="120" x2="170" y2="120" stroke="#2563eb" stroke-width="6" stroke-linecap="round"/>
+  
+    <!-- מקטע ימני ירוק -->
+    <line x1="170" y1="120" x2="350" y2="120" stroke="#16a34a" stroke-width="6" stroke-linecap="round"/>
+
+    <!-- נקודות חלוקה וקצוות -->
+    <circle cx="50" cy="120" r="5" fill="#1e293b"/>
+    <circle cx="170" cy="120" r="5" fill="#1e293b"/>
+    <circle cx="350" cy="120" r="5" fill="#1e293b"/>
+
+    <!-- תוויות מקטעים -->
+    <text x="110" y="155" font-size="20" font-family="sans-serif" font-weight="bold" fill="#2563eb" text-anchor="middle">x</text>
+    <text x="260" y="155" font-size="20" font-family="sans-serif" font-weight="bold" fill="#16a34a" text-anchor="middle">?</text>
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 4 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: אם האורך הכולל של הקטע הוא 40 והחלק הראשון הוא x, כיצד נבטא אלגברית את החלק השני?
+* אופציות:
+  - 40 - x
+  - x - 40
+* פתרון נכון: 40 - x
+* פתרון מלא: החלק הנותר שווה לשלם פחות החלק הידוע, כלומר 40 - x. הביטוי x - 40 ייתן תוצאה שלילית עבור כל ערך של x הקטן מ-40.
+
+--------------------------------------------------------------------------------
+[תרגיל 4 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: נבדוק בהצבה: אם x = 15, מה יהיה אורכו של החלק השני לפי הביטוי (40 - x)?
+* אופציות:
+  - 25
+  - 55
+* פתרון נכון: 25
+* פתרון מלא: הצבת x = 15 בביטוי נותנת 40 - 15 = 25. בדיקה: 15 + 25 = 40.
+
+--------------------------------------------------------------------------------
+[תרגיל 4 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: נתון שהחלק הראשון קטן ב-10 מהחלק השני. איזו משוואה מייצגת נתון זה?
+* אופציות:
+  - (40 - x) - x = 10
+  - x - (40 - x) = 10
+  - x + (40 - x) = 10
+* פתרון נכון: (40 - x) - x = 10
+* פתרון מלא: החלק השני הוא (40 - x) והוא הגדול יותר. ההפרש בין הגדול לקטן שווה ל-10, לכן המשוואה היא (40 - x) - x = 10.
+
+--------------------------------------------------------------------------------
+[תרגיל 4 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: פתרו את המשוואה (40 - x) - x = 10 ומצאו את אורכם של שני המקטעים.
+* פתרון נכון: נכנס איברים דומים: 40 - 2x = 10. נחסר 40 משני האגפים: -2x = -30, נחלק ב-(2-): x = 15. המקטע הראשון הוא באורך 15, והמקטע השני הוא 40 - 15 = 25.
+* פתרון מלא: נכנס איברים דומים: 40 - 2x = 10. נחסר 40 משני האגפים: -2x = -30, נחלק ב-(2-): x = 15. המקטע הראשון הוא באורך 15, והמקטע השני הוא 40 - 15 = 25.
+
+================================================================================
+תרגיל 5 – בסיס: מידול בעיות קנייה בסיסיות: קשר בין כמות פריטים
+================================================================================
+דני קנה מחברות לבית הספר וקלמר אחד. מחיר כל מחברת הוא 8 ש"ח, ומחיר הקלמר הוא 20 ש"ח. לפניכם טבלה המארגנת את נתוני הקנייה.
+
+  <svg width="420" height="190" xmlns="http://www.w3.org/2000/svg" font-family="Arial, sans-serif">
+    <!-- רקע וטבלה -->
+    <rect x="20" y="25" width="380" height="140" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+
+    <!-- רקע כותרת -->
+    <path d="M 20 33 Q 20 25 28 25 L 392 25 Q 400 25 400 33 L 400 65 L 20 65 Z" fill="#f1f5f9"/>
+
+    <!-- רקע שורה שנייה (זברה) -->
+    <rect x="20" y="115" width="380" height="50" rx="0" fill="#f8fafc"/>
+    <path d="M 20 157 L 20 165 Q 20 165 28 165 L 392 165 Q 400 165 400 165 L 400 157 Z" fill="#f8fafc"/>
+
+    <!-- קווים אופקיים -->
+    <line x1="20" y1="65" x2="400" y2="65" stroke="#cbd5e1" stroke-width="1.5"/>
+    <line x1="20" y1="115" x2="400" y2="115" stroke="#e2e8f0" stroke-width="1"/>
+
+    <!-- קווים אנכיים -->
+    <line x1="110" y1="25" x2="110" y2="165" stroke="#e2e8f0" stroke-width="1"/>
+    <line x1="180" y1="25" x2="180" y2="165" stroke="#e2e8f0" stroke-width="1"/>
+    <line x1="290" y1="25" x2="290" y2="165" stroke="#e2e8f0" stroke-width="1"/>
+
+    <!-- כותרות (מימין לשמאל) -->
+    <text x="345" y="49" text-anchor="middle" font-size="14" font-weight="bold" fill="#1e293b" direction="rtl">שם הפריט</text>
+    <text x="235" y="49" text-anchor="middle" font-size="14" font-weight="bold" fill="#1e293b" direction="rtl">מחיר ליחידה</text>
+    <text x="145" y="49" text-anchor="middle" font-size="14" font-weight="bold" fill="#1e293b" direction="rtl">כמות</text>
+    <text x="65" y="49" text-anchor="middle" font-size="14" font-weight="bold" fill="#1e293b" direction="rtl">מחיר כולל</text>
+
+    <!-- שורה 1: מחברות -->
+    <text x="345" y="95" text-anchor="middle" font-size="14" fill="#334155" direction="rtl">מחברות</text>
+    <text x="235" y="95" text-anchor="middle" font-size="14" fill="#334155" direction="rtl">8 ש״ח</text>
+    <text x="145" y="95" text-anchor="middle" font-size="15" font-weight="bold" fill="#2563eb">x</text>
+    <text x="65" y="95" text-anchor="middle" font-size="16" font-weight="bold" fill="#dc2626">?</text>
+
+    <!-- שורה 2: קלמר -->
+    <text x="345" y="145" text-anchor="middle" font-size="14" fill="#334155" direction="rtl">קלמר</text>
+    <text x="235" y="145" text-anchor="middle" font-size="14" fill="#334155" direction="rtl">20 ש״ח</text>
+    <text x="145" y="145" text-anchor="middle" font-size="14" fill="#334155">1</text>
+    <text x="65" y="145" text-anchor="middle" font-size="14" fill="#334155" direction="rtl">20 ש״ח</text>
+  </svg>
+
+<svg width="420" height="190" xmlns="http://www.w3.org/2000/svg" font-family="Arial, sans-serif">
+    <!-- רקע וטבלה -->
+    <rect x="20" y="25" width="380" height="140" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+
+    <!-- רקע כותרת -->
+    <path d="M 20 33 Q 20 25 28 25 L 392 25 Q 400 25 400 33 L 400 65 L 20 65 Z" fill="#f1f5f9"/>
+
+    <!-- רקע שורה שנייה (זברה) -->
+    <rect x="20" y="115" width="380" height="50" rx="0" fill="#f8fafc"/>
+    <path d="M 20 157 L 20 165 Q 20 165 28 165 L 392 165 Q 400 165 400 165 L 400 157 Z" fill="#f8fafc"/>
+
+    <!-- קווים אופקיים -->
+    <line x1="20" y1="65" x2="400" y2="65" stroke="#cbd5e1" stroke-width="1.5"/>
+    <line x1="20" y1="115" x2="400" y2="115" stroke="#e2e8f0" stroke-width="1"/>
+
+    <!-- קווים אנכיים -->
+    <line x1="110" y1="25" x2="110" y2="165" stroke="#e2e8f0" stroke-width="1"/>
+    <line x1="180" y1="25" x2="180" y2="165" stroke="#e2e8f0" stroke-width="1"/>
+    <line x1="290" y1="25" x2="290" y2="165" stroke="#e2e8f0" stroke-width="1"/>
+
+    <!-- כותרות (מימין לשמאל) -->
+    <text x="345" y="49" text-anchor="middle" font-size="14" font-weight="bold" fill="#1e293b" direction="rtl">שם הפריט</text>
+    <text x="235" y="49" text-anchor="middle" font-size="14" font-weight="bold" fill="#1e293b" direction="rtl">מחיר ליחידה</text>
+    <text x="145" y="49" text-anchor="middle" font-size="14" font-weight="bold" fill="#1e293b" direction="rtl">כמות</text>
+    <text x="65" y="49" text-anchor="middle" font-size="14" font-weight="bold" fill="#1e293b" direction="rtl">מחיר כולל</text>
+
+    <!-- שורה 1: מחברות -->
+    <text x="345" y="95" text-anchor="middle" font-size="14" fill="#334155" direction="rtl">מחברות</text>
+    <text x="235" y="95" text-anchor="middle" font-size="14" fill="#334155" direction="rtl">8 ש״ח</text>
+    <text x="145" y="95" text-anchor="middle" font-size="15" font-weight="bold" fill="#2563eb">x</text>
+    <text x="65" y="95" text-anchor="middle" font-size="16" font-weight="bold" fill="#dc2626">?</text>
+
+    <!-- שורה 2: קלמר -->
+    <text x="345" y="145" text-anchor="middle" font-size="14" fill="#334155" direction="rtl">קלמר</text>
+    <text x="235" y="145" text-anchor="middle" font-size="14" fill="#334155" direction="rtl">20 ש״ח</text>
+    <text x="145" y="145" text-anchor="middle" font-size="14" fill="#334155">1</text>
+    <text x="65" y="145" text-anchor="middle" font-size="14" fill="#334155" direction="rtl">20 ש״ח</text>
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 5 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: מהו הביטוי האלגברי המתאים לתא המסומן בסימן שאלה ("?") בטבלה, המייצג את המחיר הכולל של x מחברות שמחיר כל אחת 8 ש"ח?
+* אופציות:
+  - 8x ש״ח
+  - x + 8 ש״ח
+* פתרון נכון: 8x ש״ח
+* פתרון מלא: המחיר הכולל של מספר פריטים זהים מתקבל ממכפלת כמות הפריטים במחיר ליחידה אחת: x כפול 8 שווה ל-8x ש"ח.
+
+--------------------------------------------------------------------------------
+[תרגיל 5 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: בנוסף למחברות נקנה קלמר אחד במחיר קבוע של 20 ש"ח. כיצד נבטא את מחיר הקלמר בתוך סכום הקנייה הכולל?
+* אופציות:
+  - נוסיף 20 ש"ח לסכום, מכיוון שנקנה קלמר בודד במחיר קבוע.
+  - נכפול את 20 ב-x ונוסיף 20x ש"ח לסכום.
+* פתרון נכון: נוסיף 20 ש"ח לסכום, מכיוון שנקנה קלמר בודד במחיר קבוע.
+* פתרון מלא: מחירו של פריט בודד שנקנה פעם אחת הוא סכום קבוע שאינו תלוי בכמות המחברות x, ולכן רק נוסיף 20 לסכום הכולל.
+
+--------------------------------------------------------------------------------
+[תרגיל 5 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: ידוע כי דני שילם בקופה בסך הכל 76 ש"ח עבור כל הקנייה (מחברות וקלמר). איזו מבין המשוואות הבאות מתארת נכון את הבעיה?
+* אופציות:
+  - 8x - 20 = 76
+  - 8x + 20 = 76
+  - 20x + 8 = 76
+* פתרון נכון: 8x + 20 = 76
+* פתרון מלא: הסכום הכולל מורכב ממחיר המחברות (8x) ועוד מחיר הקלמר (20), וסך הכל שווה ל-76 ש"ח. לכן המשוואה היא 8x + 20 = 76.
+
+--------------------------------------------------------------------------------
+[תרגיל 5 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: פתרו את המשוואה 8x + 20 = 76 ומצאו כמה מחברות קנה דני. הציגו את שלבי הפתרון.
+נחסר 20 משני אגפי המשוואה:
+8x = 76 - 20
+8x = 56
+נחלק ב-8:
+x = 56 / 8 = 7
+תשובה: דני קנה 7 מחברות. בדיקה: 7 * 8 + 20 = 56 + 20 = 76 ש"ח.
+
+================================================================================
+תרגיל 6 – בסיס: מידול קנייה של שני סוגי פריטים באמצעות טבלה והשלמה לסך כולל…
+================================================================================
+כאשר קונים שני סוגי מוצרים והכמות הכוללת שלהם ידועה, נשלב את עקרון הבעת חלק מתוך שלם (תרגיל 4) עם חישוב מחיר כולל בטבלה.
+
+  <svg width="450" height="200" xmlns="http://www.w3.org/2000/svg" font-family="Arial, sans-serif">
+    <!-- Table background and outer border -->
+    <rect x="20" y="25" width="410" height="150" fill="#ffffff" stroke="#2c3e50" stroke-width="2" rx="4"/>
+
+    <!-- Header background -->
+    <path d="M 20 29 Q 20 25 24 25 L 426 25 Q 430 25 430 29 L 430 75 L 20 75 Z" fill="#e8edf3"/>
+
+    <!-- Alternating row background -->
+    <rect x="20" y="125" width="410" height="50" fill="#f9fafb"/>
+
+    <!-- Horizontal grid lines -->
+    <line x1="20" y1="75" x2="430" y2="75" stroke="#2c3e50" stroke-width="1.5"/>
+    <line x1="20" y1="125" x2="430" y2="125" stroke="#cbd5e1" stroke-width="1"/>
+
+    <!-- Vertical grid lines -->
+    <line x1="330" y1="25" x2="330" y2="175" stroke="#cbd5e1" stroke-width="1"/>
+    <line x1="230" y1="25" x2="230" y2="175" stroke="#cbd5e1" stroke-width="1"/>
+    <line x1="140" y1="25" x2="140" y2="175" stroke="#cbd5e1" stroke-width="1"/>
+
+    <!-- Headers -->
+    <text x="380" y="55" font-size="15" font-weight="bold" text-anchor="middle" fill="#1e293b" direction="rtl">פריט</text>
+    <text x="280" y="46" font-size="14" font-weight="bold" text-anchor="middle" fill="#1e293b" direction="rtl">מחיר ליחידה</text>
+    <text x="280" y="64" font-size="12" fill="#64748b" text-anchor="middle" direction="rtl">(בש"ח)</text>
+    <text x="185" y="55" font-size="15" font-weight="bold" text-anchor="middle" fill="#1e293b" direction="rtl">כמות</text>
+    <text x="80" y="46" font-size="14" font-weight="bold" text-anchor="middle" fill="#1e293b" direction="rtl">מחיר כולל</text>
+    <text x="80" y="64" font-size="12" fill="#64748b" text-anchor="middle" direction="rtl">(בש"ח)</text>
+
+    <!-- Row 1: עפרונות -->
+    <text x="380" y="105" font-size="15" text-anchor="middle" fill="#0f172a" direction="rtl">עפרונות</text>
+    <text x="280" y="105" font-size="15" text-anchor="middle" fill="#0f172a">3</text>
+    <text x="185" y="105" font-size="15" font-style="italic" text-anchor="middle" fill="#0f172a">x</text>
+    <text x="80" y="105" font-size="15" font-style="italic" text-anchor="middle" fill="#0f172a">3x</text>
+
+    <!-- Row 2: עטים -->
+    <text x="380" y="155" font-size="15" text-anchor="middle" fill="#0f172a" direction="rtl">עטים</text>
+    <text x="280" y="155" font-size="15" text-anchor="middle" fill="#0f172a">7</text>
+    <text x="185" y="155" font-size="15" text-anchor="middle" fill="#0f172a">12 - x</text>
+    <text x="80" y="155" font-size="15" text-anchor="middle" fill="#0f172a">7(12 - x)</text>
+  </svg>
+
+<svg width="450" height="200" xmlns="http://www.w3.org/2000/svg" font-family="Arial, sans-serif">
+    <!-- Table background and outer border -->
+    <rect x="20" y="25" width="410" height="150" fill="#ffffff" stroke="#2c3e50" stroke-width="2" rx="4"/>
+
+    <!-- Header background -->
+    <path d="M 20 29 Q 20 25 24 25 L 426 25 Q 430 25 430 29 L 430 75 L 20 75 Z" fill="#e8edf3"/>
+
+    <!-- Alternating row background -->
+    <rect x="20" y="125" width="410" height="50" fill="#f9fafb"/>
+
+    <!-- Horizontal grid lines -->
+    <line x1="20" y1="75" x2="430" y2="75" stroke="#2c3e50" stroke-width="1.5"/>
+    <line x1="20" y1="125" x2="430" y2="125" stroke="#cbd5e1" stroke-width="1"/>
+
+    <!-- Vertical grid lines -->
+    <line x1="330" y1="25" x2="330" y2="175" stroke="#cbd5e1" stroke-width="1"/>
+    <line x1="230" y1="25" x2="230" y2="175" stroke="#cbd5e1" stroke-width="1"/>
+    <line x1="140" y1="25" x2="140" y2="175" stroke="#cbd5e1" stroke-width="1"/>
+
+    <!-- Headers -->
+    <text x="380" y="55" font-size="15" font-weight="bold" text-anchor="middle" fill="#1e293b" direction="rtl">פריט</text>
+    <text x="280" y="46" font-size="14" font-weight="bold" text-anchor="middle" fill="#1e293b" direction="rtl">מחיר ליחידה</text>
+    <text x="280" y="64" font-size="12" fill="#64748b" text-anchor="middle" direction="rtl">(בש"ח)</text>
+    <text x="185" y="55" font-size="15" font-weight="bold" text-anchor="middle" fill="#1e293b" direction="rtl">כמות</text>
+    <text x="80" y="46" font-size="14" font-weight="bold" text-anchor="middle" fill="#1e293b" direction="rtl">מחיר כולל</text>
+    <text x="80" y="64" font-size="12" fill="#64748b" text-anchor="middle" direction="rtl">(בש"ח)</text>
+
+    <!-- Row 1: עפרונות -->
+    <text x="380" y="105" font-size="15" text-anchor="middle" fill="#0f172a" direction="rtl">עפרונות</text>
+    <text x="280" y="105" font-size="15" text-anchor="middle" fill="#0f172a">3</text>
+    <text x="185" y="105" font-size="15" font-style="italic" text-anchor="middle" fill="#0f172a">x</text>
+    <text x="80" y="105" font-size="15" font-style="italic" text-anchor="middle" fill="#0f172a">3x</text>
+
+    <!-- Row 2: עטים -->
+    <text x="380" y="155" font-size="15" text-anchor="middle" fill="#0f172a" direction="rtl">עטים</text>
+    <text x="280" y="155" font-size="15" text-anchor="middle" fill="#0f172a">7</text>
+    <text x="185" y="155" font-size="15" text-anchor="middle" fill="#0f172a">12 - x</text>
+    <text x="80" y="155" font-size="15" text-anchor="middle" fill="#0f172a">7(12 - x)</text>
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 6 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: נקנו בסך הכל 12 מוצרים (עפרונות ועטים). אם נקנו x עפרונות, איזה ביטוי מייצג את התשלום עבור העטים שמחיר כל אחד מהם 7 שקלים?
+* אופציות:
+  - 7 * (12 - x)
+  - 7 * 12 - x
+* פתרון נכון: 7 * (12 - x)
+* פתרון מלא: כמות העטים היא (12 - x). כדי לחשב את מחירם הכולל, יש לכפול את מחיר העט (7) בכל הכמות, ולכן חובה להשתמש בסוגריים: 7(12 - x).
+
+--------------------------------------------------------------------------------
+[תרגיל 6 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: פתחו סוגריים בביטוי 7(12 - x) לפי חוק הפילוג. מהי התוצאה?
+* אופציות:
+  - 84 - 7x
+  - 84 - x
+* פתרון נכון: 84 - 7x
+* פתרון מלא: לפי חוק הפילוג, כופלים את 7 בכל איבר בתוך הסוגריים: 7 * 12 = 84 וכן 7 * (-x) = -7x, ולכן התוצאה היא 84 - 7x.
+
+--------------------------------------------------------------------------------
+[תרגיל 6 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: אם התשלום הכולל עבור כל העפרונות והעטים יחד היה 52 שקלים, איזו משוואה מתארת את המצב?
+* אופציות:
+  - 3x + 7(12 - x) = 52
+  - 3x + 84 - x = 52
+  - 3x + 12 - x = 52
+* פתרון נכון: 3x + 7(12 - x) = 52
+* פתרון מלא: התשלום עבור העפרונות הוא 3x והתשלום עבור העטים הוא 7(12 - x). סכומם שווה ל-52, ולכן המשוואה היא 3x + 7(12 - x) = 52.
+
+--------------------------------------------------------------------------------
+[תרגיל 6 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: פתרו את המשוואה 3x + 7(12 - x) = 52 ומצאו כמה עפרונות וכמה עטים נקנו.
+* פתרון נכון: נפתח סוגריים: 3x + 84 - 7x = 52. נכנס איברים דומים: -4x + 84 = 52. נחסר 84: -4x = -32. נחלק ב-(4-): x = 8. נקנו 8 עפרונות, ומספר העטים הוא 12 - 8 = 4 עטים. בדיקה: 8 * 3 + 4 * 7 = 24 + 28 = 52 ש"ח.
+* פתרון מלא: נפתח סוגריים: 3x + 84 - 7x = 52. נכנס איברים דומים: -4x + 84 = 52. נחסר 84: -4x = -32. נחלק ב-(4-): x = 8. נקנו 8 עפרונות, ומספר העטים הוא 12 - 8 = 4 עטים. בדיקה: 8 * 3 + 4 * 7 = 24 + 28 = 52 ש"ח.
+
+================================================================================
+תרגיל 7 – מורכב: פתרון בעיות גיל: ביטוי שינוי הגיל לאורך ציר הזמן
+================================================================================
+בבעיות גיל, כאשר הזמן חולף, הגיל של כל אחת מהדמויות גדל באותו מספר שנים בדיוק.
+
+  <svg width="520" height="260" viewBox="0 0 520 260" xmlns="http://www.w3.org/2000/svg" font-family="Arial, sans-serif" direction="rtl">
+    <!-- רקע כללי -->
+    <rect width="520" height="260" fill="#f8fafc" rx="12"/>
+
+    <!-- עמודת תוויות שורות (ימין) -->
+    <g>
+      <!-- כותרת ריקה/כללית -->
+      <rect x="415" y="40" width="80" height="40" rx="6" fill="#cbd5e1"/>
+      <text x="455" y="65" font-size="15" font-weight="bold" fill="#334155" text-anchor="middle" dominant-baseline="middle">דמות</text>
+    
+      <!-- שורת בן -->
+      <rect x="415" y="90" width="80" height="55" rx="6" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+      <text x="455" y="118" font-size="16" font-weight="bold" fill="#1e293b" text-anchor="middle" dominant-baseline="middle">בן</text>
+    
+      <!-- שורת אב -->
+      <rect x="415" y="155" width="80" height="55" rx="6" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+      <text x="455" y="183" font-size="16" font-weight="bold" fill="#1e293b" text-anchor="middle" dominant-baseline="middle">אב</text>
+    </g>
+
+    <!-- עמודה 1: כיום -->
+    <g>
+      <!-- כותרת כיום -->
+      <rect x="280" y="40" width="120" height="40" rx="6" fill="#93c5fd"/>
+      <text x="340" y="65" font-size="16" font-weight="bold" fill="#1e3a8a" text-anchor="middle" dominant-baseline="middle">כיום</text>
+    
+      <!-- תא בן כיום -->
+      <rect x="280" y="90" width="120" height="55" rx="6" fill="#ffffff" stroke="#93c5fd" stroke-width="2"/>
+      <text x="340" y="118" font-size="18" font-weight="bold" fill="#1e40af" text-anchor="middle" dominant-baseline="middle">x</text>
+    
+      <!-- תא אב כיום -->
+      <rect x="280" y="155" width="120" height="55" rx="6" fill="#ffffff" stroke="#93c5fd" stroke-width="2"/>
+      <text x="340" y="183" font-size="18" font-weight="bold" fill="#1e40af" text-anchor="middle" dominant-baseline="middle">4x</text>
+    </g>
+
+    <!-- חץ מקשר רחב בין העמודות -->
+    <g>
+      <!-- צורת החץ המצביע ימינה לשמאלה (מכיום אל העתיד) -->
+      <polygon points="270,122 195,122 195,108 165,137 195,166 195,152 270,152" fill="#fbbf24" stroke="#d97706" stroke-width="2"/>
+      <!-- כיתוב על החץ -->
+      <text x="228" y="138" font-size="11" font-weight="bold" fill="#78350f" text-anchor="middle" dominant-baseline="middle">+6 שנים לכולם</text>
+    </g>
+
+    <!-- עמודה 2: בעוד 6 שנים -->
+    <g>
+      <!-- כותרת בעוד 6 שנים -->
+      <rect x="25" y="40" width="130" height="40" rx="6" fill="#86efac"/>
+      <text x="90" y="65" font-size="16" font-weight="bold" fill="#14532d" text-anchor="middle" dominant-baseline="middle">בעוד 6 שנים</text>
+    
+      <!-- תא בן בעוד 6 שנים -->
+      <rect x="25" y="90" width="130" height="55" rx="6" fill="#ffffff" stroke="#86efac" stroke-width="2"/>
+      <text x="90" y="118" font-size="18" font-weight="bold" fill="#166534" text-anchor="middle" dominant-baseline="middle">x + 6</text>
+    
+      <!-- תא אב בעוד 6 שנים -->
+      <rect x="25" y="155" width="130" height="55" rx="6" fill="#ffffff" stroke="#86efac" stroke-width="2"/>
+      <text x="90" y="183" font-size="18" font-weight="bold" fill="#166534" text-anchor="middle" dominant-baseline="middle">4x + 6</text>
+    </g>
+  </svg>
+
+<svg width="520" height="260" viewBox="0 0 520 260" xmlns="http://www.w3.org/2000/svg" font-family="Arial, sans-serif" direction="rtl">
+    <!-- רקע כללי -->
+    <rect width="520" height="260" fill="#f8fafc" rx="12"/>
+
+    <!-- עמודת תוויות שורות (ימין) -->
+    <g>
+      <!-- כותרת ריקה/כללית -->
+      <rect x="415" y="40" width="80" height="40" rx="6" fill="#cbd5e1"/>
+      <text x="455" y="65" font-size="15" font-weight="bold" fill="#334155" text-anchor="middle" dominant-baseline="middle">דמות</text>
+    
+      <!-- שורת בן -->
+      <rect x="415" y="90" width="80" height="55" rx="6" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+      <text x="455" y="118" font-size="16" font-weight="bold" fill="#1e293b" text-anchor="middle" dominant-baseline="middle">בן</text>
+    
+      <!-- שורת אב -->
+      <rect x="415" y="155" width="80" height="55" rx="6" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+      <text x="455" y="183" font-size="16" font-weight="bold" fill="#1e293b" text-anchor="middle" dominant-baseline="middle">אב</text>
+    </g>
+
+    <!-- עמודה 1: כיום -->
+    <g>
+      <!-- כותרת כיום -->
+      <rect x="280" y="40" width="120" height="40" rx="6" fill="#93c5fd"/>
+      <text x="340" y="65" font-size="16" font-weight="bold" fill="#1e3a8a" text-anchor="middle" dominant-baseline="middle">כיום</text>
+    
+      <!-- תא בן כיום -->
+      <rect x="280" y="90" width="120" height="55" rx="6" fill="#ffffff" stroke="#93c5fd" stroke-width="2"/>
+      <text x="340" y="118" font-size="18" font-weight="bold" fill="#1e40af" text-anchor="middle" dominant-baseline="middle">x</text>
+    
+      <!-- תא אב כיום -->
+      <rect x="280" y="155" width="120" height="55" rx="6" fill="#ffffff" stroke="#93c5fd" stroke-width="2"/>
+      <text x="340" y="183" font-size="18" font-weight="bold" fill="#1e40af" text-anchor="middle" dominant-baseline="middle">4x</text>
+    </g>
+
+    <!-- חץ מקשר רחב בין העמודות -->
+    <g>
+      <!-- צורת החץ המצביע ימינה לשמאלה (מכיום אל העתיד) -->
+      <polygon points="270,122 195,122 195,108 165,137 195,166 195,152 270,152" fill="#fbbf24" stroke="#d97706" stroke-width="2"/>
+      <!-- כיתוב על החץ -->
+      <text x="228" y="138" font-size="11" font-weight="bold" fill="#78350f" text-anchor="middle" dominant-baseline="middle">+6 שנים לכולם</text>
+    </g>
+
+    <!-- עמודה 2: בעוד 6 שנים -->
+    <g>
+      <!-- כותרת בעוד 6 שנים -->
+      <rect x="25" y="40" width="130" height="40" rx="6" fill="#86efac"/>
+      <text x="90" y="65" font-size="16" font-weight="bold" fill="#14532d" text-anchor="middle" dominant-baseline="middle">בעוד 6 שנים</text>
+    
+      <!-- תא בן בעוד 6 שנים -->
+      <rect x="25" y="90" width="130" height="55" rx="6" fill="#ffffff" stroke="#86efac" stroke-width="2"/>
+      <text x="90" y="118" font-size="18" font-weight="bold" fill="#166534" text-anchor="middle" dominant-baseline="middle">x + 6</text>
+    
+      <!-- תא אב בעוד 6 שנים -->
+      <rect x="25" y="155" width="130" height="55" rx="6" fill="#ffffff" stroke="#86efac" stroke-width="2"/>
+      <text x="90" y="183" font-size="18" font-weight="bold" fill="#166534" text-anchor="middle" dominant-baseline="middle">4x + 6</text>
+    </g>
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 7 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: גיל האב כיום הוא 4x. מה יהיה גיל האב בעוד 6 שנים?
+* אופציות:
+  - 4x + 6
+  - 4x * 6
+* פתרון נכון: 4x + 6
+* פתרון מלא: חלוף הזמן מוסיף שנים לגיל הנוכחי בפעולת חיבור ולא כפל, לכן גיל האב בעוד 6 שנים יהיה 4x + 6.
+
+--------------------------------------------------------------------------------
+[תרגיל 7 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: נתון שבעוד 6 שנים יהיה גיל האב גדול פי 3 מגיל הבן באותו הזמן. כיצד נבטא פי 3 מגיל הבן בעוד 6 שנים?
+* אופציות:
+  - 3 * (x + 6)
+  - 3x + 6
+* פתרון נכון: 3 * (x + 6)
+* פתרון מלא: גיל הבן בעוד 6 שנים הוא (x + 6). כדי לקבל פי 3 מגיל זה, יש לכפול את כל הביטוי ב-3 בעזרת סוגריים: 3(x + 6).
+
+--------------------------------------------------------------------------------
+[תרגיל 7 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: בחרו את המשוואה המתאימה להשוואת גיל האב לגיל הבן בעוד 6 שנים:
+* אופציות:
+  - 4x + 6 = 3(x + 6)
+  - 4x + 6 = 3x + 6
+  - 4x = 3(x + 6)
+* פתרון נכון: 4x + 6 = 3(x + 6)
+* פתרון מלא: בעוד 6 שנים גיל האב (4x + 6) יהיה שווה לפי 3 מגיל הבן 3(x + 6), ולכן המשוואה היא 4x + 6 = 3(x + 6).
+
+--------------------------------------------------------------------------------
+[תרגיל 7 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: פתרו את המשוואה 4x + 6 = 3(x + 6) ומצאו בני כמה הבן והאב כיום.
+* פתרון נכון: נפתח סוגריים: 4x + 6 = 3x + 18. נחסר 3x משני האגפים: x + 6 = 18. נחסר 6: x = 12. גיל הבן כיום הוא 12 שנים, וגיל האב כיום הוא 4 * 12 = 48 שנים. בדיקה: בעוד 6 שנים הבן יהיה בן 18 והאב בן 54, ואכן 54 = 3 * 18.
+* פתרון מלא: נפתח סוגריים: 4x + 6 = 3x + 18. נחסר 3x משני האגפים: x + 6 = 18. נחסר 6: x = 12. גיל הבן כיום הוא 12 שנים, וגיל האב כיום הוא 4 * 12 = 48 שנים. בדיקה: בעוד 6 שנים הבן יהיה בן 18 והאב בן 54, ואכן 54 = 3 * 18.
+
+================================================================================
+תרגיל 8 – מורכב: מידול בעיות גיאומטריות: היקף מלבן בעל צלעות המובעות אלגברית
+================================================================================
+בבעיות גיאומטריות מילוליות נתרגם תכונות גיאומטריות למשוואה אלגברית. נזכור כי היקף מצולע הוא סכום אורכי כל צלעותיו.
+
+  --- נקודות ---
+  * נקודה A | X=50, Y=250 | מיקום תווית: שמאל-למטה | צבע: שחור
+  * נקודה B | X=350, Y=250 | מיקום תווית: ימין-למטה | צבע: שחור
+  * נקודה C | X=350, Y=60 | מיקום תווית: ימין-למעלה | צבע: שחור
+  * נקודה D | X=50, Y=60 | מיקום תווית: שמאל-למעלה | צבע: שחור
+  * נקודה O | X=200, Y=155 | תווית: היקף = 36 ס"מ | צבע: שחור
+  --- קטעים ---
+  * קטע AB | מנקודה A ל-B | צבע: שחור | תווית: 2x - 3
+  * קטע BC | מנקודה B ל-C | צבע: שחור | תווית: x
+  * קטע CD | מנקודה C ל-D | צבע: שחור
+  * קטע DA | מנקודה D ל-A | צבע: שחור
+  --- סימונים ---
+  * סימן זווית ישרה בקודקוד B
+
+--------------------------------------------------------------------------------
+[תרגיל 8 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: מלבן מורכב משני זוגות של צלעות נגדיות שוות. כיצד מחושב היקף המלבן כולו?
+* אופציות:
+  - סכום כל 4 הצלעות: פעמיים אורך ועוד פעמיים רוחב
+  - סכום שתי צלעות סמוכות בלבד: אורך ועוד רוחב
+* פתרון נכון: סכום כל 4 הצלעות: פעמיים אורך ועוד פעמיים רוחב
+* פתרון מלא: היקף של כל מצולע הוא המרחק סביבו, כלומר סכום כל ארבע צלעות המלבן: 2 * אורך + 2 * רוחב.
+
+--------------------------------------------------------------------------------
+[תרגיל 8 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: חברו את שתי הצלעות הסמוכות במלבן: הרוחב (x) והאורך (2x - 3). מהו הביטוי המתקבל?
+* אופציות:
+  - 3x - 3
+  - 2x - 3
+* פתרון נכון: 3x - 3
+* פתרון מלא: חיבור שתי הצלעות: x + (2x - 3) = 3x - 3 (זהו חצי מהיקף המלבן).
+
+--------------------------------------------------------------------------------
+[תרגיל 8 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: אם היקף המלבן הוא 36 ס"מ, איזו משוואה מייצגת נכונה את הנתון?
+* אופציות:
+  - 2(3x - 3) = 36
+  - 3x - 3 = 36
+  - 2x + 2x - 3 = 36
+* פתרון נכון: 2(3x - 3) = 36
+* פתרון מלא: ההיקף המלא שווה לפעמיים סכום שתי צלעות סמוכות: 2 * (3x - 3) = 36 (ניתן גם לכתוב 6x - 6 = 36).
+
+--------------------------------------------------------------------------------
+[תרגיל 8 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: פתרו את המשוואה 2(3x - 3) = 36, מצאו את אורכי צלעות המלבן וחשבו את שטח המלבן.
+* פתרון נכון: נחלק ב-2: 3x - 3 = 18. נוסיף 3: 3x = 21. נחלק ב-3: x = 7 ס"מ (הרוחב). אורך המלבן: 2 * 7 - 3 = 11 ס"מ. שטח המלבן הוא מכפלת הצלעות: 7 * 11 = 77 סמ"ר.
+* פתרון מלא: נחלק ב-2: 3x - 3 = 18. נוסיף 3: 3x = 21. נחלק ב-3: x = 7 ס"מ (הרוחב). אורך המלבן: 2 * 7 - 3 = 11 ס"מ. שטח המלבן הוא מכפלת הצלעות: 7 * 11 = 77 סמ"ר.
+
+================================================================================
+תרגיל 9 – מורכב: בדיקת סבירות פתרון ותחום הגדרה בהקשר המציאותי של הבעיה
+================================================================================
+פתרון אלגברי נכון של משוואה אינו מספיק; יש לוודא שהפתרון הגיוני וקביל בהקשר המציאותי של הבעיה (תחום הגדרה ומגבלות מציאות).
+
+  <svg width="500" height="250" viewBox="0 0 500 250" xmlns="http://www.w3.org/2000/svg">
+    <!-- רקע כללי -->
+    <rect width="500" height="250" fill="#f3f4f6" rx="12"/>
+
+    <!-- כרטיס שמאלי: סרגל / אורך 10 ס"מ (תקין) -->
+    <g id="card-left">
+      <rect x="20" y="20" width="140" height="210" rx="10" fill="#ffffff" stroke="#d1d5db" stroke-width="2"/>
+      <!-- סרגל מדידה -->
+      <rect x="35" y="55" width="110" height="30" rx="3" fill="#fef08a" stroke="#ca8a04" stroke-width="1.5"/>
+      <!-- שנתות בסרגל -->
+      <line x1="45" y1="55" x2="45" y2="70" stroke="#854d0e" stroke-width="1.5"/>
+      <line x1="55" y1="55" x2="55" y2="65" stroke="#854d0e" stroke-width="1"/>
+      <line x1="65" y1="55" x2="65" y2="70" stroke="#854d0e" stroke-width="1.5"/>
+      <line x1="75" y1="55" x2="75" y2="65" stroke="#854d0e" stroke-width="1"/>
+      <line x1="85" y1="55" x2="85" y2="70" stroke="#854d0e" stroke-width="1.5"/>
+      <line x1="95" y1="55" x2="95" y2="65" stroke="#854d0e" stroke-width="1"/>
+      <line x1="105" y1="55" x2="105" y2="70" stroke="#854d0e" stroke-width="1.5"/>
+      <line x1="115" y1="55" x2="115" y2="65" stroke="#854d0e" stroke-width="1"/>
+      <line x1="125" y1="55" x2="125" y2="70" stroke="#854d0e" stroke-width="1.5"/>
+      <line x1="135" y1="55" x2="135" y2="65" stroke="#854d0e" stroke-width="1"/>
+      <!-- כיתוב -->
+      <text x="90" y="125" font-family="sans-serif" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle" direction="rtl">אורך = 10 ס"מ</text>
+      <!-- חותמת V ירוקה -->
+      <circle cx="90" cy="175" r="24" stroke="#16a34a" stroke-width="3" stroke-dasharray="4,2" fill="#dcfce7" fill-opacity="0.6"/>
+      <path d="M78 175 L86 183 L103 166" fill="none" stroke="#16a34a" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+
+    <!-- כרטיס אמצעי: תעודת לידה / גיל = 3- שנים (פסול) -->
+    <g id="card-middle">
+      <rect x="180" y="20" width="140" height="210" rx="10" fill="#ffffff" stroke="#d1d5db" stroke-width="2"/>
+      <!-- אייקון תעודה -->
+      <rect x="225" y="45" width="50" height="55" rx="3" fill="#eff6ff" stroke="#3b82f6" stroke-width="1.5"/>
+      <line x1="235" y1="55" x2="265" y2="55" stroke="#93c5fd" stroke-width="2"/>
+      <line x1="235" y1="63" x2="260" y2="63" stroke="#93c5fd" stroke-width="2"/>
+      <line x1="235" y1="71" x2="255" y2="71" stroke="#93c5fd" stroke-width="2"/>
+      <circle cx="250" cy="85" r="5" fill="#f59e0b"/>
+      <!-- כיתוב -->
+      <text x="250" y="125" font-family="sans-serif" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle" direction="rtl">גיל = 3- שנים</text>
+      <!-- חותמת X אדומה -->
+      <circle cx="250" cy="175" r="24" stroke="#dc2626" stroke-width="3" stroke-dasharray="4,2" fill="#fee2e2" fill-opacity="0.6"/>
+      <line x1="236" y1="161" x2="264" y2="189" stroke="#dc2626" stroke-width="4" stroke-linecap="round"/>
+      <line x1="264" y1="161" x2="236" y2="189" stroke="#dc2626" stroke-width="4" stroke-linecap="round"/>
+    </g>
+
+    <!-- כרטיס ימני: כרטיסי תיאטרון / x = 4.5 כרטיסים (פסול) -->
+    <g id="card-right">
+      <rect x="340" y="20" width="140" height="210" rx="10" fill="#ffffff" stroke="#d1d5db" stroke-width="2"/>
+      <!-- איור כרטיס תיאטרון -->
+      <g transform="translate(370, 48)">
+        <rect x="0" y="0" width="75" height="42" rx="4" fill="#fed7aa" stroke="#ea580c" stroke-width="1.5"/>
+        <line x1="50" y1="0" x2="50" y2="42" stroke="#ea580c" stroke-width="1.5" stroke-dasharray="3,2"/>
+        <circle cx="0" cy="21" r="5" fill="#ffffff" stroke="#ea580c" stroke-width="1.5"/>
+        <circle cx="75" cy="21" r="5" fill="#ffffff" stroke="#ea580c" stroke-width="1.5"/>
+        <!-- כוכב קטן על הכרטיס -->
+        <polygon points="25,12 28,19 35,19 29,24 31,31 25,27 19,31 21,24 15,19 22,19" fill="#f97316"/>
+      </g>
+      <!-- כיתוב -->
+      <text x="410" y="125" font-family="sans-serif" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle" direction="rtl">x = 4.5 כרטיסים</text>
+      <!-- חותמת X אדומה -->
+      <circle cx="410" cy="175" r="24" stroke="#dc2626" stroke-width="3" stroke-dasharray="4,2" fill="#fee2e2" fill-opacity="0.6"/>
+      <line x1="396" y1="161" x2="424" y2="189" stroke="#dc2626" stroke-width="4" stroke-linecap="round"/>
+      <line x1="424" y1="161" x2="396" y2="189" stroke="#dc2626" stroke-width="4" stroke-linecap="round"/>
+    </g>
+  </svg>
+
+<svg width="500" height="250" viewBox="0 0 500 250" xmlns="http://www.w3.org/2000/svg">
+    <!-- רקע כללי -->
+    <rect width="500" height="250" fill="#f3f4f6" rx="12"/>
+
+    <!-- כרטיס שמאלי: סרגל / אורך 10 ס"מ (תקין) -->
+    <g id="card-left">
+      <rect x="20" y="20" width="140" height="210" rx="10" fill="#ffffff" stroke="#d1d5db" stroke-width="2"/>
+      <!-- סרגל מדידה -->
+      <rect x="35" y="55" width="110" height="30" rx="3" fill="#fef08a" stroke="#ca8a04" stroke-width="1.5"/>
+      <!-- שנתות בסרגל -->
+      <line x1="45" y1="55" x2="45" y2="70" stroke="#854d0e" stroke-width="1.5"/>
+      <line x1="55" y1="55" x2="55" y2="65" stroke="#854d0e" stroke-width="1"/>
+      <line x1="65" y1="55" x2="65" y2="70" stroke="#854d0e" stroke-width="1.5"/>
+      <line x1="75" y1="55" x2="75" y2="65" stroke="#854d0e" stroke-width="1"/>
+      <line x1="85" y1="55" x2="85" y2="70" stroke="#854d0e" stroke-width="1.5"/>
+      <line x1="95" y1="55" x2="95" y2="65" stroke="#854d0e" stroke-width="1"/>
+      <line x1="105" y1="55" x2="105" y2="70" stroke="#854d0e" stroke-width="1.5"/>
+      <line x1="115" y1="55" x2="115" y2="65" stroke="#854d0e" stroke-width="1"/>
+      <line x1="125" y1="55" x2="125" y2="70" stroke="#854d0e" stroke-width="1.5"/>
+      <line x1="135" y1="55" x2="135" y2="65" stroke="#854d0e" stroke-width="1"/>
+      <!-- כיתוב -->
+      <text x="90" y="125" font-family="sans-serif" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle" direction="rtl">אורך = 10 ס"מ</text>
+      <!-- חותמת V ירוקה -->
+      <circle cx="90" cy="175" r="24" stroke="#16a34a" stroke-width="3" stroke-dasharray="4,2" fill="#dcfce7" fill-opacity="0.6"/>
+      <path d="M78 175 L86 183 L103 166" fill="none" stroke="#16a34a" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+
+    <!-- כרטיס אמצעי: תעודת לידה / גיל = 3- שנים (פסול) -->
+    <g id="card-middle">
+      <rect x="180" y="20" width="140" height="210" rx="10" fill="#ffffff" stroke="#d1d5db" stroke-width="2"/>
+      <!-- אייקון תעודה -->
+      <rect x="225" y="45" width="50" height="55" rx="3" fill="#eff6ff" stroke="#3b82f6" stroke-width="1.5"/>
+      <line x1="235" y1="55" x2="265" y2="55" stroke="#93c5fd" stroke-width="2"/>
+      <line x1="235" y1="63" x2="260" y2="63" stroke="#93c5fd" stroke-width="2"/>
+      <line x1="235" y1="71" x2="255" y2="71" stroke="#93c5fd" stroke-width="2"/>
+      <circle cx="250" cy="85" r="5" fill="#f59e0b"/>
+      <!-- כיתוב -->
+      <text x="250" y="125" font-family="sans-serif" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle" direction="rtl">גיל = 3- שנים</text>
+      <!-- חותמת X אדומה -->
+      <circle cx="250" cy="175" r="24" stroke="#dc2626" stroke-width="3" stroke-dasharray="4,2" fill="#fee2e2" fill-opacity="0.6"/>
+      <line x1="236" y1="161" x2="264" y2="189" stroke="#dc2626" stroke-width="4" stroke-linecap="round"/>
+      <line x1="264" y1="161" x2="236" y2="189" stroke="#dc2626" stroke-width="4" stroke-linecap="round"/>
+    </g>
+
+    <!-- כרטיס ימני: כרטיסי תיאטרון / x = 4.5 כרטיסים (פסול) -->
+    <g id="card-right">
+      <rect x="340" y="20" width="140" height="210" rx="10" fill="#ffffff" stroke="#d1d5db" stroke-width="2"/>
+      <!-- איור כרטיס תיאטרון -->
+      <g transform="translate(370, 48)">
+        <rect x="0" y="0" width="75" height="42" rx="4" fill="#fed7aa" stroke="#ea580c" stroke-width="1.5"/>
+        <line x1="50" y1="0" x2="50" y2="42" stroke="#ea580c" stroke-width="1.5" stroke-dasharray="3,2"/>
+        <circle cx="0" cy="21" r="5" fill="#ffffff" stroke="#ea580c" stroke-width="1.5"/>
+        <circle cx="75" cy="21" r="5" fill="#ffffff" stroke="#ea580c" stroke-width="1.5"/>
+        <!-- כוכב קטן על הכרטיס -->
+        <polygon points="25,12 28,19 35,19 29,24 31,31 25,27 19,31 21,24 15,19 22,19" fill="#f97316"/>
+      </g>
+      <!-- כיתוב -->
+      <text x="410" y="125" font-family="sans-serif" font-size="13" font-weight="bold" fill="#1f2937" text-anchor="middle" direction="rtl">x = 4.5 כרטיסים</text>
+      <!-- חותמת X אדומה -->
+      <circle cx="410" cy="175" r="24" stroke="#dc2626" stroke-width="3" stroke-dasharray="4,2" fill="#fee2e2" fill-opacity="0.6"/>
+      <line x1="396" y1="161" x2="424" y2="189" stroke="#dc2626" stroke-width="4" stroke-linecap="round"/>
+      <line x1="424" y1="161" x2="396" y2="189" stroke="#dc2626" stroke-width="4" stroke-linecap="round"/>
+    </g>
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 9 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: בפתרון בעיה מילולית העוסקת במספר כרטיסי קולנוע שנמכרו, התקבל הפתרון x = 4.5. האם פתרון זה קביל במציאות?
+* אופציות:
+  - לא, מספר פריטים בדידים כמו כרטיסים חייב להיות מספר שלם ואינו יכול להיות שבר.
+  - כן, כל מספר חיובי קביל כפתרון למספר כרטיסים.
+* פתרון נכון: לא, מספר פריטים בדידים כמו כרטיסים חייב להיות מספר שלם ואינו יכול להיות שבר.
+* פתרון מלא: כרטיסים נמכרים ביחידות שלמות בלבד, ולכן תוצאה של שבר (4.5) אינה אפשרית במציאות ומעידה על טעות בבניית המשוואה או בנתונים.
+
+--------------------------------------------------------------------------------
+[תרגיל 9 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: בבעיית גיל התקבל הפתרון x = -3 עבור גילו של ילד. האם תוצאה זו הגיונית?
+* אופציות:
+  - לא, גיל של אדם הוא גודל חיובי בלבד ולא יכול להיות שלילי.
+  - כן, סימן מינוס מציין שהילד נולד לפני 3 שנים.
+* פתרון נכון: לא, גיל של אדם הוא גודל חיובי בלבד ולא יכול להיות שלילי.
+* פתרון מלא: גיל נמדד תמיד במספרים אי-שליליים (חיוביים), ולכן תוצאה שלילית אינה הגיונית במציאות.
+
+--------------------------------------------------------------------------------
+[תרגיל 9 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: נתונה בעיה גיאומטרית שבה אורך קטע ראשון הוא x ס"מ, ואורך קטע שני קצר ממנו ב-8 ס"מ (כלומר x - 8). פתרון המשוואה הניב x = 5. מדוע פתרון זה נפסל?
+* אופציות:
+  - כי הצבת x = 5 בקטע השני נותנת אורך שלילי (3- ס"מ), ואורך חייב להיות חיובי.
+  - כי x חייב תמיד להיות מספר זוגי בבעיות גיאומטריות.
+  - כי 5 הוא מספר קטן מ-10.
+* פתרון נכון: כי הצבת x = 5 בקטע השני נותנת אורך שלילי (3- ס"מ), ואורך חייב להיות חיובי.
+* פתרון מלא: עבור x = 5, אורך הקטע השני יהיה 5 - 8 = -3 ס"מ. אורך של קטע בגיאומטריה חייב להיות גודל חיובי, ולכן הפתרון נפסל.
+
+--------------------------------------------------------------------------------
+[תרגיל 9 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: רשמו תנאי אי-שוויון על x המבטיח ששני הקטעים (x ו-x - 8) יהיו בעלי אורך חיובי, ותנו דוגמה לערך של x שעבורו שני הקטעים קיימים.
+* פתרון נכון: התנאי לקיום הקטע הראשון: x > 0. התנאי לקיום הקטע השני: x - 8 > 0, כלומר x > 8. התנאי המשותף הוא x > 8. דוגמה לערך קביל: עבור x = 10, אורכי הקטעים הם 10 ס"מ ו-2 ס"מ (שניהם חיוביים).
+* פתרון מלא: התנאי לקיום הקטע הראשון: x > 0. התנאי לקיום הקטע השני: x - 8 > 0, כלומר x > 8. התנאי המשותף הוא x > 8. דוגמה לערך קביל: עבור x = 10, אורכי הקטעים הם 10 ס"מ ו-2 ס"מ (שניהם חיוביים).
+
+================================================================================
+תרגיל 10 – אתגר: סינתזה: בנייה
+================================================================================
+להלן בעיית סיכום המשלבת את כל השלבים: הגדרת נעלם, הבעת כמויות, בניית משוואה, פתרון ובדיקת סבירות במציאות.
+
+  <svg width="420" height="310" xmlns="http://www.w3.org/2000/svg">
+    <!-- רקע הכרזה -->
+    <rect x="10" y="10" width="400" height="290" rx="15" fill="#f8fafc" stroke="#475569" stroke-width="2"/>
+  
+    <!-- כותרת ראשית -->
+    <rect x="25" y="22" width="370" height="48" rx="10" fill="#3b82f6"/>
+    <text x="210" y="53" font-size="22" font-family="Arial, sans-serif" font-weight="bold" fill="#ffffff" text-anchor="middle" direction="rtl">מופע סוף שנה 🎵</text>
+
+    <!-- מסגרת 1: סך כרטיסים -->
+    <rect x="35" y="85" width="165" height="85" rx="8" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+    <text x="117" y="115" font-size="13" font-family="Arial, sans-serif" font-weight="bold" fill="#0369a1" text-anchor="middle" direction="rtl">כרטיסים שנמכרו</text>
+    <text x="117" y="148" font-size="20" font-family="Arial, sans-serif" font-weight="bold" fill="#0c4a6e" text-anchor="middle" direction="rtl">100 כרטיסים</text>
+
+    <!-- מסגרת 2: סך הכנסות -->
+    <rect x="220" y="85" width="165" height="85" rx="8" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+    <text x="302" y="115" font-size="13" font-family="Arial, sans-serif" font-weight="bold" fill="#15803d" text-anchor="middle" direction="rtl">סך ההכנסות בקופה</text>
+    <text x="302" y="148" font-size="20" font-family="Arial, sans-serif" font-weight="bold" fill="#14532d" text-anchor="middle" direction="rtl">3,600 ש"ח</text>
+
+    <!-- מסגרת 3: כרטיס תלמיד -->
+    <rect x="35" y="185" width="165" height="95" rx="8" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+    <text x="117" y="218" font-size="14" font-family="Arial, sans-serif" font-weight="bold" fill="#b45309" text-anchor="middle" direction="rtl">כרטיס תלמיד</text>
+    <text x="117" y="255" font-size="22" font-family="Arial, sans-serif" font-weight="bold" fill="#78350f" text-anchor="middle" direction="rtl">30 ש"ח</text>
+
+    <!-- מסגרת 4: כרטיס מבוגר -->
+    <rect x="220" y="185" width="165" height="95" rx="8" fill="#f3e8ff" stroke="#9333ea" stroke-width="2"/>
+    <text x="302" y="218" font-size="14" font-family="Arial, sans-serif" font-weight="bold" fill="#7e22ce" text-anchor="middle" direction="rtl">כרטיס מבוגר</text>
+    <text x="302" y="255" font-size="22" font-family="Arial, sans-serif" font-weight="bold" fill="#581c87" text-anchor="middle" direction="rtl">50 ש"ח</text>
+  </svg>
+
+<svg width="420" height="310" xmlns="http://www.w3.org/2000/svg">
+    <!-- רקע הכרזה -->
+    <rect x="10" y="10" width="400" height="290" rx="15" fill="#f8fafc" stroke="#475569" stroke-width="2"/>
+  
+    <!-- כותרת ראשית -->
+    <rect x="25" y="22" width="370" height="48" rx="10" fill="#3b82f6"/>
+    <text x="210" y="53" font-size="22" font-family="Arial, sans-serif" font-weight="bold" fill="#ffffff" text-anchor="middle" direction="rtl">מופע סוף שנה 🎵</text>
+
+    <!-- מסגרת 1: סך כרטיסים -->
+    <rect x="35" y="85" width="165" height="85" rx="8" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+    <text x="117" y="115" font-size="13" font-family="Arial, sans-serif" font-weight="bold" fill="#0369a1" text-anchor="middle" direction="rtl">כרטיסים שנמכרו</text>
+    <text x="117" y="148" font-size="20" font-family="Arial, sans-serif" font-weight="bold" fill="#0c4a6e" text-anchor="middle" direction="rtl">100 כרטיסים</text>
+
+    <!-- מסגרת 2: סך הכנסות -->
+    <rect x="220" y="85" width="165" height="85" rx="8" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+    <text x="302" y="115" font-size="13" font-family="Arial, sans-serif" font-weight="bold" fill="#15803d" text-anchor="middle" direction="rtl">סך ההכנסות בקופה</text>
+    <text x="302" y="148" font-size="20" font-family="Arial, sans-serif" font-weight="bold" fill="#14532d" text-anchor="middle" direction="rtl">3,600 ש"ח</text>
+
+    <!-- מסגרת 3: כרטיס תלמיד -->
+    <rect x="35" y="185" width="165" height="95" rx="8" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+    <text x="117" y="218" font-size="14" font-family="Arial, sans-serif" font-weight="bold" fill="#b45309" text-anchor="middle" direction="rtl">כרטיס תלמיד</text>
+    <text x="117" y="255" font-size="22" font-family="Arial, sans-serif" font-weight="bold" fill="#78350f" text-anchor="middle" direction="rtl">30 ש"ח</text>
+
+    <!-- מסגרת 4: כרטיס מבוגר -->
+    <rect x="220" y="185" width="165" height="95" rx="8" fill="#f3e8ff" stroke="#9333ea" stroke-width="2"/>
+    <text x="302" y="218" font-size="14" font-family="Arial, sans-serif" font-weight="bold" fill="#7e22ce" text-anchor="middle" direction="rtl">כרטיס מבוגר</text>
+    <text x="302" y="255" font-size="22" font-family="Arial, sans-serif" font-weight="bold" fill="#581c87" text-anchor="middle" direction="rtl">50 ש"ח</text>
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 10 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: נסמן ב-x את מספר כרטיסי התלמיד שנמכרו. ידוע כי נמכרו בסך הכל 100 כרטיסים. איזה ביטוי מייצג את מספר כרטיסי המבוגר?
+* אופציות:
+  - 100 - x
+  - x - 100
+* פתרון נכון: 100 - x
+* פתרון מלא: לפי עקרון השלם וחלקיו, אם מתוך 100 כרטיסים סך של x הם כרטיסי תלמיד, הרי שנותרו 100 - x כרטיסי מבוגר.
+
+--------------------------------------------------------------------------------
+[תרגיל 10 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: מחיר כרטיס מבוגר הוא 50 שקלים. פתחו סוגריים בביטוי להכנסה מכרטיסי מבוגר: 50(100 - x).
+* אופציות:
+  - 5000 - 50x
+  - 5000 - x
+* פתרון נכון: 5000 - 50x
+* פתרון מלא: לפי חוק הפילוג, כופלים את 50 בכל אחד מאיברי הסוגריים: 50 * 100 = 5000, וכן 50 * (-x) = -50x, ומתקבל 5000 - 50x.
+
+--------------------------------------------------------------------------------
+[תרגיל 10 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: סך כל ההכנסות מהמופע היה 3,600 שקלים. איזו משוואה מייצגת נכונה את הבעיה?
+* אופציות:
+  - 30x + 50(100 - x) = 3600
+  - 30x + 50x = 3600
+  - 30(100 - x) + 50x = 100
+* פתרון נכון: 30x + 50(100 - x) = 3600
+* פתרון מלא: ההכנסה מכרטיסי תלמיד היא 30x, וההכנסה מכרטיסי מבוגר היא 50(100 - x). סכום שתי ההכנסות שווה ל-3,600 ש"ח.
+
+--------------------------------------------------------------------------------
+[תרגיל 10 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: פתרו את המשוואה 30x + 50(100 - x) = 3600. מצאו כמה כרטיסים מכל סוג נמכרו, וודאו שהתוצאות הגיוניות ומקיימות את כל נתוני השאלה.
+* פתרון נכון: נפתח סוגריים: 30x + 5000 - 50x = 3600. נכנס איברים: -20x + 5000 = 3600. נחסר 5000: -20x = -1400. נחלק ב-(20-): x = 70. נמכרו 70 כרטיסי תלמיד ו-30 כרטיסי מבוגר (100 - 70). בדיקת סבירות ואימות: המספרים שלמים וחיוביים; 70 + 30 = 100 כרטיסים; סך הכנסות: 70 * 30 + 30 * 50 = 2100 + 1500 = 3600 ש"ח. התוצאה מאומתת ותקינה.
+* פתרון מלא: נפתח סוגריים: 30x + 5000 - 50x = 3600. נכנס איברים: -20x + 5000 = 3600. נחסר 5000: -20x = -1400. נחלק ב-(20-): x = 70. נמכרו 70 כרטיסי תלמיד ו-30 כרטיסי מבוגר (100 - 70). בדיקת סבירות ואימות: המספרים שלמים וחיוביים; 70 + 30 = 100 כרטיסים; סך הכנסות: 70 * 30 + 30 * 50 = 2100 + 1500 = 3600 ש"ח. התוצאה מאומתת ותקינה.

@@ -1,0 +1,77 @@
+{
+  "verdicts": [
+    {
+      "exerciseNumber": 1,
+      "passed": true,
+      "summary": "התרגיל מצוין, בנוי בהדרגתיות ברורה ועונה במדויק על תכנית המתכנן. השרטוט הגרפי מדויק לחלוטין מבחינה מתמטית (כולל קנה המידה ומיקום הנקודות), והשאלות מאפשרות מענה ישיר וממוקד ללא עמימות.",
+      "findings": []
+    },
+    {
+      "exerciseNumber": 2,
+      "passed": true,
+      "summary": "התרגיל בהיר, מדויק ופדגוגי. השרטוט הגרפי נבנה בדיוק מתמטי מוקפד לפי קנה המידה של הצירים, והסעיפים מובילים בצורה ברורה להשגת מטרות התכנון.",
+      "findings": []
+    },
+    {
+      "exerciseNumber": 3,
+      "passed": true,
+      "summary": "התרגיל מתוכנן ומבוצע ברמה גבוהה מאוד. השרטוט תואם היטב את נתוני הפתיחה, שלבי הפיגום מובילים את התלמיד/ה בצורה ברורה ומדויקת מהבנת ההבדל בין נקודה כללית לנקודת חיתוך ועד ליישום מלא ועצמאי בסעיף ד', ללא שגיאות מתמטיות או פערי ניסוח.",
+      "findings": []
+    },
+    {
+      "exerciseNumber": 4,
+      "passed": true,
+      "summary": "",
+      "findings": []
+    },
+    {
+      "exerciseNumber": 5,
+      "passed": true,
+      "summary": "",
+      "findings": []
+    },
+    {
+      "exerciseNumber": 6,
+      "passed": true,
+      "summary": "",
+      "findings": []
+    },
+    {
+      "exerciseNumber": 7,
+      "passed": true,
+      "summary": "",
+      "findings": []
+    },
+    {
+      "exerciseNumber": 8,
+      "passed": true,
+      "summary": "",
+      "findings": []
+    },
+    {
+      "exerciseNumber": 9,
+      "passed": true,
+      "summary": "",
+      "findings": []
+    },
+    {
+      "exerciseNumber": 10,
+      "passed": true,
+      "summary": "התרגיל מצוין, בנוי בהדרגתיות מעולה ומיישם באופן מדויק ומלא את תכנית המתכנן. שלבי החישוב ברורים לתלמיד/ה, והשרטוט מייצג ישר אמין בעל שיפוע קבוע.",
+      "findings": [
+        {
+          "severity": "LOW",
+          "sectionLetter": "exercise",
+          "kind": "content-issue",
+          "issue": "בטקסט הפתיחה נפלה תקלדת: נכתב 'שלוש נקונות נתונות' במקום 'שלוש נקודות נתונות'.",
+          "suggestedFix": "לתקן את המילה 'נקונות' ל-'נקודות'."
+        }
+      ]
+    }
+  ],
+  "flaggedExerciseNumbers": [],
+  "totalCritical": 0,
+  "totalHigh": 0,
+  "totalMedium": 0,
+  "totalLow": 1
+}

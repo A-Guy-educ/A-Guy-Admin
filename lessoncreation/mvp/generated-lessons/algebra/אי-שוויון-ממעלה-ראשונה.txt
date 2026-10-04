@@ -1,0 +1,1195 @@
+================================================================================
+תרגיל 1 – מנחה: הבנה אינטואיטיבית שאי-שוויון מתנהג כמו מאזניים שאינם מאוזנים
+================================================================================
+לפניכם מאזניים שאינם מאוזנים. המאזניים ממחישים מצב של אי-שוויון.
+
+  <svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+    <!-- בסיס ועמוד המאזניים -->
+    <rect x="150" y="280" width="100" height="10" fill="#333" rx="3"/>
+    <polygon points="190,280 210,280 205,100 195,100" fill="#666"/>
+  
+    <!-- זרוע המאזניים (נוטה שמאלה) -->
+    <line x1="100" y1="150" x2="300" y2="50" stroke="#444" stroke-width="8" stroke-linecap="round"/>
+  
+    <!-- ציר מרכזי -->
+    <circle cx="200" cy="100" r="7" fill="gold" stroke="#333" stroke-width="2"/>
+  
+    <!-- חוטי הכף השמאלית -->
+    <line x1="100" y1="150" x2="60" y2="220" stroke="#888" stroke-width="2"/>
+    <line x1="100" y1="150" x2="140" y2="220" stroke="#888" stroke-width="2"/>
+    <circle cx="100" cy="150" r="4" fill="#555"/>
+  
+    <!-- חוטי הכף הימנית -->
+    <line x1="300" y1="50" x2="260" y2="120" stroke="#888" stroke-width="2"/>
+    <line x1="300" y1="50" x2="340" y2="120" stroke="#888" stroke-width="2"/>
+    <circle cx="300" cy="50" r="4" fill="#555"/>
+  
+    <!-- כף שמאלית -->
+    <path d="M 60 220 Q 100 245 140 220 Z" fill="#ccc" stroke="#999" stroke-width="2"/>
+  
+    <!-- כף ימנית -->
+    <path d="M 260 120 Q 300 145 340 120 Z" fill="#ccc" stroke="#999" stroke-width="2"/>
+  
+    <!-- משקולות על הכף השמאלית -->
+    <!-- משקולת x -->
+    <rect x="70" y="185" width="28" height="35" fill="#ff6b6b" stroke="#333" stroke-width="1.5" rx="3"/>
+    <text x="84" y="208" font-family="sans-serif" font-size="16" font-weight="bold" text-anchor="middle" fill="white">x</text>
+  
+    <!-- משקולת 2 ק"ג -->
+    <rect x="102" y="185" width="32" height="35" fill="#4dabf7" stroke="#333" stroke-width="1.5" rx="3"/>
+    <text x="118" y="202" font-family="sans-serif" font-size="14" font-weight="bold" text-anchor="middle" fill="white">2</text>
+    <text x="118" y="215" font-family="sans-serif" font-size="11" font-weight="bold" text-anchor="middle" fill="white">ק"ג</text>
+  
+    <!-- משקולת על הכף הימנית -->
+    <!-- משקולת 5 ק"ג -->
+    <rect x="275" y="75" width="50" height="45" fill="#51cf66" stroke="#333" stroke-width="1.5" rx="4"/>
+    <text x="300" y="98" font-family="sans-serif" font-size="18" font-weight="bold" text-anchor="middle" fill="white">5</text>
+    <text x="300" y="114" font-family="sans-serif" font-size="13" font-weight="bold" text-anchor="middle" fill="white">ק"ג</text>
+  </svg>
+
+<svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+    <!-- בסיס ועמוד המאזניים -->
+    <rect x="150" y="280" width="100" height="10" fill="#333" rx="3"/>
+    <polygon points="190,280 210,280 205,100 195,100" fill="#666"/>
+  
+    <!-- זרוע המאזניים (נוטה שמאלה) -->
+    <line x1="100" y1="150" x2="300" y2="50" stroke="#444" stroke-width="8" stroke-linecap="round"/>
+  
+    <!-- ציר מרכזי -->
+    <circle cx="200" cy="100" r="7" fill="gold" stroke="#333" stroke-width="2"/>
+  
+    <!-- חוטי הכף השמאלית -->
+    <line x1="100" y1="150" x2="60" y2="220" stroke="#888" stroke-width="2"/>
+    <line x1="100" y1="150" x2="140" y2="220" stroke="#888" stroke-width="2"/>
+    <circle cx="100" cy="150" r="4" fill="#555"/>
+  
+    <!-- חוטי הכף הימנית -->
+    <line x1="300" y1="50" x2="260" y2="120" stroke="#888" stroke-width="2"/>
+    <line x1="300" y1="50" x2="340" y2="120" stroke="#888" stroke-width="2"/>
+    <circle cx="300" cy="50" r="4" fill="#555"/>
+  
+    <!-- כף שמאלית -->
+    <path d="M 60 220 Q 100 245 140 220 Z" fill="#ccc" stroke="#999" stroke-width="2"/>
+  
+    <!-- כף ימנית -->
+    <path d="M 260 120 Q 300 145 340 120 Z" fill="#ccc" stroke="#999" stroke-width="2"/>
+  
+    <!-- משקולות על הכף השמאלית -->
+    <!-- משקולת x -->
+    <rect x="70" y="185" width="28" height="35" fill="#ff6b6b" stroke="#333" stroke-width="1.5" rx="3"/>
+    <text x="84" y="208" font-family="sans-serif" font-size="16" font-weight="bold" text-anchor="middle" fill="white">x</text>
+  
+    <!-- משקולת 2 ק"ג -->
+    <rect x="102" y="185" width="32" height="35" fill="#4dabf7" stroke="#333" stroke-width="1.5" rx="3"/>
+    <text x="118" y="202" font-family="sans-serif" font-size="14" font-weight="bold" text-anchor="middle" fill="white">2</text>
+    <text x="118" y="215" font-family="sans-serif" font-size="11" font-weight="bold" text-anchor="middle" fill="white">ק"ג</text>
+  
+    <!-- משקולת על הכף הימנית -->
+    <!-- משקולת 5 ק"ג -->
+    <rect x="275" y="75" width="50" height="45" fill="#51cf66" stroke="#333" stroke-width="1.5" rx="4"/>
+    <text x="300" y="98" font-family="sans-serif" font-size="18" font-weight="bold" text-anchor="middle" fill="white">5</text>
+    <text x="300" y="114" font-family="sans-serif" font-size="13" font-weight="bold" text-anchor="middle" fill="white">ק"ג</text>
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 1 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: לפי מצב המאזניים בשרטוט, איזה צד כבד יותר?
+* אופציות:
+  - צד שמאל
+  - צד ימין
+* פתרון נכון: צד שמאל
+* פתרון מלא: במאזניים, הצד הכבד יותר נוטה כלפי מטה. מכיוון שצד שמאל נמוך יותר, הוא הצד הכבד יותר.
+
+--------------------------------------------------------------------------------
+[תרגיל 1 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: איזה סימן מתמטי מתאים לתיאור היחס בין המשקל בצד שמאל למשקל בצד ימין?
+* אופציות:
+  - > (גדול מ-)
+  - < (קטן מ-)
+* פתרון נכון: > (גדול מ-)
+* פתרון מלא: מכיוון שצד שמאל כבד יותר, המשקל בו גדול יותר. לכן נשתמש בסימן > כדי לומר ש- x + 2 גדול מ- 5.
+
+--------------------------------------------------------------------------------
+[תרגיל 1 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: אם נוסיף משקולת של 1 ק"ג גם לצד שמאל וגם לצד ימין, מה יקרה למאזניים?
+* אופציות:
+  - המאזניים יתאזנו.
+  - צד שמאל יישאר כבד יותר וייטה מטה.
+  - צד ימין יהפוך לכבד יותר.
+* פתרון נכון: צד שמאל יישאר כבד יותר וייטה מטה.
+* פתרון מלא: הוספת משקל זהה לשני הצדדים אינה משנה את הפער ביניהם. הצד שהיה כבד יותר יישאר כבד יותר.
+
+--------------------------------------------------------------------------------
+[תרגיל 1 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: הציבו במקום המשקולת x משקולת של 1 ק"ג. קבעו איזה צד יהיה כבד יותר במצב החדש.
+* פתרון נכון: אם נציב x = 1, המשקל בצד שמאל יהיה 1 + 2 = 3 ק"ג. המשקל בצד ימין הוא 5 ק"ג. במצב זה 5 גדול מ-3, ולכן צד ימין יהיה כבד יותר והמאזניים ייטו ימינה. מכאן אנו מבינים שלא כל ערך של x שומר על אי-השוויון המקורי.
+* פתרון מלא: אם נציב x = 1, המשקל בצד שמאל יהיה 1 + 2 = 3 ק"ג. המשקל בצד ימין הוא 5 ק"ג. במצב זה 5 גדול מ-3, ולכן צד ימין יהיה כבד יותר והמאזניים ייטו ימינה. מכאן אנו מבינים שלא כל ערך של x שומר על אי-השוויון המקורי.
+
+================================================================================
+תרגיל 2 – מנחה: ייצוג קבוצת פתרונות של אי-שוויון על ציר המספרים והבחנה בין…
+================================================================================
+נלמד כיצד לייצג קבוצה של פתרונות לאי-שוויון על גבי ציר המספרים, ואיך לסמן האם קצה התחום נכלל בפתרון או לא.
+
+  <svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="arrowBlack" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+        <path d="M 0 0 L 10 5 L 0 10 z" fill="black" />
+      </marker>
+      <marker id="arrowBlue" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+        <path d="M 0 0 L 10 5 L 0 10 z" fill="blue" />
+      </marker>
+      <marker id="arrowRed" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+        <path d="M 0 0 L 10 5 L 0 10 z" fill="red" />
+      </marker>
+    </defs>
+
+    <!-- ציר עליון -->
+    <line x1="30" y1="120" x2="370" y2="120" stroke="black" stroke-width="2" marker-end="url(#arrowBlack)"/>
+  
+    <!-- שנתות ומספרים - ציר עליון -->
+    <line x1="60" y1="115" x2="60" y2="125" stroke="black" stroke-width="2"/>
+    <text x="60" y="145" font-family="sans-serif" font-size="14" text-anchor="middle">0</text>
+  
+    <line x1="100" y1="115" x2="100" y2="125" stroke="black" stroke-width="2"/>
+    <text x="100" y="145" font-family="sans-serif" font-size="14" text-anchor="middle">1</text>
+  
+    <line x1="140" y1="115" x2="140" y2="125" stroke="black" stroke-width="2"/>
+    <text x="140" y="145" font-family="sans-serif" font-size="14" text-anchor="middle">2</text>
+  
+    <line x1="180" y1="115" x2="180" y2="125" stroke="black" stroke-width="2"/>
+    <text x="180" y="145" font-family="sans-serif" font-size="14" text-anchor="middle">3</text>
+  
+    <line x1="220" y1="115" x2="220" y2="125" stroke="black" stroke-width="2"/>
+    <text x="220" y="145" font-family="sans-serif" font-size="14" text-anchor="middle">4</text>
+  
+    <line x1="260" y1="115" x2="260" y2="125" stroke="black" stroke-width="2"/>
+    <text x="260" y="145" font-family="sans-serif" font-size="14" text-anchor="middle">5</text>
+  
+    <line x1="300" y1="115" x2="300" y2="125" stroke="black" stroke-width="2"/>
+    <text x="300" y="145" font-family="sans-serif" font-size="14" text-anchor="middle">6</text>
+  
+    <line x1="340" y1="115" x2="340" y2="125" stroke="black" stroke-width="2"/>
+    <text x="340" y="145" font-family="sans-serif" font-size="14" text-anchor="middle">7</text>
+
+    <!-- ייצוג אי-שוויון עליון (מעל 2, ימינה, ריק) -->
+    <line x1="146" y1="90" x2="360" y2="90" stroke="blue" stroke-width="3" marker-end="url(#arrowBlue)"/>
+    <circle cx="140" cy="90" r="6" fill="white" stroke="blue" stroke-width="2"/>
+
+    <!-- ציר תחתון -->
+    <line x1="30" y1="240" x2="370" y2="240" stroke="black" stroke-width="2" marker-end="url(#arrowBlack)"/>
+  
+    <!-- שנתות ומספרים - ציר תחתון -->
+    <line x1="60" y1="235" x2="60" y2="245" stroke="black" stroke-width="2"/>
+    <text x="60" y="265" font-family="sans-serif" font-size="14" text-anchor="middle">0</text>
+  
+    <line x1="100" y1="235" x2="100" y2="245" stroke="black" stroke-width="2"/>
+    <text x="100" y="265" font-family="sans-serif" font-size="14" text-anchor="middle">1</text>
+  
+    <line x1="140" y1="235" x2="140" y2="245" stroke="black" stroke-width="2"/>
+    <text x="140" y="265" font-family="sans-serif" font-size="14" text-anchor="middle">2</text>
+  
+    <line x1="180" y1="235" x2="180" y2="245" stroke="black" stroke-width="2"/>
+    <text x="180" y="265" font-family="sans-serif" font-size="14" text-anchor="middle">3</text>
+  
+    <line x1="220" y1="235" x2="220" y2="245" stroke="black" stroke-width="2"/>
+    <text x="220" y="265" font-family="sans-serif" font-size="14" text-anchor="middle">4</text>
+  
+    <line x1="260" y1="235" x2="260" y2="245" stroke="black" stroke-width="2"/>
+    <text x="260" y="265" font-family="sans-serif" font-size="14" text-anchor="middle">5</text>
+  
+    <line x1="300" y1="235" x2="300" y2="245" stroke="black" stroke-width="2"/>
+    <text x="300" y="265" font-family="sans-serif" font-size="14" text-anchor="middle">6</text>
+  
+    <line x1="340" y1="235" x2="340" y2="245" stroke="black" stroke-width="2"/>
+    <text x="340" y="265" font-family="sans-serif" font-size="14" text-anchor="middle">7</text>
+
+    <!-- ייצוג אי-שוויון תחתון (מעל 5, שמאלה, מלא) -->
+    <line x1="254" y1="210" x2="40" y2="210" stroke="red" stroke-width="3" marker-end="url(#arrowRed)"/>
+    <circle cx="260" cy="210" r="6" fill="red" stroke="red" stroke-width="2"/>
+  </svg>
+
+<svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="arrowBlack" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+        <path d="M 0 0 L 10 5 L 0 10 z" fill="black" />
+      </marker>
+      <marker id="arrowBlue" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+        <path d="M 0 0 L 10 5 L 0 10 z" fill="blue" />
+      </marker>
+      <marker id="arrowRed" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+        <path d="M 0 0 L 10 5 L 0 10 z" fill="red" />
+      </marker>
+    </defs>
+
+    <!-- ציר עליון -->
+    <line x1="30" y1="120" x2="370" y2="120" stroke="black" stroke-width="2" marker-end="url(#arrowBlack)"/>
+  
+    <!-- שנתות ומספרים - ציר עליון -->
+    <line x1="60" y1="115" x2="60" y2="125" stroke="black" stroke-width="2"/>
+    <text x="60" y="145" font-family="sans-serif" font-size="14" text-anchor="middle">0</text>
+  
+    <line x1="100" y1="115" x2="100" y2="125" stroke="black" stroke-width="2"/>
+    <text x="100" y="145" font-family="sans-serif" font-size="14" text-anchor="middle">1</text>
+  
+    <line x1="140" y1="115" x2="140" y2="125" stroke="black" stroke-width="2"/>
+    <text x="140" y="145" font-family="sans-serif" font-size="14" text-anchor="middle">2</text>
+  
+    <line x1="180" y1="115" x2="180" y2="125" stroke="black" stroke-width="2"/>
+    <text x="180" y="145" font-family="sans-serif" font-size="14" text-anchor="middle">3</text>
+  
+    <line x1="220" y1="115" x2="220" y2="125" stroke="black" stroke-width="2"/>
+    <text x="220" y="145" font-family="sans-serif" font-size="14" text-anchor="middle">4</text>
+  
+    <line x1="260" y1="115" x2="260" y2="125" stroke="black" stroke-width="2"/>
+    <text x="260" y="145" font-family="sans-serif" font-size="14" text-anchor="middle">5</text>
+  
+    <line x1="300" y1="115" x2="300" y2="125" stroke="black" stroke-width="2"/>
+    <text x="300" y="145" font-family="sans-serif" font-size="14" text-anchor="middle">6</text>
+  
+    <line x1="340" y1="115" x2="340" y2="125" stroke="black" stroke-width="2"/>
+    <text x="340" y="145" font-family="sans-serif" font-size="14" text-anchor="middle">7</text>
+
+    <!-- ייצוג אי-שוויון עליון (מעל 2, ימינה, ריק) -->
+    <line x1="146" y1="90" x2="360" y2="90" stroke="blue" stroke-width="3" marker-end="url(#arrowBlue)"/>
+    <circle cx="140" cy="90" r="6" fill="white" stroke="blue" stroke-width="2"/>
+
+    <!-- ציר תחתון -->
+    <line x1="30" y1="240" x2="370" y2="240" stroke="black" stroke-width="2" marker-end="url(#arrowBlack)"/>
+  
+    <!-- שנתות ומספרים - ציר תחתון -->
+    <line x1="60" y1="235" x2="60" y2="245" stroke="black" stroke-width="2"/>
+    <text x="60" y="265" font-family="sans-serif" font-size="14" text-anchor="middle">0</text>
+  
+    <line x1="100" y1="235" x2="100" y2="245" stroke="black" stroke-width="2"/>
+    <text x="100" y="265" font-family="sans-serif" font-size="14" text-anchor="middle">1</text>
+  
+    <line x1="140" y1="235" x2="140" y2="245" stroke="black" stroke-width="2"/>
+    <text x="140" y="265" font-family="sans-serif" font-size="14" text-anchor="middle">2</text>
+  
+    <line x1="180" y1="235" x2="180" y2="245" stroke="black" stroke-width="2"/>
+    <text x="180" y="265" font-family="sans-serif" font-size="14" text-anchor="middle">3</text>
+  
+    <line x1="220" y1="235" x2="220" y2="245" stroke="black" stroke-width="2"/>
+    <text x="220" y="265" font-family="sans-serif" font-size="14" text-anchor="middle">4</text>
+  
+    <line x1="260" y1="235" x2="260" y2="245" stroke="black" stroke-width="2"/>
+    <text x="260" y="265" font-family="sans-serif" font-size="14" text-anchor="middle">5</text>
+  
+    <line x1="300" y1="235" x2="300" y2="245" stroke="black" stroke-width="2"/>
+    <text x="300" y="265" font-family="sans-serif" font-size="14" text-anchor="middle">6</text>
+  
+    <line x1="340" y1="235" x2="340" y2="245" stroke="black" stroke-width="2"/>
+    <text x="340" y="265" font-family="sans-serif" font-size="14" text-anchor="middle">7</text>
+
+    <!-- ייצוג אי-שוויון תחתון (מעל 5, שמאלה, מלא) -->
+    <line x1="254" y1="210" x2="40" y2="210" stroke="red" stroke-width="3" marker-end="url(#arrowRed)"/>
+    <circle cx="260" cy="210" r="6" fill="red" stroke="red" stroke-width="2"/>
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 2 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: התבוננו בציר העליון (עם העיגול הריק). האם המספר 2 עצמו נחשב לחלק מהתחום המסומן?
+* אופציות:
+  - כן, המספר 2 כלול בתחום.
+  - לא, המספר 2 אינו כלול בתחום.
+* פתרון נכון: לא, המספר 2 אינו כלול בתחום.
+* פתרון מלא: מוסכמה מתמטית היא שעיגול ריק מסמן שהמספר בקצה אינו נכלל בתחום הפתרונות. התחום מתחיל מיד אחריו.
+
+--------------------------------------------------------------------------------
+[תרגיל 2 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: התבוננו בציר התחתון (עם העיגול המלא). האם המספר 5 עצמו נחשב לחלק מהתחום המסומן?
+* אופציות:
+  - כן, המספר 5 כלול בתחום.
+  - לא, המספר 5 אינו כלול בתחום.
+* פתרון נכון: כן, המספר 5 כלול בתחום.
+* פתרון מלא: עיגול מלא מסמן שהמספר בקצה נכלל בתוך תחום הפתרונות.
+
+--------------------------------------------------------------------------------
+[תרגיל 2 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: איזה אי-שוויון אלגברי מתאר בדיוק את התחום המסומן בציר התחתון?
+* אופציות:
+  - x < 5
+  - x > 5
+  - x ≤ 5
+* פתרון נכון: x ≤ 5
+* פתרון מלא: החץ פונה שמאלה, כלומר כל המספרים שקטנים מ-5. מכיוון שהעיגול מלא, גם 5 עצמו כלול. לכן הסימן המתאים הוא קטן או שווה (≤).
+
+--------------------------------------------------------------------------------
+[תרגיל 2 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: שרטטו בעצמכם ציר מספרים וסמנו עליו את הפתרון לאי-השוויון x ≥ 3. תארו במילים כיצד נראה השרטוט שלכם.
+* פתרון נכון: השרטוט צריך לכלול ציר מספרים. מעל המספר 3 יש לצייר עיגול מלא (כי מופיע סימן שווה בתוך ה- ≥), וממנו להעביר חץ עבה ימינה (כי x גדול או שווה ל-3).
+* פתרון מלא: השרטוט צריך לכלול ציר מספרים. מעל המספר 3 יש לצייר עיגול מלא (כי מופיע סימן שווה בתוך ה- ≥), וממנו להעביר חץ עבה ימינה (כי x גדול או שווה ל-3).
+
+================================================================================
+תרגיל 3 – מנחה: גילוי שחיבור או חיסור של אותו מספר משני האגפים שומר על…
+================================================================================
+נתבונן שוב במאזניים הנוטים שמאלה, המייצגים את אי-השוויון x + 2 > 5. כעת נבצע פעולה על שני הצדדים.
+
+  <svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+        <polygon points="0 0, 10 3.5, 0 7" fill="red" />
+      </marker>
+    </defs>
+
+    <!-- קרקע -->
+    <line x1="50" y1="280" x2="350" y2="280" stroke="black" stroke-width="2"/>
+
+    <!-- בסיס המאזניים -->
+    <polygon points="180,280 220,280 205,150 195,150" fill="#888" stroke="black" stroke-width="1"/>
+    <circle cx="200" cy="150" r="5" fill="#333"/>
+
+    <!-- מוט המאזניים (נוטה שמאלה) -->
+    <line x1="100" y1="180" x2="300" y2="120" stroke="#333" stroke-width="6" stroke-linecap="round"/>
+
+    <!-- כף שמאלית -->
+    <line x1="100" y1="180" x2="60" y2="240" stroke="#666" stroke-width="1.5"/>
+    <line x1="100" y1="180" x2="140" y2="240" stroke="#666" stroke-width="1.5"/>
+    <polygon points="50,240 150,240 130,255 70,255" fill="#ccc" stroke="black" stroke-width="1"/>
+
+    <!-- כף ימנית -->
+    <line x1="300" y1="120" x2="260" y2="180" stroke="#666" stroke-width="1.5"/>
+    <line x1="300" y1="120" x2="340" y2="180" stroke="#666" stroke-width="1.5"/>
+    <polygon points="250,180 350,180 330,195 270,195" fill="#ccc" stroke="black" stroke-width="1"/>
+
+    <!-- משקולות כף שמאלית -->
+    <!-- משקולת x -->
+    <rect x="65" y="190" width="35" height="50" fill="#4da6ff" stroke="black" stroke-width="1.5" rx="3"/>
+    <text x="82.5" y="220" font-size="18" font-family="sans-serif" font-weight="bold" text-anchor="middle">x</text>
+  
+    <!-- משקולת 2 -->
+    <rect x="105" y="210" width="30" height="30" fill="#ff9933" stroke="black" stroke-width="1.5" rx="3"/>
+    <text x="120" y="231" font-size="16" font-family="sans-serif" font-weight="bold" text-anchor="middle">2</text>
+
+    <!-- משקולות כף ימנית -->
+    <!-- משקולת 5 -->
+    <rect x="275" y="120" width="50" height="60" fill="#66cc66" stroke="black" stroke-width="1.5" rx="3"/>
+    <text x="300" y="156" font-size="20" font-family="sans-serif" font-weight="bold" text-anchor="middle">5</text>
+
+    <!-- חיצים להסרת משקולות -->
+    <!-- חץ שמאלי (הסרת 2 ק"ג) -->
+    <line x1="120" y1="205" x2="120" y2="145" stroke="red" stroke-width="3" marker-end="url(#arrowhead)"/>
+    <text x="130" y="165" font-size="16" font-family="sans-serif" font-weight="bold" fill="red" direction="rtl">-2 ק"ג</text>
+
+    <!-- חץ ימני (הסרת 2 ק"ג מתוך ה-5) -->
+    <line x1="300" y1="115" x2="300" y2="55" stroke="red" stroke-width="3" marker-end="url(#arrowhead)"/>
+    <text x="310" y="75" font-size="16" font-family="sans-serif" font-weight="bold" fill="red" direction="rtl">-2 ק"ג</text>
+  </svg>
+
+<svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+        <polygon points="0 0, 10 3.5, 0 7" fill="red" />
+      </marker>
+    </defs>
+
+    <!-- קרקע -->
+    <line x1="50" y1="280" x2="350" y2="280" stroke="black" stroke-width="2"/>
+
+    <!-- בסיס המאזניים -->
+    <polygon points="180,280 220,280 205,150 195,150" fill="#888" stroke="black" stroke-width="1"/>
+    <circle cx="200" cy="150" r="5" fill="#333"/>
+
+    <!-- מוט המאזניים (נוטה שמאלה) -->
+    <line x1="100" y1="180" x2="300" y2="120" stroke="#333" stroke-width="6" stroke-linecap="round"/>
+
+    <!-- כף שמאלית -->
+    <line x1="100" y1="180" x2="60" y2="240" stroke="#666" stroke-width="1.5"/>
+    <line x1="100" y1="180" x2="140" y2="240" stroke="#666" stroke-width="1.5"/>
+    <polygon points="50,240 150,240 130,255 70,255" fill="#ccc" stroke="black" stroke-width="1"/>
+
+    <!-- כף ימנית -->
+    <line x1="300" y1="120" x2="260" y2="180" stroke="#666" stroke-width="1.5"/>
+    <line x1="300" y1="120" x2="340" y2="180" stroke="#666" stroke-width="1.5"/>
+    <polygon points="250,180 350,180 330,195 270,195" fill="#ccc" stroke="black" stroke-width="1"/>
+
+    <!-- משקולות כף שמאלית -->
+    <!-- משקולת x -->
+    <rect x="65" y="190" width="35" height="50" fill="#4da6ff" stroke="black" stroke-width="1.5" rx="3"/>
+    <text x="82.5" y="220" font-size="18" font-family="sans-serif" font-weight="bold" text-anchor="middle">x</text>
+  
+    <!-- משקולת 2 -->
+    <rect x="105" y="210" width="30" height="30" fill="#ff9933" stroke="black" stroke-width="1.5" rx="3"/>
+    <text x="120" y="231" font-size="16" font-family="sans-serif" font-weight="bold" text-anchor="middle">2</text>
+
+    <!-- משקולות כף ימנית -->
+    <!-- משקולת 5 -->
+    <rect x="275" y="120" width="50" height="60" fill="#66cc66" stroke="black" stroke-width="1.5" rx="3"/>
+    <text x="300" y="156" font-size="20" font-family="sans-serif" font-weight="bold" text-anchor="middle">5</text>
+
+    <!-- חיצים להסרת משקולות -->
+    <!-- חץ שמאלי (הסרת 2 ק"ג) -->
+    <line x1="120" y1="205" x2="120" y2="145" stroke="red" stroke-width="3" marker-end="url(#arrowhead)"/>
+    <text x="130" y="165" font-size="16" font-family="sans-serif" font-weight="bold" fill="red" direction="rtl">-2 ק"ג</text>
+
+    <!-- חץ ימני (הסרת 2 ק"ג מתוך ה-5) -->
+    <line x1="300" y1="115" x2="300" y2="55" stroke="red" stroke-width="3" marker-end="url(#arrowhead)"/>
+    <text x="310" y="75" font-size="16" font-family="sans-serif" font-weight="bold" fill="red" direction="rtl">-2 ק"ג</text>
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 3 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: אם נסיר 2 ק"ג משני צידי המאזניים בו-זמנית, האם צד שמאל יישאר הכבד יותר?
+* אופציות:
+  - כן, צד שמאל יישאר כבד יותר.
+  - לא, המאזניים יתאזנו או ייטו ימינה.
+* פתרון נכון: כן, צד שמאל יישאר כבד יותר.
+* פתרון מלא: חיסור כמות שווה משני האגפים שומר על יחס הגדלים המקורי. הפער בין הצדדים נשמר, ולכן צד שמאל נשאר כבד יותר.
+
+--------------------------------------------------------------------------------
+[תרגיל 3 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: איזה אי-שוויון יתקבל לאחר הסרת ה-2 ק"ג משני האגפים?
+* אופציות:
+  - x > 3
+  - x < 3
+* פתרון נכון: x > 3
+* פתרון מלא: בצד שמאל נשאר x. בצד ימין נשאר 5 - 2 = 3. מכיוון שצד שמאל עדיין כבד יותר, מתקבל אי-השוויון x > 3.
+
+--------------------------------------------------------------------------------
+[תרגיל 3 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: בדומה לכך, מהו הפתרון של אי-השוויון x - 3 < 7?
+* אופציות:
+  - x < 4
+  - x < 10
+  - x > 10
+* פתרון נכון: x < 10
+* פתרון מלא: כדי לבודד את x, נוסיף 3 לשני האגפים (פעולה השקולה להוספת משקל שווה לשני הצדדים). 7 + 3 = 10, ולכן הפתרון הוא x < 10.
+
+--------------------------------------------------------------------------------
+[תרגיל 3 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: פתרו את אי-השוויון x + 4 > 10. לאחר מכן, בחרו ורשמו מספר אחד שמהווה פתרון לאי-השוויון, ומספר אחד שאינו פתרון.
+* פתרון נכון: נחסר 4 משני האגפים ונקבל x > 6. מספר שמהווה פתרון לדוגמה: 7 (או כל מספר שגדול מ-6). מספר שאינו פתרון לדוגמה: 5 (או כל מספר שקטן או שווה ל-6).
+* פתרון מלא: נחסר 4 משני האגפים ונקבל x > 6. מספר שמהווה פתרון לדוגמה: 7 (או כל מספר שגדול מ-6). מספר שאינו פתרון לדוגמה: 5 (או כל מספר שקטן או שווה ל-6).
+
+================================================================================
+תרגיל 4 – בסיס: הבנה שכפל או חילוק במספר חיובי שומר על כיוון אי-השוויון
+================================================================================
+נבדוק מה קורה לאי-שוויון כאשר אנו מחלקים או כופלים את שני האגפים במספר חיובי.
+
+  <svg width="500" height="350" xmlns="http://www.w3.org/2000/svg">
+    <!-- קווים מקווקוים מחלקים ל-3 קבוצות -->
+    <line x1="20" y1="115" x2="480" y2="115" stroke="gray" stroke-width="3" stroke-dasharray="8,8"/>
+    <line x1="20" y1="235" x2="480" y2="235" stroke="gray" stroke-width="3" stroke-dasharray="8,8"/>
+
+    <!-- קופסאות (צד שמאל) -->
+    <!-- קבוצה 1 -->
+    <rect x="60" y="40" width="50" height="50" fill="#ADD8E6" stroke="black" stroke-width="2"/>
+    <text x="85" y="73" font-size="24" font-family="Arial" text-anchor="middle" font-weight="bold">x</text>
+
+    <!-- קבוצה 2 -->
+    <rect x="60" y="160" width="50" height="50" fill="#ADD8E6" stroke="black" stroke-width="2"/>
+    <text x="85" y="193" font-size="24" font-family="Arial" text-anchor="middle" font-weight="bold">x</text>
+
+    <!-- קבוצה 3 -->
+    <rect x="60" y="280" width="50" height="50" fill="#ADD8E6" stroke="black" stroke-width="2"/>
+    <text x="85" y="313" font-size="24" font-family="Arial" text-anchor="middle" font-weight="bold">x</text>
+
+    <!-- סימן קטן מ- (אמצע) -->
+    <text x="220" y="195" font-size="60" font-family="Arial" text-anchor="middle" font-weight="bold">&lt;</text>
+
+    <!-- כדורים (צד ימין) -->
+    <!-- קבוצה 1 -->
+    <circle cx="320" cy="65" r="12" fill="#FF7F50" stroke="black" stroke-width="1"/>
+    <circle cx="360" cy="65" r="12" fill="#FF7F50" stroke="black" stroke-width="1"/>
+    <circle cx="400" cy="65" r="12" fill="#FF7F50" stroke="black" stroke-width="1"/>
+    <circle cx="440" cy="65" r="12" fill="#FF7F50" stroke="black" stroke-width="1"/>
+
+    <!-- קבוצה 2 -->
+    <circle cx="320" cy="185" r="12" fill="#FF7F50" stroke="black" stroke-width="1"/>
+    <circle cx="360" cy="185" r="12" fill="#FF7F50" stroke="black" stroke-width="1"/>
+    <circle cx="400" cy="185" r="12" fill="#FF7F50" stroke="black" stroke-width="1"/>
+    <circle cx="440" cy="185" r="12" fill="#FF7F50" stroke="black" stroke-width="1"/>
+
+    <!-- קבוצה 3 -->
+    <circle cx="320" cy="305" r="12" fill="#FF7F50" stroke="black" stroke-width="1"/>
+    <circle cx="360" cy="305" r="12" fill="#FF7F50" stroke="black" stroke-width="1"/>
+    <circle cx="400" cy="305" r="12" fill="#FF7F50" stroke="black" stroke-width="1"/>
+    <circle cx="440" cy="305" r="12" fill="#FF7F50" stroke="black" stroke-width="1"/>
+  </svg>
+
+<svg width="500" height="350" xmlns="http://www.w3.org/2000/svg">
+    <!-- קווים מקווקוים מחלקים ל-3 קבוצות -->
+    <line x1="20" y1="115" x2="480" y2="115" stroke="gray" stroke-width="3" stroke-dasharray="8,8"/>
+    <line x1="20" y1="235" x2="480" y2="235" stroke="gray" stroke-width="3" stroke-dasharray="8,8"/>
+
+    <!-- קופסאות (צד שמאל) -->
+    <!-- קבוצה 1 -->
+    <rect x="60" y="40" width="50" height="50" fill="#ADD8E6" stroke="black" stroke-width="2"/>
+    <text x="85" y="73" font-size="24" font-family="Arial" text-anchor="middle" font-weight="bold">x</text>
+
+    <!-- קבוצה 2 -->
+    <rect x="60" y="160" width="50" height="50" fill="#ADD8E6" stroke="black" stroke-width="2"/>
+    <text x="85" y="193" font-size="24" font-family="Arial" text-anchor="middle" font-weight="bold">x</text>
+
+    <!-- קבוצה 3 -->
+    <rect x="60" y="280" width="50" height="50" fill="#ADD8E6" stroke="black" stroke-width="2"/>
+    <text x="85" y="313" font-size="24" font-family="Arial" text-anchor="middle" font-weight="bold">x</text>
+
+    <!-- סימן קטן מ- (אמצע) -->
+    <text x="220" y="195" font-size="60" font-family="Arial" text-anchor="middle" font-weight="bold">&lt;</text>
+
+    <!-- כדורים (צד ימין) -->
+    <!-- קבוצה 1 -->
+    <circle cx="320" cy="65" r="12" fill="#FF7F50" stroke="black" stroke-width="1"/>
+    <circle cx="360" cy="65" r="12" fill="#FF7F50" stroke="black" stroke-width="1"/>
+    <circle cx="400" cy="65" r="12" fill="#FF7F50" stroke="black" stroke-width="1"/>
+    <circle cx="440" cy="65" r="12" fill="#FF7F50" stroke="black" stroke-width="1"/>
+
+    <!-- קבוצה 2 -->
+    <circle cx="320" cy="185" r="12" fill="#FF7F50" stroke="black" stroke-width="1"/>
+    <circle cx="360" cy="185" r="12" fill="#FF7F50" stroke="black" stroke-width="1"/>
+    <circle cx="400" cy="185" r="12" fill="#FF7F50" stroke="black" stroke-width="1"/>
+    <circle cx="440" cy="185" r="12" fill="#FF7F50" stroke="black" stroke-width="1"/>
+
+    <!-- קבוצה 3 -->
+    <circle cx="320" cy="305" r="12" fill="#FF7F50" stroke="black" stroke-width="1"/>
+    <circle cx="360" cy="305" r="12" fill="#FF7F50" stroke="black" stroke-width="1"/>
+    <circle cx="400" cy="305" r="12" fill="#FF7F50" stroke="black" stroke-width="1"/>
+    <circle cx="440" cy="305" r="12" fill="#FF7F50" stroke="black" stroke-width="1"/>
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 4 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: לפי השרטוט, 3 קופסאות קטנות מ-12 כדורים. אם נחלק את הכמות בשני הצדדים ב-3, האם צד ימין עדיין יהיה גדול יותר?
+* אופציות:
+  - כן, צד ימין יישאר גדול יותר.
+  - לא, צד שמאל יהיה גדול יותר.
+* פתרון נכון: כן, צד ימין יישאר גדול יותר.
+* פתרון מלא: חילוק שני האגפים במספר חיובי שומר על יחס הגדלים, ולכן כיוון אי-השוויון אינו משתנה.
+
+--------------------------------------------------------------------------------
+[תרגיל 4 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: איזה אי-שוויון מתקבל עבור קופסה אחת (x)?
+* אופציות:
+  - x < 4
+  - x > 4
+* פתרון נכון: x < 4
+* פתרון מלא: 3x < 12. נחלק את שני האגפים ב-3 ונקבל x < 4.
+
+--------------------------------------------------------------------------------
+[תרגיל 4 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: מהו הפתרון של אי-השוויון 4x > 20?
+* אופציות:
+  - x < 5
+  - x > 5
+  - x > 16
+* פתרון נכון: x > 5
+* פתרון מלא: נחלק את שני האגפים במקדם של x, שהוא 4 (מספר חיובי, לכן הסימן נשאר). 20 לחלק ל-4 שווה 5, ולכן x > 5.
+
+--------------------------------------------------------------------------------
+[תרגיל 4 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: פתרו את אי-השוויון 2x < 11 וייצגו את הפתרון על ציר המספרים (תארו את השרטוט במילים).
+* פתרון נכון: נחלק ב-2 ונקבל x < 5.5. השרטוט יכלול ציר מספרים, מעל המספר 5.5 יהיה עיגול ריק (כי אין שוויון), וחץ עבה הפונה שמאלה.
+* פתרון מלא: נחלק ב-2 ונקבל x < 5.5. השרטוט יכלול ציר מספרים, מעל המספר 5.5 יהיה עיגול ריק (כי אין שוויון), וחץ עבה הפונה שמאלה.
+
+================================================================================
+תרגיל 5 – בסיס: גילוי שכפל או חילוק במספר שלילי הופך את כיוון אי-השוויון
+================================================================================
+כעת נגלה מה קורה לאי-שוויון כאשר כופלים או מחלקים את שני האגפים במספר שלילי.
+
+  <svg width="500" height="250" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="arrow-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+        <path d="M 0 0 L 10 5 L 0 10 z" fill="blue" />
+      </marker>
+      <marker id="arrow-red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+        <path d="M 0 0 L 10 5 L 0 10 z" fill="red" />
+      </marker>
+      <marker id="arrow-black" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+        <path d="M 0 0 L 10 5 L 0 10 z" fill="black" />
+      </marker>
+    </defs>
+
+    <!-- ציר מספרים -->
+    <line x1="40" y1="200" x2="460" y2="200" stroke="black" stroke-width="2" marker-end="url(#arrow-black)" />
+
+    <!-- שנתות ומספרים -->
+    <line x1="250" y1="195" x2="250" y2="205" stroke="black" stroke-width="2" />
+    <text x="250" y="225" font-size="16" text-anchor="middle" font-family="sans-serif">0</text>
+
+    <line x1="310" y1="195" x2="310" y2="205" stroke="black" stroke-width="2" />
+    <text x="310" y="225" font-size="16" text-anchor="middle" font-family="sans-serif">2</text>
+
+    <line x1="400" y1="195" x2="400" y2="205" stroke="black" stroke-width="2" />
+    <text x="400" y="225" font-size="16" text-anchor="middle" font-family="sans-serif">5</text>
+
+    <line x1="190" y1="195" x2="190" y2="205" stroke="black" stroke-width="2" />
+    <text x="190" y="225" font-size="16" text-anchor="middle" font-family="sans-serif">-2</text>
+
+    <line x1="100" y1="195" x2="100" y2="205" stroke="black" stroke-width="2" />
+    <text x="100" y="225" font-size="16" text-anchor="middle" font-family="sans-serif">-5</text>
+
+    <!-- חצים קשתיים לשיקוף -->
+    <!-- מ-2 למינוס 2 -->
+    <path d="M 310 185 Q 250 110 190 185" fill="none" stroke="blue" stroke-width="2" marker-end="url(#arrow-blue)" />
+    <text x="250" y="100" font-size="14" fill="blue" text-anchor="middle" font-family="sans-serif" direction="ltr">×(-1)</text>
+
+    <!-- מ-5 למינוס 5 -->
+    <path d="M 400 185 Q 250 30 100 185" fill="none" stroke="red" stroke-width="2" marker-end="url(#arrow-red)" />
+    <text x="250" y="20" font-size="14" fill="red" text-anchor="middle" font-family="sans-serif" direction="ltr">×(-1)</text>
+  </svg>
+
+<svg width="500" height="250" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="arrow-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+        <path d="M 0 0 L 10 5 L 0 10 z" fill="blue" />
+      </marker>
+      <marker id="arrow-red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+        <path d="M 0 0 L 10 5 L 0 10 z" fill="red" />
+      </marker>
+      <marker id="arrow-black" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+        <path d="M 0 0 L 10 5 L 0 10 z" fill="black" />
+      </marker>
+    </defs>
+
+    <!-- ציר מספרים -->
+    <line x1="40" y1="200" x2="460" y2="200" stroke="black" stroke-width="2" marker-end="url(#arrow-black)" />
+
+    <!-- שנתות ומספרים -->
+    <line x1="250" y1="195" x2="250" y2="205" stroke="black" stroke-width="2" />
+    <text x="250" y="225" font-size="16" text-anchor="middle" font-family="sans-serif">0</text>
+
+    <line x1="310" y1="195" x2="310" y2="205" stroke="black" stroke-width="2" />
+    <text x="310" y="225" font-size="16" text-anchor="middle" font-family="sans-serif">2</text>
+
+    <line x1="400" y1="195" x2="400" y2="205" stroke="black" stroke-width="2" />
+    <text x="400" y="225" font-size="16" text-anchor="middle" font-family="sans-serif">5</text>
+
+    <line x1="190" y1="195" x2="190" y2="205" stroke="black" stroke-width="2" />
+    <text x="190" y="225" font-size="16" text-anchor="middle" font-family="sans-serif">-2</text>
+
+    <line x1="100" y1="195" x2="100" y2="205" stroke="black" stroke-width="2" />
+    <text x="100" y="225" font-size="16" text-anchor="middle" font-family="sans-serif">-5</text>
+
+    <!-- חצים קשתיים לשיקוף -->
+    <!-- מ-2 למינוס 2 -->
+    <path d="M 310 185 Q 250 110 190 185" fill="none" stroke="blue" stroke-width="2" marker-end="url(#arrow-blue)" />
+    <text x="250" y="100" font-size="14" fill="blue" text-anchor="middle" font-family="sans-serif" direction="ltr">×(-1)</text>
+
+    <!-- מ-5 למינוס 5 -->
+    <path d="M 400 185 Q 250 30 100 185" fill="none" stroke="red" stroke-width="2" marker-end="url(#arrow-red)" />
+    <text x="250" y="20" font-size="14" fill="red" text-anchor="middle" font-family="sans-serif" direction="ltr">×(-1)</text>
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 5 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: התבוננו בצד החיובי של הציר. מי גדול יותר: 2 או 5?
+* אופציות:
+  - 5 גדול מ-2.
+  - 2 גדול מ-5.
+* פתרון נכון: 5 גדול מ-2.
+* פתרון מלא: במספרים חיוביים, 5 נמצא ימינה יותר על ציר המספרים ולכן הוא הגדול יותר (2 < 5).
+
+--------------------------------------------------------------------------------
+[תרגיל 5 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: לאחר השיקוף (כפל במינוס 1), התקבלו המספרים מינוס 2 ומינוס 5. מי מהם גדול יותר?
+* אופציות:
+  - מינוס 5 גדול יותר.
+  - מינוס 2 גדול יותר.
+* פתרון נכון: מינוס 2 גדול יותר.
+* פתרון מלא: בצד השלילי של ציר המספרים, המספר שקרוב יותר לאפס נמצא ימינה יותר, ולכן הוא הגדול יותר. לכן מינוס 2 גדול ממינוס 5.
+
+--------------------------------------------------------------------------------
+[תרגיל 5 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: מה קרה לסימן אי-השוויון כשעברנו מהפסוק 2 < 5 לפסוק המעורב עם המספרים השליליים?
+* אופציות:
+  - סימן אי-השוויון נשאר באותו כיוון.
+  - סימן אי-השוויון התהפך.
+  - אי-השוויון הפך לשוויון.
+* פתרון נכון: סימן אי-השוויון התהפך.
+* פתרון מלא: התחלנו עם 2 < 5. כשכפלנו במינוס 1 קיבלנו מינוס 2 ומינוס 5. מכיוון שמינוס 2 גדול ממינוס 5, הפסוק הנכון הוא מינוס 2 > מינוס 5. הסימן התהפך מ- < ל- >.
+
+--------------------------------------------------------------------------------
+[תרגיל 5 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: בחרו שני מספרים חיוביים אחרים, כיתבו ביניהם אי-שוויון נכון. לאחר מכן, כפלו את שניהם ב- (-3) והראו מה קורה לסימן אי-השוויון.
+* פתרון נכון: דוגמה לפתרון: נבחר 1 ו-4. אי-השוויון הוא 1 < 4. נכפול ב- (-3) ונקבל בצד אחד מינוס 3 ובצד שני מינוס 12. מכיוון שמינוס 3 גדול ממינוס 12, אי-השוויון החדש הוא מינוס 3 > מינוס 12. סימן אי-השוויון התהפך.
+* פתרון מלא: דוגמה לפתרון: נבחר 1 ו-4. אי-השוויון הוא 1 < 4. נכפול ב- (-3) ונקבל בצד אחד מינוס 3 ובצד שני מינוס 12. מכיוון שמינוס 3 גדול ממינוס 12, אי-השוויון החדש הוא מינוס 3 > מינוס 12. סימן אי-השוויון התהפך.
+
+================================================================================
+תרגיל 6 – בסיס: יישום הכלל של הפיכת הסימן בפתרון אי-שוויון אלגברי פשוט עם…
+================================================================================
+ניישם את הכלל שגילינו: כאשר כופלים או מחלקים אי-שוויון במספר שלילי, חובה להפוך את כיוון סימן אי-השוויון.
+
+  <svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+    <!-- ציר עליון עבור הביטוי -->
+    <text x="360" y="50" font-family="sans-serif" font-size="20" text-anchor="end" font-weight="bold">-x &gt; 4</text>
+  
+    <!-- קו הציר העליון -->
+    <line x1="40" y1="110" x2="350" y2="110" stroke="black" stroke-width="2"/>
+    <polygon points="350,105 360,110 350,115" fill="black"/>
+    <polygon points="40,105 30,110 40,115" fill="black"/>
+  
+    <!-- שנתות ומספרים - ציר עליון -->
+    <line x1="100" y1="105" x2="100" y2="115" stroke="black" stroke-width="2"/>
+    <text x="100" y="135" font-family="sans-serif" font-size="16" text-anchor="middle">-4</text>
+  
+    <line x1="200" y1="105" x2="200" y2="115" stroke="black" stroke-width="2"/>
+    <text x="200" y="135" font-family="sans-serif" font-size="16" text-anchor="middle">0</text>
+  
+    <line x1="300" y1="105" x2="300" y2="115" stroke="black" stroke-width="2"/>
+    <text x="300" y="135" font-family="sans-serif" font-size="16" text-anchor="middle">4</text>
+
+    <!-- סימון התחום (עיגול ריק וחץ ימינה) -->
+    <line x1="306" y1="75" x2="350" y2="75" stroke="blue" stroke-width="4"/>
+    <polygon points="348,68 358,75 348,82" fill="blue"/>
+    <circle cx="300" cy="75" r="6" stroke="blue" stroke-width="2" fill="white"/>
+
+    <!-- ציר תחתון עבור x -->
+    <text x="360" y="190" font-family="sans-serif" font-size="20" text-anchor="end" font-weight="bold">x</text>
+  
+    <!-- קו הציר התחתון -->
+    <line x1="40" y1="250" x2="350" y2="250" stroke="black" stroke-width="2"/>
+    <polygon points="350,245 360,250 350,255" fill="black"/>
+    <polygon points="40,245 30,250 40,255" fill="black"/>
+  
+    <!-- שנתות ומספרים - ציר תחתון (ריק מסימון תחום) -->
+    <line x1="100" y1="245" x2="100" y2="255" stroke="black" stroke-width="2"/>
+    <text x="100" y="275" font-family="sans-serif" font-size="16" text-anchor="middle">-4</text>
+  
+    <line x1="200" y1="245" x2="200" y2="255" stroke="black" stroke-width="2"/>
+    <text x="200" y="275" font-family="sans-serif" font-size="16" text-anchor="middle">0</text>
+  
+    <line x1="300" y1="245" x2="300" y2="255" stroke="black" stroke-width="2"/>
+    <text x="300" y="275" font-family="sans-serif" font-size="16" text-anchor="middle">4</text>
+  </svg>
+
+<svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+    <!-- ציר עליון עבור הביטוי -->
+    <text x="360" y="50" font-family="sans-serif" font-size="20" text-anchor="end" font-weight="bold">-x &gt; 4</text>
+  
+    <!-- קו הציר העליון -->
+    <line x1="40" y1="110" x2="350" y2="110" stroke="black" stroke-width="2"/>
+    <polygon points="350,105 360,110 350,115" fill="black"/>
+    <polygon points="40,105 30,110 40,115" fill="black"/>
+  
+    <!-- שנתות ומספרים - ציר עליון -->
+    <line x1="100" y1="105" x2="100" y2="115" stroke="black" stroke-width="2"/>
+    <text x="100" y="135" font-family="sans-serif" font-size="16" text-anchor="middle">-4</text>
+  
+    <line x1="200" y1="105" x2="200" y2="115" stroke="black" stroke-width="2"/>
+    <text x="200" y="135" font-family="sans-serif" font-size="16" text-anchor="middle">0</text>
+  
+    <line x1="300" y1="105" x2="300" y2="115" stroke="black" stroke-width="2"/>
+    <text x="300" y="135" font-family="sans-serif" font-size="16" text-anchor="middle">4</text>
+
+    <!-- סימון התחום (עיגול ריק וחץ ימינה) -->
+    <line x1="306" y1="75" x2="350" y2="75" stroke="blue" stroke-width="4"/>
+    <polygon points="348,68 358,75 348,82" fill="blue"/>
+    <circle cx="300" cy="75" r="6" stroke="blue" stroke-width="2" fill="white"/>
+
+    <!-- ציר תחתון עבור x -->
+    <text x="360" y="190" font-family="sans-serif" font-size="20" text-anchor="end" font-weight="bold">x</text>
+  
+    <!-- קו הציר התחתון -->
+    <line x1="40" y1="250" x2="350" y2="250" stroke="black" stroke-width="2"/>
+    <polygon points="350,245 360,250 350,255" fill="black"/>
+    <polygon points="40,245 30,250 40,255" fill="black"/>
+  
+    <!-- שנתות ומספרים - ציר תחתון (ריק מסימון תחום) -->
+    <line x1="100" y1="245" x2="100" y2="255" stroke="black" stroke-width="2"/>
+    <text x="100" y="275" font-family="sans-serif" font-size="16" text-anchor="middle">-4</text>
+  
+    <line x1="200" y1="245" x2="200" y2="255" stroke="black" stroke-width="2"/>
+    <text x="200" y="275" font-family="sans-serif" font-size="16" text-anchor="middle">0</text>
+  
+    <line x1="300" y1="245" x2="300" y2="255" stroke="black" stroke-width="2"/>
+    <text x="300" y="275" font-family="sans-serif" font-size="16" text-anchor="middle">4</text>
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 6 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: נתון אי-השוויון -x > 4. כדי לבודד את x, באיזה מספר נכפול או נחלק את שני האגפים?
+* אופציות:
+  - נכפול או נחלק ב- 1.
+  - נכפול או נחלק ב- (-1).
+* פתרון נכון: נכפול או נחלק ב- (-1).
+* פתרון מלא: המקדם של x הוא מינוס 1. כדי להפוך אותו ל-x חיובי, עלינו לחלק או לכפול את שני האגפים ב- (-1).
+
+--------------------------------------------------------------------------------
+[תרגיל 6 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: לפי הכלל שלמדנו, האם סימן אי-השוויון צריך להתהפך בפעולה זו?
+* אופציות:
+  - כן, הסימן מתהפך.
+  - לא, הסימן נשאר כפי שהוא.
+* פתרון נכון: כן, הסימן מתהפך.
+* פתרון מלא: מכיוון שאנו כופלים או מחלקים במספר שלילי (-1), חובה להפוך את כיוון סימן אי-השוויון.
+
+--------------------------------------------------------------------------------
+[תרגיל 6 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: מהו הפתרון הסופי של אי-השוויון -x > 4?
+* אופציות:
+  - x > -4
+  - x < -4
+  - x < 4
+* פתרון נכון: x < -4
+* פתרון מלא: נחלק ב- (-1). באגף שמאל נקבל x. באגף ימין 4 לחלק ל- (-1) שווה -4. נהפוך את הסימן מ- > ל- < ונקבל x < -4.
+
+--------------------------------------------------------------------------------
+[תרגיל 6 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: הציבו את המספר x = -5 באי-השוויון המקורי (-x > 4) והראו שהפסוק המתקבל הוא אמת.
+* פתרון נכון: נציב x = -5 בביטוי -x. נקבל: מינוס של מינוס 5, כלומר 5. הפסוק שמתקבל הוא 5 > 4, וזהו אכן פסוק אמת. זה מאשר שהמספר -5 (שנמצא בתחום x < -4) הוא פתרון נכון.
+* פתרון מלא: נציב x = -5 בביטוי -x. נקבל: מינוס של מינוס 5, כלומר 5. הפסוק שמתקבל הוא 5 > 4, וזהו אכן פסוק אמת. זה מאשר שהמספר -5 (שנמצא בתחום x < -4) הוא פתרון נכון.
+
+================================================================================
+תרגיל 7 – מורכב: פתרון אי-שוויון עם מקדם שלילי שאינו -1
+================================================================================
+נפתור אי-שוויון שבו המקדם השלילי של x שונה ממינוס 1.
+
+  <svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+    <!-- רקע לבן -->
+    <rect width="100%" height="100%" fill="#ffffff" />
+
+    <!-- שורה 1: אי-השוויון המקורי -->
+    <rect x="100" y="40" width="200" height="60" rx="10" fill="#f8f9fa" stroke="#ced4da" stroke-width="2"/>
+    <text x="200" y="78" font-family="sans-serif" font-size="28" font-weight="bold" text-anchor="middle" fill="#212529" direction="ltr">-3x ≤ 12</text>
+
+    <!-- חץ יורד -->
+    <line x1="200" y1="100" x2="200" y2="180" stroke="#495057" stroke-width="3"/>
+    <polygon points="192,175 208,175 200,188" fill="#495057"/>
+
+    <!-- טקסט פעולה (מודגש באדום) -->
+    <text x="215" y="148" font-family="sans-serif" font-size="18" font-weight="bold" fill="#dc3545" text-anchor="start" direction="rtl">חילוק ב- (-3)</text>
+
+    <!-- שורה 2: הפתרון הסופי -->
+    <rect x="100" y="190" width="200" height="60" rx="10" fill="#e6ffe6" stroke="#28a745" stroke-width="2"/>
+    <text x="200" y="228" font-family="sans-serif" font-size="28" font-weight="bold" text-anchor="middle" fill="#212529" direction="ltr">x ≥ -4</text>
+  </svg>
+
+<svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+    <!-- רקע לבן -->
+    <rect width="100%" height="100%" fill="#ffffff" />
+
+    <!-- שורה 1: אי-השוויון המקורי -->
+    <rect x="100" y="40" width="200" height="60" rx="10" fill="#f8f9fa" stroke="#ced4da" stroke-width="2"/>
+    <text x="200" y="78" font-family="sans-serif" font-size="28" font-weight="bold" text-anchor="middle" fill="#212529" direction="ltr">-3x ≤ 12</text>
+
+    <!-- חץ יורד -->
+    <line x1="200" y1="100" x2="200" y2="180" stroke="#495057" stroke-width="3"/>
+    <polygon points="192,175 208,175 200,188" fill="#495057"/>
+
+    <!-- טקסט פעולה (מודגש באדום) -->
+    <text x="215" y="148" font-family="sans-serif" font-size="18" font-weight="bold" fill="#dc3545" text-anchor="start" direction="rtl">חילוק ב- (-3)</text>
+
+    <!-- שורה 2: הפתרון הסופי -->
+    <rect x="100" y="190" width="200" height="60" rx="10" fill="#e6ffe6" stroke="#28a745" stroke-width="2"/>
+    <text x="200" y="228" font-family="sans-serif" font-size="28" font-weight="bold" text-anchor="middle" fill="#212529" direction="ltr">x ≥ -4</text>
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 7 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: באיזה מספר נחלק את שני האגפים כדי לפתור את אי-השוויון -3x ≤ 12?
+* אופציות:
+  - נחלק ב- 3.
+  - נחלק ב- (-3).
+* פתרון נכון: נחלק ב- (-3).
+* פתרון מלא: כדי לבודד את x, עלינו לחלק במקדם שלו בדיוק כפי שהוא, כולל הסימן. לכן נחלק ב- (-3).
+
+--------------------------------------------------------------------------------
+[תרגיל 7 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: כאשר נחלק ב- (-3), מה יקרה לסימן אי-השוויון ≤ (קטן או שווה)?
+* אופציות:
+  - הוא יתהפך לסימן ≥ (גדול או שווה).
+  - הוא יישאר ≤ (קטן או שווה).
+* פתרון נכון: הוא יתהפך לסימן ≥ (גדול או שווה).
+* פתרון מלא: חילוק במספר שלילי הופך את כיוון אי-השוויון. גם כאשר יש שוויון (פס מתחת לסימן), הוא נשמר, אך הכיוון מתהפך.
+
+--------------------------------------------------------------------------------
+[תרגיל 7 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: מהו הפתרון של אי-השוויון -2x > -10?
+* אופציות:
+  - x > 5
+  - x < -5
+  - x < 5
+* פתרון נכון: x < 5
+* פתרון מלא: נחלק את שני האגפים ב- (-2). מינוס 10 לחלק למינוס 2 שווה 5 חיובי. מכיוון שחילקנו במספר שלילי, הסימן מתהפך מ- > ל- <. התשובה היא x < 5.
+
+--------------------------------------------------------------------------------
+[תרגיל 7 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: תלמיד פתר את אי-השוויון -4x < 8 וקיבל את התשובה x < -2. הציבו x = -3 כדי לבדוק אם הוא צדק, והסבירו את טעותו.
+* פתרון נכון: נציב x = -3 באי-השוויון המקורי: מינוס 4 כפול מינוס 3 שווה 12. הפסוק המתקבל הוא 12 < 8, וזהו פסוק שקר. מכאן שהתלמיד טעה. הטעות שלו הייתה שהוא חילק ב- (-4) אך שכח להפוך את סימן אי-השוויון. התשובה הנכונה היא x > -2.
+* פתרון מלא: נציב x = -3 באי-השוויון המקורי: מינוס 4 כפול מינוס 3 שווה 12. הפסוק המתקבל הוא 12 < 8, וזהו פסוק שקר. מכאן שהתלמיד טעה. הטעות שלו הייתה שהוא חילק ב- (-4) אך שכח להפוך את סימן אי-השוויון. התשובה הנכונה היא x > -2.
+
+================================================================================
+תרגיל 8 – מורכב: שילוב של חיבור/חיסור וכפל/חילוק בפתרון אי-שוויון רב-שלבי
+================================================================================
+לעיתים נדרשות מספר פעולות כדי לפתור אי-שוויון. נשמור על סדר פעולות נכון, ממש כמו בפתרון משוואה.
+
+  <svg width="400" height="350" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+        <polygon points="0 0, 10 3.5, 0 7" fill="#333333" />
+      </marker>
+    </defs>
+
+    <!-- תיבה עליונה -->
+    <rect x="120" y="30" width="160" height="50" rx="8" fill="#ffffff" stroke="#333333" stroke-width="2" />
+    <text x="200" y="61" font-size="18" font-family="Arial, sans-serif" text-anchor="middle" fill="#000000" direction="ltr">2x + 5 &lt; 13</text>
+
+    <!-- חץ 1 -->
+    <line x1="200" y1="80" x2="200" y2="135" stroke="#333333" stroke-width="2" marker-end="url(#arrowhead)" />
+    <text x="215" y="112" font-size="14" font-family="Arial, sans-serif" fill="#000000">חיסור 5</text>
+
+    <!-- תיבה שנייה -->
+    <rect x="120" y="140" width="160" height="50" rx="8" fill="#ffffff" stroke="#333333" stroke-width="2" />
+
+    <!-- חץ 2 -->
+    <line x1="200" y1="190" x2="200" y2="245" stroke="#333333" stroke-width="2" marker-end="url(#arrowhead)" />
+    <text x="215" y="222" font-size="14" font-family="Arial, sans-serif" fill="#000000">חילוק ב- 2</text>
+
+    <!-- תיבה שלישית -->
+    <rect x="120" y="250" width="160" height="50" rx="8" fill="#ffffff" stroke="#333333" stroke-width="2" />
+  </svg>
+
+<svg width="400" height="350" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+        <polygon points="0 0, 10 3.5, 0 7" fill="#333333" />
+      </marker>
+    </defs>
+
+    <!-- תיבה עליונה -->
+    <rect x="120" y="30" width="160" height="50" rx="8" fill="#ffffff" stroke="#333333" stroke-width="2" />
+    <text x="200" y="61" font-size="18" font-family="Arial, sans-serif" text-anchor="middle" fill="#000000" direction="ltr">2x + 5 &lt; 13</text>
+
+    <!-- חץ 1 -->
+    <line x1="200" y1="80" x2="200" y2="135" stroke="#333333" stroke-width="2" marker-end="url(#arrowhead)" />
+    <text x="215" y="112" font-size="14" font-family="Arial, sans-serif" fill="#000000">חיסור 5</text>
+
+    <!-- תיבה שנייה -->
+    <rect x="120" y="140" width="160" height="50" rx="8" fill="#ffffff" stroke="#333333" stroke-width="2" />
+
+    <!-- חץ 2 -->
+    <line x1="200" y1="190" x2="200" y2="245" stroke="#333333" stroke-width="2" marker-end="url(#arrowhead)" />
+    <text x="215" y="222" font-size="14" font-family="Arial, sans-serif" fill="#000000">חילוק ב- 2</text>
+
+    <!-- תיבה שלישית -->
+    <rect x="120" y="250" width="160" height="50" rx="8" fill="#ffffff" stroke="#333333" stroke-width="2" />
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 8 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: באי-השוויון 2x + 5 < 13, מהי הפעולה הראשונה שכדאי לבצע כדי לבודד את x?
+* אופציות:
+  - לחלק את כל האגפים ב-2.
+  - לחסר 5 משני האגפים.
+* פתרון נכון: לחסר 5 משני האגפים.
+* פתרון מלא: נוח יותר להתחיל מבידוד האיבר המכיל את x (כלומר 2x) על ידי העברת המספרים החופשיים לאגף השני. לכן נחסר 5.
+
+--------------------------------------------------------------------------------
+[תרגיל 8 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: לאחר חיסור 5 משני האגפים, האם כיוון אי-השוויון משתנה?
+* אופציות:
+  - לא, פעולת חיסור אינה משנה את כיוון אי-השוויון.
+  - כן, כל פעולה משנה את כיוון אי-השוויון.
+* פתרון נכון: לא, פעולת חיסור אינה משנה את כיוון אי-השוויון.
+* פתרון מלא: כפי שלמדנו, רק כפל או חילוק במספר שלילי הופכים את הסימן. חיבור וחיסור שומרים על כיוון אי-השוויון.
+
+--------------------------------------------------------------------------------
+[תרגיל 8 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: מהו הפתרון הסופי של 2x + 5 < 13?
+* אופציות:
+  - x < 4
+  - x > 4
+  - x < 9
+* פתרון נכון: x < 4
+* פתרון מלא: שלב ראשון: נחסר 5 ונקבל 2x < 8. שלב שני: נחלק ב-2 (מספר חיובי, הסימן נשאר) ונקבל x < 4.
+
+--------------------------------------------------------------------------------
+[תרגיל 8 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: פתרו את אי-השוויון 3x - 4 ≥ 11 וייצגו את הפתרון על ציר המספרים (תארו את השרטוט במילים).
+* פתרון נכון: נוסיף 4 משני האגפים ונקבל 3x ≥ 15. נחלק ב-3 ונקבל x ≥ 5. השרטוט יכלול ציר מספרים, מעל המספר 5 יהיה עיגול מלא, וחץ עבה הפונה ימינה.
+* פתרון מלא: נוסיף 4 משני האגפים ונקבל 3x ≥ 15. נחלק ב-3 ונקבל x ≥ 5. השרטוט יכלול ציר מספרים, מעל המספר 5 יהיה עיגול מלא, וחץ עבה הפונה ימינה.
+
+================================================================================
+תרגיל 9 – מורכב: פתרון אי-שוויון רב-שלבי שבו נוצר מקדם שלילי לאחר העברת אגפים
+================================================================================
+לפניכם אי-השוויון 7 - 2x > 1. ניתן לפתור אותו בשתי דרכים שונות, המובילות לאותה תוצאה.
+
+  <svg width="700" height="300" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 0 L 10 5 L 0 10 z" fill="#333" />
+      </marker>
+    </defs>
+
+    <!-- צומת עליון -->
+    <rect x="270" y="30" width="160" height="50" rx="10" fill="#e6f2ff" stroke="#0055cc" stroke-width="2"/>
+    <text x="350" y="62" font-family="Arial, sans-serif" font-size="22" text-anchor="middle" fill="black" direction="ltr">7 - 2x &gt; 1</text>
+
+    <!-- חץ שמאלי -->
+    <line x1="310" y1="80" x2="175" y2="190" stroke="#333" stroke-width="2" marker-end="url(#arrow)"/>
+    <text x="150" y="120" font-family="Arial, sans-serif" font-size="15" text-anchor="middle" fill="#000" direction="rtl">העברת 2x ימינה</text>
+    <text x="150" y="140" font-family="Arial, sans-serif" font-size="15" text-anchor="middle" fill="#000" direction="rtl">(הוספת 2x)</text>
+
+    <!-- חץ ימני -->
+    <line x1="390" y1="80" x2="525" y2="190" stroke="#333" stroke-width="2" marker-end="url(#arrow)"/>
+    <text x="550" y="120" font-family="Arial, sans-serif" font-size="15" text-anchor="middle" fill="#000" direction="rtl">העברת 7 ימינה</text>
+    <text x="550" y="140" font-family="Arial, sans-serif" font-size="15" text-anchor="middle" fill="#000" direction="rtl">(חיסור 7)</text>
+
+    <!-- תוצאה שמאלית -->
+    <rect x="95" y="200" width="160" height="50" rx="10" fill="#ffffff" stroke="#666666" stroke-width="2" stroke-dasharray="5,5"/>
+    <text x="175" y="232" font-family="Arial, sans-serif" font-size="22" text-anchor="middle" fill="black" direction="ltr">7 &gt; 1 + 2x</text>
+
+    <!-- תוצאה ימנית -->
+    <rect x="445" y="200" width="160" height="50" rx="10" fill="#ffffff" stroke="#666666" stroke-width="2" stroke-dasharray="5,5"/>
+    <text x="525" y="232" font-family="Arial, sans-serif" font-size="22" text-anchor="middle" fill="black" direction="ltr">-2x &gt; -6</text>
+  </svg>
+
+<svg width="700" height="300" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 0 L 10 5 L 0 10 z" fill="#333" />
+      </marker>
+    </defs>
+
+    <!-- צומת עליון -->
+    <rect x="270" y="30" width="160" height="50" rx="10" fill="#e6f2ff" stroke="#0055cc" stroke-width="2"/>
+    <text x="350" y="62" font-family="Arial, sans-serif" font-size="22" text-anchor="middle" fill="black" direction="ltr">7 - 2x &gt; 1</text>
+
+    <!-- חץ שמאלי -->
+    <line x1="310" y1="80" x2="175" y2="190" stroke="#333" stroke-width="2" marker-end="url(#arrow)"/>
+    <text x="150" y="120" font-family="Arial, sans-serif" font-size="15" text-anchor="middle" fill="#000" direction="rtl">העברת 2x ימינה</text>
+    <text x="150" y="140" font-family="Arial, sans-serif" font-size="15" text-anchor="middle" fill="#000" direction="rtl">(הוספת 2x)</text>
+
+    <!-- חץ ימני -->
+    <line x1="390" y1="80" x2="525" y2="190" stroke="#333" stroke-width="2" marker-end="url(#arrow)"/>
+    <text x="550" y="120" font-family="Arial, sans-serif" font-size="15" text-anchor="middle" fill="#000" direction="rtl">העברת 7 ימינה</text>
+    <text x="550" y="140" font-family="Arial, sans-serif" font-size="15" text-anchor="middle" fill="#000" direction="rtl">(חיסור 7)</text>
+
+    <!-- תוצאה שמאלית -->
+    <rect x="95" y="200" width="160" height="50" rx="10" fill="#ffffff" stroke="#666666" stroke-width="2" stroke-dasharray="5,5"/>
+    <text x="175" y="232" font-family="Arial, sans-serif" font-size="22" text-anchor="middle" fill="black" direction="ltr">7 &gt; 1 + 2x</text>
+
+    <!-- תוצאה ימנית -->
+    <rect x="445" y="200" width="160" height="50" rx="10" fill="#ffffff" stroke="#666666" stroke-width="2" stroke-dasharray="5,5"/>
+    <text x="525" y="232" font-family="Arial, sans-serif" font-size="22" text-anchor="middle" fill="black" direction="ltr">-2x &gt; -6</text>
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 9 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: אם נבחר בדרך של חיסור 7 משני האגפים (העברת 7 ימינה), מה יישאר באגף השמאלי?
+* אופציות:
+  - 2x
+  - -2x
+* פתרון נכון: -2x
+* פתרון מלא: כאשר אנו מחסרים 7, אנו מסירים את המספר 7 החיובי. המקדם של x הוא שלילי, ולכן באגף שמאל נשאר -2x.
+
+--------------------------------------------------------------------------------
+[תרגיל 9 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: לאחר חיסור 7, נקבל את אי-השוויון -2x > -6. בשלב הבא נחלק ב- (-2). מה יקרה לסימן אי-השוויון?
+* אופציות:
+  - הסימן יתהפך ונקבל <
+  - הסימן יישאר >
+* פתרון נכון: הסימן יתהפך ונקבל <
+* פתרון מלא: כלל חשוב באי-שוויונות קובע שכאשר כופלים או מחלקים את שני האגפים במספר שלילי, סימן אי-השוויון מתהפך.
+
+--------------------------------------------------------------------------------
+[תרגיל 9 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: מהו הפתרון הסופי של אי-השוויון 7 - 2x > 1?
+* אופציות:
+  - x > 3
+  - x < 3
+  - x < -3
+* פתרון נכון: x < 3
+* פתרון מלא: נחלק את -6 ב- (-2) ונקבל 3. מכיוון שחילקנו במספר שלילי, הסימן מתהפך מ- > ל- <, והפתרון הוא x < 3.
+
+--------------------------------------------------------------------------------
+[תרגיל 9 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: פתרו את אותו אי-שוויון בדרך השנייה: הוסיפו 2x לשני האגפים (כך שהמשתנה יעבור ימינה ויהיה חיובי), ולאחר מכן חלצו את x. הראו שהתקבלה אותה תוצאה.
+* פתרון נכון: נוסיף 2x לשני האגפים ונקבל: 7 > 1 + 2x. כעת נחסר 1 משני האגפים ונקבל: 6 > 2x. נחלק ב-2 (מספר חיובי, לכן הסימן לא מתהפך) ונקבל: 3 > x. הביטוי 3 > x אומר ש-3 גדול מ-x, שזה בדיוק אותו דבר כמו לומר ש-x קטן מ-3 (x < 3). התוצאה זהה בשתי הדרכים.
+* פתרון מלא: נוסיף 2x לשני האגפים ונקבל: 7 > 1 + 2x. כעת נחסר 1 משני האגפים ונקבל: 6 > 2x. נחלק ב-2 (מספר חיובי, לכן הסימן לא מתהפך) ונקבל: 3 > x. הביטוי 3 > x אומר ש-3 גדול מ-x, שזה בדיוק אותו דבר כמו לומר ש-x קטן מ-3 (x < 3). התוצאה זהה בשתי הדרכים.
+
+================================================================================
+תרגיל 10 – אתגר: סיכום ויישום: בניית אי-שוויון מתוך בעיה גיאומטרית
+================================================================================
+נשלב את מה שלמדנו כדי לפתור בעיה גיאומטרית בעזרת אי-שוויון.
+
+  --- נקודות ---
+  * נקודה A | X=50, Y=240 | מיקום תווית: שמאל-למטה | צבע: שחור
+  * נקודה B | X=350, Y=240 | מיקום תווית: ימין-למטה | צבע: שחור
+  * נקודה C | X=350, Y=60 | מיקום תווית: ימין-למעלה | צבע: שחור
+  * נקודה D | X=50, Y=60 | מיקום תווית: שמאל-למעלה | צבע: שחור
+  --- קטעים ---
+  * קטע AB | מנקודה A ל-B | צבע: שחור | תווית: 10
+  * קטע BC | מנקודה B ל-C | צבע: שחור | תווית: 5 - x
+  * קטע CD | מנקודה C ל-D | צבע: שחור
+  * קטע DA | מנקודה D ל-A | צבע: שחור
+  --- סימונים ---
+  * סימן זווית ישרה בקודקוד A
+  * סימן זווית ישרה בקודקוד B
+  * סימן זווית ישרה בקודקוד C
+  * סימן זווית ישרה בקודקוד D
+
+--------------------------------------------------------------------------------
+[תרגיל 10 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: מהו הביטוי האלגברי המייצג את היקף המלבן שבשרטוט?
+* אופציות:
+  - 10(5 - x)
+  - 2(10 + 5 - x)
+* פתרון נכון: 2(10 + 5 - x)
+* פתרון מלא: היקף מלבן שווה לפעמיים סכום האורך והרוחב. לכן הביטוי הוא 2 כפול (10 ועוד 5 פחות x).
+
+--------------------------------------------------------------------------------
+[תרגיל 10 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: נתון שהיקף המלבן קטן מ- 26. איזה אי-שוויון מתאים לתיאור הבעיה?
+* אופציות:
+  - 2(15 - x) < 26
+  - 2(15 - x) > 26
+* פתרון נכון: 2(15 - x) < 26
+* פתרון מלא: נפשט את הביטוי שבתוך הסוגריים: 10 + 5 = 15. לכן ההיקף הוא 2(15 - x). מכיוון שנתון שההיקף קטן מ-26, נשתמש בסימן <.
+
+--------------------------------------------------------------------------------
+[תרגיל 10 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: מהו הפתרון האלגברי של אי-השוויון שבניתם?
+* אופציות:
+  - x < 2
+  - x > 2
+  - x > -2
+* פתרון נכון: x > 2
+* פתרון מלא: נחלק ב-2 ונקבל 15 - x < 13. נחסר 15 ונקבל -x < -2. נחלק ב- (-1) ונהפוך את הסימן: x > 2.
+
+--------------------------------------------------------------------------------
+[תרגיל 10 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: הציבו את הערך x = 6 בביטוי של רוחב המלבן. הסיקו האם x = 6 יכול להיות פתרון הגיוני לבעיה הגיאומטרית (למרות שהוא מקיים את התנאי x > 2).
+* פתרון נכון: נציב x = 6 בביטוי הרוחב (5 - x) ונקבל 5 - 6 = -1. אורך צלע של מלבן אינו יכול להיות מספר שלילי. לכן, למרות ש-6 גדול מ-2 ומקיים את אי-השוויון האלגברי, הוא נפסל מסיבות גיאומטריות. (התחום האמיתי של הבעיה הוא x בין 2 ל-5).
+* פתרון מלא: נציב x = 6 בביטוי הרוחב (5 - x) ונקבל 5 - 6 = -1. אורך צלע של מלבן אינו יכול להיות מספר שלילי. לכן, למרות ש-6 גדול מ-2 ומקיים את אי-השוויון האלגברי, הוא נפסל מסיבות גיאומטריות. (התחום האמיתי של הבעיה הוא x בין 2 ל-5).

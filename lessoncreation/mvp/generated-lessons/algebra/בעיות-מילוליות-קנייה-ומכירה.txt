@@ -1,0 +1,1769 @@
+================================================================================
+תרגיל 1 – מנחה: הבנה תפיסתית ואינטואיטיבית של הקשר הישיר בין כמות פריטים…
+================================================================================
+כאשר אנחנו קונים פריטים זהים בחנות, קיים קשר ישיר בין מספר הפריטים שרכשנו לבין הסכום הכולל שנשלם בקופה. נתבונן בשתי קבלות מאותה חנות עבור מחברות מאותו סוג בדיוק.
+
+  <svg width="460" height="320" xmlns="http://www.w3.org/2000/svg" font-family="Arial, sans-serif">
+    <!-- רקע כללי -->
+    <rect width="460" height="320" fill="#f8fafc" rx="8"/>
+
+    <!-- קבלה ב' (שמאל) - ארוכה, 5 מחברות -->
+    <g id="receipt-b">
+      <!-- צל לקבלה ב' -->
+      <rect x="42" y="32" width="130" height="250" fill="#e2e8f0" rx="4"/>
+      <!-- גוף קבלה ב' -->
+      <rect x="40" y="30" width="130" height="250" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5" rx="4"/>
+    
+      <!-- כותרת קבלה ב' -->
+      <text x="105" y="55" font-size="14" font-weight="bold" fill="#1e293b" text-anchor="middle">קבלה ב'</text>
+      <text x="105" y="70" font-size="10" fill="#64748b" text-anchor="middle">חנות מכשירי כתיבה</text>
+      <line x1="50" y1="78" x2="160" y2="78" stroke="#94a3b8" stroke-dasharray="3,3"/>
+
+      <!-- פריטים - 5 מחברות -->
+      <text x="155" y="98" font-size="11" fill="#334155" text-anchor="end">מחברת 1</text>
+      <text x="155" y="118" font-size="11" fill="#334155" text-anchor="end">מחברת 2</text>
+      <text x="155" y="138" font-size="11" fill="#334155" text-anchor="end">מחברת 3</text>
+      <text x="155" y="158" font-size="11" fill="#334155" text-anchor="end">מחברת 4</text>
+      <text x="155" y="178" font-size="11" fill="#334155" text-anchor="end">מחברת 5</text>
+
+      <line x1="50" y1="192" x2="160" y2="192" stroke="#94a3b8"/>
+      <text x="155" y="210" font-size="11" font-weight="bold" fill="#0f172a" text-anchor="end">סה״כ: 5 יח׳</text>
+
+      <!-- פס סכום אנכי לתשלום (גבוה) -->
+      <rect x="180" y="80" width="22" height="195" fill="#38bdf8" stroke="#0284c7" stroke-width="1.5" rx="4"/>
+      <text x="191" y="72" font-size="11" font-weight="bold" fill="#0369a1" text-anchor="middle">לתשלום</text>
+    </g>
+
+    <!-- קבלה א' (ימין) - קצרה, 2 מחברות -->
+    <g id="receipt-a">
+      <!-- צל לקבלה א' -->
+      <rect x="262" y="112" width="130" height="170" fill="#e2e8f0" rx="4"/>
+      <!-- גוף קבלה א' -->
+      <rect x="260" y="110" width="130" height="170" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5" rx="4"/>
+    
+      <!-- כותרת קבלה א' -->
+      <text x="325" y="135" font-size="14" font-weight="bold" fill="#1e293b" text-anchor="middle">קבלה א'</text>
+      <text x="325" y="150" font-size="10" fill="#64748b" text-anchor="middle">חנות מכשירי כתיבה</text>
+      <line x1="270" y1="158" x2="380" y2="158" stroke="#94a3b8" stroke-dasharray="3,3"/>
+
+      <!-- פריטים - 2 מחברות -->
+      <text x="375" y="178" font-size="11" fill="#334155" text-anchor="end">מחברת 1</text>
+      <text x="375" y="198" font-size="11" fill="#334155" text-anchor="end">מחברת 2</text>
+
+      <line x1="270" y1="212" x2="380" y2="212" stroke="#94a3b8"/>
+      <text x="375" y="230" font-size="11" font-weight="bold" fill="#0f172a" text-anchor="end">סה״כ: 2 יח׳</text>
+
+      <!-- פס סכום אנכי לתשלום (נמוך, יחסי: 78 מול 195) -->
+      <rect x="400" y="197" width="22" height="78" fill="#38bdf8" stroke="#0284c7" stroke-width="1.5" rx="4"/>
+      <text x="411" y="189" font-size="11" font-weight="bold" fill="#0369a1" text-anchor="middle">לתשלום</text>
+    </g>
+
+    <!-- קו בסיס תחתון משותף -->
+    <line x1="25" y1="285" x2="435" y2="285" stroke="#94a3b8" stroke-width="2"/>
+  </svg>
+
+<svg width="460" height="320" xmlns="http://www.w3.org/2000/svg" font-family="Arial, sans-serif">
+    <!-- רקע כללי -->
+    <rect width="460" height="320" fill="#f8fafc" rx="8"/>
+
+    <!-- קבלה ב' (שמאל) - ארוכה, 5 מחברות -->
+    <g id="receipt-b">
+      <!-- צל לקבלה ב' -->
+      <rect x="42" y="32" width="130" height="250" fill="#e2e8f0" rx="4"/>
+      <!-- גוף קבלה ב' -->
+      <rect x="40" y="30" width="130" height="250" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5" rx="4"/>
+    
+      <!-- כותרת קבלה ב' -->
+      <text x="105" y="55" font-size="14" font-weight="bold" fill="#1e293b" text-anchor="middle">קבלה ב'</text>
+      <text x="105" y="70" font-size="10" fill="#64748b" text-anchor="middle">חנות מכשירי כתיבה</text>
+      <line x1="50" y1="78" x2="160" y2="78" stroke="#94a3b8" stroke-dasharray="3,3"/>
+
+      <!-- פריטים - 5 מחברות -->
+      <text x="155" y="98" font-size="11" fill="#334155" text-anchor="end">מחברת 1</text>
+      <text x="155" y="118" font-size="11" fill="#334155" text-anchor="end">מחברת 2</text>
+      <text x="155" y="138" font-size="11" fill="#334155" text-anchor="end">מחברת 3</text>
+      <text x="155" y="158" font-size="11" fill="#334155" text-anchor="end">מחברת 4</text>
+      <text x="155" y="178" font-size="11" fill="#334155" text-anchor="end">מחברת 5</text>
+
+      <line x1="50" y1="192" x2="160" y2="192" stroke="#94a3b8"/>
+      <text x="155" y="210" font-size="11" font-weight="bold" fill="#0f172a" text-anchor="end">סה״כ: 5 יח׳</text>
+
+      <!-- פס סכום אנכי לתשלום (גבוה) -->
+      <rect x="180" y="80" width="22" height="195" fill="#38bdf8" stroke="#0284c7" stroke-width="1.5" rx="4"/>
+      <text x="191" y="72" font-size="11" font-weight="bold" fill="#0369a1" text-anchor="middle">לתשלום</text>
+    </g>
+
+    <!-- קבלה א' (ימין) - קצרה, 2 מחברות -->
+    <g id="receipt-a">
+      <!-- צל לקבלה א' -->
+      <rect x="262" y="112" width="130" height="170" fill="#e2e8f0" rx="4"/>
+      <!-- גוף קבלה א' -->
+      <rect x="260" y="110" width="130" height="170" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5" rx="4"/>
+    
+      <!-- כותרת קבלה א' -->
+      <text x="325" y="135" font-size="14" font-weight="bold" fill="#1e293b" text-anchor="middle">קבלה א'</text>
+      <text x="325" y="150" font-size="10" fill="#64748b" text-anchor="middle">חנות מכשירי כתיבה</text>
+      <line x1="270" y1="158" x2="380" y2="158" stroke="#94a3b8" stroke-dasharray="3,3"/>
+
+      <!-- פריטים - 2 מחברות -->
+      <text x="375" y="178" font-size="11" fill="#334155" text-anchor="end">מחברת 1</text>
+      <text x="375" y="198" font-size="11" fill="#334155" text-anchor="end">מחברת 2</text>
+
+      <line x1="270" y1="212" x2="380" y2="212" stroke="#94a3b8"/>
+      <text x="375" y="230" font-size="11" font-weight="bold" fill="#0f172a" text-anchor="end">סה״כ: 2 יח׳</text>
+
+      <!-- פס סכום אנכי לתשלום (נמוך, יחסי: 78 מול 195) -->
+      <rect x="400" y="197" width="22" height="78" fill="#38bdf8" stroke="#0284c7" stroke-width="1.5" rx="4"/>
+      <text x="411" y="189" font-size="11" font-weight="bold" fill="#0369a1" text-anchor="middle">לתשלום</text>
+    </g>
+
+    <!-- קו בסיס תחתון משותף -->
+    <line x1="25" y1="285" x2="435" y2="285" stroke="#94a3b8" stroke-width="2"/>
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 1 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: התבוננו בשתי הקבלות. באיזו מהקבלות הסכום הכולל לתשלום גבוה יותר?
+* אופציות:
+  - בקבלה ב', שבה נקנו 5 מחברות.
+  - בקבלה א', שבה נקנו 2 מחברות.
+* פתרון נכון: בקבלה ב', שבה נקנו 5 מחברות.
+* רמז: שימו לב לכמות המחברות בכל קבלה ולגובה עמודת הסכום לתשלום.
+* פתרון מלא: מכיוון שכל המחברות זהות ומחירן שווה, ככל שקונים כמות גדולה יותר של מחברות, הסכום הכולל לתשלום בקבלה גדל. לכן בקבלה ב' נשלם יותר.
+
+--------------------------------------------------------------------------------
+[תרגיל 1 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: אם נכפיל פי 2 את כמות המחברות הזהות שאנחנו קונים, מה יקרה לעלות הכוללת?
+* אופציות:
+  - העלות הכוללת תוכפל פי 2.
+  - העלות הכוללת תישאר ללא שינוי.
+* פתרון נכון: העלות הכוללת תוכפל פי 2.
+* רמז: חשבו מה קורה אם מחברת אחת עולה 10 ש"ח, כמה יעלו 2 מחברות וכמה יעלו 4 מחברות.
+* פתרון מלא: קיים יחס ישר בין כמות הפריטים הזהים לבין המחיר הכולל. הכפלת כמות הפריטים פי 2 תכפיל גם את הסכום לתשלום בדיוק פי 2.
+
+--------------------------------------------------------------------------------
+[תרגיל 1 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: באיזו פעולה חשבונית נשתמש כדי לחשב את המחיר הכולל של מספר פריטים זהים, כאשר ידוע מחירו של פריט בודד?
+* אופציות:
+  - כפל של כמות הפריטים במחיר פריט בודד.
+  - חיבור של כמות הפריטים עם מחיר פריט בודד.
+  - חילוק של כמות הפריטים במחיר פריט בודד.
+* פתרון נכון: כפל של כמות הפריטים במחיר פריט בודד.
+* רמז: אם כל פריט עולה סכום מסוים, אנחנו מחברים את אותו הסכום שוב ושוב לפי מספר הפריטים. איזו פעולה מקצרת חיבור חוזר?
+* פתרון מלא: המחיר הכולל מחושב תמיד על ידי הכפלת כמות הפריטים במחיר היחידה של כל פריט (מחיר כולל = כמות × מחיר יחידה).
+
+--------------------------------------------------------------------------------
+[תרגיל 1 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: התבוננו בשתי הקבלות ומצאו כיצד ישתנה הגובה של פס הסכום בקבלה א' בכל פעם שנוסיף לה מחברת אחת נוספת, עד שנגיע לכמות שבקבלה ב'.
+* פתרון נכון: בכל פעם שנוסיף מחברת אחת נוספת לקבלה א', פס הסכום יגדל בתוספת קבועה השווה למחירה של מחברת בודדת. כדי להגיע מקבלה א' (2 מחברות) לקבלה ב' (5 מחברות), נוסיף 3 מחברות, ולכן הפס יגדל ב-3 מדרגות שוות עד שישתווה לגובה הפס בקבלה ב'.
+* פתרון מלא: בכל פעם שנוסיף מחברת אחת נוספת לקבלה א', פס הסכום יגדל בתוספת קבועה השווה למחירה של מחברת בודדת. כדי להגיע מקבלה א' (2 מחברות) לקבלה ב' (5 מחברות), נוסיף 3 מחברות, ולכן הפס יגדל ב-3 מדרגות שוות עד שישתווה לגובה הפס בקבלה ב'.
+
+================================================================================
+תרגיל 2 – מנחה: השוואה איכותית ותפיסתית בין מחירי מוצרים שונים וזיהוי פער…
+================================================================================
+בחנות כלי כתיבה מוכרים עטים וקלמרים. מחירם של המוצרים שונה, וניתן להבחין בפער המחירים ביניהם באמצעות פסי מחיר על גבי המדפים.
+
+  <svg width="500" height="300" viewBox="0 0 500 300" xmlns="http://www.w3.org/2000/svg" font-family="Arial, sans-serif">
+    <!-- רקע רך -->
+    <rect width="500" height="300" fill="#fcfcfc" rx="8"/>
+
+    <!-- מחיצה מפרידה בין המדפים לסלים -->
+    <line x1="165" y1="20" x2="165" y2="280" stroke="#e0e0e0" stroke-width="1.5" stroke-dasharray="4 4"/>
+
+    <!-- כותרות אזורים -->
+    <text x="330" y="32" font-size="14" font-weight="bold" fill="#333" text-anchor="middle">מדפי החנות</text>
+    <text x="85" y="32" font-size="14" font-weight="bold" fill="#333" text-anchor="middle">סלי קניות</text>
+
+    <!-- מדף עליון -->
+    <rect x="180" y="115" width="300" height="8" rx="2" fill="#8d6e63"/>
+    <text x="475" y="70" font-size="12" fill="#555" text-anchor="end">מדף עליון</text>
+
+    <!-- עט על מדף עליון -->
+    <g transform="translate(200, 96)">
+      <!-- גוף עט -->
+      <rect x="0" y="0" width="45" height="7" rx="2" fill="#2196f3"/>
+      <!-- חוד עט -->
+      <polygon points="45,0 55,3.5 45,7" fill="#90caf9"/>
+      <!-- פקק -->
+      <rect x="-8" y="-1" width="12" height="9" rx="1" fill="#0d47a1"/>
+      <!-- קליפס -->
+      <line x1="-5" y1="8" x2="10" y2="8" stroke="#0d47a1" stroke-width="1.5"/>
+      <text x="23" y="-6" font-size="11" fill="#333" text-anchor="middle">עט</text>
+    </g>
+
+    <!-- פס מחיר עליון (ירוק) -->
+    <g transform="translate(280, 85)">
+      <rect x="0" y="0" width="90" height="22" rx="4" fill="#4caf50"/>
+      <text x="45" y="15" font-size="11" font-weight="bold" fill="#ffffff" text-anchor="middle">מחיר עט</text>
+    </g>
+
+    <!-- מדף תחתון -->
+    <rect x="180" y="240" width="300" height="8" rx="2" fill="#8d6e63"/>
+    <text x="475" y="190" font-size="12" fill="#555" text-anchor="end">מדף תחתון</text>
+
+    <!-- קלמר על מדף תחתון -->
+    <g transform="translate(195, 215)">
+      <!-- גוף הקלמר -->
+      <rect x="0" y="0" width="60" height="20" rx="6" fill="#ab47bc"/>
+      <!-- רוכסן -->
+      <line x1="5" y1="10" x2="55" y2="10" stroke="#f3e5f5" stroke-width="1.5" stroke-dasharray="2 2"/>
+      <circle cx="50" cy="10" r="3" fill="#ffd54f"/>
+      <text x="30" y="-6" font-size="11" fill="#333" text-anchor="middle">קלמר</text>
+    </g>
+
+    <!-- פסי מחיר תחתונים (ירוק + תוספת כתומה) -->
+    <g transform="translate(280, 210)">
+      <!-- חלק בסיסי שווה לעט (ירוק) -->
+      <rect x="0" y="0" width="90" height="22" rx="4" fill="#4caf50"/>
+      <text x="45" y="15" font-size="10" fill="#ffffff" text-anchor="middle">מחיר עט</text>
+
+      <!-- תוספת הפרש (כתום) -->
+      <rect x="94" y="0" width="70" height="22" rx="4" fill="#ff9800"/>
+      <text x="129" y="15" font-size="10" font-weight="bold" fill="#ffffff" text-anchor="middle">הפרש</text>
+
+      <!-- סימון כולל לקלמר -->
+      <path d="M 0,26 L 0,31 L 82,31 L 82,35 L 82,31 L 164,31 L 164,26" fill="none" stroke="#666" stroke-width="1"/>
+      <text x="82" y="47" font-size="11" fill="#444" text-anchor="middle">מחיר קלמר מלא</text>
+    </g>
+
+    <!-- סל 1 (עט) -->
+    <g transform="translate(45, 60)">
+      <text x="40" y="0" font-size="12" font-weight="bold" fill="#333" text-anchor="middle">סל 1</text>
+      <!-- ידית סל -->
+      <path d="M 25,35 C 25,12 55,12 55,35" fill="none" stroke="#78909c" stroke-width="2.5"/>
+      <!-- גוף הסל -->
+      <polygon points="15,35 65,35 58,68 22,68" fill="#e0f2fe" stroke="#0288d1" stroke-width="2"/>
+      <line x1="26" y1="35" x2="30" y2="68" stroke="#0288d1" stroke-width="1"/>
+      <line x1="40" y1="35" x2="40" y2="68" stroke="#0288d1" stroke-width="1"/>
+      <line x1="54" y1="35" x2="50" y2="68" stroke="#0288d1" stroke-width="1"/>
+      <!-- עט בתוך הסל -->
+      <g transform="translate(30, 22) rotate(25)">
+        <rect x="0" y="0" width="6" height="30" rx="1.5" fill="#2196f3"/>
+        <polygon points="0,0 3,-6 6,0" fill="#90caf9"/>
+        <rect x="-0.5" y="22" width="7" height="8" fill="#0d47a1"/>
+      </g>
+      <text x="40" y="82" font-size="10" fill="#555" text-anchor="middle">עט 1</text>
+    </g>
+
+    <!-- סל 2 (קלמר) -->
+    <g transform="translate(45, 175)">
+      <text x="40" y="0" font-size="12" font-weight="bold" fill="#333" text-anchor="middle">סל 2</text>
+      <!-- ידית סל -->
+      <path d="M 25,35 C 25,12 55,12 55,35" fill="none" stroke="#78909c" stroke-width="2.5"/>
+      <!-- גוף הסל -->
+      <polygon points="15,35 65,35 58,68 22,68" fill="#f3e5f5" stroke="#7b1fa2" stroke-width="2"/>
+      <line x1="26" y1="35" x2="30" y2="68" stroke="#7b1fa2" stroke-width="1"/>
+      <line x1="40" y1="35" x2="40" y2="68" stroke="#7b1fa2" stroke-width="1"/>
+      <line x1="54" y1="35" x2="50" y2="68" stroke="#7b1fa2" stroke-width="1"/>
+      <!-- קלמר בתוך הסל -->
+      <g transform="translate(26, 28) rotate(-15)">
+        <rect x="0" y="0" width="30" height="14" rx="4" fill="#ab47bc"/>
+        <line x1="3" y1="7" x2="27" y2="7" stroke="#ffffff" stroke-width="1" stroke-dasharray="1.5 1.5"/>
+      </g>
+      <text x="40" y="82" font-size="10" fill="#555" text-anchor="middle">קלמר 1</text>
+    </g>
+  </svg>
+
+<svg width="500" height="300" viewBox="0 0 500 300" xmlns="http://www.w3.org/2000/svg" font-family="Arial, sans-serif">
+    <!-- רקע רך -->
+    <rect width="500" height="300" fill="#fcfcfc" rx="8"/>
+
+    <!-- מחיצה מפרידה בין המדפים לסלים -->
+    <line x1="165" y1="20" x2="165" y2="280" stroke="#e0e0e0" stroke-width="1.5" stroke-dasharray="4 4"/>
+
+    <!-- כותרות אזורים -->
+    <text x="330" y="32" font-size="14" font-weight="bold" fill="#333" text-anchor="middle">מדפי החנות</text>
+    <text x="85" y="32" font-size="14" font-weight="bold" fill="#333" text-anchor="middle">סלי קניות</text>
+
+    <!-- מדף עליון -->
+    <rect x="180" y="115" width="300" height="8" rx="2" fill="#8d6e63"/>
+    <text x="475" y="70" font-size="12" fill="#555" text-anchor="end">מדף עליון</text>
+
+    <!-- עט על מדף עליון -->
+    <g transform="translate(200, 96)">
+      <!-- גוף עט -->
+      <rect x="0" y="0" width="45" height="7" rx="2" fill="#2196f3"/>
+      <!-- חוד עט -->
+      <polygon points="45,0 55,3.5 45,7" fill="#90caf9"/>
+      <!-- פקק -->
+      <rect x="-8" y="-1" width="12" height="9" rx="1" fill="#0d47a1"/>
+      <!-- קליפס -->
+      <line x1="-5" y1="8" x2="10" y2="8" stroke="#0d47a1" stroke-width="1.5"/>
+      <text x="23" y="-6" font-size="11" fill="#333" text-anchor="middle">עט</text>
+    </g>
+
+    <!-- פס מחיר עליון (ירוק) -->
+    <g transform="translate(280, 85)">
+      <rect x="0" y="0" width="90" height="22" rx="4" fill="#4caf50"/>
+      <text x="45" y="15" font-size="11" font-weight="bold" fill="#ffffff" text-anchor="middle">מחיר עט</text>
+    </g>
+
+    <!-- מדף תחתון -->
+    <rect x="180" y="240" width="300" height="8" rx="2" fill="#8d6e63"/>
+    <text x="475" y="190" font-size="12" fill="#555" text-anchor="end">מדף תחתון</text>
+
+    <!-- קלמר על מדף תחתון -->
+    <g transform="translate(195, 215)">
+      <!-- גוף הקלמר -->
+      <rect x="0" y="0" width="60" height="20" rx="6" fill="#ab47bc"/>
+      <!-- רוכסן -->
+      <line x1="5" y1="10" x2="55" y2="10" stroke="#f3e5f5" stroke-width="1.5" stroke-dasharray="2 2"/>
+      <circle cx="50" cy="10" r="3" fill="#ffd54f"/>
+      <text x="30" y="-6" font-size="11" fill="#333" text-anchor="middle">קלמר</text>
+    </g>
+
+    <!-- פסי מחיר תחתונים (ירוק + תוספת כתומה) -->
+    <g transform="translate(280, 210)">
+      <!-- חלק בסיסי שווה לעט (ירוק) -->
+      <rect x="0" y="0" width="90" height="22" rx="4" fill="#4caf50"/>
+      <text x="45" y="15" font-size="10" fill="#ffffff" text-anchor="middle">מחיר עט</text>
+
+      <!-- תוספת הפרש (כתום) -->
+      <rect x="94" y="0" width="70" height="22" rx="4" fill="#ff9800"/>
+      <text x="129" y="15" font-size="10" font-weight="bold" fill="#ffffff" text-anchor="middle">הפרש</text>
+
+      <!-- סימון כולל לקלמר -->
+      <path d="M 0,26 L 0,31 L 82,31 L 82,35 L 82,31 L 164,31 L 164,26" fill="none" stroke="#666" stroke-width="1"/>
+      <text x="82" y="47" font-size="11" fill="#444" text-anchor="middle">מחיר קלמר מלא</text>
+    </g>
+
+    <!-- סל 1 (עט) -->
+    <g transform="translate(45, 60)">
+      <text x="40" y="0" font-size="12" font-weight="bold" fill="#333" text-anchor="middle">סל 1</text>
+      <!-- ידית סל -->
+      <path d="M 25,35 C 25,12 55,12 55,35" fill="none" stroke="#78909c" stroke-width="2.5"/>
+      <!-- גוף הסל -->
+      <polygon points="15,35 65,35 58,68 22,68" fill="#e0f2fe" stroke="#0288d1" stroke-width="2"/>
+      <line x1="26" y1="35" x2="30" y2="68" stroke="#0288d1" stroke-width="1"/>
+      <line x1="40" y1="35" x2="40" y2="68" stroke="#0288d1" stroke-width="1"/>
+      <line x1="54" y1="35" x2="50" y2="68" stroke="#0288d1" stroke-width="1"/>
+      <!-- עט בתוך הסל -->
+      <g transform="translate(30, 22) rotate(25)">
+        <rect x="0" y="0" width="6" height="30" rx="1.5" fill="#2196f3"/>
+        <polygon points="0,0 3,-6 6,0" fill="#90caf9"/>
+        <rect x="-0.5" y="22" width="7" height="8" fill="#0d47a1"/>
+      </g>
+      <text x="40" y="82" font-size="10" fill="#555" text-anchor="middle">עט 1</text>
+    </g>
+
+    <!-- סל 2 (קלמר) -->
+    <g transform="translate(45, 175)">
+      <text x="40" y="0" font-size="12" font-weight="bold" fill="#333" text-anchor="middle">סל 2</text>
+      <!-- ידית סל -->
+      <path d="M 25,35 C 25,12 55,12 55,35" fill="none" stroke="#78909c" stroke-width="2.5"/>
+      <!-- גוף הסל -->
+      <polygon points="15,35 65,35 58,68 22,68" fill="#f3e5f5" stroke="#7b1fa2" stroke-width="2"/>
+      <line x1="26" y1="35" x2="30" y2="68" stroke="#7b1fa2" stroke-width="1"/>
+      <line x1="40" y1="35" x2="40" y2="68" stroke="#7b1fa2" stroke-width="1"/>
+      <line x1="54" y1="35" x2="50" y2="68" stroke="#7b1fa2" stroke-width="1"/>
+      <!-- קלמר בתוך הסל -->
+      <g transform="translate(26, 28) rotate(-15)">
+        <rect x="0" y="0" width="30" height="14" rx="4" fill="#ab47bc"/>
+        <line x1="3" y1="7" x2="27" y2="7" stroke="#ffffff" stroke-width="1" stroke-dasharray="1.5 1.5"/>
+      </g>
+      <text x="40" y="82" font-size="10" fill="#555" text-anchor="middle">קלמר 1</text>
+    </g>
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 2 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: התבוננו בפסי המחיר שעל המדף. איזה מוצר יקר יותר?
+* אופציות:
+  - קלמר
+  - עט
+* פתרון נכון: קלמר
+* רמז: השוו את אורך הפס הכתום של הקלמר לאורך הפס הירוק של העט.
+* פתרון מלא: פס המחיר של הקלמר ארוך יותר מפס המחיר של העט ומכיל תוספת מעבר למחיר העט, ולכן קלמר יקר יותר מעט.
+
+--------------------------------------------------------------------------------
+[תרגיל 2 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: בקופה עומדים שני לקוחות: לקוח א' עם סל המכיל עט אחד, ולקוח ב' עם סל המכיל קלמר אחד. מי ישלם סכום גבוה יותר?
+* אופציות:
+  - לקוח ב' (שבסלו יש קלמר)
+  - לקוח א' (שבסלו יש עט)
+* פתרון נכון: לקוח ב' (שבסלו יש קלמר)
+* רמז: בדקו איזה מוצר בודד יקר יותר על פי פסי המחיר.
+* פתרון מלא: מכיוון שמחיר קלמר בודד גבוה ממחיר עט בודד, הסל המכיל קלמר יעלה יותר מהסל המכיל עט.
+
+--------------------------------------------------------------------------------
+[תרגיל 2 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: אם נסמן את מחירו של עט ב-x שקלים, וידוע שקלמר יקר מעט ב-15 שקלים, כיצד נבטא את מחירו של קלמר?
+* אופציות:
+  - x + 15
+  - x - 15
+  - 15x
+* פתרון נכון: x + 15
+* רמז: המילה "יקר ב-" מציינת תוספת של סכום קבוע, כלומר פעולת חיבור.
+* פתרון מלא: כאשר מוצר יקר יותר בסכום קבוע ממוצר אחר, מוסיפים את ההפרש למחיר המוצר הבסיסי, ולכן מחיר הקלמר הוא x + 15.
+
+--------------------------------------------------------------------------------
+[תרגיל 2 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: התבוננו בסל המכיל שני עטים מול סל המכיל עט וקלמר, ומצאו מה מייצג ההבדל בעלות הכוללת בין שני הסלים.
+* פתרון נכון: בשני הסלים יש עט אחד משותף. ההבדל בין הסלים הוא שבסל השני החליפו עט אחד בקלמר. לכן, ההפרש בעלות הכוללת בין שני הסלים שווה בדיוק להפרש המחיר שבין קלמר לעט (התוספת הקבועה שבה קלמר יקר יותר מעט).
+* פתרון מלא: בשני הסלים יש עט אחד משותף. ההבדל בין הסלים הוא שבסל השני החליפו עט אחד בקלמר. לכן, ההפרש בעלות הכוללת בין שני הסלים שווה בדיוק להפרש המחיר שבין קלמר לעט (התוספת הקבועה שבה קלמר יקר יותר מעט).
+
+================================================================================
+תרגיל 3 – מנחה: ארגון נתונים בטבלת קנייה-מכירה של שני מוצרים עם כמויות שונות
+================================================================================
+בחנות בגדים נרכשו חולצות ומכנסיים. מחיר זוג מכנסיים גבוה ב-30 ש"ח ממחיר חולצה. נארגן את נתוני הקנייה בטבלה אלגברית מסודרת.
+
+  <svg width="460" height="200" xmlns="http://www.w3.org/2000/svg" font-family="system-ui, -apple-system, sans-serif">
+    <!-- רקע הטבלה -->
+    <rect x="20" y="20" width="420" height="160" fill="#ffffff" stroke="#334155" stroke-width="2" rx="4"/>
+
+    <!-- רקע שורת כותרת -->
+    <path d="M 20 24 Q 20 20 24 20 L 436 20 Q 440 20 440 24 L 440 60 L 20 60 Z" fill="#e2e8f0"/>
+
+    <!-- רקע שורת סה"כ -->
+    <path d="M 20 140 L 440 140 L 440 176 Q 440 180 436 180 L 24 180 Q 20 180 20 176 Z" fill="#f8fafc"/>
+
+    <!-- קווים אופקיים -->
+    <line x1="20" y1="60" x2="440" y2="60" stroke="#334155" stroke-width="2"/>
+    <line x1="20" y1="100" x2="440" y2="100" stroke="#cbd5e1" stroke-width="1.5"/>
+    <line x1="20" y1="140" x2="440" y2="140" stroke="#334155" stroke-width="2"/>
+
+    <!-- קווים אנכיים (עמודות מימין לשמאל: 440-330, 330-260, 260-140, 140-20) -->
+    <line x1="330" y1="20" x2="330" y2="140" stroke="#cbd5e1" stroke-width="1.5"/>
+    <line x1="260" y1="20" x2="260" y2="140" stroke="#cbd5e1" stroke-width="1.5"/>
+    <line x1="140" y1="20" x2="140" y2="180" stroke="#334155" stroke-width="1.5"/>
+
+    <!-- כותרות עמודות -->
+    <text x="385" y="45" font-size="14" font-weight="bold" fill="#0f172a" text-anchor="middle" direction="rtl">פריט</text>
+    <text x="295" y="45" font-size="14" font-weight="bold" fill="#0f172a" text-anchor="middle" direction="rtl">כמות</text>
+    <text x="200" y="45" font-size="13" font-weight="bold" fill="#0f172a" text-anchor="middle" direction="rtl">מחיר יחידה (ש"ח)</text>
+    <text x="80" y="45" font-size="13" font-weight="bold" fill="#0f172a" text-anchor="middle" direction="rtl">מחיר כולל (ש"ח)</text>
+
+    <!-- שורה 1: חולצה -->
+    <text x="385" y="85" font-size="14" fill="#1e293b" text-anchor="middle" direction="rtl">חולצה</text>
+    <text x="295" y="85" font-size="14" fill="#1e293b" text-anchor="middle">3</text>
+    <text x="200" y="85" font-size="14" font-style="italic" fill="#1e293b" text-anchor="middle">x</text>
+    <text x="80" y="85" font-size="14" font-style="italic" fill="#1e293b" text-anchor="middle">3x</text>
+
+    <!-- שורה 2: מכנסיים -->
+    <text x="385" y="125" font-size="14" fill="#1e293b" text-anchor="middle" direction="rtl">מכנסיים</text>
+    <text x="295" y="125" font-size="14" fill="#1e293b" text-anchor="middle">2</text>
+    <text x="200" y="125" font-size="14" font-style="italic" fill="#1e293b" text-anchor="middle">x + 30</text>
+    <text x="80" y="125" font-size="16" font-weight="bold" fill="#dc2626" text-anchor="middle">?</text>
+
+    <!-- שורה 3: סה"כ לתשלום -->
+    <text x="290" y="165" font-size="14" font-weight="bold" fill="#0f172a" text-anchor="middle" direction="rtl">סה"כ לתשלום</text>
+    <text x="80" y="165" font-size="14" font-weight="bold" fill="#0f172a" text-anchor="middle" direction="rtl">310 ש"ח</text>
+  </svg>
+
+<svg width="460" height="200" xmlns="http://www.w3.org/2000/svg" font-family="system-ui, -apple-system, sans-serif">
+    <!-- רקע הטבלה -->
+    <rect x="20" y="20" width="420" height="160" fill="#ffffff" stroke="#334155" stroke-width="2" rx="4"/>
+
+    <!-- רקע שורת כותרת -->
+    <path d="M 20 24 Q 20 20 24 20 L 436 20 Q 440 20 440 24 L 440 60 L 20 60 Z" fill="#e2e8f0"/>
+
+    <!-- רקע שורת סה"כ -->
+    <path d="M 20 140 L 440 140 L 440 176 Q 440 180 436 180 L 24 180 Q 20 180 20 176 Z" fill="#f8fafc"/>
+
+    <!-- קווים אופקיים -->
+    <line x1="20" y1="60" x2="440" y2="60" stroke="#334155" stroke-width="2"/>
+    <line x1="20" y1="100" x2="440" y2="100" stroke="#cbd5e1" stroke-width="1.5"/>
+    <line x1="20" y1="140" x2="440" y2="140" stroke="#334155" stroke-width="2"/>
+
+    <!-- קווים אנכיים (עמודות מימין לשמאל: 440-330, 330-260, 260-140, 140-20) -->
+    <line x1="330" y1="20" x2="330" y2="140" stroke="#cbd5e1" stroke-width="1.5"/>
+    <line x1="260" y1="20" x2="260" y2="140" stroke="#cbd5e1" stroke-width="1.5"/>
+    <line x1="140" y1="20" x2="140" y2="180" stroke="#334155" stroke-width="1.5"/>
+
+    <!-- כותרות עמודות -->
+    <text x="385" y="45" font-size="14" font-weight="bold" fill="#0f172a" text-anchor="middle" direction="rtl">פריט</text>
+    <text x="295" y="45" font-size="14" font-weight="bold" fill="#0f172a" text-anchor="middle" direction="rtl">כמות</text>
+    <text x="200" y="45" font-size="13" font-weight="bold" fill="#0f172a" text-anchor="middle" direction="rtl">מחיר יחידה (ש"ח)</text>
+    <text x="80" y="45" font-size="13" font-weight="bold" fill="#0f172a" text-anchor="middle" direction="rtl">מחיר כולל (ש"ח)</text>
+
+    <!-- שורה 1: חולצה -->
+    <text x="385" y="85" font-size="14" fill="#1e293b" text-anchor="middle" direction="rtl">חולצה</text>
+    <text x="295" y="85" font-size="14" fill="#1e293b" text-anchor="middle">3</text>
+    <text x="200" y="85" font-size="14" font-style="italic" fill="#1e293b" text-anchor="middle">x</text>
+    <text x="80" y="85" font-size="14" font-style="italic" fill="#1e293b" text-anchor="middle">3x</text>
+
+    <!-- שורה 2: מכנסיים -->
+    <text x="385" y="125" font-size="14" fill="#1e293b" text-anchor="middle" direction="rtl">מכנסיים</text>
+    <text x="295" y="125" font-size="14" fill="#1e293b" text-anchor="middle">2</text>
+    <text x="200" y="125" font-size="14" font-style="italic" fill="#1e293b" text-anchor="middle">x + 30</text>
+    <text x="80" y="125" font-size="16" font-weight="bold" fill="#dc2626" text-anchor="middle">?</text>
+
+    <!-- שורה 3: סה"כ לתשלום -->
+    <text x="290" y="165" font-size="14" font-weight="bold" fill="#0f172a" text-anchor="middle" direction="rtl">סה"כ לתשלום</text>
+    <text x="80" y="165" font-size="14" font-weight="bold" fill="#0f172a" text-anchor="middle" direction="rtl">310 ש"ח</text>
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 3 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: כאשר כופלים את כמות המכנסיים (2) במחיר היחידה שלהם (x + 30), האם חובה להשתמש בסוגריים סביב הביטוי x + 30?
+* אופציות:
+  - כן, חובה לשים סוגריים כדי שהכפל יחול על כל חלקי המחיר.
+  - לא, אין צורך בסוגריים וניתן לכתוב 2x + 30.
+* פתרון נכון: כן, חובה לשים סוגריים כדי שהכפל יחול על כל חלקי המחיר.
+* רמז: אם נכתוב 2x + 30 ללא סוגריים, נכפיל ב-2 רק את x ולא את התוספת של 30.
+* פתרון מלא: מחיר היחידה מורכב מביטוי של חיבור (x + 30). כאשר מכפילים כמות בביטוי כזה, חובה להשתמש בסוגריים 2(x + 30) כדי שחוק הפילוג יפעל על שני האיברים.
+
+--------------------------------------------------------------------------------
+[תרגיל 3 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: מהו הביטוי האלגברי המתאים למחיר הכולל של 2 זוגות המכנסיים בתא הריק בטבלה?
+* אופציות:
+  - 2(x + 30)
+  - x + 60
+* פתרון נכון: 2(x + 30)
+* רמז: הכפילו את הכמות 2 בכל הביטוי של מחיר היחידה.
+* פתרון מלא: מחיר כולל מתקבל מכפל הכמות במחיר היחידה. מכיוון שנקנו 2 זוגות במחיר של x + 30 לזוג, הביטוי הוא 2(x + 30).
+
+--------------------------------------------------------------------------------
+[תרגיל 3 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: ידוע כי הסכום הכולל ששולם עבור 3 החולצות ו-2 זוגות המכנסיים היה 310 ש"ח. איזו משוואה מתאימה לתיאור הנתון?
+* אופציות:
+  - 3x + 2(x + 30) = 310
+  - 3x + x + 30 = 310
+  - 5(x + 30) = 310
+* פתרון נכון: 3x + 2(x + 30) = 310
+* רמז: חברו את עמודת המחיר הכולל של החולצות עם עמודת המחיר הכולל של המכנסיים והשוו ל-310.
+* פתרון מלא: הסכום הכולל מורכב מעלות 3 החולצות (3x) ועוד עלות 2 זוגות המכנסיים [2(x + 30)]. חיבור שני הביטויים שווה ל-310 ש"ח.
+
+--------------------------------------------------------------------------------
+[תרגיל 3 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: פתרו את המשוואה 3x + 2(x + 30) = 310, מצאו את ערכו של x וקבעו מהו מחירו של זוג מכנסיים אחד.
+* פתרון נכון: נפתח סוגריים: 3x + 2x + 60 = 310. נכנס איברים דומים: 5x + 60 = 310. נחסר 60 משני האגפים: 5x = 250. נחלק ב-5 ונקבל x = 50. מחיר חולצה הוא 50 ש"ח, ומחיר זוג מכנסיים הוא x + 30 = 50 + 30 = 80 ש"ח.
+* פתרון מלא: נפתח סוגריים: 3x + 2x + 60 = 310. נכנס איברים דומים: 5x + 60 = 310. נחסר 60 משני האגפים: 5x = 250. נחלק ב-5 ונקבל x = 50. מחיר חולצה הוא 50 ש"ח, ומחיר זוג מכנסיים הוא x + 30 = 50 + 30 = 80 ש"ח.
+
+================================================================================
+תרגיל 4 – בסיס: הבעת קשר כמותי כאשר סך כל הפריטים קבוע (חלוקת כמות כוללת)
+================================================================================
+בחנות ספורט מונחת סלסילה ובה 12 כדורים בסך הכל: כדורים אדומים וכדורים כחולים.
+
+  <svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <!-- כדור אדום -->
+      <radialGradient id="redBall" cx="35%" cy="35%" r="65%">
+        <stop offset="0%" stop-color="#ff8a80" />
+        <stop offset="40%" stop-color="#e53935" />
+        <stop offset="100%" stop-color="#b71c1c" />
+      </radialGradient>
+      <!-- כדור כחול -->
+      <radialGradient id="blueBall" cx="35%" cy="35%" r="65%">
+        <stop offset="0%" stop-color="#80d8ff" />
+        <stop offset="40%" stop-color="#1e88e5" />
+        <stop offset="100%" stop-color="#0d47a1" />
+      </radialGradient>
+      <!-- מילוי סלסילה -->
+      <linearGradient id="basketGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#d7ccc8" />
+        <stop offset="100%" stop-color="#8d6e63" />
+      </linearGradient>
+    </defs>
+
+    <!-- שלט עליון -->
+    <line x1="140" y1="58" x2="140" y2="78" stroke="#8d6e63" stroke-width="3" />
+    <line x1="260" y1="58" x2="260" y2="78" stroke="#8d6e63" stroke-width="3" />
+    <rect x="100" y="16" width="200" height="44" rx="10" ry="10" fill="#fff9c4" stroke="#fbc02d" stroke-width="3" />
+    <text x="200" y="44" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="#5d4037" text-anchor="middle" direction="rtl">סה"כ 12 כדורים</text>
+
+    <!-- ידית הסלסילה מאחור -->
+    <path d="M 120 190 Q 200 65 280 190" fill="none" stroke="#a1887f" stroke-width="8" stroke-linecap="round" />
+
+    <!-- גב הסלסילה -->
+    <ellipse cx="200" cy="190" rx="95" ry="25" fill="#6d4c41" />
+
+    <!-- 12 כדורים: 6 אדומים ו-6 כחולים -->
+    <!-- שורה עליונה (3 כדורים: 2 אדומים, 1 כחול) -->
+    <circle cx="166" cy="132" r="17" fill="url(#redBall)" stroke="#b71c1c" stroke-width="1" />
+    <circle cx="200" cy="126" r="17" fill="url(#blueBall)" stroke="#0d47a1" stroke-width="1" />
+    <circle cx="234" cy="132" r="17" fill="url(#redBall)" stroke="#b71c1c" stroke-width="1" />
+
+    <!-- שורה אמצעית (5 כדורים: 2 אדומים, 3 כחולים) -->
+    <circle cx="132" cy="162" r="17" fill="url(#blueBall)" stroke="#0d47a1" stroke-width="1" />
+    <circle cx="166" cy="160" r="17" fill="url(#redBall)" stroke="#b71c1c" stroke-width="1" />
+    <circle cx="200" cy="158" r="17" fill="url(#blueBall)" stroke="#0d47a1" stroke-width="1" />
+    <circle cx="234" cy="160" r="17" fill="url(#redBall)" stroke="#b71c1c" stroke-width="1" />
+    <circle cx="268" cy="162" r="17" fill="url(#blueBall)" stroke="#0d47a1" stroke-width="1" />
+
+    <!-- שורה תחתונה (4 כדורים: 2 אדומים, 2 כחולים) -->
+    <circle cx="148" cy="190" r="17" fill="url(#redBall)" stroke="#b71c1c" stroke-width="1" />
+    <circle cx="182" cy="188" r="17" fill="url(#blueBall)" stroke="#0d47a1" stroke-width="1" />
+    <circle cx="218" cy="188" r="17" fill="url(#redBall)" stroke="#b71c1c" stroke-width="1" />
+    <circle cx="252" cy="190" r="17" fill="url(#blueBall)" stroke="#0d47a1" stroke-width="1" />
+
+    <!-- חזית גוף הסלסילה -->
+    <path d="M 105 190 Q 200 205 295 190 L 270 270 Q 200 282 130 270 Z" fill="url(#basketGrad)" stroke="#5d4037" stroke-width="3" />
+
+    <!-- דוגמת שתי-וערב על הסלסילה -->
+    <path d="M 115 205 Q 200 220 285 205" fill="none" stroke="#795548" stroke-width="2" />
+    <path d="M 122 225 Q 200 240 278 225" fill="none" stroke="#795548" stroke-width="2" />
+    <path d="M 126 248 Q 200 260 274 248" fill="none" stroke="#795548" stroke-width="2" />
+
+    <line x1="150" y1="195" x2="160" y2="273" stroke="#795548" stroke-width="2" />
+    <line x1="180" y1="198" x2="185" y2="276" stroke="#795548" stroke-width="2" />
+    <line x1="220" y1="198" x2="215" y2="276" stroke="#795548" stroke-width="2" />
+    <line x1="250" y1="195" x2="240" y2="273" stroke="#795548" stroke-width="2" />
+
+    <!-- שפת הסלסילה הקדמית -->
+    <ellipse cx="200" cy="190" rx="95" ry="12" fill="none" stroke="#5d4037" stroke-width="4" />
+  </svg>
+
+<svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <!-- כדור אדום -->
+      <radialGradient id="redBall" cx="35%" cy="35%" r="65%">
+        <stop offset="0%" stop-color="#ff8a80" />
+        <stop offset="40%" stop-color="#e53935" />
+        <stop offset="100%" stop-color="#b71c1c" />
+      </radialGradient>
+      <!-- כדור כחול -->
+      <radialGradient id="blueBall" cx="35%" cy="35%" r="65%">
+        <stop offset="0%" stop-color="#80d8ff" />
+        <stop offset="40%" stop-color="#1e88e5" />
+        <stop offset="100%" stop-color="#0d47a1" />
+      </radialGradient>
+      <!-- מילוי סלסילה -->
+      <linearGradient id="basketGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#d7ccc8" />
+        <stop offset="100%" stop-color="#8d6e63" />
+      </linearGradient>
+    </defs>
+
+    <!-- שלט עליון -->
+    <line x1="140" y1="58" x2="140" y2="78" stroke="#8d6e63" stroke-width="3" />
+    <line x1="260" y1="58" x2="260" y2="78" stroke="#8d6e63" stroke-width="3" />
+    <rect x="100" y="16" width="200" height="44" rx="10" ry="10" fill="#fff9c4" stroke="#fbc02d" stroke-width="3" />
+    <text x="200" y="44" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="#5d4037" text-anchor="middle" direction="rtl">סה"כ 12 כדורים</text>
+
+    <!-- ידית הסלסילה מאחור -->
+    <path d="M 120 190 Q 200 65 280 190" fill="none" stroke="#a1887f" stroke-width="8" stroke-linecap="round" />
+
+    <!-- גב הסלסילה -->
+    <ellipse cx="200" cy="190" rx="95" ry="25" fill="#6d4c41" />
+
+    <!-- 12 כדורים: 6 אדומים ו-6 כחולים -->
+    <!-- שורה עליונה (3 כדורים: 2 אדומים, 1 כחול) -->
+    <circle cx="166" cy="132" r="17" fill="url(#redBall)" stroke="#b71c1c" stroke-width="1" />
+    <circle cx="200" cy="126" r="17" fill="url(#blueBall)" stroke="#0d47a1" stroke-width="1" />
+    <circle cx="234" cy="132" r="17" fill="url(#redBall)" stroke="#b71c1c" stroke-width="1" />
+
+    <!-- שורה אמצעית (5 כדורים: 2 אדומים, 3 כחולים) -->
+    <circle cx="132" cy="162" r="17" fill="url(#blueBall)" stroke="#0d47a1" stroke-width="1" />
+    <circle cx="166" cy="160" r="17" fill="url(#redBall)" stroke="#b71c1c" stroke-width="1" />
+    <circle cx="200" cy="158" r="17" fill="url(#blueBall)" stroke="#0d47a1" stroke-width="1" />
+    <circle cx="234" cy="160" r="17" fill="url(#redBall)" stroke="#b71c1c" stroke-width="1" />
+    <circle cx="268" cy="162" r="17" fill="url(#blueBall)" stroke="#0d47a1" stroke-width="1" />
+
+    <!-- שורה תחתונה (4 כדורים: 2 אדומים, 2 כחולים) -->
+    <circle cx="148" cy="190" r="17" fill="url(#redBall)" stroke="#b71c1c" stroke-width="1" />
+    <circle cx="182" cy="188" r="17" fill="url(#blueBall)" stroke="#0d47a1" stroke-width="1" />
+    <circle cx="218" cy="188" r="17" fill="url(#redBall)" stroke="#b71c1c" stroke-width="1" />
+    <circle cx="252" cy="190" r="17" fill="url(#blueBall)" stroke="#0d47a1" stroke-width="1" />
+
+    <!-- חזית גוף הסלסילה -->
+    <path d="M 105 190 Q 200 205 295 190 L 270 270 Q 200 282 130 270 Z" fill="url(#basketGrad)" stroke="#5d4037" stroke-width="3" />
+
+    <!-- דוגמת שתי-וערב על הסלסילה -->
+    <path d="M 115 205 Q 200 220 285 205" fill="none" stroke="#795548" stroke-width="2" />
+    <path d="M 122 225 Q 200 240 278 225" fill="none" stroke="#795548" stroke-width="2" />
+    <path d="M 126 248 Q 200 260 274 248" fill="none" stroke="#795548" stroke-width="2" />
+
+    <line x1="150" y1="195" x2="160" y2="273" stroke="#795548" stroke-width="2" />
+    <line x1="180" y1="198" x2="185" y2="276" stroke="#795548" stroke-width="2" />
+    <line x1="220" y1="198" x2="215" y2="276" stroke="#795548" stroke-width="2" />
+    <line x1="250" y1="195" x2="240" y2="273" stroke="#795548" stroke-width="2" />
+
+    <!-- שפת הסלסילה הקדמית -->
+    <ellipse cx="200" cy="190" rx="95" ry="12" fill="none" stroke="#5d4037" stroke-width="4" />
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 4 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: אם מספר הכדורים האדומים בסלסילה גדל, אך מספר הכדורים הכולל נשאר 12, מה קורה למספר הכדורים הכחולים?
+* אופציות:
+  - מספר הכדורים הכחולים גדל.
+  - מספר הכדורים הכחולים קטן.
+* פתרון נכון: מספר הכדורים הכחולים קטן.
+* פתרון מלא: כיוון שסך כל הכדורים קבוע (12), כל תוספת של כדור אדום באה בהכרח על חשבון כדור כחול, ולכן מספר הכדורים הכחולים קטן.
+
+--------------------------------------------------------------------------------
+[תרגיל 4 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: נסמן ב-x את מספר הכדורים האדומים בסלסילה (מתוך 12 כדורים בסך הכל). איזה ביטוי מייצג את מספר הכדורים הכחולים?
+* אופציות:
+  - 12 - x
+  - x - 12
+* פתרון נכון: 12 - x
+* פתרון מלא: סך כל הכדורים הוא 12. אם ישנם x כדורים אדומים, כמות הכדורים הכחולים היא הכמות הנותרת: 12 פחות x.
+
+--------------------------------------------------------------------------------
+[תרגיל 4 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: מחירו של כדור אדום הוא 6 ש"ח, ומחירו של כדור כחול הוא 10 ש"ח. ידוע שכל 12 הכדורים יחד עלו 96 ש"ח. איזו משוואה מתאימה למציאת מספר הכדורים האדומים (x)?
+* אופציות:
+  - 6x + 10(12 - x) = 96
+  - 6x + 10x = 96
+  - 6(12 - x) + 10x = 12
+* פתרון נכון: 6x + 10(12 - x) = 96
+* פתרון מלא: עלות הכדורים האדומים היא מחיר כדור (6) כפול כמותם (x), כלומר 6x. עלות הכדורים הכחולים היא מחיר כדור (10) כפול כמותם (12 פחות x), כלומר 10(12 - x). סכום שתי העלויות שווה לעלות הכוללת: 6x + 10(12 - x) = 96.
+
+--------------------------------------------------------------------------------
+[תרגיל 4 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: פתרו את המשוואה, חשבו כמה כדורים מכל צבע נקנו, ובדקו שסכום הכמויות אכן שווה ל-12 כדורים.
+6x + 10(12 - x) = 96
+6x + 120 - 10x = 96
+-4x = 96 - 120
+-4x = -24
+x = 6
+מספר הכדורים האדומים הוא 6.
+מספר הכדורים הכחולים: 12 - 6 = 6.
+בדיקת כמות: 6 + 6 = 12 כדורים בסך הכל.
+בדיקת עלות: 6 * 6 + 6 * 10 = 36 + 60 = 96 ש"ח.
+* פתרון נכון: פותרים את המשוואה:
+* פתרון מלא: פותרים את המשוואה:
+
+================================================================================
+תרגיל 5 – בסיס: שילוב הנחה קבועה בשקלים על פריט בודד בתוך חישוב הקנייה…
+================================================================================
+בחנות ספרים מתקיים מבצע שבו ניתנת הנחה של סכום כספי קבוע על כל ספר קריאה. מחיר המקור של ספר קריאה מסומן ב-x ש"ח.
+
+  <svg width="450" height="300" viewBox="0 0 450 300" xmlns="http://www.w3.org/2000/svg">
+    <!-- רקע חלון ראווה -->
+    <rect x="0" y="0" width="450" height="300" fill="#f4f7f6" />
+  
+    <!-- מסגרת חלון ראווה -->
+    <rect x="10" y="10" width="430" height="280" rx="8" fill="none" stroke="#b0bec5" stroke-width="4" />
+  
+    <!-- מדף עץ שעליו מונחים הפריטים -->
+    <rect x="20" y="230" width="410" height="22" rx="4" fill="#8d6e63" stroke="#5d4037" stroke-width="2" />
+    <rect x="20" y="252" width="410" height="10" fill="#6d4c41" />
+
+    <!-- מחברת (מימין) -->
+    <g id="notebook">
+      <!-- גוף המחברת -->
+      <rect x="285" y="125" width="85" height="105" rx="5" fill="#42a5f5" stroke="#1e88e5" stroke-width="2" />
+      <rect x="290" y="125" width="75" height="105" fill="#90caf9" opacity="0.3" />
+      <!-- ספירלה / כריכה -->
+      <line x1="365" y1="125" x2="365" y2="230" stroke="#1565c0" stroke-width="3" />
+      <circle cx="365" cy="140" r="3" fill="#e0e0e0" stroke="#333" stroke-width="1" />
+      <circle cx="365" cy="160" r="3" fill="#e0e0e0" stroke="#333" stroke-width="1" />
+      <circle cx="365" cy="180" r="3" fill="#e0e0e0" stroke="#333" stroke-width="1" />
+      <circle cx="365" cy="200" r="3" fill="#e0e0e0" stroke="#333" stroke-width="1" />
+      <circle cx="365" cy="220" r="3" fill="#e0e0e0" stroke="#333" stroke-width="1" />
+      <text x="325" y="175" font-size="14" font-family="sans-serif" font-weight="bold" fill="#0d47a1" text-anchor="middle" direction="rtl">מחברת</text>
+    
+      <!-- תג מחיר מחברת -->
+      <path d="M 290 85 L 340 85 L 350 97 L 340 110 L 290 110 Z" fill="#fff9c4" stroke="#fbc02d" stroke-width="1.5" />
+      <circle cx="296" cy="97" r="2.5" fill="#666" />
+      <line x1="296" y1="99" x2="305" y2="125" stroke="#9e9e9e" stroke-width="1.5" stroke-dasharray="2,2" />
+      <text x="320" y="102" font-size="12" font-family="sans-serif" font-weight="bold" fill="#e65100" text-anchor="middle" direction="rtl">15 ש"ח</text>
+    </g>
+
+    <!-- ספר קריאה (במרכז-שמאל) -->
+    <g id="book">
+      <!-- דפים מאחור -->
+      <path d="M 85 85 L 215 85 L 225 230 L 95 230 Z" fill="#fff" stroke="#cfd8dc" stroke-width="1.5" />
+      <!-- כריכה ראשית -->
+      <rect x="80" y="80" width="130" height="150" rx="4" fill="#3949ab" stroke="#283593" stroke-width="2" />
+      <rect x="83" y="80" width="12" height="150" fill="#1a237e" />
+      <!-- עיטור לכריכה -->
+      <rect x="105" y="95" width="95" height="120" rx="3" fill="none" stroke="#ffd54f" stroke-width="1.5" />
+      <text x="152" y="125" font-size="16" font-family="sans-serif" font-weight="bold" fill="#ffffff" text-anchor="middle" direction="rtl">ספר קריאה</text>
+
+      <!-- תגית מחיר מקורי (x) -->
+      <g id="tag">
+        <path d="M 120 150 L 195 150 L 205 167 L 195 185 L 120 185 Z" fill="#ffffff" stroke="#757575" stroke-width="1.5" />
+        <circle cx="126" cy="167" r="2.5" fill="#666" />
+        <text x="160" y="173" font-size="16" font-family="sans-serif" font-weight="bold" fill="#212121" text-anchor="middle">מחיר: x</text>
+      </g>
+    </g>
+
+    <!-- חותמת מבצע אדומה בולטת על גבי התגית/הספר -->
+    <g id="sale-badge" transform="rotate(-9 155 195)">
+      <rect x="70" y="180" width="175" height="34" rx="5" fill="#ffebee" stroke="#d32f2f" stroke-width="2.5" stroke-dasharray="5,2" opacity="0.95" />
+      <text x="157" y="196" font-size="11" font-family="sans-serif" font-weight="bold" fill="#b71c1c" text-anchor="middle" direction="rtl">מבצע!</text>
+      <text x="157" y="209" font-size="10.5" font-family="sans-serif" font-weight="bold" fill="#c62828" text-anchor="middle" direction="rtl">הנחה של 8 שקלים על כל ספר</text>
+    </g>
+
+    <!-- שלט כותרת לחלון הראווה -->
+    <rect x="135" y="22" width="180" height="32" rx="6" fill="#37474f" stroke="#263238" stroke-width="1.5" />
+    <text x="225" y="43" font-size="14" font-family="sans-serif" font-weight="bold" fill="#ffffff" text-anchor="middle" direction="rtl">חלון ראווה - חנות ספרים</text>
+  </svg>
+
+<svg width="450" height="300" viewBox="0 0 450 300" xmlns="http://www.w3.org/2000/svg">
+    <!-- רקע חלון ראווה -->
+    <rect x="0" y="0" width="450" height="300" fill="#f4f7f6" />
+  
+    <!-- מסגרת חלון ראווה -->
+    <rect x="10" y="10" width="430" height="280" rx="8" fill="none" stroke="#b0bec5" stroke-width="4" />
+  
+    <!-- מדף עץ שעליו מונחים הפריטים -->
+    <rect x="20" y="230" width="410" height="22" rx="4" fill="#8d6e63" stroke="#5d4037" stroke-width="2" />
+    <rect x="20" y="252" width="410" height="10" fill="#6d4c41" />
+
+    <!-- מחברת (מימין) -->
+    <g id="notebook">
+      <!-- גוף המחברת -->
+      <rect x="285" y="125" width="85" height="105" rx="5" fill="#42a5f5" stroke="#1e88e5" stroke-width="2" />
+      <rect x="290" y="125" width="75" height="105" fill="#90caf9" opacity="0.3" />
+      <!-- ספירלה / כריכה -->
+      <line x1="365" y1="125" x2="365" y2="230" stroke="#1565c0" stroke-width="3" />
+      <circle cx="365" cy="140" r="3" fill="#e0e0e0" stroke="#333" stroke-width="1" />
+      <circle cx="365" cy="160" r="3" fill="#e0e0e0" stroke="#333" stroke-width="1" />
+      <circle cx="365" cy="180" r="3" fill="#e0e0e0" stroke="#333" stroke-width="1" />
+      <circle cx="365" cy="200" r="3" fill="#e0e0e0" stroke="#333" stroke-width="1" />
+      <circle cx="365" cy="220" r="3" fill="#e0e0e0" stroke="#333" stroke-width="1" />
+      <text x="325" y="175" font-size="14" font-family="sans-serif" font-weight="bold" fill="#0d47a1" text-anchor="middle" direction="rtl">מחברת</text>
+    
+      <!-- תג מחיר מחברת -->
+      <path d="M 290 85 L 340 85 L 350 97 L 340 110 L 290 110 Z" fill="#fff9c4" stroke="#fbc02d" stroke-width="1.5" />
+      <circle cx="296" cy="97" r="2.5" fill="#666" />
+      <line x1="296" y1="99" x2="305" y2="125" stroke="#9e9e9e" stroke-width="1.5" stroke-dasharray="2,2" />
+      <text x="320" y="102" font-size="12" font-family="sans-serif" font-weight="bold" fill="#e65100" text-anchor="middle" direction="rtl">15 ש"ח</text>
+    </g>
+
+    <!-- ספר קריאה (במרכז-שמאל) -->
+    <g id="book">
+      <!-- דפים מאחור -->
+      <path d="M 85 85 L 215 85 L 225 230 L 95 230 Z" fill="#fff" stroke="#cfd8dc" stroke-width="1.5" />
+      <!-- כריכה ראשית -->
+      <rect x="80" y="80" width="130" height="150" rx="4" fill="#3949ab" stroke="#283593" stroke-width="2" />
+      <rect x="83" y="80" width="12" height="150" fill="#1a237e" />
+      <!-- עיטור לכריכה -->
+      <rect x="105" y="95" width="95" height="120" rx="3" fill="none" stroke="#ffd54f" stroke-width="1.5" />
+      <text x="152" y="125" font-size="16" font-family="sans-serif" font-weight="bold" fill="#ffffff" text-anchor="middle" direction="rtl">ספר קריאה</text>
+
+      <!-- תגית מחיר מקורי (x) -->
+      <g id="tag">
+        <path d="M 120 150 L 195 150 L 205 167 L 195 185 L 120 185 Z" fill="#ffffff" stroke="#757575" stroke-width="1.5" />
+        <circle cx="126" cy="167" r="2.5" fill="#666" />
+        <text x="160" y="173" font-size="16" font-family="sans-serif" font-weight="bold" fill="#212121" text-anchor="middle">מחיר: x</text>
+      </g>
+    </g>
+
+    <!-- חותמת מבצע אדומה בולטת על גבי התגית/הספר -->
+    <g id="sale-badge" transform="rotate(-9 155 195)">
+      <rect x="70" y="180" width="175" height="34" rx="5" fill="#ffebee" stroke="#d32f2f" stroke-width="2.5" stroke-dasharray="5,2" opacity="0.95" />
+      <text x="157" y="196" font-size="11" font-family="sans-serif" font-weight="bold" fill="#b71c1c" text-anchor="middle" direction="rtl">מבצע!</text>
+      <text x="157" y="209" font-size="10.5" font-family="sans-serif" font-weight="bold" fill="#c62828" text-anchor="middle" direction="rtl">הנחה של 8 שקלים על כל ספר</text>
+    </g>
+
+    <!-- שלט כותרת לחלון הראווה -->
+    <rect x="135" y="22" width="180" height="32" rx="6" fill="#37474f" stroke="#263238" stroke-width="1.5" />
+    <text x="225" y="43" font-size="14" font-family="sans-serif" font-weight="bold" fill="#ffffff" text-anchor="middle" direction="rtl">חלון ראווה - חנות ספרים</text>
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 5 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: כאשר מקבלים הנחה של 8 ש"ח על מחיר הספר המקורי x, כיצד מבוטא מחירו המוזל של הספר?
+* אופציות:
+  - באמצעות חיסור: x - 8
+  - באמצעות חיבור: x + 8
+* פתרון נכון: באמצעות חיסור: x - 8
+* רמז: האם הנחה גורמת לנו לשלם יותר או פחות מהמחיר המקורי?
+* פתרון מלא: הנחה מפחיתה ממחיר המוצר, ולכן יש לחסר את סכום ההנחה ממחיר המקור: x - 8.
+
+--------------------------------------------------------------------------------
+[תרגיל 5 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: לקוח קנה 5 ספרי קריאה במחיר המבצע המוזל. מהו הביטוי האלגברי לעלות הכוללת של 5 הספרים?
+* אופציות:
+  - 5(x - 8)
+  - 5x - 8
+* פתרון נכון: 5(x - 8)
+* רמז: ההנחה ניתנת על כל ספר וספר, ולא רק פעם אחת עבור כל הקנייה.
+* פתרון מלא: כל אחד מ-5 הספרים נקנה במחיר המוזל (x - 8). לכן כופלים את הכמות 5 בכל הביטוי של המחיר המוזל בסוגריים: 5(x - 8).
+
+--------------------------------------------------------------------------------
+[תרגיל 5 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: הלקוח קנה 5 ספרי קריאה במבצע וכן 2 מחברות במחיר מלא של 15 ש"ח כל אחת. בסך הכל שילם הלקוח 180 ש"ח. איזו משוואה מתארת את הקנייה?
+* אופציות:
+  - 5(x - 8) + 2 · 15 = 180
+  - 5x - 8 + 30 = 180
+  - 5(x + 8) + 30 = 180
+* פתרון נכון: 5(x - 8) + 2 · 15 = 180
+* רמז: חברו את עלות הספרים המוזלים עם עלות המחברות והשוו לסכום ששולם בפועל.
+* פתרון מלא: עלות 5 הספרים בהנחה היא 5(x - 8), עלות 2 המחברות היא 2 · 15 = 30 ש"ח, וסכום שתי העלויות שווה ל-180 ש"ח.
+
+--------------------------------------------------------------------------------
+[תרגיל 5 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: פתרו את המשוואה 5(x - 8) + 30 = 180, מצאו את המחיר המקורי של ספר קריאה (x) וחשבו מהו מחירו של ספר לאחר ההנחה.
+* פתרון נכון: נפתח סוגריים: 5x - 40 + 30 = 180. נכנס איברים דומים: 5x - 10 = 180. נוסיף 10 לשני האגפים: 5x = 190. נחלק ב-5 ונקבל x = 38 ש"ח. המחיר המקורי של ספר הוא 38 ש"ח. מחירו לאחר ההנחה הוא 38 - 8 = 30 ש"ח.
+* פתרון מלא: נפתח סוגריים: 5x - 40 + 30 = 180. נכנס איברים דומים: 5x - 10 = 180. נוסיף 10 לשני האגפים: 5x = 190. נחלק ב-5 ונקבל x = 38 ש"ח. המחיר המקורי של ספר הוא 38 ש"ח. מחירו לאחר ההנחה הוא 38 - 8 = 30 ש"ח.
+
+================================================================================
+תרגיל 6 – בסיס: מידול מבצע כמותי מהצורה 'קנה קבל' (למשל פריט שלישי במחיר…
+================================================================================
+בפיצרייה שכונתית הכריזו על מבצע קבוצתי מיוחד: "קונים 2 מגשי פיצה במחיר מלא, ומקבלים את המגש השלישי ב-10 ש"ח בלבד!". מחיר מגש פיצה במחיר מלא מסומן ב-x ש"ח.
+
+  <svg width="500" height="320" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <!-- ראש חץ -->
+      <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#333" />
+      </marker>
+      <!-- צללית קלה -->
+      <filter id="shadow" x="-5%" y="-5%" width="110%" height="115%">
+        <feDropShadow dx="0" dy="3" stdDeviation="3" flood-opacity="0.15" />
+      </filter>
+    </defs>
+
+    <!-- רקע דלפק -->
+    <rect x="20" y="175" width="460" height="24" rx="4" fill="#a06cd5" opacity="0.15" />
+    <rect x="15" y="170" width="470" height="10" rx="3" fill="#6d4c41" />
+    <rect x="25" y="180" width="450" height="8" fill="#8d6e63" />
+
+    <!-- שלט 1: מעל שני המגשים הראשונים -->
+    <g filter="url(#shadow)">
+      <rect x="40" y="20" width="220" height="50" rx="8" fill="#e8f0fe" stroke="#1a73e8" stroke-width="2" />
+      <text x="150" y="50" font-family="sans-serif" font-size="14" font-weight="bold" fill="#1a73e8" text-anchor="middle" direction="rtl">מחיר מלא: x ש"ח למגש</text>
+      <!-- חצי הצבעה למגש 1 ו-2 -->
+      <line x1="90" y1="70" x2="90" y2="95" stroke="#1a73e8" stroke-width="2" marker-end="url(#arrow)" />
+      <line x1="210" y1="70" x2="210" y2="95" stroke="#1a73e8" stroke-width="2" marker-end="url(#arrow)" />
+    </g>
+
+    <!-- שלט 2: מבצע מעל מגש 3 -->
+    <g filter="url(#shadow)">
+      <rect x="290" y="15" width="180" height="58" rx="8" fill="#fff9c4" stroke="#fbc02d" stroke-width="2.5" />
+      <text x="380" y="38" font-family="sans-serif" font-size="13" font-weight="bold" fill="#d84315" text-anchor="middle" direction="rtl">מבצע מיוחד!</text>
+      <text x="380" y="58" font-family="sans-serif" font-size="13" font-weight="bold" fill="#bf360c" text-anchor="middle" direction="rtl">מגש שלישי ב-10 ש"ח בלבד!</text>
+      <!-- חץ הצבעה למגש 3 -->
+      <line x1="380" y1="73" x2="380" y2="95" stroke="#e65100" stroke-width="2" marker-end="url(#arrow)" />
+    </g>
+
+    <!-- מגש פיצה 1 -->
+    <g transform="translate(90, 140)">
+      <!-- תחתית מגש -->
+      <ellipse cx="0" cy="5" rx="44" ry="24" fill="#b0bec5" />
+      <ellipse cx="0" cy="2" rx="42" ry="22" fill="#cfd8dc" />
+      <!-- בצק -->
+      <ellipse cx="0" cy="0" rx="38" ry="19" fill="#d7a15c" />
+      <!-- רוטב וגבינה -->
+      <ellipse cx="0" cy="0" rx="33" ry="16" fill="#fbc02d" />
+      <!-- תוספות -->
+      <circle cx="-12" cy="-4" r="3.5" fill="#d32f2f" />
+      <circle cx="10" cy="3" r="3.5" fill="#d32f2f" />
+      <circle cx="3" cy="-6" r="3.5" fill="#d32f2f" />
+      <circle cx="-5" cy="5" r="3" fill="#388e3c" />
+      <circle cx="15" cy="-3" r="3" fill="#388e3c" />
+      <text x="0" y="28" font-family="sans-serif" font-size="12" fill="#37474f" text-anchor="middle">מגש 1</text>
+    </g>
+
+    <!-- מגש פיצה 2 -->
+    <g transform="translate(210, 140)">
+      <!-- תחתית מגש -->
+      <ellipse cx="0" cy="5" rx="44" ry="24" fill="#b0bec5" />
+      <ellipse cx="0" cy="2" rx="42" ry="22" fill="#cfd8dc" />
+      <!-- בצק -->
+      <ellipse cx="0" cy="0" rx="38" ry="19" fill="#d7a15c" />
+      <!-- רוטב וגבינה -->
+      <ellipse cx="0" cy="0" rx="33" ry="16" fill="#fbc02d" />
+      <!-- תוספות -->
+      <circle cx="-10" cy="4" r="3.5" fill="#d32f2f" />
+      <circle cx="8" cy="-5" r="3.5" fill="#d32f2f" />
+      <circle cx="-2" cy="-2" r="3.5" fill="#d32f2f" />
+      <circle cx="12" cy="4" r="3" fill="#388e3c" />
+      <circle cx="-14" cy="-4" r="3" fill="#388e3c" />
+      <text x="0" y="28" font-family="sans-serif" font-size="12" fill="#37474f" text-anchor="middle">מגש 2</text>
+    </g>
+
+    <!-- מגש פיצה 3 -->
+    <g transform="translate(380, 140)">
+      <!-- תחתית מגש -->
+      <ellipse cx="0" cy="5" rx="44" ry="24" fill="#b0bec5" />
+      <ellipse cx="0" cy="2" rx="42" ry="22" fill="#cfd8dc" />
+      <!-- בצק -->
+      <ellipse cx="0" cy="0" rx="38" ry="19" fill="#d7a15c" />
+      <!-- רוטב וגבינה -->
+      <ellipse cx="0" cy="0" rx="33" ry="16" fill="#fbc02d" />
+      <!-- תוספות -->
+      <circle cx="-8" cy="-5" r="3.5" fill="#d32f2f" />
+      <circle cx="10" cy="2" r="3.5" fill="#d32f2f" />
+      <circle cx="0" cy="5" r="3.5" fill="#d32f2f" />
+      <circle cx="-12" cy="3" r="3" fill="#388e3c" />
+      <circle cx="5" cy="-5" r="3" fill="#388e3c" />
+      <text x="0" y="28" font-family="sans-serif" font-size="12" fill="#37474f" text-anchor="middle">מגש 3</text>
+    </g>
+
+    <!-- חץ מסכם תחתון -->
+    <g>
+      <!-- קו מסגרת מסכם תחתון עם סוגר/חץ -->
+      <path d="M 45 225 L 45 240 L 235 240 L 235 255 L 235 240 L 425 240 L 425 225" fill="none" stroke="#37474f" stroke-width="2" />
+      <!-- ראש חץ למטה במרכז -->
+      <polygon points="230,253 235,262 240,253" fill="#37474f" />
+      <!-- תווית סיכום -->
+      <rect x="135" y="270" width="200" height="32" rx="6" fill="#eceff1" stroke="#90a4ae" stroke-width="1.5" />
+      <text x="235" y="291" font-family="sans-serif" font-size="14" font-weight="bold" fill="#263238" text-anchor="middle" direction="rtl">סה"כ לעסקת 3 מגשים</text>
+    </g>
+  </svg>
+
+<svg width="500" height="320" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <!-- ראש חץ -->
+      <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#333" />
+      </marker>
+      <!-- צללית קלה -->
+      <filter id="shadow" x="-5%" y="-5%" width="110%" height="115%">
+        <feDropShadow dx="0" dy="3" stdDeviation="3" flood-opacity="0.15" />
+      </filter>
+    </defs>
+
+    <!-- רקע דלפק -->
+    <rect x="20" y="175" width="460" height="24" rx="4" fill="#a06cd5" opacity="0.15" />
+    <rect x="15" y="170" width="470" height="10" rx="3" fill="#6d4c41" />
+    <rect x="25" y="180" width="450" height="8" fill="#8d6e63" />
+
+    <!-- שלט 1: מעל שני המגשים הראשונים -->
+    <g filter="url(#shadow)">
+      <rect x="40" y="20" width="220" height="50" rx="8" fill="#e8f0fe" stroke="#1a73e8" stroke-width="2" />
+      <text x="150" y="50" font-family="sans-serif" font-size="14" font-weight="bold" fill="#1a73e8" text-anchor="middle" direction="rtl">מחיר מלא: x ש"ח למגש</text>
+      <!-- חצי הצבעה למגש 1 ו-2 -->
+      <line x1="90" y1="70" x2="90" y2="95" stroke="#1a73e8" stroke-width="2" marker-end="url(#arrow)" />
+      <line x1="210" y1="70" x2="210" y2="95" stroke="#1a73e8" stroke-width="2" marker-end="url(#arrow)" />
+    </g>
+
+    <!-- שלט 2: מבצע מעל מגש 3 -->
+    <g filter="url(#shadow)">
+      <rect x="290" y="15" width="180" height="58" rx="8" fill="#fff9c4" stroke="#fbc02d" stroke-width="2.5" />
+      <text x="380" y="38" font-family="sans-serif" font-size="13" font-weight="bold" fill="#d84315" text-anchor="middle" direction="rtl">מבצע מיוחד!</text>
+      <text x="380" y="58" font-family="sans-serif" font-size="13" font-weight="bold" fill="#bf360c" text-anchor="middle" direction="rtl">מגש שלישי ב-10 ש"ח בלבד!</text>
+      <!-- חץ הצבעה למגש 3 -->
+      <line x1="380" y1="73" x2="380" y2="95" stroke="#e65100" stroke-width="2" marker-end="url(#arrow)" />
+    </g>
+
+    <!-- מגש פיצה 1 -->
+    <g transform="translate(90, 140)">
+      <!-- תחתית מגש -->
+      <ellipse cx="0" cy="5" rx="44" ry="24" fill="#b0bec5" />
+      <ellipse cx="0" cy="2" rx="42" ry="22" fill="#cfd8dc" />
+      <!-- בצק -->
+      <ellipse cx="0" cy="0" rx="38" ry="19" fill="#d7a15c" />
+      <!-- רוטב וגבינה -->
+      <ellipse cx="0" cy="0" rx="33" ry="16" fill="#fbc02d" />
+      <!-- תוספות -->
+      <circle cx="-12" cy="-4" r="3.5" fill="#d32f2f" />
+      <circle cx="10" cy="3" r="3.5" fill="#d32f2f" />
+      <circle cx="3" cy="-6" r="3.5" fill="#d32f2f" />
+      <circle cx="-5" cy="5" r="3" fill="#388e3c" />
+      <circle cx="15" cy="-3" r="3" fill="#388e3c" />
+      <text x="0" y="28" font-family="sans-serif" font-size="12" fill="#37474f" text-anchor="middle">מגש 1</text>
+    </g>
+
+    <!-- מגש פיצה 2 -->
+    <g transform="translate(210, 140)">
+      <!-- תחתית מגש -->
+      <ellipse cx="0" cy="5" rx="44" ry="24" fill="#b0bec5" />
+      <ellipse cx="0" cy="2" rx="42" ry="22" fill="#cfd8dc" />
+      <!-- בצק -->
+      <ellipse cx="0" cy="0" rx="38" ry="19" fill="#d7a15c" />
+      <!-- רוטב וגבינה -->
+      <ellipse cx="0" cy="0" rx="33" ry="16" fill="#fbc02d" />
+      <!-- תוספות -->
+      <circle cx="-10" cy="4" r="3.5" fill="#d32f2f" />
+      <circle cx="8" cy="-5" r="3.5" fill="#d32f2f" />
+      <circle cx="-2" cy="-2" r="3.5" fill="#d32f2f" />
+      <circle cx="12" cy="4" r="3" fill="#388e3c" />
+      <circle cx="-14" cy="-4" r="3" fill="#388e3c" />
+      <text x="0" y="28" font-family="sans-serif" font-size="12" fill="#37474f" text-anchor="middle">מגש 2</text>
+    </g>
+
+    <!-- מגש פיצה 3 -->
+    <g transform="translate(380, 140)">
+      <!-- תחתית מגש -->
+      <ellipse cx="0" cy="5" rx="44" ry="24" fill="#b0bec5" />
+      <ellipse cx="0" cy="2" rx="42" ry="22" fill="#cfd8dc" />
+      <!-- בצק -->
+      <ellipse cx="0" cy="0" rx="38" ry="19" fill="#d7a15c" />
+      <!-- רוטב וגבינה -->
+      <ellipse cx="0" cy="0" rx="33" ry="16" fill="#fbc02d" />
+      <!-- תוספות -->
+      <circle cx="-8" cy="-5" r="3.5" fill="#d32f2f" />
+      <circle cx="10" cy="2" r="3.5" fill="#d32f2f" />
+      <circle cx="0" cy="5" r="3.5" fill="#d32f2f" />
+      <circle cx="-12" cy="3" r="3" fill="#388e3c" />
+      <circle cx="5" cy="-5" r="3" fill="#388e3c" />
+      <text x="0" y="28" font-family="sans-serif" font-size="12" fill="#37474f" text-anchor="middle">מגש 3</text>
+    </g>
+
+    <!-- חץ מסכם תחתון -->
+    <g>
+      <!-- קו מסגרת מסכם תחתון עם סוגר/חץ -->
+      <path d="M 45 225 L 45 240 L 235 240 L 235 255 L 235 240 L 425 240 L 425 225" fill="none" stroke="#37474f" stroke-width="2" />
+      <!-- ראש חץ למטה במרכז -->
+      <polygon points="230,253 235,262 240,253" fill="#37474f" />
+      <!-- תווית סיכום -->
+      <rect x="135" y="270" width="200" height="32" rx="6" fill="#eceff1" stroke="#90a4ae" stroke-width="1.5" />
+      <text x="235" y="291" font-family="sans-serif" font-size="14" font-weight="bold" fill="#263238" text-anchor="middle" direction="rtl">סה"כ לעסקת 3 מגשים</text>
+    </g>
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 6 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: כאשר רוכשים 3 מגשי פיצה במסגרת המבצע הזה, עבור כמה מגשים משלמים מחיר מלא x?
+* אופציות:
+  - עבור 2 מגשים.
+  - עבור 3 מגשים.
+* פתרון נכון: עבור 2 מגשים.
+* רמז: קראו היטב את נוסח המבצע שעל השלט.
+* פתרון מלא: על פי תנאי המבצע, משלמים מחיר מלא רק על 2 המגשים הראשונים, ואילו המגש השלישי נקנה במחיר המוזל של 10 ש"ח.
+
+--------------------------------------------------------------------------------
+[תרגיל 6 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: איזה ביטוי אלגברי מייצג את העלות הכוללת של רכישת 3 מגשים לפי תנאי המבצע?
+* אופציות:
+  - 2x + 10
+  - 3x - 10
+* פתרון נכון: 2x + 10
+* רמז: חברו את התשלום עבור המגשים במחיר מלא עם התשלום הקבוע עבור המגש המוזל.
+* פתרון מלא: העלות מורכבת מ-2 מגשים במחיר מלא x כל אחד (סך הכל 2x) בתוספת 10 ש"ח עבור המגש השלישי, ולכן הביטוי הוא 2x + 10.
+
+--------------------------------------------------------------------------------
+[תרגיל 6 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: חבורת תלמידים קנתה 3 מגשים במבצע ושילמה בסך הכל 110 ש"ח. איזו משוואה מתאימה למציאת מחיר מגש מלא x?
+* אופציות:
+  - 2x + 10 = 110
+  - 3x + 10 = 110
+  - 3x - 10 = 110
+* פתרון נכון: 2x + 10 = 110
+* רמז: השוו את ביטוי העלות הכוללת לסכום הכולל ששילמו התלמידים.
+* פתרון מלא: הביטוי לעלות של שלושת המגשים הוא 2x + 10, ועלות זו שווה לסכום ששולם בפועל, 110 ש"ח. המשוואה היא 2x + 10 = 110.
+
+--------------------------------------------------------------------------------
+[תרגיל 6 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: פתרו את המשוואה 2x + 10 = 110, מצאו את מחירו של מגש פיצה בודד במחיר מלא, וחשבו כמה שילמו בממוצע עבור כל אחד משלושת המגשים בעסקה.
+* פתרון נכון: נחסר 10 משני האגפים: 2x = 100. נחלק ב-2 ונקבל x = 50 ש"ח. מחירו של מגש בודד במחיר מלא הוא 50 ש"ח. סך הכל שילמו 110 ש"ח עבור 3 מגשים, ולכן המחיר הממוצע למגש הוא 110 חלקי 3, שהם כ-36.67 ש"ח (או 36 ושני שליש ש"ח).
+* פתרון מלא: נחסר 10 משני האגפים: 2x = 100. נחלק ב-2 ונקבל x = 50 ש"ח. מחירו של מגש בודד במחיר מלא הוא 50 ש"ח. סך הכל שילמו 110 ש"ח עבור 3 מגשים, ולכן המחיר הממוצע למגש הוא 110 חלקי 3, שהם כ-36.67 ש"ח (או 36 ושני שליש ש"ח).
+
+================================================================================
+תרגיל 7 – מורכב: בעיות מכירה עם שינוי מחיר בין שני שלבים (מכירת חלק מהסחורה…
+================================================================================
+סוחר בשוק הביא בבוקר ארגז המכיל 20 ק"ג תפוחים. במהלך היום מכר את כל התפוחים בשני שלבים ובשני מחירים שונים.
+
+  <svg width="500" height="350" viewBox="0 0 500 350" xmlns="http://www.w3.org/2000/svg">
+    <!-- רקע שוק/דוכן -->
+    <rect x="0" y="0" width="500" height="350" fill="#f8fafc" />
+
+    <!-- גגון סוכך הדוכן -->
+    <polygon points="40,20 460,20 440,60 60,60" fill="#e11d48" />
+    <polygon points="100,20 160,20 150,60 90,60" fill="#ffffff" />
+    <polygon points="220,20 280,20 270,60 210,60" fill="#ffffff" />
+    <polygon points="340,20 400,20 390,60 330,60" fill="#ffffff" />
+
+    <!-- משטח הדוכן -->
+    <rect x="50" y="150" width="400" height="20" rx="3" fill="#854d0e" />
+    <rect x="70" y="170" width="20" height="150" fill="#713f12" />
+    <rect x="410" y="170" width="20" height="150" fill="#713f12" />
+
+    <!-- שלט שמאלי - בוקר (ירוק) -->
+    <rect x="30" y="80" width="135" height="60" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="2" />
+    <text x="97" y="102" font-size="12" font-weight="bold" fill="#15803d" text-anchor="middle" direction="rtl">בוקר: תפוחים טריים</text>
+    <text x="97" y="125" font-size="13" font-weight="bold" fill="#166534" text-anchor="middle" direction="rtl">12 ש"ח לק"ג</text>
+
+    <!-- שלט ימני - ערב (כתום) -->
+    <rect x="335" y="80" width="135" height="60" rx="6" fill="#ffedd5" stroke="#ea580c" stroke-width="2" />
+    <text x="402" y="102" font-size="11" font-weight="bold" fill="#c2410c" text-anchor="middle" direction="rtl">מבצע סוף יום: מוזלים</text>
+    <text x="402" y="125" font-size="13" font-weight="bold" fill="#9a3412" text-anchor="middle" direction="rtl">8 ש"ח לק"ג</text>
+
+    <!-- ארגז תפוחים מרכזי -->
+    <rect x="180" y="95" width="140" height="55" rx="4" fill="#b45309" stroke="#78350f" stroke-width="2" />
+  
+    <!-- תפוחים בתוך הארגז -->
+    <circle cx="195" cy="90" r="10" fill="#dc2626" />
+    <circle cx="215" cy="88" r="10" fill="#ef4444" />
+    <circle cx="235" cy="90" r="10" fill="#dc2626" />
+    <circle cx="255" cy="87" r="10" fill="#ef4444" />
+    <circle cx="275" cy="89" r="10" fill="#dc2626" />
+    <circle cx="295" cy="88" r="10" fill="#ef4444" />
+    <circle cx="305" cy="92" r="10" fill="#dc2626" />
+
+    <circle cx="205" cy="80" r="9" fill="#dc2626" />
+    <circle cx="225" cy="78" r="9" fill="#b91c1c" />
+    <circle cx="245" cy="76" r="9" fill="#dc2626" />
+    <circle cx="265" cy="77" r="9" fill="#ef4444" />
+    <circle cx="285" cy="80" r="9" fill="#dc2626" />
+
+    <!-- תווית על הארגז -->
+    <rect x="190" y="110" width="120" height="28" rx="3" fill="#fef08a" stroke="#ca8a04" stroke-width="1.5" />
+    <text x="250" y="129" font-size="12" font-weight="bold" fill="#713f12" text-anchor="middle" direction="rtl">סה"כ 20 ק"ג תפוחים</text>
+
+    <!-- קופה רושמת בתחתית -->
+    <rect x="175" y="210" width="150" height="95" rx="6" fill="#334155" stroke="#1e293b" stroke-width="2" />
+    <rect x="195" y="222" width="110" height="30" rx="3" fill="#0f172a" />
+    <text x="250" y="242" font-size="13" font-weight="bold" fill="#4ade80" text-anchor="middle" direction="rtl">קופה ראשית</text>
+  
+    <rect x="195" y="260" width="110" height="35" rx="3" fill="#64748b" />
+    <text x="250" y="282" font-size="11" fill="#f8fafc" text-anchor="middle" direction="rtl">פדיון יומי כולל</text>
+  </svg>
+
+<svg width="500" height="350" viewBox="0 0 500 350" xmlns="http://www.w3.org/2000/svg">
+    <!-- רקע שוק/דוכן -->
+    <rect x="0" y="0" width="500" height="350" fill="#f8fafc" />
+
+    <!-- גגון סוכך הדוכן -->
+    <polygon points="40,20 460,20 440,60 60,60" fill="#e11d48" />
+    <polygon points="100,20 160,20 150,60 90,60" fill="#ffffff" />
+    <polygon points="220,20 280,20 270,60 210,60" fill="#ffffff" />
+    <polygon points="340,20 400,20 390,60 330,60" fill="#ffffff" />
+
+    <!-- משטח הדוכן -->
+    <rect x="50" y="150" width="400" height="20" rx="3" fill="#854d0e" />
+    <rect x="70" y="170" width="20" height="150" fill="#713f12" />
+    <rect x="410" y="170" width="20" height="150" fill="#713f12" />
+
+    <!-- שלט שמאלי - בוקר (ירוק) -->
+    <rect x="30" y="80" width="135" height="60" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="2" />
+    <text x="97" y="102" font-size="12" font-weight="bold" fill="#15803d" text-anchor="middle" direction="rtl">בוקר: תפוחים טריים</text>
+    <text x="97" y="125" font-size="13" font-weight="bold" fill="#166534" text-anchor="middle" direction="rtl">12 ש"ח לק"ג</text>
+
+    <!-- שלט ימני - ערב (כתום) -->
+    <rect x="335" y="80" width="135" height="60" rx="6" fill="#ffedd5" stroke="#ea580c" stroke-width="2" />
+    <text x="402" y="102" font-size="11" font-weight="bold" fill="#c2410c" text-anchor="middle" direction="rtl">מבצע סוף יום: מוזלים</text>
+    <text x="402" y="125" font-size="13" font-weight="bold" fill="#9a3412" text-anchor="middle" direction="rtl">8 ש"ח לק"ג</text>
+
+    <!-- ארגז תפוחים מרכזי -->
+    <rect x="180" y="95" width="140" height="55" rx="4" fill="#b45309" stroke="#78350f" stroke-width="2" />
+  
+    <!-- תפוחים בתוך הארגז -->
+    <circle cx="195" cy="90" r="10" fill="#dc2626" />
+    <circle cx="215" cy="88" r="10" fill="#ef4444" />
+    <circle cx="235" cy="90" r="10" fill="#dc2626" />
+    <circle cx="255" cy="87" r="10" fill="#ef4444" />
+    <circle cx="275" cy="89" r="10" fill="#dc2626" />
+    <circle cx="295" cy="88" r="10" fill="#ef4444" />
+    <circle cx="305" cy="92" r="10" fill="#dc2626" />
+
+    <circle cx="205" cy="80" r="9" fill="#dc2626" />
+    <circle cx="225" cy="78" r="9" fill="#b91c1c" />
+    <circle cx="245" cy="76" r="9" fill="#dc2626" />
+    <circle cx="265" cy="77" r="9" fill="#ef4444" />
+    <circle cx="285" cy="80" r="9" fill="#dc2626" />
+
+    <!-- תווית על הארגז -->
+    <rect x="190" y="110" width="120" height="28" rx="3" fill="#fef08a" stroke="#ca8a04" stroke-width="1.5" />
+    <text x="250" y="129" font-size="12" font-weight="bold" fill="#713f12" text-anchor="middle" direction="rtl">סה"כ 20 ק"ג תפוחים</text>
+
+    <!-- קופה רושמת בתחתית -->
+    <rect x="175" y="210" width="150" height="95" rx="6" fill="#334155" stroke="#1e293b" stroke-width="2" />
+    <rect x="195" y="222" width="110" height="30" rx="3" fill="#0f172a" />
+    <text x="250" y="242" font-size="13" font-weight="bold" fill="#4ade80" text-anchor="middle" direction="rtl">קופה ראשית</text>
+  
+    <rect x="195" y="260" width="110" height="35" rx="3" fill="#64748b" />
+    <text x="250" y="282" font-size="11" fill="#f8fafc" text-anchor="middle" direction="rtl">פדיון יומי כולל</text>
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 7 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: האם הפדיון הכולל (סך ההכנסות) של הסוחר שווה לסכום ההכנסות ממכירת הבוקר בתוספת ההכנסות ממכירת הערב?
+* אופציות:
+  - כן, סך ההכנסות מורכב מחיבור ההכנסות של שני חלקי היום.
+  - לא, הפדיון מחושב רק לפי המחיר הגבוה של הבוקר.
+* פתרון נכון: כן, סך ההכנסות מורכב מחיבור ההכנסות של שני חלקי היום.
+* רמז: חישבו האם כסף שהתקבל בערב מתווסף לקופה של הבוקר.
+* פתרון מלא: כאשר מוכרים סחורה בחלקים שונים, מחשבים את ההכנסה מכל חלק בנפרד ומחברים ביניהם לקבלת הפדיון הכולל.
+
+--------------------------------------------------------------------------------
+[תרגיל 7 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: נסמן ב-x את מספר הקילוגרמים של תפוחים שנמכרו בבוקר (מתוך 20 ק"ג בסך הכל). מהו הביטוי לכמות הקילוגרמים שנמכרו בערב במחיר המוזל?
+* אופציות:
+  - 20 - x
+  - x - 20
+* פתרון נכון: 20 - x
+* רמז: אם היו 20 ק"ג ובבוקר נמכרו 5 ק"ג, כמה ק"ג נותרו לערב?
+* פתרון מלא: מתוך 20 ק"ג שהיו בארגז, x נמכרו בבוקר. היתרה שנמכרה בערב היא סך כל הכמות פחות מה שנמכר בבוקר: 20 - x.
+
+--------------------------------------------------------------------------------
+[תרגיל 7 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: בבוקר נמכרו תפוחים ב-12 ש"ח לק"ג ובערב ב-8 ש"ח לק"ג. בסך הכל קיבל הסוחר 200 ש"ח עבור כל 20 הק"ג. איזו משוואה מתאימה לנתונים?
+* אופציות:
+  - 12x + 8(20 - x) = 200
+  - 12x + 8x = 200
+  - 20(12 - x) = 200
+* פתרון נכון: 12x + 8(20 - x) = 200
+* רמז: כפלו כל כמות במחיר לקילוגרם שבו היא נמכרה וחברו את שתי התוצאות.
+* פתרון מלא: הכנסות הבוקר הן מכפלת הכמות במחיר הבוקר: 12x. הכנסות הערב הן מכפלת היתרה במחיר הערב: 8(20 - x). סכום שתי ההכנסות שווה ל-200 ש"ח: 12x + 8(20 - x) = 200.
+
+--------------------------------------------------------------------------------
+[תרגיל 7 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: פתרו את המשוואה 12x + 8(20 - x) = 200, מצאו כמה ק"ג תפוחים נמכרו בבוקר וכמה בערב, ובדקו שהפדיון הכולל אכן מסתכם ב-200 ש"ח.
+* פתרון נכון: נפתח סוגריים: 12x + 160 - 8x = 200. נכנס איברים דומים: 4x + 160 = 200. נחסר 160 משני האגפים: 4x = 40. נחלק ב-4 ונקבל x = 10 ק"ג. לכן נמכרו 10 ק"ג בבוקר, ובערב נמכרו 20 - 10 = 10 ק"ג. בדיקת פדיון: בבוקר התקבלו 10 · 12 = 120 ש"ח, בערב התקבלו 10 · 8 = 80 ש"ח, וסך הכל 120 + 80 = 200 ש"ח.
+* פתרון מלא: נפתח סוגריים: 12x + 160 - 8x = 200. נכנס איברים דומים: 4x + 160 = 200. נחסר 160 משני האגפים: 4x = 40. נחלק ב-4 ונקבל x = 10 ק"ג. לכן נמכרו 10 ק"ג בבוקר, ובערב נמכרו 20 - 10 = 10 ק"ג. בדיקת פדיון: בבוקר התקבלו 10 · 12 = 120 ש"ח, בערב התקבלו 10 · 8 = 80 ש"ח, וסך הכל 120 + 80 = 200 ש"ח.
+
+================================================================================
+תרגיל 8 – מורכב: השוואת שתי אפשרויות רכישה (מסלול מנוי/כרטיסייה לעומת תשלום…
+================================================================================
+בריכת שחייה עירונית מציעה לתושבים לבחור בין שני מסלולי תשלום שונים עבור עונת הרחצה.
+
+  <svg width="500" height="320" viewBox="0 0 500 320" xmlns="http://www.w3.org/2000/svg">
+    <!-- רקע כללי -->
+    <rect width="500" height="320" fill="#f8fafc" rx="12"/>
+
+    <!-- שלט מסלול א' (כחול) -->
+    <g id="track-a">
+      <!-- עמודי תלייה -->
+      <rect x="50" y="15" width="6" height="20" fill="#94a3b8" rx="2"/>
+      <rect x="174" y="15" width="6" height="20" fill="#94a3b8" rx="2"/>
+    
+      <!-- גוף השלט -->
+      <rect x="25" y="30" width="180" height="190" rx="12" fill="#eff6ff" stroke="#2563eb" stroke-width="3"/>
+    
+      <!-- כותרת שלט א' -->
+      <rect x="25" y="30" width="180" height="42" rx="12" fill="#2563eb"/>
+      <rect x="25" y="60" width="180" height="12" fill="#2563eb"/>
+      <text x="115" y="58" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#ffffff" text-anchor="middle" direction="rtl">מסלול א׳: מנוי</text>
+    
+      <!-- פרטים שלט א' -->
+      <text x="115" y="102" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="#1e3a8a" text-anchor="middle" direction="rtl">דמי רישום חד-פעמיים:</text>
+      <text x="115" y="126" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#2563eb" text-anchor="middle" direction="rtl">60 ש״ח</text>
+    
+      <line x1="45" y1="145" x2="185" y2="145" stroke="#bfdbfe" stroke-width="1.5" stroke-dasharray="4"/>
+    
+      <text x="115" y="172" font-family="Arial, sans-serif" font-size="13" fill="#1e3a8a" text-anchor="middle" direction="rtl">+ 15 ש״ח לכל כניסה</text>
+    </g>
+
+    <!-- שלט מסלול ב' (ירוק) -->
+    <g id="track-b">
+      <!-- עמודי תלייה -->
+      <rect x="320" y="15" width="6" height="20" fill="#94a3b8" rx="2"/>
+      <rect x="444" y="15" width="6" height="20" fill="#94a3b8" rx="2"/>
+    
+      <!-- גוף השלט -->
+      <rect x="295" y="30" width="180" height="190" rx="12" fill="#f0fdf4" stroke="#16a34a" stroke-width="3"/>
+    
+      <!-- כותרת שלט ב' -->
+      <rect x="295" y="30" width="180" height="42" rx="12" fill="#16a34a"/>
+      <rect x="295" y="60" width="180" height="12" fill="#16a34a"/>
+      <text x="385" y="58" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#ffffff" text-anchor="middle" direction="rtl">מסלול ב׳: כרטיס בודד</text>
+    
+      <!-- פרטים שלט ב' -->
+      <text x="385" y="102" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="#14532d" text-anchor="middle" direction="rtl">ללא דמי רישום</text>
+      <text x="385" y="126" font-family="Arial, sans-serif" font-size="14" fill="#16a34a" text-anchor="middle" direction="rtl">(0 ש״ח דמי רישום)</text>
+    
+      <line x1="315" y1="145" x2="455" y2="145" stroke="#bbf7d0" stroke-width="1.5" stroke-dasharray="4"/>
+    
+      <text x="385" y="172" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#15803d" text-anchor="middle" direction="rtl">25 ש״ח לכל כניסה</text>
+    </g>
+
+    <!-- מרכז: סימן שאלה גדול -->
+    <g id="center-question">
+      <circle cx="250" cy="125" r="28" fill="#ffffff" stroke="#f59e0b" stroke-width="3"/>
+      <text x="250" y="141" font-family="Arial, sans-serif" font-size="44" font-weight="bold" fill="#d97706" text-anchor="middle">?</text>
+    </g>
+
+    <!-- תיבת שאלה תחתונה -->
+    <g id="bottom-banner">
+      <rect x="50" y="245" width="400" height="55" rx="10" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"/>
+      <text x="250" y="279" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#92400e" text-anchor="middle" direction="rtl">מתי שני המסלולים שווים בעלותם?</text>
+    </g>
+  </svg>
+
+<svg width="500" height="320" viewBox="0 0 500 320" xmlns="http://www.w3.org/2000/svg">
+    <!-- רקע כללי -->
+    <rect width="500" height="320" fill="#f8fafc" rx="12"/>
+
+    <!-- שלט מסלול א' (כחול) -->
+    <g id="track-a">
+      <!-- עמודי תלייה -->
+      <rect x="50" y="15" width="6" height="20" fill="#94a3b8" rx="2"/>
+      <rect x="174" y="15" width="6" height="20" fill="#94a3b8" rx="2"/>
+    
+      <!-- גוף השלט -->
+      <rect x="25" y="30" width="180" height="190" rx="12" fill="#eff6ff" stroke="#2563eb" stroke-width="3"/>
+    
+      <!-- כותרת שלט א' -->
+      <rect x="25" y="30" width="180" height="42" rx="12" fill="#2563eb"/>
+      <rect x="25" y="60" width="180" height="12" fill="#2563eb"/>
+      <text x="115" y="58" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#ffffff" text-anchor="middle" direction="rtl">מסלול א׳: מנוי</text>
+    
+      <!-- פרטים שלט א' -->
+      <text x="115" y="102" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="#1e3a8a" text-anchor="middle" direction="rtl">דמי רישום חד-פעמיים:</text>
+      <text x="115" y="126" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#2563eb" text-anchor="middle" direction="rtl">60 ש״ח</text>
+    
+      <line x1="45" y1="145" x2="185" y2="145" stroke="#bfdbfe" stroke-width="1.5" stroke-dasharray="4"/>
+    
+      <text x="115" y="172" font-family="Arial, sans-serif" font-size="13" fill="#1e3a8a" text-anchor="middle" direction="rtl">+ 15 ש״ח לכל כניסה</text>
+    </g>
+
+    <!-- שלט מסלול ב' (ירוק) -->
+    <g id="track-b">
+      <!-- עמודי תלייה -->
+      <rect x="320" y="15" width="6" height="20" fill="#94a3b8" rx="2"/>
+      <rect x="444" y="15" width="6" height="20" fill="#94a3b8" rx="2"/>
+    
+      <!-- גוף השלט -->
+      <rect x="295" y="30" width="180" height="190" rx="12" fill="#f0fdf4" stroke="#16a34a" stroke-width="3"/>
+    
+      <!-- כותרת שלט ב' -->
+      <rect x="295" y="30" width="180" height="42" rx="12" fill="#16a34a"/>
+      <rect x="295" y="60" width="180" height="12" fill="#16a34a"/>
+      <text x="385" y="58" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#ffffff" text-anchor="middle" direction="rtl">מסלול ב׳: כרטיס בודד</text>
+    
+      <!-- פרטים שלט ב' -->
+      <text x="385" y="102" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="#14532d" text-anchor="middle" direction="rtl">ללא דמי רישום</text>
+      <text x="385" y="126" font-family="Arial, sans-serif" font-size="14" fill="#16a34a" text-anchor="middle" direction="rtl">(0 ש״ח דמי רישום)</text>
+    
+      <line x1="315" y1="145" x2="455" y2="145" stroke="#bbf7d0" stroke-width="1.5" stroke-dasharray="4"/>
+    
+      <text x="385" y="172" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#15803d" text-anchor="middle" direction="rtl">25 ש״ח לכל כניסה</text>
+    </g>
+
+    <!-- מרכז: סימן שאלה גדול -->
+    <g id="center-question">
+      <circle cx="250" cy="125" r="28" fill="#ffffff" stroke="#f59e0b" stroke-width="3"/>
+      <text x="250" y="141" font-family="Arial, sans-serif" font-size="44" font-weight="bold" fill="#d97706" text-anchor="middle">?</text>
+    </g>
+
+    <!-- תיבת שאלה תחתונה -->
+    <g id="bottom-banner">
+      <rect x="50" y="245" width="400" height="55" rx="10" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"/>
+      <text x="250" y="279" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#92400e" text-anchor="middle" direction="rtl">מתי שני המסלולים שווים בעלותם?</text>
+    </g>
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 8 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: באיזה משני המסלולים התשלום עבור כל כניסה בודדת (ללא תשלומים קבועים) הוא נמוך יותר?
+* אופציות:
+  - במסלול א' (15 ש"ח לכניסה)
+  - במסלול ב' (25 ש"ח לכניסה)
+* פתרון נכון: במסלול א' (15 ש"ח לכניסה)
+* רמז: השוו את המחיר שמשלמים עבור כניסה אחת בלבד בכל מסלול.
+* פתרון מלא: במסלול א' משלמים 15 ש"ח לכל ביקור לעומת 25 ש"ח במסלול ב', ולכן מחיר הכניסה הבודדת במסלול א' נמוך יותר.
+
+--------------------------------------------------------------------------------
+[תרגיל 8 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: נסמן את מספר הכניסות לבריכה ב-x. מהו הביטוי האלגברי לעלות הכוללת של x כניסות במסלול א'?
+* אופציות:
+  - 60 + 15x
+  - 75x
+* פתרון נכון: 60 + 15x
+* רמז: דמי הרישום משולמים פעם אחת בלבד ואינם מוכפלים במספר הכניסות.
+* פתרון מלא: במסלול א' משלמים סכום קבוע של 60 ש"ח פעם אחת, ובנוסף 15 ש"ח על כל אחת מ-x הכניסות (15x). לכן העלות הכוללת היא 60 + 15x.
+
+--------------------------------------------------------------------------------
+[תרגיל 8 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: איזו משוואה יש לפתור כדי למצוא עבור כמה כניסות (x) העלות בשני המסלולים תהיה זהה בדיוק?
+* אופציות:
+  - 60 + 15x = 25x
+  - 60 + 15x = 25
+  - 15x = 25x + 60
+* פתרון נכון: 60 + 15x = 25x
+* רמז: השוו את ביטוי העלות של מסלול א' לביטוי העלות של מסלול ב'.
+* פתרון מלא: עלות מסלול א' היא 60 + 15x, ועלות מסלול ב' היא 25x. נקודת השוויון מתקבלת כאשר משווים בין שני הביטויים: 60 + 15x = 25x.
+
+--------------------------------------------------------------------------------
+[תרגיל 8 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: פתרו את המשוואה 60 + 15x = 25x, מצאו את מספר הכניסות שבו העלויות משתוות, וקבעו לאיזה מספר כניסות משתלם יותר לבחור במסלול א'.
+* פתרון נכון: נחסר 15x משני האגפים: 60 = 10x. נחלק ב-10 ונקבל x = 6 כניסות. עבור בדיוק 6 כניסות, שני המסלולים עולים אותו הדבר (150 ש"ח). לכל מי שמתכנן להגיע יותר מ-6 פעמים (7 כניסות ומעלה), מסלול א' משתלם יותר מכיוון שהמחיר לכל כניסה נוספת בו זול יותר (15 ש"ח לעומת 25 ש"ח).
+* פתרון מלא: נחסר 15x משני האגפים: 60 = 10x. נחלק ב-10 ונקבל x = 6 כניסות. עבור בדיוק 6 כניסות, שני המסלולים עולים אותו הדבר (150 ש"ח). לכל מי שמתכנן להגיע יותר מ-6 פעמים (7 כניסות ומעלה), מסלול א' משתלם יותר מכיוון שהמחיר לכל כניסה נוספת בו זול יותר (15 ש"ח לעומת 25 ש"ח).
+
+================================================================================
+תרגיל 9 – מורכב: ניתוח בעיית קנייה ומכירה הכוללת חישוב רווח בעזרת משוואה עם…
+================================================================================
+סוחר רכש 30 חולצות במחיר קנייה אחיד של x ש"ח לחולצה. הוא מכר את כל 30 החולצות במחיר של 50 ש"ח לחולצה, והרוויח בעסקה זו סך הכל 360 ש"ח.
+
+  <svg width="500" height="260" viewBox="0 0 500 260" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1 L 10 5 L 0 9 z" fill="#1565c0"/>
+      </marker>
+    </defs>
+
+    <!-- כותרת ראשית -->
+    <text x="250" y="28" font-family="sans-serif" font-size="16" font-weight="bold" text-anchor="middle" fill="#333333">תרשים מאזן כספי - סוחר חולצות</text>
+
+    <!-- תיבה שמאלית: הוצאות (כתומה) -->
+    <rect x="15" y="50" width="145" height="150" rx="10" fill="#fff3e0" stroke="#f57c00" stroke-width="2"/>
+    <text x="87" y="80" font-family="sans-serif" font-size="15" font-weight="bold" text-anchor="middle" fill="#e65100">הוצאות קנייה</text>
+    <line x1="25" y1="92" x2="150" y2="92" stroke="#ffcc80" stroke-width="1.5"/>
+    <text x="87" y="120" font-family="sans-serif" font-size="13" text-anchor="middle" fill="#333333">30 חולצות</text>
+    <text x="87" y="145" font-family="sans-serif" font-size="13" text-anchor="middle" fill="#333333">ב-x ש״ח לחולצה</text>
+    <rect x="25" y="162" width="125" height="28" rx="5" fill="#ffe0b2"/>
+    <text x="87" y="181" font-family="sans-serif" font-size="13" font-weight="bold" text-anchor="middle" fill="#bf360c">סה״כ: ? ש״ח</text>
+
+    <!-- תיבה ימנית: הכנסות (ירוקה) -->
+    <rect x="340" y="50" width="145" height="150" rx="10" fill="#e8f5e9" stroke="#388e3c" stroke-width="2"/>
+    <text x="412" y="80" font-family="sans-serif" font-size="15" font-weight="bold" text-anchor="middle" fill="#2e7d32">הכנסות ממכירה</text>
+    <line x1="350" y1="92" x2="475" y2="92" stroke="#a5d6a7" stroke-width="1.5"/>
+    <text x="412" y="120" font-family="sans-serif" font-size="13" text-anchor="middle" fill="#333333">30 חולצות</text>
+    <text x="412" y="145" font-family="sans-serif" font-size="13" text-anchor="middle" fill="#333333">ב-50 ש״ח לחולצה</text>
+    <rect x="350" y="162" width="125" height="28" rx="5" fill="#c8e6c9"/>
+    <text x="412" y="181" font-family="sans-serif" font-size="13" font-weight="bold" text-anchor="middle" fill="#1b5e20">סה״כ: 1,500 ש״ח</text>
+
+    <!-- חיצים אל התיבה המרכזית -->
+    <path d="M 340 125 L 322 125" stroke="#1565c0" stroke-width="2" marker-end="url(#arrow)"/>
+    <path d="M 160 125 L 178 125" stroke="#1565c0" stroke-width="2" marker-end="url(#arrow)"/>
+
+    <!-- תיבה אמצעית: רווח (כחולה מודגשת) -->
+    <rect x="180" y="70" width="140" height="110" rx="10" fill="#e3f2fd" stroke="#1565c0" stroke-width="3"/>
+    <text x="250" y="105" font-family="sans-serif" font-size="16" font-weight="bold" text-anchor="middle" fill="#0d47a1">רווח כולל</text>
+    <line x1="195" y1="120" x2="305" y2="120" stroke="#90caf9" stroke-width="1.5"/>
+    <text x="250" y="152" font-family="sans-serif" font-size="18" font-weight="bold" text-anchor="middle" fill="#1565c0">360 ש״ח</text>
+
+    <!-- משוואת הסבר תחתונה -->
+    <text x="250" y="235" font-family="sans-serif" font-size="13" text-anchor="middle" fill="#555555">רווח = הכנסות פחות הוצאות</text>
+  </svg>
+
+<svg width="500" height="260" viewBox="0 0 500 260" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1 L 10 5 L 0 9 z" fill="#1565c0"/>
+      </marker>
+    </defs>
+
+    <!-- כותרת ראשית -->
+    <text x="250" y="28" font-family="sans-serif" font-size="16" font-weight="bold" text-anchor="middle" fill="#333333">תרשים מאזן כספי - סוחר חולצות</text>
+
+    <!-- תיבה שמאלית: הוצאות (כתומה) -->
+    <rect x="15" y="50" width="145" height="150" rx="10" fill="#fff3e0" stroke="#f57c00" stroke-width="2"/>
+    <text x="87" y="80" font-family="sans-serif" font-size="15" font-weight="bold" text-anchor="middle" fill="#e65100">הוצאות קנייה</text>
+    <line x1="25" y1="92" x2="150" y2="92" stroke="#ffcc80" stroke-width="1.5"/>
+    <text x="87" y="120" font-family="sans-serif" font-size="13" text-anchor="middle" fill="#333333">30 חולצות</text>
+    <text x="87" y="145" font-family="sans-serif" font-size="13" text-anchor="middle" fill="#333333">ב-x ש״ח לחולצה</text>
+    <rect x="25" y="162" width="125" height="28" rx="5" fill="#ffe0b2"/>
+    <text x="87" y="181" font-family="sans-serif" font-size="13" font-weight="bold" text-anchor="middle" fill="#bf360c">סה״כ: ? ש״ח</text>
+
+    <!-- תיבה ימנית: הכנסות (ירוקה) -->
+    <rect x="340" y="50" width="145" height="150" rx="10" fill="#e8f5e9" stroke="#388e3c" stroke-width="2"/>
+    <text x="412" y="80" font-family="sans-serif" font-size="15" font-weight="bold" text-anchor="middle" fill="#2e7d32">הכנסות ממכירה</text>
+    <line x1="350" y1="92" x2="475" y2="92" stroke="#a5d6a7" stroke-width="1.5"/>
+    <text x="412" y="120" font-family="sans-serif" font-size="13" text-anchor="middle" fill="#333333">30 חולצות</text>
+    <text x="412" y="145" font-family="sans-serif" font-size="13" text-anchor="middle" fill="#333333">ב-50 ש״ח לחולצה</text>
+    <rect x="350" y="162" width="125" height="28" rx="5" fill="#c8e6c9"/>
+    <text x="412" y="181" font-family="sans-serif" font-size="13" font-weight="bold" text-anchor="middle" fill="#1b5e20">סה״כ: 1,500 ש״ח</text>
+
+    <!-- חיצים אל התיבה המרכזית -->
+    <path d="M 340 125 L 322 125" stroke="#1565c0" stroke-width="2" marker-end="url(#arrow)"/>
+    <path d="M 160 125 L 178 125" stroke="#1565c0" stroke-width="2" marker-end="url(#arrow)"/>
+
+    <!-- תיבה אמצעית: רווח (כחולה מודגשת) -->
+    <rect x="180" y="70" width="140" height="110" rx="10" fill="#e3f2fd" stroke="#1565c0" stroke-width="3"/>
+    <text x="250" y="105" font-family="sans-serif" font-size="16" font-weight="bold" text-anchor="middle" fill="#0d47a1">רווח כולל</text>
+    <line x1="195" y1="120" x2="305" y2="120" stroke="#90caf9" stroke-width="1.5"/>
+    <text x="250" y="152" font-family="sans-serif" font-size="18" font-weight="bold" text-anchor="middle" fill="#1565c0">360 ש״ח</text>
+
+    <!-- משוואת הסבר תחתונה -->
+    <text x="250" y="235" font-family="sans-serif" font-size="13" text-anchor="middle" fill="#555555">רווח = הכנסות פחות הוצאות</text>
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 9 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: בעסקת מסחר שבה נוצר רווח, כיצד מחושב הרווח הכספי של הסוחר?
+* אופציות:
+  - סך ההכנסות ממכירה פחות סך הוצאות הקנייה
+  - סך הוצאות הקנייה פחות סך ההכנסות ממכירה
+* פתרון נכון: סך ההכנסות ממכירה פחות סך הוצאות הקנייה
+* פתרון מלא: רווח נוצר כאשר ההכנסות ממכירת הסחורה גבוהות מההוצאות על קנייתה, ומחושב כהפרש: הכנסות פחות הוצאות.
+
+--------------------------------------------------------------------------------
+[תרגיל 9 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: הסוחר קנה 30 חולצות ושילם x ש"ח עבור כל חולצה. איזה ביטוי מייצג את סך כל הוצאות הקנייה שלו?
+* אופציות:
+  - 30x
+  - 30 + x
+* פתרון נכון: 30x
+* פתרון מלא: סך ההוצאה מחושב כמכפלת כמות החולצות (30) במחיר הקנייה של חולצה בודדת (x), כלומר 30x.
+
+--------------------------------------------------------------------------------
+[תרגיל 9 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: נתון כי כל אחת מ-30 החולצות נמכרה ב-50 ש"ח ושהרווח הכולל עמד על 360 ש"ח. איזו משוואה מתאימה לחישוב מחיר הקנייה (x)?
+* אופציות:
+  - 30 * 50 - 30x = 360
+  - 30x - 30 * 50 = 360
+  - 30 * 50 + 30x = 360
+* פתרון נכון: 30 * 50 - 30x = 360
+* פתרון מלא: סך ההכנסות הוא 30 * 50 ש"ח. סך הוצאות הקנייה הוא 30x. כיוון שרווח שווה להכנסות פחות הוצאות, המשוואה היא: 30 * 50 - 30x = 360.
+
+--------------------------------------------------------------------------------
+[תרגיל 9 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: פתרו את המשוואה, מצאו את מחיר הקנייה של חולצה אחת (x), וחשבו כמה שקלים הרוויח הסוחר על כל חולצה בודדת.
+1,500 - 30x = 360
+-30x = 360 - 1,500
+-30x = -1,140
+x = 38
+מחיר הקנייה של חולצה בודדת הוא 38 ש"ח.
+חישוב הרווח על חולצה בודדת:
+כל חולצה נמכרה ב-50 ש"ח ועלתה 38 ש"ח, ולכן הרווח לחולצה הוא: 50 - 38 = 12 ש"ח (או: 360 ש"ח רווח חלקי 30 חולצות = 12 ש"ח לחולצה).
+* פתרון נכון: פותרים את המשוואה:
+* פתרון מלא: פותרים את המשוואה:
+
+================================================================================
+תרגיל 10 – אתגר: סינתזה מלאה: שילוב חלוקת כמויות
+================================================================================
+ועד ההורים של השכבה מעוניין לרכוש 20 מארזי שי לתלמידים ומשווה בין שתי הצעות מחיר מדוכנים שונים ביריד.
+
+  <svg width="480" height="260" xmlns="http://www.w3.org/2000/svg">
+    <!-- רקע כללי -->
+    <rect width="480" height="260" fill="#f8fafc" rx="10"/>
+
+    <!-- כרטיס דוכן א' -->
+    <g>
+      <rect x="250" y="20" width="210" height="220" rx="10" fill="#ffffff" stroke="#3b82f6" stroke-width="2"/>
+      <rect x="250" y="20" width="210" height="40" rx="10" fill="#3b82f6"/>
+      <!-- תיקון פינות תחתונות של הכותרת -->
+      <rect x="250" y="45" width="210" height="15" fill="#3b82f6"/>
+      <text x="355" y="46" font-size="16" font-weight="bold" fill="#ffffff" text-anchor="middle" direction="rtl">דוכן א'</text>
+    
+      <text x="445" y="82" font-size="13" font-weight="bold" fill="#1e3a8a" direction="rtl">ללא משלוח</text>
+    
+      <!-- פריט 1: מארז קטן -->
+      <circle cx="438" cy="112" r="4" fill="#3b82f6"/>
+      <text x="425" y="116" font-size="13" fill="#1f2937" direction="rtl">מארז קטן: <tspan font-weight="bold">15 ₪</tspan></text>
+    
+      <!-- פריט 2: מארז גדול -->
+      <circle cx="438" cy="148" r="4" fill="#3b82f6"/>
+      <text x="425" y="152" font-size="13" fill="#1f2937" direction="rtl">מארז גדול: <tspan font-weight="bold" fill="#dc2626">26 ₪</tspan></text>
+    
+      <!-- הערת מבצע -->
+      <rect x="262" y="172" width="186" height="48" rx="6" fill="#eff6ff" stroke="#bfdbfe"/>
+      <text x="438" y="191" font-size="11" fill="#1d4ed8" font-weight="bold" direction="rtl">מבצע למארז גדול:</text>
+      <text x="438" y="208" font-size="11" fill="#475569" direction="rtl">הנחה של 4 ₪ (במקום 30 ₪)</text>
+    </g>
+
+    <!-- כרטיס דוכן ב' -->
+    <g>
+      <rect x="20" y="20" width="210" height="220" rx="10" fill="#ffffff" stroke="#10b981" stroke-width="2"/>
+      <rect x="20" y="20" width="210" height="40" rx="10" fill="#10b981"/>
+      <!-- תיקון פינות תחתונות של הכותרת -->
+      <rect x="20" y="45" width="210" height="15" fill="#10b981"/>
+      <text x="125" y="46" font-size="16" font-weight="bold" fill="#ffffff" text-anchor="middle" direction="rtl">דוכן ב'</text>
+    
+      <text x="215" y="82" font-size="13" font-weight="bold" fill="#064e3b" direction="rtl">מסלול עם משלוח</text>
+    
+      <!-- פריט 1: דמי משלוח -->
+      <circle cx="208" cy="112" r="4" fill="#10b981"/>
+      <text x="195" y="116" font-size="13" fill="#1f2937" direction="rtl">דמי משלוח קבועים: <tspan font-weight="bold">50 ₪</tspan></text>
+    
+      <!-- פריט 2: מחיר למארז -->
+      <circle cx="208" cy="148" r="4" fill="#10b981"/>
+      <text x="195" y="152" font-size="13" fill="#1f2937" direction="rtl">מחיר למארז: <tspan font-weight="bold">17 ₪</tspan></text>
+    
+      <!-- הערת תנאים -->
+      <rect x="32" y="172" width="186" height="48" rx="6" fill="#ecfdf5" stroke="#a7f3d0"/>
+      <text x="208" y="191" font-size="11" fill="#047857" font-weight="bold" direction="rtl">תנאי מסלול אחיד:</text>
+      <text x="208" y="208" font-size="11" fill="#475569" direction="rtl">17 ₪ לכל מארז (קטן או גדול)</text>
+    </g>
+  </svg>
+
+<svg width="480" height="260" xmlns="http://www.w3.org/2000/svg">
+    <!-- רקע כללי -->
+    <rect width="480" height="260" fill="#f8fafc" rx="10"/>
+
+    <!-- כרטיס דוכן א' -->
+    <g>
+      <rect x="250" y="20" width="210" height="220" rx="10" fill="#ffffff" stroke="#3b82f6" stroke-width="2"/>
+      <rect x="250" y="20" width="210" height="40" rx="10" fill="#3b82f6"/>
+      <!-- תיקון פינות תחתונות של הכותרת -->
+      <rect x="250" y="45" width="210" height="15" fill="#3b82f6"/>
+      <text x="355" y="46" font-size="16" font-weight="bold" fill="#ffffff" text-anchor="middle" direction="rtl">דוכן א'</text>
+    
+      <text x="445" y="82" font-size="13" font-weight="bold" fill="#1e3a8a" direction="rtl">ללא משלוח</text>
+    
+      <!-- פריט 1: מארז קטן -->
+      <circle cx="438" cy="112" r="4" fill="#3b82f6"/>
+      <text x="425" y="116" font-size="13" fill="#1f2937" direction="rtl">מארז קטן: <tspan font-weight="bold">15 ₪</tspan></text>
+    
+      <!-- פריט 2: מארז גדול -->
+      <circle cx="438" cy="148" r="4" fill="#3b82f6"/>
+      <text x="425" y="152" font-size="13" fill="#1f2937" direction="rtl">מארז גדול: <tspan font-weight="bold" fill="#dc2626">26 ₪</tspan></text>
+    
+      <!-- הערת מבצע -->
+      <rect x="262" y="172" width="186" height="48" rx="6" fill="#eff6ff" stroke="#bfdbfe"/>
+      <text x="438" y="191" font-size="11" fill="#1d4ed8" font-weight="bold" direction="rtl">מבצע למארז גדול:</text>
+      <text x="438" y="208" font-size="11" fill="#475569" direction="rtl">הנחה של 4 ₪ (במקום 30 ₪)</text>
+    </g>
+
+    <!-- כרטיס דוכן ב' -->
+    <g>
+      <rect x="20" y="20" width="210" height="220" rx="10" fill="#ffffff" stroke="#10b981" stroke-width="2"/>
+      <rect x="20" y="20" width="210" height="40" rx="10" fill="#10b981"/>
+      <!-- תיקון פינות תחתונות של הכותרת -->
+      <rect x="20" y="45" width="210" height="15" fill="#10b981"/>
+      <text x="125" y="46" font-size="16" font-weight="bold" fill="#ffffff" text-anchor="middle" direction="rtl">דוכן ב'</text>
+    
+      <text x="215" y="82" font-size="13" font-weight="bold" fill="#064e3b" direction="rtl">מסלול עם משלוח</text>
+    
+      <!-- פריט 1: דמי משלוח -->
+      <circle cx="208" cy="112" r="4" fill="#10b981"/>
+      <text x="195" y="116" font-size="13" fill="#1f2937" direction="rtl">דמי משלוח קבועים: <tspan font-weight="bold">50 ₪</tspan></text>
+    
+      <!-- פריט 2: מחיר למארז -->
+      <circle cx="208" cy="148" r="4" fill="#10b981"/>
+      <text x="195" y="152" font-size="13" fill="#1f2937" direction="rtl">מחיר למארז: <tspan font-weight="bold">17 ₪</tspan></text>
+    
+      <!-- הערת תנאים -->
+      <rect x="32" y="172" width="186" height="48" rx="6" fill="#ecfdf5" stroke="#a7f3d0"/>
+      <text x="208" y="191" font-size="11" fill="#047857" font-weight="bold" direction="rtl">תנאי מסלול אחיד:</text>
+      <text x="208" y="208" font-size="11" fill="#475569" direction="rtl">17 ₪ לכל מארז (קטן או גדול)</text>
+    </g>
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 10 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: בדוכן א' רוכשים בסך הכל 20 מארזים משני סוגים: קטנים וגדולים. אם נסמן ב-x את מספר המארזים הקטנים, מהו הביטוי למספר המארזים הגדולים?
+* אופציות:
+  - 20 - x
+  - x - 20
+* פתרון נכון: 20 - x
+* רמז: סכום שני סוגי המארזים חייב להסתכם בדיוק ב-20.
+* פתרון מלא: כאשר סך כל הכמות קבוע וידוע (20 מארזים), הכמות הנותרת עבור המארזים הגדולים היא ההפרש בין הסכום הכולל לכמות המארזים הקטנים: 20 - x.
+
+--------------------------------------------------------------------------------
+[תרגיל 10 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: מחירו המקורי של מארז גדול בדוכן א' היה 30 ש"ח, אך ניתנת עליו הנחה של 4 ש"ח ליחידה. מהו מחירו של מארז גדול לאחר ההנחה?
+* אופציות:
+  - 26 ש"ח
+  - 34 ש"ח
+* פתרון נכון: 26 ש"ח
+* רמז: חשבו 30 פחות 4.
+* פתרון מלא: הנחה מפחיתה ממחיר המוצר, ולכן נחסר 4 שקלים מהמחיר המקורי: 30 - 4 = 26 ש"ח.
+
+--------------------------------------------------------------------------------
+[תרגיל 10 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: בדוכן א' שילם הוועד סכום כולל של 410 ש"ח עבור 20 המארזים (מארז קטן ב-15 ש"ח ומארז גדול ב-26 ש"ח). איזו משוואה מתאימה למציאת מספר המארזים הקטנים x?
+* אופציות:
+  - 15x + 26(20 - x) = 410
+  - 15x + 30(20 - x) = 410
+  - 15x + 26x = 410
+* פתרון נכון: 15x + 26(20 - x) = 410
+* רמז: השתמשו במחיר המבצע (26 ש"ח) ובביטוי לכמות המארזים הגדולים (20 פחות x).
+* פתרון מלא: עלות x מארזים קטנים היא 15x, עלות המארזים הגדולים במחיר המבצע היא 26(20 - x), וסכום שתי העלויות הוא 410 ש"ח. לכן המשוואה היא 15x + 26(20 - x) = 410.
+
+--------------------------------------------------------------------------------
+[תרגיל 10 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: פתרו את המשוואה 15x + 26(20 - x) = 410 כדי למצוא כמה מארזים מכל סוג נקנו בדוכן א'. לאחר מכן חשבו כמה היו עולים 20 מארזים בדוכן ב' (50 ש"ח משלוח + 17 ש"ח למארז) וקבעו איזה דוכן משתלם יותר.
+* פתרון נכון: נפתח סוגריים בדוכן א': 15x + 520 - 26x = 410. נכנס איברים דומים: -11x + 520 = 410. נחסר 520: -11x = -110. נחלק ב-11- ונקבל x = 10. נקנו 10 מארזים קטנים ו-10 מארזים גדולים (20 - 10 = 10). בדוכן א' העלות הכוללת הייתה 410 ש"ח. בדוכן ב' עלות 20 מארזים היא 50 + 20 · 17 = 50 + 340 = 390 ש"ח. לכן דוכן ב' משתלם יותר (זול ב-20 ש"ח מדוכן א').
+* פתרון מלא: נפתח סוגריים בדוכן א': 15x + 520 - 26x = 410. נכנס איברים דומים: -11x + 520 = 410. נחסר 520: -11x = -110. נחלק ב-11- ונקבל x = 10. נקנו 10 מארזים קטנים ו-10 מארזים גדולים (20 - 10 = 10). בדוכן א' העלות הכוללת הייתה 410 ש"ח. בדוכן ב' עלות 20 מארזים היא 50 + 20 · 17 = 50 + 340 = 390 ש"ח. לכן דוכן ב' משתלם יותר (זול ב-20 ש"ח מדוכן א').

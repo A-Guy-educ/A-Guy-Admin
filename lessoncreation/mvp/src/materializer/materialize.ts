@@ -13,6 +13,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai'
 
 import { buildMaterializerSystemPrompt, buildMaterializerUserPrompt } from './prompt.js'
 
+import { withHttpRetry } from '../http-retry.js'
 import { MODEL_MATERIALIZER } from '../models.js'
 
 const DEFAULT_MODEL = MODEL_MATERIALIZER
@@ -65,7 +66,10 @@ async function materializeOne(
       maxOutputTokens: 8192,
     },
   })
-  const result = await model.generateContent(buildMaterializerUserPrompt(description, contextHint))
+  const result = await withHttpRetry(
+    () => model.generateContent(buildMaterializerUserPrompt(description, contextHint)),
+    { label: `materializer ${DEFAULT_MODEL}` },
+  )
   return result.response.text().trim()
 }
 

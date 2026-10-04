@@ -1,0 +1,1282 @@
+================================================================================
+תרגיל 1 – מנחה: הבחנה חזותית במבנה המקדמים של מערכות משוואות וזיהוי המצב…
+================================================================================
+לפניכם שלוש מערכות של משוואות ליניאריות. נתבונן במקדמים של הנעלמים x ו-y בכל מערכת כדי לבדוק האם הם מוכנים לחיבור או לחיסור מידי, או שנדרשת פעולת הכפלה מקדימה.
+
+  <svg width="480" height="220" xmlns="http://www.w3.org/2000/svg" font-family="sans-serif">
+    <!-- כרטיסייה 1: תכלת -->
+    <rect x="15" y="20" width="140" height="180" rx="10" fill="#E1F5FE" stroke="#0288D1" stroke-width="2"/>
+    <text x="85" y="55" font-size="16" font-weight="bold" fill="#01579B" text-anchor="middle" direction="rtl">מערכת א'</text>
+    <line x1="25" y1="70" x2="145" y2="70" stroke="#B3E5FC" stroke-width="1.5"/>
+    <text x="85" y="112" font-size="15" fill="#212121" text-anchor="middle" direction="ltr">2x + 3y = 12</text>
+    <text x="85" y="157" font-size="15" fill="#212121" text-anchor="middle" direction="ltr">4x - 3y = 6</text>
+    <!-- הדגשות כרטיסייה 1 -->
+    <ellipse cx="85" cy="107" rx="20" ry="14" fill="none" stroke="#D32F2F" stroke-width="2"/>
+    <ellipse cx="85" cy="152" rx="20" ry="14" fill="none" stroke="#D32F2F" stroke-width="2"/>
+
+    <!-- כרטיסייה 2: ירוק בהיר -->
+    <rect x="170" y="20" width="140" height="180" rx="10" fill="#E8F5E9" stroke="#388E3C" stroke-width="2"/>
+    <text x="240" y="55" font-size="16" font-weight="bold" fill="#1B5E20" text-anchor="middle" direction="rtl">מערכת ב'</text>
+    <line x1="180" y1="70" x2="300" y2="70" stroke="#C8E6C9" stroke-width="1.5"/>
+    <text x="240" y="112" font-size="15" fill="#212121" text-anchor="middle" direction="ltr">x + 2y = 8</text>
+    <text x="240" y="157" font-size="15" fill="#212121" text-anchor="middle" direction="ltr">3x + 5y = 21</text>
+    <!-- הדגשות כרטיסייה 2 -->
+    <ellipse cx="208" cy="107" rx="12" ry="14" fill="none" stroke="#D32F2F" stroke-width="2"/>
+
+    <!-- כרטיסייה 3: כתום בהיר -->
+    <rect x="325" y="20" width="140" height="180" rx="10" fill="#FFF3E0" stroke="#F57C00" stroke-width="2"/>
+    <text x="395" y="55" font-size="16" font-weight="bold" fill="#E65100" text-anchor="middle" direction="rtl">מערכת ג'</text>
+    <line x1="335" y1="70" x2="455" y2="70" stroke="#FFE0B2" stroke-width="1.5"/>
+    <text x="395" y="112" font-size="15" fill="#212121" text-anchor="middle" direction="ltr">2x + 4y = 10</text>
+    <text x="395" y="157" font-size="15" fill="#212121" text-anchor="middle" direction="ltr">5x + 8y = 22</text>
+    <!-- הדגשות כרטיסייה 3 -->
+    <ellipse cx="395" cy="107" rx="16" ry="14" fill="none" stroke="#D32F2F" stroke-width="2"/>
+    <ellipse cx="395" cy="152" rx="16" ry="14" fill="none" stroke="#D32F2F" stroke-width="2"/>
+  </svg>
+
+<svg width="480" height="220" xmlns="http://www.w3.org/2000/svg" font-family="sans-serif">
+    <!-- כרטיסייה 1: תכלת -->
+    <rect x="15" y="20" width="140" height="180" rx="10" fill="#E1F5FE" stroke="#0288D1" stroke-width="2"/>
+    <text x="85" y="55" font-size="16" font-weight="bold" fill="#01579B" text-anchor="middle" direction="rtl">מערכת א'</text>
+    <line x1="25" y1="70" x2="145" y2="70" stroke="#B3E5FC" stroke-width="1.5"/>
+    <text x="85" y="112" font-size="15" fill="#212121" text-anchor="middle" direction="ltr">2x + 3y = 12</text>
+    <text x="85" y="157" font-size="15" fill="#212121" text-anchor="middle" direction="ltr">4x - 3y = 6</text>
+    <!-- הדגשות כרטיסייה 1 -->
+    <ellipse cx="85" cy="107" rx="20" ry="14" fill="none" stroke="#D32F2F" stroke-width="2"/>
+    <ellipse cx="85" cy="152" rx="20" ry="14" fill="none" stroke="#D32F2F" stroke-width="2"/>
+
+    <!-- כרטיסייה 2: ירוק בהיר -->
+    <rect x="170" y="20" width="140" height="180" rx="10" fill="#E8F5E9" stroke="#388E3C" stroke-width="2"/>
+    <text x="240" y="55" font-size="16" font-weight="bold" fill="#1B5E20" text-anchor="middle" direction="rtl">מערכת ב'</text>
+    <line x1="180" y1="70" x2="300" y2="70" stroke="#C8E6C9" stroke-width="1.5"/>
+    <text x="240" y="112" font-size="15" fill="#212121" text-anchor="middle" direction="ltr">x + 2y = 8</text>
+    <text x="240" y="157" font-size="15" fill="#212121" text-anchor="middle" direction="ltr">3x + 5y = 21</text>
+    <!-- הדגשות כרטיסייה 2 -->
+    <ellipse cx="208" cy="107" rx="12" ry="14" fill="none" stroke="#D32F2F" stroke-width="2"/>
+
+    <!-- כרטיסייה 3: כתום בהיר -->
+    <rect x="325" y="20" width="140" height="180" rx="10" fill="#FFF3E0" stroke="#F57C00" stroke-width="2"/>
+    <text x="395" y="55" font-size="16" font-weight="bold" fill="#E65100" text-anchor="middle" direction="rtl">מערכת ג'</text>
+    <line x1="335" y1="70" x2="455" y2="70" stroke="#FFE0B2" stroke-width="1.5"/>
+    <text x="395" y="112" font-size="15" fill="#212121" text-anchor="middle" direction="ltr">2x + 4y = 10</text>
+    <text x="395" y="157" font-size="15" fill="#212121" text-anchor="middle" direction="ltr">5x + 8y = 22</text>
+    <!-- הדגשות כרטיסייה 3 -->
+    <ellipse cx="395" cy="107" rx="16" ry="14" fill="none" stroke="#D32F2F" stroke-width="2"/>
+    <ellipse cx="395" cy="152" rx="16" ry="14" fill="none" stroke="#D32F2F" stroke-width="2"/>
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 1 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: התבוננו במערכת א' ובמערכת ב'. באיזו מהן המקדמים של אחד הנעלמים כבר נגדיים ומוכנים לביטול ישיר על ידי חיבור המשוואות?
+* אופציות:
+  - במערכת א', שבה המקדמים של y הם 3 ו-(3-).
+  - במערכת ב', שבה המקדמים של x הם 1 ו-3.
+* פתרון נכון: במערכת א', שבה המקדמים של y הם 3 ו-(3-).
+* פתרון מלא: במערכת א' המקדמים של y הם 3 ו-(3-). אלו מספרים נגדיים שסכומם הוא 0, ולכן חיבור המשוואות יבטל מיד את הנעלם y ללא צורך בהכפלה מוקדמת.
+
+--------------------------------------------------------------------------------
+[תרגיל 1 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: התבוננו במערכת ב'. איזה נעלם יהיה הפשוט ביותר להשוואת מקדמים באמצעות הכפלת משוואה אחת בלבד?
+* אופציות:
+  - הנעלם x, מכיוון שבמשוואה הראשונה המקדם שלו הוא 1 ומספיק להכפיל את כל המשוואה ב-3.
+  - הנעלם y, מכיוון שהמקדם 2 גדול יותר מ-1.
+* פתרון נכון: הנעלם x, מכיוון שבמשוואה הראשונה המקדם שלו הוא 1 ומספיק להכפיל את כל המשוואה ב-3.
+* פתרון מלא: כאשר לאחד הנעלמים יש מקדם 1 (או 1-), נוח מאוד להכפיל את אותה משוואה במקדם של המשוואה השנייה כדי להשוות מקדמים בקלות.
+
+--------------------------------------------------------------------------------
+[תרגיל 1 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: התבוננו במערכת ג': 2x + 4y = 10 ו-5x + 8y = 22. באיזה מספר נכפיל את המשוואה הראשונה כדי להשוות את המקדם של y למקדם של y במשוואה השנייה?
+* אופציות:
+  - נכפיל במספר 2.
+  - נכפיל במספר 4.
+  - נכפיל במספר 8.
+* פתרון נכון: נכפיל במספר 2.
+* פתרון מלא: המקדם של y במשוואה השנייה הוא 8, ובמשוואה הראשונה הוא 4. מכיוון ש-4 כפול 2 שווה 8, הכפלת המשוואה הראשונה כולה ב-2 תביא את המקדם של y להיות 8.
+
+--------------------------------------------------------------------------------
+[תרגיל 1 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: רשמו עבור כל אחת משלוש המערכות (א', ב', ג') האם ניתן לפתור אותה ישירות ללא הכפלה, או שנדרשת הכפלה של משוואה.
+* פתרון נכון: מערכת א' מוכנה מיד לפתרון על ידי חיבור המשוואות (המקדמים של y הם 3 ו-(3-)). במערכת ב' נדרשת הכפלה (כפל המשוואה הראשונה ב-3). במערכת ג' נדרשת הכפלה (כפל המשוואה הראשונה ב-2).
+* פתרון מלא: מערכת א' מוכנה מיד לפתרון על ידי חיבור המשוואות (המקדמים של y הם 3 ו-(3-)). במערכת ב' נדרשת הכפלה (כפל המשוואה הראשונה ב-3). במערכת ג' נדרשת הכפלה (כפל המשוואה הראשונה ב-2).
+
+================================================================================
+תרגיל 2 – מנחה: השוואה בין כפל במספר חיובי (לחיסור) לבין כפל במספר שלילי…
+================================================================================
+נתונה המערכת: משוואה (1): 2x + y = 7, ומשוואה (2): 5x + 3y = 18. אנו רוצים להשוות את המקדמים של y. לשם כך יש שתי דרכים: להכפיל במספר חיובי 3 ולחסר, או להכפיל במספר שלילי (3-) ולחבר.
+
+  <svg width="500" height="280" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <!-- חץ כחול -->
+      <marker id="arrow-blue" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+        <path d="M0,0 L0,6 L6,3 z" fill="#1D4ED8" />
+      </marker>
+      <!-- חץ ירוק -->
+      <marker id="arrow-green" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+        <path d="M0,0 L0,6 L6,3 z" fill="#15803D" />
+      </marker>
+    </defs>
+
+    <!-- רקע כללי -->
+    <rect width="100%" height="100%" fill="#F8FAFC"/>
+
+    <!-- תיבה שמאלית: מערכת מקורית -->
+    <rect x="25" y="95" width="135" height="85" rx="8" fill="#FFFFFF" stroke="#475569" stroke-width="2"/>
+    <text x="92" y="118" font-size="13" font-weight="bold" fill="#334155" text-anchor="middle" direction="rtl">מערכת מקורית</text>
+    <text x="92" y="145" font-size="14" fill="#0F172A" text-anchor="middle" font-family="monospace">2x + y = 7</text>
+    <text x="92" y="167" font-size="14" fill="#0F172A" text-anchor="middle" font-family="monospace">5x + 3y = 18</text>
+
+    <!-- חץ עליון (כחול) -->
+    <path d="M 160 115 C 200 100, 215 70, 250 65" fill="none" stroke="#1D4ED8" stroke-width="2.5" marker-end="url(#arrow-blue)"/>
+    <rect x="175" y="65" width="65" height="22" rx="4" fill="#EFF6FF" stroke="#BFDBFE" stroke-width="1"/>
+    <text x="207" y="81" font-size="12" font-weight="bold" fill="#1D4ED8" text-anchor="middle" direction="rtl">כפל ב-3</text>
+
+    <!-- תיבה עליונה: נתיב חיסור -->
+    <rect x="260" y="25" width="215" height="95" rx="8" fill="#FFFFFF" stroke="#1D4ED8" stroke-width="2"/>
+    <text x="367" y="52" font-size="14" font-weight="bold" fill="#1D4ED8" text-anchor="middle" font-family="monospace">6x + 3y = 21</text>
+    <text x="367" y="73" font-size="14" fill="#64748B" text-anchor="middle" font-family="monospace">5x + 3y = 18</text>
+    <line x1="280" y1="84" x2="455" y2="84" stroke="#E2E8F0" stroke-width="1"/>
+    <text x="367" y="105" font-size="13" font-weight="bold" fill="#0369A1" text-anchor="middle" direction="rtl">שלב הבא: חיסור משוואות</text>
+
+    <!-- חץ תחתון (ירוק) -->
+    <path d="M 160 160 C 200 175, 215 205, 250 210" fill="none" stroke="#15803D" stroke-width="2.5" marker-end="url(#arrow-green)"/>
+    <rect x="170" y="190" width="75" height="22" rx="4" fill="#F0FDF4" stroke="#BBF7D0" stroke-width="1"/>
+    <text x="207" y="206" font-size="12" font-weight="bold" fill="#15803D" text-anchor="middle" direction="rtl">כפל ב-(3-)</text>
+
+    <!-- תיבה תחתונה: נתיב חיבור -->
+    <rect x="260" y="155" width="215" height="95" rx="8" fill="#FFFFFF" stroke="#15803D" stroke-width="2"/>
+    <text x="367" y="182" font-size="14" font-weight="bold" fill="#15803D" text-anchor="middle" font-family="monospace">-6x - 3y = -21</text>
+    <text x="367" y="203" font-size="14" fill="#64748B" text-anchor="middle" font-family="monospace">5x + 3y = 18</text>
+    <line x1="280" y1="214" x2="455" y2="214" stroke="#E2E8F0" stroke-width="1"/>
+    <text x="367" y="235" font-size="13" font-weight="bold" fill="#047857" text-anchor="middle" direction="rtl">שלב הבא: חיבור משוואות</text>
+  </svg>
+
+<svg width="500" height="280" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <!-- חץ כחול -->
+      <marker id="arrow-blue" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+        <path d="M0,0 L0,6 L6,3 z" fill="#1D4ED8" />
+      </marker>
+      <!-- חץ ירוק -->
+      <marker id="arrow-green" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+        <path d="M0,0 L0,6 L6,3 z" fill="#15803D" />
+      </marker>
+    </defs>
+
+    <!-- רקע כללי -->
+    <rect width="100%" height="100%" fill="#F8FAFC"/>
+
+    <!-- תיבה שמאלית: מערכת מקורית -->
+    <rect x="25" y="95" width="135" height="85" rx="8" fill="#FFFFFF" stroke="#475569" stroke-width="2"/>
+    <text x="92" y="118" font-size="13" font-weight="bold" fill="#334155" text-anchor="middle" direction="rtl">מערכת מקורית</text>
+    <text x="92" y="145" font-size="14" fill="#0F172A" text-anchor="middle" font-family="monospace">2x + y = 7</text>
+    <text x="92" y="167" font-size="14" fill="#0F172A" text-anchor="middle" font-family="monospace">5x + 3y = 18</text>
+
+    <!-- חץ עליון (כחול) -->
+    <path d="M 160 115 C 200 100, 215 70, 250 65" fill="none" stroke="#1D4ED8" stroke-width="2.5" marker-end="url(#arrow-blue)"/>
+    <rect x="175" y="65" width="65" height="22" rx="4" fill="#EFF6FF" stroke="#BFDBFE" stroke-width="1"/>
+    <text x="207" y="81" font-size="12" font-weight="bold" fill="#1D4ED8" text-anchor="middle" direction="rtl">כפל ב-3</text>
+
+    <!-- תיבה עליונה: נתיב חיסור -->
+    <rect x="260" y="25" width="215" height="95" rx="8" fill="#FFFFFF" stroke="#1D4ED8" stroke-width="2"/>
+    <text x="367" y="52" font-size="14" font-weight="bold" fill="#1D4ED8" text-anchor="middle" font-family="monospace">6x + 3y = 21</text>
+    <text x="367" y="73" font-size="14" fill="#64748B" text-anchor="middle" font-family="monospace">5x + 3y = 18</text>
+    <line x1="280" y1="84" x2="455" y2="84" stroke="#E2E8F0" stroke-width="1"/>
+    <text x="367" y="105" font-size="13" font-weight="bold" fill="#0369A1" text-anchor="middle" direction="rtl">שלב הבא: חיסור משוואות</text>
+
+    <!-- חץ תחתון (ירוק) -->
+    <path d="M 160 160 C 200 175, 215 205, 250 210" fill="none" stroke="#15803D" stroke-width="2.5" marker-end="url(#arrow-green)"/>
+    <rect x="170" y="190" width="75" height="22" rx="4" fill="#F0FDF4" stroke="#BBF7D0" stroke-width="1"/>
+    <text x="207" y="206" font-size="12" font-weight="bold" fill="#15803D" text-anchor="middle" direction="rtl">כפל ב-(3-)</text>
+
+    <!-- תיבה תחתונה: נתיב חיבור -->
+    <rect x="260" y="155" width="215" height="95" rx="8" fill="#FFFFFF" stroke="#15803D" stroke-width="2"/>
+    <text x="367" y="182" font-size="14" font-weight="bold" fill="#15803D" text-anchor="middle" font-family="monospace">-6x - 3y = -21</text>
+    <text x="367" y="203" font-size="14" fill="#64748B" text-anchor="middle" font-family="monospace">5x + 3y = 18</text>
+    <line x1="280" y1="214" x2="455" y2="214" stroke="#E2E8F0" stroke-width="1"/>
+    <text x="367" y="235" font-size="13" font-weight="bold" fill="#047857" text-anchor="middle" direction="rtl">שלב הבא: חיבור משוואות</text>
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 2 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: כאשר המקדמים של נעלם בשתי המשוואות הם 3 ו-(3-), איזו פעולה בין שתי המשוואות תבטל את הנעלם בצורה הפשוטה ביותר?
+* אופציות:
+  - פעולת חיבור, כי 3 ועוד (3-) שווה 0.
+  - פעולת חיסור, כי 3 פחות (3-) שווה 0.
+* פתרון נכון: פעולת חיבור, כי 3 ועוד (3-) שווה 0.
+* פתרון מלא: סכום של שני מספרים נגדיים הוא אפס: 3 + (-3) = 0. לכן חיבור המשוואות מאפס ומבטל את הנעלם מיד.
+
+--------------------------------------------------------------------------------
+[תרגיל 2 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: מדוע תלמידים רבים מעדיפים להכפיל במספר שלילי (כמו בנתיב התחתון) ולחבר, על פני חיסור משוואות?
+* אופציות:
+  - חיבור משוואות מקטין את הסיכוי לטעויות בסימנים לעומת חיסור.
+  - חיסור משוואות אינו חוקי מתמטית במערכת משוואות.
+* פתרון נכון: חיבור משוואות מקטין את הסיכוי לטעויות בסימנים לעומת חיסור.
+* פתרון מלא: שתי הדרכים חוקיות לחלוטין, אך חיסור של איברים עם סימני מינוס גורם לעיתים קרובות לטעויות חישוב (שכחת "מינוס מינוס"). חיבור משוואות נחשב בטוח ונוח יותר.
+
+--------------------------------------------------------------------------------
+[תרגיל 2 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: מהי המשוואה המתקבלת כאשר מכפילים את המשוואה 2x + y = 7 במספר (3-)?
+* אופציות:
+  - -6x - 3y = -21
+  - -6x + 3y = 21
+  - -6x - 3y = 7
+* פתרון נכון: -6x - 3y = -21
+* פתרון מלא: יש להכפיל כל אחד מאיברי המשוואה ב-(3-): 2x כפול (3-) שווה 6x-, y כפול (3-) שווה 3y-, ו-7 כפול (3-) שווה 21-. לכן מתקבל -6x - 3y = -21.
+
+--------------------------------------------------------------------------------
+[תרגיל 2 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: חברו את המשוואה שהתקבלה בנתיב התחתון (-6x - 3y = -21) עם המשוואה השנייה (5x + 3y = 18), ומצאו את ערכו של x.
+* פתרון נכון: חיבור אגף שמאל: (-6x + 5x) + (-3y + 3y) = -x. חיבור אגף ימין: -21 + 18 = -3. מתקבלת המשוואה: -x = -3, ולכן x = 3.
+* פתרון מלא: חיבור אגף שמאל: (-6x + 5x) + (-3y + 3y) = -x. חיבור אגף ימין: -21 + 18 = -3. מתקבלת המשוואה: -x = -3, ולכן x = 3.
+
+================================================================================
+תרגיל 3 – מנחה: קבלת החלטה אסטרטגית: בחירה איזה נעלם כדאי לאפס לפי גודל…
+================================================================================
+לפנינו מערכת משוואות שבה ניתן להשוות מקדמים על ידי הכפלת משוואה אחת בלבד. נבחן את שני הנעלמים כדי לבחור את דרך הפעולה היעילה והנוחה ביותר.
+
+  <svg width="450" height="230" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <!-- חץ כחול -->
+      <marker id="arrow-blue" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1 L 10 5 L 0 9 z" fill="#2563eb"/>
+      </marker>
+      <!-- חץ כתום -->
+      <marker id="arrow-orange" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1 L 10 5 L 0 9 z" fill="#ea580c"/>
+      </marker>
+    </defs>
+
+    <!-- תווית עליונה כחולה -->
+    <text x="130" y="38" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#2563eb" text-anchor="middle" direction="rtl">כפל ב-3 לאיפוס x</text>
+    <line x1="130" y1="46" x2="130" y2="86" stroke="#2563eb" stroke-width="2" marker-end="url(#arrow-blue)"/>
+
+    <!-- תווית עליונה כתומה -->
+    <text x="275" y="38" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#ea580c" text-anchor="middle" direction="rtl">כפל ב-2 לאיפוס y</text>
+    <line x1="275" y1="46" x2="275" y2="86" stroke="#ea580c" stroke-width="2" marker-end="url(#arrow-orange)"/>
+
+    <!-- סוגר מסולסל שמאלי -->
+    <path d="M 85,95 C 70,95 65,120 65,138 C 65,146 58,150 50,150 C 58,150 65,154 65,162 C 65,180 70,205 85,205" fill="none" stroke="#1f2937" stroke-width="3" stroke-linecap="round"/>
+
+    <!-- מלבן מעוגל כחול למקדמי x -->
+    <rect x="108" y="94" width="44" height="112" rx="8" fill="#3b82f6" fill-opacity="0.12" stroke="#2563eb" stroke-width="2"/>
+
+    <!-- מלבן מעוגל כתום למקדמי y -->
+    <rect x="253" y="94" width="44" height="112" rx="8" fill="#f97316" fill-opacity="0.12" stroke="#ea580c" stroke-width="2"/>
+
+    <!-- משוואה 1: 3x + 2y = 16 -->
+    <text x="130" y="136" font-family="Arial, sans-serif" font-size="22" font-weight="bold" fill="#1e3a8a" text-anchor="middle">3x</text>
+    <text x="195" y="136" font-family="Arial, sans-serif" font-size="22" fill="#374151" text-anchor="middle">+</text>
+    <text x="275" y="136" font-family="Arial, sans-serif" font-size="22" font-weight="bold" fill="#9a3412" text-anchor="middle">2y</text>
+    <text x="335" y="136" font-family="Arial, sans-serif" font-size="22" fill="#374151" text-anchor="middle">=</text>
+    <text x="380" y="136" font-family="Arial, sans-serif" font-size="22" font-weight="bold" fill="#111827" text-anchor="middle">16</text>
+
+    <!-- משוואה 2: x + y = 6 -->
+    <text x="130" y="186" font-family="Arial, sans-serif" font-size="22" font-weight="bold" fill="#1e3a8a" text-anchor="middle">x</text>
+    <text x="195" y="186" font-family="Arial, sans-serif" font-size="22" fill="#374151" text-anchor="middle">+</text>
+    <text x="275" y="186" font-family="Arial, sans-serif" font-size="22" font-weight="bold" fill="#9a3412" text-anchor="middle">y</text>
+    <text x="335" y="186" font-family="Arial, sans-serif" font-size="22" fill="#374151" text-anchor="middle">=</text>
+    <text x="380" y="186" font-family="Arial, sans-serif" font-size="22" font-weight="bold" fill="#111827" text-anchor="middle">6</text>
+  </svg>
+
+<svg width="450" height="230" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <!-- חץ כחול -->
+      <marker id="arrow-blue" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1 L 10 5 L 0 9 z" fill="#2563eb"/>
+      </marker>
+      <!-- חץ כתום -->
+      <marker id="arrow-orange" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1 L 10 5 L 0 9 z" fill="#ea580c"/>
+      </marker>
+    </defs>
+
+    <!-- תווית עליונה כחולה -->
+    <text x="130" y="38" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#2563eb" text-anchor="middle" direction="rtl">כפל ב-3 לאיפוס x</text>
+    <line x1="130" y1="46" x2="130" y2="86" stroke="#2563eb" stroke-width="2" marker-end="url(#arrow-blue)"/>
+
+    <!-- תווית עליונה כתומה -->
+    <text x="275" y="38" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#ea580c" text-anchor="middle" direction="rtl">כפל ב-2 לאיפוס y</text>
+    <line x1="275" y1="46" x2="275" y2="86" stroke="#ea580c" stroke-width="2" marker-end="url(#arrow-orange)"/>
+
+    <!-- סוגר מסולסל שמאלי -->
+    <path d="M 85,95 C 70,95 65,120 65,138 C 65,146 58,150 50,150 C 58,150 65,154 65,162 C 65,180 70,205 85,205" fill="none" stroke="#1f2937" stroke-width="3" stroke-linecap="round"/>
+
+    <!-- מלבן מעוגל כחול למקדמי x -->
+    <rect x="108" y="94" width="44" height="112" rx="8" fill="#3b82f6" fill-opacity="0.12" stroke="#2563eb" stroke-width="2"/>
+
+    <!-- מלבן מעוגל כתום למקדמי y -->
+    <rect x="253" y="94" width="44" height="112" rx="8" fill="#f97316" fill-opacity="0.12" stroke="#ea580c" stroke-width="2"/>
+
+    <!-- משוואה 1: 3x + 2y = 16 -->
+    <text x="130" y="136" font-family="Arial, sans-serif" font-size="22" font-weight="bold" fill="#1e3a8a" text-anchor="middle">3x</text>
+    <text x="195" y="136" font-family="Arial, sans-serif" font-size="22" fill="#374151" text-anchor="middle">+</text>
+    <text x="275" y="136" font-family="Arial, sans-serif" font-size="22" font-weight="bold" fill="#9a3412" text-anchor="middle">2y</text>
+    <text x="335" y="136" font-family="Arial, sans-serif" font-size="22" fill="#374151" text-anchor="middle">=</text>
+    <text x="380" y="136" font-family="Arial, sans-serif" font-size="22" font-weight="bold" fill="#111827" text-anchor="middle">16</text>
+
+    <!-- משוואה 2: x + y = 6 -->
+    <text x="130" y="186" font-family="Arial, sans-serif" font-size="22" font-weight="bold" fill="#1e3a8a" text-anchor="middle">x</text>
+    <text x="195" y="186" font-family="Arial, sans-serif" font-size="22" fill="#374151" text-anchor="middle">+</text>
+    <text x="275" y="186" font-family="Arial, sans-serif" font-size="22" font-weight="bold" fill="#9a3412" text-anchor="middle">y</text>
+    <text x="335" y="186" font-family="Arial, sans-serif" font-size="22" fill="#374151" text-anchor="middle">=</text>
+    <text x="380" y="186" font-family="Arial, sans-serif" font-size="22" font-weight="bold" fill="#111827" text-anchor="middle">6</text>
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 3 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: התבוננו במקדמים של x ושל y בשתי המשוואות. איזה נעלם דורש גורם כפל קטן יותר של משוואה (2) כדי להשוות מקדמים?
+* אופציות:
+  - הנעלם y (נדרש כפל ב-2, לעומת כפל ב-3 עבור x).
+  - הנעלם x (נדרש כפל ב-3, לעומת כפל ב-2 עבור y).
+* פתרון נכון: הנעלם y (נדרש כפל ב-2, לעומת כפל ב-3 עבור x).
+* פתרון מלא: המקדם של y במשוואה הראשונה הוא 2 ובשנייה הוא 1, לכן מספיק להכפיל את משוואה (2) ב-2 כדי להשוות מקדמים. לעומת זאת, כדי להשוות את מקדמי x נצטרך להכפיל את משוואה (2) ב-3. גורם הכפל עבור y (2) קטן ופשוט יותר לחישוב.
+
+--------------------------------------------------------------------------------
+[תרגיל 3 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: אם החלטנו לאפס את הנעלם y, איזו משוואה עלינו להכפיל?
+* אופציות:
+  - את משוואה (2), שבה המקדם של y הוא 1.
+  - את משוואה (1), שבה המקדם של y הוא 2.
+* פתרון נכון: את משוואה (2), שבה המקדם של y הוא 1.
+* פתרון מלא: במשוואה (2) המקדם של y הוא 1, ולכן נוח להכפיל את כל המשוואה הזו ב-2 כדי להגיע למקדם 2 המופיע במשוואה (1).
+
+--------------------------------------------------------------------------------
+[תרגיל 3 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: על סמך השוואת גורמי הכפל, מהי ההחלטה האסטרטגית המועדפת ומהי תוכנית הפעולה המלאה?
+* אופציות:
+  - עדיף לאפס את y: להכפיל את משוואה (2) ב-2 ולחסר בין המשוואות, כי גורם הכפל 2 קטן ונוח יותר מ-3.
+  - עדיף לאפס את x: להכפיל את משוואה (2) ב-3 ולחבר בין המשוואות, כי תמיד עדיף למצוא את y קודם.
+  - עדיף לאפס את y: להכפיל את משוואה (1) ב-2 ולחבר בין המשוואות.
+* פתרון נכון: עדיף לאפס את y: להכפיל את משוואה (2) ב-2 ולחסר בין המשוואות, כי גורם הכפל 2 קטן ונוח יותר מ-3.
+* פתרון מלא: כדאי לבחור בגורם הכפל הקטן ביותר (2 במקום 3) כדי לפשט את החישובים. לאחר הכפלת משוואה (2) ב-2 נקבל מקדם 2y בשתי המשוואות. מכיוון שלשניהם סימן חיובי זהה, נחסר בין המשוואות כדי לאפס את y.
+
+--------------------------------------------------------------------------------
+[תרגיל 3 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: פתרו את מערכת המשוואות: מצאו את ערכי x ו-y לפי התוכנית שבחרתם, והציבו אותם במשוואה (1) כדי לוודא שמתקבל פסוק אמת.
+1. נכפיל את משוואה (2) ב-2: 
+   2 · (x + y = 6)  =>  2x + 2y = 12.
+2. נחסר את המשוואה שהתקבלה ממשוואה (1):
+   (3x + 2y) - (2x + 2y) = 16 - 12
+   x = 4.
+3. נציב x = 4 במשוואה (2) המקורית:
+   4 + y = 6  =>  y = 2.
+   פתרון המערכת הוא: (4, 2).
+4. בדיקה בהצבה במשוואה (1):
+   3 · 4 + 2 · 2 = 12 + 4 = 16.
+   קיבלנו 16 = 16, פסוק אמת.
+
+================================================================================
+תרגיל 4 – בסיס: השוואת מקדמים כאשר אף מקדם אינו 1
+================================================================================
+נתונה מערכת שבה אף מקדם אינו שווה ל-1, אך אחד המקדמים הוא כפולה שלמה של המקדם המקביל: משוואה (1): 3x + 2y = 16, ומשוואה (2): 5x + 6y = 36.
+
+  <svg width="500" height="300" viewBox="0 0 500 300" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <!-- ראש חץ לציר -->
+      <marker id="arrow-axis" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#333333"/>
+      </marker>
+      <!-- ראש חץ לקפיצות -->
+      <marker id="arrow-jump" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+        <path d="M 0 2 L 7 5 L 0 8 z" fill="#2563EB"/>
+      </marker>
+    </defs>
+
+    <!-- כותרת ראשית של הפעולה -->
+    <text x="250" y="45" font-size="16" font-weight="bold" text-anchor="middle" fill="#1F2937">2 כפול 3 שווה 6</text>
+
+    <!-- 3 קשתות קפיצה של 2 יחידות -->
+    <!-- קפיצה 1: 0 עד 2 -->
+    <path d="M 60 170 Q 115 110 170 167" fill="none" stroke="#2563EB" stroke-width="2.5" marker-end="url(#arrow-jump)"/>
+    <text x="115" y="125" font-size="13" font-weight="bold" text-anchor="middle" fill="#2563EB">+2</text>
+
+    <!-- קפיצה 2: 2 עד 4 -->
+    <path d="M 180 170 Q 235 110 290 167" fill="none" stroke="#2563EB" stroke-width="2.5" marker-end="url(#arrow-jump)"/>
+    <text x="235" y="125" font-size="13" font-weight="bold" text-anchor="middle" fill="#2563EB">+2</text>
+
+    <!-- קפיצה 3: 4 עד 6 -->
+    <path d="M 300 170 Q 355 110 410 167" fill="none" stroke="#2563EB" stroke-width="2.5" marker-end="url(#arrow-jump)"/>
+    <text x="355" y="125" font-size="13" font-weight="bold" text-anchor="middle" fill="#2563EB">+2</text>
+
+    <!-- ציר מספרים -->
+    <line x1="30" y1="180" x2="470" y2="180" stroke="#333333" stroke-width="2" marker-end="url(#arrow-axis)"/>
+
+    <!-- שנתות ומספרים על הציר -->
+    <!-- 0 -->
+    <line x1="60" y1="174" x2="60" y2="186" stroke="#333333" stroke-width="2"/>
+    <text x="60" y="202" font-size="14" text-anchor="middle" fill="#333333">0</text>
+
+    <!-- 1 -->
+    <line x1="120" y1="176" x2="120" y2="184" stroke="#888888" stroke-width="1.5"/>
+    <text x="120" y="202" font-size="14" text-anchor="middle" fill="#666666">1</text>
+
+    <!-- 2 -->
+    <line x1="180" y1="174" x2="180" y2="186" stroke="#333333" stroke-width="2"/>
+    <text x="180" y="202" font-size="14" text-anchor="middle" fill="#333333">2</text>
+
+    <!-- 3 -->
+    <line x1="240" y1="176" x2="240" y2="184" stroke="#888888" stroke-width="1.5"/>
+    <text x="240" y="202" font-size="14" text-anchor="middle" fill="#666666">3</text>
+
+    <!-- 4 -->
+    <line x1="300" y1="174" x2="300" y2="186" stroke="#333333" stroke-width="2"/>
+    <text x="300" y="202" font-size="14" text-anchor="middle" fill="#333333">4</text>
+
+    <!-- 5 -->
+    <line x1="360" y1="176" x2="360" y2="184" stroke="#888888" stroke-width="1.5"/>
+    <text x="360" y="202" font-size="14" text-anchor="middle" fill="#666666">5</text>
+
+    <!-- 6 -->
+    <line x1="420" y1="174" x2="420" y2="186" stroke="#333333" stroke-width="2"/>
+    <text x="420" y="202" font-size="14" text-anchor="middle" fill="#333333">6</text>
+
+    <!-- קטע כחול מודגש: אורך 2 (מ-0 עד 2) -->
+    <line x1="60" y1="180" x2="180" y2="180" stroke="#2563EB" stroke-width="5"/>
+
+    <!-- תווית קטע כחול -->
+    <line x1="60" y1="222" x2="180" y2="222" stroke="#2563EB" stroke-width="2"/>
+    <line x1="60" y1="218" x2="60" y2="226" stroke="#2563EB" stroke-width="2"/>
+    <line x1="180" y1="218" x2="180" y2="226" stroke="#2563EB" stroke-width="2"/>
+    <text x="120" y="238" font-size="12" text-anchor="middle" fill="#2563EB" direction="rtl">מקדם y במשוואה הראשונה: 2</text>
+
+    <!-- קטע ירוק: אורך 6 (מ-0 עד 6) -->
+    <line x1="60" y1="262" x2="420" y2="262" stroke="#16A34A" stroke-width="2.5"/>
+    <line x1="60" y1="256" x2="60" y2="268" stroke="#16A34A" stroke-width="2.5"/>
+    <line x1="420" y1="256" x2="420" y2="268" stroke="#16A34A" stroke-width="2.5"/>
+    <text x="240" y="280" font-size="13" font-weight="bold" text-anchor="middle" fill="#16A34A" direction="rtl">מקדם y במשוואה השנייה: 6</text>
+  </svg>
+
+<svg width="500" height="300" viewBox="0 0 500 300" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <!-- ראש חץ לציר -->
+      <marker id="arrow-axis" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#333333"/>
+      </marker>
+      <!-- ראש חץ לקפיצות -->
+      <marker id="arrow-jump" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+        <path d="M 0 2 L 7 5 L 0 8 z" fill="#2563EB"/>
+      </marker>
+    </defs>
+
+    <!-- כותרת ראשית של הפעולה -->
+    <text x="250" y="45" font-size="16" font-weight="bold" text-anchor="middle" fill="#1F2937">2 כפול 3 שווה 6</text>
+
+    <!-- 3 קשתות קפיצה של 2 יחידות -->
+    <!-- קפיצה 1: 0 עד 2 -->
+    <path d="M 60 170 Q 115 110 170 167" fill="none" stroke="#2563EB" stroke-width="2.5" marker-end="url(#arrow-jump)"/>
+    <text x="115" y="125" font-size="13" font-weight="bold" text-anchor="middle" fill="#2563EB">+2</text>
+
+    <!-- קפיצה 2: 2 עד 4 -->
+    <path d="M 180 170 Q 235 110 290 167" fill="none" stroke="#2563EB" stroke-width="2.5" marker-end="url(#arrow-jump)"/>
+    <text x="235" y="125" font-size="13" font-weight="bold" text-anchor="middle" fill="#2563EB">+2</text>
+
+    <!-- קפיצה 3: 4 עד 6 -->
+    <path d="M 300 170 Q 355 110 410 167" fill="none" stroke="#2563EB" stroke-width="2.5" marker-end="url(#arrow-jump)"/>
+    <text x="355" y="125" font-size="13" font-weight="bold" text-anchor="middle" fill="#2563EB">+2</text>
+
+    <!-- ציר מספרים -->
+    <line x1="30" y1="180" x2="470" y2="180" stroke="#333333" stroke-width="2" marker-end="url(#arrow-axis)"/>
+
+    <!-- שנתות ומספרים על הציר -->
+    <!-- 0 -->
+    <line x1="60" y1="174" x2="60" y2="186" stroke="#333333" stroke-width="2"/>
+    <text x="60" y="202" font-size="14" text-anchor="middle" fill="#333333">0</text>
+
+    <!-- 1 -->
+    <line x1="120" y1="176" x2="120" y2="184" stroke="#888888" stroke-width="1.5"/>
+    <text x="120" y="202" font-size="14" text-anchor="middle" fill="#666666">1</text>
+
+    <!-- 2 -->
+    <line x1="180" y1="174" x2="180" y2="186" stroke="#333333" stroke-width="2"/>
+    <text x="180" y="202" font-size="14" text-anchor="middle" fill="#333333">2</text>
+
+    <!-- 3 -->
+    <line x1="240" y1="176" x2="240" y2="184" stroke="#888888" stroke-width="1.5"/>
+    <text x="240" y="202" font-size="14" text-anchor="middle" fill="#666666">3</text>
+
+    <!-- 4 -->
+    <line x1="300" y1="174" x2="300" y2="186" stroke="#333333" stroke-width="2"/>
+    <text x="300" y="202" font-size="14" text-anchor="middle" fill="#333333">4</text>
+
+    <!-- 5 -->
+    <line x1="360" y1="176" x2="360" y2="184" stroke="#888888" stroke-width="1.5"/>
+    <text x="360" y="202" font-size="14" text-anchor="middle" fill="#666666">5</text>
+
+    <!-- 6 -->
+    <line x1="420" y1="174" x2="420" y2="186" stroke="#333333" stroke-width="2"/>
+    <text x="420" y="202" font-size="14" text-anchor="middle" fill="#333333">6</text>
+
+    <!-- קטע כחול מודגש: אורך 2 (מ-0 עד 2) -->
+    <line x1="60" y1="180" x2="180" y2="180" stroke="#2563EB" stroke-width="5"/>
+
+    <!-- תווית קטע כחול -->
+    <line x1="60" y1="222" x2="180" y2="222" stroke="#2563EB" stroke-width="2"/>
+    <line x1="60" y1="218" x2="60" y2="226" stroke="#2563EB" stroke-width="2"/>
+    <line x1="180" y1="218" x2="180" y2="226" stroke="#2563EB" stroke-width="2"/>
+    <text x="120" y="238" font-size="12" text-anchor="middle" fill="#2563EB" direction="rtl">מקדם y במשוואה הראשונה: 2</text>
+
+    <!-- קטע ירוק: אורך 6 (מ-0 עד 6) -->
+    <line x1="60" y1="262" x2="420" y2="262" stroke="#16A34A" stroke-width="2.5"/>
+    <line x1="60" y1="256" x2="60" y2="268" stroke="#16A34A" stroke-width="2.5"/>
+    <line x1="420" y1="256" x2="420" y2="268" stroke="#16A34A" stroke-width="2.5"/>
+    <text x="240" y="280" font-size="13" font-weight="bold" text-anchor="middle" fill="#16A34A" direction="rtl">מקדם y במשוואה השנייה: 6</text>
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 4 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: האם במערכת זו יש צורך להכפיל את שתי המשוואות כדי להשוות את מקדמי y?
+* אופציות:
+  - לא, מספיק להכפיל משוואה אחת, כי 6 מתחלק ב-2 ללא שארית.
+  - כן, חובה תמיד להכפיל את שתי המשוואות אם המקדם אינו 1.
+* פתרון נכון: לא, מספיק להכפיל משוואה אחת, כי 6 מתחלק ב-2 ללא שארית.
+* פתרון מלא: מכיוון ש-6 הוא כפולה שלמה של 2 (2 כפול 3 שווה 6), מספיק להכפיל את המשוואה הראשונה בלבד במספר 3.
+
+--------------------------------------------------------------------------------
+[תרגיל 4 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: מדוע עדיף להכפיל את המשוואה הראשונה ב-3 במקום לחלק את המשוואה השנייה ב-3?
+* אופציות:
+  - כפל במספר שלם מונע קבלת שברים (חילוק 5 ב-3 היה יוצר שבר).
+  - חילוק של משוואה במספר אינו שומר על שוויון.
+* פתרון נכון: כפל במספר שלם מונע קבלת שברים (חילוק 5 ב-3 היה יוצר שבר).
+* פתרון מלא: חילוק משוואה במספר מותר לחלוטין, אך חלוקת המשוואה השנייה ב-3 הייתה יוצרת שבר (5/3x), מה שמסרבל את החישוב. כפל שומר על מספרים שלמים ונוחים.
+
+--------------------------------------------------------------------------------
+[תרגיל 4 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: מה תהיה המשוואה הראשונה (3x + 2y = 16) לאחר שנכפיל את כולה במספר 3?
+* אופציות:
+  - 9x + 6y = 48
+  - 9x + 6y = 16
+  - 3x + 6y = 48
+* פתרון נכון: 9x + 6y = 48
+* פתרון מלא: חובה להכפיל את כל איברי המשוואה בגורם הכפל: 3 כפול 3x שווה 9x, 3 כפול 2y שווה 6y, ו-3 כפול 16 שווה 48.
+
+--------------------------------------------------------------------------------
+[תרגיל 4 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: חסרו את המשוואה השנייה (5x + 6y = 36) מהמשוואה החדשה שקיבלתם (9x + 6y = 48), וחשבו את ערכי הנעלמים x ו-y.
+* פתרון נכון: חיסור אגפי שמאל: (9x - 5x) + (6y - 6y) = 4x. חיסור אגפי ימין: 48 - 36 = 12. נקבל 4x = 12, כלומר x = 3. נציב x = 3 במשוואה הראשונה המקורית: 3(3) + 2y = 16 -> 9 + 2y = 16 -> 2y = 7 -> y = 3.5. הפתרון הוא (3, 3.5).
+* פתרון מלא: חיסור אגפי שמאל: (9x - 5x) + (6y - 6y) = 4x. חיסור אגפי ימין: 48 - 36 = 12. נקבל 4x = 12, כלומר x = 3. נציב x = 3 במשוואה הראשונה המקורית: 3(3) + 2y = 16 -> 9 + 2y = 16 -> 2y = 7 -> y = 3.5. הפתרון הוא (3, 3.5).
+
+================================================================================
+תרגיל 5 – בסיס: טיפול במערכת עם מקדמים בעלי סימנים מנוגדים המהווים כפולה זה…
+================================================================================
+לפנינו מערכת משוואות שבה לאחד הנעלמים יש מקדמים בעלי סימנים מנוגדים כבר במערכת המקורית.
+
+  <svg width="360" height="160" viewBox="0 0 360 160" xmlns="http://www.w3.org/2000/svg">
+    <!-- סוגר מסולסל שמאלי -->
+    <path d="M 65,35 Q 50,35 50,62 Q 50,80 35,80 Q 50,80 50,98 Q 50,125 65,125" fill="none" stroke="#111" stroke-width="2.5" stroke-linecap="round"/>
+
+    <!-- משוואה עליונה: 2x - 3y = 5 -->
+    <text x="80" y="66" font-family="'Times New Roman', Times, serif" font-size="24" fill="#111">
+      <tspan>2</tspan><tspan font-style="italic">x</tspan>
+      <tspan> </tspan>
+      <tspan fill="#d32f2f" font-weight="bold" font-size="30" dy="-1">−</tspan>
+      <tspan dy="1"> </tspan>
+      <tspan>3</tspan><tspan font-style="italic">y</tspan>
+      <tspan> = 5</tspan>
+    </text>
+
+    <!-- משוואה תחתונה: x + 9y = 13 -->
+    <text x="80" y="108" font-family="'Times New Roman', Times, serif" font-size="24" fill="#111">
+      <tspan font-style="italic">x</tspan>
+      <tspan> </tspan>
+      <tspan fill="#1976d2" font-weight="bold" font-size="28" dy="-1">+</tspan>
+      <tspan dy="1"> </tspan>
+      <tspan>9</tspan><tspan font-style="italic">y</tspan>
+      <tspan> = 13</tspan>
+    </text>
+  </svg>
+
+<svg width="360" height="160" viewBox="0 0 360 160" xmlns="http://www.w3.org/2000/svg">
+    <!-- סוגר מסולסל שמאלי -->
+    <path d="M 65,35 Q 50,35 50,62 Q 50,80 35,80 Q 50,80 50,98 Q 50,125 65,125" fill="none" stroke="#111" stroke-width="2.5" stroke-linecap="round"/>
+
+    <!-- משוואה עליונה: 2x - 3y = 5 -->
+    <text x="80" y="66" font-family="'Times New Roman', Times, serif" font-size="24" fill="#111">
+      <tspan>2</tspan><tspan font-style="italic">x</tspan>
+      <tspan> </tspan>
+      <tspan fill="#d32f2f" font-weight="bold" font-size="30" dy="-1">−</tspan>
+      <tspan dy="1"> </tspan>
+      <tspan>3</tspan><tspan font-style="italic">y</tspan>
+      <tspan> = 5</tspan>
+    </text>
+
+    <!-- משוואה תחתונה: x + 9y = 13 -->
+    <text x="80" y="108" font-family="'Times New Roman', Times, serif" font-size="24" fill="#111">
+      <tspan font-style="italic">x</tspan>
+      <tspan> </tspan>
+      <tspan fill="#1976d2" font-weight="bold" font-size="28" dy="-1">+</tspan>
+      <tspan dy="1"> </tspan>
+      <tspan>9</tspan><tspan font-style="italic">y</tspan>
+      <tspan> = 13</tspan>
+    </text>
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 5 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: התבוננו במקדמים של y בשתי המשוואות. האם הם כבר בעלי סימנים מנוגדים לפני ביצוע פעולה כלשהי?
+* אופציות:
+  - כן, במשוואה הראשונה המקדם הוא 3- ובשנייה המקדם הוא 9+.
+  - לא, לשני המקדמים יש סימן זהה.
+* פתרון נכון: כן, במשוואה הראשונה המקדם הוא 3- ובשנייה המקדם הוא 9+.
+* פתרון מלא: במשוואה הראשונה מופיע האיבר 3y- שבו המקדם שלילי (3-), ובמשוואה השנייה מופיע האיבר 9y+ שבו המקדם חיובי (9+). לכן המקדמים בעלי סימנים מנוגדים מראש.
+
+--------------------------------------------------------------------------------
+[תרגיל 5 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: אנו רוצים להשוות את ערכם המוחלט של המקדמים של y ולאפס את y באמצעות חיבור משוואות. באיזה מספר נכפיל את משוואה (1)?
+* אופציות:
+  - במספר 3 (חיובי), כדי לקבל 9y- שמתבטל עם 9y+ בפעולת חיבור.
+  - במספר 3- (שלילי), כדי להפוך את המקדם ל-9y+ ולחבר את המשוואות.
+* פתרון נכון: במספר 3 (חיובי), כדי לקבל 9y- שמתבטל עם 9y+ בפעולת חיבור.
+* פתרון מלא: מכיוון שהסימנים כבר מנוגדים, כפל במספר חיובי 3 ישמור על הסימן השלילי וייתן 9y-. כשנחבר בין 9y- ל-9y+ נקבל 0, ולכן נוכל לאפס את y ישירות בעזרת חיבור בין המשוואות.
+
+--------------------------------------------------------------------------------
+[תרגיל 5 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: נכפיל את משוואה (1) ב-3 ונחבר אותה למשוואה (2). מה יהיה ערך אגף ימין (סכום האיברים החופשיים) במשוואה שנקבל?
+* אופציות:
+  - 28 (מכיוון ש-15 + 13 = 28).
+  - 18 (מכיוון ש-5 + 13 = 18, אם שוכחים להכפיל את אגף ימין).
+  - 2 (מכיוון ש-15 - 13 = 2, בפעולת חיסור במקום חיבור).
+* פתרון נכון: 28 (מכיוון ש-15 + 13 = 28).
+* פתרון מלא: כאשר מכפילים את משוואה (1) ב-3, כופלים גם את אגף ימין: 5 · 3 = 15. כעת מחברים את אגף ימין של שתי המשוואות: 15 + 13 = 28.
+
+--------------------------------------------------------------------------------
+[תרגיל 5 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: השלימו את פתרון המערכת ומצאו את ערכי x ו-y. לאחר מכן, רשמו משוואה שקולה נוספת למשוואה הראשונה (2x - 3y = 5) שהתקבלה על ידי כפל במספר שונה מ-3.
+1. נחבר את המשוואות לאחר הכפלת משוואה (1) ב-3:
+   משוואה (1) לאחר כפל: 6x - 9y = 15
+   משוואה (2): x + 9y = 13
+   חיבור אגפי שמאל: 6x + x + (-9y + 9y) = 7x
+   חיבור אגפי ימין: 15 + 13 = 28
+   מתקבל: 7x = 28  =>  x = 4.
+2. נציב x = 4 במשוואה (2) למציאת y:
+   4 + 9y = 13  =>  9y = 9  =>  y = 1.
+   פתרון המערכת הוא: (4, 1).
+3. משוואה שקולה נוספת למשוואה (1): כפל של כל איברי 2x - 3y = 5 במספר 2 ייתן 4x - 6y = 10 (ניתן לקבל כל כפל במספר שונה מאפס).
+
+================================================================================
+תרגיל 6 – בסיס: היכרות עם מצב שבו נדרש להכפיל את שתי המשוואות במספרים שונים
+================================================================================
+נתונה המערכת: משוואה (1): 2x + 5y = 19, ומשוואה (2): 3x + 4y = 18. שימו לב: 3 אינו כפולה שלמה של 2, ו-5 אינו כפולה שלמה של 4. במצב כזה, נצטרך להכפיל את שתי המשוואות כדי להגיע למקדם משותף.
+
+  <svg width="420" height="260" viewBox="0 0 420 260" xmlns="http://www.w3.org/2000/svg">
+    <!-- קו התחלה -->
+    <line x1="50" y1="50" x2="50" y2="200" stroke="#999999" stroke-width="2" />
+    <text x="50" y="42" font-size="13" font-family="Arial, sans-serif" text-anchor="middle" fill="#666666">0</text>
+
+    <!-- שורה עליונה: 3 מלבנים באורך 2 כל אחד (1 יחידה = 50 פיקסלים, אורך כל מלבן = 100 פיקסלים) -->
+    <rect x="50" y="65" width="100" height="45" rx="4" fill="#3b82f6" stroke="#1d4ed8" stroke-width="2" />
+    <text x="100" y="93" font-size="18" font-family="Arial, sans-serif" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+
+    <rect x="150" y="65" width="100" height="45" rx="4" fill="#3b82f6" stroke="#1d4ed8" stroke-width="2" />
+    <text x="200" y="93" font-size="18" font-family="Arial, sans-serif" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+
+    <rect x="250" y="65" width="100" height="45" rx="4" fill="#3b82f6" stroke="#1d4ed8" stroke-width="2" />
+    <text x="300" y="93" font-size="18" font-family="Arial, sans-serif" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+
+    <!-- שורה תחתונה: 2 מלבנים באורך 3 כל אחד (אורך כל מלבן = 150 פיקסלים) -->
+    <rect x="50" y="130" width="150" height="45" rx="4" fill="#10b981" stroke="#047857" stroke-width="2" />
+    <text x="125" y="158" font-size="18" font-family="Arial, sans-serif" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+
+    <rect x="200" y="130" width="150" height="45" rx="4" fill="#10b981" stroke="#047857" stroke-width="2" />
+    <text x="275" y="158" font-size="18" font-family="Arial, sans-serif" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+
+    <!-- קו סיום מקווקו משותף בסוף שתי השורות (X=350) -->
+    <line x1="350" y1="45" x2="350" y2="210" stroke="#ef4444" stroke-width="2.5" stroke-dasharray="6,4" />
+    <circle cx="350" cy="87" r="4" fill="#ef4444" />
+    <circle cx="350" cy="152" r="4" fill="#ef4444" />
+
+    <!-- תוויות ומידע -->
+    <text x="350" y="38" font-size="14" font-family="Arial, sans-serif" font-weight="bold" text-anchor="middle" fill="#ef4444">6</text>
+    <text x="350" y="235" font-size="14" font-family="Arial, sans-serif" font-weight="bold" text-anchor="middle" fill="#1f2937" direction="rtl">כפולה משותפת מינימלית: 6</text>
+  </svg>
+
+<svg width="420" height="260" viewBox="0 0 420 260" xmlns="http://www.w3.org/2000/svg">
+    <!-- קו התחלה -->
+    <line x1="50" y1="50" x2="50" y2="200" stroke="#999999" stroke-width="2" />
+    <text x="50" y="42" font-size="13" font-family="Arial, sans-serif" text-anchor="middle" fill="#666666">0</text>
+
+    <!-- שורה עליונה: 3 מלבנים באורך 2 כל אחד (1 יחידה = 50 פיקסלים, אורך כל מלבן = 100 פיקסלים) -->
+    <rect x="50" y="65" width="100" height="45" rx="4" fill="#3b82f6" stroke="#1d4ed8" stroke-width="2" />
+    <text x="100" y="93" font-size="18" font-family="Arial, sans-serif" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+
+    <rect x="150" y="65" width="100" height="45" rx="4" fill="#3b82f6" stroke="#1d4ed8" stroke-width="2" />
+    <text x="200" y="93" font-size="18" font-family="Arial, sans-serif" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+
+    <rect x="250" y="65" width="100" height="45" rx="4" fill="#3b82f6" stroke="#1d4ed8" stroke-width="2" />
+    <text x="300" y="93" font-size="18" font-family="Arial, sans-serif" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+
+    <!-- שורה תחתונה: 2 מלבנים באורך 3 כל אחד (אורך כל מלבן = 150 פיקסלים) -->
+    <rect x="50" y="130" width="150" height="45" rx="4" fill="#10b981" stroke="#047857" stroke-width="2" />
+    <text x="125" y="158" font-size="18" font-family="Arial, sans-serif" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+
+    <rect x="200" y="130" width="150" height="45" rx="4" fill="#10b981" stroke="#047857" stroke-width="2" />
+    <text x="275" y="158" font-size="18" font-family="Arial, sans-serif" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+
+    <!-- קו סיום מקווקו משותף בסוף שתי השורות (X=350) -->
+    <line x1="350" y1="45" x2="350" y2="210" stroke="#ef4444" stroke-width="2.5" stroke-dasharray="6,4" />
+    <circle cx="350" cy="87" r="4" fill="#ef4444" />
+    <circle cx="350" cy="152" r="4" fill="#ef4444" />
+
+    <!-- תוויות ומידע -->
+    <text x="350" y="38" font-size="14" font-family="Arial, sans-serif" font-weight="bold" text-anchor="middle" fill="#ef4444">6</text>
+    <text x="350" y="235" font-size="14" font-family="Arial, sans-serif" font-weight="bold" text-anchor="middle" fill="#1f2937" direction="rtl">כפולה משותפת מינימלית: 6</text>
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 6 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: האם ניתן להכפיל משוואה אחת בלבד במספר שלם כדי להשוות את המקדמים של x (שהם 2 ו-3)?
+* אופציות:
+  - לא, כי 3 אינו מתחלק ב-2 ללא שארית.
+  - כן, תמיד אפשר להכפיל רק משוואה אחת.
+* פתרון נכון: לא, כי 3 אינו מתחלק ב-2 ללא שארית.
+* פתרון מלא: המספר 3 אינו כפולה שלמה של 2, ולכן לא קיים מספר שלם שבו נוכל להכפיל את 2 כדי להגיע ל-3. חובה להכפיל את שתי המשוואות.
+
+--------------------------------------------------------------------------------
+[תרגיל 6 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: מהי הכפולה המשותפת המינימלית של המקדמים 2 ו-3?
+* אופציות:
+  - 6
+  - 5
+* פתרון נכון: 6
+* פתרון מלא: המספר הקטן ביותר שמתחלק הן ב-2 והן ב-3 ללא שארית הוא 6 (מכפלתם 2 כפול 3).
+
+--------------------------------------------------------------------------------
+[תרגיל 6 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: באילו גורמים יש להכפיל את המשוואה הראשונה ואת המשוואה השנייה כדי ששניהם יקבלו מקדם 6x?
+* אופציות:
+  - את הראשונה נכפיל ב-3 ואת השנייה נכפיל ב-2.
+  - את הראשונה נכפיל ב-2 ואת השנייה נכפיל ב-3.
+  - את שתיהן נכפיל ב-6.
+* פתרון נכון: את הראשונה נכפיל ב-3 ואת השנייה נכפיל ב-2.
+* פתרון מלא: במשוואה הראשונה המקדם הוא 2, ולכן 2 כפול 3 נותן 6. במשוואה השנייה המקדם הוא 3, ולכן 3 כפול 2 נותן 6.
+
+--------------------------------------------------------------------------------
+[תרגיל 6 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: הכפילו את המשוואה הראשונה ב-3 ואת השנייה ב-2, רשמו את שתי המשוואות החדשות שהתקבלו ובדקו שהמקדם של x זהה בשתיהן.
+* פתרון נכון: משוואה ראשונה כפול 3: 6x + 15y = 57. משוואה שנייה כפול 2: 6x + 8y = 36. בשתי המשוואות המקדם של x הוא כעת 6x, ולכן ניתן לחסר ביניהן ולבטל את x.
+* פתרון מלא: משוואה ראשונה כפול 3: 6x + 15y = 57. משוואה שנייה כפול 2: 6x + 8y = 36. בשתי המשוואות המקדם של x הוא כעת 6x, ולכן ניתן לחסר ביניהן ולבטל את x.
+
+================================================================================
+תרגיל 7 – מורכב: ביצוע מלא של פתרון מערכת באמצעות כפל שתי המשוואות ובחירת…
+================================================================================
+לפנינו מערכת משוואות שבה המקדמים של שני המשתנים שונים זה מזה:
+(1) 3x + 2y = 12
+(2) 5x + 3y = 19
+כדי להשוות מקדמים, נצטרך להכפיל את שתי המשוואות. נבחן איזו בחירה תניב חישוב נוח ופשוט יותר.
+
+  <svg width="400" height="220" xmlns="http://www.w3.org/2000/svg">
+    <!-- עמודה ימנית: אפשרות א' -->
+    <rect x="210" y="20" width="170" height="180" rx="8" fill="#f8fafc" stroke="#3b82f6" stroke-width="2"/>
+    <rect x="210" y="20" width="170" height="40" rx="8" fill="#dbeafe"/>
+    <rect x="210" y="50" width="170" height="10" fill="#dbeafe"/>
+    <line x1="210" y1="60" x2="380" y2="60" stroke="#3b82f6" stroke-width="1.5"/>
+    <text x="295" y="45" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#1e40af" text-anchor="middle" direction="rtl">אפשרות א': איפוס x</text>
+    <text x="365" y="95" font-family="Arial, sans-serif" font-size="13" fill="#334155" text-anchor="start" direction="rtl">מקדמים: 3 ו-5</text>
+    <text x="365" y="140" font-family="Arial, sans-serif" font-size="13" fill="#334155" text-anchor="start" direction="rtl">כפולה משותפת מינימלית: 15</text>
+
+    <!-- עמודה שמאלית: אפשרות ב' -->
+    <rect x="20" y="20" width="170" height="180" rx="8" fill="#f8fafc" stroke="#10b981" stroke-width="2"/>
+    <rect x="20" y="20" width="170" height="40" rx="8" fill="#d1fae5"/>
+    <rect x="20" y="50" width="170" height="10" fill="#d1fae5"/>
+    <line x1="20" y1="60" x2="190" y2="60" stroke="#10b981" stroke-width="1.5"/>
+    <text x="105" y="45" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#065f46" text-anchor="middle" direction="rtl">אפשרות ב': איפוס y</text>
+    <text x="175" y="95" font-family="Arial, sans-serif" font-size="13" fill="#334155" text-anchor="start" direction="rtl">מקדמים: 2 ו-3</text>
+    <text x="175" y="140" font-family="Arial, sans-serif" font-size="13" fill="#334155" text-anchor="start" direction="rtl">כפולה משותפת מינימלית: 6</text>
+  </svg>
+
+<svg width="400" height="220" xmlns="http://www.w3.org/2000/svg">
+    <!-- עמודה ימנית: אפשרות א' -->
+    <rect x="210" y="20" width="170" height="180" rx="8" fill="#f8fafc" stroke="#3b82f6" stroke-width="2"/>
+    <rect x="210" y="20" width="170" height="40" rx="8" fill="#dbeafe"/>
+    <rect x="210" y="50" width="170" height="10" fill="#dbeafe"/>
+    <line x1="210" y1="60" x2="380" y2="60" stroke="#3b82f6" stroke-width="1.5"/>
+    <text x="295" y="45" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#1e40af" text-anchor="middle" direction="rtl">אפשרות א': איפוס x</text>
+    <text x="365" y="95" font-family="Arial, sans-serif" font-size="13" fill="#334155" text-anchor="start" direction="rtl">מקדמים: 3 ו-5</text>
+    <text x="365" y="140" font-family="Arial, sans-serif" font-size="13" fill="#334155" text-anchor="start" direction="rtl">כפולה משותפת מינימלית: 15</text>
+
+    <!-- עמודה שמאלית: אפשרות ב' -->
+    <rect x="20" y="20" width="170" height="180" rx="8" fill="#f8fafc" stroke="#10b981" stroke-width="2"/>
+    <rect x="20" y="20" width="170" height="40" rx="8" fill="#d1fae5"/>
+    <rect x="20" y="50" width="170" height="10" fill="#d1fae5"/>
+    <line x1="20" y1="60" x2="190" y2="60" stroke="#10b981" stroke-width="1.5"/>
+    <text x="105" y="45" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#065f46" text-anchor="middle" direction="rtl">אפשרות ב': איפוס y</text>
+    <text x="175" y="95" font-family="Arial, sans-serif" font-size="13" fill="#334155" text-anchor="start" direction="rtl">מקדמים: 2 ו-3</text>
+    <text x="175" y="140" font-family="Arial, sans-serif" font-size="13" fill="#334155" text-anchor="start" direction="rtl">כפולה משותפת מינימלית: 6</text>
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 7 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: נשווה בין שתי האפשרויות המוצגות בטבלה. לפי הכפולות המשותפות של המקדמים, עם איזו כפולה נוח וקל יותר לעבוד?
+* אופציות:
+  - עם כפולה 6 (איפוס המשתנה y), כי מספרים קטנים יותר מובילים לחישובים פשוטים ונוחים יותר.
+  - עם כפולה 15 (איפוס המשתנה x), כי ככל שהכפולה גדולה יותר קל יותר לפתור.
+* פתרון נכון: עם כפולה 6 (איפוס המשתנה y), כי מספרים קטנים יותר מובילים לחישובים פשוטים ונוחים יותר.
+* רמז: השוו בין המספר 6 לבין המספר 15 — איזה מהם קטן יותר ונוח יותר לכפל?
+* פתרון מלא: הכפולה המשותפת הקטנה ביותר של מקדמי y היא 6, לעומת 15 עבור מקדמי x. עבודה עם מספרים קטנים יותר מקטינה את הסיכוי לטעויות חישוב ולכן מומלץ לבחור באיפוס y.
+
+--------------------------------------------------------------------------------
+[תרגיל 7 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: במשוואות המקוריות, המקדמים של y הם חיוביים בשתי המשוואות (+2 ו-+3). האם כדאי להכפיל את אחת המשוואות במספר שלילי?
+* אופציות:
+  - כן, כדי שנקבל מקדמים נגדיים (6 ו-6-) ונוכל לחבר בין המשוואות בקלות.
+  - לא, אסור להכפיל משוואה במספר שלילי כי זה משנה את נכונות השוויון.
+* פתרון נכון: כן, כדי שנקבל מקדמים נגדיים (6 ו-6-) ונוכל לחבר בין המשוואות בקלות.
+* רמז: זכרו שכאשר המקדמים נגדיים (למשל 6 ו-(6-)), חיבור המשוואות מאפס את המשתנה מיד.
+* פתרון מלא: מותר להכפיל משוואה בכל מספר שאינו אפס, כולל מספר שלילי. כפל במספר שלילי הופך את המקדמים לנגדיים, ומאפשר לאפס את המשתנה באמצעות פעולת חיבור פשוטה בין המשוואות.
+
+--------------------------------------------------------------------------------
+[תרגיל 7 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: באיזה צמד גורמים נכפיל את המשוואות כדי לאפס את y באמצעות חיבור המשוואות (כך שנקבל מקדמים 6 ו-6-)?
+* אופציות:
+  - נכפיל את משוואה (1) ב-3 ואת משוואה (2) ב-(2-).
+  - נכפיל את משוואה (1) ב-2 ואת משוואה (2) ב-3.
+  - נכפיל רק את משוואה (1) ב-3 ונשאיר את משוואה (2) ללא שינוי.
+* פתרון נכון: נכפיל את משוואה (1) ב-3 ואת משוואה (2) ב-(2-).
+* רמז: בדקו מה מתקבל כשמכפילים 2y ב-3, ומה מתקבל כשמכפילים 3y ב-(2-).
+* פתרון מלא: כפל משוואה (1) ב-3 נותן 6y. כפל משוואה (2) ב-(2-) נותן 6y-. כעת המקדמים של y הם נגדיים, וחיבור שתי המשוואות יאפס את y.
+
+--------------------------------------------------------------------------------
+[תרגיל 7 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: פתרו את מערכת המשוואות במלואה לפי השלבים שבחרנו: הכפילו את שתי המשוואות, חברו ביניהן, מצאו את ערכי הנעלמים x ו-y, ורשמו את הפתרון כזוג סדור (x, y). בצעו בדיקה במשוואה (2).
+1. נכפיל את משוואה (1) ב-3:
+3 * (3x + 2y = 12)  =>  9x + 6y = 36
+2. נכפיל את משוואה (2) ב-(2-):
+-2 * (5x + 3y = 19) =>  -10x - 6y = -38
+3. נחבר את שתי המשוואות:
+(9x - 10x) + (6y - 6y) = 36 - 38
+-x = -2  =>  x = 2
+4. נציב x = 2 במשוואה (1) למציאת y:
+3(2) + 2y = 12
+6 + 2y = 12
+2y = 6  =>  y = 3
+פתרון המערכת: (2, 3).
+בדיקה במשוואה (2): 5(2) + 3(3) = 10 + 9 = 19. השוויון מתקיים!
+* רמז: לאחר חיבור המשוואות מתקבלת המשוואה x = -2-. חלקו ב-(1-) ומצאו את x.
+
+================================================================================
+תרגיל 8 – מורכב: השוואה אסטרטגית לקביעת מספר המשוואות שיש להכפיל: משוואה אחת…
+================================================================================
+לפנינו שלוש מערכות שונות. המטרה שלנו היא לקבוע אסטרטגיה יעילה: מתי מספיק להכפיל משוואה אחת בלבד, ומתי נאלץ להכפיל את שתי המשוואות.
+
+  <svg width="480" height="380" xmlns="http://www.w3.org/2000/svg">
+    <rect width="480" height="380" fill="#f8fafc" rx="8"/>
+  
+    <!-- כותרת ראשית -->
+    <text x="240" y="32" font-size="18" font-weight="bold" text-anchor="middle" fill="#1e293b" direction="rtl">תרשים מיון: בחירת אסטרטגיה לפתרון מערכת</text>
+
+    <!-- עמודה ימנית: מסלול מקוצר -->
+    <rect x="245" y="55" width="220" height="110" rx="6" fill="#ecfdf5" stroke="#10b981" stroke-width="2"/>
+    <text x="355" y="80" font-size="14" font-weight="bold" fill="#065f46" text-anchor="middle" direction="rtl">מסלול מקוצר</text>
+    <text x="355" y="100" font-size="13" font-weight="bold" fill="#047857" text-anchor="middle" direction="rtl">כפל משוואה אחת בלבד</text>
+    <line x1="260" y1="110" x2="450" y2="110" stroke="#a7f3d0" stroke-width="1"/>
+    <text x="355" y="130" font-size="12" fill="#064e3b" text-anchor="middle" direction="rtl">אחד המקדמים הוא כפולה של השני</text>
+    <text x="355" y="150" font-size="12" fill="#047857" text-anchor="middle" direction="rtl">(דוגמה: מקדמים 3 ו-6)</text>
+
+    <!-- עמודה שמאלית: מסלול מלא -->
+    <rect x="15" y="55" width="220" height="110" rx="6" fill="#eff6ff" stroke="#3b82f6" stroke-width="2"/>
+    <text x="125" y="80" font-size="14" font-weight="bold" fill="#1e40af" text-anchor="middle" direction="rtl">מסלול מלא</text>
+    <text x="125" y="100" font-size="13" font-weight="bold" fill="#1d4ed8" text-anchor="middle" direction="rtl">כפל שתי המשוואות</text>
+    <line x1="30" y1="110" x2="220" y2="110" stroke="#bfdbfe" stroke-width="1"/>
+    <text x="125" y="130" font-size="12" fill="#1e3a8a" text-anchor="middle" direction="rtl">אין כפולה ישירה בין המקדמים</text>
+    <text x="125" y="150" font-size="12" fill="#1d4ed8" text-anchor="middle" direction="rtl">(דוגמה: מקדמים 2 ו-3, 3 ו-5)</text>
+
+    <!-- קו מפריד -->
+    <line x1="20" y1="180" x2="460" y2="180" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="4 4"/>
+    <text x="240" y="202" font-size="14" font-weight="bold" fill="#475569" text-anchor="middle" direction="rtl">מערכות למיון:</text>
+
+    <!-- מערכת 1 -->
+    <rect x="15" y="215" width="450" height="45" rx="6" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+    <text x="445" y="243" font-size="14" font-weight="bold" fill="#334155" text-anchor="end" direction="rtl">מערכת 1:</text>
+    <text x="250" y="243" font-size="14" font-family="monospace" fill="#0f172a" text-anchor="middle">2x + 3y = 7  ,  4x + 5y = 11</text>
+    <text x="40" y="243" font-size="12" fill="#059669" font-weight="bold" text-anchor="start" direction="rtl">(2 כפול 2 = 4)</text>
+
+    <!-- מערכת 2 -->
+    <rect x="15" y="268" width="450" height="45" rx="6" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+    <text x="445" y="296" font-size="14" font-weight="bold" fill="#334155" text-anchor="end" direction="rtl">מערכת 2:</text>
+    <text x="250" y="296" font-size="14" font-family="monospace" fill="#0f172a" text-anchor="middle">3x + 4y = 10  ,  2x + 5y = 9</text>
+    <text x="40" y="296" font-size="12" fill="#2563eb" font-weight="bold" text-anchor="start" direction="rtl">(אין כפולה)</text>
+
+    <!-- מערכת 3 -->
+    <rect x="15" y="321" width="450" height="45" rx="6" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+    <text x="445" y="349" font-size="14" font-weight="bold" fill="#334155" text-anchor="end" direction="rtl">מערכת 3:</text>
+    <text x="250" y="349" font-size="14" font-family="monospace" fill="#0f172a" text-anchor="middle">x + 6y = 13  ,  3x - 2y = 5</text>
+    <text x="40" y="349" font-size="12" fill="#059669" font-weight="bold" text-anchor="start" direction="rtl">(1 כפול 3 = 3)</text>
+  </svg>
+
+<svg width="480" height="380" xmlns="http://www.w3.org/2000/svg">
+    <rect width="480" height="380" fill="#f8fafc" rx="8"/>
+  
+    <!-- כותרת ראשית -->
+    <text x="240" y="32" font-size="18" font-weight="bold" text-anchor="middle" fill="#1e293b" direction="rtl">תרשים מיון: בחירת אסטרטגיה לפתרון מערכת</text>
+
+    <!-- עמודה ימנית: מסלול מקוצר -->
+    <rect x="245" y="55" width="220" height="110" rx="6" fill="#ecfdf5" stroke="#10b981" stroke-width="2"/>
+    <text x="355" y="80" font-size="14" font-weight="bold" fill="#065f46" text-anchor="middle" direction="rtl">מסלול מקוצר</text>
+    <text x="355" y="100" font-size="13" font-weight="bold" fill="#047857" text-anchor="middle" direction="rtl">כפל משוואה אחת בלבד</text>
+    <line x1="260" y1="110" x2="450" y2="110" stroke="#a7f3d0" stroke-width="1"/>
+    <text x="355" y="130" font-size="12" fill="#064e3b" text-anchor="middle" direction="rtl">אחד המקדמים הוא כפולה של השני</text>
+    <text x="355" y="150" font-size="12" fill="#047857" text-anchor="middle" direction="rtl">(דוגמה: מקדמים 3 ו-6)</text>
+
+    <!-- עמודה שמאלית: מסלול מלא -->
+    <rect x="15" y="55" width="220" height="110" rx="6" fill="#eff6ff" stroke="#3b82f6" stroke-width="2"/>
+    <text x="125" y="80" font-size="14" font-weight="bold" fill="#1e40af" text-anchor="middle" direction="rtl">מסלול מלא</text>
+    <text x="125" y="100" font-size="13" font-weight="bold" fill="#1d4ed8" text-anchor="middle" direction="rtl">כפל שתי המשוואות</text>
+    <line x1="30" y1="110" x2="220" y2="110" stroke="#bfdbfe" stroke-width="1"/>
+    <text x="125" y="130" font-size="12" fill="#1e3a8a" text-anchor="middle" direction="rtl">אין כפולה ישירה בין המקדמים</text>
+    <text x="125" y="150" font-size="12" fill="#1d4ed8" text-anchor="middle" direction="rtl">(דוגמה: מקדמים 2 ו-3, 3 ו-5)</text>
+
+    <!-- קו מפריד -->
+    <line x1="20" y1="180" x2="460" y2="180" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="4 4"/>
+    <text x="240" y="202" font-size="14" font-weight="bold" fill="#475569" text-anchor="middle" direction="rtl">מערכות למיון:</text>
+
+    <!-- מערכת 1 -->
+    <rect x="15" y="215" width="450" height="45" rx="6" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+    <text x="445" y="243" font-size="14" font-weight="bold" fill="#334155" text-anchor="end" direction="rtl">מערכת 1:</text>
+    <text x="250" y="243" font-size="14" font-family="monospace" fill="#0f172a" text-anchor="middle">2x + 3y = 7  ,  4x + 5y = 11</text>
+    <text x="40" y="243" font-size="12" fill="#059669" font-weight="bold" text-anchor="start" direction="rtl">(2 כפול 2 = 4)</text>
+
+    <!-- מערכת 2 -->
+    <rect x="15" y="268" width="450" height="45" rx="6" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+    <text x="445" y="296" font-size="14" font-weight="bold" fill="#334155" text-anchor="end" direction="rtl">מערכת 2:</text>
+    <text x="250" y="296" font-size="14" font-family="monospace" fill="#0f172a" text-anchor="middle">3x + 4y = 10  ,  2x + 5y = 9</text>
+    <text x="40" y="296" font-size="12" fill="#2563eb" font-weight="bold" text-anchor="start" direction="rtl">(אין כפולה)</text>
+
+    <!-- מערכת 3 -->
+    <rect x="15" y="321" width="450" height="45" rx="6" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+    <text x="445" y="349" font-size="14" font-weight="bold" fill="#334155" text-anchor="end" direction="rtl">מערכת 3:</text>
+    <text x="250" y="349" font-size="14" font-family="monospace" fill="#0f172a" text-anchor="middle">x + 6y = 13  ,  3x - 2y = 5</text>
+    <text x="40" y="349" font-size="12" fill="#059669" font-weight="bold" text-anchor="start" direction="rtl">(1 כפול 3 = 3)</text>
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 8 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: התבוננו במערכת 1: 2x + 3y = 7 ו-4x + 5y = 11. האם מספיק להכפיל משוואה אחת בלבד כדי להשוות מקדמים?
+* אופציות:
+  - כן, כי 4 הוא כפולה של 2 (מספיק להכפיל את הראשונה ב-2).
+  - לא, חובה להכפיל את שתי המשוואות.
+* פתרון נכון: כן, כי 4 הוא כפולה של 2 (מספיק להכפיל את הראשונה ב-2).
+* פתרון מלא: מכיוון שמקדם ה-x במשוואה השנייה הוא 4 ובמשוואה הראשונה 2, כפל המשוואה הראשונה ב-2 בלבד ישווה את המקדמים של x ל-4.
+
+--------------------------------------------------------------------------------
+[תרגיל 8 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: התבוננו במערכת 2: 3x + 4y = 10 ו-2x + 5y = 9. האם קיים נעלם שבו אחד המקדמים הוא כפולה שלמה של השני?
+* אופציות:
+  - לא, 3 אינו כפולה של 2, ו-5 אינו כפולה של 4.
+  - כן, 4 הוא כפולה של 2.
+* פתרון נכון: לא, 3 אינו כפולה של 2, ו-5 אינו כפולה של 4.
+* פתרון מלא: המקדמים של x הם 3 ו-2 (אין יחס כפולה שלמה), והמקדמים של y הם 4 ו-5 (אין יחס כפולה שלמה). לכן חובה להכפיל את שתי המשוואות.
+
+--------------------------------------------------------------------------------
+[תרגיל 8 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: מבין שלוש המערכות המוצגות בשרטוט, לאיזו מערכת נדרש כפל של שתי המשוואות כדי להשוות מקדמים?
+* אופציות:
+  - למערכת 2 בלבד.
+  - למערכת 1 בלבד.
+  - למערכת 3 בלבד.
+* פתרון נכון: למערכת 2 בלבד.
+* פתרון מלא: במערכת 1 ניתן להכפיל רק את הראשונה ב-2. במערכת 3 מקדם x הוא 1 ולכן מספיק להכפיל את הראשונה ב-3. רק במערכת 2 אין כפולה שלמה ולכן נדרש כפל של שתי המשוואות.
+
+--------------------------------------------------------------------------------
+[תרגיל 8 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: פתרו את מערכת 1 (2x + 3y = 7 ו-4x + 5y = 11) על ידי הכפלת המשוואה הראשונה ב-2 וחיסור משוואות.
+* פתרון נכון: נכפיל את הראשונה ב-2: 4x + 6y = 14. נחסר את המשוואה השנייה (4x + 5y = 11): נקבל y = 3. נציב במשוואה הראשונה המקורית: 2x + 3(3) = 7 -> 2x + 9 = 7 -> 2x = -2 -> x = -1. הפתרון הוא (-1, 3).
+* פתרון מלא: נכפיל את הראשונה ב-2: 4x + 6y = 14. נחסר את המשוואה השנייה (4x + 5y = 11): נקבל y = 3. נציב במשוואה הראשונה המקורית: 2x + 3(3) = 7 -> 2x + 9 = 7 -> 2x = -2 -> x = -1. הפתרון הוא (-1, 3).
+
+================================================================================
+תרגיל 9 – מורכב: איתור ותיקון שגיאות נפוצות בפעולת הכפל של משוואות
+================================================================================
+בעת פתרון מערכות משוואות קורות לעיתים שגיאות אופייניות. ננתח דף מתוך מחברת של תלמיד ונזהה היכן נפלה הטעות כדי ללמוד כיצד להימנע ממנה.
+
+  <svg width="450" height="280" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <!-- דפוס משבצות של מחברת חשבון -->
+      <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+        <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#d0e2ec" stroke-width="0.8"/>
+      </pattern>
+    </defs>
+
+    <!-- רקע דף המחברת עם הצללה ומסגרת -->
+    <rect x="10" y="10" width="430" height="260" rx="6" fill="#ffffff" stroke="#c5d1d9" stroke-width="1.5"/>
+    <rect x="10" y="10" width="430" height="260" rx="6" fill="url(#grid)"/>
+
+    <!-- פס שוליים אדום של מחברת בצד ימין -->
+    <line x1="400" y1="10" x2="400" y2="270" stroke="#f4a0a0" stroke-width="1.5"/>
+
+    <!-- חורי תלישה של דפדפת בצד שמאל -->
+    <circle cx="22" cy="50" r="5" fill="#f0f3f5" stroke="#d0d7de"/>
+    <circle cx="22" cy="140" r="5" fill="#f0f3f5" stroke="#d0d7de"/>
+    <circle cx="22" cy="230" r="5" fill="#f0f3f5" stroke="#d0d7de"/>
+
+    <!-- כותרת המשימה -->
+    <text x="385" y="45" direction="rtl" font-family="sans-serif" font-size="14" font-weight="bold" fill="#2c3e50">פתרון המערכת: 2x + 3y = 8  ו-  5x - 2y = 1</text>
+
+    <!-- קו מפריד עדין מתחת לכותרת -->
+    <line x1="45" y1="60" x2="385" y2="60" stroke="#b0bec5" stroke-width="1"/>
+
+    <!-- שורה 1: נימוק מילולי -->
+    <text x="385" y="95" direction="rtl" font-family="sans-serif" font-size="14" fill="#34495e">אני מכפיל את המשוואה הראשונה ב-4 כדי לקבל 12y:</text>
+
+    <!-- שורה 2: משוואה בכתב יד של תלמיד -->
+    <text x="385" y="145" direction="rtl" font-family="monospace" font-size="18" font-weight="bold" fill="#1a237e">8x + 12y = 8</text>
+
+    <!-- קו אדום מתחת לטעות ("= 8") -->
+    <path d="M 235 155 Q 260 152, 290 155" fill="none" stroke="#d32f2f" stroke-width="2.5" stroke-linecap="round"/>
+
+    <!-- סימן שאלה אדום גדול מעל הטעות -->
+    <text x="255" y="130" font-family="sans-serif" font-size="28" font-weight="bold" fill="#d32f2f">?</text>
+
+    <!-- חץ המצביע מההערה לטעות -->
+    <path d="M 200 200 C 220 185, 235 175, 250 162" fill="none" stroke="#d32f2f" stroke-width="1.8" stroke-dasharray="3,3" marker-end="url(#arrow)"/>
+    <polygon points="252,158 244,163 253,168" fill="#d32f2f"/>
+
+    <!-- בועית / הערת מורה באדום -->
+    <rect x="55" y="190" width="165" height="42" rx="8" fill="#ffebee" stroke="#d32f2f" stroke-width="1.5"/>
+    <text x="138" y="217" text-anchor="middle" direction="rtl" font-family="sans-serif" font-size="14" font-weight="bold" fill="#d32f2f">שים לב לאגף ימין!</text>
+  </svg>
+
+<svg width="450" height="280" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <!-- דפוס משבצות של מחברת חשבון -->
+      <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+        <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#d0e2ec" stroke-width="0.8"/>
+      </pattern>
+    </defs>
+
+    <!-- רקע דף המחברת עם הצללה ומסגרת -->
+    <rect x="10" y="10" width="430" height="260" rx="6" fill="#ffffff" stroke="#c5d1d9" stroke-width="1.5"/>
+    <rect x="10" y="10" width="430" height="260" rx="6" fill="url(#grid)"/>
+
+    <!-- פס שוליים אדום של מחברת בצד ימין -->
+    <line x1="400" y1="10" x2="400" y2="270" stroke="#f4a0a0" stroke-width="1.5"/>
+
+    <!-- חורי תלישה של דפדפת בצד שמאל -->
+    <circle cx="22" cy="50" r="5" fill="#f0f3f5" stroke="#d0d7de"/>
+    <circle cx="22" cy="140" r="5" fill="#f0f3f5" stroke="#d0d7de"/>
+    <circle cx="22" cy="230" r="5" fill="#f0f3f5" stroke="#d0d7de"/>
+
+    <!-- כותרת המשימה -->
+    <text x="385" y="45" direction="rtl" font-family="sans-serif" font-size="14" font-weight="bold" fill="#2c3e50">פתרון המערכת: 2x + 3y = 8  ו-  5x - 2y = 1</text>
+
+    <!-- קו מפריד עדין מתחת לכותרת -->
+    <line x1="45" y1="60" x2="385" y2="60" stroke="#b0bec5" stroke-width="1"/>
+
+    <!-- שורה 1: נימוק מילולי -->
+    <text x="385" y="95" direction="rtl" font-family="sans-serif" font-size="14" fill="#34495e">אני מכפיל את המשוואה הראשונה ב-4 כדי לקבל 12y:</text>
+
+    <!-- שורה 2: משוואה בכתב יד של תלמיד -->
+    <text x="385" y="145" direction="rtl" font-family="monospace" font-size="18" font-weight="bold" fill="#1a237e">8x + 12y = 8</text>
+
+    <!-- קו אדום מתחת לטעות ("= 8") -->
+    <path d="M 235 155 Q 260 152, 290 155" fill="none" stroke="#d32f2f" stroke-width="2.5" stroke-linecap="round"/>
+
+    <!-- סימן שאלה אדום גדול מעל הטעות -->
+    <text x="255" y="130" font-family="sans-serif" font-size="28" font-weight="bold" fill="#d32f2f">?</text>
+
+    <!-- חץ המצביע מההערה לטעות -->
+    <path d="M 200 200 C 220 185, 235 175, 250 162" fill="none" stroke="#d32f2f" stroke-width="1.8" stroke-dasharray="3,3" marker-end="url(#arrow)"/>
+    <polygon points="252,158 244,163 253,168" fill="#d32f2f"/>
+
+    <!-- בועית / הערת מורה באדום -->
+    <rect x="55" y="190" width="165" height="42" rx="8" fill="#ffebee" stroke="#d32f2f" stroke-width="1.5"/>
+    <text x="138" y="217" text-anchor="middle" direction="rtl" font-family="sans-serif" font-size="14" font-weight="bold" fill="#d32f2f">שים לב לאגף ימין!</text>
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 9 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: התבוננו בשורה 2 במחברת התלמיד. מהי השגיאה שביצע התלמיד בעת הכפלת המשוואה 2x + 3y = 8 במספר 4?
+* אופציות:
+  - הוא הכפיל רק את אגף שמאל ושכח להכפיל את המספר 8 באגף ימין.
+  - הוא חיבר 4 במקום להכפיל ב-4.
+* פתרון נכון: הוא הכפיל רק את אגף שמאל ושכח להכפיל את המספר 8 באגף ימין.
+* פתרון מלא: חוק השוויון קובע שיש להכפיל את שני אגפי המשוואה. התלמיד הכפיל את 2x ב-4 (קיבל 8x) ואת 3y ב-4 (קיבל 12y), אך שכח להכפיל את 8 ב-4 (היה צריך לקבל 32).
+
+--------------------------------------------------------------------------------
+[תרגיל 9 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: אם תלמיד מחסר משוואה שבה מופיע האיבר (2y-), כלומר מבצע פחות (2y-), מה צריכה להיות התוצאה?
+* אופציות:
+  - הוספת 2y+ (כי מינוס מינוס הופך לפלוס).
+  - חיסור 2y- (נשאר מינוס).
+* פתרון נכון: הוספת 2y+ (כי מינוס מינוס הופך לפלוס).
+* פתרון מלא: חיסור של איבר שלילי שקול לחיבור: a - (-b) = a + b. זו שגיאה נפוצה מאוד בחיסור משוואות.
+
+--------------------------------------------------------------------------------
+[תרגיל 9 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: מהי המשוואה המתוקנת הנכונה לאחר כפל המשוואה 2x + 3y = 8 במספר 4?
+* אופציות:
+  - 8x + 12y = 32
+  - 8x + 12y = 8
+  - 8x + 7y = 32
+* פתרון נכון: 8x + 12y = 32
+* פתרון מלא: כפל מלא של כל האיברים ב-4: 2x * 4 = 8x, 3y * 4 = 12y, ו-8 * 4 = 32. מתקבל 8x + 12y = 32.
+
+--------------------------------------------------------------------------------
+[תרגיל 9 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: נתונה המשוואה 3x - 4y = 7. הכפילו אותה כולה במספר (2-) ורשמו את המשוואה השקולה שהתקבלה תוך הקפדה על כללי הסימנים.
+* פתרון נכון: נכפיל כל איבר ב-(2-): 3x * (-2) = -6x, (-4y) * (-2) = +8y, 7 * (-2) = -14. המשוואה המתקבלת היא: -6x + 8y = -14.
+* פתרון מלא: נכפיל כל איבר ב-(2-): 3x * (-2) = -6x, (-4y) * (-2) = +8y, 7 * (-2) = -14. המשוואה המתקבלת היא: -6x + 8y = -14.
+
+================================================================================
+תרגיל 10 – אתגר: סינתזה ויישום עצמאי מלא: בחירת אסטרטגיה
+================================================================================
+נתונה מערכת המשוואות הבאה:
+(1) 3x + 5y = 26
+(2) 4x - 2y = 4
+נפתור את המערכת באופן עצמאי ומלא על פי ארבעת שלבי האלגוריתם שלמדנו.
+
+  <svg width="400" height="370" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#4a5568" />
+      </marker>
+    </defs>
+
+    <!-- תיבה 1 -->
+    <rect x="50" y="20" width="300" height="50" rx="8" fill="#edf2f7" stroke="#3182ce" stroke-width="2"/>
+    <text x="200" y="51" font-size="15" font-family="sans-serif" text-anchor="middle" fill="#2d3748" direction="rtl">שלב 1: בחירת נעלם לאיפוס</text>
+
+    <!-- חץ 1 -->
+    <line x1="200" y1="70" x2="200" y2="105" stroke="#4a5568" stroke-width="2" marker-end="url(#arrow)"/>
+
+    <!-- תיבה 2 -->
+    <rect x="50" y="110" width="300" height="50" rx="8" fill="#edf2f7" stroke="#3182ce" stroke-width="2"/>
+    <text x="200" y="141" font-size="15" font-family="sans-serif" text-anchor="middle" fill="#2d3748" direction="rtl">שלב 2: קביעת מכפילים מתאימים</text>
+
+    <!-- חץ 2 -->
+    <line x1="200" y1="160" x2="200" y2="195" stroke="#4a5568" stroke-width="2" marker-end="url(#arrow)"/>
+
+    <!-- תיבה 3 -->
+    <rect x="50" y="200" width="300" height="50" rx="8" fill="#edf2f7" stroke="#3182ce" stroke-width="2"/>
+    <text x="200" y="231" font-size="15" font-family="sans-serif" text-anchor="middle" fill="#2d3748" direction="rtl">שלב 3: חיבור או חיסור המשוואות</text>
+
+    <!-- חץ 3 -->
+    <line x1="200" y1="250" x2="200" y2="285" stroke="#4a5568" stroke-width="2" marker-end="url(#arrow)"/>
+
+    <!-- תיבה 4 -->
+    <rect x="50" y="290" width="300" height="50" rx="8" fill="#edf2f7" stroke="#3182ce" stroke-width="2"/>
+    <text x="200" y="321" font-size="15" font-family="sans-serif" text-anchor="middle" fill="#2d3748" direction="rtl">שלב 4: מציאת הנעלם השני ובדיקה</text>
+  </svg>
+
+<svg width="400" height="370" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#4a5568" />
+      </marker>
+    </defs>
+
+    <!-- תיבה 1 -->
+    <rect x="50" y="20" width="300" height="50" rx="8" fill="#edf2f7" stroke="#3182ce" stroke-width="2"/>
+    <text x="200" y="51" font-size="15" font-family="sans-serif" text-anchor="middle" fill="#2d3748" direction="rtl">שלב 1: בחירת נעלם לאיפוס</text>
+
+    <!-- חץ 1 -->
+    <line x1="200" y1="70" x2="200" y2="105" stroke="#4a5568" stroke-width="2" marker-end="url(#arrow)"/>
+
+    <!-- תיבה 2 -->
+    <rect x="50" y="110" width="300" height="50" rx="8" fill="#edf2f7" stroke="#3182ce" stroke-width="2"/>
+    <text x="200" y="141" font-size="15" font-family="sans-serif" text-anchor="middle" fill="#2d3748" direction="rtl">שלב 2: קביעת מכפילים מתאימים</text>
+
+    <!-- חץ 2 -->
+    <line x1="200" y1="160" x2="200" y2="195" stroke="#4a5568" stroke-width="2" marker-end="url(#arrow)"/>
+
+    <!-- תיבה 3 -->
+    <rect x="50" y="200" width="300" height="50" rx="8" fill="#edf2f7" stroke="#3182ce" stroke-width="2"/>
+    <text x="200" y="231" font-size="15" font-family="sans-serif" text-anchor="middle" fill="#2d3748" direction="rtl">שלב 3: חיבור או חיסור המשוואות</text>
+
+    <!-- חץ 3 -->
+    <line x1="200" y1="250" x2="200" y2="285" stroke="#4a5568" stroke-width="2" marker-end="url(#arrow)"/>
+
+    <!-- תיבה 4 -->
+    <rect x="50" y="290" width="300" height="50" rx="8" fill="#edf2f7" stroke="#3182ce" stroke-width="2"/>
+    <text x="200" y="321" font-size="15" font-family="sans-serif" text-anchor="middle" fill="#2d3748" direction="rtl">שלב 4: מציאת הנעלם השני ובדיקה</text>
+  </svg>
+
+--------------------------------------------------------------------------------
+[תרגיל 10 - סעיף א]
+--------------------------------------------------------------------------------
+* תוכן השאלה: נתבונן במערכת: במשוואה (1) יש 5y+ ובמשוואה (2) יש 2y-. מדוע עדיף לאפס את y ולא את x?
+* אופציות:
+  - כיוון שלמשתנה y יש כבר סימנים מנוגדים (+ ו-(-)), ולכן לאחר הכפל נוכל לחבר בין המשוואות ישירות.
+  - כיוון שאי אפשר לאפס את המשתנה x באף מערכת משוואות.
+* פתרון נכון: כיוון שלמשתנה y יש כבר סימנים מנוגדים (+ ו-(-)), ולכן לאחר הכפל נוכל לחבר בין המשוואות ישירות.
+* רמז: שימו לב לסימן שלפני 5y במשוואה הראשונה ולסימן שלפני 2y במשוואה השנייה.
+* פתרון מלא: למשתנה y יש סימנים מנוגדים במקור (+ ו-(-)). לכן, כפל בגורמים חיוביים יביא למקדמים נגדיים (10 ו-10-) ויאפשר לחבר בין המשוואות ללא צורך בכפל במספר שלילי או בחיסור.
+
+--------------------------------------------------------------------------------
+[תרגיל 10 - סעיף ב]
+--------------------------------------------------------------------------------
+* תוכן השאלה: באיזה צמד מכפילים נכפיל את המשוואות כדי שמקדמי y יהפכו ל-10 ו-(10-)?
+* אופציות:
+  - נכפיל את משוואה (1) ב-2 ואת משוואה (2) ב-5.
+  - נכפיל את משוואה (1) ב-5 ואת משוואה (2) ב-2.
+* פתרון נכון: נכפיל את משוואה (1) ב-2 ואת משוואה (2) ב-5.
+* רמז: בדקו מה ייתן 5 כפול 2, ומה ייתן (2-) כפול 5.
+* פתרון מלא: הכפלת משוואה (1) ב-2 תיתן 10y (מכיוון ש-5 * 2 = 10). הכפלת משוואה (2) ב-5 תיתן 10y- (מכיוון ש-2- * 5 = 10-).
+
+--------------------------------------------------------------------------------
+[תרגיל 10 - סעיף ג]
+--------------------------------------------------------------------------------
+* תוכן השאלה: נכפיל את משוואה (1) ב-2 ונכפיל את משוואה (2) ב-5, ולאחר מכן נחבר בין המשוואות. איזו משוואה בנעלם יחיד תתקבל?
+משוואה (1) כפול 2: 6x + 10y = 52
+משוואה (2) כפול 5: 20x - 10y = 20
+חיבור אגף שמאל: 6x + 20x + 10y - 10y = 26x
+חיבור אגף ימין: 52 + 20 = 72
+המשוואה המתקבלת: 26x = 72.
+* אופציות:
+  - 26x = 72
+  - 26x = 32
+  - 14x = 72
+* פתרון נכון: 26x = 72
+* רמז: הכפילו את שני אגפי שתי המשוואות: 26 כפול 2 נותן 52, ו-4 כפול 5 נותן 20. חברו אותם.
+
+--------------------------------------------------------------------------------
+[תרגיל 10 - סעיף ד]
+--------------------------------------------------------------------------------
+* תוכן השאלה: פתרו את המשוואה 26x = 72 ומצאו את ערכו של x (כרפרק או שבר מצומצם). הציבו אותו ומצאו את ערכו של y, ורשמו את הפתרון המלא כזוג סדור (x, y). הראו בדיקה בהצבה בשתי המשוואות המקוריות.
+1. מציאת x:
+26x = 72  =>  x = 72/26 = 36/13 (או 2 ו-10/13).
+2. מציאת y מתוך משוואה (2):
+4x - 2y = 4  =>  2y = 4x - 4
+2y = 4*(36/13) - 4 = 144/13 - 52/13 = 92/13
+y = 46/13 (או 3 ו-7/13).
+פתרון המערכת: (36/13, 46/13).
+3. בדיקה במשוואה (1):
+3*(36/13) + 5*(46/13) = 108/13 + 230/13 = 338/13 = 26. מתקיים!
+4. בדיקה במשוואה (2):
+4*(36/13) - 2*(46/13) = 144/13 - 92/13 = 52/13 = 4. מתקיים!
+* רמז: צמצמו את השבר 72/26 על ידי חלוקת המונה והמכנה ב-2 לקבלת 36/13.

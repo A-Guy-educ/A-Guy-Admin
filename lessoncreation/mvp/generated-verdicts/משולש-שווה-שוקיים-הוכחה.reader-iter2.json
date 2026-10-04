@@ -1,0 +1,69 @@
+{
+  "verdicts": [
+    {
+      "exerciseNumber": 1,
+      "passed": true,
+      "summary": "",
+      "findings": []
+    },
+    {
+      "exerciseNumber": 2,
+      "passed": true,
+      "summary": "התרגיל בנוי היטב, תואם לחלוטין את תכנית המתכנן ומאפשר לתלמיד/ה להסיק צעד אחר צעד את תכונות ההתלכדות במשולש שווה-שוקיים מתוך החפיפה. השרטוט מדויק וברור, והשאלות מנוסחות בצורה נהירה.",
+      "findings": []
+    },
+    {
+      "exerciseNumber": 3,
+      "passed": true,
+      "summary": "",
+      "findings": []
+    },
+    {
+      "exerciseNumber": 4,
+      "passed": true,
+      "summary": "",
+      "findings": []
+    },
+    {
+      "exerciseNumber": 5,
+      "passed": true,
+      "summary": "",
+      "findings": []
+    },
+    {
+      "exerciseNumber": 6,
+      "passed": true,
+      "summary": "התרגיל מצוין, בנוי בצורה הדרגתית וברורה מאוד לתלמיד/ה. השרטוט הגרפי מדגים היטב את ההבדל הלוגי בין המשפט הישיר למשפט ההפוך, והשאלות עוקבות בדיוק אחר תכנית המתכנן.",
+      "findings": []
+    },
+    {
+      "exerciseNumber": 7,
+      "passed": true,
+      "summary": "התרגיל מצוין, בנוי בהיגיון פדגוגי מובנה ושלב-אחר-שלב של הוכחת המשפט ההפוך. השרטוט תואם לחלוטין לכל שלבי ההוכחה והשאלות ברורות ומדויקות מתמטית.",
+      "findings": []
+    },
+    {
+      "exerciseNumber": 8,
+      "passed": true,
+      "summary": "",
+      "findings": []
+    },
+    {
+      "exerciseNumber": 9,
+      "passed": true,
+      "summary": "התרגיל מצוין, בנוי בצורה הדרגתית וברורה מאוד לתלמיד/ה. מהלכי ההוכחה (שוויון זוויות מתאימות, שימוש במשפט ההפוך, חיסור קטעים שווים וחישוב מספרי) עוקבים בדיוק אחר התכנון ומבוססים במדויק על השרטוט הנתון.",
+      "findings": []
+    },
+    {
+      "exerciseNumber": 10,
+      "passed": true,
+      "summary": "",
+      "findings": []
+    }
+  ],
+  "flaggedExerciseNumbers": [],
+  "totalCritical": 0,
+  "totalHigh": 0,
+  "totalMedium": 0,
+  "totalLow": 0
+}

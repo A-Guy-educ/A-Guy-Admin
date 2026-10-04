@@ -14,9 +14,10 @@
  * critic, materializer) back to flash while keeping writer + reader-critic
  * on pro.
  */
-export const MODEL_PLANNER = 'gemini-3.1-pro-preview'
-export const MODEL_CRITIC = 'gemini-3.1-pro-preview'
-export const MODEL_REVISER = 'gemini-3.1-pro-preview'
-export const MODEL_WRITER = 'gemini-3.1-pro-preview'
-export const MODEL_MATERIALIZER = 'gemini-3.1-pro-preview'
-export const MODEL_READER_CRITIC = 'gemini-3.1-pro-preview'
+export const MODEL_PLANNER = 'gemini-3.8-flash'
+export const MODEL_CRITIC = 'gemini-3.8-flash'
+export const MODEL_REVISER = 'gemini-3.8-flash'
+export const MODEL_WRITER = 'gemini-3.8-flash'
+export const MODEL_MATERIALIZER = 'gemini-3.8-flash'
+export const MODEL_READER_CRITIC = 'gemini-3.8-flash'
+export const MODEL_CORPUS_IMPORT = 'gemini-3.8-flash'

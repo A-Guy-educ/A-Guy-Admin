@@ -1,0 +1,69 @@
+{
+  "verdicts": [
+    {
+      "exerciseNumber": 1,
+      "passed": true,
+      "summary": "",
+      "findings": []
+    },
+    {
+      "exerciseNumber": 2,
+      "passed": true,
+      "summary": "התרגיל מצוין, תואם באופן מלא לתכנית המתכנן ומדויק גיאומטרית. השרטוט מייצג במדויק את אורכי הצלעות והשנתות, והמעבר בין הסעיפים מובנה והגיוני עבור התלמיד.",
+      "findings": []
+    },
+    {
+      "exerciseNumber": 3,
+      "passed": true,
+      "summary": "",
+      "findings": []
+    },
+    {
+      "exerciseNumber": 4,
+      "passed": true,
+      "summary": "",
+      "findings": []
+    },
+    {
+      "exerciseNumber": 5,
+      "passed": true,
+      "summary": "",
+      "findings": []
+    },
+    {
+      "exerciseNumber": 6,
+      "passed": true,
+      "summary": "התרגיל בנוי היטב, תואם באופן מלא את תכנית המתכנן ומלווה בשרטוט מדויק וברור. המעבר מסעיף לסעיף מחדד לתלמיד/ה את ההבדל בין שוויון זוויות לחפיפת צלעות (צ.צ.צ).",
+      "findings": []
+    },
+    {
+      "exerciseNumber": 7,
+      "passed": true,
+      "summary": "",
+      "findings": []
+    },
+    {
+      "exerciseNumber": 8,
+      "passed": true,
+      "summary": "",
+      "findings": []
+    },
+    {
+      "exerciseNumber": 9,
+      "passed": true,
+      "summary": "",
+      "findings": []
+    },
+    {
+      "exerciseNumber": 10,
+      "passed": true,
+      "summary": "התרגיל מצוין, תואם לחלוטין את מטרות התכנון ומציג מהלך פדגוגי ברור ומדויק: השרטוט תואם היטב את הנתונים, השאלות בהירות והסעיפים מובילים בצורה טבעית מחפיפה לפי צ.צ.צ עם צלע משותפת להסקת שוויונות וחישוב זוויות.",
+      "findings": []
+    }
+  ],
+  "flaggedExerciseNumbers": [],
+  "totalCritical": 0,
+  "totalHigh": 0,
+  "totalMedium": 0,
+  "totalLow": 0
+}

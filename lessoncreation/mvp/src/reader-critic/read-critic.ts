@@ -68,8 +68,15 @@ async function critiqueOne(
     userPrompt: buildReaderCriticUserPrompt(skeletonExercise, renderedText),
     schema: ReaderExerciseVerdict,
     modelName: DEFAULT_MODEL,
-    temperature: 0.1,
-    maxOutputTokens: 4096,
+    // Fully deterministic — 0.1 was surfacing/hiding the same findings
+    // across runs on identical input (e.g. E8's "two-values-in-open-ended"
+    // caught in iter 2 after being missed in iter 1 on the same content).
+    // Temperature 0 gives reproducible findings so iter 2 doesn't shift
+    // signal around after auto-patch.
+    temperature: 0,
+    // Bumped from 4096 — Pro was truncating the summary field mid-string
+    // on ~30% of calls. 8192 is generous headroom for one exercise's verdict.
+    maxOutputTokens: 8192,
   })
   // Consistency: `passed` should be true iff no CRITICAL/HIGH.
   const hasBlocking = verdict.findings.some(
