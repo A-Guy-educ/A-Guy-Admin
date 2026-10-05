@@ -2169,6 +2169,7 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- chore(deps): bump actions/setup-python from 5 to 7 ([#548](https://github.com/A-Guy-educ/A-Guy-Admin/pull/548)) — @dependabot[bot]
 ## [v0.53.0] - 2026-10-04
 
 - promote: dev -> main (v0.53.0) ([#543](https://github.com/A-Guy-educ/A-Guy-Admin/pull/543)) — @aguyshayb
