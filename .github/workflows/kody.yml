@@ -60,7 +60,7 @@ jobs:
       actions: read
       id-token: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           ref: ${{ (github.event.action == 'opened' || github.event.action == 'synchronize') && github.event.pull_request.head.sha || github.event.pull_request.base.ref || github.ref }}
