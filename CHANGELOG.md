@@ -2169,6 +2169,7 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- chore(deps): bump actions/checkout from 4 to 7 ([#545](https://github.com/A-Guy-educ/A-Guy-Admin/pull/545)) — @dependabot[bot]
 - chore(deps): bump actions/deploy-pages from 4 to 5 ([#546](https://github.com/A-Guy-educ/A-Guy-Admin/pull/546)) — @dependabot[bot]
 - chore(deps): bump actions/configure-pages from 5 to 6 ([#547](https://github.com/A-Guy-educ/A-Guy-Admin/pull/547)) — @dependabot[bot]
 - chore(deps): bump actions/setup-python from 5 to 7 ([#548](https://github.com/A-Guy-educ/A-Guy-Admin/pull/548)) — @dependabot[bot]
