@@ -37,3 +37,12 @@ src/app/(payload)/admin/importMap.js
 docs/ai/indexes/*.json
 public/sitemap*.xml
 mixpanelstuff/**
+
+# Auto-generated reports from scheduled workflows (doc-link-fixer, deps-security, repo-hygiene).
+# Content comes from tooling, not hand-authored — must not block CI format checks.
+.ai-docs/reports/**
+
+# Local content/work directories and script backups — not committed, but their presence
+# in the working tree should not fail local pre-push prettier scans.
+lessonassesment/**
+scripts/.*-backup-*.json
