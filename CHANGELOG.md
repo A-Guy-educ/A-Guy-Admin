@@ -2169,6 +2169,7 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- chore(deps-dev): bump @testing-library/jest-dom from 6.9.1 to 7.0.1 ([#556](https://github.com/A-Guy-educ/A-Guy-Admin/pull/556)) — @dependabot[bot]
 - chore(deps): bump @sentry/nextjs from 10.38.0 to 11.4.0 ([#553](https://github.com/A-Guy-educ/A-Guy-Admin/pull/553)) — @dependabot[bot]
 - chore(deps): bump lucide-react from 0.562.0 to 1.52.0 ([#560](https://github.com/A-Guy-educ/A-Guy-Admin/pull/560)) — @dependabot[bot]
 - chore(deps): bump pdfjs-dist from 4.10.38 to 6.4.299 ([#555](https://github.com/A-Guy-educ/A-Guy-Admin/pull/555)) — @dependabot[bot]
