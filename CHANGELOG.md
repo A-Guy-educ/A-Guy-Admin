@@ -2169,6 +2169,7 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- chore(deps): bump lucide-react from 0.562.0 to 1.52.0 ([#560](https://github.com/A-Guy-educ/A-Guy-Admin/pull/560)) — @dependabot[bot]
 - chore(deps): bump pdfjs-dist from 4.10.38 to 6.4.299 ([#555](https://github.com/A-Guy-educ/A-Guy-Admin/pull/555)) — @dependabot[bot]
 - chore(deps-dev): bump @types/node from 22.19.9 to 26.6.4 ([#557](https://github.com/A-Guy-educ/A-Guy-Admin/pull/557)) — @dependabot[bot]
 - chore(prettier): ignore auto-generated reports to unblock Fast Gate ([#566](https://github.com/A-Guy-educ/A-Guy-Admin/pull/566)) — @aguyshayb
