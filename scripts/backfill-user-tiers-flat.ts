@@ -77,10 +77,7 @@ async function main() {
     }
   }
 
-  payload.logger.info(
-    { processed, updated, skipped, failed },
-    '[backfill-user-tiers-flat] done',
-  )
+  payload.logger.info({ processed, updated, skipped, failed }, '[backfill-user-tiers-flat] done')
   console.log(
     `[backfill-user-tiers-flat] processed=${processed} updated=${updated} skipped=${skipped} failed=${failed}`,
   )
