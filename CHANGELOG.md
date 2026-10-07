@@ -2169,6 +2169,7 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- chore(format): Fix prettier failure in doc-link report on dev ([#564](https://github.com/A-Guy-educ/A-Guy-Admin/pull/564)) — @aguyshayb
 - chore(docs): fix broken internal links ([#550](https://github.com/A-Guy-educ/A-Guy-Admin/pull/550)) — @github-actions[bot]
 - chore(deps-dev): bump jsdom from 29.1.1 to 30.1.1 ([#554](https://github.com/A-Guy-educ/A-Guy-Admin/pull/554)) — @dependabot[bot]
 - chore(deps): bump actions/checkout from 4 to 7 ([#545](https://github.com/A-Guy-educ/A-Guy-Admin/pull/545)) — @dependabot[bot]
