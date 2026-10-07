@@ -137,7 +137,7 @@
     "@radix-ui/react-slot": "^1.0.2",
     "@radix-ui/react-tooltip": "^1.2.8",
     "@rollup/rollup-darwin-x64": "^4.59.0",
-    "@sentry/nextjs": "^10.32.1",
+    "@sentry/nextjs": "^11.4.0",
     "@vercel/blob": "^0.22.3",
     "ajv": "^8.17.1",
     "animejs": "^4.3.6",
