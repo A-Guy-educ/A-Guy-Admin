@@ -27,9 +27,11 @@ import {
   grantProductEntitlements,
 } from '@/lib/payment/grant-entitlements'
 import { verifyPayPalWebhook } from '@/lib/payment/paypal'
-import { recomputeUserTier } from '@/lib/payment/recompute-tier'
+// Tier recompute disabled — see parent-folder TIERS.md. Imports kept as
+// comments so revival only needs to uncomment them + the call site below.
+// import { recomputeUserTier } from '@/lib/payment/recompute-tier'
 import { revokeProductEntitlements } from '@/lib/payment/revoke-entitlements'
-import { canTransitionFlipTier } from '@/lib/payment/tier-transitions'
+// import { canTransitionFlipTier } from '@/lib/payment/tier-transitions'
 import { sendPurchaseReceipt } from '@/server/email/services/purchase-receipt-service'
 
 interface PayPalWebhookResource {

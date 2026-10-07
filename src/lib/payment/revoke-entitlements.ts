@@ -18,7 +18,8 @@
 import { ObjectId } from 'mongodb'
 import type { Payload, PayloadRequest } from 'payload'
 
-import { recomputeUserTier } from './recompute-tier'
+// Tier recompute disabled — see parent-folder TIERS.md.
+// import { recomputeUserTier } from './recompute-tier'
 
 interface RevokeParams {
   payload: Payload
