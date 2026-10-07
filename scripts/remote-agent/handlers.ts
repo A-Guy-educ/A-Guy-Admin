@@ -105,7 +105,7 @@ export async function handleExec(body: Record<string, unknown>): Promise<ExecRes
         resolve({
           stdout: outStr,
           stderr: errStr,
-          exitCode: err?.code ?? 0,
+          exitCode: typeof err?.code === 'number' ? err.code : 0,
           truncated,
         })
       },
