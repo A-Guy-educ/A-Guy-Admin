@@ -2169,6 +2169,7 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- chore(prettier): ignore auto-generated reports to unblock Fast Gate ([#566](https://github.com/A-Guy-educ/A-Guy-Admin/pull/566)) — @aguyshayb
 - feat(tiers): Replace Tiers collection with hardcoded enum on user ([#563](https://github.com/A-Guy-educ/A-Guy-Admin/pull/563)) — @aguyshayb
 - chore(format): Fix prettier failure in doc-link report on dev ([#564](https://github.com/A-Guy-educ/A-Guy-Admin/pull/564)) — @aguyshayb
 - chore(docs): fix broken internal links ([#550](https://github.com/A-Guy-educ/A-Guy-Admin/pull/550)) — @github-actions[bot]
