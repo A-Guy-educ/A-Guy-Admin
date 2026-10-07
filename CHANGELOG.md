@@ -2169,6 +2169,7 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- chore(deps-dev): bump jsdom from 29.1.1 to 30.1.1 ([#554](https://github.com/A-Guy-educ/A-Guy-Admin/pull/554)) — @dependabot[bot]
 - chore(deps): bump actions/checkout from 4 to 7 ([#545](https://github.com/A-Guy-educ/A-Guy-Admin/pull/545)) — @dependabot[bot]
 - chore(deps): bump actions/deploy-pages from 4 to 5 ([#546](https://github.com/A-Guy-educ/A-Guy-Admin/pull/546)) — @dependabot[bot]
 - chore(deps): bump actions/configure-pages from 5 to 6 ([#547](https://github.com/A-Guy-educ/A-Guy-Admin/pull/547)) — @dependabot[bot]
