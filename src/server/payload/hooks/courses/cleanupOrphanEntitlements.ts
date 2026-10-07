@@ -43,7 +43,7 @@ export const cleanupOrphanEntitlements: CollectionAfterDeleteHook = async ({ id,
     const db = (req.payload.db as unknown as { connection?: { db: import('mongodb').Db } })
       .connection?.db as import('mongodb').Db
     const pullUpdate = {
-      $pull: { courseEntitlements: { course: new ObjectId(id) } },
+      $pull: { courseEntitlements: { course: new ObjectId(String(id)) } },
     } as any // eslint-disable-line @typescript-eslint/no-explicit-any -- MongoDB UpdateFilter typing for $pull on nested array
     await db
       .collection('users')
