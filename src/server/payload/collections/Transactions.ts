@@ -12,7 +12,10 @@ import type { CollectionConfig } from 'payload'
 import { adminOnly } from '../access/adminOnly'
 import { createdByField } from '../fields/createdBy'
 import { tenantField } from '../fields/tenant'
-import { recomputeTierOnSuccess } from './Transactions/hooks/recomputeTierOnSuccess-hook'
+// Tier recompute is disabled while `user.currentTier` is a hardcoded enum
+// managed manually by admins (see parent-folder TIERS.md). The hook file is
+// kept on disk for a future revival of automatic promotion.
+// import { recomputeTierOnSuccess } from './Transactions/hooks/recomputeTierOnSuccess-hook'
 import { revokeEntitlementsOnRefund } from './Transactions/hooks/revokeEntitlementsOnRefund-hook'
 import { statusTransitionGuard } from './Transactions/hooks/statusTransitionGuard-hook'
 import { syncPaymentStats } from './Transactions/hooks/syncPaymentStats-hook'
@@ -43,7 +46,7 @@ export const Transactions: CollectionConfig = {
   },
   hooks: {
     beforeChange: [statusTransitionGuard],
-    afterChange: [syncPaymentStats, revokeEntitlementsOnRefund, recomputeTierOnSuccess],
+    afterChange: [syncPaymentStats, revokeEntitlementsOnRefund],
   },
   fields: [
     tenantField,

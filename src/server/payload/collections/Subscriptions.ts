@@ -22,7 +22,10 @@ import type { CollectionConfig } from 'payload'
 import { adminOnly } from '../access/adminOnly'
 import { createdByField } from '../fields/createdBy'
 import { tenantField } from '../fields/tenant'
-import { recomputeTierOnStatusChange } from './Subscriptions/hooks/recomputeTierOnStatusChange-hook'
+// Tier recompute is disabled while `user.currentTier` is a hardcoded enum
+// managed manually by admins (see parent-folder TIERS.md). The hook file is
+// kept on disk for a future revival of automatic promotion.
+// import { recomputeTierOnStatusChange } from './Subscriptions/hooks/recomputeTierOnStatusChange-hook'
 
 export const Subscriptions: CollectionConfig = {
   slug: 'subscriptions',
@@ -41,7 +44,7 @@ export const Subscriptions: CollectionConfig = {
     group: 'Payments',
   },
   hooks: {
-    afterChange: [recomputeTierOnStatusChange],
+    afterChange: [],
   },
   fields: [
     tenantField,

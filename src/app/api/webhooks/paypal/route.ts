@@ -1143,16 +1143,22 @@ async function updateSubscriptionState(
       : (subscription.user as { id?: string } | null)?.id
   const newStatus = (update as { status?: unknown }).status
   const oldStatus = subscription.status as string | undefined
-  if (userId && typeof newStatus === 'string' && canTransitionFlipTier(oldStatus, newStatus)) {
-    try {
-      await recomputeUserTier(payload, userId)
-    } catch (err) {
-      payload.logger.error(
-        { err, subscriptionId: subscription.id },
-        'PayPal webhook: recomputeUserTier failed after subscription state change',
-      )
-    }
-  }
+  // Tier recompute is disabled while `user.currentTier` is a hardcoded enum
+  // managed manually by admins (see parent-folder TIERS.md). The subscription
+  // row is still updated; tier assignment is now a manual admin action.
+  // if (userId && typeof newStatus === 'string' && canTransitionFlipTier(oldStatus, newStatus)) {
+  //   try {
+  //     await recomputeUserTier(payload, userId)
+  //   } catch (err) {
+  //     payload.logger.error(
+  //       { err, subscriptionId: subscription.id },
+  //       'PayPal webhook: recomputeUserTier failed after subscription state change',
+  //     )
+  //   }
+  // }
+  void userId
+  void newStatus
+  void oldStatus
 }
 
 async function handleSubscriptionExpired(

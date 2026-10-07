@@ -94,15 +94,17 @@ export async function revokeProductEntitlements({
     },
   )
 
-  // 3. Recompute derived tier — a revoke can drop the user back to a lower
-  // tier or to Free. Non-fatal on failure; the tier can be re-derived on
-  // the next entitlement change.
-  try {
-    await recomputeUserTier(payload, userId, req)
-  } catch (error) {
-    payload.logger.error(
-      { err: error, userId, transactionId },
-      'revokeProductEntitlements: recomputeUserTier failed; currentTier may be stale',
-    )
-  }
+  // 3. Tier recompute is disabled while `user.currentTier` is a hardcoded
+  // enum managed manually by admins (see parent-folder TIERS.md). A refund
+  // only strips the user's entitlements array here; an admin bumps tier down
+  // separately if that's warranted. Re-enable this block if automatic
+  // promotion is revived.
+  // try {
+  //   await recomputeUserTier(payload, userId, req)
+  // } catch (error) {
+  //   payload.logger.error(
+  //     { err: error, userId, transactionId },
+  //     'revokeProductEntitlements: recomputeUserTier failed; currentTier may be stale',
+  //   )
+  // }
 }
