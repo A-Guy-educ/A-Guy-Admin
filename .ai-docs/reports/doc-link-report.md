@@ -1,6 +1,6 @@
 # Doc Link Fixer - Failure Report
 
-Generated: 2026-10-06T08:49:05.095Z
+Generated: 2026-10-10T08:19:25.327Z
 
 ## Summary
 
@@ -10,7 +10,7 @@ Generated: 2026-10-06T08:49:05.095Z
 
 ## By Source File
 
-### .tasks/\_archive/exercise-conversion/plan.md (16 broken links)
+### .tasks/_archive/exercise-conversion/plan.md (16 broken links)
 
 - `tests/unit/env-parsing.test.ts:1` → `.tasks/_archive/exercise-conversion/tests/unit/env-parsing.test.ts:1`
 - `tests/unit/pdf-validation.test.ts:1` → `.tasks/_archive/exercise-conversion/tests/unit/pdf-validation.test.ts:1`
@@ -64,7 +64,7 @@ Generated: 2026-10-06T08:49:05.095Z
 - `${href1}` → `docs/plans/${href1}`
 - `scripts/doc-link-fixer.ts:156` → `docs/plans/scripts/doc-link-fixer.ts:156`
 
-### docs/\_sidebar.md (7 broken links)
+### docs/_sidebar.md (7 broken links)
 
 - `architecture/` → `docs/architecture`
 - `qa/` → `docs/qa`
