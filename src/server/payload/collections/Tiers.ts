@@ -33,10 +33,15 @@ export const Tiers: CollectionConfig = {
     read: anyone,
   },
   admin: {
+    // Hidden: tier is now a hardcoded enum on the User doc (see parent-folder
+    // TIERS.md and src/lib/tiers/constants.ts). The collection stays in the
+    // DB so historical rows aren't lost and automatic promotion can be
+    // revived later without a migration.
+    hidden: true,
     useAsTitle: 'name',
     defaultColumns: ['slug', 'rank', 'name', 'isDefault', 'isActive'],
     description:
-      'Subscription tiers. Every Product links to one Tier; buying the Product promotes the user to that Tier (highest rank wins on overlap).',
+      'Legacy — tier is now a hardcoded enum on the User doc. See parent-folder TIERS.md.',
     group: 'Payments',
   },
   hooks: {

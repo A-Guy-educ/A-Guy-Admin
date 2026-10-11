@@ -5,6 +5,7 @@ import type { QuestionFreeResponseBlock } from '@/server/payload/collections/Exe
 import { AttachmentEditor } from './AttachmentEditor'
 import { InlineRichTextEditor } from './InlineRichTextEditor'
 import { HintSolutionPanel } from './HintSolutionPanel'
+import { NotebookToggle } from './NotebookToggle'
 import { Plus, Trash2 } from 'lucide-react'
 
 interface FreeResponseEditorProps {
@@ -89,6 +90,13 @@ export const FreeResponseEditor: React.FC<FreeResponseEditorProps> = ({ block, o
       </div>
 
       <div className="question-editor-section">
+        <NotebookToggle
+          value={block.showNotebook ?? false}
+          onChange={(value) => onChange({ ...block, showNotebook: value })}
+        />
+      </div>
+
+      <div className="question-editor-section">
         <HintSolutionPanel
           hint={block.hint}
           solution={block.solution}
@@ -96,8 +104,6 @@ export const FreeResponseEditor: React.FC<FreeResponseEditorProps> = ({ block, o
           blockId={block.id}
           onChange={(field, value) => onChange({ ...block, [field]: value })}
           onBatchChange={(fields) => onChange({ ...block, ...fields })}
-          showNotebook={block.showNotebook}
-          onShowNotebookChange={(value) => onChange({ ...block, showNotebook: value })}
         />
       </div>
     </div>

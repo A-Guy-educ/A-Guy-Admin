@@ -27,9 +27,11 @@ import {
   grantProductEntitlements,
 } from '@/lib/payment/grant-entitlements'
 import { verifyPayPalWebhook } from '@/lib/payment/paypal'
-import { recomputeUserTier } from '@/lib/payment/recompute-tier'
+// Tier recompute disabled — see parent-folder TIERS.md. Imports kept as
+// comments so revival only needs to uncomment them + the call site below.
+// import { recomputeUserTier } from '@/lib/payment/recompute-tier'
 import { revokeProductEntitlements } from '@/lib/payment/revoke-entitlements'
-import { canTransitionFlipTier } from '@/lib/payment/tier-transitions'
+// import { canTransitionFlipTier } from '@/lib/payment/tier-transitions'
 import { sendPurchaseReceipt } from '@/server/email/services/purchase-receipt-service'
 
 interface PayPalWebhookResource {
@@ -1143,16 +1145,22 @@ async function updateSubscriptionState(
       : (subscription.user as { id?: string } | null)?.id
   const newStatus = (update as { status?: unknown }).status
   const oldStatus = subscription.status as string | undefined
-  if (userId && typeof newStatus === 'string' && canTransitionFlipTier(oldStatus, newStatus)) {
-    try {
-      await recomputeUserTier(payload, userId)
-    } catch (err) {
-      payload.logger.error(
-        { err, subscriptionId: subscription.id },
-        'PayPal webhook: recomputeUserTier failed after subscription state change',
-      )
-    }
-  }
+  // Tier recompute is disabled while `user.currentTier` is a hardcoded enum
+  // managed manually by admins (see parent-folder TIERS.md). The subscription
+  // row is still updated; tier assignment is now a manual admin action.
+  // if (userId && typeof newStatus === 'string' && canTransitionFlipTier(oldStatus, newStatus)) {
+  //   try {
+  //     await recomputeUserTier(payload, userId)
+  //   } catch (err) {
+  //     payload.logger.error(
+  //       { err, subscriptionId: subscription.id },
+  //       'PayPal webhook: recomputeUserTier failed after subscription state change',
+  //     )
+  //   }
+  // }
+  void userId
+  void newStatus
+  void oldStatus
 }
 
 async function handleSubscriptionExpired(

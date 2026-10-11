@@ -529,9 +529,9 @@ export interface User {
       }[]
     | null;
   /**
-   * Computed from active entitlements. Highest-rank tier wins; Free is the fallback. Do not edit by hand — the grant/revoke flow rewrites it.
+   * Subscription tier. Set manually by admin. See parent-folder TIERS.md for the full gating contract.
    */
-  currentTier?: (string | null) | Tier;
+  currentTier?: ('free' | 'basic' | 'advanced' | 'premium') | null;
   /**
    * Standalone feature access granted via payment
    */
@@ -959,53 +959,6 @@ export interface TableBlock {
   id?: string | null;
   blockName?: string | null;
   blockType: 'tableBlock';
-}
-/**
- * Subscription tiers. Every Product links to one Tier; buying the Product promotes the user to that Tier (highest rank wins on overlap).
- *
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "tiers".
- */
-export interface Tier {
-  id: string;
-  /**
-   * Stable identifier used by runtime code (e.g. "free", "basic", "pro", "elite"). kebab-case, lowercase. Changing this after grants exist orphans user.currentTier references.
-   */
-  slug: string;
-  /**
-   * Numeric level for "higher includes lower" comparisons. Free = 0, top tier gets the largest number. Ranks should be unique but the schema does not enforce it — allowing a temporary duplicate is the only way to reorder tiers via two individual writes. Ties resolve arbitrarily but deterministically in the recompute helper.
-   */
-  rank: number;
-  /**
-   * Display name (localized, EN + HE).
-   */
-  name: string;
-  /**
-   * Marketing copy shown on the pricing page (localized).
-   */
-  description?: string | null;
-  /**
-   * Fallback tier assigned to users with no active paid grants. Exactly one tier should have this on (Free).
-   */
-  isDefault?: boolean | null;
-  /**
-   * Hex badge colour used in the admin + pricing UI (e.g. #4F46E5).
-   */
-  color?: string | null;
-  /**
-   * Display order on the pricing page (ascending).
-   */
-  sortOrder?: number | null;
-  /**
-   * When off, the tier is hidden from the pricing page. Existing grants remain valid.
-   */
-  isActive?: boolean | null;
-  /**
-   * User who created this document
-   */
-  createdBy?: (string | null) | User;
-  updatedAt: string;
-  createdAt: string;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -2105,6 +2058,53 @@ export interface Product {
     | null;
   /**
    * האם המוצר פעיל וזמין למכירה
+   */
+  isActive?: boolean | null;
+  /**
+   * User who created this document
+   */
+  createdBy?: (string | null) | User;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Legacy — tier is now a hardcoded enum on the User doc. See parent-folder TIERS.md.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "tiers".
+ */
+export interface Tier {
+  id: string;
+  /**
+   * Stable identifier used by runtime code (e.g. "free", "basic", "pro", "elite"). kebab-case, lowercase. Changing this after grants exist orphans user.currentTier references.
+   */
+  slug: string;
+  /**
+   * Numeric level for "higher includes lower" comparisons. Free = 0, top tier gets the largest number. Ranks should be unique but the schema does not enforce it — allowing a temporary duplicate is the only way to reorder tiers via two individual writes. Ties resolve arbitrarily but deterministically in the recompute helper.
+   */
+  rank: number;
+  /**
+   * Display name (localized, EN + HE).
+   */
+  name: string;
+  /**
+   * Marketing copy shown on the pricing page (localized).
+   */
+  description?: string | null;
+  /**
+   * Fallback tier assigned to users with no active paid grants. Exactly one tier should have this on (Free).
+   */
+  isDefault?: boolean | null;
+  /**
+   * Hex badge colour used in the admin + pricing UI (e.g. #4F46E5).
+   */
+  color?: string | null;
+  /**
+   * Display order on the pricing page (ascending).
+   */
+  sortOrder?: number | null;
+  /**
+   * When off, the tier is hidden from the pricing page. Existing grants remain valid.
    */
   isActive?: boolean | null;
   /**

@@ -13,8 +13,21 @@ import {
 import { ChapterSelector } from '../ChapterSelector'
 
 type ParseStatus = 'valid' | 'invalid'
-type ImportFormat = 'json' | 'text' | 'latex'
+type ImportFormat = 'json' | 'text' | 'latex' | 'pdf'
 type LessonType = 'learning' | 'practice' | 'exam'
+
+const PDF_MAX_BYTES = 20 * 1024 * 1024 // Matches MediaType.PDF size limit server-side.
+
+function bytesToBase64(bytes: Uint8Array): string {
+  // Build the binary string in 32KB chunks so very long PDFs don't blow the
+  // JS call-stack limit when fed to String.fromCharCode(...).
+  const CHUNK = 0x8000
+  let binary = ''
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + CHUNK)))
+  }
+  return btoa(binary)
+}
 
 const LESSON_TYPE_OPTIONS: Array<{ value: LessonType; label: string }> = [
   { value: 'learning', label: 'Learning' },
@@ -30,10 +43,12 @@ interface FileEntry {
   text?: string
   /** Raw file contents for the LaTeX importer. Same idea as `text` but kept separate so the format branches stay obvious. */
   latex?: string
+  /** Base64-encoded PDF bytes for the PDF importer. */
+  pdfBase64?: string
   status: ParseStatus
   parseError?: string
   lessonTopic?: string
-  /** Undefined for LaTeX — real count is only knowable server-side after the deterministic split. */
+  /** Undefined for LaTeX/PDF — real count is only knowable server-side after the deterministic split. PDF never has exercises here. */
   exerciseCount?: number
 }
 
@@ -230,10 +245,47 @@ export function LessonJsonImportPage() {
       const isJson = lower.endsWith('.json')
       const isText = lower.endsWith('.txt')
       const isLatex = lower.endsWith('.tex')
-      if (!isJson && !isText && !isLatex) continue
-      const format: ImportFormat = isJson ? 'json' : isText ? 'text' : 'latex'
+      const isPdf = lower.endsWith('.pdf')
+      if (!isJson && !isText && !isLatex && !isPdf) continue
+      const format: ImportFormat = isJson ? 'json' : isText ? 'text' : isLatex ? 'latex' : 'pdf'
       const id = `${file.name}-${file.size}-${file.lastModified}`
       try {
+        if (isPdf) {
+          if (file.size === 0) {
+            next.push({
+              id,
+              filename: file.name,
+              format: 'pdf',
+              json: null,
+              status: 'invalid',
+              parseError: 'PDF file is empty',
+            })
+            continue
+          }
+          if (file.size > PDF_MAX_BYTES) {
+            next.push({
+              id,
+              filename: file.name,
+              format: 'pdf',
+              json: null,
+              status: 'invalid',
+              parseError: `PDF too large (${Math.round(file.size / 1024 / 1024)}MB > 20MB)`,
+            })
+            continue
+          }
+          const buffer = await file.arrayBuffer()
+          const pdfBase64 = bytesToBase64(new Uint8Array(buffer))
+          next.push({
+            id,
+            filename: file.name,
+            format: 'pdf',
+            json: null,
+            pdfBase64,
+            status: 'valid',
+            lessonTopic: deriveTitleFromFilename(file.name),
+          })
+          continue
+        }
         const raw = await file.text()
         if (isJson) {
           const json = JSON.parse(raw)
@@ -324,13 +376,17 @@ export function LessonJsonImportPage() {
             ? '/api/lessons/import-from-json'
             : f.format === 'text'
               ? '/api/lessons/import-from-text'
-              : '/api/lessons/import-from-latex'
+              : f.format === 'latex'
+                ? '/api/lessons/import-from-latex'
+                : '/api/lessons/import-from-pdf'
         const body =
           f.format === 'json'
             ? { chapterId, filename: f.filename, json: f.json, lessonType }
             : f.format === 'text'
               ? { chapterId, filename: f.filename, text: f.text ?? '', lessonType }
-              : { chapterId, filename: f.filename, content: f.latex ?? '', lessonType }
+              : f.format === 'latex'
+                ? { chapterId, filename: f.filename, content: f.latex ?? '', lessonType }
+                : { chapterId, filename: f.filename, pdfBase64: f.pdfBase64 ?? '', lessonType }
         const res = await fetch(url, {
           method: 'POST',
           credentials: 'include',
@@ -357,9 +413,11 @@ export function LessonJsonImportPage() {
         // success:false — leaves the lesson + media in place so the admin can
         // retry via the "Full Convert (LaTeX)" button on the lesson edit view.
         const isLatex = f.format === 'latex'
-        const failedCount = isLatex ? (data.success === false ? 1 : 0) : data.exercisesFailed
+        const isPdf = f.format === 'pdf'
+        const failedCount =
+          isPdf || isLatex ? (data.success === false ? 1 : 0) : data.exercisesFailed
         const firstError =
-          !isLatex && Array.isArray(data.results) && failedCount > 0
+          !isLatex && !isPdf && Array.isArray(data.results) && failedCount > 0
             ? data.results.find((r: { error?: string }) => r?.error)?.error
             : undefined
         setResults((prev) => ({
@@ -369,12 +427,14 @@ export function LessonJsonImportPage() {
             state: failedCount > 0 ? 'failed' : 'done',
             lessonId: data.lessonId,
             exercisesCreated: data.exercisesCreated,
-            exercisesFailed: isLatex ? 0 : failedCount,
-            message: isLatex
-              ? (data.message ?? `Created lesson with ${data.exercisesCreated} exercises`)
-              : failedCount > 0
-                ? `Rolled back — ${failedCount} exercise${failedCount === 1 ? '' : 's'} failed. First error: ${firstError ?? 'unknown'}`
-                : `Created lesson with ${data.exercisesCreated} exercises`,
+            exercisesFailed: isLatex || isPdf ? 0 : failedCount,
+            message: isPdf
+              ? (data.message ?? 'Created lesson with PDF attached')
+              : isLatex
+                ? (data.message ?? `Created lesson with ${data.exercisesCreated} exercises`)
+                : failedCount > 0
+                  ? `Rolled back — ${failedCount} exercise${failedCount === 1 ? '' : 's'} failed. First error: ${firstError ?? 'unknown'}`
+                  : `Created lesson with ${data.exercisesCreated} exercises`,
           },
         }))
       } catch (err) {
@@ -450,12 +510,13 @@ export function LessonJsonImportPage() {
         <h2 style={sectionHeadingStyle}>2. Drop lesson files</h2>
         <label htmlFor="json-file-input">
           <div style={dropzoneStyle} onDragOver={(e) => e.preventDefault()} onDrop={onDrop}>
-            Drag &amp; drop lesson <code>.json</code>, <code>.txt</code>, or <code>.tex</code> files
-            here, or click to browse.
+            Drag &amp; drop lesson <code>.json</code>, <code>.txt</code>, <code>.tex</code>, or{' '}
+            <code>.pdf</code> files here, or click to browse. PDFs become draft lessons with the
+            file attached (no exercises generated).
             <input
               id="json-file-input"
               type="file"
-              accept=".json,application/json,.txt,text/plain,.tex,application/x-tex,text/x-tex"
+              accept=".json,application/json,.txt,text/plain,.tex,application/x-tex,text/x-tex,.pdf,application/pdf"
               multiple
               onChange={(e) => onFiles(e.target.files)}
               style={{ display: 'none' }}

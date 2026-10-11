@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.54.0 — 2026-10-11
+
+### Features
+- Lesson editor: promote the "Show drawing notebook" toggle out of the Hints & Solutions panel into its own row below "Attach a sketch" across all five question editors (MCQ, Free Response, True/False, Matching, Table); same `block.showNotebook` field, no schema change (#575)
+- Lesson import: `/lesson-json-import` now accepts PDFs alongside `.json`/`.txt`/`.tex` — uploading a PDF creates a draft lesson with title derived from the filename and the PDF stored as the first `contentFiles` entry; new service and `POST /api/lessons/import-from-pdf` route, 20MB client-side cap (#575)
+- Tiers: replace the dynamic Tiers/Products/Transactions/Subscriptions tier-recompute flow with a hardcoded four-slug enum (`free | basic | advanced | premium`) on `User.currentTier`; admin-editable `select` field, `recomputeUserTier` call sites disabled across Transactions/Subscriptions hooks and PayPal webhook, Tiers collection hidden (preserved in DB), new backfill script `scripts/backfill-user-tiers-flat.ts` (#563)
+- Tiers: default `llmTokensLimit` to 1.5M on newly created users (#573)
+
+### Bug Fixes
+- Dependencies: revert `@sentry/nextjs` 10.38.0 → 11.4.0 — Sentry 11's new mongo instrumentation crashed the MongoDB driver with `Cannot read properties of undefined (reading 'CLUSTER_TIME_RECEIVED')` on dev deploys; rollback restores known-good instrumentation (#574)
+- Geometry editor: propagate column additions into existing table rows, bump geometry label sizes (#572)
+
 ## v0.53.0 — 2026-10-04
 
 ### Features
@@ -2169,6 +2181,28 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- chore: Release v0.54.0 ([#576](https://github.com/A-Guy-educ/A-Guy-Admin/pull/576)) — @aguyshayb
+- feat(editor): Promote notebook toggle; add PDF upload to lesson import ([#575](https://github.com/A-Guy-educ/A-Guy-Admin/pull/575)) — @aguyshayb
+- fix(deps): Revert @sentry/nextjs to 10.38.0 (unblock dev deploys) ([#574](https://github.com/A-Guy-educ/A-Guy-Admin/pull/574)) — @aguyshayb
+- feat(tiers): Default llmTokensLimit to 1.5M on new users ([#573](https://github.com/A-Guy-educ/A-Guy-Admin/pull/573)) — @aguyshayb
+- fix(editor): Table column add + geometry label sizes + line label default ([#572](https://github.com/A-Guy-educ/A-Guy-Admin/pull/572)) — @aguyshayb
+- chore(deps-dev): bump @testing-library/jest-dom from 6.9.1 to 7.0.1 ([#556](https://github.com/A-Guy-educ/A-Guy-Admin/pull/556)) — @dependabot[bot]
+- chore(deps): bump @sentry/nextjs from 10.38.0 to 11.4.0 ([#553](https://github.com/A-Guy-educ/A-Guy-Admin/pull/553)) — @dependabot[bot]
+- chore(deps): bump lucide-react from 0.562.0 to 1.52.0 ([#560](https://github.com/A-Guy-educ/A-Guy-Admin/pull/560)) — @dependabot[bot]
+- chore(deps): bump pdfjs-dist from 4.10.38 to 6.4.299 ([#555](https://github.com/A-Guy-educ/A-Guy-Admin/pull/555)) — @dependabot[bot]
+- chore(deps-dev): bump @types/node from 22.19.9 to 26.6.4 ([#557](https://github.com/A-Guy-educ/A-Guy-Admin/pull/557)) — @dependabot[bot]
+- chore(prettier): ignore auto-generated reports to unblock Fast Gate ([#566](https://github.com/A-Guy-educ/A-Guy-Admin/pull/566)) — @aguyshayb
+- feat(tiers): Replace Tiers collection with hardcoded enum on user ([#563](https://github.com/A-Guy-educ/A-Guy-Admin/pull/563)) — @aguyshayb
+- chore(format): Fix prettier failure in doc-link report on dev ([#564](https://github.com/A-Guy-educ/A-Guy-Admin/pull/564)) — @aguyshayb
+- chore(docs): fix broken internal links ([#550](https://github.com/A-Guy-educ/A-Guy-Admin/pull/550)) — @github-actions[bot]
+- chore(deps-dev): bump jsdom from 29.1.1 to 30.1.1 ([#554](https://github.com/A-Guy-educ/A-Guy-Admin/pull/554)) — @dependabot[bot]
+- chore(deps): bump actions/checkout from 4 to 7 ([#545](https://github.com/A-Guy-educ/A-Guy-Admin/pull/545)) — @dependabot[bot]
+- chore(deps): bump actions/deploy-pages from 4 to 5 ([#546](https://github.com/A-Guy-educ/A-Guy-Admin/pull/546)) — @dependabot[bot]
+- chore(deps): bump actions/configure-pages from 5 to 6 ([#547](https://github.com/A-Guy-educ/A-Guy-Admin/pull/547)) — @dependabot[bot]
+- chore(deps): bump actions/setup-python from 5 to 7 ([#548](https://github.com/A-Guy-educ/A-Guy-Admin/pull/548)) — @dependabot[bot]
+## [v0.53.0] - 2026-10-04
+
+- promote: dev -> main (v0.53.0) ([#543](https://github.com/A-Guy-educ/A-Guy-Admin/pull/543)) — @aguyshayb
 - chore: release v0.53.0 ([#542](https://github.com/A-Guy-educ/A-Guy-Admin/pull/542)) — @aguyshayb
 - feat(geometry): scale equal-angle ticks up 30% ([#541](https://github.com/A-Guy-educ/A-Guy-Admin/pull/541)) — @aguyshayb
 - feat(function-dsl): parse 'GEOMETRIC LOCI' entries into geometricLoci ([#540](https://github.com/A-Guy-educ/A-Guy-Admin/pull/540)) — @aguyshayb

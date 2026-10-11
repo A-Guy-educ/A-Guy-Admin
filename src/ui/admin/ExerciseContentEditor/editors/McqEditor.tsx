@@ -6,6 +6,7 @@ import { generateId } from '@/server/payload/collections/Exercises/types'
 import { AttachmentEditor } from './AttachmentEditor'
 import { InlineRichTextEditor } from './InlineRichTextEditor'
 import { HintSolutionPanel } from './HintSolutionPanel'
+import { NotebookToggle } from './NotebookToggle'
 import {
   changeSelectionMode,
   removeOptionAndNormalize,
@@ -197,6 +198,13 @@ export const McqEditor: React.FC<McqEditorProps> = ({ block, onChange }) => {
       </div>
 
       <div className="question-editor-section">
+        <NotebookToggle
+          value={block.showNotebook ?? false}
+          onChange={(value) => onChange({ ...block, showNotebook: value })}
+        />
+      </div>
+
+      <div className="question-editor-section">
         <HintSolutionPanel
           hint={block.hint}
           solution={block.solution}
@@ -204,8 +212,6 @@ export const McqEditor: React.FC<McqEditorProps> = ({ block, onChange }) => {
           blockId={block.id}
           onChange={(field, value) => onChange({ ...block, [field]: value })}
           onBatchChange={(fields) => onChange({ ...block, ...fields })}
-          showNotebook={block.showNotebook}
-          onShowNotebookChange={(value) => onChange({ ...block, showNotebook: value })}
         />
       </div>
     </div>

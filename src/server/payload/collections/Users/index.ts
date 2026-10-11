@@ -14,6 +14,7 @@ import { adminOrContentEditor } from '../../access/adminOrContentEditor'
 import { adminOrSelf } from '../../access/adminOrSelf'
 // anyone import kept for future re-enablement of public signup
 import { isUsersCollectionUser } from '@/server/payload/access/isUsersCollectionUser'
+import { DEFAULT_TIER, TIER_LABEL_HE, TIER_SLUGS } from '@/lib/tiers/constants'
 import { anyone } from '../../access/anyone'
 import { auditRoleChange } from './hooks/auditRoleChange-hook'
 import { createUserSettings } from './hooks/createUserSettings-hook'
@@ -256,25 +257,28 @@ export const Users: CollectionConfig = {
         },
       ],
     },
-    // Current subscription tier. Computed by the grant/revoke flow — the
-    // highest-rank Tier across the user's active paid entitlements, falling
-    // back to the Tier flagged `isDefault: true` (Free). Blocked from
-    // client-side create/update so signup POSTs and self-PATCHes cannot
-    // forge a tier; admin writes still go through overrideAccess.
+    // Current subscription tier. Hardcoded enum of four slugs — see
+    // src/lib/tiers/constants.ts and the parent-folder TIERS.md for the
+    // source-of-truth definition. Admin-editable; blocked from client
+    // create/update so signup POSTs and self-PATCHes can't forge a tier.
     {
       name: 'currentTier',
-      type: 'relationship',
-      relationTo: 'tiers',
-      maxDepth: 0,
+      type: 'select',
+      options: TIER_SLUGS.map((slug) => ({
+        label: TIER_LABEL_HE[slug],
+        value: slug,
+      })),
+      defaultValue: DEFAULT_TIER,
       access: {
-        create: () => false,
-        update: () => false,
+        create: ({ req: { user } }) =>
+          isUsersCollectionUser(user) && user.role === AccountRole.Admin,
+        update: ({ req: { user } }) =>
+          isUsersCollectionUser(user) && user.role === AccountRole.Admin,
       },
       admin: {
-        readOnly: true,
         position: 'sidebar',
         description:
-          'Computed from active entitlements. Highest-rank tier wins; Free is the fallback. Do not edit by hand — the grant/revoke flow rewrites it.',
+          'Subscription tier. Set manually by admin. See parent-folder TIERS.md for the full gating contract.',
       },
     },
     {
@@ -378,6 +382,10 @@ export const Users: CollectionConfig = {
     {
       name: 'llmTokensLimit',
       type: 'number',
+      // 1.5M = free-tier monthly cap. New users land on tier=free with this
+      // limit; admins override per-user for custom caps or set null to lift
+      // the cap entirely (e.g. premium / fair-use).
+      defaultValue: 1_500_000,
       // Admin-only for both create and update: managers set per-user caps.
       // Without the create guard, `create: anyone` at the collection level
       // would let a signup POST inject an unbounded limit.

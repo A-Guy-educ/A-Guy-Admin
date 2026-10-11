@@ -5,6 +5,7 @@ import type { QuestionSelectTrueFalseBlock } from '@/server/payload/collections/
 import { AttachmentEditor } from './AttachmentEditor'
 import { InlineRichTextEditor } from './InlineRichTextEditor'
 import { HintSolutionPanel } from './HintSolutionPanel'
+import { NotebookToggle } from './NotebookToggle'
 
 interface TrueFalseEditorProps {
   block: QuestionSelectTrueFalseBlock
@@ -93,6 +94,13 @@ export const TrueFalseEditor: React.FC<TrueFalseEditorProps> = ({ block, onChang
       </div>
 
       <div className="question-editor-section">
+        <NotebookToggle
+          value={block.showNotebook ?? false}
+          onChange={(value) => onChange({ ...block, showNotebook: value })}
+        />
+      </div>
+
+      <div className="question-editor-section">
         <HintSolutionPanel
           hint={block.hint}
           solution={block.solution}
@@ -100,8 +108,6 @@ export const TrueFalseEditor: React.FC<TrueFalseEditorProps> = ({ block, onChang
           blockId={block.id}
           onChange={(field, value) => onChange({ ...block, [field]: value })}
           onBatchChange={(fields) => onChange({ ...block, ...fields })}
-          showNotebook={block.showNotebook}
-          onShowNotebookChange={(value) => onChange({ ...block, showNotebook: value })}
         />
       </div>
     </div>

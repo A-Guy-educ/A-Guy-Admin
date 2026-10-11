@@ -63,7 +63,7 @@ jobs:
 
       # ── Step 3: Clean checkout ──
       - name: Checkout code (clean)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           clean: true
           fetch-depth: 1
