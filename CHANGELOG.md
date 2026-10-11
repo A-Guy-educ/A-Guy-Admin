@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.54.0 — 2026-10-11
+
+### Features
+- Lesson editor: promote the "Show drawing notebook" toggle out of the Hints & Solutions panel into its own row below "Attach a sketch" across all five question editors (MCQ, Free Response, True/False, Matching, Table); same `block.showNotebook` field, no schema change (#575)
+- Lesson import: `/lesson-json-import` now accepts PDFs alongside `.json`/`.txt`/`.tex` — uploading a PDF creates a draft lesson with title derived from the filename and the PDF stored as the first `contentFiles` entry; new service and `POST /api/lessons/import-from-pdf` route, 20MB client-side cap (#575)
+- Tiers: replace the dynamic Tiers/Products/Transactions/Subscriptions tier-recompute flow with a hardcoded four-slug enum (`free | basic | advanced | premium`) on `User.currentTier`; admin-editable `select` field, `recomputeUserTier` call sites disabled across Transactions/Subscriptions hooks and PayPal webhook, Tiers collection hidden (preserved in DB), new backfill script `scripts/backfill-user-tiers-flat.ts` (#563)
+- Tiers: default `llmTokensLimit` to 1.5M on newly created users (#573)
+
+### Bug Fixes
+- Dependencies: revert `@sentry/nextjs` 10.38.0 → 11.4.0 — Sentry 11's new mongo instrumentation crashed the MongoDB driver with `Cannot read properties of undefined (reading 'CLUSTER_TIME_RECEIVED')` on dev deploys; rollback restores known-good instrumentation (#574)
+- Geometry editor: propagate column additions into existing table rows, bump geometry label sizes (#572)
+
 ## v0.53.0 — 2026-10-04
 
 ### Features
