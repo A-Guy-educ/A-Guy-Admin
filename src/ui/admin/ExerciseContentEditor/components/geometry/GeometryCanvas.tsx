@@ -45,7 +45,7 @@ const MAX_BOARD_PX = 600
 
 // Equality-marker tick styling, in pixels so ticks stay consistent across
 // boards with different user-unit scales.
-const EQ_TICK_LENGTH_PX = 8
+const EQ_TICK_LENGTH_PX = 10.4
 const EQ_TICK_SPACING_PX = 5
 
 const round1 = (n: number) => Math.round(n * 10) / 10
@@ -337,7 +337,7 @@ function syncPoints(
         withLabel: labelVisible,
         label: {
           offset: labelOffset,
-          fontSize: point.fontSize || 12,
+          fontSize: point.fontSize || 15,
           cssStyle: "font-family: 'Times New Roman', Times, serif;",
           visible: labelVisible,
         } as Record<string, unknown>,
@@ -920,7 +920,7 @@ function syncEqualSegments(
           ],
           {
             strokeColor: getDefaultCanvasElementColor(),
-            strokeWidth: 1.5,
+            strokeWidth: 1.875,
             fixed: true,
             visible: true,
             highlight: false,
@@ -1021,7 +1021,7 @@ function syncEqualAngles(
           ],
           {
             strokeColor: angle.color || getDefaultAngleColor(),
-            strokeWidth: 1.5,
+            strokeWidth: 1.875,
             fixed: true,
             visible: true,
             highlight: false,
