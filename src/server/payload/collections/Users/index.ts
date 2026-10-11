@@ -382,6 +382,10 @@ export const Users: CollectionConfig = {
     {
       name: 'llmTokensLimit',
       type: 'number',
+      // 1.5M = free-tier monthly cap. New users land on tier=free with this
+      // limit; admins override per-user for custom caps or set null to lift
+      // the cap entirely (e.g. premium / fair-use).
+      defaultValue: 1_500_000,
       // Admin-only for both create and update: managers set per-user caps.
       // Without the create guard, `create: anyone` at the collection level
       // would let a signup POST inject an unbounded limit.
