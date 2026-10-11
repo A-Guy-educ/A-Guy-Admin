@@ -2181,6 +2181,7 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- promote: dev -> main (v0.54.0) ([#577](https://github.com/A-Guy-educ/A-Guy-Admin/pull/577)) — @aguyshayb
 - chore: Release v0.54.0 ([#576](https://github.com/A-Guy-educ/A-Guy-Admin/pull/576)) — @aguyshayb
 - feat(editor): Promote notebook toggle; add PDF upload to lesson import ([#575](https://github.com/A-Guy-educ/A-Guy-Admin/pull/575)) — @aguyshayb
 - fix(deps): Revert @sentry/nextjs to 10.38.0 (unblock dev deploys) ([#574](https://github.com/A-Guy-educ/A-Guy-Admin/pull/574)) — @aguyshayb
