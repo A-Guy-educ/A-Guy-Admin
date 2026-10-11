@@ -1,5 +1,5 @@
 import { withPayload } from '@payloadcms/next/withPayload'
-import { withSentryConfig } from '@sentry/nextjs/config'
+import { withSentryConfig } from '@sentry/nextjs'
 
 import redirects from './redirects.js'
 
