@@ -16,7 +16,7 @@ type EqualAngleGroup = NonNullable<GeometrySpecV1['elements']['equalAngles']>[nu
 
 /** Tick styling for equality markers. Pixel-based so ticks look consistent
  *  across boards with different user-unit scales. */
-const EQ_TICK_LENGTH_PX = 8
+const EQ_TICK_LENGTH_PX = 10.4
 const EQ_TICK_SPACING_PX = 5
 
 /** Map compass direction to a pixel [x, y] offset for JSXGraph labels. */
@@ -52,7 +52,7 @@ function renderPoints(board: JXG.Board, points: PointSpec[]): Map<string, any> {
       withLabel: labelVisible,
       label: {
         offset: mapLabelOffset(p.position),
-        fontSize: p.fontSize ?? 12,
+        fontSize: p.fontSize ?? 15,
         cssStyle: "font-family: 'Times New Roman', Times, serif;",
         visible: labelVisible,
       },
@@ -249,7 +249,7 @@ function renderEqualSegments(
           ],
           {
             strokeColor: getDefaultTextColor(),
-            strokeWidth: 1.5,
+            strokeWidth: 1.875,
             fixed: true,
             visible: true,
             highlight: false,
@@ -330,7 +330,7 @@ function renderEqualAngles(
           ],
           {
             strokeColor: angle.color || getDefaultAngleColor(),
-            strokeWidth: 1.5,
+            strokeWidth: 1.875,
             fixed: true,
             visible: true,
             highlight: false,

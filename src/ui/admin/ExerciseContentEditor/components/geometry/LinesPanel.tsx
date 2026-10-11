@@ -95,7 +95,7 @@ export const LinesPanel: React.FC<LinesPanelProps> = ({ lines, points, onChange 
                 placeholder="e.g. 5cm"
                 onChange={(e) =>
                   handleUpdate(index, {
-                    label: { position: line.label?.position || 't', value: e.target.value },
+                    label: { position: line.label?.position || 'b', value: e.target.value },
                   })
                 }
               />
@@ -105,7 +105,7 @@ export const LinesPanel: React.FC<LinesPanelProps> = ({ lines, points, onChange 
                 <span className="panel-field-label">Label Pos</span>
                 <select
                   className="panel-field-select"
-                  value={line.label?.position || 't'}
+                  value={line.label?.position || 'b'}
                   onChange={(e) =>
                     handleUpdate(index, {
                       label: {

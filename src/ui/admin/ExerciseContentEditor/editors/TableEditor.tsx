@@ -31,6 +31,7 @@ export const TableEditor: React.FC<TableEditorProps> = ({ block, onChange }) => 
         ...table,
         headers: [...table.headers, `Column ${table.headers.length + 1}`],
         columnAlignment: [...(table.columnAlignment || []), 'left'],
+        rowsData: table.rowsData.map((row) => [...row, '']),
       },
     })
   }
