@@ -2181,6 +2181,8 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+## [v0.54.0] - 2026-10-11
+
 - promote: dev -> main (v0.54.0) ([#577](https://github.com/A-Guy-educ/A-Guy-Admin/pull/577)) — @aguyshayb
 - chore: Release v0.54.0 ([#576](https://github.com/A-Guy-educ/A-Guy-Admin/pull/576)) — @aguyshayb
 - feat(editor): Promote notebook toggle; add PDF upload to lesson import ([#575](https://github.com/A-Guy-educ/A-Guy-Admin/pull/575)) — @aguyshayb
