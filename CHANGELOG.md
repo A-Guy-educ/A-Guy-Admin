@@ -2169,6 +2169,7 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- fix(deps): Revert @sentry/nextjs to 10.38.0 (unblock dev deploys) ([#574](https://github.com/A-Guy-educ/A-Guy-Admin/pull/574)) — @aguyshayb
 - feat(tiers): Default llmTokensLimit to 1.5M on new users ([#573](https://github.com/A-Guy-educ/A-Guy-Admin/pull/573)) — @aguyshayb
 - fix(editor): Table column add + geometry label sizes + line label default ([#572](https://github.com/A-Guy-educ/A-Guy-Admin/pull/572)) — @aguyshayb
 - chore(deps-dev): bump @testing-library/jest-dom from 6.9.1 to 7.0.1 ([#556](https://github.com/A-Guy-educ/A-Guy-Admin/pull/556)) — @dependabot[bot]
