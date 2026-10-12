@@ -114,6 +114,7 @@ export const Transactions: CollectionConfig = {
       options: [
         { label: 'Stripe', value: 'stripe' },
         { label: 'PayPal', value: 'paypal' },
+        { label: 'Tranzilla', value: 'tranzilla' },
       ],
       index: true,
       admin: {

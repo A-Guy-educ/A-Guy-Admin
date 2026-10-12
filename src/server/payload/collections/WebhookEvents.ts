@@ -43,7 +43,7 @@ export const WebhookEvents: CollectionConfig = {
     },
   ],
   fields: [
-    // Payment provider ('stripe' | 'paypal')
+    // Payment provider ('stripe' | 'paypal' | 'tranzilla')
     {
       name: 'provider',
       type: 'select',
@@ -51,6 +51,7 @@ export const WebhookEvents: CollectionConfig = {
       options: [
         { label: 'Stripe', value: 'stripe' },
         { label: 'PayPal', value: 'paypal' },
+        { label: 'Tranzilla', value: 'tranzilla' },
       ],
       index: true,
       admin: {

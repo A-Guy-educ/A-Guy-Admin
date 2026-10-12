@@ -21,6 +21,7 @@ schema-testing/
 blob.md
 *.token
 credentials.md
+tranzilla.md
 
 public/robots.txt
 public/sitemap*.xml
