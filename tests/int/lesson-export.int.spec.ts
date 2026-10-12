@@ -1,13 +1,11 @@
 /**
- * Integration test: lesson export endpoint (canonical format).
+ * Integration test: lesson export endpoint (v1 plain-text format).
  *
  * Verifies:
- * 1. Lesson is exported in canonical format with class, lesson_number, topic
- * 2. Exercises appear in canonical format with exercise_number, level, exercise_content
- * 3. Exercise content has data and sections matching the block structure
- * 4. No internal fields (id, _id, __v, slug, origin, createdBy, tenant, etc.) in output
- * 5. 401 for unauthenticated, 403 for non-admin, 404 for missing lesson
- * 6. Empty exercises[] for lesson with no exercises
+ * 1. Admin GET returns text/plain with a .txt attachment filename
+ * 2. Emitted text round-trips through parseTextLesson (lesson name + exercise count match)
+ * 3. 401 for unauthenticated, 403 for non-admin, 404 for missing lesson
+ * 4. Empty-exercise lesson emits just the lesson header (no exercise blocks)
  *
  * The endpoint is exercised via Payload's local API to keep the test
  * focused on data behavior, matching the project's other integration tests.
@@ -18,6 +16,7 @@ import config from '@payload-config'
 
 import { getDefaultTenantSlug } from '@/server/repos/tenant/get-default-tenant'
 import { exportLessonEndpoint } from '@/server/payload/endpoints/lessons/export'
+import { parseTextLesson } from '@/server/services/text-lesson-import/parse-text'
 
 async function ensureDefaultTenant(payload: Payload): Promise<string> {
   const slug = getDefaultTenantSlug()
@@ -172,7 +171,7 @@ describe('Lesson export endpoint', () => {
     await payload.db?.destroy?.()
   })
 
-  it('exports lesson in canonical format with class, lesson_number, topic, exercises', async () => {
+  it('exports lesson as v1 plain text that round-trips through the parser', async () => {
     const mockReq = {
       user: { id: 'admin', role: 'admin' },
       payload,
@@ -181,48 +180,22 @@ describe('Lesson export endpoint', () => {
     } as unknown as Parameters<typeof exportLessonEndpoint>[0]
     const res = await exportLessonEndpoint(mockReq)
     expect(res.status).toBe(200)
+    expect(res.headers.get('Content-Type')).toMatch(/^text\/plain/)
+    expect(res.headers.get('Content-Disposition')).toMatch(/filename="[^"]+\.txt"/)
 
-    const body = await (res as Response).json()
+    const body = await (res as Response).text()
+    expect(typeof body).toBe('string')
+    expect(body.length).toBeGreaterThan(0)
+    // Lesson header + one exercise block per exercise. The v1 parser accepts
+    // `תרגיל N` headers without a `<category>:` prefix, so three empty
+    // exercises still parse as three exercises.
+    expect(body).toContain('שם השיעור -')
+    expect(body).toContain('תרגיל 1')
+    expect(body).toContain('תרגיל 3')
 
-    // Canonical top-level structure
-    expect(body).toHaveProperty('class')
-    expect(body).toHaveProperty('lesson_number')
-    expect(body).toHaveProperty('topic')
-    expect(body).toHaveProperty('exercises')
-
-    // Lesson metadata
-    expect(body.lesson_number).toBe('1')
-    expect(body.topic).toMatch(/^Export Lesson \d+$/)
-
-    // Exercises in canonical format
-    expect(body.exercises).toHaveLength(3)
-    const firstExercise = body.exercises[0]
-    expect(firstExercise).toHaveProperty('exercise_number')
-    expect(firstExercise.exercise_number).toBe('1')
-    expect(firstExercise).toHaveProperty('level')
-    expect(firstExercise).toHaveProperty('exercise_content')
-    expect(firstExercise.exercise_content).toHaveProperty('data')
-    expect(firstExercise.exercise_content).toHaveProperty('sections')
-
-    // Data has the canonical wrapper format
-    const data = firstExercise.exercise_content.data
-    expect(data).toHaveProperty('text')
-    expect(data).toHaveProperty('table')
-    expect(data).toHaveProperty('PNG')
-    expect(data).toHaveProperty('svg')
-
-    // No internal lesson fields in the canonical export
-    // (The canonical format doesn't include id, _id, __v, slug, origin, etc.)
-    expect(body).not.toHaveProperty('lesson')
-    // `meta` carries SVG-render diagnostics for the export (rendered count +
-    // per-block failures) — part of the contract since geometry/axis blocks
-    // are rendered to SVG on export.
-    expect(body).toHaveProperty('meta')
-    expect(typeof body.meta.renderedSvgCount).toBe('number')
-    expect(Array.isArray(body.meta.renderFailures)).toBe(true)
-    expect(body.exercises[0]).not.toHaveProperty('id')
-    expect(body.exercises[0]).not.toHaveProperty('createdAt')
-    expect(body.exercises[0]).not.toHaveProperty('updatedAt')
+    const parsed = parseTextLesson(body)
+    expect(parsed.exercises).toHaveLength(3)
+    expect(parsed.lessonName).toMatch(/^Export Lesson \d+$/)
   })
 
   it('returns 404 for non-existent lesson', async () => {
@@ -258,7 +231,7 @@ describe('Lesson export endpoint', () => {
     expect(res.status).toBe(403)
   })
 
-  it('exports lesson with zero exercises cleanly in canonical format', async () => {
+  it('exports lesson with zero exercises as header-only text', async () => {
     const emptyLesson = await payload.create({
       collection: 'lessons',
       data: {
@@ -289,12 +262,11 @@ describe('Lesson export endpoint', () => {
     } as unknown as Parameters<typeof exportLessonEndpoint>[0]
     const res = await exportLessonEndpoint(mockReq)
     expect(res.status).toBe(200)
-    const body = await (res as Response).json()
-    expect(body.exercises).toHaveLength(0)
-    expect(body.lesson_number).toBe('99')
-    // No internal `lesson` wrapper; `meta` (SVG-render diagnostics) is part
-    // of the canonical export contract, present even with zero exercises.
-    expect(body).not.toHaveProperty('lesson')
-    expect(body).toHaveProperty('meta')
+    const body = await (res as Response).text()
+    // No exercise fences for an empty lesson
+    expect(body).not.toContain('תרגיל 1')
+    expect(body).toContain('שם השיעור -')
+    const parsed = parseTextLesson(body)
+    expect(parsed.exercises).toHaveLength(0)
   })
 })

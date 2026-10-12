@@ -1,39 +1,14 @@
 /**
  * GET /api/lessons/:id/export
  *
- * Exports a lesson and all its ordered exercises as a JSON file in canonical format.
+ * Exports a lesson and all its ordered exercises as a plain-text file in the
+ * v1 format consumed by /admin/lesson-json-import. Round-trips through
+ * parseTextLesson.
  *
  * Access: admin only (401 unauthenticated, 403 non-admin).
  *
- * Response: Content-Type: application/json, Content-Disposition: attachment; filename="<slug>.json"
- *
- * Canonical JSON shape:
- * {
- *   class: "<grade level from course>",
- *   lesson_number: "<lesson.order>",
- *   topic: "<lesson.title>",
- *   exercises: [
- *     {
- *       exercise_number: "<1-indexed position>",
- *       level: "1",
- *       exercise_content: {
- *         data: { text, table, PNG, svg },
- *         sections: [
- *           {
- *             section_data: { text, table, PNG, svg },
- *             question_number: "א/ב/ג/...",
- *             question: { text, table, PNG, svg },
- *             hint: { text, table, PNG, svg },
- *             solution: { text, table, PNG, svg },
- *             full_solution: { text, table, PNG, svg },
- *             correct_option: { text, table, PNG, svg },
- *             wrong_options: [{ text, table, PNG, svg }, ...]
- *           }
- *         ]
- *       }
- *     }
- *   ]
- * }
+ * Response: Content-Type: text/plain; charset=utf-8,
+ * Content-Disposition: attachment; filename="<slug>.txt"
  *
  * No internal fields (id, _id, __v, slug, origin, createdBy, tenant, locale,
  * chapter, course, pipelineVersion, etc.) appear in the output.
@@ -41,13 +16,20 @@
  * @fileType api-route
  * @domain lessons
  * @pattern lesson-export
- * @ai-summary Exports a lesson and its ordered exercises as canonical JSON for admin review or sharing.
+ * @ai-summary Exports a lesson and its ordered exercises as v1 plain text for admin review or re-import.
  */
 import type { PayloadRequest } from 'payload'
 
 import { buildCanonicalLessonExport } from '@/server/services/lesson-export/to-canonical-format'
+import { serializeLessonToV1Text } from '@/server/services/lesson-export/to-text-format'
 
-type BlockEntry = { id: string; blockType: string; exercise?: string; contentPage?: string }
+type BlockEntry = {
+  id: string
+  blockType: string
+  exercise?: string
+  contentPage?: string
+  section?: string
+}
 
 /** Parse blocks from JSON string or array */
 function parseBlocks(raw: unknown): BlockEntry[] {
@@ -166,7 +148,12 @@ export async function exportLessonEndpoint(req: PayloadRequest): Promise<Respons
     }
   }
 
-  // 5) Fetch exercises in order
+  // 5) Fetch exercises in order. We opt out of the aggregate-child-sections
+  //    hook so exercise.content.blocks reflects only the exercise's own intro
+  //    blocks — section content is fetched separately below so each Payload
+  //    section becomes one canonical section (otherwise the hook either
+  //    silently drops section content, or flattens it into exercise.blocks
+  //    losing section boundaries). Same pattern as studio/lesson-tree.ts.
   const exerciseDocs: Record<string, unknown>[] = []
   for (const exId of exerciseIds) {
     try {
@@ -176,6 +163,7 @@ export async function exportLessonEndpoint(req: PayloadRequest): Promise<Respons
         depth: 0,
         overrideAccess: true,
         req,
+        context: { _skipAggregateChildSectionContent: true },
       })) as unknown as Record<string, unknown>
       exerciseDocs.push(ex)
     } catch {
@@ -183,18 +171,67 @@ export async function exportLessonEndpoint(req: PayloadRequest): Promise<Respons
     }
   }
 
-  // 6) Fetch class label (courseLabel) from chapter -> course hierarchy
+  // 6) For each exercise, walk its blocks playlist for sectionRef entries and
+  //    fetch the referenced sections in playlist order. Modern exercises keep
+  //    questions on child sections; legacy exercises have no sectionRef
+  //    entries and the sections map will be empty for them (canonical
+  //    converter falls back to inline-question handling).
+  const sectionsByExerciseId = new Map<string, Record<string, unknown>[]>()
+  const allSectionIds = new Set<string>()
+  const sectionIdsByExerciseId = new Map<string, string[]>()
+  for (const ex of exerciseDocs) {
+    const exId = ex.id as string
+    const playlistIds: string[] = []
+    for (const entry of parseBlocks(ex.blocks)) {
+      if (entry.blockType === 'sectionRef' && typeof entry.section === 'string') {
+        playlistIds.push(entry.section)
+        allSectionIds.add(entry.section)
+      }
+    }
+    sectionIdsByExerciseId.set(exId, playlistIds)
+  }
+
+  if (allSectionIds.size > 0) {
+    const sectionsResult = await req.payload.find({
+      collection: 'sections',
+      where: { id: { in: Array.from(allSectionIds) } },
+      depth: 0,
+      limit: allSectionIds.size,
+      overrideAccess: true,
+      req,
+    })
+    const sectionById = new Map<string, Record<string, unknown>>()
+    for (const s of sectionsResult.docs as unknown as Record<string, unknown>[]) {
+      sectionById.set(s.id as string, s)
+    }
+    for (const [exId, playlistIds] of sectionIdsByExerciseId) {
+      const ordered: Record<string, unknown>[] = []
+      for (const sid of playlistIds) {
+        const doc = sectionById.get(sid)
+        if (doc) ordered.push(doc)
+      }
+      if (ordered.length > 0) sectionsByExerciseId.set(exId, ordered)
+    }
+  }
+
+  // 7) Fetch class label (courseLabel) from chapter -> course hierarchy
   const classLabel = await fetchClassLabel(req, lesson)
 
-  // 7) Build canonical export format
-  const canonicalExport = buildCanonicalLessonExport(lesson, exerciseDocs, classLabel)
+  // 8) Build canonical export format, then serialize to v1 plain text
+  const canonicalExport = buildCanonicalLessonExport(
+    lesson,
+    exerciseDocs,
+    classLabel,
+    sectionsByExerciseId,
+  )
+  const body = serializeLessonToV1Text(canonicalExport)
 
   const slug = (lesson.slug as string) || lessonId
-  const filename = `${slug}.json`
+  const filename = `${slug}.txt`
 
-  return new Response(JSON.stringify(canonicalExport, null, 2), {
+  return new Response(body, {
     headers: {
-      'Content-Type': 'application/json',
+      'Content-Type': 'text/plain; charset=utf-8',
       'Content-Disposition': `attachment; filename="${filename}"`,
     },
   })

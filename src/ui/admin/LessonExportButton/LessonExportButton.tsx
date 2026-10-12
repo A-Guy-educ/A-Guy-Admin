@@ -1,14 +1,16 @@
 'use client'
 
 /**
- * LessonExportButton — admin "Export as JSON" action on the lesson edit view.
+ * LessonExportButton — admin "Export as Text" action on the lesson edit view.
  *
- * Fetches /api/lessons/:id/export and triggers a browser file download.
+ * Fetches /api/lessons/:id/export and triggers a browser file download. The
+ * endpoint returns a .txt file in the v1 format accepted by
+ * /admin/lesson-json-import.
  *
  * @fileType component
  * @domain lessons
  * @pattern admin-action-button
- * @ai-summary Exports a lesson and its exercises as a JSON file for backup or offline review.
+ * @ai-summary Exports a lesson and its exercises as a plain-text file for backup, review, or re-import.
  */
 import React, { useState } from 'react'
 import { useDocumentInfo } from '@payloadcms/ui'
@@ -38,7 +40,7 @@ export const LessonExportAction: React.FC = () => {
       // Extract filename from Content-Disposition header
       const disposition = res.headers.get('Content-Disposition') || ''
       const match = disposition.match(/filename="?([^"\n]+)"?/)
-      const filename = match?.[1] || `${id}.json`
+      const filename = match?.[1] || `${id}.txt`
 
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)
@@ -76,9 +78,9 @@ export const LessonExportAction: React.FC = () => {
           cursor: isExporting ? 'not-allowed' : 'pointer',
           opacity: isExporting ? 0.6 : 1,
         }}
-        title="Export lesson and exercises as JSON"
+        title="Export lesson and exercises as plain text (.txt)"
       >
-        {isExporting ? 'Exporting…' : 'Export as JSON'}
+        {isExporting ? 'Exporting…' : 'Export as Text'}
       </button>
 
       {error && (

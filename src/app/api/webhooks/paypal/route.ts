@@ -20,6 +20,7 @@ import { ObjectId } from 'mongodb'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 
+import { applyTierPurchase } from '@/lib/payment/apply-tier-purchase'
 import { serializePaymentError } from '@/lib/payment/error-log'
 import {
   addCalendarMonths,
@@ -27,6 +28,7 @@ import {
   grantProductEntitlements,
 } from '@/lib/payment/grant-entitlements'
 import { verifyPayPalWebhook } from '@/lib/payment/paypal'
+import { isTierSlug } from '@/lib/tiers/constants'
 // Tier recompute disabled — see parent-folder TIERS.md. Imports kept as
 // comments so revival only needs to uncomment them + the call site below.
 // import { recomputeUserTier } from '@/lib/payment/recompute-tier'
@@ -386,15 +388,28 @@ async function handleEvent(
 
       // Idempotency: skip if entitlements already granted (replayed webhook)
       if (!transaction.entitlementsGrantedAt) {
-        // Grant entitlements BEFORE flipping status to succeeded — fail-safe:
-        // if grant throws we do NOT set status=succeeded so the provider retries.
-        await grantProductEntitlements(
-          transaction.user as string,
-          transaction.product as string,
-          String(transaction.id),
-        )
+        // Tier-subscription purchases (product=null, tierSlug set) take a
+        // different path: write user.currentTier + user.llmTokensLimit via
+        // raw Mongo. See parent-folder TIERS.md.
+        const tierSlug = (transaction as { tierSlug?: unknown }).tierSlug
+        const userId =
+          typeof transaction.user === 'object'
+            ? (transaction.user as { id: string }).id
+            : (transaction.user as string)
 
-        // Grant succeeded — atomically flip status and record the grant timestamp and captureId
+        if (isTierSlug(tierSlug)) {
+          await applyTierPurchase(payload, userId, tierSlug)
+        } else {
+          // Standard product purchase. Grant BEFORE flipping status — fail-safe:
+          // if grant throws we do NOT set status=succeeded so the provider retries.
+          await grantProductEntitlements(
+            userId,
+            transaction.product as string,
+            String(transaction.id),
+          )
+        }
+
+        // Flip status + record grant timestamp + captureId. Same for both paths.
         await payload.update({
           collection: 'transactions',
           id: transaction.id,
@@ -440,19 +455,22 @@ async function handleEvent(
         })
       }
 
-      // Send purchase receipt email — fire-and-forget.
-      // sendPurchaseReceipt handles idempotency (skips if emailSentAt already set),
-      // handles missing email adapter (no-op fallback), and logs errors without throwing.
-      void sendPurchaseReceipt(payload, {
-        transactionId: transaction.id,
-        userId: typeof transaction.user === 'object' ? transaction.user.id : transaction.user,
-        productId:
-          typeof transaction.product === 'object' ? transaction.product.id : transaction.product,
-        providerTransactionId: transaction.providerTransactionId,
-        amount: transaction.amount as number,
-        currency: transaction.currency as string,
-        appliedCoupon: paypalTxMetadata?.appliedCoupon ?? null,
-      })
+      // Send purchase receipt email — fire-and-forget. Skipped for
+      // tier-subscription transactions (product=null); Web sends its own
+      // tier-purchase receipt in that flow.
+      const paypalProductIdForReceipt =
+        typeof transaction.product === 'object' ? transaction.product?.id : transaction.product
+      if (paypalProductIdForReceipt) {
+        void sendPurchaseReceipt(payload, {
+          transactionId: transaction.id,
+          userId: typeof transaction.user === 'object' ? transaction.user.id : transaction.user,
+          productId: paypalProductIdForReceipt,
+          providerTransactionId: transaction.providerTransactionId,
+          amount: transaction.amount as number,
+          currency: transaction.currency as string,
+          appliedCoupon: paypalTxMetadata?.appliedCoupon ?? null,
+        })
+      }
       break
     }
 

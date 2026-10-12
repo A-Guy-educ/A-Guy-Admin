@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.55.0 — 2026-10-12
+
+### Features
+- Lesson export: "Export as JSON" button becomes "Export as Text" and emits the v1 plain-text format accepted by `/admin/lesson-json-import`, so lessons round-trip through the importer (covers MCQ options correct-first, multi-line solutions, section-level SVGs, empty-field omission) (#582)
+- PayPal webhook: tier-subscription captures now branch on `transaction.tierSlug` — writes `user.currentTier` + `user.llmTokensLimit` via raw Mongo instead of attempting a product-entitlement grant, which previously crashed on null product and left the transaction stuck in `pending`; new `src/lib/payment/apply-tier-purchase.ts` helper, Admin is the single PayPal webhook consumer (#581)
+- Transactions: `product` is now optional and a new `tierSlug` select (`free | basic | advanced | premium`, Hebrew-labeled) is added to support tier-subscription purchases; admin list view includes `tierSlug` in `defaultColumns`; `revokeEntitlementsOnRefund` no-ops for null-product transactions (operator handles tier downgrade manually on refund); Stripe + PayPal product-purchase webhooks guard `sendPurchaseReceipt` behind a product-id check (#580)
+
+### Bug Fixes
+- Lesson export: endpoint now opts out of the `afterRead` aggregator and walks `exercise.blocks` for `sectionRef` entries so modern-lesson exports include all section fences (previously the aggregator either flattened sections or no-oped when the exercise had its own intro blocks); section-level intro text is prepended to the first question text because the v1 parser drops bare lines inside a section before the first field marker (#583)
+- Lesson blocks: Quick-view per-row trash + bulk Delete now hard-delete via `DELETE /api/cascade-delete` (exercises) and `DELETE /api/content-pages/{id}` (content pages) so the exercise `lesson` back-ref is cleaned and A-Guy-Web no longer sees orphaned exercises after admin delete; buttons gated on `role === admin` to match the Studio page; page reloads on success to refresh Payload form state and prevent stale pre-delete blocks from being re-persisted on the next Save (#579)
+- Lesson blocks tests: `useAuth` added to the `@payloadcms/ui` mock to unblock `lesson-blocks-field-lazy-load.spec.tsx`; the obsolete `lesson-blocks-field-autosave.spec.ts` is removed because `deleteBlock` no longer touches form state (hits `/api/cascade-delete` and reloads instead)
+
 ## v0.54.0 — 2026-10-11
 
 ### Features
@@ -2181,6 +2193,16 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+## [v0.55.0] - 2026-10-12
+
+- fix(lessons): Export sections from modern lessons, not just exercises ([#583](https://github.com/A-Guy-educ/A-Guy-Admin/pull/583)) — @aguyshayb
+- feat(lessons): Export lesson as v1 plain text instead of JSON ([#582](https://github.com/A-Guy-educ/A-Guy-Admin/pull/582)) — @aguyshayb
+- feat(paypal): Handle tier-subscription captures in Admin ([#581](https://github.com/A-Guy-educ/A-Guy-Admin/pull/581)) — @aguyshayb
+- fix(lessons): Quick-view delete now hard-deletes exercises and content pages ([#579](https://github.com/A-Guy-educ/A-Guy-Admin/pull/579)) — @aguyshayb
+- feat(transactions): Support tier-subscription purchases (product optional + tierSlug) ([#580](https://github.com/A-Guy-educ/A-Guy-Admin/pull/580)) — @aguyshayb
+## [v0.54.0] - 2026-10-11
+
+- promote: dev -> main (v0.54.0) ([#577](https://github.com/A-Guy-educ/A-Guy-Admin/pull/577)) — @aguyshayb
 - chore: Release v0.54.0 ([#576](https://github.com/A-Guy-educ/A-Guy-Admin/pull/576)) — @aguyshayb
 - feat(editor): Promote notebook toggle; add PDF upload to lesson import ([#575](https://github.com/A-Guy-educ/A-Guy-Admin/pull/575)) — @aguyshayb
 - fix(deps): Revert @sentry/nextjs to 10.38.0 (unblock dev deploys) ([#574](https://github.com/A-Guy-educ/A-Guy-Admin/pull/574)) — @aguyshayb

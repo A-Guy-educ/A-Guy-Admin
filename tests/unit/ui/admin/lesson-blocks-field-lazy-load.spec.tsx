@@ -18,6 +18,11 @@ vi.mock('@payloadcms/ui', () => ({
   // exercises" button; the lazy-load tests don't exercise that button, so
   // returning a fixed id is enough to satisfy the import.
   useDocumentInfo: () => ({ id: 'lesson-under-test' }),
+  // The field gates its hard-delete toolbar buttons on `role === admin`
+  // (same gate the Studio page uses). Default to an admin here so these
+  // tests see the fully-rendered toolbar — individual tests that care
+  // about the non-admin surface can override via vi.mocked().
+  useAuth: () => ({ user: { role: 'admin' } }),
 }))
 
 vi.mock('next/navigation', () => ({

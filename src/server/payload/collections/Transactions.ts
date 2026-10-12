@@ -9,6 +9,7 @@
 
 import type { CollectionConfig } from 'payload'
 
+import { TIER_LABEL_HE, TIER_SLUGS } from '@/lib/tiers/constants'
 import { adminOnly } from '../access/adminOnly'
 import { createdByField } from '../fields/createdBy'
 import { tenantField } from '../fields/tenant'
@@ -32,7 +33,16 @@ export const Transactions: CollectionConfig = {
     description:
       'Transactions are auto-created by payment webhooks and the checkout route. Manual creation is disabled — dangling records break revenue stats, refunds, and the purchases page.',
     useAsTitle: 'createdAt',
-    defaultColumns: ['createdAt', 'user', 'product', 'amount', 'currency', 'status', 'provider'],
+    defaultColumns: [
+      'createdAt',
+      'user',
+      'product',
+      'tierSlug',
+      'amount',
+      'currency',
+      'status',
+      'provider',
+    ],
     listSearchableFields: ['providerTransactionId'],
     group: 'Payments',
     components: {
@@ -63,15 +73,36 @@ export const Transactions: CollectionConfig = {
       },
     },
 
-    // Product being purchased
+    // Product being purchased. Optional — tier-subscription purchases (see
+    // tierSlug below) write transactions with product=null because tiers are
+    // a hardcoded enum, not DB rows. Exactly one of (product, tierSlug) is
+    // expected to be set; enforcement is at the Web write-site, not here.
     {
       name: 'product',
       type: 'relationship',
       relationTo: 'products',
-      required: true,
       index: true,
       admin: {
-        description: 'Product being purchased',
+        description:
+          'Product being purchased (null for tier-subscription purchases — see tierSlug)',
+      },
+    },
+
+    // Tier slug for tier-subscription purchases. Set when the transaction
+    // represents a tier upgrade (e.g. free → basic). Mutually exclusive with
+    // `product` in practice. Options mirror src/lib/tiers/constants.ts; see
+    // parent-folder TIERS.md for the full tier contract.
+    {
+      name: 'tierSlug',
+      type: 'select',
+      options: TIER_SLUGS.map((slug) => ({
+        label: TIER_LABEL_HE[slug],
+        value: slug,
+      })),
+      index: true,
+      admin: {
+        description:
+          'Tier purchased (set for tier-subscription transactions where product is null).',
       },
     },
 

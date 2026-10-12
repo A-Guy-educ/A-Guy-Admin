@@ -53,6 +53,19 @@ export const TIER_AI_COST_CAP_ILS: Record<TierSlug, number | null> = {
   premium: null,
 }
 
+/**
+ * Monthly LLM token cap per tier. `null` = no hard cap (fair-use only).
+ * Written to `user.llmTokensLimit` when a tier purchase captures (see
+ * applyTierPurchase). Mirror of A-Guy-Web/src/lib/tiers/constants.ts —
+ * keep in sync. Values are tokens, not ILS.
+ */
+export const TIER_LLM_TOKEN_CAP_MONTHLY: Record<TierSlug, number | null> = {
+  free: 1_500_000,
+  basic: 15_000_000,
+  advanced: 30_000_000,
+  premium: null,
+}
+
 export function isTierSlug(value: unknown): value is TierSlug {
   return typeof value === 'string' && (TIER_SLUGS as readonly string[]).includes(value)
 }

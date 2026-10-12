@@ -64,6 +64,22 @@ export const revokeEntitlementsOnRefund: CollectionAfterChangeHook = async ({
     return doc
   }
 
+  // Tier-subscription transactions (product=null, tierSlug set) carry no
+  // product-based entitlements to revoke — the "entitlement" is the user's
+  // currentTier, which is admin-owned (see parent-folder TIERS.md). Log for
+  // ops visibility and skip; an operator decides whether to downgrade the
+  // tier when they process the refund.
+  const productId =
+    typeof doc.product === 'string' ? doc.product : (doc.product as { id?: string } | null)?.id
+  if (!productId) {
+    const tierSlug = (doc as { tierSlug?: string }).tierSlug
+    req.payload.logger.info(
+      { transactionId: doc.id, userId, tierSlug },
+      'revokeEntitlementsOnRefund: tier-subscription refund — skipping entitlement revoke (operator handles tier downgrade manually)',
+    )
+    return doc
+  }
+
   try {
     await revokeProductEntitlements({
       payload: req.payload,
