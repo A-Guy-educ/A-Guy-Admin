@@ -440,19 +440,22 @@ async function handleEvent(
         })
       }
 
-      // Send purchase receipt email — fire-and-forget.
-      // sendPurchaseReceipt handles idempotency (skips if emailSentAt already set),
-      // handles missing email adapter (no-op fallback), and logs errors without throwing.
-      void sendPurchaseReceipt(payload, {
-        transactionId: transaction.id,
-        userId: typeof transaction.user === 'object' ? transaction.user.id : transaction.user,
-        productId:
-          typeof transaction.product === 'object' ? transaction.product.id : transaction.product,
-        providerTransactionId: transaction.providerTransactionId,
-        amount: transaction.amount as number,
-        currency: transaction.currency as string,
-        appliedCoupon: paypalTxMetadata?.appliedCoupon ?? null,
-      })
+      // Send purchase receipt email — fire-and-forget. Skipped for
+      // tier-subscription transactions (product=null); Web sends its own
+      // tier-purchase receipt in that flow.
+      const paypalProductIdForReceipt =
+        typeof transaction.product === 'object' ? transaction.product?.id : transaction.product
+      if (paypalProductIdForReceipt) {
+        void sendPurchaseReceipt(payload, {
+          transactionId: transaction.id,
+          userId: typeof transaction.user === 'object' ? transaction.user.id : transaction.user,
+          productId: paypalProductIdForReceipt,
+          providerTransactionId: transaction.providerTransactionId,
+          amount: transaction.amount as number,
+          currency: transaction.currency as string,
+          appliedCoupon: paypalTxMetadata?.appliedCoupon ?? null,
+        })
+      }
       break
     }
 
