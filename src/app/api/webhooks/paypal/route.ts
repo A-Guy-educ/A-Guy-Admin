@@ -20,6 +20,7 @@ import { ObjectId } from 'mongodb'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 
+import { applyTierPurchase } from '@/lib/payment/apply-tier-purchase'
 import { serializePaymentError } from '@/lib/payment/error-log'
 import {
   addCalendarMonths,
@@ -27,6 +28,7 @@ import {
   grantProductEntitlements,
 } from '@/lib/payment/grant-entitlements'
 import { verifyPayPalWebhook } from '@/lib/payment/paypal'
+import { isTierSlug } from '@/lib/tiers/constants'
 // Tier recompute disabled — see parent-folder TIERS.md. Imports kept as
 // comments so revival only needs to uncomment them + the call site below.
 // import { recomputeUserTier } from '@/lib/payment/recompute-tier'
@@ -386,15 +388,28 @@ async function handleEvent(
 
       // Idempotency: skip if entitlements already granted (replayed webhook)
       if (!transaction.entitlementsGrantedAt) {
-        // Grant entitlements BEFORE flipping status to succeeded — fail-safe:
-        // if grant throws we do NOT set status=succeeded so the provider retries.
-        await grantProductEntitlements(
-          transaction.user as string,
-          transaction.product as string,
-          String(transaction.id),
-        )
+        // Tier-subscription purchases (product=null, tierSlug set) take a
+        // different path: write user.currentTier + user.llmTokensLimit via
+        // raw Mongo. See parent-folder TIERS.md.
+        const tierSlug = (transaction as { tierSlug?: unknown }).tierSlug
+        const userId =
+          typeof transaction.user === 'object'
+            ? (transaction.user as { id: string }).id
+            : (transaction.user as string)
 
-        // Grant succeeded — atomically flip status and record the grant timestamp and captureId
+        if (isTierSlug(tierSlug)) {
+          await applyTierPurchase(payload, userId, tierSlug)
+        } else {
+          // Standard product purchase. Grant BEFORE flipping status — fail-safe:
+          // if grant throws we do NOT set status=succeeded so the provider retries.
+          await grantProductEntitlements(
+            userId,
+            transaction.product as string,
+            String(transaction.id),
+          )
+        }
+
+        // Flip status + record grant timestamp + captureId. Same for both paths.
         await payload.update({
           collection: 'transactions',
           id: transaction.id,
