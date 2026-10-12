@@ -2193,6 +2193,7 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- promote: dev -> main (v0.55.0) ([#585](https://github.com/A-Guy-educ/A-Guy-Admin/pull/585)) — @aguyshayb
 ## [v0.55.0] - 2026-10-12
 
 - fix(lessons): Export sections from modern lessons, not just exercises ([#583](https://github.com/A-Guy-educ/A-Guy-Admin/pull/583)) — @aguyshayb
