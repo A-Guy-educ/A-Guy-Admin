@@ -2182,9 +2182,13 @@ export interface Transaction {
    */
   user: string | User;
   /**
-   * Product being purchased
+   * Product being purchased (null for tier-subscription purchases — see tierSlug)
    */
-  product: string | Product;
+  product?: (string | null) | Product;
+  /**
+   * Tier purchased (set for tier-subscription transactions where product is null).
+   */
+  tierSlug?: ('free' | 'basic' | 'advanced' | 'premium') | null;
   /**
    * Payment provider used for this transaction
    */
@@ -5273,6 +5277,7 @@ export interface TransactionsSelect<T extends boolean = true> {
   tenant?: T;
   user?: T;
   product?: T;
+  tierSlug?: T;
   provider?: T;
   providerTransactionId?: T;
   paymentIntentId?: T;
