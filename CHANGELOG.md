@@ -2181,6 +2181,7 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- feat(transactions): Support tier-subscription purchases (product optional + tierSlug) ([#580](https://github.com/A-Guy-educ/A-Guy-Admin/pull/580)) — @aguyshayb
 ## [v0.54.0] - 2026-10-11
 
 - promote: dev -> main (v0.54.0) ([#577](https://github.com/A-Guy-educ/A-Guy-Admin/pull/577)) — @aguyshayb
