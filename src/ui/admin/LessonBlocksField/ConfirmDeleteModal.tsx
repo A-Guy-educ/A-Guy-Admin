@@ -4,26 +4,42 @@ import React, { useEffect, useRef } from 'react'
 import { Trash2, X } from 'lucide-react'
 
 interface ConfirmDeleteModalProps {
-  count: number
+  exerciseCount: number
+  contentPageCount: number
+  deleting?: boolean
+  error?: string | null
   onCancel: () => void
   onConfirm: () => void
 }
 
+function formatSummary(exerciseCount: number, contentPageCount: number): string {
+  const parts: string[] = []
+  if (exerciseCount > 0)
+    parts.push(`${exerciseCount} exercise${exerciseCount === 1 ? '' : 's'} (and their sections)`)
+  if (contentPageCount > 0)
+    parts.push(`${contentPageCount} content page${contentPageCount === 1 ? '' : 's'}`)
+  return parts.join(' + ')
+}
+
 export const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({
-  count,
+  exerciseCount,
+  contentPageCount,
+  deleting = false,
+  error = null,
   onCancel,
   onConfirm,
 }) => {
   const dialogRef = useRef<HTMLDivElement>(null)
   const previouslyFocusedRef = useRef<Element | null>(null)
+  const total = exerciseCount + contentPageCount
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onCancel()
+      if (e.key === 'Escape' && !deleting) onCancel()
     }
     document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
-  }, [onCancel])
+  }, [onCancel, deleting])
 
   useEffect(() => {
     previouslyFocusedRef.current = document.activeElement
@@ -39,8 +55,9 @@ export const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({
       className="import-exercises-overlay"
       role="dialog"
       aria-modal="true"
-      aria-label="Confirm removal"
+      aria-label="Confirm permanent delete"
       onClick={(e) => {
+        if (deleting) return
         if (e.target === e.currentTarget) onCancel()
       }}
     >
@@ -52,12 +69,13 @@ export const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({
       >
         <header className="import-exercises-header">
           <h3 className="import-exercises-title">
-            <Trash2 size={16} /> Remove selected from playlist
+            <Trash2 size={16} /> Permanently delete selected
           </h3>
           <button
             type="button"
             className="import-exercises-close"
             onClick={onCancel}
+            disabled={deleting}
             aria-label="Close"
             title="Close"
           >
@@ -66,18 +84,45 @@ export const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({
         </header>
 
         <p className="import-exercises-hint">
-          Are you sure you want to remove <strong>{count}</strong> {count === 1 ? 'item' : 'items'}{' '}
-          from this lesson&apos;s playlist? The underlying exercises and content pages will still
-          exist — you&apos;re only removing them from this lesson&apos;s ordering. Save the lesson
-          to persist the change.
+          You&apos;re about to permanently delete{' '}
+          <strong>{formatSummary(exerciseCount, contentPageCount)}</strong>. This also removes each
+          item from this lesson&apos;s playlist and <strong>can&apos;t be undone</strong>. To move
+          items to a different lesson instead, use <em>Transfer</em>.
         </p>
 
+        {error && (
+          <div
+            role="alert"
+            style={{
+              marginTop: 8,
+              padding: '8px 12px',
+              fontSize: 12,
+              color: 'var(--theme-error-700, #b91c1c)',
+              background: 'var(--theme-error-50, #fef2f2)',
+              border: '1px solid var(--theme-error-200, #fecaca)',
+              borderRadius: 4,
+            }}
+          >
+            {error}
+          </div>
+        )}
+
         <footer className="import-exercises-footer">
-          <button type="button" className="import-exercises-secondary" onClick={onCancel}>
+          <button
+            type="button"
+            className="import-exercises-secondary"
+            onClick={onCancel}
+            disabled={deleting}
+          >
             Cancel
           </button>
-          <button type="button" className="confirm-delete-primary" onClick={onConfirm}>
-            Remove {count}
+          <button
+            type="button"
+            className="confirm-delete-primary"
+            onClick={onConfirm}
+            disabled={deleting || total === 0}
+          >
+            {deleting ? 'Deleting…' : `Delete ${total}`}
           </button>
         </footer>
       </div>

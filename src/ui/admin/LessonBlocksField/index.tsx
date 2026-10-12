@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useDocumentInfo, useField, useForm } from '@payloadcms/ui'
+import { useAuth, useDocumentInfo, useField } from '@payloadcms/ui'
 import { useRouter } from 'next/navigation'
 import {
   GripVertical,
@@ -15,11 +15,41 @@ import {
   ArrowRightLeft,
 } from 'lucide-react'
 
+import { AccountRole } from '@/infra/auth/roles'
 import { ImportExercisesModal } from './ImportExercisesModal'
 import { TransferExercisesModal } from './TransferExercisesModal'
 import { ConfirmDeleteModal } from './ConfirmDeleteModal'
 import { InlineExerciseEditor } from './InlineExerciseEditor'
 import './inline-exercise-editor.css'
+
+type RefBlockType = 'exerciseRef' | 'contentPageRef'
+
+/** Hard-delete a block's referenced doc.
+ *  - exerciseRef → cascade-delete (removes child sections + fires exercise
+ *    afterDelete hook, which prunes lesson.blocks).
+ *  - contentPageRef → plain REST DELETE (content-pages afterDelete hook
+ *    prunes lesson.blocks the same way).
+ *  The lesson.blocks sync happens server-side via hooks, so the caller
+ *  should reload the lesson doc after this resolves — the Payload form
+ *  state's copy of blocks is now stale.
+ */
+async function deleteBlockRef({
+  refId,
+  blockType,
+}: {
+  refId: string
+  blockType: RefBlockType
+}): Promise<void> {
+  const url =
+    blockType === 'exerciseRef'
+      ? `/api/cascade-delete?collection=exercises&id=${encodeURIComponent(refId)}`
+      : `/api/content-pages/${encodeURIComponent(refId)}`
+  const res = await fetch(url, { method: 'DELETE', credentials: 'include' })
+  if (!res.ok) {
+    const body = await res.text().catch(() => '')
+    throw new Error(body || `Delete failed: ${res.status}`)
+  }
+}
 
 function generateBlockId(): string {
   return Math.random().toString(36).slice(2, 14)
@@ -106,10 +136,15 @@ type BlocksMode = 'full' | 'quick'
 
 const LessonBlocksList: React.FC<{ path: string; mode: BlocksMode }> = ({ path, mode }) => {
   const { value, setValue } = useField<string>({ path })
-  const { setModified } = useForm()
   const router = useRouter()
   const { id: lessonDocId } = useDocumentInfo()
   const lessonId = lessonDocId != null ? String(lessonDocId) : ''
+  const { user } = useAuth()
+  // Hard-delete hits /api/cascade-delete which is admin-only — mirror the
+  // Studio page's gate ([StudioExerciseCard.tsx]) so AdvancedContentEditors
+  // don't click into a 403. The per-row trash + bulk Delete share this gate.
+  const role = user && 'role' in user ? (user as { role?: unknown }).role : null
+  const canHardDelete = role === AccountRole.Admin
 
   const blocks: RawBlock[] = useMemo(() => parseBlocks(value), [value])
   const activationRef = useRef<HTMLDivElement>(null)
@@ -118,6 +153,8 @@ const LessonBlocksList: React.FC<{ path: string; mode: BlocksMode }> = ({ path, 
   const [isTransferOpen, setIsTransferOpen] = useState(false)
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false)
   const [selectedBlockIds, setSelectedBlockIds] = useState<Set<string>>(new Set())
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   // Drag-and-drop state
   const [dragIndex, setDragIndex] = useState<number | null>(null)
@@ -256,16 +293,33 @@ const LessonBlocksList: React.FC<{ path: string; mode: BlocksMode }> = ({ path, 
     [blocks, updateBlocks],
   )
 
+  // Hard delete: the referenced exercise or content page gets removed from
+  // the DB and its afterDelete hook syncs lesson.blocks. We reload after so
+  // the Payload form state picks up the fresh lesson doc — otherwise the
+  // form keeps the pre-delete `blocks` string and the next Save would
+  // re-insert the (now-dangling) ref back into lesson.blocks.
   const deleteBlock = useCallback(
-    (index: number) => {
-      const next = [...blocks]
-      next.splice(index, 1)
-      updateBlocks(next)
-      if (setModified) {
-        setModified(true)
+    async (index: number) => {
+      if (!canHardDelete) return
+      const block = blocks[index]
+      if (!block) return
+      const blockType = block.blockType as RefBlockType
+      if (blockType !== 'exerciseRef' && blockType !== 'contentPageRef') return
+      const refId = extractId(blockType === 'exerciseRef' ? block.exercise : block.contentPage)
+      if (!refId) return
+      const label = blockType === 'exerciseRef' ? 'exercise and all its sections' : 'content page'
+      if (!window.confirm(`Permanently delete this ${label}? This can't be undone.`)) return
+      try {
+        setIsDeleting(true)
+        setDeleteError(null)
+        await deleteBlockRef({ refId, blockType })
+        window.location.reload()
+      } catch (err) {
+        setDeleteError(err instanceof Error ? err.message : 'Delete failed')
+        setIsDeleting(false)
       }
     },
-    [blocks, updateBlocks, setModified],
+    [blocks, canHardDelete],
   )
 
   // Prune selection: if the underlying blocks array changes (reorder, delete,
@@ -306,17 +360,64 @@ const LessonBlocksList: React.FC<{ path: string; mode: BlocksMode }> = ({ path, 
     })
   }, [])
 
-  const bulkDeleteSelected = useCallback(() => {
+  const selectedBlockCounts = useMemo(() => {
+    let exercises = 0
+    let contentPages = 0
+    for (const block of blocks) {
+      const id = typeof block.id === 'string' ? block.id : null
+      if (!id || !selectedBlockIds.has(id)) continue
+      if (block.blockType === 'exerciseRef') exercises += 1
+      else if (block.blockType === 'contentPageRef') contentPages += 1
+    }
+    return { exercises, contentPages }
+  }, [blocks, selectedBlockIds])
+
+  // Serial loop (not Promise.all) so one 500 doesn't cancel the others and
+  // we can report partial progress. Each successful delete syncs
+  // lesson.blocks server-side; we hard-reload at the end to pick up the
+  // fresh lesson doc regardless of partial failures.
+  const bulkDeleteSelected = useCallback(async () => {
+    if (!canHardDelete) return
     if (selectedBlockIds.size === 0) return
-    const next = blocks.filter((b) => {
-      const id = typeof b.id === 'string' ? b.id : null
-      return !(id && selectedBlockIds.has(id))
-    })
-    updateBlocks(next)
-    setSelectedBlockIds(new Set())
-    if (setModified) setModified(true)
-    setIsConfirmDeleteOpen(false)
-  }, [blocks, selectedBlockIds, updateBlocks, setModified])
+    const targets: Array<{ refId: string; blockType: RefBlockType }> = []
+    for (const block of blocks) {
+      const id = typeof block.id === 'string' ? block.id : null
+      if (!id || !selectedBlockIds.has(id)) continue
+      const blockType = block.blockType as RefBlockType
+      if (blockType !== 'exerciseRef' && blockType !== 'contentPageRef') continue
+      const refId = extractId(blockType === 'exerciseRef' ? block.exercise : block.contentPage)
+      if (!refId) continue
+      targets.push({ refId, blockType })
+    }
+    if (targets.length === 0) return
+
+    setIsDeleting(true)
+    setDeleteError(null)
+    let succeeded = 0
+    const failures: string[] = []
+    for (const target of targets) {
+      try {
+        await deleteBlockRef(target)
+        succeeded += 1
+      } catch (err) {
+        failures.push(err instanceof Error ? err.message : 'Unknown error')
+      }
+    }
+
+    if (failures.length === 0) {
+      window.location.reload()
+      return
+    }
+
+    // Partial failure — surface the error, but still reload so the UI
+    // reflects which items *did* delete. Delay briefly so the user sees
+    // the message before the reload wipes it.
+    setDeleteError(
+      `Deleted ${succeeded}/${targets.length}. ${failures.length} failed: ${failures.slice(0, 3).join('; ')}${failures.length > 3 ? '…' : ''}`,
+    )
+    setIsDeleting(false)
+    window.setTimeout(() => window.location.reload(), 2500)
+  }, [blocks, selectedBlockIds, canHardDelete])
 
   const selectedRefsForTransfer = useMemo(() => {
     const refs: Array<{ refId: string; blockType: 'exerciseRef' | 'contentPageRef' }> = []
@@ -397,36 +498,38 @@ const LessonBlocksList: React.FC<{ path: string; mode: BlocksMode }> = ({ path, 
         </label>
         {lessonId && (
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            <button
-              type="button"
-              onClick={() => setIsConfirmDeleteOpen(true)}
-              disabled={selectedBlockIds.size === 0}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 4,
-                padding: '4px 10px',
-                fontSize: 12,
-                fontWeight: 500,
-                color:
+            {canHardDelete && (
+              <button
+                type="button"
+                onClick={() => setIsConfirmDeleteOpen(true)}
+                disabled={selectedBlockIds.size === 0}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  padding: '4px 10px',
+                  fontSize: 12,
+                  fontWeight: 500,
+                  color:
+                    selectedBlockIds.size === 0
+                      ? 'var(--theme-elevation-400)'
+                      : 'var(--theme-error-600, #dc2626)',
+                  background: 'var(--theme-elevation-0)',
+                  border: '1px solid var(--theme-elevation-200)',
+                  borderRadius: 4,
+                  cursor: selectedBlockIds.size === 0 ? 'not-allowed' : 'pointer',
+                  opacity: selectedBlockIds.size === 0 ? 0.6 : 1,
+                }}
+                title={
                   selectedBlockIds.size === 0
-                    ? 'var(--theme-elevation-400)'
-                    : 'var(--theme-error-600, #dc2626)',
-                background: 'var(--theme-elevation-0)',
-                border: '1px solid var(--theme-elevation-200)',
-                borderRadius: 4,
-                cursor: selectedBlockIds.size === 0 ? 'not-allowed' : 'pointer',
-                opacity: selectedBlockIds.size === 0 ? 0.6 : 1,
-              }}
-              title={
-                selectedBlockIds.size === 0
-                  ? 'Select items with the checkboxes to enable'
-                  : `Remove ${selectedBlockIds.size} selected item(s) from this lesson's playlist`
-              }
-            >
-              <Trash2 size={12} /> Delete
-              {selectedBlockIds.size > 0 ? ` (${selectedBlockIds.size})` : ''}
-            </button>
+                    ? 'Select items with the checkboxes to enable'
+                    : `Permanently delete ${selectedBlockIds.size} selected item(s). This can't be undone.`
+                }
+              >
+                <Trash2 size={12} /> Delete
+                {selectedBlockIds.size > 0 ? ` (${selectedBlockIds.size})` : ''}
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setIsTransferOpen(true)}
@@ -490,6 +593,45 @@ const LessonBlocksList: React.FC<{ path: string; mode: BlocksMode }> = ({ path, 
           : 'Ordered playlist of exercises and content pages. Defines the lesson flow.'}
       </p>
 
+      {/* Per-row delete errors live here — bulk-delete errors surface in the
+          ConfirmDeleteModal and don't duplicate into this banner because the
+          modal auto-reloads on partial failure anyway. */}
+      {deleteError && !isConfirmDeleteOpen && (
+        <div
+          role="alert"
+          style={{
+            marginBottom: 12,
+            padding: '8px 12px',
+            fontSize: 12,
+            color: 'var(--theme-error-700, #b91c1c)',
+            background: 'var(--theme-error-50, #fef2f2)',
+            border: '1px solid var(--theme-error-200, #fecaca)',
+            borderRadius: 4,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 8,
+          }}
+        >
+          <span>Delete failed: {deleteError}</span>
+          <button
+            type="button"
+            onClick={() => setDeleteError(null)}
+            style={{
+              padding: '2px 8px',
+              fontSize: 11,
+              background: 'transparent',
+              border: '1px solid var(--theme-error-300, #fca5a5)',
+              borderRadius: 3,
+              cursor: 'pointer',
+              color: 'inherit',
+            }}
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
       {isImportOpen && lessonId && (
         <ImportExercisesModal
           lessonId={lessonId}
@@ -530,8 +672,15 @@ const LessonBlocksList: React.FC<{ path: string; mode: BlocksMode }> = ({ path, 
 
       {isConfirmDeleteOpen && (
         <ConfirmDeleteModal
-          count={selectedBlockIds.size}
-          onCancel={() => setIsConfirmDeleteOpen(false)}
+          exerciseCount={selectedBlockCounts.exercises}
+          contentPageCount={selectedBlockCounts.contentPages}
+          deleting={isDeleting}
+          error={deleteError}
+          onCancel={() => {
+            if (isDeleting) return
+            setIsConfirmDeleteOpen(false)
+            setDeleteError(null)
+          }}
           onConfirm={bulkDeleteSelected}
         />
       )}
@@ -784,21 +933,28 @@ const LessonBlocksList: React.FC<{ path: string; mode: BlocksMode }> = ({ path, 
                 >
                   <Pencil size={14} />
                 </button>
-                <button
-                  type="button"
-                  onClick={() => deleteBlock(row.index)}
-                  style={{
-                    padding: 4,
-                    border: 'none',
-                    background: 'transparent',
-                    cursor: 'pointer',
-                    opacity: 0.6,
-                    color: 'var(--theme-error-500, #ef4444)',
-                  }}
-                  title="Delete"
-                >
-                  <Trash2 size={14} />
-                </button>
+                {canHardDelete && (
+                  <button
+                    type="button"
+                    onClick={() => deleteBlock(row.index)}
+                    disabled={isDeleting}
+                    style={{
+                      padding: 4,
+                      border: 'none',
+                      background: 'transparent',
+                      cursor: isDeleting ? 'not-allowed' : 'pointer',
+                      opacity: isDeleting ? 0.3 : 0.6,
+                      color: 'var(--theme-error-500, #ef4444)',
+                    }}
+                    title={
+                      row.blockType === 'exerciseRef'
+                        ? 'Permanently delete this exercise and its sections'
+                        : 'Permanently delete this content page'
+                    }
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                )}
               </div>
 
               {/* Inline exercise editor (only for exercise blocks, and only in full mode) */}
