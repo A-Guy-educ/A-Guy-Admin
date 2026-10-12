@@ -2181,6 +2181,7 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- feat(lessons): Export lesson as v1 plain text instead of JSON ([#582](https://github.com/A-Guy-educ/A-Guy-Admin/pull/582)) — @aguyshayb
 - feat(paypal): Handle tier-subscription captures in Admin ([#581](https://github.com/A-Guy-educ/A-Guy-Admin/pull/581)) — @aguyshayb
 - fix(lessons): Quick-view delete now hard-deletes exercises and content pages ([#579](https://github.com/A-Guy-educ/A-Guy-Admin/pull/579)) — @aguyshayb
 - feat(transactions): Support tier-subscription purchases (product optional + tierSlug) ([#580](https://github.com/A-Guy-educ/A-Guy-Admin/pull/580)) — @aguyshayb
