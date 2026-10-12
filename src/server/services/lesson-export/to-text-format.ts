@@ -69,7 +69,18 @@ function emitSection(exerciseNumber: string, section: CanonicalSection, out: str
     out.push(section.section_data.svg)
   }
 
-  emitField('תוכן השאלה', section.question.text, out)
+  // The v1 parser ignores bare lines inside a section before the first
+  // `* field:` marker, so section-level intro text would be lost if emitted
+  // on its own. Prepend it to the question text (separated by a blank line)
+  // to keep the round-trip lossless.
+  const introText = section.section_data.text?.trim() ?? ''
+  const questionText = section.question.text?.trim() ?? ''
+  const combinedQuestion = introText
+    ? questionText
+      ? `${introText}\n\n${questionText}`
+      : introText
+    : questionText
+  emitField('תוכן השאלה', combinedQuestion, out)
 
   const correctText = section.correct_option.text?.trim() ?? ''
   const wrongTexts = section.wrong_options.map((o) => o.text?.trim() ?? '').filter(Boolean)
