@@ -1,39 +1,14 @@
 /**
  * GET /api/lessons/:id/export
  *
- * Exports a lesson and all its ordered exercises as a JSON file in canonical format.
+ * Exports a lesson and all its ordered exercises as a plain-text file in the
+ * v1 format consumed by /admin/lesson-json-import. Round-trips through
+ * parseTextLesson.
  *
  * Access: admin only (401 unauthenticated, 403 non-admin).
  *
- * Response: Content-Type: application/json, Content-Disposition: attachment; filename="<slug>.json"
- *
- * Canonical JSON shape:
- * {
- *   class: "<grade level from course>",
- *   lesson_number: "<lesson.order>",
- *   topic: "<lesson.title>",
- *   exercises: [
- *     {
- *       exercise_number: "<1-indexed position>",
- *       level: "1",
- *       exercise_content: {
- *         data: { text, table, PNG, svg },
- *         sections: [
- *           {
- *             section_data: { text, table, PNG, svg },
- *             question_number: "א/ב/ג/...",
- *             question: { text, table, PNG, svg },
- *             hint: { text, table, PNG, svg },
- *             solution: { text, table, PNG, svg },
- *             full_solution: { text, table, PNG, svg },
- *             correct_option: { text, table, PNG, svg },
- *             wrong_options: [{ text, table, PNG, svg }, ...]
- *           }
- *         ]
- *       }
- *     }
- *   ]
- * }
+ * Response: Content-Type: text/plain; charset=utf-8,
+ * Content-Disposition: attachment; filename="<slug>.txt"
  *
  * No internal fields (id, _id, __v, slug, origin, createdBy, tenant, locale,
  * chapter, course, pipelineVersion, etc.) appear in the output.
@@ -41,11 +16,12 @@
  * @fileType api-route
  * @domain lessons
  * @pattern lesson-export
- * @ai-summary Exports a lesson and its ordered exercises as canonical JSON for admin review or sharing.
+ * @ai-summary Exports a lesson and its ordered exercises as v1 plain text for admin review or re-import.
  */
 import type { PayloadRequest } from 'payload'
 
 import { buildCanonicalLessonExport } from '@/server/services/lesson-export/to-canonical-format'
+import { serializeLessonToV1Text } from '@/server/services/lesson-export/to-text-format'
 
 type BlockEntry = { id: string; blockType: string; exercise?: string; contentPage?: string }
 
@@ -186,15 +162,16 @@ export async function exportLessonEndpoint(req: PayloadRequest): Promise<Respons
   // 6) Fetch class label (courseLabel) from chapter -> course hierarchy
   const classLabel = await fetchClassLabel(req, lesson)
 
-  // 7) Build canonical export format
+  // 7) Build canonical export format, then serialize to v1 plain text
   const canonicalExport = buildCanonicalLessonExport(lesson, exerciseDocs, classLabel)
+  const body = serializeLessonToV1Text(canonicalExport)
 
   const slug = (lesson.slug as string) || lessonId
-  const filename = `${slug}.json`
+  const filename = `${slug}.txt`
 
-  return new Response(JSON.stringify(canonicalExport, null, 2), {
+  return new Response(body, {
     headers: {
-      'Content-Type': 'application/json',
+      'Content-Type': 'text/plain; charset=utf-8',
       'Content-Disposition': `attachment; filename="${filename}"`,
     },
   })
