@@ -98,3 +98,50 @@ latex_examples/
 
 # Kody runtime scratch; durable runtime state and model definitions live in Convex.
 .kody/
+
+# Local-only ad-hoc scripts and scratch outputs — not meant for commit.
+# Timestamped scratch files emitted by one-off backfill / audit scripts.
+scripts/.open-answer-proposals-*.jsonl
+scripts/.fix-text-issues-backup-*.json
+scripts/.strip-lesson-prefix-backup-*.json
+
+# Ad-hoc .mjs/.mts/.ts helpers accumulated during content ops. Listed by name
+# because the repo also tracks legitimate scripts/*.mjs files (fix-changed,
+# upload-*, verify-vector-index-loader) — don't blanket-glob.
+scripts/apply-boss-xlsx.mjs
+scripts/audit-geometry-display-size.mjs
+scripts/backup-exercises-prod.mjs
+scripts/backup-sections-prod.mjs
+scripts/build-lesson-assessment-html.mjs
+scripts/build-lesson-assessment-index.mjs
+scripts/check-frac-diffs.mjs
+scripts/check-lessons.ts
+scripts/copy-lesson-prod-to-dev.mjs
+scripts/copy-lesson-prod-to-dev.mts
+scripts/diag-s2.ts
+scripts/diff-boss-xlsx.mjs
+scripts/dump-chapter-lessons.mjs
+scripts/export-lessons-xlsx.mjs
+scripts/fetch-prod-lesson.mjs
+scripts/fill-open-answers-prod.mjs
+scripts/fix-text-issues.mjs
+scripts/format-lesson-dump.mjs
+scripts/inspect-boss-xlsx.mjs
+scripts/inspect-issue-samples.mjs
+scripts/list-prod-collections.mjs
+scripts/preflight-lesson-copy.mjs
+scripts/probe-open-placeholder.mjs
+scripts/probe-section-shape.mjs
+scripts/reconcile-backup-indexes.mjs
+scripts/report-changed-lessons.mjs
+scripts/sample-text-issues.mjs
+scripts/set-missing-geometry-display-size.mjs
+scripts/shrink-geometry-display-size.mjs
+scripts/shrink-sketch-display-size.mjs
+scripts/strip-lesson-prefix.mjs
+scripts/survey-chapters.mjs
+scripts/survey-lesson-prefix.mjs
+scripts/survey-prod-courses.mjs
+scripts/verify-backup-2026-10-01.mjs
+scripts/verify-backup-db.mjs
+scripts/verify-lesson-copy.mjs
