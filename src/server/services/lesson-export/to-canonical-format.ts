@@ -279,6 +279,153 @@ function splitMcqOptions(
 }
 
 // -------------------------------------------
+// Section-level block walker
+// -------------------------------------------
+
+interface SectionWalkResult {
+  section: CanonicalSection
+  renderedSvgCount: number
+  renderFailures: Array<{ blockIndex: number; blockType: string; issues: string[] }>
+}
+
+/**
+ * Walk a Payload section's content.blocks and produce one CanonicalSection.
+ *
+ * A section typically carries an intro (rich_text/latex/svg) followed by a
+ * single question block. If multiple question blocks appear in one section,
+ * only the first contributes to question/hint/options — the rest are ignored
+ * so this stays one-section-in / one-section-out.
+ */
+function sectionDocToCanonical(
+  sectionDoc: Record<string, unknown>,
+  sectionIndex: number,
+): SectionWalkResult {
+  const content = sectionDoc.content as ContentData | undefined
+  const blocks = content?.blocks || []
+
+  const introTexts: string[] = []
+  const introSvgs: string[] = []
+  let renderedSvgCount = 0
+  const renderFailures: Array<{ blockIndex: number; blockType: string; issues: string[] }> = []
+
+  const section: CanonicalSection = {
+    section_data: { text: '', table: null, PNG: '', svg: '' },
+    question_number: toHebrewOrdinal(sectionIndex + 1),
+    question: { text: '', table: null, PNG: '', svg: '' },
+    hint: { text: '', table: null, PNG: '', svg: '' },
+    solution: { text: '', table: null, PNG: '', svg: '' },
+    full_solution: { text: '', table: null, PNG: '', svg: '' },
+    correct_option: { text: '', table: null, PNG: '', svg: '' },
+    wrong_options: [],
+  }
+
+  let seenQuestion = false
+
+  for (let blockIndex = 0; blockIndex < blocks.length; blockIndex++) {
+    const block = blocks[blockIndex]
+
+    if (isRichTextBlock(block)) {
+      const t = wrapTextContent(block).text
+      if (t) introTexts.push(t)
+      continue
+    }
+    if (isLatexBlock(block)) {
+      if (block.latex) introTexts.push(block.latex)
+      continue
+    }
+    if (isSvgBlock(block)) {
+      if (block.value) introSvgs.push(block.value)
+      continue
+    }
+    if (isQuestionGeometryBlock(block)) {
+      if (block.geometry) {
+        const parsed = GeometrySpecV1Schema.safeParse(block.geometry)
+        if (!parsed.success) {
+          renderFailures.push({
+            blockIndex,
+            blockType: 'question_geometry',
+            issues: parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`),
+          })
+        } else {
+          const svg = geometrySpecToSvg(block.geometry)
+          if (svg) {
+            renderedSvgCount++
+            introSvgs.push(svg)
+          }
+        }
+      }
+      if (seenQuestion) continue
+      seenQuestion = true
+      const qc = extractQuestionContent(block)
+      if (qc) {
+        section.question = wrapTextContent(qc.prompt)
+        section.hint = wrapTextContent(qc.hint)
+        section.solution = wrapTextContent(qc.solution)
+        section.full_solution = wrapTextContent(qc.fullSolution)
+      }
+      continue
+    }
+    if (isQuestionAxisBlock(block)) {
+      if (block.axis) {
+        const parsed = AxisSpecV1Schema.safeParse(block.axis)
+        if (!parsed.success) {
+          renderFailures.push({
+            blockIndex,
+            blockType: 'question_axis',
+            issues: parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`),
+          })
+        } else {
+          const svg = axisSpecToSvg(block.axis)
+          if (svg) {
+            renderedSvgCount++
+            introSvgs.push(svg)
+          }
+        }
+      }
+      if (seenQuestion) continue
+      seenQuestion = true
+      const qc = extractQuestionContent(block)
+      if (qc) {
+        section.question = wrapTextContent(qc.prompt)
+        section.hint = wrapTextContent(qc.hint)
+        section.solution = wrapTextContent(qc.solution)
+        section.full_solution = wrapTextContent(qc.fullSolution)
+      }
+      continue
+    }
+    const qc = extractQuestionContent(block)
+    if (qc && !seenQuestion) {
+      seenQuestion = true
+      section.question = wrapTextContent(qc.prompt)
+      section.hint = wrapTextContent(qc.hint)
+      section.solution = wrapTextContent(qc.solution)
+      section.full_solution = wrapTextContent(qc.fullSolution)
+      if (
+        block.type === 'question_select' &&
+        block.variant === 'mcq' &&
+        qc.answer &&
+        'options' in qc.answer &&
+        'correctOptionIds' in qc.answer
+      ) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { correct, wrong } = splitMcqOptions(qc.answer as any)
+        if (correct) section.correct_option = wrapTextContent(correct.content)
+        section.wrong_options = wrong.map((opt) => wrapTextContent(opt.content))
+      }
+    }
+  }
+
+  section.section_data = {
+    text: introTexts.filter(Boolean).join('\n'),
+    table: null,
+    PNG: '',
+    svg: introSvgs.filter(Boolean).join('\n'),
+  }
+
+  return { section, renderedSvgCount, renderFailures }
+}
+
+// -------------------------------------------
 // Main conversion function
 // -------------------------------------------
 
@@ -286,6 +433,66 @@ export interface ExerciseToCanonicalResult {
   exercise: CanonicalExercise
   renderedSvgCount: number
   renderFailures: Array<{ blockIndex: number; blockType: string; issues: string[] }>
+}
+
+/**
+ * Convert a modern exercise + its pre-fetched Payload sections to canonical
+ * form. One Payload section = one CanonicalSection. The exercise's own
+ * content.blocks contribute only to exercise-level intro (data). This is the
+ * right path for exercises authored under the Sections collection; use
+ * exerciseToCanonical for legacy exercises that keep question blocks inline.
+ */
+export function exerciseWithSectionsToCanonical(
+  exerciseDoc: Record<string, unknown>,
+  sectionDocs: Record<string, unknown>[],
+  exerciseIndex: number,
+): ExerciseToCanonicalResult {
+  const exerciseContent = exerciseDoc.content as ContentData | undefined
+  const exerciseBlocks = exerciseContent?.blocks || []
+
+  const introTexts: string[] = []
+  const introSvgs: string[] = []
+  let renderedSvgCount = 0
+  const renderFailures: Array<{ blockIndex: number; blockType: string; issues: string[] }> = []
+
+  for (const block of exerciseBlocks) {
+    if (isRichTextBlock(block)) {
+      const t = wrapTextContent(block).text
+      if (t) introTexts.push(t)
+    } else if (isLatexBlock(block)) {
+      if (block.latex) introTexts.push(block.latex)
+    } else if (isSvgBlock(block)) {
+      if (block.value) introSvgs.push(block.value)
+    }
+    // Question blocks at the exercise level are ignored here — modern
+    // exercises keep their questions on child sections.
+  }
+
+  const sections: CanonicalSection[] = []
+  for (let i = 0; i < sectionDocs.length; i++) {
+    const result = sectionDocToCanonical(sectionDocs[i], i)
+    sections.push(result.section)
+    renderedSvgCount += result.renderedSvgCount
+    renderFailures.push(...result.renderFailures)
+  }
+
+  return {
+    exercise: {
+      exercise_number: String(exerciseIndex + 1),
+      level: '1',
+      exercise_content: {
+        data: {
+          text: introTexts.filter(Boolean).join('\n'),
+          table: null,
+          PNG: '',
+          svg: introSvgs.filter(Boolean).join('\n'),
+        },
+        sections,
+      },
+    },
+    renderedSvgCount,
+    renderFailures,
+  }
 }
 
 /**
@@ -454,14 +661,22 @@ export function exerciseToCanonical(
 /**
  * Build the complete canonical lesson export structure.
  *
+ * When `sectionsByExerciseId` is provided and contains sections for an
+ * exercise, the modern section-aware path is taken (one Payload section =
+ * one CanonicalSection, exercise.content.blocks contributes only to intro).
+ * Exercises without sections fall through to the legacy inline-question
+ * path (exerciseToCanonical).
+ *
  * @param lessonDoc - Raw lesson document from Payload
  * @param exerciseDocs - Array of exercise documents in blocks order
  * @param className - The grade/class level (e.g., "כיתה ז")
+ * @param sectionsByExerciseId - Pre-fetched sections keyed by exercise id
  */
 export function buildCanonicalLessonExport(
   lessonDoc: Record<string, unknown>,
   exerciseDocs: Record<string, unknown>[],
   className: string,
+  sectionsByExerciseId?: Map<string, Record<string, unknown>[]>,
 ): CanonicalLessonExport {
   const lessonNumber = String((lessonDoc.order as number) || 1)
   const topic = (lessonDoc.title as string) || ''
@@ -471,7 +686,12 @@ export function buildCanonicalLessonExport(
 
   const exercises: CanonicalExercise[] = []
   for (let i = 0; i < exerciseDocs.length; i++) {
-    const result = exerciseToCanonical(exerciseDocs[i], i)
+    const exerciseDoc = exerciseDocs[i]
+    const sections = sectionsByExerciseId?.get(exerciseDoc.id as string) ?? []
+    const result =
+      sections.length > 0
+        ? exerciseWithSectionsToCanonical(exerciseDoc, sections, i)
+        : exerciseToCanonical(exerciseDoc, i)
     exercises.push(result.exercise)
     totalRenderedSvgCount += result.renderedSvgCount
     allRenderFailures.push(...result.renderFailures)
