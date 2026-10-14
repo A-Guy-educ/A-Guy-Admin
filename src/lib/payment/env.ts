@@ -31,11 +31,21 @@ export interface PaymentEnv {
   growPageCode: string
   growWebhookKey: string
   growSandbox: boolean
+  tranzillaTerminal: string
+  tranzillaTerminalToken: string
+  tranzillaPublicKey: string
+  tranzillaPrivateKey: string
+  tranzillaSandbox: boolean
 }
 
 const STRIPE_REQUIRED = ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET'] as const
 const PAYPAL_REQUIRED = ['PAYPAL_CLIENT_ID', 'PAYPAL_CLIENT_SECRET', 'PAYPAL_WEBHOOK_ID'] as const
 const GROW_REQUIRED = ['GROW_USER_ID', 'GROW_PAGE_CODE', 'GROW_WEBHOOK_KEY'] as const
+const TRANZILLA_REQUIRED = [
+  'TRANZILLA_TERMINAL',
+  'TRANZILLA_PUBLIC_KEY',
+  'TRANZILLA_PRIVATE_KEY',
+] as const
 
 let validatedEnv: PaymentEnv | null = null
 
@@ -60,10 +70,11 @@ export function getPaymentEnv(): PaymentEnv {
   const stripeTouched = anySet(STRIPE_REQUIRED)
   const paypalTouched = anySet(PAYPAL_REQUIRED)
   const growTouched = anySet(GROW_REQUIRED)
+  const tranzillaTouched = anySet(TRANZILLA_REQUIRED)
 
-  if (!stripeTouched && !paypalTouched && !growTouched) {
+  if (!stripeTouched && !paypalTouched && !growTouched && !tranzillaTouched) {
     throw new Error(
-      'No payment provider configured. Set Stripe (STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET), PayPal (PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET, PAYPAL_WEBHOOK_ID), or Grow (GROW_USER_ID, GROW_PAGE_CODE, GROW_WEBHOOK_KEY) environment variables.',
+      'No payment provider configured. Set Stripe (STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET), PayPal (PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET, PAYPAL_WEBHOOK_ID), Grow (GROW_USER_ID, GROW_PAGE_CODE, GROW_WEBHOOK_KEY), or Tranzilla (TRANZILLA_TERMINAL, TRANZILLA_PUBLIC_KEY, TRANZILLA_PRIVATE_KEY) environment variables.',
     )
   }
 
@@ -94,6 +105,15 @@ export function getPaymentEnv(): PaymentEnv {
     }
   }
 
+  if (tranzillaTouched) {
+    const missing = missingFrom(TRANZILLA_REQUIRED)
+    if (missing.length > 0) {
+      throw new Error(
+        `Tranzilla is partially configured — missing: ${missing.join(', ')}. Set the full set or clear all Tranzilla env vars to disable Tranzilla.`,
+      )
+    }
+  }
+
   validatedEnv = {
     stripeSecretKey: process.env.STRIPE_SECRET_KEY ?? '',
     stripePublishableKey: process.env.STRIPE_PUBLISHABLE_KEY ?? '',
@@ -107,6 +127,11 @@ export function getPaymentEnv(): PaymentEnv {
     growPageCode: process.env.GROW_PAGE_CODE ?? '',
     growWebhookKey: process.env.GROW_WEBHOOK_KEY ?? '',
     growSandbox: process.env.GROW_SANDBOX !== 'false',
+    tranzillaTerminal: process.env.TRANZILLA_TERMINAL ?? '',
+    tranzillaTerminalToken: process.env.TRANZILLA_TERMINAL_TOKEN ?? '',
+    tranzillaPublicKey: process.env.TRANZILLA_PUBLIC_KEY ?? '',
+    tranzillaPrivateKey: process.env.TRANZILLA_PRIVATE_KEY ?? '',
+    tranzillaSandbox: process.env.TRANZILLA_SANDBOX !== 'false',
   }
 
   return validatedEnv
