@@ -4,11 +4,18 @@
  * POST /api/webhooks/tranzilla
  *
  * First-pass handler: parse the notify_url POST, verify authenticity (via
- * `response_hash` when enabled on the terminal, otherwise via a round-trip
- * `/v1/transaction/search` call), and log the full payload. No DB writes yet
- * — the goal is to confirm Tranzilla actually calls us back and document the
- * exact field shape it sends for a sandbox transaction before we wire this
- * into Transactions / entitlements.
+ * `response_hash` when the merchant has enabled signing in the terminal
+ * dashboard), and log the full payload. No DB writes yet — the goal is to
+ * confirm Tranzilla actually calls us back and document the exact field shape
+ * it sends for a sandbox transaction before we wire this into Transactions /
+ * entitlements.
+ *
+ * Auth strategy:
+ *   - If `response_hash` is in the body → HMAC-verify it with the private
+ *     key; reject on mismatch.
+ *   - If `response_hash` is absent → log-and-accept (same as Grow's smoke
+ *     test). Production hardening will tighten this once we've confirmed the
+ *     correct Tranzilla verification mechanism with their support team.
  *
  * Tranzilla POSTs form-encoded data (not JSON). Expected fields on success:
  *   Response (000 = approved)
@@ -26,7 +33,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getPayload } from 'payload'
 
 import config from '@payload-config'
-import { queryTranzillaTransaction, verifyTranzillaWebhook } from '@/lib/payment/tranzilla'
+import { verifyTranzillaWebhook } from '@/lib/payment/tranzilla'
 
 export async function POST(request: NextRequest) {
   const payload = await getPayload({ config })
@@ -50,16 +57,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid body' }, { status: 400 })
   }
 
-  // Primary auth path: HMAC-SHA256 response_hash when the terminal is
-  // configured for it.
   const hasHash = typeof body.response_hash === 'string' && body.response_hash.length > 0
-  let authed = false
-  let authMethod: 'response_hash' | 'transaction_lookup' | 'none' = 'none'
+  let authMethod: 'response_hash' | 'unsigned' = 'unsigned'
 
   if (hasHash) {
-    authed = verifyTranzillaWebhook(body)
-    authMethod = 'response_hash'
-    if (!authed) {
+    const ok = verifyTranzillaWebhook(body)
+    if (!ok) {
       const sourceIp =
         request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
       payload.logger.warn(
@@ -68,38 +71,7 @@ export async function POST(request: NextRequest) {
       )
       return NextResponse.json({ error: 'Invalid response_hash' }, { status: 401 })
     }
-  } else if (body.index) {
-    // Fallback: round-trip to Tranzilla and confirm the transaction exists
-    // with the posted sum. This cannot be spoofed by an attacker because
-    // the search is HMAC-signed with our private key.
-    try {
-      const info = await queryTranzillaTransaction(body.index)
-      const postedSum = Number(body.sum ?? NaN)
-      if (
-        info &&
-        Number.isFinite(postedSum) &&
-        Math.abs(info.sum - postedSum) < 0.01 &&
-        info.status.toUpperCase() !== 'FAILED'
-      ) {
-        authed = true
-        authMethod = 'transaction_lookup'
-      }
-    } catch (err) {
-      payload.logger.warn(
-        { err: err instanceof Error ? err.message : String(err), index: body.index },
-        '[tranzilla-webhook] transaction lookup failed — rejecting',
-      )
-    }
-  }
-
-  if (!authed) {
-    const sourceIp =
-      request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
-    payload.logger.warn(
-      { sourceIp, index: body.index, hasHash },
-      '[tranzilla-webhook] unauthenticated — rejecting. Enable response_hash in the Tranzilla terminal settings or ensure TRANZILLA_PUBLIC_KEY / TRANZILLA_PRIVATE_KEY allow transaction lookup.',
-    )
-    return NextResponse.json({ error: 'Unauthenticated' }, { status: 401 })
+    authMethod = 'response_hash'
   }
 
   payload.logger.info(
@@ -111,11 +83,13 @@ export async function POST(request: NextRequest) {
       currency: body.currency,
       confirmationCode: body.ConfirmationCode,
       hasToken: Boolean(body.TranzilaTK),
+      cardType: body.card_type,
+      last4: body.last4,
       u71: body.u71,
       u72: body.u72,
       u73: body.u73,
     },
-    '[tranzilla-webhook] verified payload',
+    '[tranzilla-webhook] payload received',
   )
 
   return NextResponse.json({ received: true }, { status: 200 })
