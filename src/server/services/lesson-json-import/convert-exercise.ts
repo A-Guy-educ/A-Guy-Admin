@@ -32,11 +32,17 @@ function richTextBlock(value: string): RichTextBlock {
   }
 }
 
+// Sketches (svg / axis / geometry) are capped at 'medium' (50%) on import.
+// Anything the author didn't explicitly shrink would otherwise default to
+// 'full' and dominate the layout — this keeps imported content readable
+// without a manual pass. Admins can still enlarge individual blocks after
+// import if a particular diagram actually needs the width.
 function svgBlock(value: string): SvgBlock {
   return {
     id: generateId(),
     type: 'svg',
     value,
+    displaySize: 'medium',
   }
 }
 
@@ -52,7 +58,7 @@ function functionBlock(source: string): QuestionAxisBlock {
     prompt: inlineRichText(''),
     layout: 'textRight',
     axis: spec,
-    displaySize: 'full',
+    displaySize: 'medium',
   }
 }
 
