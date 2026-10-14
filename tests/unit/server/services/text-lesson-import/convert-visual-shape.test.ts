@@ -6,10 +6,11 @@ import { parseTextLessonV2 } from '@/server/services/text-lesson-import/parse-te
 const SEP = '='.repeat(40)
 
 describe('v2 converter — emitted visual block shape', () => {
-  it("stamps `displaySize: 'full'` on section-level geometry attachments", () => {
-    // The admin AttachmentEditor sets displaySize:'full' when the author
-    // manually attaches a sketch. Omitting it means the web renderer
-    // silently drops the attachment even though the block imports cleanly.
+  it("stamps `displaySize: 'medium'` on section-level geometry attachments", () => {
+    // Imported sketches cap at medium (50%) so they don't dominate the
+    // layout. Omitting displaySize entirely would still break — the web
+    // renderer silently drops attachments without it even though the
+    // block imports cleanly.
     const source = [
       SEP,
       '[ תרגיל 1 - נתוני פתיחה ]',
@@ -38,11 +39,11 @@ describe('v2 converter — emitted visual block shape', () => {
     expect(questionBlock.attachment).toMatchObject({
       kind: 'geometry',
       layout: 'textRight',
-      displaySize: 'full',
+      displaySize: 'medium',
     })
   })
 
-  it("stamps `displaySize: 'full'` on the standalone exercise-level `question_geometry`", () => {
+  it("stamps `displaySize: 'medium'` on the standalone exercise-level `question_geometry`", () => {
     const source = [
       SEP,
       '[ תרגיל 1 - נתוני פתיחה ]',
@@ -67,7 +68,7 @@ describe('v2 converter — emitted visual block shape', () => {
       (b) => (b as { type: string }).type === 'question_geometry',
     )
     expect(geomBlock).toBeDefined()
-    expect(geomBlock).toMatchObject({ displaySize: 'full', layout: 'textRight' })
+    expect(geomBlock).toMatchObject({ displaySize: 'medium', layout: 'textRight' })
   })
 
   it('inherits the exercise-level circle onto sections that reference it bare', () => {

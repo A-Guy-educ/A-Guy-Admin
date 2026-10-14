@@ -36,8 +36,13 @@ function richTextBlock(value: string): RichTextBlock {
   return { id: generateId(), type: 'rich_text', format: 'md-math-v1', value, mediaIds: [] }
 }
 
+// Sketches (svg / axis / geometry) are capped at 'medium' (50%) on import.
+// Anything the author didn't explicitly shrink would otherwise default to
+// 'full' and dominate the layout — this keeps imported content readable
+// without a manual pass. Mirrors the policy applied in the JSON converter
+// (lesson-json-import/convert-exercise.ts).
 function svgBlock(value: string): SvgBlock {
-  return { id: generateId(), type: 'svg', value }
+  return { id: generateId(), type: 'svg', value, displaySize: 'medium' }
 }
 
 function functionBlock(source: string): QuestionAxisBlock {
@@ -52,7 +57,7 @@ function functionBlock(source: string): QuestionAxisBlock {
     prompt: inlineRichText(''),
     layout: 'textRight',
     axis: spec,
-    displaySize: 'full',
+    displaySize: 'medium',
   }
 }
 
@@ -71,10 +76,10 @@ function geometryBlock(source: string): QuestionGeometryBlock | null {
     prompt: inlineRichText(''),
     layout: 'textRight',
     geometry: spec,
-    // Matches the AttachmentEditor / GeometrySpecEditor emission shape. The
-    // web renderer requires `displaySize` to be set; omitting it (even though
-    // the type marks it optional) results in the sketch not rendering.
-    displaySize: 'full',
+    // Must be set — the web renderer silently drops sketches that omit
+    // displaySize (even though the schema types it optional). Capped at
+    // 'medium' here so imported geometry doesn't dominate the layout.
+    displaySize: 'medium',
   }
 }
 

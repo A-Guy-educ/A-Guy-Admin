@@ -37,12 +37,13 @@ function richTextBlock(value: string): RichTextBlock {
   return { id: generateId(), type: 'rich_text', format: 'md-math-v1', value, mediaIds: [] }
 }
 
-// `displaySize: 'full'` matches the shape the admin's AttachmentEditor /
-// GeometrySpecEditor emit when an author manually attaches or inserts a
-// visual. The web renderer draws the same block shape the admin produces;
-// omitting `displaySize` (even though it's typed as optional) results in
-// the sketch not rendering on web — the field is required in practice.
-const DEFAULT_DISPLAY_SIZE = 'full' as const
+// Sketches (geometry / axis / svg) are capped at 'medium' (50%) on import.
+// Anything the author didn't explicitly shrink would otherwise default to
+// 'full' and dominate the layout — this keeps imported content readable
+// without a manual pass. The field must be set regardless: the web
+// renderer silently drops sketches that omit `displaySize` (even though
+// the schema types it optional).
+const DEFAULT_DISPLAY_SIZE = 'medium' as const
 
 function standaloneGeometryBlock(geometry: GeometrySpecV1): QuestionGeometryBlock {
   return {
@@ -67,7 +68,7 @@ function standaloneAxisBlock(axis: AxisSpecV1): QuestionAxisBlock {
 }
 
 function svgBlock(value: string): SvgBlock {
-  return { id: generateId(), type: 'svg', value }
+  return { id: generateId(), type: 'svg', value, displaySize: DEFAULT_DISPLAY_SIZE }
 }
 
 function geometryAttachment(geometry: GeometrySpecV1): QuestionAttachment {
