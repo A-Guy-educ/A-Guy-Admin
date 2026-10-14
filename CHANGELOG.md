@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.56.0 — 2026-10-14
+
+### Features
+- Payments: Tranzilla added as a third payment provider alongside PayPal/Stripe/Grow. Admin owns the client lib (`src/lib/payment/tranzilla.ts` — `createTranzillaCheckout()` + `verifyTranzillaWebhook()` HMAC-SHA256 `response_hash`), the webhook handler (`src/app/api/webhooks/tranzilla/route.ts`), and the admin smoke-test route (`GET /api/admin/tranzilla-test`); Web-side checkout kickoff is a follow-up. Adds `TRANZILLA_TERMINAL`, `TRANZILLA_TERMINAL_TOKEN`, `TRANZILLA_PUBLIC_KEY`, `TRANZILLA_PRIVATE_KEY`, `TRANZILLA_SANDBOX` to `getPaymentEnv()` and `tranzilla` to the `provider` select on `Transactions` and `WebhookEvents` (#586)
+- Payments: Tranzilla webhook now runs the full end-to-end flow — dedup via `WebhookEvents` keyed on `(tranzilla, index)`, correlate to a pending Transactions row via the `u72` field (Web injects the Payload `_id` at checkout-URL build time), branch on `tierSlug` for tier purchases vs. `grantProductEntitlements()` for products, replace the placeholder `providerTransactionId` with the real Tranzilla `index`, atomic `$inc + $expr` coupon consumption to prevent over-redemption races, fire-and-forget receipt email for product purchases; on non-`"000"` responses the Tx flips to `failed` with `errorMessage` capturing the raw response code. Deliberately NOT in scope: response-code label table, refund path, recurring/tokenized charges, unit tests (smoke-test on dev preview is the validation path per project norms) (#604)
+- Lesson import: SVG and function-axis blocks produced by the JSON lesson importer now ship with `displaySize: 'medium'` instead of defaulting to `'full'`, so newly imported sketches render at 50% width and don't need a manual shrink pass. Only touches the `svgBlock` + `functionBlock` factories in `src/server/services/lesson-json-import/convert-exercise.ts`; author-chosen smaller sizes (`xsmall`/`small`) still flow through unchanged (#602)
+
+### Bug Fixes
+- Payments: Tranzilla webhook loosened to log-and-accept while smoke-testing — the fallback `/v1/transaction/search` REST path was a guess from TranzilaPG v4 docs and returned 404 against this terminal, so every webhook was rejecting. Mirrors the Grow smoke-test shape: keep `response_hash` HMAC verification intact for when signing is enabled, otherwise log with `authMethod: "unsigned"` and 200. Strips the unverified REST helpers (`buildTranzillaApiHeaders`, `queryTranzillaTransaction`, `refundTranzilla`) — they'll be rebuilt once Tranzilla support confirms the correct endpoint paths (#603). Superseded by #604.
+
 ## v0.55.0 — 2026-10-12
 
 ### Features
