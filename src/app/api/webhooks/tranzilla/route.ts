@@ -1,45 +1,75 @@
 /**
- * Tranzilla Webhook Handler — SMOKE TEST VERSION
+ * Tranzilla Webhook Handler
  *
  * POST /api/webhooks/tranzilla
  *
- * First-pass handler: parse the notify_url POST, verify authenticity (via
- * `response_hash` when the merchant has enabled signing in the terminal
- * dashboard), and log the full payload. No DB writes yet — the goal is to
- * confirm Tranzilla actually calls us back and document the exact field shape
- * it sends for a sandbox transaction before we wire this into Transactions /
- * entitlements.
+ * Tranzilla fires a single notify_url POST for both approved and declined
+ * charges (unlike PayPal's split order/capture/sale events). The handler:
  *
- * Auth strategy:
- *   - If `response_hash` is in the body → HMAC-verify it with the private
- *     key; reject on mismatch.
- *   - If `response_hash` is absent → log-and-accept (same as Grow's smoke
- *     test). Production hardening will tighten this once we've confirmed the
- *     correct Tranzilla verification mechanism with their support team.
+ *   1. Parses the form-encoded body (JSON accepted for test harnesses).
+ *   2. Verifies `response_hash` when present (merchant enabled signing in the
+ *      terminal dashboard). Falls back to log-and-accept when absent — the
+ *      correct Tranzilla verification mechanism is still pending confirmation
+ *      with their support team.
+ *   3. Dedupes via WebhookEvents keyed on (provider: 'tranzilla', eventId:
+ *      index). Replays short-circuit to a 200.
+ *   4. Correlates the callback to a pending Transactions row via `u72`
+ *      (which Web stuffs with the Payload Transactions `_id` when it builds
+ *      the hosted-checkout URL).
+ *   5. On `Response === "000"` → flips the Tx to `succeeded`, writes the real
+ *      Tranzilla `index` into `providerTransactionId`, grants entitlements,
+ *      consumes any applied coupon, and fires a purchase receipt.
+ *   6. On any other response code → flips the Tx to `failed` with an error
+ *      message that captures the decline code for ops.
  *
- * Tranzilla POSTs form-encoded data (not JSON). Expected fields on success:
- *   Response (000 = approved)
- *   index                 (Tranzilla transaction id — the one we persist)
- *   ConfirmationCode
- *   sum, currency, cred_type
- *   pdesc
- *   u71..u79              (round-tripped custom fields — correlate here)
- *   TranzilaTK            (card token, when the tokenization terminal is used)
- *   card_type, last4
- *   response_hash         (only when enabled in terminal settings)
+ * Tranzilla's hosted-iframe flow has no refund notify — refunds are
+ * initiated and reconciled via the merchant dashboard. If/when that changes
+ * we'll add a refund branch here.
  */
 
+import { ObjectId } from 'mongodb'
 import { NextRequest, NextResponse } from 'next/server'
 import { getPayload } from 'payload'
 
 import config from '@payload-config'
+import { applyTierPurchase } from '@/lib/payment/apply-tier-purchase'
+import { serializePaymentError } from '@/lib/payment/error-log'
+import { grantProductEntitlements } from '@/lib/payment/grant-entitlements'
 import { verifyTranzillaWebhook } from '@/lib/payment/tranzilla'
+import { isTierSlug } from '@/lib/tiers/constants'
+import { sendPurchaseReceipt } from '@/server/email/services/purchase-receipt-service'
+
+const TRANZILLA_APPROVED_CODE = '000'
+
+type PayloadInstance = Awaited<ReturnType<typeof getPayload>>
+
+/**
+ * MongoDB duplicate-key error detection (code 11000 or E11000 in message).
+ * Matches the shape in the PayPal handler so dedup races and
+ * providerTransactionId uniqueness collisions are handled the same way.
+ */
+function isDuplicateKeyError(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false
+  const e = err as { code?: number; message?: string; errors?: unknown[]; data?: unknown }
+  if (e.code === 11000) return true
+  if (/E11000|duplicate key/i.test(e.message ?? '')) return true
+  if (/unique/i.test(e.message ?? '')) return true
+  const errors = (e.data as { errors?: unknown[] })?.errors ?? e.errors
+  if (Array.isArray(errors)) {
+    return errors.some(
+      (err2: unknown) =>
+        typeof err2 === 'object' &&
+        err2 !== null &&
+        /unique/i.test((err2 as { message?: string }).message ?? ''),
+    )
+  }
+  return false
+}
 
 export async function POST(request: NextRequest) {
   const payload = await getPayload({ config })
 
-  // Tranzilla POSTs application/x-www-form-urlencoded by default. We also
-  // accept JSON for test harnesses.
+  // ─── 1. Parse body ──────────────────────────────────────────────────────
   const contentType = request.headers.get('content-type') ?? ''
   let body: Record<string, string>
   try {
@@ -57,6 +87,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid body' }, { status: 400 })
   }
 
+  // ─── 2. Verify signature when present ───────────────────────────────────
   const hasHash = typeof body.response_hash === 'string' && body.response_hash.length > 0
   let authMethod: 'response_hash' | 'unsigned' = 'unsigned'
 
@@ -74,23 +105,392 @@ export async function POST(request: NextRequest) {
     authMethod = 'response_hash'
   }
 
-  payload.logger.info(
-    {
+  // ─── 3. Extract key fields ──────────────────────────────────────────────
+  const index = body.index
+  const responseCode = body.Response ?? body.response ?? ''
+  const transactionRowId = body.u72 // Payload Transactions._id (populated by Web)
+
+  if (!index) {
+    payload.logger.warn(
+      { body, authMethod },
+      '[tranzilla-webhook] payload missing `index` — nothing to correlate; acknowledging',
+    )
+    return NextResponse.json({ received: true, warning: 'missing_index' }, { status: 200 })
+  }
+
+  // Raw-dashboard charges (manual Tranzilla admin, no u72) land here. Log
+  // the payload shape and ack — not our transaction to process.
+  if (!transactionRowId) {
+    payload.logger.info(
+      {
+        authMethod,
+        index,
+        responseCode,
+        sum: body.sum,
+        currency: body.currency,
+        confirmationCode: body.ConfirmationCode,
+        hasToken: Boolean(body.TranzilaTK),
+      },
+      '[tranzilla-webhook] no u72 correlation — logging unassociated charge',
+    )
+    return NextResponse.json({ received: true, unassociated: true }, { status: 200 })
+  }
+
+  // ─── 4. Dedup gate — WebhookEvents (provider, eventId) is unique ────────
+  let webhookEventId: string | null = null
+  try {
+    const doc = await payload.create({
+      collection: 'webhook-events',
+      data: {
+        provider: 'tranzilla',
+        eventId: index,
+        eventType: `tranzilla.notify.${responseCode || 'unknown'}`,
+        processed: false,
+        receivedAt: new Date().toISOString(),
+      },
+      draft: false,
+      overrideAccess: true,
+    })
+    webhookEventId = doc.id
+  } catch (err) {
+    if (isDuplicateKeyError(err)) {
+      payload.logger.info(
+        { index, responseCode },
+        '[tranzilla-webhook] event already received — deduped',
+      )
+      return NextResponse.json({ received: true, deduped: true }, { status: 200 })
+    }
+    payload.logger.error(
+      { err: serializePaymentError(err), index },
+      '[tranzilla-webhook] unexpected error during dedup gate',
+    )
+    return NextResponse.json({ error: 'Dedup gate error' }, { status: 500 })
+  }
+
+  // ─── 5. Process the transaction ─────────────────────────────────────────
+  try {
+    await handleTranzillaCallback(payload, {
+      index,
+      responseCode,
+      transactionRowId,
+      body,
       authMethod,
-      index: body.index,
-      response: body.Response ?? body.response,
-      sum: body.sum,
-      currency: body.currency,
-      confirmationCode: body.ConfirmationCode,
-      hasToken: Boolean(body.TranzilaTK),
-      cardType: body.card_type,
-      last4: body.last4,
-      u71: body.u71,
-      u72: body.u72,
-      u73: body.u73,
-    },
-    '[tranzilla-webhook] payload received',
-  )
+    })
+  } catch (err) {
+    payload.logger.error(
+      { err: serializePaymentError(err), index, transactionRowId },
+      '[tranzilla-webhook] handler error',
+    )
+    return NextResponse.json({ error: 'Handler error' }, { status: 500 })
+  }
+
+  // ─── 6. Mark event processed ────────────────────────────────────────────
+  if (webhookEventId) {
+    await payload.update({
+      collection: 'webhook-events',
+      id: webhookEventId,
+      data: { processed: true },
+      overrideAccess: true,
+    })
+  }
 
   return NextResponse.json({ received: true }, { status: 200 })
+}
+
+interface HandleArgs {
+  index: string
+  responseCode: string
+  transactionRowId: string
+  body: Record<string, string>
+  authMethod: 'response_hash' | 'unsigned'
+}
+
+async function handleTranzillaCallback(
+  payload: PayloadInstance,
+  { index, responseCode, transactionRowId, body, authMethod }: HandleArgs,
+): Promise<void> {
+  // Look up the pending Transactions row by its Payload _id.
+  let transaction: TranzillaTx | null
+  try {
+    transaction = (await payload.findByID({
+      collection: 'transactions',
+      id: transactionRowId,
+      depth: 0,
+      overrideAccess: true,
+    })) as TranzillaTx
+  } catch {
+    transaction = null
+  }
+
+  if (!transaction) {
+    payload.logger.warn(
+      { index, transactionRowId },
+      '[tranzilla-webhook] no Transactions row for u72 — Web may not have persisted it before redirect',
+    )
+    return
+  }
+
+  // Idempotency — the Tx is already in a terminal state. Covers webhook
+  // replays that slipped past the dedup gate (e.g. a prior run crashed
+  // after flipping the Tx but before marking WebhookEvents.processed).
+  if (transaction.status !== 'pending') {
+    payload.logger.info(
+      { index, transactionRowId, currentStatus: transaction.status },
+      '[tranzilla-webhook] transaction already in terminal state — skipping',
+    )
+    return
+  }
+
+  const isApproved = responseCode === TRANZILLA_APPROVED_CODE
+  const userId = resolveUserId(transaction.user)
+  const productId = resolveProductId(transaction.product)
+
+  if (!userId) {
+    payload.logger.error(
+      { transactionRowId },
+      '[tranzilla-webhook] transaction missing user — cannot process',
+    )
+    throw new Error(`Transaction ${transactionRowId} missing user`)
+  }
+
+  if (!isApproved) {
+    await markTransactionFailed(payload, transaction.id, index, responseCode)
+    payload.logger.info(
+      { index, transactionRowId, responseCode, authMethod },
+      '[tranzilla-webhook] charge declined — transaction marked failed',
+    )
+    return
+  }
+
+  // ─── Approved path ──────────────────────────────────────────────────────
+  // Grant entitlements BEFORE flipping status to succeeded. If grant throws
+  // the Tx stays pending and the next webhook delivery retries.
+  const tierSlug = transaction.tierSlug
+  if (isTierSlug(tierSlug)) {
+    await applyTierPurchase(payload, userId, tierSlug)
+  } else if (productId) {
+    await grantProductEntitlements(userId, productId, String(transaction.id))
+  } else {
+    throw new Error(
+      `Transaction ${transactionRowId} has neither product nor valid tierSlug — cannot grant entitlements`,
+    )
+  }
+
+  await flipTransactionSucceeded(payload, transaction, index, body)
+
+  await consumeCouponIfPresent(payload, transaction)
+
+  // Fire-and-forget receipt. Tier purchases send their receipt from Web
+  // (same pattern as PayPal) — skip here when product is null.
+  if (productId) {
+    void sendPurchaseReceipt(payload, {
+      transactionId: String(transaction.id),
+      userId,
+      productId,
+      providerTransactionId: index,
+      amount: transaction.amount,
+      currency: transaction.currency,
+      appliedCoupon: transaction.metadata?.appliedCoupon ?? null,
+    })
+  }
+
+  payload.logger.info(
+    { index, transactionRowId, authMethod, confirmationCode: body.ConfirmationCode },
+    '[tranzilla-webhook] charge approved — transaction succeeded',
+  )
+}
+
+interface TranzillaTx {
+  id: string
+  status: string
+  user: string | { id: string } | null
+  product: string | { id: string } | null
+  tierSlug?: string | null
+  amount: number
+  currency: string
+  tenant?: string | { id: string } | null
+  metadata?: {
+    appliedCoupon?: {
+      code: string
+      discountType: string
+      discountValue: number
+      originalAmount?: number
+      discountedAmount?: number
+    } | null
+  } | null
+}
+
+function resolveUserId(user: TranzillaTx['user']): string | null {
+  if (!user) return null
+  return typeof user === 'string' ? user : user.id
+}
+
+function resolveProductId(product: TranzillaTx['product']): string | null {
+  if (!product) return null
+  return typeof product === 'string' ? product : product.id
+}
+
+async function markTransactionFailed(
+  payload: PayloadInstance,
+  transactionId: string,
+  index: string,
+  responseCode: string,
+): Promise<void> {
+  const errorMessage = `Tranzilla declined — response code ${responseCode || 'unknown'}`
+  try {
+    await payload.update({
+      collection: 'transactions',
+      id: transactionId,
+      data: {
+        status: 'failed',
+        providerTransactionId: index,
+        errorMessage,
+      },
+      overrideAccess: true,
+    })
+  } catch (err) {
+    // If the real Tranzilla index collides with an existing providerTransactionId
+    // (webhook replay after a successful prior run that already updated the row),
+    // fall back to a status-only update so idempotent replays don't 500.
+    if (isDuplicateKeyError(err)) {
+      await payload.update({
+        collection: 'transactions',
+        id: transactionId,
+        data: { status: 'failed', errorMessage },
+        overrideAccess: true,
+      })
+      return
+    }
+    throw err
+  }
+}
+
+async function flipTransactionSucceeded(
+  payload: PayloadInstance,
+  transaction: TranzillaTx,
+  index: string,
+  body: Record<string, string>,
+): Promise<void> {
+  const nowIso = new Date().toISOString()
+  const nextMetadata = {
+    ...(transaction.metadata ?? {}),
+    tranzilla: {
+      confirmationCode: body.ConfirmationCode ?? null,
+      cardType: body.card_type ?? null,
+      last4: body.last4 ?? null,
+      token: body.TranzilaTK || null,
+    },
+  }
+
+  try {
+    await payload.update({
+      collection: 'transactions',
+      id: transaction.id,
+      data: {
+        status: 'succeeded',
+        providerTransactionId: index,
+        entitlementsGrantedAt: nowIso,
+        metadata: nextMetadata,
+      },
+      overrideAccess: true,
+    })
+  } catch (err) {
+    // Same unique-collision fallback as the failed path.
+    if (isDuplicateKeyError(err)) {
+      await payload.update({
+        collection: 'transactions',
+        id: transaction.id,
+        data: {
+          status: 'succeeded',
+          entitlementsGrantedAt: nowIso,
+          metadata: nextMetadata,
+        },
+        overrideAccess: true,
+      })
+      return
+    }
+    throw err
+  }
+}
+
+/**
+ * Consume a coupon atomically on successful payment. Mirrors the PayPal
+ * handler's pattern — see src/app/api/webhooks/paypal/route.ts for the
+ * full rationale (race-safe $inc, afterChange hook skip, global tenant
+ * matching).
+ */
+async function consumeCouponIfPresent(
+  payload: PayloadInstance,
+  transaction: TranzillaTx,
+): Promise<void> {
+  const appliedCoupon = transaction.metadata?.appliedCoupon
+  if (!appliedCoupon) return
+
+  const tenantId =
+    typeof transaction.tenant === 'object' && transaction.tenant
+      ? transaction.tenant.id
+      : (transaction.tenant as string | null | undefined)
+
+  const coupons = await payload.find({
+    collection: 'coupons',
+    where: {
+      code: { equals: appliedCoupon.code },
+      or: [...(tenantId ? [{ tenant: { equals: tenantId } }] : []), { tenant: { exists: false } }],
+    },
+    limit: 1,
+    depth: 0,
+    overrideAccess: true,
+  })
+  if (coupons.totalDocs === 0) {
+    payload.logger.warn(
+      { code: appliedCoupon.code, tenantId },
+      '[tranzilla-webhook] coupon not found for consumption',
+    )
+    return
+  }
+
+  const coupon = coupons.docs[0] as {
+    id: string
+    maxUses?: number
+    tenant?: string | { id: string } | null
+  }
+  const userId = resolveUserId(transaction.user)
+
+  const couponsCollection = payload.db.collections['coupons']
+  const filter: Record<string, unknown> = { _id: new ObjectId(coupon.id) }
+  if ((coupon.maxUses ?? 0) > 0) {
+    filter.$expr = { $lt: ['$usesCount', '$maxUses'] }
+  }
+
+  const result = await couponsCollection.updateOne(filter, { $inc: { usesCount: 1 } })
+  if (result.modifiedCount === 0) {
+    payload.logger.warn(
+      { couponId: coupon.id, code: appliedCoupon.code },
+      '[tranzilla-webhook] coupon exhausted — payment succeeded but coupon not consumed',
+    )
+    return
+  }
+
+  await payload.create({
+    collection: 'coupon-usages',
+    data: {
+      coupon: coupon.id,
+      transaction: transaction.id,
+      user: userId,
+      tenant:
+        typeof coupon.tenant === 'object' && coupon.tenant
+          ? coupon.tenant.id
+          : (coupon.tenant ?? null),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any,
+    context: { skipUsesCountHook: true },
+    overrideAccess: true,
+  })
+
+  await payload.update({
+    collection: 'transactions',
+    id: transaction.id,
+    data: { couponConsumedAt: new Date().toISOString() },
+    overrideAccess: true,
+  })
 }
