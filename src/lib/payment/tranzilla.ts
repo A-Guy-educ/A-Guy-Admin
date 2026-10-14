@@ -4,29 +4,25 @@
  * First-pass client mirroring the Grow smoke-test shape. Tranzilla docs:
  *   https://docs.tranzila.com/
  *
- * Two integration surfaces matter here:
+ * This file covers only the hosted-iframe redirect flow:
+ *   `https://direct.tranzila.com/<terminal>/iframenew.php`
  *
- * 1. Hosted iframe redirect (`https://direct.tranzila.com/<terminal>/iframenew.php`)
- *    — the buyer-facing checkout URL. No API key is needed to build this URL;
- *    the terminal name alone identifies the merchant. Custom `u71..u79` fields
- *    round-trip verbatim through the notify_url POST, so we use them to
- *    correlate the webhook back to a Payload userId / productId / transactionId.
+ * The buyer-facing page is served by Tranzilla. No API key is needed to build
+ * this URL; the terminal name alone identifies the merchant. Custom `u71..u79`
+ * fields round-trip verbatim through the notify_url POST, so we use them to
+ * correlate the webhook back to a Payload userId / productId / transactionId.
  *
- * 2. TranzilaPG v4 REST API (`https://api.tranzila.com/v1/*`) — used for
- *    direct charges, refunds, and transaction queries. Requires HMAC-signed
- *    headers derived from public_key / private_key. Only used server-side.
+ * Direct charges, refunds, and transaction queries via the TranzilaPG REST API
+ * live elsewhere — the endpoint paths and HMAC-header shape need to be
+ * confirmed with Tranzilla support before we build against them (an earlier
+ * guess at `/v1/transaction/search` returned 404 in production). See follow-up
+ * work in the admin.aguy.co.il/tranzilla-support thread.
  *
  * Webhook authenticity: Tranzilla's notify_url POST does NOT carry a signed
- * header by default. The verification options are:
- *   a) Enable `response_hash` in the terminal settings — Tranzilla then
- *      appends an HMAC-SHA256(private_key, Response|index|sum|...) field.
- *   b) Call back to `/v1/transaction/get` and confirm the transaction exists
- *      and matches the posted amount/index — this is the strongest signal
- *      because it bypasses any spoofing of the notify POST.
- *
- * The webhook handler enforces (a) when `response_hash` is present and falls
- * back to a smoke-test "log the payload" path otherwise, matching how Grow
- * was wired on its first pass.
+ * header by default. When `response_hash` is present in the body (merchant
+ * enabled the signing feature in the terminal dashboard), we HMAC-verify it
+ * with the private key. When it's absent, the webhook handler falls back to
+ * log-and-accept, matching how Grow was wired on its first pass.
  */
 
 import crypto from 'node:crypto'
@@ -34,7 +30,6 @@ import crypto from 'node:crypto'
 import { getPaymentEnv } from './env'
 
 const TRANZILLA_DIRECT_BASE = 'https://direct.tranzila.com'
-const TRANZILLA_API_BASE = 'https://api.tranzila.com'
 
 export type TranzillaCurrency = 'ILS' | 'USD' | 'EUR' | 'GBP'
 
@@ -175,120 +170,4 @@ export function verifyTranzillaWebhook(body: Record<string, string>): boolean {
   // in timingSafeEqual.
   if (expected.length !== providedHash.length) return false
   return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(providedHash))
-}
-
-/**
- * Build the HMAC auth headers for TranzilaPG v4 REST API calls.
- *
- * See https://docs.tranzila.com/#section/Authentication — the access token is
- * `HMAC-SHA256(private_key, nonce)` and must be sent alongside the public key,
- * nonce, and request timestamp. Nonces are single-use within the TTL window.
- */
-function buildTranzillaApiHeaders(): Record<string, string> {
-  const { tranzillaPublicKey, tranzillaPrivateKey } = getPaymentEnv()
-  if (!tranzillaPublicKey || !tranzillaPrivateKey) {
-    throw new Error('TRANZILLA_PUBLIC_KEY / TRANZILLA_PRIVATE_KEY not configured')
-  }
-
-  const nonce = crypto.randomBytes(40).toString('hex') // 80 chars
-  const requestTime = Math.floor(Date.now() / 1000).toString()
-  const accessToken = crypto.createHmac('sha256', tranzillaPrivateKey).update(nonce).digest('hex')
-
-  return {
-    'Content-Type': 'application/json',
-    'X-tranzila-api-app-key': tranzillaPublicKey,
-    'X-tranzila-api-request-time': requestTime,
-    'X-tranzila-api-nonce': nonce,
-    'X-tranzila-api-access-token': accessToken,
-  }
-}
-
-export interface TranzillaTransactionInfo {
-  index: string
-  sum: number
-  currency: string
-  status: string
-  confirmationCode?: string
-  raw: unknown
-}
-
-/**
- * Query a Tranzilla transaction by its index. Use this to confirm a notify_url
- * POST was genuine — if the posted index matches a real transaction with the
- * same amount, the callback is authentic even without response_hash.
- */
-export async function queryTranzillaTransaction(
-  index: string,
-): Promise<TranzillaTransactionInfo | null> {
-  const { tranzillaTerminal } = getPaymentEnv()
-  if (!tranzillaTerminal) {
-    throw new Error('TRANZILLA_TERMINAL not configured')
-  }
-
-  const response = await fetch(`${TRANZILLA_API_BASE}/v1/transaction/search`, {
-    method: 'POST',
-    headers: buildTranzillaApiHeaders(),
-    body: JSON.stringify({
-      terminal_name: tranzillaTerminal,
-      filter: { index: Number(index) },
-    }),
-  })
-
-  if (!response.ok) {
-    const text = await response.text().catch(() => '')
-    throw new Error(`Tranzilla transaction/search HTTP ${response.status}: ${text}`)
-  }
-
-  const data = (await response.json()) as {
-    transactions_list?: Array<{
-      index?: number
-      sum?: number
-      currency_code?: string
-      transaction_status?: string
-      confirmation_code?: string
-    }>
-  }
-
-  const first = data.transactions_list?.[0]
-  if (!first || first.index === undefined) return null
-
-  return {
-    index: String(first.index),
-    sum: Number(first.sum ?? 0),
-    currency: String(first.currency_code ?? ''),
-    status: String(first.transaction_status ?? ''),
-    confirmationCode: first.confirmation_code,
-    raw: data,
-  }
-}
-
-/**
- * Refund a captured Tranzilla transaction via the v4 REST API.
- *
- * @param index - Tranzilla's transaction index (from the original notify POST).
- * @param amount - Optional partial-refund amount in major units; defaults to a
- *                 full refund of the original sum.
- */
-export async function refundTranzilla(index: string, amount?: number): Promise<void> {
-  const { tranzillaTerminal } = getPaymentEnv()
-  if (!tranzillaTerminal) {
-    throw new Error('TRANZILLA_TERMINAL not configured')
-  }
-
-  const body: Record<string, unknown> = {
-    terminal_name: tranzillaTerminal,
-    original_index: Number(index),
-  }
-  if (amount !== undefined) body.amount = Number(amount.toFixed(2))
-
-  const response = await fetch(`${TRANZILLA_API_BASE}/v1/transaction/refund`, {
-    method: 'POST',
-    headers: buildTranzillaApiHeaders(),
-    body: JSON.stringify(body),
-  })
-
-  if (!response.ok) {
-    const text = await response.text().catch(() => '')
-    throw new Error(`Tranzilla refund HTTP ${response.status}: ${text}`)
-  }
 }
