@@ -2193,6 +2193,7 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- fix(payments): Loosen Tranzilla webhook to log-and-accept for smoke test ([#603](https://github.com/A-Guy-educ/A-Guy-Admin/pull/603)) — @aguyshayb
 - feat(lesson-import): Cap sketch displaySize at medium (50%) ([#602](https://github.com/A-Guy-educ/A-Guy-Admin/pull/602)) — @aguyshayb
 - feat(payments): Wire Tranzilla as third payment provider ([#586](https://github.com/A-Guy-educ/A-Guy-Admin/pull/586)) — @aguyshayb
 - chore: Release v0.55.0 ([#584](https://github.com/A-Guy-educ/A-Guy-Admin/pull/584)) — @aguyshayb
