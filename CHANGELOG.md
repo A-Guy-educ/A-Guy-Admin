@@ -2203,6 +2203,8 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+## [v0.56.0] - 2026-10-14
+
 - promote: dev -> main (v0.56.0) ([#606](https://github.com/A-Guy-educ/A-Guy-Admin/pull/606)) — @aguyshayb
 - chore: Release v0.56.0 ([#605](https://github.com/A-Guy-educ/A-Guy-Admin/pull/605)) — @aguyshayb
 - feat(payments): Wire Tranzilla webhook to grant entitlements end-to-end ([#604](https://github.com/A-Guy-educ/A-Guy-Admin/pull/604)) — @aguyshayb
