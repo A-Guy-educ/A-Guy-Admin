@@ -2192,7 +2192,7 @@ export interface Transaction {
   /**
    * Payment provider used for this transaction
    */
-  provider: 'stripe' | 'paypal';
+  provider: 'stripe' | 'paypal' | 'tranzilla';
   /**
    * Transaction ID from the payment provider
    */
@@ -3505,7 +3505,7 @@ export interface WebhookEvent {
   /**
    * Payment provider that sent this webhook event
    */
-  provider: 'stripe' | 'paypal';
+  provider: 'stripe' | 'paypal' | 'tranzilla';
   /**
    * Provider-assigned event ID used for deduplication
    */
