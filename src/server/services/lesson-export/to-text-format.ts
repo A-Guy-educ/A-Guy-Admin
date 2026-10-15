@@ -46,6 +46,26 @@ function hasSvg(c: CanonicalTextContent | undefined): boolean {
   return !!c && typeof c.svg === 'string' && c.svg.trim().length > 0
 }
 
+function hasGraphDsl(c: CanonicalTextContent | undefined): boolean {
+  return !!c && typeof c.graphDsl === 'string' && c.graphDsl.trim().length > 0
+}
+
+/**
+ * Emit the visual payload for a section/exercise slot. Prefers DSL (which
+ * round-trips through parse-function-dsl / parse-geometry-dsl); only falls
+ * back to raw SVG when there's no DSL. When both are present, DSL wins —
+ * the parser will reconstruct the visual from the structured spec.
+ */
+function emitVisual(data: CanonicalTextContent | undefined, out: string[]): void {
+  if (hasGraphDsl(data)) {
+    out.push(data!.graphDsl!.trim())
+    return
+  }
+  if (hasSvg(data)) {
+    out.push(data!.svg)
+  }
+}
+
 /**
  * Emits a `* <field>: <value>` line, allowing multi-line values. The v1
  * parser treats any non-empty line after a field marker as a continuation
@@ -65,9 +85,7 @@ function emitSection(exerciseNumber: string, section: CanonicalSection, out: str
   out.push(`[תרגיל ${exerciseNumber} - סעיף ${section.question_number || ''}]`.trim())
   out.push(DASH_RULE)
 
-  if (hasSvg(section.section_data)) {
-    out.push(section.section_data.svg)
-  }
+  emitVisual(section.section_data, out)
 
   // The v1 parser ignores bare lines inside a section before the first
   // `* field:` marker, so section-level intro text would be lost if emitted
@@ -117,10 +135,10 @@ export function serializeLessonToV1Text(canonical: CanonicalLessonExport): strin
     const introText = ex.exercise_content.data.text?.trim() ?? ''
     if (introText) out.push(introText)
 
-    const introSvg = ex.exercise_content.data.svg?.trim() ?? ''
-    if (introSvg) {
+    const hasIntroVisual = hasGraphDsl(ex.exercise_content.data) || hasSvg(ex.exercise_content.data)
+    if (hasIntroVisual) {
       if (introText) out.push('')
-      out.push(introSvg)
+      emitVisual(ex.exercise_content.data, out)
     }
 
     for (const section of ex.exercise_content.sections) {

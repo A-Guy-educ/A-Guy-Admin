@@ -38,6 +38,9 @@ import {
 import { GeometrySpecV1Schema } from '@/infra/contracts/graphics/geometry.v1'
 import { AxisSpecV1Schema } from '@/infra/contracts/graphics/axis.v1'
 
+import { axisSpecToDsl } from './axis-spec-to-dsl'
+import { geometrySpecToDsl } from './geometry-spec-to-dsl'
+
 // -------------------------------------------
 // Types for canonical format
 // -------------------------------------------
@@ -47,6 +50,15 @@ export interface CanonicalTextContent {
   table: null
   PNG: string
   svg: string
+  /**
+   * Hebrew DSL block for round-trippable graph/geometry data. Function graphs
+   * are emitted as `%%% … %%%` fences (parsed by parse-function-dsl.ts);
+   * geometry diagrams as `--- נקודות --- …` (parsed by parse-geometry-dsl.ts).
+   * When both DSL and SVG are populated, the serializer emits DSL (the
+   * importer will reconstruct the SVG). SVG is retained as a fallback for
+   * raw `svg` blocks and for geometry/axis specs that fail to serialize.
+   */
+  graphDsl?: string
 }
 
 export interface CanonicalSection {
@@ -296,6 +308,112 @@ interface SectionWalkResult {
  * only the first contributes to question/hint/options — the rest are ignored
  * so this stays one-section-in / one-section-out.
  */
+/**
+ * Serialize an axis block's spec. Prefers DSL (round-trippable through
+ * parseFunctionDsl); falls back to SVG when DSL emits nothing. Records a
+ * validation failure if the spec doesn't parse.
+ */
+function serializeAxis(
+  axis: unknown,
+  blockIndex: number,
+  blockType: string,
+  bucket: { dsls: string[]; svgs: string[] },
+  renderFailures: Array<{ blockIndex: number; blockType: string; issues: string[] }>,
+): number {
+  if (!axis) return 0
+  const parsed = AxisSpecV1Schema.safeParse(axis)
+  if (!parsed.success) {
+    renderFailures.push({
+      blockIndex,
+      blockType,
+      issues: parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`),
+    })
+    return 0
+  }
+  const dsl = axisSpecToDsl(parsed.data)
+  if (dsl) {
+    bucket.dsls.push(dsl)
+    return 1
+  }
+  const svg = axisSpecToSvg(parsed.data)
+  if (svg) {
+    bucket.svgs.push(svg)
+    return 1
+  }
+  return 0
+}
+
+/** Serialize a geometry block's spec. Same policy as serializeAxis. */
+function serializeGeometry(
+  geometry: unknown,
+  blockIndex: number,
+  blockType: string,
+  bucket: { dsls: string[]; svgs: string[] },
+  renderFailures: Array<{ blockIndex: number; blockType: string; issues: string[] }>,
+): number {
+  if (!geometry) return 0
+  const parsed = GeometrySpecV1Schema.safeParse(geometry)
+  if (!parsed.success) {
+    renderFailures.push({
+      blockIndex,
+      blockType,
+      issues: parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`),
+    })
+    return 0
+  }
+  const dsl = geometrySpecToDsl(parsed.data)
+  if (dsl) {
+    bucket.dsls.push(dsl)
+    return 1
+  }
+  const svg = geometrySpecToSvg(parsed.data)
+  if (svg) {
+    bucket.svgs.push(svg)
+    return 1
+  }
+  return 0
+}
+
+/**
+ * Serialize an attachment carried on a question block. Covers axis/geometry
+ * via DSL; svg attachments pass through as raw markup.
+ */
+function serializeAttachment(
+  attachment: unknown,
+  blockIndex: number,
+  bucket: { dsls: string[]; svgs: string[] },
+  renderFailures: Array<{ blockIndex: number; blockType: string; issues: string[] }>,
+): number {
+  if (!attachment || typeof attachment !== 'object') return 0
+  const att = attachment as {
+    kind?: string
+    axis?: unknown
+    geometry?: unknown
+    svg?: { value?: string }
+  }
+  if (att.kind === 'axis') {
+    return serializeAxis(att.axis, blockIndex, 'attachment.axis', bucket, renderFailures)
+  }
+  if (att.kind === 'geometry') {
+    return serializeGeometry(
+      att.geometry,
+      blockIndex,
+      'attachment.geometry',
+      bucket,
+      renderFailures,
+    )
+  }
+  if (att.kind === 'svg' && att.svg?.value) {
+    bucket.svgs.push(att.svg.value)
+    return 1
+  }
+  return 0
+}
+
+function hasInlineRichText(rt: InlineRichText | undefined | null): boolean {
+  return !!rt && typeof rt.value === 'string' && rt.value.trim().length > 0
+}
+
 function sectionDocToCanonical(
   sectionDoc: Record<string, unknown>,
   sectionIndex: number,
@@ -304,7 +422,7 @@ function sectionDocToCanonical(
   const blocks = content?.blocks || []
 
   const introTexts: string[] = []
-  const introSvgs: string[] = []
+  const visual = { dsls: [] as string[], svgs: [] as string[] }
   let renderedSvgCount = 0
   const renderFailures: Array<{ blockIndex: number; blockType: string; issues: string[] }> = []
 
@@ -334,26 +452,20 @@ function sectionDocToCanonical(
       continue
     }
     if (isSvgBlock(block)) {
-      if (block.value) introSvgs.push(block.value)
+      if (block.value) visual.svgs.push(block.value)
       continue
     }
     if (isQuestionGeometryBlock(block)) {
-      if (block.geometry) {
-        const parsed = GeometrySpecV1Schema.safeParse(block.geometry)
-        if (!parsed.success) {
-          renderFailures.push({
-            blockIndex,
-            blockType: 'question_geometry',
-            issues: parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`),
-          })
-        } else {
-          const svg = geometrySpecToSvg(block.geometry)
-          if (svg) {
-            renderedSvgCount++
-            introSvgs.push(svg)
-          }
-        }
-      }
+      renderedSvgCount += serializeGeometry(
+        block.geometry,
+        blockIndex,
+        'question_geometry',
+        visual,
+        renderFailures,
+      )
+      // Visual-only geometry (empty prompt) MUST NOT consume the question
+      // role — the real question block comes next in the section.
+      if (!hasInlineRichText(block.prompt)) continue
       if (seenQuestion) continue
       seenQuestion = true
       const qc = extractQuestionContent(block)
@@ -366,22 +478,14 @@ function sectionDocToCanonical(
       continue
     }
     if (isQuestionAxisBlock(block)) {
-      if (block.axis) {
-        const parsed = AxisSpecV1Schema.safeParse(block.axis)
-        if (!parsed.success) {
-          renderFailures.push({
-            blockIndex,
-            blockType: 'question_axis',
-            issues: parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`),
-          })
-        } else {
-          const svg = axisSpecToSvg(block.axis)
-          if (svg) {
-            renderedSvgCount++
-            introSvgs.push(svg)
-          }
-        }
-      }
+      renderedSvgCount += serializeAxis(
+        block.axis,
+        blockIndex,
+        'question_axis',
+        visual,
+        renderFailures,
+      )
+      if (!hasInlineRichText(block.prompt)) continue
       if (seenQuestion) continue
       seenQuestion = true
       const qc = extractQuestionContent(block)
@@ -400,6 +504,12 @@ function sectionDocToCanonical(
       section.hint = wrapTextContent(qc.hint)
       section.solution = wrapTextContent(qc.solution)
       section.full_solution = wrapTextContent(qc.fullSolution)
+
+      // Attachment on the question block (axis / geometry / svg) joins the
+      // section's visual stack.
+      const maybeAttachment = (block as { attachment?: unknown }).attachment
+      renderedSvgCount += serializeAttachment(maybeAttachment, blockIndex, visual, renderFailures)
+
       if (
         block.type === 'question_select' &&
         block.variant === 'mcq' &&
@@ -419,7 +529,8 @@ function sectionDocToCanonical(
     text: introTexts.filter(Boolean).join('\n'),
     table: null,
     PNG: '',
-    svg: introSvgs.filter(Boolean).join('\n'),
+    svg: visual.svgs.filter(Boolean).join('\n'),
+    ...(visual.dsls.length > 0 ? { graphDsl: visual.dsls.join('\n\n') } : {}),
   }
 
   return { section, renderedSvgCount, renderFailures }
@@ -451,21 +562,38 @@ export function exerciseWithSectionsToCanonical(
   const exerciseBlocks = exerciseContent?.blocks || []
 
   const introTexts: string[] = []
-  const introSvgs: string[] = []
+  const visual = { dsls: [] as string[], svgs: [] as string[] }
   let renderedSvgCount = 0
   const renderFailures: Array<{ blockIndex: number; blockType: string; issues: string[] }> = []
 
-  for (const block of exerciseBlocks) {
+  for (let blockIndex = 0; blockIndex < exerciseBlocks.length; blockIndex++) {
+    const block = exerciseBlocks[blockIndex]
     if (isRichTextBlock(block)) {
       const t = wrapTextContent(block).text
       if (t) introTexts.push(t)
     } else if (isLatexBlock(block)) {
       if (block.latex) introTexts.push(block.latex)
     } else if (isSvgBlock(block)) {
-      if (block.value) introSvgs.push(block.value)
+      if (block.value) visual.svgs.push(block.value)
+    } else if (isQuestionAxisBlock(block)) {
+      renderedSvgCount += serializeAxis(
+        block.axis,
+        blockIndex,
+        'question_axis',
+        visual,
+        renderFailures,
+      )
+    } else if (isQuestionGeometryBlock(block)) {
+      renderedSvgCount += serializeGeometry(
+        block.geometry,
+        blockIndex,
+        'question_geometry',
+        visual,
+        renderFailures,
+      )
     }
-    // Question blocks at the exercise level are ignored here — modern
-    // exercises keep their questions on child sections.
+    // Other question blocks at the exercise level are ignored — modern
+    // exercises keep questions on child sections.
   }
 
   const sections: CanonicalSection[] = []
@@ -485,7 +613,8 @@ export function exerciseWithSectionsToCanonical(
           text: introTexts.filter(Boolean).join('\n'),
           table: null,
           PNG: '',
-          svg: introSvgs.filter(Boolean).join('\n'),
+          svg: visual.svgs.filter(Boolean).join('\n'),
+          ...(visual.dsls.length > 0 ? { graphDsl: visual.dsls.join('\n\n') } : {}),
         },
         sections,
       },
@@ -519,111 +648,113 @@ export function exerciseToCanonical(
     const block = blocks[blockIndex]
     if (isRichTextBlock(block)) {
       dataParts.push(wrapTextContent(block))
-    } else if (isLatexBlock(block)) {
+      continue
+    }
+    if (isLatexBlock(block)) {
       dataParts.push({ text: block.latex, table: null, PNG: '', svg: '' })
-    } else if (isSvgBlock(block)) {
+      continue
+    }
+    if (isSvgBlock(block)) {
       dataParts.push({ text: '', table: null, PNG: '', svg: block.value })
-    } else if (isQuestionGeometryBlock(block)) {
+      continue
+    }
+    if (isQuestionGeometryBlock(block)) {
       const qc = extractQuestionContent(block)
-      if (qc?.geometrySpec) {
-        // Validate before rendering
-        const parsed = GeometrySpecV1Schema.safeParse(qc.geometrySpec)
-        if (!parsed.success) {
-          renderFailures.push({
-            blockIndex,
-            blockType: 'question_geometry',
-            issues: parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`),
-          })
-        } else {
-          const sectionDataSvg = geometrySpecToSvg(qc.geometrySpec)
-          if (sectionDataSvg) {
-            renderedSvgCount++
-            const section: CanonicalSection = {
-              section_data: { text: '', table: null, PNG: '', svg: sectionDataSvg },
-              question_number: toHebrewOrdinal(sectionIndex + 1),
-              question: wrapTextContent(qc.prompt),
-              hint: wrapTextContent(qc.hint),
-              solution: wrapTextContent(qc.solution),
-              full_solution: wrapTextContent(qc.fullSolution),
-              correct_option: { text: '', table: null, PNG: '', svg: '' },
-              wrong_options: [],
-            }
-            sections.push(section)
-            sectionIndex++
-          } else {
-            renderFailures.push({
-              blockIndex,
-              blockType: 'question_geometry',
-              issues: ['Rendering returned empty SVG'],
-            })
-          }
-        }
-      }
-    } else if (isQuestionAxisBlock(block)) {
+      if (!qc?.geometrySpec) continue
+      const visual = { dsls: [] as string[], svgs: [] as string[] }
+      const added = serializeGeometry(
+        qc.geometrySpec,
+        blockIndex,
+        'question_geometry',
+        visual,
+        renderFailures,
+      )
+      if (added === 0) continue
+      renderedSvgCount += added
+      sections.push({
+        section_data: {
+          text: '',
+          table: null,
+          PNG: '',
+          svg: visual.svgs.join('\n'),
+          ...(visual.dsls.length > 0 ? { graphDsl: visual.dsls.join('\n\n') } : {}),
+        },
+        question_number: toHebrewOrdinal(sectionIndex + 1),
+        question: wrapTextContent(qc.prompt),
+        hint: wrapTextContent(qc.hint),
+        solution: wrapTextContent(qc.solution),
+        full_solution: wrapTextContent(qc.fullSolution),
+        correct_option: { text: '', table: null, PNG: '', svg: '' },
+        wrong_options: [],
+      })
+      sectionIndex++
+      continue
+    }
+    if (isQuestionAxisBlock(block)) {
       const qc = extractQuestionContent(block)
-      if (qc?.axisSpec) {
-        const parsed = AxisSpecV1Schema.safeParse(qc.axisSpec)
-        if (!parsed.success) {
-          renderFailures.push({
-            blockIndex,
-            blockType: 'question_axis',
-            issues: parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`),
-          })
-        } else {
-          const sectionDataSvg = axisSpecToSvg(qc.axisSpec)
-          if (sectionDataSvg) {
-            renderedSvgCount++
-            const section: CanonicalSection = {
-              section_data: { text: '', table: null, PNG: '', svg: sectionDataSvg },
-              question_number: toHebrewOrdinal(sectionIndex + 1),
-              question: wrapTextContent(qc.prompt),
-              hint: wrapTextContent(qc.hint),
-              solution: wrapTextContent(qc.solution),
-              full_solution: wrapTextContent(qc.fullSolution),
-              correct_option: { text: '', table: null, PNG: '', svg: '' },
-              wrong_options: [],
-            }
-            sections.push(section)
-            sectionIndex++
-          } else {
-            renderFailures.push({
-              blockIndex,
-              blockType: 'question_axis',
-              issues: ['Rendering returned empty SVG'],
-            })
-          }
-        }
-      }
-    } else {
-      const qc = extractQuestionContent(block)
-      if (qc) {
-        const section: CanonicalSection = {
-          section_data: { text: '', table: null, PNG: '', svg: '' },
-          question_number: toHebrewOrdinal(sectionIndex + 1),
-          question: wrapTextContent(qc.prompt),
-          hint: wrapTextContent(qc.hint),
-          solution: wrapTextContent(qc.solution),
-          full_solution: wrapTextContent(qc.fullSolution),
-          correct_option: { text: '', table: null, PNG: '', svg: '' },
-          wrong_options: [],
-        }
+      if (!qc?.axisSpec) continue
+      const visual = { dsls: [] as string[], svgs: [] as string[] }
+      const added = serializeAxis(qc.axisSpec, blockIndex, 'question_axis', visual, renderFailures)
+      if (added === 0) continue
+      renderedSvgCount += added
+      sections.push({
+        section_data: {
+          text: '',
+          table: null,
+          PNG: '',
+          svg: visual.svgs.join('\n'),
+          ...(visual.dsls.length > 0 ? { graphDsl: visual.dsls.join('\n\n') } : {}),
+        },
+        question_number: toHebrewOrdinal(sectionIndex + 1),
+        question: wrapTextContent(qc.prompt),
+        hint: wrapTextContent(qc.hint),
+        solution: wrapTextContent(qc.solution),
+        full_solution: wrapTextContent(qc.fullSolution),
+        correct_option: { text: '', table: null, PNG: '', svg: '' },
+        wrong_options: [],
+      })
+      sectionIndex++
+      continue
+    }
 
-        if (
-          block.type === 'question_select' &&
-          block.variant === 'mcq' &&
-          qc.answer &&
-          'options' in qc.answer &&
-          'correctOptionIds' in qc.answer
-        ) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const { correct, wrong } = splitMcqOptions(qc.answer as any)
-          section.correct_option = wrapTextContent(correct.content)
-          section.wrong_options = wrong.map((opt) => wrapTextContent(opt.content))
-        }
+    const qc = extractQuestionContent(block)
+    if (qc) {
+      const visual = { dsls: [] as string[], svgs: [] as string[] }
+      const maybeAttachment = (block as { attachment?: unknown }).attachment
+      renderedSvgCount += serializeAttachment(maybeAttachment, blockIndex, visual, renderFailures)
 
-        sections.push(section)
-        sectionIndex++
+      const section: CanonicalSection = {
+        section_data: {
+          text: '',
+          table: null,
+          PNG: '',
+          svg: visual.svgs.join('\n'),
+          ...(visual.dsls.length > 0 ? { graphDsl: visual.dsls.join('\n\n') } : {}),
+        },
+        question_number: toHebrewOrdinal(sectionIndex + 1),
+        question: wrapTextContent(qc.prompt),
+        hint: wrapTextContent(qc.hint),
+        solution: wrapTextContent(qc.solution),
+        full_solution: wrapTextContent(qc.fullSolution),
+        correct_option: { text: '', table: null, PNG: '', svg: '' },
+        wrong_options: [],
       }
+
+      if (
+        block.type === 'question_select' &&
+        block.variant === 'mcq' &&
+        qc.answer &&
+        'options' in qc.answer &&
+        'correctOptionIds' in qc.answer
+      ) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { correct, wrong } = splitMcqOptions(qc.answer as any)
+        section.correct_option = wrapTextContent(correct.content)
+        section.wrong_options = wrong.map((opt) => wrapTextContent(opt.content))
+      }
+
+      sections.push(section)
+      sectionIndex++
     }
   }
 
