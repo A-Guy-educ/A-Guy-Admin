@@ -53,9 +53,14 @@ async function main() {
     transactionIndex: index,
   })
 
-  console.log(`  httpStatus:  ${result.httpStatus}`)
-  console.log(`  errorCode:   ${result.errorCode}`)
-  console.log(`  message:     ${result.message}`)
+  console.log(`  httpStatus:   ${result.httpStatus}`)
+  console.log(`  contentType:  ${result.contentType}`)
+  console.log(`  errorCode:    ${result.errorCode}`)
+  console.log(`  message:      ${result.message}`)
+  console.log(`  rawText head: ${result.rawText.slice(0, 400)}`)
+  if (result.rawText.length > 400) {
+    console.log(`                [... ${result.rawText.length - 400} more chars ...]`)
+  }
 
   // Classify the outcome.
   if (result.httpStatus === 401 || result.httpStatus === 403) {
@@ -64,25 +69,48 @@ async function main() {
   }
 
   const msgLower = (result.message ?? '').toLowerCase()
+  const rawLower = result.rawText.toLowerCase()
+  const bothText = `${msgLower} ${rawLower}`
   const looksLikeAuthFailure =
-    msgLower.includes('unauthoriz') ||
-    msgLower.includes('invalid') ||
-    msgLower.includes('authentic') ||
-    msgLower.includes('access') ||
-    msgLower.includes('signature')
+    bothText.includes('unauthoriz') ||
+    bothText.includes('invalid signature') ||
+    bothText.includes('invalid token') ||
+    bothText.includes('authentic') ||
+    bothText.includes('access denied') ||
+    bothText.includes('invalid hmac')
 
-  if (result.errorCode !== 0 && looksLikeAuthFailure) {
+  if (looksLikeAuthFailure) {
     console.error('\n❌ AUTH FAILED — Tranzila rejected the signature.')
     console.error('    HMAC input layout likely needs to flip (see tranzila-v2-client.ts).')
     process.exit(1)
   }
 
-  console.log('\n✅ AUTH OK — Tranzila accepted the signed request.')
+  // Classify by content: Tranzila's transactions-query endpoint returns a
+  // bespoke shape ({transactions: [...], user_defined: [...]}) instead of
+  // the generic {error_code, message} envelope. Treat any valid JSON that
+  // isn't an auth error as success.
+  const isJsonContentType = (result.contentType ?? '').toLowerCase().includes('application/json')
   if (result.errorCode === 0) {
-    console.log('   The requested transaction exists (unusual for a smoke index).')
+    console.log('\n✅ AUTH OK — Tranzila accepted the request and returned the transaction.')
+  } else if (result.errorCode !== null) {
+    console.log(
+      `\n✅ AUTH OK — business error (expected): error_code=${result.errorCode}, "${result.message}"`,
+    )
+  } else if (
+    isJsonContentType &&
+    result.httpStatus === 200 &&
+    (result.rawText.includes('"transactions"') || result.rawText.includes('"user_defined"'))
+  ) {
+    console.log('\n✅ AUTH OK — endpoint returned its bespoke shape (transactions-query payload).')
+    console.log(
+      '   The query returned no results, which is the expected outcome for a smoke index.',
+    )
+  } else if (result.httpStatus === 200 && result.rawText.length === 0) {
+    console.log('\n⚠️  Empty 200 response — ambiguous. Could be auth OK but endpoint path wrong.')
   } else {
-    console.log(`   Business error (expected): error_code=${result.errorCode}, "${result.message}"`)
-    console.log('   This is a GOOD outcome for the smoke — proves auth works without side effects.')
+    console.log(
+      '\n⚠️  Unexpected response shape — inspect rawText head above before trusting the integration.',
+    )
   }
 }
 

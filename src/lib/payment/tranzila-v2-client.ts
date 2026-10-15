@@ -83,6 +83,10 @@ export interface TranzilaV2Response<T = Record<string, unknown>> {
   message: string | null
   /** The raw JSON body, typed to T when the caller knows the shape. */
   body: T
+  /** Raw response text — useful when the response isn't JSON (HTML error pages, empty bodies). */
+  rawText: string
+  /** Response's Content-Type header — helps distinguish HTML vs JSON responses when debugging. */
+  contentType: string | null
 }
 
 export interface PostV2Options {
@@ -146,6 +150,8 @@ export async function postV2<T = Record<string, unknown>>(
     errorCode,
     message,
     body: parsed as T,
+    rawText,
+    contentType: response.headers.get('content-type'),
   }
 }
 
