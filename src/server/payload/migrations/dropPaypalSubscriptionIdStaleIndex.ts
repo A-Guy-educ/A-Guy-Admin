@@ -43,7 +43,14 @@ export async function dropPaypalSubscriptionIdStaleIndex(
 
   const staleIndex = indexes.find(
     (idx) =>
-      idx.unique === true && idx.sparse !== true && idx.key && idx.key.paypalSubscriptionId === 1,
+      idx.unique === true &&
+      idx.sparse !== true &&
+      idx.key &&
+      idx.key.paypalSubscriptionId === 1 &&
+      // Guard against future compound indexes starting with paypalSubscriptionId.
+      // We only want to drop the single-field unique index this migration
+      // was designed to retire.
+      Object.keys(idx.key).length === 1,
   )
 
   if (!staleIndex || !staleIndex.name) {

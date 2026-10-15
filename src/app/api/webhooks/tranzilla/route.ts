@@ -88,9 +88,28 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid body' }, { status: 400 })
   }
 
-  // ─── 2. Verify signature when present ───────────────────────────────────
+  // ─── 2. Verify signature ────────────────────────────────────────────────
+  // When TRANZILLA_PRIVATE_KEY is configured (any non-dev environment), the
+  // webhook is REQUIRED to carry a valid response_hash. Early iterations
+  // allowed an unsigned log-and-accept fallback for the one-time flow, but
+  // the subscription-bootstrap branch writes a reusable card token and
+  // promotes a user tier, so an unsigned POST with a guessed subscription
+  // id would be a direct privilege-escalation path. The fallback stays
+  // available only when the private key env is absent (local dev / sandbox
+  // without the signing feature enabled on the terminal).
   const hasHash = typeof body.response_hash === 'string' && body.response_hash.length > 0
+  const privateKeyConfigured = Boolean(process.env.TRANZILLA_PRIVATE_KEY)
   let authMethod: 'response_hash' | 'unsigned' = 'unsigned'
+
+  if (privateKeyConfigured && !hasHash) {
+    const sourceIp =
+      request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
+    payload.logger.warn(
+      { sourceIp, index: body.index },
+      '[tranzilla-webhook] missing response_hash while private key is configured — rejecting',
+    )
+    return NextResponse.json({ error: 'response_hash required' }, { status: 401 })
+  }
 
   if (hasHash) {
     const ok = verifyTranzillaWebhook(body)
@@ -387,25 +406,10 @@ async function handleTranzillaSubscriptionBootstrap(
     return
   }
 
-  if (subscription.status !== 'pending') {
-    payload.logger.info(
-      { index, subscriptionRowId, currentStatus: subscription.status },
-      '[tranzilla-webhook/sub-bootstrap] subscription already in a non-pending state — skipping (idempotent replay)',
-    )
-    return
-  }
-
-  const userId = resolveUserId(subscription.user)
-  if (!userId) {
-    throw new Error(`Subscription ${subscriptionRowId} missing user — cannot bootstrap`)
-  }
-  const tierSlug = subscription.tierSlug
-  if (!isTierSlug(tierSlug) || tierSlug === 'free') {
-    throw new Error(
-      `Subscription ${subscriptionRowId} has invalid tierSlug "${tierSlug ?? 'null'}" — bootstrap requires a paid tier`,
-    )
-  }
-
+  // Fetch Tx up-front so the replay branch below can repair a pending Tx
+  // even when the sub has already been promoted (e.g. extendTierSubscription
+  // succeeded on a prior delivery but the Tx flip threw and the whole
+  // request 500'd before the Tx was marked succeeded).
   let transaction: TranzillaTx | null
   try {
     transaction = (await payload.findByID({
@@ -420,6 +424,42 @@ async function handleTranzillaSubscriptionBootstrap(
   if (!transaction) {
     throw new Error(
       `Subscription-bootstrap webhook (${subscriptionRowId}) could not find initial transaction ${transactionRowId}`,
+    )
+  }
+
+  if (subscription.status !== 'pending') {
+    // Replay: sub already promoted. The only lingering work is to make sure
+    // the initial Tx reached a terminal state — a mid-run crash on the
+    // happy path can leave extendTierSubscription applied but Tx still
+    // pending, which breaks reconciliation and the admin UI's purchase row.
+    if (transaction.status === 'pending' && responseCode === TRANZILLA_APPROVED_CODE) {
+      await flipTransactionSucceeded(payload, transaction, index, body)
+      payload.logger.info(
+        { index, subscriptionRowId, transactionRowId },
+        '[tranzilla-webhook/sub-bootstrap] replay: sub already active, flipped stale pending Tx to succeeded',
+      )
+    } else {
+      payload.logger.info(
+        {
+          index,
+          subscriptionRowId,
+          currentStatus: subscription.status,
+          txStatus: transaction.status,
+        },
+        '[tranzilla-webhook/sub-bootstrap] subscription already in a non-pending state — idempotent replay',
+      )
+    }
+    return
+  }
+
+  const userId = resolveUserId(subscription.user)
+  if (!userId) {
+    throw new Error(`Subscription ${subscriptionRowId} missing user — cannot bootstrap`)
+  }
+  const tierSlug = subscription.tierSlug
+  if (!isTierSlug(tierSlug) || tierSlug === 'free') {
+    throw new Error(
+      `Subscription ${subscriptionRowId} has invalid tierSlug "${tierSlug ?? 'null'}" — bootstrap requires a paid tier`,
     )
   }
 

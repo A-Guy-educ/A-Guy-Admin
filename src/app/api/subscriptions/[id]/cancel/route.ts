@@ -86,6 +86,19 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       )
     }
 
+    // Idempotency comes first — a double-click or client retry on an
+    // already-cancelled sub should return 200, not 409 from the status
+    // allowlist. The spelling matches the earlier contract.
+    if (sub.status === 'cancelled' && sub.cancelAtPeriodEnd === true) {
+      return applyCorsHeaders(
+        NextResponse.json(
+          { success: true, subscriptionId: id, alreadyCancelled: true },
+          { status: 200 },
+        ),
+        request,
+      )
+    }
+
     if (!['active', 'past_due', 'pending'].includes(sub.status)) {
       return applyCorsHeaders(
         NextResponse.json(
@@ -94,17 +107,6 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
             error: `Cannot cancel a subscription in state "${sub.status}"`,
           },
           { status: 409 },
-        ),
-        request,
-      )
-    }
-
-    // Idempotent: already-cancelled with cancelAtPeriodEnd=true is a no-op.
-    if (sub.status === 'cancelled' && sub.cancelAtPeriodEnd === true) {
-      return applyCorsHeaders(
-        NextResponse.json(
-          { success: true, subscriptionId: id, alreadyCancelled: true },
-          { status: 200 },
         ),
         request,
       )

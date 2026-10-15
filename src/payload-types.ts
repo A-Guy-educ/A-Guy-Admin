@@ -2337,13 +2337,17 @@ export interface Subscription {
    */
   regularPriceIls?: number | null;
   /**
-   * TranzilaTK reusable card token for merchant-initiated renewal charges. Null for PayPal rows.
+   * TranzilaTK reusable card token for merchant-initiated renewal charges. Hidden from admin UI; never surface unmasked.
    */
   tranzillaCardToken?: string | null;
   /**
    * Consecutive failed renewal attempts on the Tranzilla path. Reset to 0 on success; sub transitions to expired after a threshold (see cron handler).
    */
   tranzillaRetryCount?: number | null;
+  /**
+   * Timestamp of the most recent renewal-charge attempt. Doubles as the cron CAS lock; stale values are released after ~30 minutes.
+   */
+  lastRenewalAttemptAt?: string | null;
   /**
    * PayPal Billing subscription ID (I-...). Null for Tranzilla subs.
    */
@@ -5360,6 +5364,7 @@ export interface SubscriptionsSelect<T extends boolean = true> {
   regularPriceIls?: T;
   tranzillaCardToken?: T;
   tranzillaRetryCount?: T;
+  lastRenewalAttemptAt?: T;
   paypalSubscriptionId?: T;
   status?: T;
   currentPeriodStart?: T;

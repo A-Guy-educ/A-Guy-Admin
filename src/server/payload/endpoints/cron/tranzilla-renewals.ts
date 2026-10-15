@@ -54,12 +54,36 @@ import { getUsersMongoCollection } from '@/server/services/internal/users-mongo-
 
 export const MAX_RENEWAL_RETRIES = 3
 
+/**
+ * Row-level lock window. The sweep writes `lastRenewalAttemptAt=now` before
+ * calling Tranzilla; any concurrent sweeper reading the same row inside this
+ * window fails the CAS predicate and skips. A crashed sweeper's lock
+ * self-releases after STALE_LOCK_MS so no sub can be permanently stuck.
+ *
+ * Must be shorter than the cron cadence (hourly) with headroom for sweep
+ * runtime — 30 minutes gives us ~30 min of margin against overlapping runs.
+ */
+export const STALE_LOCK_MS = 30 * 60 * 1000
+
+/**
+ * Hard pagination ceiling per sweep. Hit this and `backlogClipped` is set
+ * so ops can alert on sustained backlog (e.g. after an outage or a cohort
+ * mass-expiry). Shouldn't matter at typical subscriber scale.
+ */
+export const SWEEP_PAGE_LIMIT = 500
+
 export interface TranzillaRenewalSweepResult {
   processed: number
   renewed: number
   retried: number
   expired: number
   softCancelExpired: number
+  /** Count of subs skipped due to transient provider errors (not declines). */
+  providerErrors: number
+  /** Count of subs skipped because another sweeper held the CAS lock. */
+  skippedLocked: number
+  /** True when either sweep hit the pagination ceiling — ops should widen or paginate. */
+  backlogClipped: boolean
   errors: Array<{ subscriptionId: string; message: string }>
 }
 
@@ -98,11 +122,15 @@ export async function sweepTranzillaRenewals(
     retried: 0,
     expired: 0,
     softCancelExpired: 0,
+    providerErrors: 0,
+    skippedLocked: 0,
+    backlogClipped: false,
     errors: [],
   }
 
   const now = new Date()
   const dueCutoff = new Date(now.getTime() + 60 * 60 * 1000)
+  const staleLockCutoff = new Date(now.getTime() - STALE_LOCK_MS)
 
   // ─── Soft-cancel expiry sweep ─────────────────────────────────────────
   // Users who cancelled mid-period keep access until currentPeriodEnd (per
@@ -118,10 +146,17 @@ export async function sweepTranzillaRenewals(
         { currentPeriodEnd: { less_than: now.toISOString() } },
       ],
     },
-    limit: 500,
+    limit: SWEEP_PAGE_LIMIT,
     depth: 0,
     overrideAccess: true,
   })
+  if (softCancels.docs.length === SWEEP_PAGE_LIMIT) {
+    result.backlogClipped = true
+    payload.logger.warn(
+      { limit: SWEEP_PAGE_LIMIT },
+      '[cron/tranzilla-renewals] soft-cancel sweep hit page ceiling — backlog likely truncated',
+    )
+  }
 
   for (const doc of softCancels.docs as unknown as SubscriptionRow[]) {
     try {
@@ -146,15 +181,21 @@ export async function sweepTranzillaRenewals(
         { currentPeriodEnd: { less_than_equal: dueCutoff.toISOString() } },
       ],
     },
-    limit: 500,
+    limit: SWEEP_PAGE_LIMIT,
     depth: 0,
     overrideAccess: true,
   })
+  if (due.docs.length === SWEEP_PAGE_LIMIT) {
+    result.backlogClipped = true
+    payload.logger.warn(
+      { limit: SWEEP_PAGE_LIMIT },
+      '[cron/tranzilla-renewals] due-for-charge sweep hit page ceiling — backlog likely truncated',
+    )
+  }
 
   for (const sub of due.docs as unknown as SubscriptionRow[]) {
-    result.processed += 1
     try {
-      await processOneRenewal(payload, sub, result)
+      await processOneRenewal(payload, sub, result, { dueCutoff, staleLockCutoff })
     } catch (err) {
       result.errors.push({
         subscriptionId: sub.id,
@@ -170,10 +211,16 @@ export async function sweepTranzillaRenewals(
   return result
 }
 
+interface RenewalContext {
+  dueCutoff: Date
+  staleLockCutoff: Date
+}
+
 async function processOneRenewal(
   payload: Payload,
   sub: SubscriptionRow,
   result: TranzillaRenewalSweepResult,
+  ctx: RenewalContext,
 ): Promise<void> {
   const userId = resolveUserId(sub.user)
   if (!userId) {
@@ -185,6 +232,38 @@ async function processOneRenewal(
   if (!sub.tranzillaCardToken) {
     throw new Error(`subscription ${sub.id} missing tranzillaCardToken — cannot charge`)
   }
+
+  // Per-sub CAS lock. The predicate re-asserts the same eligibility the
+  // outer find used (status, cancelAtPeriodEnd, currentPeriodEnd) and
+  // additionally requires lastRenewalAttemptAt to be absent or older than
+  // the stale cutoff. Only the sweeper that wins the CAS proceeds to the
+  // provider call; a concurrent sweeper sees modifiedCount=0 and skips.
+  const subsCollection = payload.db.collections['subscriptions']
+  const lockNow = new Date()
+  const lockResult = await subsCollection.updateOne(
+    {
+      _id: new ObjectId(sub.id),
+      status: { $in: ['active', 'past_due'] },
+      cancelAtPeriodEnd: { $ne: true },
+      currentPeriodEnd: { $lte: ctx.dueCutoff },
+      $or: [
+        { lastRenewalAttemptAt: { $exists: false } },
+        { lastRenewalAttemptAt: null },
+        { lastRenewalAttemptAt: { $lt: ctx.staleLockCutoff } },
+      ],
+    },
+    { $set: { lastRenewalAttemptAt: lockNow } },
+  )
+  if (lockResult.modifiedCount !== 1) {
+    result.skippedLocked += 1
+    payload.logger.info(
+      { subscriptionId: sub.id },
+      '[cron/tranzilla-renewals] CAS skip — row locked by another sweeper or no longer due',
+    )
+    return
+  }
+
+  result.processed += 1
 
   const { priceIls, isIntroCharge } = computeNextChargePriceIls({
     introPriceIls: sub.introPriceIls ?? null,
@@ -202,6 +281,23 @@ async function processOneRenewal(
     currency: 'ILS',
     description: `AGuy renewal — ${sub.tierSlug}`,
   })
+
+  // Provider transport error (HTTP non-2xx, missing Response field, network
+  // failure). Explicitly NOT a decline — mapping an outage to a decline
+  // would advance the retry counter and could force-expire every active
+  // sub during a provider outage. Leave the row intact; the stale-lock
+  // window releases automatically so the next sweep retries.
+  if (charge.providerError) {
+    result.providerErrors += 1
+    payload.logger.error(
+      {
+        subscriptionId: sub.id,
+        providerErrorReason: charge.providerErrorReason,
+      },
+      '[cron/tranzilla-renewals] Tranzilla provider error — skipping without retry/expire',
+    )
+    return
+  }
 
   if (!charge.approved) {
     await recordFailedCharge(payload, sub, charge.responseCode, result)

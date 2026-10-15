@@ -60,7 +60,9 @@ export const Subscriptions: CollectionConfig = {
       'status',
       'currentPeriodEnd',
     ],
-    listSearchableFields: ['paypalSubscriptionId', 'tranzillaCardToken'],
+    // tranzillaCardToken is explicitly excluded — it's a reusable payment
+    // credential and must stay out of admin list views and search queries.
+    listSearchableFields: ['paypalSubscriptionId'],
     group: 'Payments',
   },
   hooks: {
@@ -168,12 +170,16 @@ export const Subscriptions: CollectionConfig = {
     // Tranzilla-specific: reusable card token (TranzilaTK) captured by the
     // first notify_url POST. The renewal cron charges this token monthly
     // using the TranzilaPG REST API (merchant-initiated, no buyer prompt).
+    // Hidden from the admin UI and excluded from list-search so a compromised
+    // admin session can't trivially read or search by stored payment tokens.
     {
       name: 'tranzillaCardToken',
       type: 'text',
       admin: {
+        hidden: true,
+        readOnly: true,
         description:
-          'TranzilaTK reusable card token for merchant-initiated renewal charges. Null for PayPal rows.',
+          'TranzilaTK reusable card token for merchant-initiated renewal charges. Hidden from admin UI; never surface unmasked.',
       },
     },
     {
@@ -183,6 +189,21 @@ export const Subscriptions: CollectionConfig = {
       admin: {
         description:
           'Consecutive failed renewal attempts on the Tranzilla path. Reset to 0 on success; sub transitions to expired after a threshold (see cron handler).',
+      },
+    },
+    // Set by the renewal cron just before it calls the Tranzilla direct-
+    // charge API; serves as a per-sub CAS lock. A second overlapping
+    // sweeper reading the same row will fail the CAS predicate
+    // (lastRenewalAttemptAt > now - staleThreshold) and skip the charge
+    // entirely. Stale value is auto-released after staleThreshold so a
+    // crashed sweeper never permanently locks the sub.
+    {
+      name: 'lastRenewalAttemptAt',
+      type: 'date',
+      admin: {
+        description:
+          'Timestamp of the most recent renewal-charge attempt. Doubles as the cron CAS lock; stale values are released after ~30 minutes.',
+        readOnly: true,
       },
     },
     // PayPal path — made optional + non-unique at the DB layer. Non-unique

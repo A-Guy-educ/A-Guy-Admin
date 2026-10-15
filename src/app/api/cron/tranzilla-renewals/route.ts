@@ -25,7 +25,12 @@ export const maxDuration = 300
 function isAuthorized(request: NextRequest): boolean {
   const expected = process.env.CRON_SECRET
   if (!expected) {
-    return process.env.NODE_ENV !== 'production'
+    // Fail closed. This cron performs merchant-initiated charges against
+    // the live Tranzilla terminal — a preview/dev deploy pointed at the
+    // real DB with no CRON_SECRET is a billing-side exploit vector, not
+    // a dev convenience. Local invocations should set CRON_SECRET or an
+    // explicit `ALLOW_UNAUTHENTICATED_CRON=1` opt-in.
+    return process.env.ALLOW_UNAUTHENTICATED_CRON === '1'
   }
   const auth = request.headers.get('authorization') ?? ''
   const expectedHeader = `Bearer ${expected}`

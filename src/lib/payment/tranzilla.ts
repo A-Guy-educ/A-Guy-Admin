@@ -171,7 +171,18 @@ export interface ChargeTranzillaTokenOptions {
 }
 
 export interface ChargeTranzillaTokenResult {
+  /** True iff Tranzilla returned Response=000. */
   approved: boolean
+  /**
+   * True when we did NOT get a parseable Tranzilla response — HTTP 5xx,
+   * network error, HTML error page from a reverse proxy, missing `Response`
+   * field in the body, etc. Callers must treat this differently from a
+   * genuine decline (`approved=false, providerError=false`); mapping
+   * provider outages to declines force-expires subscribers en masse.
+   */
+  providerError: boolean
+  /** Diagnostic reason when providerError is true (http_status / parse / network). */
+  providerErrorReason: string | null
   responseCode: string
   index: string | null
   confirmationCode: string | null
@@ -203,18 +214,47 @@ export async function chargeTranzillaToken(
 
   const url = `${TRANZILLA_DIRECT_BASE}/${terminal}/iframenew.php`
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: params.toString(),
+  const errorResult = (reason: string): ChargeTranzillaTokenResult => ({
+    approved: false,
+    providerError: true,
+    providerErrorReason: reason,
+    responseCode: '',
+    index: null,
+    confirmationCode: null,
+    raw: {},
   })
+
+  let response: Response
+  try {
+    response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params.toString(),
+    })
+  } catch (err) {
+    return errorResult(`network: ${err instanceof Error ? err.message : String(err)}`)
+  }
+
+  if (!response.ok) {
+    return errorResult(`http_${response.status}`)
+  }
 
   const text = await response.text()
   const parsed = Object.fromEntries(new URLSearchParams(text).entries()) as Record<string, string>
 
   const responseCode = parsed.Response ?? parsed.response ?? ''
+  // Empty / missing Response field means we didn't get a Tranzilla answer
+  // we can act on — most likely an HTML error page from a reverse proxy
+  // or a terminal misconfiguration. Treat as a provider error, not a
+  // decline, so the cron doesn't retry/expire the sub on provider outages.
+  if (!responseCode) {
+    return errorResult('missing_response_field')
+  }
+
   return {
     approved: responseCode === '000',
+    providerError: false,
+    providerErrorReason: null,
     responseCode,
     index: parsed.index ?? null,
     confirmationCode: parsed.ConfirmationCode ?? null,
