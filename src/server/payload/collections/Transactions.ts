@@ -14,7 +14,7 @@ import { adminOnly } from '../access/adminOnly'
 import { createdByField } from '../fields/createdBy'
 import { tenantField } from '../fields/tenant'
 // Tier recompute is disabled while `user.currentTier` is a hardcoded enum
-// managed manually by admins (see parent-folder TIERS.md). The hook file is
+// managed manually by admins (see ../TIERS.md). The hook file is
 // kept on disk for a future revival of automatic promotion.
 // import { recomputeTierOnSuccess } from './Transactions/hooks/recomputeTierOnSuccess-hook'
 import { revokeEntitlementsOnRefund } from './Transactions/hooks/revokeEntitlementsOnRefund-hook'
@@ -91,7 +91,7 @@ export const Transactions: CollectionConfig = {
     // Tier slug for tier-subscription purchases. Set when the transaction
     // represents a tier upgrade (e.g. free → basic). Mutually exclusive with
     // `product` in practice. Options mirror src/lib/tiers/constants.ts; see
-    // parent-folder TIERS.md for the full tier contract.
+    // ../TIERS.md for the full tier contract.
     {
       name: 'tierSlug',
       type: 'select',
@@ -241,6 +241,19 @@ export const Transactions: CollectionConfig = {
       admin: {
         description:
           'True when this transaction records a recurring renewal charge, not the initial checkout',
+      },
+    },
+    // Set by the Tranzilla renewal path (and by the bootstrap endpoint for
+    // the first charge) when the charge was priced from the subscription's
+    // intro offer, not the regular price. Enables intro-vs-regular revenue
+    // reporting without having to join against the Subscription row.
+    {
+      name: 'isIntroCharge',
+      type: 'checkbox',
+      defaultValue: false,
+      admin: {
+        description:
+          'True when this transaction was charged at the subscription intro price (not the regular monthly price).',
       },
     },
 

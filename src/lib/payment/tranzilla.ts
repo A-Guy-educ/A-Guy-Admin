@@ -139,6 +139,90 @@ export function createTranzillaCheckout(
 }
 
 /**
+ * Direct-charge a stored TranzilaTK token (merchant-initiated).
+ *
+ * Used by /api/cron/tranzilla-renewals to run the monthly recurring charge
+ * against the card captured during the bootstrap iframe flow. No buyer
+ * interaction required — the token was authorized for recurring charges
+ * when the tokenization terminal (`fxpaguytok`) issued it.
+ *
+ * Endpoint: `https://direct.tranzila.com/<terminal>/iframenew.php`. Even
+ * though the URL suggests iframes, Tranzilla accepts form-urlencoded POSTs
+ * server-side and returns the same URL-encoded response body it would use
+ * in a browser redirect — just read the body text and parse it.
+ *
+ * The response's `Response` field is `000` on approval, any other 3-digit
+ * code on decline. `index` is the Tranzilla transaction id, mirrored into
+ * our Transactions.providerTransactionId for reconciliation and dedup.
+ *
+ * Note: this path has not yet been reconciled against a real merchant
+ * account. Shai will confirm `expdate` + whether the tokenization terminal
+ * suffices without it. If prod responses are 404/500 on this URL, swap in
+ * the TranzilaPG REST endpoint path once Tranzilla support provides it
+ * (prior attempt at `/v1/transaction/search` returned 404 — see tranzilla.ts
+ * header comment).
+ */
+export interface ChargeTranzillaTokenOptions {
+  token: string
+  sum: number
+  currency: TranzillaCurrency
+  expDate?: string
+  description?: string
+}
+
+export interface ChargeTranzillaTokenResult {
+  approved: boolean
+  responseCode: string
+  index: string | null
+  confirmationCode: string | null
+  raw: Record<string, string>
+}
+
+export async function chargeTranzillaToken(
+  options: ChargeTranzillaTokenOptions,
+): Promise<ChargeTranzillaTokenResult> {
+  const { tranzillaTerminal, tranzillaTerminalToken } = getPaymentEnv()
+
+  const terminal = tranzillaTerminalToken || tranzillaTerminal
+  if (!terminal) {
+    throw new Error('chargeTranzillaToken: TRANZILLA_TERMINAL(_TOKEN) env var is not set')
+  }
+  if (!options.token) {
+    throw new Error('chargeTranzillaToken: `token` is required')
+  }
+
+  const params = new URLSearchParams({
+    sum: options.sum.toFixed(2),
+    currency: String(TRANZILLA_CURRENCY_CODE[options.currency]),
+    cred_type: '1',
+    tranmode: 'A',
+    TranzilaTK: options.token,
+  })
+  if (options.expDate) params.set('expdate', options.expDate)
+  if (options.description) params.set('pdesc', options.description)
+
+  const url = `${TRANZILLA_DIRECT_BASE}/${terminal}/iframenew.php`
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: params.toString(),
+  })
+
+  const text = await response.text()
+  const parsed = Object.fromEntries(new URLSearchParams(text).entries()) as Record<string, string>
+
+  const responseCode = parsed.Response ?? parsed.response ?? ''
+  return {
+    approved: responseCode === '000',
+    responseCode,
+    index: parsed.index ?? null,
+    confirmationCode: parsed.ConfirmationCode ?? null,
+    raw: parsed,
+  }
+}
+
+/**
  * Verify a Tranzilla notify_url POST body.
  *
  * Tranzilla's hosted-iframe `response_hash` is `HMAC-SHA256(private_key, body)`

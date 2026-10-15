@@ -529,9 +529,13 @@ export interface User {
       }[]
     | null;
   /**
-   * Subscription tier. Set manually by admin. See parent-folder TIERS.md for the full gating contract.
+   * Subscription tier. Set manually by admin OR by the subscription webhook/cron via extendTierSubscription. See ../TIERS.md for the full gating contract.
    */
   currentTier?: ('free' | 'basic' | 'advanced' | 'premium') | null;
+  /**
+   * How the current tier was granted. Null = free user (default) or no record. Written by the subscription path and the legacy backfill migration.
+   */
+  tierGrantSource?: ('subscription' | 'legacy_one_time' | 'manual') | null;
   /**
    * Standalone feature access granted via payment
    */
@@ -2068,7 +2072,7 @@ export interface Product {
   createdAt: string;
 }
 /**
- * Legacy — tier is now a hardcoded enum on the User doc. See parent-folder TIERS.md.
+ * Legacy — tier is now a hardcoded enum on the User doc. See ../TIERS.md.
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "tiers".
@@ -2238,6 +2242,10 @@ export interface Transaction {
    */
   isRenewal?: boolean | null;
   /**
+   * True when this transaction was charged at the subscription intro price (not the regular monthly price).
+   */
+  isIntroCharge?: boolean | null;
+  /**
    * Original success redirect URL
    */
   successUrl?: string | null;
@@ -2281,7 +2289,7 @@ export interface Transaction {
   createdAt: string;
 }
 /**
- * Subscriptions are created by the Web checkout route when a user starts a recurring purchase. Status is driven by PayPal webhook events — do not edit `status` or `currentPeriodEnd` by hand.
+ * Subscriptions are created by the Web checkout (PayPal) or admin bootstrap (Tranzilla) routes. Status is driven by provider webhooks or the Tranzilla renewal cron — do not edit `status`, `currentPeriodEnd`, or token/intro fields by hand.
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "subscriptions".
@@ -2297,19 +2305,51 @@ export interface Subscription {
    */
   user: string | User;
   /**
-   * Subscription product being purchased
+   * Subscription product (null for tier-subscription rows — see tierSlug)
    */
-  product: string | Product;
+  product?: (string | null) | Product;
   /**
-   * Payment provider (only PayPal is supported today)
+   * Tier purchased (set for tier-subscription rows where product is null). See ../TIERS.md.
    */
-  provider: 'paypal';
+  tierSlug?: ('basic' | 'advanced' | 'premium') | null;
   /**
-   * PayPal Billing subscription ID (I-...)
+   * Payment provider. Tranzilla is the primary path for new subscriptions; PayPal is kept for grandfathered subs.
    */
-  paypalSubscriptionId: string;
+  provider: 'paypal' | 'tranzilla';
   /**
-   * Current lifecycle state driven by PayPal webhooks
+   * Pricing offer selected at checkout ("default" / "intro3mo"). Null for PayPal rows.
+   */
+  offerSlug?: ('default' | 'intro3mo') | null;
+  /**
+   * Intro-period price in ILS (null = no intro). Snapshot from the pricing catalog at bootstrap; immutable.
+   */
+  introPriceIls?: number | null;
+  /**
+   * Total number of intro-priced charges (null = no intro). Snapshot at bootstrap; immutable.
+   */
+  introChargesTotal?: number | null;
+  /**
+   * Successful intro-priced charges applied so far. Incremented only on success; failed retries do not advance.
+   */
+  introChargesUsed?: number | null;
+  /**
+   * Steady-state monthly price in ILS. Used after introChargesUsed reaches introChargesTotal.
+   */
+  regularPriceIls?: number | null;
+  /**
+   * TranzilaTK reusable card token for merchant-initiated renewal charges. Null for PayPal rows.
+   */
+  tranzillaCardToken?: string | null;
+  /**
+   * Consecutive failed renewal attempts on the Tranzilla path. Reset to 0 on success; sub transitions to expired after a threshold (see cron handler).
+   */
+  tranzillaRetryCount?: number | null;
+  /**
+   * PayPal Billing subscription ID (I-...). Null for Tranzilla subs.
+   */
+  paypalSubscriptionId?: string | null;
+  /**
+   * Current lifecycle state. PayPal: driven by webhooks. Tranzilla: driven by bootstrap + renewal cron + cancel endpoint.
    */
   status: 'pending' | 'active' | 'past_due' | 'cancelled' | 'suspended' | 'expired';
   /**
@@ -2317,7 +2357,7 @@ export interface Subscription {
    */
   currentPeriodStart?: string | null;
   /**
-   * End of the current billing period — access continues until this date even after cancellation
+   * End of the current billing period — access continues until this date even after cancellation. The Tranzilla cron selects on this field.
    */
   currentPeriodEnd?: string | null;
   /**
@@ -2325,11 +2365,11 @@ export interface Subscription {
    */
   cancelAtPeriodEnd?: boolean | null;
   /**
-   * When cancellation was received from PayPal
+   * When cancellation was received (PayPal webhook or admin cancel endpoint)
    */
   cancelledAt?: string | null;
   /**
-   * The pending Transaction created at checkout; flipped to succeeded on ACTIVATED
+   * The pending Transaction created at checkout/bootstrap; flipped to succeeded on first successful charge.
    */
   initialTransaction?: (string | null) | Transaction;
   /**
@@ -4939,6 +4979,7 @@ export interface UsersSelect<T extends boolean = true> {
         id?: T;
       };
   currentTier?: T;
+  tierGrantSource?: T;
   featureEntitlements?:
     | T
     | {
@@ -5288,6 +5329,7 @@ export interface TransactionsSelect<T extends boolean = true> {
   metadata?: T;
   subscription?: T;
   isRenewal?: T;
+  isIntroCharge?: T;
   successUrl?: T;
   cancelUrl?: T;
   errorMessage?: T;
@@ -5309,7 +5351,15 @@ export interface SubscriptionsSelect<T extends boolean = true> {
   tenant?: T;
   user?: T;
   product?: T;
+  tierSlug?: T;
   provider?: T;
+  offerSlug?: T;
+  introPriceIls?: T;
+  introChargesTotal?: T;
+  introChargesUsed?: T;
+  regularPriceIls?: T;
+  tranzillaCardToken?: T;
+  tranzillaRetryCount?: T;
   paypalSubscriptionId?: T;
   status?: T;
   currentPeriodStart?: T;

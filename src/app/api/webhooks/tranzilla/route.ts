@@ -34,9 +34,10 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 import { applyTierPurchase } from '@/lib/payment/apply-tier-purchase'
 import { serializePaymentError } from '@/lib/payment/error-log'
-import { grantProductEntitlements } from '@/lib/payment/grant-entitlements'
+import { extendTierSubscription } from '@/lib/payment/extend-tier-subscription'
+import { addCalendarMonths, grantProductEntitlements } from '@/lib/payment/grant-entitlements'
 import { verifyTranzillaWebhook } from '@/lib/payment/tranzilla'
-import { isTierSlug } from '@/lib/tiers/constants'
+import { isTierSlug, type TierSlug } from '@/lib/tiers/constants'
 import { sendPurchaseReceipt } from '@/server/email/services/purchase-receipt-service'
 
 const TRANZILLA_APPROVED_CODE = '000'
@@ -108,7 +109,8 @@ export async function POST(request: NextRequest) {
   // ─── 3. Extract key fields ──────────────────────────────────────────────
   const index = body.index
   const responseCode = body.Response ?? body.response ?? ''
-  const transactionRowId = body.u72 // Payload Transactions._id (populated by Web)
+  const transactionRowId = body.u72 // Payload Transactions._id (populated by Web / bootstrap)
+  const subscriptionRowId = body.u73 // Payload Subscriptions._id (set by the subscription-bootstrap endpoint)
 
   if (!index) {
     payload.logger.warn(
@@ -169,13 +171,27 @@ export async function POST(request: NextRequest) {
 
   // ─── 5. Process the transaction ─────────────────────────────────────────
   try {
-    await handleTranzillaCallback(payload, {
-      index,
-      responseCode,
-      transactionRowId,
-      body,
-      authMethod,
-    })
+    if (subscriptionRowId) {
+      // Subscription-bootstrap path (first charge against the hosted iframe
+      // with the token terminal). Captures TranzilaTK, flips sub to active,
+      // and promotes the user via extendTierSubscription.
+      await handleTranzillaSubscriptionBootstrap(payload, {
+        index,
+        responseCode,
+        transactionRowId,
+        subscriptionRowId,
+        body,
+        authMethod,
+      })
+    } else {
+      await handleTranzillaCallback(payload, {
+        index,
+        responseCode,
+        transactionRowId,
+        body,
+        authMethod,
+      })
+    }
   } catch (err) {
     payload.logger.error(
       { err: serializePaymentError(err), index, transactionRowId },
@@ -318,6 +334,190 @@ interface TranzillaTx {
       discountedAmount?: number
     } | null
   } | null
+}
+
+interface TranzillaSubBootstrapArgs {
+  index: string
+  responseCode: string
+  transactionRowId: string
+  subscriptionRowId: string
+  body: Record<string, string>
+  authMethod: 'response_hash' | 'unsigned'
+}
+
+interface TranzillaSubscriptionDoc {
+  id: string
+  user: string | { id: string } | null
+  tierSlug?: string | null
+  status: string
+  introPriceIls?: number | null
+  introChargesTotal?: number | null
+  introChargesUsed?: number | null
+  regularPriceIls?: number | null
+}
+
+async function handleTranzillaSubscriptionBootstrap(
+  payload: PayloadInstance,
+  {
+    index,
+    responseCode,
+    transactionRowId,
+    subscriptionRowId,
+    body,
+    authMethod,
+  }: TranzillaSubBootstrapArgs,
+): Promise<void> {
+  // Load sub + tx. Both must exist and both must still be pending.
+  let subscription: TranzillaSubscriptionDoc | null
+  try {
+    subscription = (await payload.findByID({
+      collection: 'subscriptions',
+      id: subscriptionRowId,
+      depth: 0,
+      overrideAccess: true,
+    })) as TranzillaSubscriptionDoc
+  } catch {
+    subscription = null
+  }
+  if (!subscription) {
+    payload.logger.warn(
+      { index, subscriptionRowId },
+      '[tranzilla-webhook/sub-bootstrap] no Subscriptions row for u73 — bootstrap endpoint may not have persisted it before redirect',
+    )
+    return
+  }
+
+  if (subscription.status !== 'pending') {
+    payload.logger.info(
+      { index, subscriptionRowId, currentStatus: subscription.status },
+      '[tranzilla-webhook/sub-bootstrap] subscription already in a non-pending state — skipping (idempotent replay)',
+    )
+    return
+  }
+
+  const userId = resolveUserId(subscription.user)
+  if (!userId) {
+    throw new Error(`Subscription ${subscriptionRowId} missing user — cannot bootstrap`)
+  }
+  const tierSlug = subscription.tierSlug
+  if (!isTierSlug(tierSlug) || tierSlug === 'free') {
+    throw new Error(
+      `Subscription ${subscriptionRowId} has invalid tierSlug "${tierSlug ?? 'null'}" — bootstrap requires a paid tier`,
+    )
+  }
+
+  let transaction: TranzillaTx | null
+  try {
+    transaction = (await payload.findByID({
+      collection: 'transactions',
+      id: transactionRowId,
+      depth: 0,
+      overrideAccess: true,
+    })) as TranzillaTx
+  } catch {
+    transaction = null
+  }
+  if (!transaction) {
+    throw new Error(
+      `Subscription-bootstrap webhook (${subscriptionRowId}) could not find initial transaction ${transactionRowId}`,
+    )
+  }
+
+  const isApproved = responseCode === TRANZILLA_APPROVED_CODE
+
+  if (!isApproved) {
+    // Bootstrap failed — mark tx failed and sub expired so the user can start fresh.
+    await markTransactionFailed(payload, transaction.id, index, responseCode)
+    const subsCollection = payload.db.collections['subscriptions']
+    await subsCollection.updateOne(
+      { _id: new ObjectId(subscriptionRowId), status: 'pending' },
+      {
+        $set: {
+          status: 'expired',
+          updatedAt: new Date(),
+        },
+      },
+    )
+    payload.logger.info(
+      { index, subscriptionRowId, transactionRowId, responseCode, authMethod },
+      '[tranzilla-webhook/sub-bootstrap] first charge declined — tx failed, sub expired',
+    )
+    return
+  }
+
+  // ─── Approved path ─────────────────────────────────────────────────────
+  const token = body.TranzilaTK || null
+  if (!token) {
+    // No token means the next cron run has nothing to charge. Treat as a
+    // bootstrap failure rather than silently moving on — ops will see the
+    // error and can investigate the terminal config (fxpaguytok missing?).
+    throw new Error(
+      `Subscription-bootstrap webhook (${subscriptionRowId}) succeeded without a TranzilaTK — terminal must be the tokenization terminal`,
+    )
+  }
+
+  // Snapshot the token + card metadata onto the Sub row before promoting.
+  const subsCollection = payload.db.collections['subscriptions']
+  await subsCollection.updateOne(
+    { _id: new ObjectId(subscriptionRowId) },
+    {
+      $set: {
+        tranzillaCardToken: token,
+        updatedAt: new Date(),
+      },
+    },
+  )
+
+  const now = new Date()
+  const newPeriodEnd = addCalendarMonths(now, 1)
+  // isIntroCharge is derived from the Sub's snapshotted intro state. On
+  // the very first charge, introChargesUsed is 0 — if the offer has an
+  // intro cycle configured, this charge is one of them.
+  const introChargesTotal = subscription.introChargesTotal ?? null
+  const introChargesUsed = subscription.introChargesUsed ?? 0
+  const isIntroCharge =
+    subscription.introPriceIls !== null &&
+    subscription.introPriceIls !== undefined &&
+    introChargesTotal !== null &&
+    introChargesUsed < introChargesTotal
+
+  await extendTierSubscription({
+    payload,
+    userId,
+    tierSlug: tierSlug as TierSlug,
+    subscriptionId: subscriptionRowId,
+    newPeriodStart: now,
+    newPeriodEnd,
+    isIntroCharge,
+  })
+
+  await flipTransactionSucceeded(payload, transaction, index, body)
+
+  // Receipt. Green Invoice issues the formal tax invoice for Tranzilla
+  // flows (see purchase-receipt templates) — our email is just a
+  // payment-confirmation note. Fire-and-forget.
+  void sendPurchaseReceipt(payload, {
+    transactionId: String(transaction.id),
+    userId,
+    productId: '', // tier sub — no product
+    providerTransactionId: index,
+    amount: transaction.amount,
+    currency: transaction.currency,
+    appliedCoupon: transaction.metadata?.appliedCoupon ?? null,
+    tierSlug: tierSlug as TierSlug,
+    useGreenInvoiceNote: true,
+  })
+
+  payload.logger.info(
+    {
+      index,
+      subscriptionRowId,
+      transactionRowId,
+      authMethod,
+      confirmationCode: body.ConfirmationCode,
+    },
+    '[tranzilla-webhook/sub-bootstrap] first charge approved — sub active, token stored',
+  )
 }
 
 function resolveUserId(user: TranzillaTx['user']): string | null {
