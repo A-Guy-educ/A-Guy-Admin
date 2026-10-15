@@ -68,6 +68,10 @@ export const JSXGraphBoard: React.FC<JSXGraphBoardProps> = ({
                 ticks: {
                   visible: axisConfig.showNumbers ?? true,
                   ticksDistance: axisConfig.ticks ?? 1,
+                  // Finite tick marks instead of JSXGraph's default -1 (infinite),
+                  // which draws grid lines across the board whenever ticks are visible.
+                  majorHeight: 10,
+                  minorHeight: 4,
                   label: {
                     // Invert tick position: -10 (above) for default, 10 (below) for inverted
                     offset: [0, axisConfig.tickPosition?.x === 'inverted' ? 10 : -10] as [
@@ -87,6 +91,10 @@ export const JSXGraphBoard: React.FC<JSXGraphBoardProps> = ({
                 ticks: {
                   visible: axisConfig.showNumbers ?? true,
                   ticksDistance: axisConfig.ticks ?? 1,
+                  // Finite tick marks instead of JSXGraph's default -1 (infinite),
+                  // which draws grid lines across the board whenever ticks are visible.
+                  majorHeight: 10,
+                  minorHeight: 4,
                   label: {
                     // Invert tick position: -10 (left) for default, 10 (right) for inverted
                     offset: [axisConfig.tickPosition?.y === 'inverted' ? 10 : -10, 0] as [
@@ -128,6 +136,7 @@ export const JSXGraphBoard: React.FC<JSXGraphBoardProps> = ({
     // toggled, browser resized) actually re-inits the board — otherwise the
     // DOM grows to the new size while the SVG coordinate space stays frozen
     // at mount-time dimensions and every subsequent render looks mis-scaled.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- width/height are intentional re-init triggers
   }, [loaded, boundingBox, showAxis, showGrid, showNavigation, axisConfig, width, height])
 
   useEffect(() => {
