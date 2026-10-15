@@ -16,6 +16,7 @@
 
 import type { Payload } from 'payload'
 
+import { TIER_LABEL_EN, TIER_LABEL_HE, type TierSlug } from '@/lib/tiers/constants'
 import {
   buildPurchaseReceiptEmailEN,
   buildPurchaseReceiptEmailHE,
@@ -26,6 +27,9 @@ const PURCHASES_URL = '/account/purchases'
 
 export interface SendPurchaseReceiptOptions {
   transactionId: string
+  // Empty string when this is a tier subscription (no product row). Callers
+  // in the tier-subscription path pass `tierSlug` instead, and the template
+  // uses the localized tier label as the line-item name.
   userId: string
   productId: string
   providerTransactionId: string
@@ -39,6 +43,13 @@ export interface SendPurchaseReceiptOptions {
     originalAmount?: number
     discountedAmount?: number
   } | null
+  // Tier-subscription receipts set this so the template can render the
+  // localized tier name without a Products lookup.
+  tierSlug?: TierSlug
+  // Tranzilla path: Green Invoice issues the formal tax receipt separately,
+  // so our email is a payment-confirmation note. Toggles the extra line in
+  // both locales.
+  useGreenInvoiceNote?: boolean
 }
 
 /**
@@ -84,6 +95,8 @@ export async function sendPurchaseReceipt(
     currency,
     userLocale = 'he',
     appliedCoupon,
+    tierSlug,
+    useGreenInvoiceNote = false,
   } = options
 
   // ── 1. Idempotency: skip if email already sent ─────────────────────────────
@@ -99,23 +112,39 @@ export async function sendPurchaseReceipt(
     return true
   }
 
-  // ── 2. Fetch user and product data ─────────────────────────────────────────
+  // ── 2. Fetch user and (optionally) product data ───────────────────────────
+  // Tier-subscription receipts pass `tierSlug` and an empty `productId`;
+  // the product lookup is skipped and the line-item name is derived from
+  // the localized tier label.
   let userEmail: string
   let productName: string
 
   try {
-    const [userResult, productResult] = await Promise.all([
-      payload.findByID({ collection: 'users', id: userId, depth: 0, overrideAccess: true }),
-      payload.findByID({ collection: 'products', id: productId, depth: 0, overrideAccess: true }),
-    ])
-
+    const userResult = await payload.findByID({
+      collection: 'users',
+      id: userId,
+      depth: 0,
+      overrideAccess: true,
+    })
     userEmail = (userResult as { email: string }).email
-    productName = (productResult as { name: string }).name
+
+    if (tierSlug) {
+      productName = userLocale === 'he' ? TIER_LABEL_HE[tierSlug] : TIER_LABEL_EN[tierSlug]
+    } else if (productId) {
+      const productResult = await payload.findByID({
+        collection: 'products',
+        id: productId,
+        depth: 0,
+        overrideAccess: true,
+      })
+      productName = (productResult as { name: string }).name
+    } else {
+      throw new Error('Purchase receipt requires either productId or tierSlug')
+    }
   } catch (err) {
-    // If we can't fetch user/product data, log and return false without throwing
     payload.logger.error(
-      { error: err, transactionId, userId, productId },
-      'Purchase receipt email: failed to fetch user or product data',
+      { error: err, transactionId, userId, productId, tierSlug },
+      'Purchase receipt email: failed to fetch user/product data',
     )
     return false
   }
@@ -134,6 +163,7 @@ export async function sendPurchaseReceipt(
     transactionId: providerTransactionId,
     paymentDate,
     purchaseLink: PURCHASES_URL,
+    useGreenInvoiceNote,
     ...(appliedCoupon
       ? {
           couponCode: appliedCoupon.code,

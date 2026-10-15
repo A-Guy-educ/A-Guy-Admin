@@ -78,7 +78,10 @@ import { pdfToExercisesTask } from '@/server/payload/jobs/pdf-to-exercises-task'
 import { pdfToExercisesV2Task } from '@/server/payload/jobs/pdf-to-exercises-v2-task'
 import type { JobDocument } from '@/server/payload/jobs/types'
 import { runBackfillOnInit } from '@/server/payload/migrations/backfillAdminTitle'
+import { runBackfillTierGrantSourceOnInit } from '@/server/payload/migrations/backfillTierGrantSource'
+import { runDropPaypalSubscriptionIdStaleIndexOnInit } from '@/server/payload/migrations/dropPaypalSubscriptionIdStaleIndex'
 import { runDropStaleCoursesValidatorOnInit } from '@/server/payload/migrations/dropStaleCoursesValidator'
+import { runEnsureSubscriptionsActiveUserIndexOnInit } from '@/server/payload/migrations/ensureSubscriptionsActiveUserIndex'
 import { runEnsureTiersIndexesOnInit } from '@/server/payload/migrations/ensureTiersIndexes'
 import { runLocalizeTeacherProfilesOnInit } from '@/server/payload/migrations/localize-teacher-profiles'
 import { runPopulateLessonBlocksOnInit } from '@/server/payload/migrations/populateLessonBlocks'
@@ -598,6 +601,27 @@ export default buildConfig({
     // "at most one default tier" (the collection's beforeValidate check
     // has a TOCTOU window that this index closes).
     await timedInit('ensureTiersIndexes', () => runEnsureTiersIndexesOnInit(payload))
+
+    // Drop the stale non-sparse unique index on
+    // subscriptions.paypalSubscriptionId. Needed so Tranzilla tier subs
+    // (which carry no paypalSubscriptionId) can be inserted without
+    // E11000-colliding on null. Idempotent: no-op once the index is gone.
+    await timedInit('dropPaypalSubscriptionIdStaleIndex', () =>
+      runDropPaypalSubscriptionIdStaleIndexOnInit(payload),
+    )
+
+    // Tag pre-Tranzilla tier buyers with tierGrantSource='legacy_one_time'
+    // so the subscription gate can tell them apart from lapsed subscribers.
+    // Idempotent: the "not set" filter matches zero docs after the first
+    // successful run.
+    await timedInit('backfillTierGrantSource', () => runBackfillTierGrantSourceOnInit(payload))
+
+    // Partial unique index on subscriptions.user filtered to the active-ish
+    // statuses — DB-level guard against the bootstrap endpoint's TOCTOU
+    // double-subscribe window. Idempotent: no-op once the index exists.
+    await timedInit('ensureSubscriptionsActiveUserIndex', () =>
+      runEnsureSubscriptionsActiveUserIndexOnInit(payload),
+    )
 
     // NOTE: verifyTransactionsUniqueness was moved out of onInit into a
     // daily Vercel cron (`/api/cron/verify-tx-indexes`, see vercel.json).

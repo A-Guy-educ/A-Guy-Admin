@@ -31,7 +31,12 @@ export function buildPurchaseReceiptEmailHE(data: PurchaseReceiptData): string {
     couponCode,
     couponDiscount,
     originalAmount,
+    useGreenInvoiceNote,
   } = data
+
+  const greenInvoiceNote = useGreenInvoiceNote
+    ? `<p style="margin: 0 0 16px; color: #6b7280; font-size: 13px; line-height: 1.6;">חשבונית המס/קבלה הרשמית תישלח אליך בנפרד באימייל ממערכת Green Invoice.</p>`
+    : ''
 
   const originalAmountRow =
     originalAmount !== undefined
@@ -96,6 +101,7 @@ export function buildPurchaseReceiptEmailHE(data: PurchaseReceiptData): string {
                   </td>
                 </tr>
               </table>
+              ${greenInvoiceNote}
               <p style="margin: 0; color: #9ca3af; font-size: 12px; line-height: 1.6;">אם יש לך שאלות לגבי הרכישה, אנא פנה לצוות התמיכה שלנו. דוא&quot;ל זה מאשר תשלום מוצלח. לא נדרשת פעולה מצדך.</p>
             </td>
           </tr>

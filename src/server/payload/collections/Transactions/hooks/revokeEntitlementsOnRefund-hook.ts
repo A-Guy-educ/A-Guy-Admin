@@ -66,7 +66,7 @@ export const revokeEntitlementsOnRefund: CollectionAfterChangeHook = async ({
 
   // Tier-subscription transactions (product=null, tierSlug set) carry no
   // product-based entitlements to revoke — the "entitlement" is the user's
-  // currentTier, which is admin-owned (see parent-folder TIERS.md). Log for
+  // currentTier, which is admin-owned (see ../TIERS.md). Log for
   // ops visibility and skip; an operator decides whether to downgrade the
   // tier when they process the refund.
   const productId =
