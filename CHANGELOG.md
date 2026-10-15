@@ -2203,6 +2203,7 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- fix(payments): Unblock web smoke tests — VERCEL_ENV gate + dev allowlist ([#614](https://github.com/A-Guy-educ/A-Guy-Admin/pull/614)) — @aguyshayb
 - feat(payments): Add basic.test offerSlug for /subtest smoke flow ([#612](https://github.com/A-Guy-educ/A-Guy-Admin/pull/612)) — @aguyshayb
 - feat(lesson-export): Emit DSL for axis/geometry blocks and attachments ([#611](https://github.com/A-Guy-educ/A-Guy-Admin/pull/611)) — @aguyshayb
 - feat(payments): Tranzilla tier-subscription lifecycle ([#610](https://github.com/A-Guy-educ/A-Guy-Admin/pull/610)) — @aguyshayb
