@@ -16,9 +16,13 @@
 
 import type { TierSlug } from '@/lib/tiers/constants'
 
-export type TranzillaOfferSlug = 'default' | 'intro3mo'
+export type TranzillaOfferSlug = 'default' | 'intro3mo' | 'test'
 
-export const TRANZILLA_OFFER_SLUGS: readonly TranzillaOfferSlug[] = ['default', 'intro3mo'] as const
+export const TRANZILLA_OFFER_SLUGS: readonly TranzillaOfferSlug[] = [
+  'default',
+  'intro3mo',
+  'test',
+] as const
 
 export interface TranzillaOffer {
   introPriceIls: number | null
@@ -26,7 +30,12 @@ export interface TranzillaOffer {
   regularPriceIls: number
 }
 
-type TierOfferCatalog = Record<TranzillaOfferSlug, TranzillaOffer>
+// Partial — not every tier offers every slug. `test` is `basic`-only
+// (used by web's /subtest smoke flow); advanced/premium intentionally
+// omit it. resolveTranzillaOffer returns null on a tier/offer gap so
+// the bootstrap endpoint can 400 the request instead of silently
+// defaulting to another offer.
+type TierOfferCatalog = Partial<Record<TranzillaOfferSlug, TranzillaOffer>>
 
 // `free` is not a paid tier — the catalog only enumerates purchasable tiers.
 export type PaidTierSlug = Exclude<TierSlug, 'free'>
@@ -37,6 +46,10 @@ export const TIER_TRANZILLA_PRICING: Record<PaidTierSlug, TierOfferCatalog> = {
   basic: {
     default: { introPriceIls: null, introChargesTotal: null, regularPriceIls: 59 },
     intro3mo: { introPriceIls: 33, introChargesTotal: 3, regularPriceIls: 59 },
+    // 1 ILS smoke-test offer for /subtest. Env-gated via
+    // isOfferAllowedForEnvironment below — a prod deploy refuses the
+    // offer even if someone passes `?offer=test` on the subscribe link.
+    test: { introPriceIls: null, introChargesTotal: null, regularPriceIls: 1 },
   },
   advanced: {
     default: { introPriceIls: null, introChargesTotal: null, regularPriceIls: 119 },
@@ -53,14 +66,24 @@ export function isPaidTierSlug(value: unknown): value is PaidTierSlug {
 }
 
 export function isTranzillaOfferSlug(value: unknown): value is TranzillaOfferSlug {
-  return value === 'default' || value === 'intro3mo'
+  return value === 'default' || value === 'intro3mo' || value === 'test'
+}
+
+/**
+ * `test` offer is a 1 ILS smoke lever — refuse it in production even if
+ * someone passes `?offer=test`. Belt-and-suspenders on top of the catalog
+ * only exposing `test` for the basic tier.
+ */
+export function isOfferAllowedForEnvironment(offerSlug: TranzillaOfferSlug): boolean {
+  if (offerSlug === 'test' && process.env.NODE_ENV === 'production') return false
+  return true
 }
 
 export function resolveTranzillaOffer(
   tierSlug: PaidTierSlug,
   offerSlug: TranzillaOfferSlug,
-): TranzillaOffer {
-  return TIER_TRANZILLA_PRICING[tierSlug][offerSlug]
+): TranzillaOffer | null {
+  return TIER_TRANZILLA_PRICING[tierSlug][offerSlug] ?? null
 }
 
 /**

@@ -999,7 +999,7 @@ export interface Subscription {
   /**
    * Pricing offer selected at checkout ("default" / "intro3mo"). Null for PayPal rows.
    */
-  offerSlug?: ('default' | 'intro3mo') | null;
+  offerSlug?: ('default' | 'intro3mo' | 'test') | null;
   /**
    * Intro-period price in ILS (null = no intro). Snapshot from the pricing catalog at bootstrap; immutable.
    */

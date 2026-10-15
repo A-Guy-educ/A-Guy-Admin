@@ -30,6 +30,7 @@ import type { Subscription } from '@/payload-types'
 import { applyCorsHeaders, createPreflightResponse, isAllowedOrigin } from '@/lib/http/cors'
 import {
   computeNextChargePriceIls,
+  isOfferAllowedForEnvironment,
   isPaidTierSlug,
   isTranzillaOfferSlug,
   resolveTranzillaOffer,
@@ -122,7 +123,19 @@ export async function POST(request: NextRequest) {
     if (!isTranzillaOfferSlug(offerSlug)) {
       return applyCorsHeaders(
         NextResponse.json(
-          { success: false, error: 'offerSlug must be one of default|intro3mo' },
+          { success: false, error: 'offerSlug must be one of default|intro3mo|test' },
+          { status: 400 },
+        ),
+        request,
+      )
+    }
+    if (!isOfferAllowedForEnvironment(offerSlug)) {
+      return applyCorsHeaders(
+        NextResponse.json(
+          {
+            success: false,
+            error: `offerSlug "${offerSlug}" is not available in this environment`,
+          },
           { status: 400 },
         ),
         request,
@@ -179,6 +192,21 @@ export async function POST(request: NextRequest) {
     }
 
     const offer = resolveTranzillaOffer(tierSlug, offerSlug)
+    if (!offer) {
+      // Catalog has no entry for this (tier, offer) combination — e.g.
+      // `test` is only configured for `basic`, so advanced/premium with
+      // offer=test fall here.
+      return applyCorsHeaders(
+        NextResponse.json(
+          {
+            success: false,
+            error: `offerSlug "${offerSlug}" is not available for tier "${tierSlug}"`,
+          },
+          { status: 400 },
+        ),
+        request,
+      )
+    }
     const { priceIls, isIntroCharge } = computeNextChargePriceIls({
       introPriceIls: offer.introPriceIls,
       introChargesTotal: offer.introChargesTotal,
