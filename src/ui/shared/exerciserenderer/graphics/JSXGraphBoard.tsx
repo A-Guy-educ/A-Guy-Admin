@@ -79,6 +79,10 @@ export function JSXGraphBoard({
                   ticks: {
                     visible: showNumbers,
                     ticksDistance: tickDist,
+                    // Finite tick marks instead of JSXGraph's default -1 (infinite),
+                    // which draws grid lines across the board whenever ticks are visible.
+                    majorHeight: 10,
+                    minorHeight: 4,
                     label: {
                       offset: [0, axisConfig?.tickPosition?.x === 'inverted' ? 10 : -10],
                     },
@@ -92,6 +96,10 @@ export function JSXGraphBoard({
                   ticks: {
                     visible: showNumbers,
                     ticksDistance: tickDist,
+                    // Finite tick marks instead of JSXGraph's default -1 (infinite),
+                    // which draws grid lines across the board whenever ticks are visible.
+                    majorHeight: 10,
+                    minorHeight: 4,
                     label: {
                       offset: [axisConfig?.tickPosition?.y === 'inverted' ? 10 : -10, 0],
                     },
@@ -123,6 +131,10 @@ export function JSXGraphBoard({
         const tickOpts = {
           visible: showNumbers,
           ticksDistance: tickDist,
+          // Finite tick marks instead of JSXGraph's default -1 (infinite),
+          // which draws grid lines across the board whenever ticks are visible.
+          majorHeight: 10,
+          minorHeight: 4,
           label: { fontSize: 12 },
           drawZero: true,
         }

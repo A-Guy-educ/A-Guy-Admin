@@ -268,6 +268,7 @@ export interface QuestionGeometryBlock {
   hint?: InlineRichText
   solution?: InlineRichText
   fullSolution?: InlineRichText
+  showNotebook?: boolean
 }
 
 // ---------------------------------
@@ -284,6 +285,7 @@ export interface QuestionAxisBlock {
   hint?: InlineRichText
   solution?: InlineRichText
   fullSolution?: InlineRichText
+  showNotebook?: boolean
 }
 
 // ---------------------------------
@@ -306,6 +308,7 @@ export interface QuestionMultiAxisBlock {
   textPosition: 'above' | 'below'
   columnsPerRow?: 1 | 2 | 4
   graphs: MultiAxisGraphItem[]
+  showNotebook?: boolean
 }
 
 // ---------------------------------

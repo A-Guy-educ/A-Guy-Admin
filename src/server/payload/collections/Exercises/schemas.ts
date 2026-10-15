@@ -448,6 +448,7 @@ export const QuestionGeometryBlockSchema = z
     hint: InlineRichTextSchema.optional(),
     solution: InlineRichTextSchema.optional(),
     fullSolution: InlineRichTextSchema.optional(),
+    showNotebook: z.boolean().optional(),
   })
   .strict()
 
@@ -476,6 +477,7 @@ export const QuestionAxisBlockSchema = z
     hint: InlineRichTextSchema.optional(),
     solution: InlineRichTextSchema.optional(),
     fullSolution: InlineRichTextSchema.optional(),
+    showNotebook: z.boolean().optional(),
   })
   .strict()
 
@@ -537,6 +539,7 @@ export const QuestionMultiAxisBlockSchema = z
     textPosition: z.enum(['above', 'below']).default('above'),
     columnsPerRow: z.union([z.literal(1), z.literal(2), z.literal(4)]).optional(),
     graphs: z.array(MultiAxisGraphItemSchema).min(1).max(4),
+    showNotebook: z.boolean().optional(),
   })
   .strict()
   .superRefine((data, ctx) => {
