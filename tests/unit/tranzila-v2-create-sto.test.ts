@@ -9,7 +9,11 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { createStandingOrder, formatTranzilaDate } from '@/lib/payment/tranzila-v2-client'
+import {
+  cancelStandingOrder,
+  createStandingOrder,
+  formatTranzilaDate,
+} from '@/lib/payment/tranzila-v2-client'
 import { resetPaymentEnvCache } from '@/lib/payment/env'
 
 describe('formatTranzilaDate', () => {
@@ -191,5 +195,49 @@ describe('createStandingOrder', () => {
         items: [{ itemName: 'x', unitPriceIls: 1 }],
       }),
     ).rejects.toThrow(/chargeDayOfMonth/)
+  })
+})
+
+describe('cancelStandingOrder', () => {
+  let fetchMock: ReturnType<typeof vi.fn>
+  let capturedRequest: { url?: string; init?: RequestInit } = {}
+
+  beforeEach(() => {
+    process.env.TRANZILLA_TERMINAL = 'fxpaguy'
+    process.env.TRANZILLA_TERMINAL_TOKEN = 'fxpaguytok'
+    process.env.TRANZILLA_PUBLIC_KEY = 'pub-test-key'
+    process.env.TRANZILLA_PRIVATE_KEY = 'priv-test-key'
+    process.env.TRANZILLA_SANDBOX = 'true'
+    resetPaymentEnvCache()
+
+    capturedRequest = {}
+    fetchMock = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+      capturedRequest = { url: typeof url === 'string' ? url : String(url), init }
+      return new Response(JSON.stringify({ error_code: 0, message: 'ok' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    })
+    global.fetch = fetchMock as unknown as typeof fetch
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+    resetPaymentEnvCache()
+  })
+
+  it('POSTs to /v2/sto/update with sto_status=inactive and the four HMAC headers', async () => {
+    await cancelStandingOrder({ terminalName: 'fxpaguytok', stoId: '189976' })
+    expect(capturedRequest.url).toBe('https://api.tranzila.com/v2/sto/update')
+    expect(capturedRequest.init?.method).toBe('POST')
+    const body = JSON.parse(String(capturedRequest.init?.body))
+    expect(body).toEqual({
+      terminal_name: 'fxpaguytok',
+      sto_id: '189976',
+      sto_status: 'inactive',
+    })
+    const headers = capturedRequest.init?.headers as Record<string, string>
+    expect(headers['X-tranzila-api-app-key']).toBe('pub-test-key')
+    expect(headers['X-tranzila-api-access-token']).toMatch(/^[0-9a-f]{64}$/)
   })
 })

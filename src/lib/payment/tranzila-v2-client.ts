@@ -311,3 +311,31 @@ export async function createStandingOrder(
     raw,
   }
 }
+
+// ─── My-Billing (STO) — cancel / inactivate a standing order ─────────────
+
+export interface CancelStandingOrderArgs {
+  terminalName: string
+  stoId: string
+}
+
+/**
+ * Flip a standing order to `inactive`. Two call sites:
+ *   1. User-initiated cancellation (PATCH /api/subscriptions/:id/cancel).
+ *   2. Rollback of an orphaned STO when our DB write after a successful
+ *      createstov2 fails — without this cleanup the user would be billed
+ *      both by Tranzila's STO AND by our own fallback cron.
+ *
+ * Tranzila's STO update endpoint reads `sto_status: 'active' | 'inactive'`.
+ * Idempotent server-side — flipping an already-inactive STO is a no-op.
+ */
+export function cancelStandingOrder(args: CancelStandingOrderArgs): Promise<TranzilaV2Response> {
+  return postV2({
+    path: '/v2/sto/update',
+    body: {
+      terminal_name: args.terminalName,
+      sto_id: args.stoId,
+      sto_status: 'inactive',
+    },
+  })
+}

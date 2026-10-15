@@ -179,6 +179,10 @@ export async function sweepTranzillaRenewals(
   }
 
   // ─── Due-for-charge sweep ────────────────────────────────────────────
+  // Excludes STO-managed subs (stoId set to a real id or to the
+  // 'pending-handoff:*' CAS sentinel). Those are either owned by Tranzila's
+  // My-Billing engine or in the middle of being handed off — either way the
+  // cron must not fire a token charge, or we'd double-charge the subscriber.
   const due = await payload.find({
     collection: 'subscriptions',
     where: {
@@ -187,6 +191,9 @@ export async function sweepTranzillaRenewals(
         { status: { in: ['active', 'past_due'] } },
         { cancelAtPeriodEnd: { equals: false } },
         { currentPeriodEnd: { less_than_equal: dueCutoff.toISOString() } },
+        {
+          or: [{ stoId: { exists: false } }, { stoId: { equals: null } }],
+        },
       ],
     },
     limit: SWEEP_PAGE_LIMIT,
@@ -248,7 +255,17 @@ async function processOneRenewal(
     throw new Error(`subscription ${sub.id} has invalid tierSlug "${sub.tierSlug ?? 'null'}"`)
   }
   if (!sub.tranzillaCardToken) {
-    throw new Error(`subscription ${sub.id} missing tranzillaCardToken — cannot charge`)
+    // Benign skip — this sub was handed off to Tranzila's My-Billing STO
+    // (the webhook nulled the token after a successful createstov2) OR
+    // raced through the outer query filter mid-handoff. Either way, the
+    // cron must not try to charge: Tranzila's STO engine owns renewals
+    // from here on. Pre-handoff subs are gated out by the outer `stoId`
+    // predicate; anything slipping through is a race or admin edit.
+    payload.logger.info(
+      { subscriptionId: sub.id },
+      '[cron/tranzilla-renewals] no card token on sub — handed off to STO; skipping',
+    )
+    return
   }
 
   // Per-sub CAS lock. The predicate re-asserts the same eligibility the

@@ -37,7 +37,11 @@ import { serializePaymentError } from '@/lib/payment/error-log'
 import { extendTierSubscription } from '@/lib/payment/extend-tier-subscription'
 import { addCalendarMonths, grantProductEntitlements } from '@/lib/payment/grant-entitlements'
 import { getPaymentEnv } from '@/lib/payment/env'
-import { createStandingOrder, formatTranzilaDate } from '@/lib/payment/tranzila-v2-client'
+import {
+  cancelStandingOrder,
+  createStandingOrder,
+  formatTranzilaDate,
+} from '@/lib/payment/tranzila-v2-client'
 import { verifyTranzillaWebhook } from '@/lib/payment/tranzilla'
 import { isTierSlug, type TierSlug } from '@/lib/tiers/constants'
 import { sendPurchaseReceipt } from '@/server/email/services/purchase-receipt-service'
@@ -423,13 +427,32 @@ interface HandoffArgs {
 /**
  * Call Tranzila's createstov2 to hand off the recurring charges to
  * My-Billing. On success, store the sto_id and null out the card token
- * (Tranzila now owns both the schedule and the credential). On failure,
- * log fatal and leave the token on the sub — the renewal cron takes over
- * as a graceful fallback until we figure out what rejected the request.
+ * (Tranzila now owns both the schedule and the credential).
  *
- * This function never throws — a failed handoff is a reconciliation
- * concern, not a reason to fail the webhook (the user has already been
- * charged and promoted).
+ * Correctness invariants (round-5 Kody review):
+ *
+ *  1. **Per-sub CAS claim before the API call.** Two concurrent webhook
+ *     deliveries (dedup-gate replay race) each hold a local stale snapshot
+ *     where `subscription.stoId == null`. Without a DB-level gate, both
+ *     call createstov2 → Tranzila happily issues TWO sto_ids → user gets
+ *     billed twice every month. The claim writes a sentinel into `stoId`
+ *     and only the thread whose `updateOne` modifies 1 row proceeds.
+ *
+ *  2. **Rollback on DB write failure after a successful createstov2.** If
+ *     Tranzila has already issued the sto_id and our local write throws,
+ *     we would otherwise leave an orphan STO on Tranzila's side (which
+ *     fires charges) AND leave the token on our sub (which the fallback
+ *     cron also charges). Compensate by calling `cancelStandingOrder` to
+ *     void the orphan + release the sentinel.
+ *
+ *  3. **Never throws.** All failure paths return cleanly; the webhook
+ *     200s and `WebhookEvents.processed` is marked true, so Tranzila
+ *     won't retry (we don't want retries on this handler — correctness
+ *     relies on the single-shot claim).
+ *
+ * On un-rollbackable failure (DB write + cancel-STO both fail) ops has
+ * two fatal log lines pinpointing the sto_id and the sub id for manual
+ * cleanup.
  */
 async function handoffToStandingOrder(args: HandoffArgs): Promise<void> {
   const { payload, subscriptionRowId, userId, tierSlug, regularPriceIls, newPeriodEnd, cardToken } =
@@ -450,6 +473,38 @@ async function handoffToStandingOrder(args: HandoffArgs): Promise<void> {
     return
   }
 
+  const subsCollection = payload.db.collections['subscriptions']
+  const subObjectId = new ObjectId(subscriptionRowId)
+
+  // ─── 1. CAS claim — only one concurrent handler calls Tranzila. ────────
+  const claimSentinel = `pending-handoff:${new ObjectId().toHexString()}`
+  const claim = await subsCollection.updateOne(
+    {
+      _id: subObjectId,
+      // Null-or-missing — Payload's "no value" shape. Already-handed-off
+      // subs have stoId as a real string and don't match.
+      $or: [{ stoId: { $exists: false } }, { stoId: null }],
+    },
+    { $set: { stoId: claimSentinel, updatedAt: new Date() } },
+  )
+  if (claim.modifiedCount !== 1) {
+    payload.logger.info(
+      { subscriptionRowId },
+      '[tranzilla-webhook/sto-handoff] CAS skip — another handler holds the claim or stoId already set',
+    )
+    return
+  }
+
+  // Helper to release the sentinel if we abort. Idempotent: only clears
+  // the field when it still holds *our* sentinel, so a concurrent handler
+  // that somehow raced in can't be clobbered.
+  const releaseClaim = async (): Promise<void> => {
+    await subsCollection.updateOne(
+      { _id: subObjectId, stoId: claimSentinel },
+      { $set: { stoId: null, updatedAt: new Date() } },
+    )
+  }
+
   const user = (await payload
     .findByID({ collection: 'users', id: userId, depth: 0, overrideAccess: true })
     .catch(() => null)) as { email?: string; name?: string } | null
@@ -458,6 +513,7 @@ async function handoffToStandingOrder(args: HandoffArgs): Promise<void> {
       { subscriptionRowId, userId },
       '[tranzilla-webhook/sto-handoff] user has no email — Tranzila requires client.email on createstov2',
     )
+    await releaseClaim()
     return
   }
 
@@ -493,6 +549,7 @@ async function handoffToStandingOrder(args: HandoffArgs): Promise<void> {
       },
       '[tranzilla-webhook/sto-handoff] CRITICAL — createstov2 threw. User is charged + promoted; cron fallback will handle renewals until this is resolved.',
     )
+    await releaseClaim()
     return
   }
 
@@ -506,22 +563,66 @@ async function handoffToStandingOrder(args: HandoffArgs): Promise<void> {
       },
       '[tranzilla-webhook/sto-handoff] CRITICAL — createstov2 returned no sto_id. User is charged + promoted; cron fallback remains in place.',
     )
+    await releaseClaim()
     return
   }
 
-  // Success — Tranzila owns the recurring charges from here on. Store the
-  // sto_id and discard our local copy of the card token.
-  const subsCollection = payload.db.collections['subscriptions']
-  await subsCollection.updateOne(
-    { _id: new ObjectId(subscriptionRowId) },
-    {
-      $set: {
-        stoId: result.stoId,
-        tranzillaCardToken: null,
-        updatedAt: new Date(),
+  // ─── 2. Persist real sto_id + null token. Rollback on DB write failure. ─
+  try {
+    await subsCollection.updateOne(
+      { _id: subObjectId },
+      {
+        $set: {
+          stoId: result.stoId,
+          tranzillaCardToken: null,
+          updatedAt: new Date(),
+        },
       },
-    },
-  )
+    )
+  } catch (dbErr) {
+    payload.logger.fatal(
+      {
+        subscriptionRowId,
+        stoId: result.stoId,
+        dbErr: dbErr instanceof Error ? dbErr.message : String(dbErr),
+      },
+      '[tranzilla-webhook/sto-handoff] CRITICAL — DB write failed after Tranzila issued sto_id. Attempting to cancel orphan STO to prevent double-charge.',
+    )
+    try {
+      const cancelResult = await cancelStandingOrder({
+        terminalName: terminal,
+        stoId: result.stoId,
+      })
+      if (cancelResult.errorCode !== 0 && cancelResult.errorCode !== null) {
+        payload.logger.fatal(
+          {
+            subscriptionRowId,
+            stoId: result.stoId,
+            errorCode: cancelResult.errorCode,
+            message: cancelResult.message,
+          },
+          '[tranzilla-webhook/sto-handoff] ALSO failed to cancel orphan STO (non-zero error_code) — manual intervention required.',
+        )
+      } else {
+        payload.logger.info(
+          { subscriptionRowId, stoId: result.stoId },
+          '[tranzilla-webhook/sto-handoff] cancelled orphan STO after DB write failure; sub will remain on cron fallback',
+        )
+      }
+    } catch (cancelErr) {
+      payload.logger.fatal(
+        {
+          subscriptionRowId,
+          stoId: result.stoId,
+          cancelErr: cancelErr instanceof Error ? cancelErr.message : String(cancelErr),
+        },
+        '[tranzilla-webhook/sto-handoff] ALSO failed to cancel orphan STO (threw) — manual intervention required.',
+      )
+    }
+    await releaseClaim()
+    return
+  }
+
   payload.logger.info(
     { subscriptionRowId, stoId: result.stoId, firstChargeDate: formatTranzilaDate(newPeriodEnd) },
     '[tranzilla-webhook/sto-handoff] STO created, token discarded, cron no longer needed for this sub',
