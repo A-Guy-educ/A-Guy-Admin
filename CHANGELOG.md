@@ -2203,6 +2203,7 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- feat(lesson-export): Emit DSL for axis/geometry blocks and attachments ([#611](https://github.com/A-Guy-educ/A-Guy-Admin/pull/611)) — @aguyshayb
 - feat(payments): Tranzilla tier-subscription lifecycle ([#610](https://github.com/A-Guy-educ/A-Guy-Admin/pull/610)) — @aguyshayb
 - chore(deps): bump mathjs from 13.2.3 to 15.2.0 ([#599](https://github.com/A-Guy-educ/A-Guy-Admin/pull/599)) — @dependabot[bot]
 - chore(deps): bump pnpm/action-setup from 4 to 6 ([#587](https://github.com/A-Guy-educ/A-Guy-Admin/pull/587)) — @dependabot[bot]
