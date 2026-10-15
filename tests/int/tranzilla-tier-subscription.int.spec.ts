@@ -503,34 +503,37 @@ describe('sweepTranzillaRenewals', () => {
       raw: {},
     })
 
-    // Pre-set retry one short of ceiling so the next failed charge expires.
     const { sub } = await createPendingSub({
       tierSlug: 'basic',
       offerSlug: 'default',
       cardToken: 'tk-expire',
-      status: 'past_due',
-      currentPeriodEnd: new Date(Date.now() + 60 * 1000),
+      status: 'pending',
       cancelAtPeriodEnd: false,
     })
-    const usersColl = payload.db.collections['users']
-    await usersColl.updateOne(
-      { _id: new ObjectId(userId) },
-      {
-        $set: {
-          currentTier: 'basic',
-          llmTokensLimit: TIER_LLM_TOKEN_CAP_MONTHLY.basic,
-          // expireAndDowngrade scopes on tierGrantSubscriptionId to prevent
-          // cross-sub leaks; this test's user must be seeded with the
-          // target sub's id for the downgrade to fire.
-          tierGrantSource: 'subscription',
-          tierGrantSubscriptionId: new ObjectId(sub.id),
-        },
-      },
-    )
+
+    // Drive promotion through the REAL extendTierSubscription path. This
+    // is deliberately NOT a hand-rolled seed via the Mongoose Model: the
+    // Model casts writes per the schema, which would mask any type-
+    // coercion drift between the real write path (raw driver) and the
+    // downgrade predicate (ObjectId filter). This is exactly the hole
+    // Kody surfaced on round 4 — the previous test seeded via the Model,
+    // so the write stored a correct ObjectId; the real path stored a
+    // string and every expiry silently no-op'd.
+    await extendTierSubscription({
+      payload,
+      userId,
+      tierSlug: 'basic',
+      subscriptionId: sub.id,
+      newPeriodStart: new Date(Date.now() - 24 * 60 * 60 * 1000),
+      newPeriodEnd: new Date(Date.now() + 60 * 1000),
+      isIntroCharge: false,
+      order: 'bootstrap',
+    })
+    // One retry short of the ceiling so the next failed charge expires.
     const subsColl = payload.db.collections['subscriptions']
     await subsColl.updateOne(
       { _id: new ObjectId(sub.id) },
-      { $set: { tranzillaRetryCount: MAX_RENEWAL_RETRIES - 1 } },
+      { $set: { tranzillaRetryCount: MAX_RENEWAL_RETRIES - 1, status: 'past_due' } },
     )
 
     const result = await sweepTranzillaRenewals(payload)
@@ -550,6 +553,7 @@ describe('sweepTranzillaRenewals', () => {
     })) as any
     expect(user.currentTier).toBe('free')
     expect(user.tierGrantSource).toBeFalsy()
+    expect(user.tierGrantSubscriptionId).toBeFalsy()
   })
 
   it('does NOT downgrade users whose tier was granted via legacy_one_time or manual', async () => {
@@ -600,20 +604,29 @@ describe('sweepTranzillaRenewals', () => {
       tierSlug: 'basic',
       offerSlug: 'default',
       cardToken: 'tk-soft',
-      status: 'cancelled',
-      currentPeriodEnd: new Date(Date.now() - 60 * 1000), // already expired
-      cancelAtPeriodEnd: true,
+      status: 'pending',
+      cancelAtPeriodEnd: false,
     })
-    const usersColl = payload.db.collections['users']
-    await usersColl.updateOne(
-      { _id: new ObjectId(userId) },
-      {
-        $set: {
-          currentTier: 'basic',
-          tierGrantSource: 'subscription',
-          tierGrantSubscriptionId: new ObjectId(sub.id),
-        },
-      },
+
+    // Drive promotion through the REAL path (not a hand-rolled seed) so the
+    // tierGrantSubscriptionId value stored on the User is what the raw
+    // driver actually writes. Then flip the sub into the soft-cancelled
+    // state with an expired period.
+    const periodEnd = new Date(Date.now() - 60 * 1000)
+    await extendTierSubscription({
+      payload,
+      userId,
+      tierSlug: 'basic',
+      subscriptionId: sub.id,
+      newPeriodStart: new Date(Date.now() - 31 * 24 * 60 * 60 * 1000),
+      newPeriodEnd: periodEnd,
+      isIntroCharge: false,
+      order: 'bootstrap',
+    })
+    const subsColl = payload.db.collections['subscriptions']
+    await subsColl.updateOne(
+      { _id: new ObjectId(sub.id) },
+      { $set: { status: 'cancelled', cancelAtPeriodEnd: true } },
     )
 
     const result = await sweepTranzillaRenewals(payload)

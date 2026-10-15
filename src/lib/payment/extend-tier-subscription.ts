@@ -131,7 +131,12 @@ async function promoteUserForTierSub(args: {
         llmTokensUsed: 0,
         llmTokensResetAt: newPeriodEnd,
         tierGrantSource: 'subscription',
-        tierGrantSubscriptionId: subscriptionId,
+        // Cast to ObjectId explicitly — getUsersMongoCollection returns the
+        // raw driver collection, which does NOT run Mongoose schema casting
+        // on writes. The downgrade predicate in expireAndDowngrade filters
+        // with `new ObjectId(sub.id)`, so storing a plain string here would
+        // leave every expiry a silent no-op (user keeps paid tier for free).
+        tierGrantSubscriptionId: new ObjectId(subscriptionId),
         updatedAt: new Date(),
       },
     },
