@@ -310,6 +310,27 @@ export const Users: CollectionConfig = {
           'How the current tier was granted. Null = free user (default) or no record. Written by the subscription path and the legacy backfill migration.',
       },
     },
+    // Which Subscription row granted the current tier (if any). Written by
+    // promoteUserForTierSub so expireAndDowngrade can scope the downgrade
+    // predicate to the exact sub that promoted the user — a user who
+    // cancels sub A and re-subscribes via sub B won't be downgraded when
+    // sub A's deferred-cancel period lapses.
+    {
+      name: 'tierGrantSubscriptionId',
+      type: 'relationship',
+      relationTo: 'subscriptions',
+      maxDepth: 0,
+      access: {
+        create: () => false,
+        update: () => false,
+      },
+      admin: {
+        position: 'sidebar',
+        readOnly: true,
+        description:
+          'Subscription that granted the current tier (null for non-sub grants). Written by extendTierSubscription; read by expireAndDowngrade.',
+      },
+    },
     {
       name: 'featureEntitlements',
       type: 'array',

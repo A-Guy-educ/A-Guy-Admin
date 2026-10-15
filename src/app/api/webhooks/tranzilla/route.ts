@@ -175,17 +175,42 @@ export async function POST(request: NextRequest) {
     webhookEventId = doc.id
   } catch (err) {
     if (isDuplicateKeyError(err)) {
-      payload.logger.info(
-        { index, responseCode },
-        '[tranzilla-webhook] event already received — deduped',
+      // Dedup — but if the prior delivery crashed before marking processed,
+      // Tranzilla's retry would otherwise be swallowed and the sub stuck in
+      // partial state. Look up the existing event: processed=true means a
+      // true dedup; processed=false means fall through and re-run the
+      // handler. The downstream helpers (extendTierSubscription,
+      // flipTransactionSucceeded) are per-period idempotent, so re-running
+      // on a fully-committed sub is a safe no-op.
+      const existing = await payload.find({
+        collection: 'webhook-events',
+        where: {
+          and: [{ provider: { equals: 'tranzilla' } }, { eventId: { equals: index } }],
+        },
+        limit: 1,
+        depth: 0,
+        overrideAccess: true,
+      })
+      const existingDoc = existing.docs[0] as { id: string; processed?: boolean } | undefined
+      if (!existingDoc || existingDoc.processed === true) {
+        payload.logger.info(
+          { index, responseCode, alreadyProcessed: existingDoc?.processed === true },
+          '[tranzilla-webhook] event already processed — deduped',
+        )
+        return NextResponse.json({ received: true, deduped: true }, { status: 200 })
+      }
+      payload.logger.warn(
+        { index, responseCode, webhookEventId: existingDoc.id },
+        '[tranzilla-webhook] prior delivery left event unprocessed — replaying handler',
       )
-      return NextResponse.json({ received: true, deduped: true }, { status: 200 })
+      webhookEventId = existingDoc.id
+    } else {
+      payload.logger.error(
+        { err: serializePaymentError(err), index },
+        '[tranzilla-webhook] unexpected error during dedup gate',
+      )
+      return NextResponse.json({ error: 'Dedup gate error' }, { status: 500 })
     }
-    payload.logger.error(
-      { err: serializePaymentError(err), index },
-      '[tranzilla-webhook] unexpected error during dedup gate',
-    )
-    return NextResponse.json({ error: 'Dedup gate error' }, { status: 500 })
   }
 
   // ─── 5. Process the transaction ─────────────────────────────────────────
@@ -373,6 +398,8 @@ interface TranzillaSubscriptionDoc {
   introChargesTotal?: number | null
   introChargesUsed?: number | null
   regularPriceIls?: number | null
+  currentPeriodStart?: string | Date | null
+  currentPeriodEnd?: string | Date | null
 }
 
 async function handleTranzillaSubscriptionBootstrap(
@@ -427,31 +454,6 @@ async function handleTranzillaSubscriptionBootstrap(
     )
   }
 
-  if (subscription.status !== 'pending') {
-    // Replay: sub already promoted. The only lingering work is to make sure
-    // the initial Tx reached a terminal state — a mid-run crash on the
-    // happy path can leave extendTierSubscription applied but Tx still
-    // pending, which breaks reconciliation and the admin UI's purchase row.
-    if (transaction.status === 'pending' && responseCode === TRANZILLA_APPROVED_CODE) {
-      await flipTransactionSucceeded(payload, transaction, index, body)
-      payload.logger.info(
-        { index, subscriptionRowId, transactionRowId },
-        '[tranzilla-webhook/sub-bootstrap] replay: sub already active, flipped stale pending Tx to succeeded',
-      )
-    } else {
-      payload.logger.info(
-        {
-          index,
-          subscriptionRowId,
-          currentStatus: subscription.status,
-          txStatus: transaction.status,
-        },
-        '[tranzilla-webhook/sub-bootstrap] subscription already in a non-pending state — idempotent replay',
-      )
-    }
-    return
-  }
-
   const userId = resolveUserId(subscription.user)
   if (!userId) {
     throw new Error(`Subscription ${subscriptionRowId} missing user — cannot bootstrap`)
@@ -466,53 +468,79 @@ async function handleTranzillaSubscriptionBootstrap(
   const isApproved = responseCode === TRANZILLA_APPROVED_CODE
 
   if (!isApproved) {
-    // Bootstrap failed — mark tx failed and sub expired so the user can start fresh.
-    await markTransactionFailed(payload, transaction.id, index, responseCode)
-    const subsCollection = payload.db.collections['subscriptions']
-    await subsCollection.updateOne(
-      { _id: new ObjectId(subscriptionRowId), status: 'pending' },
-      {
-        $set: {
-          status: 'expired',
-          updatedAt: new Date(),
+    // Declined — only act on the first delivery. If the sub is already in
+    // a non-pending state (e.g. extendTierSubscription succeeded on an
+    // approved prior delivery but the Tx flip then threw, and now a
+    // declined replay arrives for some reason), do nothing to avoid
+    // demoting a user who's already paid.
+    if (subscription.status === 'pending') {
+      await markTransactionFailed(payload, transaction.id, index, responseCode)
+      const subsCollection = payload.db.collections['subscriptions']
+      await subsCollection.updateOne(
+        { _id: new ObjectId(subscriptionRowId), status: 'pending' },
+        {
+          $set: {
+            status: 'expired',
+            updatedAt: new Date(),
+          },
         },
-      },
-    )
-    payload.logger.info(
-      { index, subscriptionRowId, transactionRowId, responseCode, authMethod },
-      '[tranzilla-webhook/sub-bootstrap] first charge declined — tx failed, sub expired',
-    )
+      )
+      payload.logger.info(
+        { index, subscriptionRowId, transactionRowId, responseCode, authMethod },
+        '[tranzilla-webhook/sub-bootstrap] first charge declined — tx failed, sub expired',
+      )
+    } else {
+      payload.logger.warn(
+        { index, subscriptionRowId, subStatus: subscription.status, responseCode },
+        '[tranzilla-webhook/sub-bootstrap] decline arrived for non-pending sub — ignoring',
+      )
+    }
     return
   }
 
   // ─── Approved path ─────────────────────────────────────────────────────
-  const token = body.TranzilaTK || null
-  if (!token) {
-    // No token means the next cron run has nothing to charge. Treat as a
-    // bootstrap failure rather than silently moving on — ops will see the
-    // error and can investigate the terminal config (fxpaguytok missing?).
-    throw new Error(
-      `Subscription-bootstrap webhook (${subscriptionRowId}) succeeded without a TranzilaTK — terminal must be the tokenization terminal`,
+  //
+  // Handles both first delivery AND replay (unprocessed-event re-run from
+  // the dedup gate) uniformly. Every step is idempotent per-period:
+  //   - Token snapshot: $set is a no-op when the same token is already in
+  //     place; only required on first delivery when sub is still pending.
+  //   - extendTierSubscription: CAS on currentPeriodEnd + llmTokensResetAt
+  //     means a repeat call with the same newPeriodEnd no-ops both writes,
+  //     but will complete a partial state if a prior delivery crashed
+  //     between promoteUserForTierSub and advanceSubscriptionPeriod.
+  //   - flipTransactionSucceeded: guarded on transaction.status === 'pending'.
+  //
+  // Period math: on the first delivery, compute `now + 1 month`. On replay
+  // (sub already advanced), reuse the Sub's stored currentPeriodEnd so the
+  // CAS doesn't re-fire. This keeps introChargesUsed accurate.
+  if (subscription.status === 'pending') {
+    const token = body.TranzilaTK || null
+    if (!token) {
+      // No token means the next cron run has nothing to charge. Treat as
+      // a bootstrap failure rather than silently moving on — ops will see
+      // the error and can investigate the terminal config.
+      throw new Error(
+        `Subscription-bootstrap webhook (${subscriptionRowId}) succeeded without a TranzilaTK — terminal must be the tokenization terminal`,
+      )
+    }
+    const subsCollection = payload.db.collections['subscriptions']
+    await subsCollection.updateOne(
+      { _id: new ObjectId(subscriptionRowId) },
+      {
+        $set: {
+          tranzillaCardToken: token,
+          updatedAt: new Date(),
+        },
+      },
     )
   }
 
-  // Snapshot the token + card metadata onto the Sub row before promoting.
-  const subsCollection = payload.db.collections['subscriptions']
-  await subsCollection.updateOne(
-    { _id: new ObjectId(subscriptionRowId) },
-    {
-      $set: {
-        tranzillaCardToken: token,
-        updatedAt: new Date(),
-      },
-    },
-  )
-
-  const now = new Date()
-  const newPeriodEnd = addCalendarMonths(now, 1)
-  // isIntroCharge is derived from the Sub's snapshotted intro state. On
-  // the very first charge, introChargesUsed is 0 — if the offer has an
-  // intro cycle configured, this charge is one of them.
+  const now = subscription.currentPeriodStart
+    ? new Date(subscription.currentPeriodStart)
+    : new Date()
+  const newPeriodEnd = subscription.currentPeriodEnd
+    ? new Date(subscription.currentPeriodEnd)
+    : addCalendarMonths(now, 1)
   const introChargesTotal = subscription.introChargesTotal ?? null
   const introChargesUsed = subscription.introChargesUsed ?? 0
   const isIntroCharge =
@@ -529,13 +557,20 @@ async function handleTranzillaSubscriptionBootstrap(
     newPeriodStart: now,
     newPeriodEnd,
     isIntroCharge,
+    order: 'bootstrap',
   })
 
-  await flipTransactionSucceeded(payload, transaction, index, body)
+  // Flip only when still pending — on replay the Tx may already be
+  // succeeded, and running the update through statusTransitionGuard
+  // again would be noise at best and a rejection at worst.
+  if (transaction.status === 'pending') {
+    await flipTransactionSucceeded(payload, transaction, index, body)
+  }
 
   // Receipt. Green Invoice issues the formal tax invoice for Tranzilla
   // flows (see purchase-receipt templates) — our email is just a
-  // payment-confirmation note. Fire-and-forget.
+  // payment-confirmation note. Fire-and-forget. (Idempotent via emailSentAt
+  // guard in the receipt service.)
   void sendPurchaseReceipt(payload, {
     transactionId: String(transaction.id),
     userId,
@@ -612,13 +647,18 @@ async function flipTransactionSucceeded(
   body: Record<string, string>,
 ): Promise<void> {
   const nowIso = new Date().toISOString()
+  // Intentionally does NOT store TranzilaTK on the Transaction. The token is
+  // a reusable merchant-initiated-charge credential; the Subscription row
+  // is its single source of truth (field-level access.read:()=>false blocks
+  // standard REST reads). Storing it on the Tx would let any admin with
+  // transactions read access enumerate every stored token at once —
+  // nullifying the Subscriptions guard. Keep only reconciliation fields.
   const nextMetadata = {
     ...(transaction.metadata ?? {}),
     tranzilla: {
       confirmationCode: body.ConfirmationCode ?? null,
       cardType: body.card_type ?? null,
       last4: body.last4 ?? null,
-      token: body.TranzilaTK || null,
     },
   }
 

@@ -72,6 +72,14 @@ export const STALE_LOCK_MS = 30 * 60 * 1000
  */
 export const SWEEP_PAGE_LIMIT = 500
 
+/**
+ * Max in-flight Tranzilla charges at once. Keeps the sweep under Vercel's
+ * 300s maxDuration ceiling even at the full page limit (500 subs at ~1-2s
+ * per charge → ~1-2 min at concurrency 10). Rows have independent CAS
+ * locks so parallel processing can't double-apply any one sub.
+ */
+export const RENEWAL_CONCURRENCY = 10
+
 export interface TranzillaRenewalSweepResult {
   processed: number
   renewed: number
@@ -193,19 +201,29 @@ export async function sweepTranzillaRenewals(
     )
   }
 
-  for (const sub of due.docs as unknown as SubscriptionRow[]) {
-    try {
-      await processOneRenewal(payload, sub, result, { dueCutoff, staleLockCutoff })
-    } catch (err) {
-      result.errors.push({
-        subscriptionId: sub.id,
-        message: err instanceof Error ? err.message : String(err),
-      })
-      payload.logger.error(
-        { err: err instanceof Error ? err.message : String(err), subscriptionId: sub.id },
-        '[cron/tranzilla-renewals] subscription processing failed',
-      )
-    }
+  // Process in bounded-concurrency batches so a full SWEEP_PAGE_LIMIT doesn't
+  // exceed Vercel's maxDuration (300s). At ~1-2s per Tranzilla POST,
+  // sequential execution would need ~8-16 minutes for 500 subs; parallel
+  // execution with concurrency 10 brings it to ~1-2 minutes. Each sub's
+  // state transitions are guarded by independent raw-mongo CAS writes,
+  // so parallel processing is safe.
+  const subsToProcess = due.docs as unknown as SubscriptionRow[]
+  for (let i = 0; i < subsToProcess.length; i += RENEWAL_CONCURRENCY) {
+    const batch = subsToProcess.slice(i, i + RENEWAL_CONCURRENCY)
+    await Promise.allSettled(
+      batch.map((sub) =>
+        processOneRenewal(payload, sub, result, { dueCutoff, staleLockCutoff }).catch((err) => {
+          result.errors.push({
+            subscriptionId: sub.id,
+            message: err instanceof Error ? err.message : String(err),
+          })
+          payload.logger.error(
+            { err: err instanceof Error ? err.message : String(err), subscriptionId: sub.id },
+            '[cron/tranzilla-renewals] subscription processing failed',
+          )
+        }),
+      ),
+    )
   }
 
   return result
@@ -265,6 +283,17 @@ async function processOneRenewal(
 
   result.processed += 1
 
+  // Pre-flight BEFORE the external charge — every value we need downstream
+  // of the charge is resolved here so an exception after the charge cannot
+  // open a double-charge window (card debited, Sub period not advanced,
+  // stale-lock expiry re-selects on the next sweep).
+  const tenantId = resolveTenantId(sub.tenant)
+  if (!tenantId) {
+    throw new Error(`subscription ${sub.id} has no tenant — cannot create renewal transaction`)
+  }
+  const anchor = sub.currentPeriodEnd ? new Date(sub.currentPeriodEnd) : new Date()
+  const newPeriodEnd = addCalendarMonths(anchor, 1)
+
   const { priceIls, isIntroCharge } = computeNextChargePriceIls({
     introPriceIls: sub.introPriceIls ?? null,
     introChargesTotal: sub.introChargesTotal ?? null,
@@ -304,17 +333,6 @@ async function processOneRenewal(
     return
   }
 
-  // Approved — anchor new period on currentPeriodEnd (not now) so a late
-  // cron run doesn't shorten the user's window. Falls back to now when
-  // currentPeriodEnd is somehow null (shouldn't happen for an active sub).
-  const anchor = sub.currentPeriodEnd ? new Date(sub.currentPeriodEnd) : new Date()
-  const newPeriodEnd = addCalendarMonths(anchor, 1)
-
-  const tenantId = resolveTenantId(sub.tenant)
-  if (!tenantId) {
-    throw new Error(`subscription ${sub.id} has no tenant — cannot create renewal transaction`)
-  }
-
   // Ordering matters for the double-charge guard:
   //
   // 1. extendTierSubscription advances the Sub's currentPeriodEnd FIRST
@@ -338,6 +356,7 @@ async function processOneRenewal(
     newPeriodStart: anchor,
     newPeriodEnd,
     isIntroCharge,
+    order: 'renewal',
   })
 
   let renewalTxId: string | null = null
@@ -450,13 +469,16 @@ async function expireAndDowngrade(payload: Payload, sub: SubscriptionRow): Promi
     },
   )
 
-  // Downgrade the user to the default tier — but ONLY if this subscription
-  // is actually the source of the current grant. The scope ensures:
-  //   - legacy_one_time users (grandfathered one-time PayPal buyers) stay
-  //     at their paid tier when an unrelated/pending sub expires
-  //   - manual admin tier overrides are not wiped by cron
-  //   - users who upgraded mid-period (currentTier != sub.tierSlug) are not
-  //     dropped when the old (lower) sub expires
+  // Downgrade the user to the default tier — but ONLY if THIS subscription
+  // is the one that granted the current tier. Scoping on
+  // tierGrantSubscriptionId prevents the cross-sub leak:
+  //   - cancel sub A (basic), re-subscribe via sub B (basic), sub A expires
+  //     → sub B's charge set tierGrantSubscriptionId=B, so the predicate
+  //     (tierGrantSubscriptionId=A) misses and B's grant survives.
+  //   - legacy_one_time / manual grants never match (field is null for them).
+  //   - cross-tier changes between sub creation and expiry: a tier change
+  //     also updates tierGrantSubscriptionId, so stale sub expiries don't
+  //     clobber.
   // Done via raw mongo because currentTier / llmTokensLimit are blocked at
   // the Payload access layer.
   const users = getUsersMongoCollection(payload)
@@ -466,14 +488,14 @@ async function expireAndDowngrade(payload: Payload, sub: SubscriptionRow): Promi
   const downgradeResult = await users.updateOne(
     {
       _id: new ObjectId(userId),
-      tierGrantSource: 'subscription',
-      currentTier: sub.tierSlug,
+      tierGrantSubscriptionId: new ObjectId(sub.id),
     },
     {
       $set: {
         currentTier: DEFAULT_TIER,
         llmTokensLimit: TIER_LLM_TOKEN_CAP_MONTHLY[DEFAULT_TIER],
         tierGrantSource: null,
+        tierGrantSubscriptionId: null,
         updatedAt: new Date(),
       },
     },
@@ -481,7 +503,7 @@ async function expireAndDowngrade(payload: Payload, sub: SubscriptionRow): Promi
   if (downgradeResult.matchedCount === 0) {
     payload.logger.info(
       { subscriptionId: sub.id, subTier: sub.tierSlug },
-      '[cron/tranzilla-renewals] skipped user downgrade — current tier was not granted by this subscription (legacy/manual or already changed)',
+      '[cron/tranzilla-renewals] skipped user downgrade — current tier was not granted by this subscription',
     )
   }
 }

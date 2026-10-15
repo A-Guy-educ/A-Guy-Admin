@@ -4,28 +4,26 @@
  * Call sites:
  *   - Tranzilla bootstrap: on the first successful notify_url POST,
  *     promotes a `pending` sub → `active` with period = now + 1 month.
- *   - Tranzilla renewal cron: on each successful merchant-initiated charge
- *     against the stored card token, rolls the period forward.
- *   - (Future) PayPal BILLING.SUBSCRIPTION.ACTIVATED / PAYMENT.SALE.COMPLETED
- *     for tier subs if that path is ever revived.
+ *     Call with `order: 'bootstrap'` — user writes run first so a partial
+ *     failure leaves the Sub pending (admin UI reflects "payment not
+ *     complete") rather than active-without-tier.
+ *   - Tranzilla renewal cron: on each successful merchant-initiated charge.
+ *     Call with `order: 'renewal'` — Sub advance runs first so the row
+ *     becomes ineligible for re-selection even if later writes crash
+ *     (prevents double-charge via the stale-lock-expired retry path).
  *
- * Writes (atomically from the caller's POV, but across two collections):
- *   - users.currentTier + llmTokensLimit (via applyTierPurchase, raw Mongo).
- *   - users.llmTokensUsed → 0, users.llmTokensResetAt → newPeriodEnd. The
- *     "I just paid, give me a fresh month" invariant. Done here rather than
- *     relying on the monthly cron so the reset is tied to the pay date.
- *   - users.tierGrantSource = 'subscription' so the gate can tell paid-
- *     subscriber from legacy one-time grants.
- *   - subscriptions.status = 'active', currentPeriodStart/End, retry = 0.
- *   - subscriptions.introChargesUsed +1 when isIntroCharge is true, so the
- *     next cycle rolls over to the regular price automatically.
+ * Idempotency: both writes are internally guarded. Replaying the same
+ * (subscriptionId, newPeriodEnd) is a safe no-op:
+ *   - Sub advance CAS: `currentPeriodEnd < newPeriodEnd` ensures a repeat
+ *     call doesn't re-advance or double-increment `introChargesUsed`.
+ *   - User writes CAS: `llmTokensResetAt < newPeriodEnd` ensures a repeat
+ *     doesn't re-zero `llmTokensUsed` mid-period.
+ * applyTierPurchase is trivially idempotent on same (userId, tierSlug).
  *
- * Idempotency: NOT internally idempotent. Callers must ensure "this charge
- * for this sub has not been applied before" — the Tranzilla webhook does
- * this via the WebhookEvents dedup gate + a per-charge providerTransactionId
- * on the renewal Transaction, and the cron does it via a per-sub period
- * guard before firing. Calling twice would double-reset the token counter
- * and over-advance the intro counter.
+ * This idempotency lets the webhook replay path call this helper on a
+ * sub that already looks promoted, repairing partial state (e.g. a prior
+ * delivery that crashed between the two writes) without re-advancing the
+ * fully-committed state.
  *
  * @fileType utility
  * @domain payments
@@ -38,6 +36,8 @@ import { applyTierPurchase } from '@/lib/payment/apply-tier-purchase'
 import type { TierSlug } from '@/lib/tiers/constants'
 import { getUsersMongoCollection } from '@/server/services/internal/users-mongo-collection'
 
+export type ExtendOrder = 'bootstrap' | 'renewal'
+
 export interface ExtendTierSubscriptionArgs {
   payload: Payload
   userId: string
@@ -46,21 +46,22 @@ export interface ExtendTierSubscriptionArgs {
   newPeriodStart: Date
   newPeriodEnd: Date
   isIntroCharge: boolean
+  order: ExtendOrder
 }
 
-export async function extendTierSubscription(args: ExtendTierSubscriptionArgs): Promise<void> {
-  const { payload, userId, tierSlug, subscriptionId, newPeriodStart, newPeriodEnd, isIntroCharge } =
-    args
-
-  // Ordering matters here: the Subscription row's currentPeriodEnd + retry
-  // counter advance FIRST. The renewal cron's dueness filter is
-  // `currentPeriodEnd <= now + 1h`, so advancing it here immediately makes
-  // the row ineligible for re-selection on the next sweep. If anything
-  // after this write fails (user tier apply, token reset), ops has a
-  // partial-state recovery job — but the user is NOT re-charged. Doing
-  // the user writes first would leave an advanced-cadence Sub still
-  // eligible if those user writes crash, which is the double-charge risk
-  // Kody flagged on the first review of the cron.
+/**
+ * Advance the Subscription row's lifecycle state for a new paid period.
+ * CAS-guarded on currentPeriodEnd so a repeat call cannot double-advance
+ * or double-increment the intro counter.
+ */
+async function advanceSubscriptionPeriod(args: {
+  payload: Payload
+  subscriptionId: string
+  newPeriodStart: Date
+  newPeriodEnd: Date
+  isIntroCharge: boolean
+}): Promise<boolean> {
+  const { payload, subscriptionId, newPeriodStart, newPeriodEnd, isIntroCharge } = args
   const subscriptions = payload.db.collections['subscriptions']
   const update: Record<string, unknown> = {
     $set: {
@@ -74,26 +75,108 @@ export async function extendTierSubscription(args: ExtendTierSubscriptionArgs): 
   if (isIntroCharge) {
     update.$inc = { introChargesUsed: 1 }
   }
-  await subscriptions.updateOne({ _id: new ObjectId(subscriptionId) }, update)
+  // CAS: only advance if the current period is older than the target. On
+  // a replay the equality check (==) makes the predicate fail and the
+  // write is a no-op — introChargesUsed stays accurate.
+  const result = await subscriptions.updateOne(
+    {
+      _id: new ObjectId(subscriptionId),
+      $or: [
+        { currentPeriodEnd: { $exists: false } },
+        { currentPeriodEnd: null },
+        { currentPeriodEnd: { $lt: newPeriodEnd } },
+      ],
+    },
+    update,
+  )
+  return result.modifiedCount === 1
+}
 
-  // Promote the user to the tier (sets currentTier + llmTokensLimit).
+/**
+ * Promote the user to the tier granted by this subscription. Includes
+ * token-reset + grant-source + grant-source-id tracking. CAS-guarded on
+ * llmTokensResetAt so a replay doesn't re-zero mid-period usage.
+ */
+async function promoteUserForTierSub(args: {
+  payload: Payload
+  userId: string
+  tierSlug: TierSlug
+  newPeriodEnd: Date
+  subscriptionId: string
+}): Promise<void> {
+  const { payload, userId, tierSlug, newPeriodEnd, subscriptionId } = args
+
+  // currentTier + llmTokensLimit — raw-mongo write, idempotent on same values.
   await applyTierPurchase(payload, userId, tierSlug)
 
-  // Roll the token counter and reset-date. Raw-mongo because these fields
-  // are blocked at the Payload access layer (server-only writes).
+  // Token-reset + provenance. CAS on llmTokensResetAt < newPeriodEnd
+  // prevents a replay from re-zeroing mid-period usage. tierGrantSubscriptionId
+  // is the key the cron's expireAndDowngrade predicate uses to scope the
+  // downgrade to the exact sub that granted the current tier.
   const users = getUsersMongoCollection(payload)
   if (!users) {
-    throw new Error('extendTierSubscription: raw MongoDB connection unavailable')
+    throw new Error('promoteUserForTierSub: raw MongoDB connection unavailable')
   }
   await users.updateOne(
-    { _id: new ObjectId(userId) },
+    {
+      _id: new ObjectId(userId),
+      $or: [
+        { llmTokensResetAt: { $exists: false } },
+        { llmTokensResetAt: null },
+        { llmTokensResetAt: { $lt: newPeriodEnd } },
+      ],
+    },
     {
       $set: {
         llmTokensUsed: 0,
         llmTokensResetAt: newPeriodEnd,
         tierGrantSource: 'subscription',
+        tierGrantSubscriptionId: subscriptionId,
         updatedAt: new Date(),
       },
     },
   )
+}
+
+export async function extendTierSubscription(args: ExtendTierSubscriptionArgs): Promise<void> {
+  const {
+    payload,
+    userId,
+    tierSlug,
+    subscriptionId,
+    newPeriodStart,
+    newPeriodEnd,
+    isIntroCharge,
+    order,
+  } = args
+
+  if (order === 'renewal') {
+    // Sub advance FIRST — makes the row ineligible for re-selection on the
+    // next sweep (the cron's dueness filter is `currentPeriodEnd <= now+1h`,
+    // and the CAS at advanceSubscriptionPeriod advances currentPeriodEnd to
+    // the new period before any user write). If a subsequent step crashes,
+    // the stale-lock-expired retry path WILL NOT re-charge the card.
+    await advanceSubscriptionPeriod({
+      payload,
+      subscriptionId,
+      newPeriodStart,
+      newPeriodEnd,
+      isIntroCharge,
+    })
+    await promoteUserForTierSub({ payload, userId, tierSlug, newPeriodEnd, subscriptionId })
+    return
+  }
+
+  // Bootstrap: user writes FIRST, Sub advance LAST. A partial failure here
+  // leaves the Sub in `pending`, which is both admin-visible ("checkout
+  // did not complete") and recoverable via the webhook dedup replay path
+  // (see /api/webhooks/tranzilla: unprocessed events are re-handled).
+  await promoteUserForTierSub({ payload, userId, tierSlug, newPeriodEnd, subscriptionId })
+  await advanceSubscriptionPeriod({
+    payload,
+    subscriptionId,
+    newPeriodStart,
+    newPeriodEnd,
+    isIntroCharge,
+  })
 }

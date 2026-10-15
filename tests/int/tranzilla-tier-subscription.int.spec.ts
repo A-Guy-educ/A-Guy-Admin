@@ -201,6 +201,7 @@ describe('extendTierSubscription', () => {
       newPeriodStart: now,
       newPeriodEnd: periodEnd,
       isIntroCharge: true,
+      order: 'bootstrap',
     })
 
     const user = (await payload.findByID({
@@ -212,6 +213,7 @@ describe('extendTierSubscription', () => {
     expect(user.llmTokensLimit).toBe(TIER_LLM_TOKEN_CAP_MONTHLY.basic)
     expect(user.llmTokensUsed).toBe(0)
     expect(user.tierGrantSource).toBe('subscription')
+    expect(String(user.tierGrantSubscriptionId)).toBe(String(sub.id))
     expect(new Date(user.llmTokensResetAt).toISOString()).toBe(periodEnd.toISOString())
 
     const refreshedSub = (await payload.findByID({
@@ -236,6 +238,7 @@ describe('extendTierSubscription', () => {
       newPeriodStart: new Date(),
       newPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
       isIntroCharge: false,
+      order: 'bootstrap',
     })
 
     const refreshed = (await payload.findByID({
@@ -244,6 +247,61 @@ describe('extendTierSubscription', () => {
       overrideAccess: true,
     })) as any
     expect(refreshed.introChargesUsed).toBe(0)
+  })
+
+  it('is idempotent per-period: replay does not re-advance or re-zero', async () => {
+    const { sub } = await createPendingSub({ tierSlug: 'basic', offerSlug: 'intro3mo' })
+
+    const now = new Date('2026-03-01T00:00:00Z')
+    const periodEnd = new Date('2026-04-01T00:00:00Z')
+
+    // First call — fires both writes.
+    await extendTierSubscription({
+      payload,
+      userId,
+      tierSlug: 'basic',
+      subscriptionId: sub.id,
+      newPeriodStart: now,
+      newPeriodEnd: periodEnd,
+      isIntroCharge: true,
+      order: 'renewal',
+    })
+    const afterFirst = (await payload.findByID({
+      collection: 'subscriptions',
+      id: sub.id,
+      overrideAccess: true,
+    })) as any
+    expect(afterFirst.introChargesUsed).toBe(1)
+
+    // Simulate mid-period usage; a replay must NOT re-zero.
+    const usersColl = payload.db.collections['users']
+    await usersColl.updateOne({ _id: new ObjectId(userId) }, { $set: { llmTokensUsed: 42_000 } })
+
+    // Second call with the same newPeriodEnd — CAS blocks both writes.
+    await extendTierSubscription({
+      payload,
+      userId,
+      tierSlug: 'basic',
+      subscriptionId: sub.id,
+      newPeriodStart: now,
+      newPeriodEnd: periodEnd,
+      isIntroCharge: true,
+      order: 'renewal',
+    })
+
+    const afterSecond = (await payload.findByID({
+      collection: 'subscriptions',
+      id: sub.id,
+      overrideAccess: true,
+    })) as any
+    expect(afterSecond.introChargesUsed).toBe(1)
+
+    const userAfter = (await payload.findByID({
+      collection: 'users',
+      id: userId,
+      overrideAccess: true,
+    })) as any
+    expect(userAfter.llmTokensUsed).toBe(42_000)
   })
 })
 
@@ -461,8 +519,11 @@ describe('sweepTranzillaRenewals', () => {
         $set: {
           currentTier: 'basic',
           llmTokensLimit: TIER_LLM_TOKEN_CAP_MONTHLY.basic,
-          // expireAndDowngrade now only acts on subscription-granted tiers.
+          // expireAndDowngrade scopes on tierGrantSubscriptionId to prevent
+          // cross-sub leaks; this test's user must be seeded with the
+          // target sub's id for the downgrade to fire.
           tierGrantSource: 'subscription',
+          tierGrantSubscriptionId: new ObjectId(sub.id),
         },
       },
     )
@@ -546,7 +607,13 @@ describe('sweepTranzillaRenewals', () => {
     const usersColl = payload.db.collections['users']
     await usersColl.updateOne(
       { _id: new ObjectId(userId) },
-      { $set: { currentTier: 'basic', tierGrantSource: 'subscription' } },
+      {
+        $set: {
+          currentTier: 'basic',
+          tierGrantSource: 'subscription',
+          tierGrantSubscriptionId: new ObjectId(sub.id),
+        },
+      },
     )
 
     const result = await sweepTranzillaRenewals(payload)

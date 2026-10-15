@@ -27,7 +27,7 @@ import { getPayload } from 'payload'
 
 import config from '@payload-config'
 import type { Subscription } from '@/payload-types'
-import { applyCorsHeaders, createPreflightResponse } from '@/lib/http/cors'
+import { applyCorsHeaders, createPreflightResponse, isAllowedOrigin } from '@/lib/http/cors'
 import {
   computeNextChargePriceIls,
   isPaidTierSlug,
@@ -36,6 +36,16 @@ import {
 } from '@/lib/payment/tier-tranzilla-pricing'
 import { createTranzillaCheckout } from '@/lib/payment/tranzilla'
 import { logger } from '@/infra/utils/logger'
+
+function isSafeRedirectUrl(value: string): boolean {
+  try {
+    const parsed = new URL(value)
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return false
+    return isAllowedOrigin(parsed.origin)
+  } catch {
+    return false
+  }
+}
 
 function isDuplicateKeyError(err: unknown): boolean {
   if (!err || typeof err !== 'object') return false
@@ -122,6 +132,19 @@ export async function POST(request: NextRequest) {
       return applyCorsHeaders(
         NextResponse.json(
           { success: false, error: 'successUrl and cancelUrl are required' },
+          { status: 400 },
+        ),
+        request,
+      )
+    }
+    // Validate redirect targets against the CORS allowlist so an
+    // authenticated attacker can't mint a checkout URL whose post-payment
+    // redirect lands on a phishing page they control. Tranzilla will
+    // happily redirect buyers to any URL we embed in the iframe params.
+    if (!isSafeRedirectUrl(successUrl) || !isSafeRedirectUrl(cancelUrl)) {
+      return applyCorsHeaders(
+        NextResponse.json(
+          { success: false, error: 'successUrl and cancelUrl must target an allowlisted origin' },
           { status: 400 },
         ),
         request,

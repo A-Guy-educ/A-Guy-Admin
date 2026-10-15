@@ -99,7 +99,13 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       )
     }
 
-    if (!['active', 'past_due', 'pending'].includes(sub.status)) {
+    // `pending` is intentionally excluded. A pending sub has no charge yet;
+    // if the user then approves the Tranzilla iframe payment, the webhook
+    // (processing the approved first charge) would find a cancelled sub
+    // and refuse to promote the user — producing a billed-but-free state.
+    // Users who abandon checkout have no cleanup to do; the pending row
+    // stays until admins manually expire it.
+    if (!['active', 'past_due'].includes(sub.status)) {
       return applyCorsHeaders(
         NextResponse.json(
           {

@@ -62,7 +62,9 @@ export const Subscriptions: CollectionConfig = {
     ],
     // tranzillaCardToken is explicitly excluded — it's a reusable payment
     // credential and must stay out of admin list views and search queries.
-    listSearchableFields: ['paypalSubscriptionId'],
+    // tierSlug + offerSlug give admins a way to find Tranzilla subs by tier
+    // (which has no human-identifiable ID field like paypalSubscriptionId).
+    listSearchableFields: ['paypalSubscriptionId', 'tierSlug', 'offerSlug'],
     group: 'Payments',
   },
   hooks: {
