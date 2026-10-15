@@ -2203,6 +2203,7 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- chore(deps): bump actions/setup-node from 4 to 7 ([#589](https://github.com/A-Guy-educ/A-Guy-Admin/pull/589)) — @dependabot[bot]
 - chore(deps-dev): bump @commitlint/config-conventional from 20.5.0 to 21.2.3 ([#594](https://github.com/A-Guy-educ/A-Guy-Admin/pull/594)) — @dependabot[bot]
 - feat(graphics): Fit graph viewport to anchor content, not symmetric defaults ([#609](https://github.com/A-Guy-educ/A-Guy-Admin/pull/609)) — @aguyshayb
 - feat(text-lesson-import): Cap sketch displaySize at medium (50%) ([#607](https://github.com/A-Guy-educ/A-Guy-Admin/pull/607)) — @aguyshayb
