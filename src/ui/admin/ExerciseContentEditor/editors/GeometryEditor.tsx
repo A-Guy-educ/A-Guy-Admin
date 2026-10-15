@@ -7,7 +7,6 @@ import type {
 } from '@/server/payload/collections/Exercises/types'
 import { GeometrySpecEditor } from './GeometrySpecEditor'
 import { InlineRichTextEditor } from './InlineRichTextEditor'
-import { NotebookToggle } from './NotebookToggle'
 
 interface GeometryEditorProps {
   block: QuestionGeometryBlock
@@ -69,13 +68,6 @@ export const GeometryEditor: React.FC<GeometryEditorProps> = ({ block, onChange 
           canvasId={`geo-canvas-${block.id}`}
           spec={block.geometry}
           onChange={(geometry) => onChange({ ...block, geometry })}
-        />
-      </div>
-
-      <div className="question-editor-section">
-        <NotebookToggle
-          value={block.showNotebook ?? false}
-          onChange={(value) => onChange({ ...block, showNotebook: value })}
         />
       </div>
     </div>

@@ -14,7 +14,6 @@ import { GraphsPanel } from '../components/axis/GraphsPanel'
 import { AxisPointsPanel } from '../components/axis/AxisPointsPanel'
 import { AsymptotesPanel } from '../components/axis/AsymptotesPanel'
 import { InlineRichTextEditor } from './InlineRichTextEditor'
-import { NotebookToggle } from './NotebookToggle'
 import { Plus, Trash2 } from 'lucide-react'
 
 interface MultiAxisEditorProps {
@@ -238,13 +237,6 @@ export const MultiAxisEditor: React.FC<MultiAxisEditorProps> = ({ block, onChang
           <Plus size={14} />
           <span>Add Graph ({block.graphs.length}/4)</span>
         </button>
-      </div>
-
-      <div className="question-editor-section">
-        <NotebookToggle
-          value={block.showNotebook ?? false}
-          onChange={(value) => onChange({ ...block, showNotebook: value })}
-        />
       </div>
     </div>
   )

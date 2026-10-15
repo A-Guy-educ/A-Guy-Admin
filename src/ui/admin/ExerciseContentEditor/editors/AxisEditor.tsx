@@ -4,7 +4,6 @@ import React from 'react'
 import type { QuestionAxisBlock, GraphLayout } from '@/server/payload/collections/Exercises/types'
 import { AxisSpecEditor } from './AxisSpecEditor'
 import { InlineRichTextEditor } from './InlineRichTextEditor'
-import { NotebookToggle } from './NotebookToggle'
 
 interface AxisEditorProps {
   block: QuestionAxisBlock
@@ -66,13 +65,6 @@ export const AxisEditor: React.FC<AxisEditorProps> = ({ block, onChange }) => {
           canvasId={`axis-canvas-${block.id}`}
           spec={block.axis}
           onChange={(axis) => onChange({ ...block, axis })}
-        />
-      </div>
-
-      <div className="question-editor-section">
-        <NotebookToggle
-          value={block.showNotebook ?? false}
-          onChange={(value) => onChange({ ...block, showNotebook: value })}
         />
       </div>
     </div>
