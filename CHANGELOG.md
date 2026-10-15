@@ -2203,6 +2203,7 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- feat(payments): Wire bootstrap webhook to My-Billing STO (Flow A) ([#616](https://github.com/A-Guy-educ/A-Guy-Admin/pull/616)) — @aguyshayb
 - fix(studio): Finite tick marks + notebook toggle on graph questions ([#613](https://github.com/A-Guy-educ/A-Guy-Admin/pull/613)) — @aguyshayb
 - feat(payments): Add Tranzila V2 (TRAPI) HMAC-SHA256 API client ([#615](https://github.com/A-Guy-educ/A-Guy-Admin/pull/615)) — @aguyshayb
 - fix(payments): Unblock web smoke tests — VERCEL_ENV gate + dev allowlist ([#614](https://github.com/A-Guy-educ/A-Guy-Admin/pull/614)) — @aguyshayb
