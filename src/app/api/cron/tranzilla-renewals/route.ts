@@ -34,8 +34,14 @@ function isAuthorized(request: NextRequest): boolean {
   }
   const auth = request.headers.get('authorization') ?? ''
   const expectedHeader = `Bearer ${expected}`
-  if (auth.length !== expectedHeader.length) return false
-  return timingSafeEqual(Buffer.from(auth, 'utf8'), Buffer.from(expectedHeader, 'utf8'))
+  // Compare bytes, not UTF-16 code units: a non-ASCII character in the
+  // secret can match on string length while differing in byte length,
+  // which would make timingSafeEqual throw ERR_CRYPTO_TIMING_SAFE_EQUAL_UNEQUAL_LENGTH
+  // and 500 the cron (self-DoS on secret rotation to a non-ASCII value).
+  const authBuf = Buffer.from(auth, 'utf8')
+  const expectedBuf = Buffer.from(expectedHeader, 'utf8')
+  if (authBuf.length !== expectedBuf.length) return false
+  return timingSafeEqual(authBuf, expectedBuf)
 }
 
 export async function GET(request: NextRequest): Promise<NextResponse> {

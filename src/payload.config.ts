@@ -81,6 +81,7 @@ import { runBackfillOnInit } from '@/server/payload/migrations/backfillAdminTitl
 import { runBackfillTierGrantSourceOnInit } from '@/server/payload/migrations/backfillTierGrantSource'
 import { runDropPaypalSubscriptionIdStaleIndexOnInit } from '@/server/payload/migrations/dropPaypalSubscriptionIdStaleIndex'
 import { runDropStaleCoursesValidatorOnInit } from '@/server/payload/migrations/dropStaleCoursesValidator'
+import { runEnsureSubscriptionsActiveUserIndexOnInit } from '@/server/payload/migrations/ensureSubscriptionsActiveUserIndex'
 import { runEnsureTiersIndexesOnInit } from '@/server/payload/migrations/ensureTiersIndexes'
 import { runLocalizeTeacherProfilesOnInit } from '@/server/payload/migrations/localize-teacher-profiles'
 import { runPopulateLessonBlocksOnInit } from '@/server/payload/migrations/populateLessonBlocks'
@@ -614,6 +615,13 @@ export default buildConfig({
     // Idempotent: the "not set" filter matches zero docs after the first
     // successful run.
     await timedInit('backfillTierGrantSource', () => runBackfillTierGrantSourceOnInit(payload))
+
+    // Partial unique index on subscriptions.user filtered to the active-ish
+    // statuses — DB-level guard against the bootstrap endpoint's TOCTOU
+    // double-subscribe window. Idempotent: no-op once the index exists.
+    await timedInit('ensureSubscriptionsActiveUserIndex', () =>
+      runEnsureSubscriptionsActiveUserIndexOnInit(payload),
+    )
 
     // NOTE: verifyTransactionsUniqueness was moved out of onInit into a
     // daily Vercel cron (`/api/cron/verify-tx-indexes`, see vercel.json).

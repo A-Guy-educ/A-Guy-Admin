@@ -52,11 +52,35 @@ export async function extendTierSubscription(args: ExtendTierSubscriptionArgs): 
   const { payload, userId, tierSlug, subscriptionId, newPeriodStart, newPeriodEnd, isIntroCharge } =
     args
 
-  // 1. Promote the user to the tier (sets currentTier + llmTokensLimit).
+  // Ordering matters here: the Subscription row's currentPeriodEnd + retry
+  // counter advance FIRST. The renewal cron's dueness filter is
+  // `currentPeriodEnd <= now + 1h`, so advancing it here immediately makes
+  // the row ineligible for re-selection on the next sweep. If anything
+  // after this write fails (user tier apply, token reset), ops has a
+  // partial-state recovery job — but the user is NOT re-charged. Doing
+  // the user writes first would leave an advanced-cadence Sub still
+  // eligible if those user writes crash, which is the double-charge risk
+  // Kody flagged on the first review of the cron.
+  const subscriptions = payload.db.collections['subscriptions']
+  const update: Record<string, unknown> = {
+    $set: {
+      status: 'active',
+      currentPeriodStart: newPeriodStart,
+      currentPeriodEnd: newPeriodEnd,
+      tranzillaRetryCount: 0,
+      updatedAt: new Date(),
+    },
+  }
+  if (isIntroCharge) {
+    update.$inc = { introChargesUsed: 1 }
+  }
+  await subscriptions.updateOne({ _id: new ObjectId(subscriptionId) }, update)
+
+  // Promote the user to the tier (sets currentTier + llmTokensLimit).
   await applyTierPurchase(payload, userId, tierSlug)
 
-  // 2. Roll the token counter and reset-date. Raw-mongo because these
-  //    fields are blocked at the Payload access layer (server-only writes).
+  // Roll the token counter and reset-date. Raw-mongo because these fields
+  // are blocked at the Payload access layer (server-only writes).
   const users = getUsersMongoCollection(payload)
   if (!users) {
     throw new Error('extendTierSubscription: raw MongoDB connection unavailable')
@@ -72,21 +96,4 @@ export async function extendTierSubscription(args: ExtendTierSubscriptionArgs): 
       },
     },
   )
-
-  // 3. Advance the Subscription row. Raw-mongo so we can combine $set with
-  //    the conditional $inc on introChargesUsed in a single write.
-  const subscriptions = payload.db.collections['subscriptions']
-  const update: Record<string, unknown> = {
-    $set: {
-      status: 'active',
-      currentPeriodStart: newPeriodStart,
-      currentPeriodEnd: newPeriodEnd,
-      tranzillaRetryCount: 0,
-      updatedAt: new Date(),
-    },
-  }
-  if (isIntroCharge) {
-    update.$inc = { introChargesUsed: 1 }
-  }
-  await subscriptions.updateOne({ _id: new ObjectId(subscriptionId) }, update)
 }

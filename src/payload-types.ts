@@ -2337,7 +2337,7 @@ export interface Subscription {
    */
   regularPriceIls?: number | null;
   /**
-   * TranzilaTK reusable card token for merchant-initiated renewal charges. Hidden from admin UI; never surface unmasked.
+   * TranzilaTK reusable card token for merchant-initiated renewal charges. Server-only read; never surfaces in admin UI or REST.
    */
   tranzillaCardToken?: string | null;
   /**

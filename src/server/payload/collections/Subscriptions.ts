@@ -170,16 +170,27 @@ export const Subscriptions: CollectionConfig = {
     // Tranzilla-specific: reusable card token (TranzilaTK) captured by the
     // first notify_url POST. The renewal cron charges this token monthly
     // using the TranzilaPG REST API (merchant-initiated, no buyer prompt).
-    // Hidden from the admin UI and excluded from list-search so a compromised
-    // admin session can't trivially read or search by stored payment tokens.
+    //
+    // Field-level access.read: () => false means the token is NEVER returned
+    // on standard REST/GraphQL reads (not even to admin users with full
+    // collection access). Server code reads via overrideAccess: true
+    // (cron + webhook paths) or directly via raw MongoDB — both bypass
+    // access control intentionally. This cuts the blast radius of a
+    // compromised admin session: a session with full `subscriptions`
+    // access cannot enumerate stored payment tokens.
     {
       name: 'tranzillaCardToken',
       type: 'text',
+      access: {
+        read: () => false,
+        create: () => true,
+        update: () => true,
+      },
       admin: {
         hidden: true,
         readOnly: true,
         description:
-          'TranzilaTK reusable card token for merchant-initiated renewal charges. Hidden from admin UI; never surface unmasked.',
+          'TranzilaTK reusable card token for merchant-initiated renewal charges. Server-only read; never surfaces in admin UI or REST.',
       },
     },
     {

@@ -310,41 +310,26 @@ async function processOneRenewal(
   const anchor = sub.currentPeriodEnd ? new Date(sub.currentPeriodEnd) : new Date()
   const newPeriodEnd = addCalendarMonths(anchor, 1)
 
-  // Create the renewal Tx. If providerTransactionId collides (webhook
-  // replay path for a wholly unrelated transaction), the unique-index
-  // guard throws — surface as a sub-level error and move on. Tenant is
-  // required on Transactions; a missing tenant on the Sub is a data bug
-  // worth surfacing rather than silently dropping the renewal row.
   const tenantId = resolveTenantId(sub.tenant)
   if (!tenantId) {
     throw new Error(`subscription ${sub.id} has no tenant — cannot create renewal transaction`)
   }
-  const renewalTx = await payload.create({
-    collection: 'transactions',
-    data: {
-      tenant: tenantId,
-      user: userId,
-      tierSlug: sub.tierSlug,
-      provider: 'tranzilla',
-      providerTransactionId: charge.index ?? `tz-renewal-${new ObjectId().toHexString()}`,
-      status: 'succeeded',
-      amount: priceIls * 100,
-      currency: 'ILS',
-      isRenewal: true,
-      isIntroCharge,
-      subscription: sub.id,
-      entitlementsGrantedAt: new Date().toISOString(),
-      metadata: {
-        tranzilla: {
-          confirmationCode: charge.confirmationCode,
-          responseCode: charge.responseCode,
-        },
-      },
-    },
-    draft: false,
-    overrideAccess: true,
-  })
 
+  // Ordering matters for the double-charge guard:
+  //
+  // 1. extendTierSubscription advances the Sub's currentPeriodEnd FIRST
+  //    (see that helper's reordering commit). As soon as that write lands,
+  //    the next sweep's dueness filter won't re-match this row, so even if
+  //    a later step throws we don't re-charge the same card for the same
+  //    period.
+  // 2. Then create the renewal Transaction. A failure here is a
+  //    reconciliation issue (money moved, no DB record) — serious, but no
+  //    longer a billing-side exploit vector. Logged at fatal level so ops
+  //    can repair.
+  //
+  // If a different ordering looks cleaner later, keep the invariant: the
+  // write that advances currentPeriodEnd must happen before any write that
+  // can fail without first making this row ineligible for re-selection.
   await extendTierSubscription({
     payload,
     userId,
@@ -355,11 +340,53 @@ async function processOneRenewal(
     isIntroCharge,
   })
 
+  let renewalTxId: string | null = null
+  try {
+    const renewalTx = await payload.create({
+      collection: 'transactions',
+      data: {
+        tenant: tenantId,
+        user: userId,
+        tierSlug: sub.tierSlug,
+        provider: 'tranzilla',
+        providerTransactionId: charge.index ?? `tz-renewal-${new ObjectId().toHexString()}`,
+        status: 'succeeded',
+        amount: priceIls * 100,
+        currency: 'ILS',
+        isRenewal: true,
+        isIntroCharge,
+        subscription: sub.id,
+        entitlementsGrantedAt: new Date().toISOString(),
+        metadata: {
+          tranzilla: {
+            confirmationCode: charge.confirmationCode,
+            responseCode: charge.responseCode,
+          },
+        },
+      },
+      draft: false,
+      overrideAccess: true,
+    })
+    renewalTxId = renewalTx.id
+  } catch (txErr) {
+    payload.logger.fatal(
+      {
+        err: txErr instanceof Error ? txErr.message : String(txErr),
+        subscriptionId: sub.id,
+        chargeIndex: charge.index,
+        chargeConfirmationCode: charge.confirmationCode,
+      },
+      '[cron/tranzilla-renewals] CRITICAL — card was charged and Sub advanced, but renewal Transaction create FAILED. Manually record the charge and reconcile.',
+    )
+    // Rethrow so the sweep's error list captures it and the error isn't lost.
+    throw txErr
+  }
+
   result.renewed += 1
   payload.logger.info(
     {
       subscriptionId: sub.id,
-      transactionId: renewalTx.id,
+      transactionId: renewalTxId,
       priceIls,
       isIntroCharge,
       newPeriodEnd: newPeriodEnd.toISOString(),
@@ -423,15 +450,25 @@ async function expireAndDowngrade(payload: Payload, sub: SubscriptionRow): Promi
     },
   )
 
-  // Downgrade the user to the default tier and clear the subscription
-  // grant source. Done via raw mongo because currentTier / llmTokensLimit
-  // are blocked at the Payload access layer.
+  // Downgrade the user to the default tier — but ONLY if this subscription
+  // is actually the source of the current grant. The scope ensures:
+  //   - legacy_one_time users (grandfathered one-time PayPal buyers) stay
+  //     at their paid tier when an unrelated/pending sub expires
+  //   - manual admin tier overrides are not wiped by cron
+  //   - users who upgraded mid-period (currentTier != sub.tierSlug) are not
+  //     dropped when the old (lower) sub expires
+  // Done via raw mongo because currentTier / llmTokensLimit are blocked at
+  // the Payload access layer.
   const users = getUsersMongoCollection(payload)
   if (!users) {
     throw new Error('expireAndDowngrade: raw MongoDB connection unavailable')
   }
-  await users.updateOne(
-    { _id: new ObjectId(userId) },
+  const downgradeResult = await users.updateOne(
+    {
+      _id: new ObjectId(userId),
+      tierGrantSource: 'subscription',
+      currentTier: sub.tierSlug,
+    },
     {
       $set: {
         currentTier: DEFAULT_TIER,
@@ -441,4 +478,10 @@ async function expireAndDowngrade(payload: Payload, sub: SubscriptionRow): Promi
       },
     },
   )
+  if (downgradeResult.matchedCount === 0) {
+    payload.logger.info(
+      { subscriptionId: sub.id, subTier: sub.tierSlug },
+      '[cron/tranzilla-renewals] skipped user downgrade — current tier was not granted by this subscription (legacy/manual or already changed)',
+    )
+  }
 }

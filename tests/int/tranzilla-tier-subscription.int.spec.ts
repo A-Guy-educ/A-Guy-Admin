@@ -457,7 +457,14 @@ describe('sweepTranzillaRenewals', () => {
     const usersColl = payload.db.collections['users']
     await usersColl.updateOne(
       { _id: new ObjectId(userId) },
-      { $set: { currentTier: 'basic', llmTokensLimit: TIER_LLM_TOKEN_CAP_MONTHLY.basic } },
+      {
+        $set: {
+          currentTier: 'basic',
+          llmTokensLimit: TIER_LLM_TOKEN_CAP_MONTHLY.basic,
+          // expireAndDowngrade now only acts on subscription-granted tiers.
+          tierGrantSource: 'subscription',
+        },
+      },
     )
     const subsColl = payload.db.collections['subscriptions']
     await subsColl.updateOne(
@@ -484,6 +491,46 @@ describe('sweepTranzillaRenewals', () => {
     expect(user.tierGrantSource).toBeFalsy()
   })
 
+  it('does NOT downgrade users whose tier was granted via legacy_one_time or manual', async () => {
+    const { sweepTranzillaRenewals } =
+      await import('@/server/payload/endpoints/cron/tranzilla-renewals')
+
+    // Legacy tier buyer who then also bootstrapped (and cancelled) a sub.
+    // Their currentTier stayed basic throughout and tierGrantSource was
+    // never flipped to 'subscription' because no charge ever landed.
+    const { sub } = await createPendingSub({
+      tierSlug: 'basic',
+      offerSlug: 'default',
+      cardToken: 'tk-legacy',
+      status: 'cancelled',
+      currentPeriodEnd: new Date(Date.now() - 60 * 1000),
+      cancelAtPeriodEnd: true,
+    })
+    const usersColl = payload.db.collections['users']
+    await usersColl.updateOne(
+      { _id: new ObjectId(userId) },
+      { $set: { currentTier: 'basic', tierGrantSource: 'legacy_one_time' } },
+    )
+
+    await sweepTranzillaRenewals(payload)
+
+    const user = (await payload.findByID({
+      collection: 'users',
+      id: userId,
+      overrideAccess: true,
+    })) as any
+    // The sub expired but the legacy tier survived.
+    expect(user.currentTier).toBe('basic')
+    expect(user.tierGrantSource).toBe('legacy_one_time')
+
+    const refreshed = (await payload.findByID({
+      collection: 'subscriptions',
+      id: sub.id,
+      overrideAccess: true,
+    })) as any
+    expect(refreshed.status).toBe('expired')
+  })
+
   it('expires soft-cancelled subs whose period has passed', async () => {
     const { sweepTranzillaRenewals } =
       await import('@/server/payload/endpoints/cron/tranzilla-renewals')
@@ -497,7 +544,10 @@ describe('sweepTranzillaRenewals', () => {
       cancelAtPeriodEnd: true,
     })
     const usersColl = payload.db.collections['users']
-    await usersColl.updateOne({ _id: new ObjectId(userId) }, { $set: { currentTier: 'basic' } })
+    await usersColl.updateOne(
+      { _id: new ObjectId(userId) },
+      { $set: { currentTier: 'basic', tierGrantSource: 'subscription' } },
+    )
 
     const result = await sweepTranzillaRenewals(payload)
     expect(result.softCancelExpired).toBeGreaterThanOrEqual(1)

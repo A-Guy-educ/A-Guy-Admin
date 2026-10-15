@@ -26,6 +26,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getPayload } from 'payload'
 
 import config from '@payload-config'
+import type { Subscription } from '@/payload-types'
 import { applyCorsHeaders, createPreflightResponse } from '@/lib/http/cors'
 import {
   computeNextChargePriceIls,
@@ -35,6 +36,24 @@ import {
 } from '@/lib/payment/tier-tranzilla-pricing'
 import { createTranzillaCheckout } from '@/lib/payment/tranzilla'
 import { logger } from '@/infra/utils/logger'
+
+function isDuplicateKeyError(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false
+  const e = err as { code?: number; message?: string; errors?: unknown[]; data?: unknown }
+  if (e.code === 11000) return true
+  if (/E11000|duplicate key/i.test(e.message ?? '')) return true
+  if (/unique/i.test(e.message ?? '')) return true
+  const errors = (e.data as { errors?: unknown[] })?.errors ?? e.errors
+  if (Array.isArray(errors)) {
+    return errors.some(
+      (err2: unknown) =>
+        typeof err2 === 'object' &&
+        err2 !== null &&
+        /unique/i.test((err2 as { message?: string }).message ?? ''),
+    )
+  }
+  return false
+}
 
 interface BootstrapBody {
   tierSlug?: unknown
@@ -109,9 +128,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Reject if the user already has an active-ish sub — Web shouldn't offer
-    // the checkout flow in that case, but belt-and-braces here protects
-    // against two-tab double-subscribe.
+    // Reject if the user already has an active-ish sub. The find is a fast
+    // path for the common case; the partial unique index on subscriptions.user
+    // (status ∈ {pending,active,past_due}) is the real race-safe guard —
+    // see the E11000 catch below on the Subscriptions.create call.
     const existing = await payload.find({
       collection: 'subscriptions',
       where: {
@@ -183,24 +203,62 @@ export async function POST(request: NextRequest) {
       overrideAccess: true,
     })
 
-    const subscription = await payload.create({
-      collection: 'subscriptions',
-      data: {
-        tenant: tenantId,
-        user: user.id,
-        tierSlug,
-        provider: 'tranzilla',
-        offerSlug,
-        introPriceIls: offer.introPriceIls,
-        introChargesTotal: offer.introChargesTotal,
-        introChargesUsed: 0,
-        regularPriceIls: offer.regularPriceIls,
-        status: 'pending',
-        initialTransaction: transaction.id,
-      },
-      draft: false,
-      overrideAccess: true,
-    })
+    let subscription: Subscription
+    try {
+      subscription = await payload.create({
+        collection: 'subscriptions',
+        data: {
+          tenant: tenantId,
+          user: user.id,
+          tierSlug,
+          provider: 'tranzilla',
+          offerSlug,
+          introPriceIls: offer.introPriceIls,
+          introChargesTotal: offer.introChargesTotal,
+          introChargesUsed: 0,
+          regularPriceIls: offer.regularPriceIls,
+          status: 'pending',
+          initialTransaction: transaction.id,
+        },
+        draft: false,
+        overrideAccess: true,
+      })
+    } catch (createErr) {
+      // Partial unique index on subscriptions.user (active-ish statuses)
+      // trips when a concurrent request from the same user has already
+      // inserted a pending/active sub between our pre-check find and
+      // this create. Roll back the Transaction we just created and
+      // return 409 — the client sees the same shape as the application
+      // guard above.
+      if (isDuplicateKeyError(createErr)) {
+        try {
+          await payload.delete({
+            collection: 'transactions',
+            id: transaction.id,
+            overrideAccess: true,
+          })
+        } catch (rollbackErr) {
+          logger.error(
+            {
+              err: rollbackErr instanceof Error ? rollbackErr.message : String(rollbackErr),
+              transactionId: transaction.id,
+            },
+            'POST /api/subscriptions/bootstrap/tranzilla: failed to roll back pending transaction after concurrent-insert conflict',
+          )
+        }
+        return applyCorsHeaders(
+          NextResponse.json(
+            {
+              success: false,
+              error: 'User already has an active or pending subscription',
+            },
+            { status: 409 },
+          ),
+          request,
+        )
+      }
+      throw createErr
+    }
 
     // Wire the Tx back to the sub for symmetry.
     await payload.update({
