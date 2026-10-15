@@ -1017,9 +1017,13 @@ export interface Subscription {
    */
   regularPriceIls?: number | null;
   /**
-   * TranzilaTK reusable card token for merchant-initiated renewal charges. Server-only read; never surfaces in admin UI or REST.
+   * TranzilaTK reusable card token for merchant-initiated renewal charges. Nulled after a successful createstov2 handoff — once Tranzila stores the token with the STO, we have no reason to keep our copy. Server-only read; never surfaces in admin UI or REST.
    */
   tranzillaCardToken?: string | null;
+  /**
+   * Tranzila My-Billing standing-order id. Set after bootstrap handoff; null means the sub is still cron-driven (fallback path).
+   */
+  stoId?: string | null;
   /**
    * Consecutive failed renewal attempts on the Tranzilla path. Reset to 0 on success; sub transitions to expired after a threshold (see cron handler).
    */
@@ -5368,6 +5372,7 @@ export interface SubscriptionsSelect<T extends boolean = true> {
   introChargesUsed?: T;
   regularPriceIls?: T;
   tranzillaCardToken?: T;
+  stoId?: T;
   tranzillaRetryCount?: T;
   lastRenewalAttemptAt?: T;
   paypalSubscriptionId?: T;
