@@ -2203,6 +2203,7 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- feat(text-lesson-import): Cap sketch displaySize at medium (50%) ([#607](https://github.com/A-Guy-educ/A-Guy-Admin/pull/607)) — @aguyshayb
 ## [v0.56.0] - 2026-10-14
 
 - promote: dev -> main (v0.56.0) ([#606](https://github.com/A-Guy-educ/A-Guy-Admin/pull/606)) — @aguyshayb
