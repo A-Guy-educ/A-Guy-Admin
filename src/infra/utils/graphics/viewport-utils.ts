@@ -51,6 +51,57 @@ function evaluateMathExpression(fn: string, x: number): number | null {
 }
 
 /**
+ * Content bounds collected from "anchor" elements — the things we treat as
+ * authoritative for where the viewport should fit: points, line segment
+ * endpoints, and explicit asymptotes. We deliberately exclude unbounded
+ * `graphs` (functions of x) because they have no natural x-range of their
+ * own — sampling them across an arbitrary window (previously [-10, 10])
+ * inflates y-bounds whenever a line extends far, which is exactly the
+ * "symmetric wasteland" that bugged graph viewports.
+ *
+ * Returns `null` when no anchor content exists; callers substitute a
+ * default or honor an author's manual viewport.
+ */
+function collectAnchorBounds(spec: AxisSpecV1): ViewportBounds | null {
+  let xMin = Infinity
+  let xMax = -Infinity
+  let yMin = Infinity
+  let yMax = -Infinity
+  let hasContent = false
+
+  for (const point of spec.elements.points) {
+    hasContent = true
+    xMin = Math.min(xMin, point.x)
+    xMax = Math.max(xMax, point.x)
+    yMin = Math.min(yMin, point.y)
+    yMax = Math.max(yMax, point.y)
+  }
+
+  for (const line of spec.elements.lineBetweenPoints || []) {
+    hasContent = true
+    xMin = Math.min(xMin, line.a.x, line.b.x)
+    xMax = Math.max(xMax, line.a.x, line.b.x)
+    yMin = Math.min(yMin, line.a.y, line.b.y)
+    yMax = Math.max(yMax, line.a.y, line.b.y)
+  }
+
+  for (const xVal of spec.elements.asymptotesVertical || []) {
+    hasContent = true
+    xMin = Math.min(xMin, xVal)
+    xMax = Math.max(xMax, xVal)
+  }
+
+  for (const yVal of spec.elements.asymptotesHorizontal || []) {
+    hasContent = true
+    yMin = Math.min(yMin, yVal)
+    yMax = Math.max(yMax, yVal)
+  }
+
+  if (!hasContent) return null
+  return { xMin, xMax, yMin, yMax }
+}
+
+/**
  * Calculate the auto viewport based on graph elements
  * Analyzes points, graphs, asymptotes, and line segments to determine a bounding box
  */
@@ -62,31 +113,34 @@ export function calculateAutoViewport(spec: AxisSpecV1): ViewportBounds {
     yMax: 10,
   }
 
-  // Start with default bounds
-  let xMin = DEFAULT_BOUNDS.xMin
-  let xMax = DEFAULT_BOUNDS.xMax
-  let yMin = DEFAULT_BOUNDS.yMin
-  let yMax = DEFAULT_BOUNDS.yMax
+  const anchor = collectAnchorBounds(spec)
 
-  let hasContent = false
+  // Start from anchor bounds when they exist, otherwise defaults. Previously
+  // we started from DEFAULT_BOUNDS unconditionally and used Math.min/max to
+  // "expand" — but Math.min against a default of -10 means a point at x=5
+  // yields xMin = -10, not 5. First-quadrant content ended up with a
+  // -10..10 symmetric viewport, which looked like the renderer was
+  // mirroring the axes.
+  let xMin = anchor?.xMin ?? DEFAULT_BOUNDS.xMin
+  let xMax = anchor?.xMax ?? DEFAULT_BOUNDS.xMax
+  let yMin = anchor?.yMin ?? DEFAULT_BOUNDS.yMin
+  let yMax = anchor?.yMax ?? DEFAULT_BOUNDS.yMax
 
-  // Analyze points
-  for (const point of spec.elements.points) {
-    hasContent = true
-    xMin = Math.min(xMin, point.x)
-    xMax = Math.max(xMax, point.x)
-    yMin = Math.min(yMin, point.y)
-    yMax = Math.max(yMax, point.y)
-  }
+  let hasContent = anchor !== null
 
-  // Analyze graphs (sample at multiple x values)
+  // Analyze graphs by sampling. We DO use the anchor's x-range when it
+  // exists so a line through (0,0)–(5,5) doesn't drag y-samples at
+  // x=-10/x=10 into the bounds. When no anchor is set we fall back to the
+  // historical [-10, 10] sample window.
   const sampleCount = 20
-  const sampleRange = 10 // Sample from -10 to 10
+  const sampleXMin = anchor?.xMin ?? -10
+  const sampleXMax = anchor?.xMax ?? 10
+  const sampleXSpan = sampleXMax - sampleXMin
 
   for (const graph of spec.elements.graphs) {
     hasContent = true
     for (let i = 0; i <= sampleCount; i++) {
-      const x = -sampleRange + (i / sampleCount) * (sampleRange * 2)
+      const x = sampleXMin + (i / sampleCount) * sampleXSpan
       const y = evaluateMathExpression(graph.fn, x)
       if (y !== null) {
         xMin = Math.min(xMin, x)
@@ -97,30 +151,6 @@ export function calculateAutoViewport(spec: AxisSpecV1): ViewportBounds {
     }
   }
 
-  // Analyze vertical asymptotes
-  for (const xVal of spec.elements.asymptotesVertical || []) {
-    hasContent = true
-    xMin = Math.min(xMin, xVal)
-    xMax = Math.max(xMax, xVal)
-  }
-
-  // Analyze horizontal asymptotes
-  for (const yVal of spec.elements.asymptotesHorizontal || []) {
-    hasContent = true
-    yMin = Math.min(yMin, yVal)
-    yMax = Math.max(yMax, yVal)
-  }
-
-  // Analyze line segments between points
-  for (const line of spec.elements.lineBetweenPoints || []) {
-    hasContent = true
-    xMin = Math.min(xMin, line.a.x, line.b.x)
-    xMax = Math.max(xMax, line.a.x, line.b.x)
-    yMin = Math.min(yMin, line.a.y, line.b.y)
-    yMax = Math.max(yMax, line.a.y, line.b.y)
-  }
-
-  // If no content, return default bounds
   if (!hasContent) {
     return DEFAULT_BOUNDS
   }
@@ -246,6 +276,65 @@ export function checkGraphVisibility(
 }
 
 /**
+ * Fraction of the manual viewport each dimension's anchor content must
+ * fill to be considered "well fit". Anything less and the viewport is
+ * mostly empty space on that axis — we tighten it to the anchor content
+ * plus padding.
+ *
+ * The generator (parse-function-block-v2) tends to emit symmetric or
+ * generously-wide ranges (e.g. `X Min: -6, X Max: 6, Y Min: -6, Y Max: 23`)
+ * even when every point and line in the spec lives in the first quadrant.
+ * Without this tightening, students see 60–80% empty space around the
+ * content and the block renders as a thin strip because the pixel aspect
+ * ratio follows the wasted viewport, not the content.
+ */
+const WASTE_THRESHOLD = 0.5
+const TIGHTEN_PADDING_RATIO = 0.25
+
+/**
+ * Tighten a manual viewport toward anchor content (points + line endpoints
+ * + explicit asymptotes) when content occupies less than WASTE_THRESHOLD
+ * of the viewport span in a given dimension. Each axis is tightened
+ * independently; axes that are already well-fit are left untouched.
+ *
+ * We only tighten based on *anchor* content, not on sampled graph values,
+ * so an author who sets a wide X range specifically to show a function's
+ * long-term behavior isn't contradicted — their intent is read from the
+ * anchors they placed.
+ */
+function tightenManualViewport(spec: AxisSpecV1, manual: ViewportBounds): ViewportBounds {
+  const anchor = collectAnchorBounds(spec)
+  if (!anchor) return manual
+
+  const xViewportSpan = manual.xMax - manual.xMin
+  const yViewportSpan = manual.yMax - manual.yMin
+  if (xViewportSpan <= 0 || yViewportSpan <= 0) return manual
+
+  const xAnchorSpan = anchor.xMax - anchor.xMin
+  const yAnchorSpan = anchor.yMax - anchor.yMin
+
+  const xWasteful = xAnchorSpan / xViewportSpan < WASTE_THRESHOLD
+  const yWasteful = yAnchorSpan / yViewportSpan < WASTE_THRESHOLD
+
+  if (!xWasteful && !yWasteful) return manual
+
+  // Minimum of 1 unit of padding so a near-degenerate anchor (two points
+  // sharing an x or y) still renders with breathing room.
+  const xPad = Math.max(1, xAnchorSpan * TIGHTEN_PADDING_RATIO)
+  const yPad = Math.max(1, yAnchorSpan * TIGHTEN_PADDING_RATIO)
+
+  // When tightening, pull each edge inward toward anchor+padding — but
+  // never past the anchor (would clip content) and never outside the
+  // manual bound (don't widen beyond author's choice on the other side).
+  return {
+    xMin: xWasteful ? Math.max(manual.xMin, anchor.xMin - xPad) : manual.xMin,
+    xMax: xWasteful ? Math.min(manual.xMax, anchor.xMax + xPad) : manual.xMax,
+    yMin: yWasteful ? Math.max(manual.yMin, anchor.yMin - yPad) : manual.yMin,
+    yMax: yWasteful ? Math.min(manual.yMax, anchor.yMax + yPad) : manual.yMax,
+  }
+}
+
+/**
  * Resolve the final viewport based on mode
  * Returns auto-calculated viewport for 'auto' mode, or manual values for 'manual' mode
  */
@@ -259,12 +348,13 @@ export function resolveViewport(spec: AxisSpecV1): ViewportBounds {
     spec.viewport?.yMax !== undefined
 
   if (isManualMode && hasCompleteViewport) {
-    return {
+    const manual: ViewportBounds = {
       xMin: spec.viewport!.xMin!,
       xMax: spec.viewport!.xMax!,
       yMin: spec.viewport!.yMin!,
       yMax: spec.viewport!.yMax!,
     }
+    return tightenManualViewport(spec, manual)
   }
 
   // Otherwise, calculate auto viewport

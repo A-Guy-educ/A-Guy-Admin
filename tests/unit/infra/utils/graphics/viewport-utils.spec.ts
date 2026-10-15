@@ -96,6 +96,40 @@ describe('viewport-utils', () => {
       expect(result.yMin).toBeLessThanOrEqual(0)
       expect(result.yMax).toBeGreaterThanOrEqual(100)
     })
+
+    it('fits first-quadrant anchor content without extending to negative defaults', () => {
+      // Regression: before this fix, calculateAutoViewport started from
+      // defaults -10..10 and only expanded via Math.min/max. A point at
+      // (3, 4) produced xMin=-10, yMin=-10 — the viewport looked like
+      // the axes were mirrored to negative space.
+      const spec: AxisSpecV1 = {
+        kind: 'cartesian',
+        units: 1,
+        grid: { enabled: true },
+        axes: {
+          showNumbers: true,
+          showLabels: true,
+          ticks: 1,
+          labels: { x: 'x', y: 'y' },
+          origin: { x: 0, y: 0 },
+        },
+        elements: {
+          points: [
+            { x: 1, y: 2, type: 'point' },
+            { x: 3, y: 4, type: 'point' },
+          ],
+          graphs: [],
+        },
+      }
+
+      const result = calculateAutoViewport(spec)
+      // Should sit tight around the first-quadrant anchor, not pulled to -10
+      expect(result.xMin).toBeGreaterThanOrEqual(-1)
+      expect(result.yMin).toBeGreaterThanOrEqual(0)
+      // Padding is 10% of span (min 1 unit), so bounds are ~[0..4, 1..5]
+      expect(result.xMax).toBeGreaterThanOrEqual(3)
+      expect(result.yMax).toBeGreaterThanOrEqual(4)
+    })
   })
 
   // FR-004: Min-Max Validation
@@ -381,6 +415,113 @@ describe('viewport-utils', () => {
 
       // Should default to auto mode
       expect(result.xMin).not.toBe(-5)
+    })
+
+    it('tightens a wasteful manual viewport to anchor content + padding', () => {
+      // Regression: the structured generator was emitting symmetric or
+      // generously-wide manual viewports (e.g. yMin:-6, yMax:6) even when
+      // every anchor sat in a tight region. Students then saw a tall
+      // strip of empty space around the actual content.
+      const spec: AxisSpecV1 = {
+        kind: 'cartesian',
+        units: 1,
+        grid: { enabled: true },
+        axes: {
+          showNumbers: true,
+          showLabels: true,
+          ticks: 1,
+          labels: { x: 'x', y: 'y' },
+          origin: { x: 0, y: 0 },
+        },
+        viewportMode: 'manual',
+        // Author/generator picked -6..6 symmetric on y even though all
+        // content sits in y=[2, 4].
+        viewport: { xMin: -2.5, xMax: 7, yMin: -6, yMax: 6 },
+        elements: {
+          points: [
+            { x: 1, y: 2, type: 'point' },
+            { x: 1.5, y: 2.5, type: 'point' },
+            { x: 2, y: 2, type: 'point' },
+          ],
+          graphs: [],
+        },
+      }
+
+      const result = resolveViewport(spec)
+
+      // y span was 12 (−6..6), anchor y span is 0.5 (2..2.5) — far below
+      // the 50% waste threshold, should tighten.
+      expect(result.yMin).toBeGreaterThan(-6)
+      expect(result.yMax).toBeLessThan(6)
+      // Content must still be visible with some padding below/above.
+      expect(result.yMin).toBeLessThanOrEqual(2)
+      expect(result.yMax).toBeGreaterThanOrEqual(2.5)
+    })
+
+    it('keeps a well-fit manual viewport unchanged', () => {
+      // When content occupies a healthy fraction of the viewport in both
+      // dimensions, trust the author's choice (there may be a pedagogical
+      // reason for the margin).
+      const spec: AxisSpecV1 = {
+        kind: 'cartesian',
+        units: 1,
+        grid: { enabled: true },
+        axes: {
+          showNumbers: true,
+          showLabels: true,
+          ticks: 1,
+          labels: { x: 'x', y: 'y' },
+          origin: { x: 0, y: 0 },
+        },
+        viewportMode: 'manual',
+        viewport: { xMin: 0, xMax: 10, yMin: 0, yMax: 10 },
+        elements: {
+          points: [
+            { x: 1, y: 1, type: 'point' },
+            { x: 8, y: 8, type: 'point' },
+          ],
+          graphs: [],
+        },
+      }
+
+      const result = resolveViewport(spec)
+      // Anchor spans 7/10 = 70% of each dim — above threshold, untouched.
+      expect(result).toEqual({ xMin: 0, xMax: 10, yMin: 0, yMax: 10 })
+    })
+
+    it('tightens a wasteful manual viewport only in the wasted dimension', () => {
+      // Only the y-axis is wasteful here; x is well-fit. Verify that
+      // tightening is axis-independent so we don't shrink a dimension
+      // the author sized correctly.
+      const spec: AxisSpecV1 = {
+        kind: 'cartesian',
+        units: 1,
+        grid: { enabled: true },
+        axes: {
+          showNumbers: true,
+          showLabels: true,
+          ticks: 1,
+          labels: { x: 'x', y: 'y' },
+          origin: { x: 0, y: 0 },
+        },
+        viewportMode: 'manual',
+        viewport: { xMin: 0, xMax: 10, yMin: -20, yMax: 20 },
+        elements: {
+          points: [
+            { x: 1, y: 2, type: 'point' },
+            { x: 9, y: 3, type: 'point' },
+          ],
+          graphs: [],
+        },
+      }
+
+      const result = resolveViewport(spec)
+      // X is well-fit (8/10 = 80%), should be preserved.
+      expect(result.xMin).toBe(0)
+      expect(result.xMax).toBe(10)
+      // Y was 40 units for a 1-unit anchor — must tighten.
+      expect(result.yMin).toBeGreaterThan(-20)
+      expect(result.yMax).toBeLessThan(20)
     })
   })
 })
