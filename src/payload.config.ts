@@ -81,6 +81,7 @@ import { runBackfillOnInit } from '@/server/payload/migrations/backfillAdminTitl
 import { runBackfillTierGrantSourceOnInit } from '@/server/payload/migrations/backfillTierGrantSource'
 import { runDropPaypalSubscriptionIdStaleIndexOnInit } from '@/server/payload/migrations/dropPaypalSubscriptionIdStaleIndex'
 import { runDropStaleCoursesValidatorOnInit } from '@/server/payload/migrations/dropStaleCoursesValidator'
+import { runDropStalePaymentValidatorsOnInit } from '@/server/payload/migrations/dropStalePaymentValidators'
 import { runEnsureSubscriptionsActiveUserIndexOnInit } from '@/server/payload/migrations/ensureSubscriptionsActiveUserIndex'
 import { runEnsureTiersIndexesOnInit } from '@/server/payload/migrations/ensureTiersIndexes'
 import { runLocalizeTeacherProfilesOnInit } from '@/server/payload/migrations/localize-teacher-profiles'
@@ -596,6 +597,13 @@ export default buildConfig({
     // all. The check itself is a single `listCollections` when the validator
     // is already gone — cheap enough to run on every serverless cold start.
     await timedInit('dropStaleCoursesValidator', () => runDropStaleCoursesValidatorOnInit(payload))
+
+    // Drop stale Mongo-side validators on the payments collections
+    // (surfaced as "Document failed validation" on every subscription
+    // bootstrap on admin.dev). Sister migration to the courses variant.
+    await timedInit('dropStalePaymentValidators', () =>
+      runDropStalePaymentValidatorsOnInit(payload),
+    )
 
     // Partial unique index on Tiers.isDefault — the hard backstop for
     // "at most one default tier" (the collection's beforeValidate check
