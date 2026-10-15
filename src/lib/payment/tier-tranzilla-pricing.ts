@@ -73,9 +73,15 @@ export function isTranzillaOfferSlug(value: unknown): value is TranzillaOfferSlu
  * `test` offer is a 1 ILS smoke lever — refuse it in production even if
  * someone passes `?offer=test`. Belt-and-suspenders on top of the catalog
  * only exposing `test` for the basic tier.
+ *
+ * Reads VERCEL_ENV, not NODE_ENV: Vercel builds every deployment with
+ * NODE_ENV=production regardless of target, so NODE_ENV would block the
+ * offer on preview deployments where web runs its smoke tests. VERCEL_ENV
+ * is set per-deployment: 'production' | 'preview' | 'development'. Local
+ * runs without a Vercel runtime leave VERCEL_ENV undefined → permissive.
  */
 export function isOfferAllowedForEnvironment(offerSlug: TranzillaOfferSlug): boolean {
-  if (offerSlug === 'test' && process.env.NODE_ENV === 'production') return false
+  if (offerSlug === 'test' && process.env.VERCEL_ENV === 'production') return false
   return true
 }
 
