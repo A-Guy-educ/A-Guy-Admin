@@ -180,3 +180,134 @@ export function queryTransactionByIndex(
     },
   })
 }
+
+// ─── My-Billing (STO) — create a standing order ──────────────────────────
+
+export type TranzilaChargeFrequency = 'weekly' | 'monthly' | 'quarterly' | 'half-yearly' | 'yearly'
+
+export interface TranzilaStoClient {
+  /** Buyer full name — surfaced on Tranzila's receipts + My-Billing UI. */
+  name: string
+  /** Buyer email — Tranzila uses this for the "update your card" dunning flow. */
+  email: string
+  /** Buyer phone (optional in Tranzila's docs; some flows require it). */
+  phone?: string
+}
+
+export interface TranzilaStoItem {
+  itemName: string
+  unitPriceIls: number
+  quantity?: number
+}
+
+export interface CreateStandingOrderArgs {
+  terminalName: string
+  /** Reusable TranzilaTK token issued by the tokenization terminal's iframe. */
+  cardToken: string
+  /** Total number of charges Tranzila will run on this STO. Finite — we pick a long horizon. */
+  stoPaymentsNumber: number
+  chargeFrequency: TranzilaChargeFrequency
+  /** Date of the FIRST STO charge in `YYYY-MM-DD` format (Tranzila's expected shape). */
+  firstChargeDate: string
+  /** Day-of-month for subsequent charges (1-31). */
+  chargeDayOfMonth: number
+  client: TranzilaStoClient
+  items: TranzilaStoItem[]
+  /** Optional override — defaults to '1' (ILS). */
+  currencyCode?: number
+  /** Optional VAT percent — defaults to 0 (receipts come from Green Invoice). */
+  vatPercent?: number
+}
+
+export interface CreateStandingOrderResult {
+  stoId: string | null
+  errorCode: number | null
+  message: string | null
+  raw: TranzilaV2Response
+}
+
+/**
+ * Format a Date (or Date-ish string) as `YYYY-MM-DD` in UTC.
+ *
+ * Tranzila's docs show first_charge_date as a plain calendar date without
+ * a timezone qualifier. We use UTC so the choice of charge-day isn't
+ * sensitive to the server's locale (Vercel runs UTC; local dev may not).
+ */
+export function formatTranzilaDate(d: Date): string {
+  const y = d.getUTCFullYear()
+  const m = String(d.getUTCMonth() + 1).padStart(2, '0')
+  const day = String(d.getUTCDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+/**
+ * Create a My-Billing standing order. On success, Tranzila schedules all
+ * remaining recurring charges against the stored token — our side can
+ * discard the local token copy at that point.
+ *
+ * Endpoint path: the Tranzila docs show deprecation notices on
+ * `/v1/sto/create` pointing at a "V2 API for standing orders". The V2
+ * STO endpoints live under `/v2/sto/*` per the My-Billing docs. If the
+ * live request 404s against /v2/sto/create, flip to /v1/sto/create or
+ * ask Tranzila support for the final path.
+ */
+export async function createStandingOrder(
+  args: CreateStandingOrderArgs,
+): Promise<CreateStandingOrderResult> {
+  if (args.stoPaymentsNumber <= 0) {
+    throw new Error('createStandingOrder: stoPaymentsNumber must be positive')
+  }
+  if (!args.cardToken) {
+    throw new Error('createStandingOrder: cardToken required')
+  }
+  if (args.chargeDayOfMonth < 1 || args.chargeDayOfMonth > 31) {
+    throw new Error(
+      `createStandingOrder: chargeDayOfMonth must be 1-31 (got ${args.chargeDayOfMonth})`,
+    )
+  }
+
+  const body = {
+    terminal_name: args.terminalName,
+    sto_payments_number: args.stoPaymentsNumber,
+    charge_frequency: args.chargeFrequency,
+    first_charge_date: args.firstChargeDate,
+    charge_dom: args.chargeDayOfMonth,
+    currency_code: args.currencyCode ?? 1,
+    vat_percent: args.vatPercent ?? 0,
+    client: {
+      name: args.client.name,
+      email: args.client.email,
+      ...(args.client.phone ? { phone: args.client.phone } : {}),
+    },
+    items: args.items.map((item) => ({
+      item_name: item.itemName,
+      unit_price: item.unitPriceIls,
+      quantity: item.quantity ?? 1,
+      currency_code: args.currencyCode ?? 1,
+      vat_percent: args.vatPercent ?? 0,
+    })),
+    card: {
+      token: args.cardToken,
+    },
+  }
+
+  const raw = await postV2({
+    path: '/v2/sto/create',
+    body,
+  })
+
+  // Tranzila's STO response shape per the docs: {error_code, message, sto_id}.
+  // Pick stoId from either field name since API versions have been inconsistent
+  // elsewhere in their surface.
+  const stoIdRaw =
+    (raw.body as Record<string, unknown>).sto_id ?? (raw.body as Record<string, unknown>).stoId
+  const stoId =
+    typeof stoIdRaw === 'string' || typeof stoIdRaw === 'number' ? String(stoIdRaw) : null
+
+  return {
+    stoId,
+    errorCode: raw.errorCode,
+    message: raw.message,
+    raw,
+  }
+}

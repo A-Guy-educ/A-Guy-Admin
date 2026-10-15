@@ -192,7 +192,22 @@ export const Subscriptions: CollectionConfig = {
         hidden: true,
         readOnly: true,
         description:
-          'TranzilaTK reusable card token for merchant-initiated renewal charges. Server-only read; never surfaces in admin UI or REST.',
+          'TranzilaTK reusable card token for merchant-initiated renewal charges. Nulled after a successful createstov2 handoff — once Tranzila stores the token with the STO, we have no reason to keep our copy. Server-only read; never surfaces in admin UI or REST.',
+      },
+    },
+    // Tranzila My-Billing standing order id. Populated after a successful
+    // createstov2 call on the bootstrap webhook; from that point on,
+    // Tranzila owns the recurring charge cadence and we only use this id
+    // to cancel/update the STO. Nullable: a legacy cron-driven sub, or a
+    // bootstrap where createstov2 failed and we fell back to the cron
+    // path, has stoId=null + tranzillaCardToken set.
+    {
+      name: 'stoId',
+      type: 'text',
+      index: true,
+      admin: {
+        description:
+          'Tranzila My-Billing standing-order id. Set after bootstrap handoff; null means the sub is still cron-driven (fallback path).',
       },
     },
     {
