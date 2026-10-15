@@ -2203,6 +2203,7 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- chore(deps): bump pnpm/action-setup from 4 to 6 ([#587](https://github.com/A-Guy-educ/A-Guy-Admin/pull/587)) — @dependabot[bot]
 - chore(deps): bump actions/upload-pages-artifact from 3 to 5 ([#588](https://github.com/A-Guy-educ/A-Guy-Admin/pull/588)) — @dependabot[bot]
 - chore(deps): bump actions/setup-node from 4 to 7 ([#589](https://github.com/A-Guy-educ/A-Guy-Admin/pull/589)) — @dependabot[bot]
 - chore(deps-dev): bump @commitlint/config-conventional from 20.5.0 to 21.2.3 ([#594](https://github.com/A-Guy-educ/A-Guy-Admin/pull/594)) — @dependabot[bot]
