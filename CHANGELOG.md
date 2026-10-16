@@ -2203,6 +2203,7 @@ _Maintenance-only release._
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
 ## [Unreleased]
 
+- feat(graphics): Fit auto-viewport around graph intersections and intercepts ([#621](https://github.com/A-Guy-educ/A-Guy-Admin/pull/621)) — @aguyshayb
 - feat(graphics): Clamp graph viewport aspect ratio to 1.2:1 max ([#620](https://github.com/A-Guy-educ/A-Guy-Admin/pull/620)) — @aguyshayb
 - fix(payments): Drop stale $jsonSchema validators on subscriptions + transactions ([#617](https://github.com/A-Guy-educ/A-Guy-Admin/pull/617)) — @aguyshayb
 - feat(payments): Wire bootstrap webhook to My-Billing STO (Flow A) ([#616](https://github.com/A-Guy-educ/A-Guy-Admin/pull/616)) — @aguyshayb
