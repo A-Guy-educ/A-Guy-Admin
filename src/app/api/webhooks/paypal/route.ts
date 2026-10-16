@@ -29,7 +29,7 @@ import {
 } from '@/lib/payment/grant-entitlements'
 import { verifyPayPalWebhook } from '@/lib/payment/paypal'
 import { isTierSlug } from '@/lib/tiers/constants'
-// Tier recompute disabled — see parent-folder TIERS.md. Imports kept as
+// Tier recompute disabled — see ../TIERS.md. Imports kept as
 // comments so revival only needs to uncomment them + the call site below.
 // import { recomputeUserTier } from '@/lib/payment/recompute-tier'
 import { revokeProductEntitlements } from '@/lib/payment/revoke-entitlements'
@@ -390,7 +390,7 @@ async function handleEvent(
       if (!transaction.entitlementsGrantedAt) {
         // Tier-subscription purchases (product=null, tierSlug set) take a
         // different path: write user.currentTier + user.llmTokensLimit via
-        // raw Mongo. See parent-folder TIERS.md.
+        // raw Mongo. See ../TIERS.md.
         const tierSlug = (transaction as { tierSlug?: unknown }).tierSlug
         const userId =
           typeof transaction.user === 'object'
@@ -1164,7 +1164,7 @@ async function updateSubscriptionState(
   const newStatus = (update as { status?: unknown }).status
   const oldStatus = subscription.status as string | undefined
   // Tier recompute is disabled while `user.currentTier` is a hardcoded enum
-  // managed manually by admins (see parent-folder TIERS.md). The subscription
+  // managed manually by admins (see ../TIERS.md). The subscription
   // row is still updated; tier assignment is now a manual admin action.
   // if (userId && typeof newStatus === 'string' && canTransitionFlipTier(oldStatus, newStatus)) {
   //   try {

@@ -1,5 +1,39 @@
 # Changelog
 
+## [Unreleased]
+
+- chore: Release v0.57.0 ([#622](https://github.com/A-Guy-educ/A-Guy-Admin/pull/622)) — @aguyshayb
+
+## v0.57.0 — 2026-10-16
+
+### Features
+- Payments / Tranzila V2: new TRAPI client (`src/lib/payment/tranzila-v2-client.ts`) with HMAC-SHA256 request signing — foundation for the Tranzila V2 subscription flow that supersedes the V1 webhook-only path. Includes `scripts/smoke-tranzila-v2-auth.ts` for auth verification and unit coverage for HMAC + create-STO (#615)
+- Payments / tier-subscription lifecycle: Tranzilla tier-subscription (STO) end-to-end — bootstrap, webhook grant, cron-driven renewals, and `src/app/api/subscriptions/[id]/cancel/route.ts` for user-initiated cancels. New helpers under `src/lib/payment/`: `extend-tier-subscription.ts`, `tier-tranzilla-pricing.ts`. New cron endpoint `src/app/api/cron/tranzilla-renewals/route.ts` + Payload endpoint `src/server/payload/endpoints/cron/tranzilla-renewals.ts`. `User.attachActiveSubscription` hook denormalizes the active subscription onto the user doc (#610)
+- Payments / bootstrap: `POST /api/subscriptions/bootstrap/tranzilla` wires the My-Billing kickoff into the STO flow (Flow A) — CAS claim on a pending transaction, orphan-STO rollback on failure, cron STO exclusion so renewals don't trip over bootstraps mid-flight (#616, + in-tree round-5 hardening)
+- Payments / smoke flows: `basic.test` offerSlug added for the `/subtest` dev smoke-test flow so the e2e harness has a stable, non-prod SKU to exercise (#612)
+- Graphics / viewport: auto-viewport now fits around graph intersections and intercepts (#621), clamps aspect ratio to 1.2:1 max to prevent degenerate stretches (#620), and fits to anchor content instead of symmetric defaults (#609). Together these replace the prior fixed symmetric window with content-aware bounds across all auto-mode graph specs
+- Lesson export: axis/geometry blocks and attachments now emit as DSL in the v1 text export, so axis plots and geometry diagrams round-trip through `/admin/lesson-json-import`. New `axis-spec-to-dsl.ts` and `geometry-spec-to-dsl.ts` services under `src/server/services/lesson-export/`, with unit coverage (#611)
+- Lesson text-import: SVG and function-axis blocks produced by the **text** lesson importer now default to `displaySize: 'medium'` (50%) instead of `'full'`, matching the JSON-importer behavior shipped in v0.56.0 (#607)
+
+### Bug Fixes
+- Payments: drop stale `$jsonSchema` validators on the `subscriptions` and `transactions` collections — prior validators were out-of-sync with the tier-subscription shape and were rejecting writes from the new STO flow. Delivered as a migration (`dropStalePaymentValidators.ts`) rather than a schema patch to clear existing clusters (#617)
+- Payments / web smoke: unblock web smoke tests on dev by gating admin-only endpoints on `VERCEL_ENV` and allowlisting the dev preview URL set — prior behavior 401'd the shared `smoke-tranzila` runs from the Web repo (#614)
+- Payments / smoke: transactions-query smoke step now recognizes the bespoke response shape returned by the admin query endpoint, replacing a brittle equality check that failed on envelope-wrapped payloads (#615)
+- Studio: finite tick marks + notebook toggle on graph questions — previously tick-marks were drawn to infinity on auto-viewport graphs and the notebook toggle didn't surface on graph-type questions (#613)
+- Studio: notebook toggle gets distinct card styling in the lesson-blocks editor so it's visually separable from attachment toggles
+
+### Migrations (manual action required)
+Payload/Mongo migrations do NOT auto-run — operator must execute these against prod after deploy:
+- `dropStalePaymentValidators.ts` — removes stale `$jsonSchema` validators on `subscriptions` + `transactions`
+- `dropPaypalSubscriptionIdStaleIndex.ts` — drops the deprecated `paypalSubscriptionId` unique index
+- `ensureSubscriptionsActiveUserIndex.ts` — adds a `(user, 1) + status: 'active'` partial index to speed up `attachActiveSubscription`
+- `backfillTierGrantSource.ts` — backfills `tierGrantSource` on existing user docs so the new tier-subscription hooks don't nullref on legacy rows
+
+### Dependencies
+- `mathjs` ^13.2.3 → ^15.2.0 (major, prod) — dev CI/build green; smoke math-rendering flows after prod deploy (#599)
+- `@commitlint/config-conventional` ^20.5.0 → ^21.2.3 (dev-dep) (#594)
+- CI action bumps: `pnpm/action-setup` 4→6 (#587), `actions/upload-pages-artifact` 3→5 (#588), `actions/setup-node` 4→7 (#589)
+
 ## v0.56.0 — 2026-10-14
 
 ### Features
@@ -2201,8 +2235,28 @@ _Maintenance-only release._
 - start interactive session live-1778076804887-6xg8w7 (7a4a35dc4)
 - start interactive session live-1778076414935-0dlywn (7b990ec4b)
 - start interactive session interactive-1778075175838-vd0im6 (1b6229b27)
-## [Unreleased]
+## [v0.57.0] - 2026-10-16
 
+- feat(graphics): Fit auto-viewport around graph intersections and intercepts ([#621](https://github.com/A-Guy-educ/A-Guy-Admin/pull/621)) — @aguyshayb
+- feat(graphics): Clamp graph viewport aspect ratio to 1.2:1 max ([#620](https://github.com/A-Guy-educ/A-Guy-Admin/pull/620)) — @aguyshayb
+- fix(payments): Drop stale $jsonSchema validators on subscriptions + transactions ([#617](https://github.com/A-Guy-educ/A-Guy-Admin/pull/617)) — @aguyshayb
+- feat(payments): Wire bootstrap webhook to My-Billing STO (Flow A) ([#616](https://github.com/A-Guy-educ/A-Guy-Admin/pull/616)) — @aguyshayb
+- fix(studio): Finite tick marks + notebook toggle on graph questions ([#613](https://github.com/A-Guy-educ/A-Guy-Admin/pull/613)) — @aguyshayb
+- feat(payments): Add Tranzila V2 (TRAPI) HMAC-SHA256 API client ([#615](https://github.com/A-Guy-educ/A-Guy-Admin/pull/615)) — @aguyshayb
+- fix(payments): Unblock web smoke tests — VERCEL_ENV gate + dev allowlist ([#614](https://github.com/A-Guy-educ/A-Guy-Admin/pull/614)) — @aguyshayb
+- feat(payments): Add basic.test offerSlug for /subtest smoke flow ([#612](https://github.com/A-Guy-educ/A-Guy-Admin/pull/612)) — @aguyshayb
+- feat(lesson-export): Emit DSL for axis/geometry blocks and attachments ([#611](https://github.com/A-Guy-educ/A-Guy-Admin/pull/611)) — @aguyshayb
+- feat(payments): Tranzilla tier-subscription lifecycle ([#610](https://github.com/A-Guy-educ/A-Guy-Admin/pull/610)) — @aguyshayb
+- chore(deps): bump mathjs from 13.2.3 to 15.2.0 ([#599](https://github.com/A-Guy-educ/A-Guy-Admin/pull/599)) — @dependabot[bot]
+- chore(deps): bump pnpm/action-setup from 4 to 6 ([#587](https://github.com/A-Guy-educ/A-Guy-Admin/pull/587)) — @dependabot[bot]
+- chore(deps): bump actions/upload-pages-artifact from 3 to 5 ([#588](https://github.com/A-Guy-educ/A-Guy-Admin/pull/588)) — @dependabot[bot]
+- chore(deps): bump actions/setup-node from 4 to 7 ([#589](https://github.com/A-Guy-educ/A-Guy-Admin/pull/589)) — @dependabot[bot]
+- chore(deps-dev): bump @commitlint/config-conventional from 20.5.0 to 21.2.3 ([#594](https://github.com/A-Guy-educ/A-Guy-Admin/pull/594)) — @dependabot[bot]
+- feat(graphics): Fit graph viewport to anchor content, not symmetric defaults ([#609](https://github.com/A-Guy-educ/A-Guy-Admin/pull/609)) — @aguyshayb
+- feat(text-lesson-import): Cap sketch displaySize at medium (50%) ([#607](https://github.com/A-Guy-educ/A-Guy-Admin/pull/607)) — @aguyshayb
+## [v0.56.0] - 2026-10-14
+
+- promote: dev -> main (v0.56.0) ([#606](https://github.com/A-Guy-educ/A-Guy-Admin/pull/606)) — @aguyshayb
 - chore: Release v0.56.0 ([#605](https://github.com/A-Guy-educ/A-Guy-Admin/pull/605)) — @aguyshayb
 - feat(payments): Wire Tranzilla webhook to grant entitlements end-to-end ([#604](https://github.com/A-Guy-educ/A-Guy-Admin/pull/604)) — @aguyshayb
 - fix(payments): Loosen Tranzilla webhook to log-and-accept for smoke test ([#603](https://github.com/A-Guy-educ/A-Guy-Admin/pull/603)) — @aguyshayb

@@ -17,6 +17,11 @@ export interface PurchaseReceiptData {
   couponCode?: string
   couponDiscount?: string
   originalAmount?: number
+  // Tranzilla path: Green Invoice issues the formal tax receipt separately
+  // (ממונה שירות דיגיטלי — חשבונית מס/קבלה). The email adds a line pointing
+  // the buyer at that separate deliverable so they know not to look for one
+  // from us.
+  useGreenInvoiceNote?: boolean
 }
 
 function formatAmount(amount: number, currency: string): string {
@@ -41,7 +46,12 @@ export function buildPurchaseReceiptEmailEN(data: PurchaseReceiptData): string {
     couponCode,
     couponDiscount,
     originalAmount,
+    useGreenInvoiceNote,
   } = data
+
+  const greenInvoiceNote = useGreenInvoiceNote
+    ? `<p style="margin: 0 0 16px; color: #6b7280; font-size: 13px; line-height: 1.6;">Your official tax receipt (חשבונית מס/קבלה) will arrive in a separate email from Green Invoice.</p>`
+    : ''
 
   const originalAmountRow =
     originalAmount !== undefined
@@ -106,6 +116,7 @@ export function buildPurchaseReceiptEmailEN(data: PurchaseReceiptData): string {
                   </td>
                 </tr>
               </table>
+              ${greenInvoiceNote}
               <p style="margin: 0; color: #9ca3af; font-size: 12px; line-height: 1.6;">If you have any questions about your purchase, please contact our support team. This email confirms a successful payment. No action is required on your part.</p>
             </td>
           </tr>

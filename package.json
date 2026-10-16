@@ -1,6 +1,6 @@
 {
   "name": "a-guy",
-  "version": "0.56.0",
+  "version": "0.57.0",
   "description": "Website template for Payload",
   "license": "MIT",
   "type": "module",
@@ -157,7 +157,7 @@
     "jszip": "^3.10.1",
     "katex": "^0.16.27",
     "lucide-react": "^1.52.0",
-    "mathjs": "^13.2.3",
+    "mathjs": "^15.2.0",
     "mathlive": "^0.108.3",
     "mongodb": "^6.12.0",
     "nanoid": "^5.0.0",
@@ -187,7 +187,7 @@
   },
   "devDependencies": {
     "@commitlint/cli": "^21.0.2",
-    "@commitlint/config-conventional": "^20.5.0",
+    "@commitlint/config-conventional": "^21.2.3",
     "@eslint/eslintrc": "^3.3.5",
     "@next/eslint-plugin-next": "^16.2.7",
     "@playwright/test": "1.60.0",

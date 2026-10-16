@@ -21,7 +21,9 @@ const ALLOWED_ORIGINS: readonly string[] = [
   'https://a-guy-web.vercel.app', // prod (Vercel canonical)
   'https://www.aguy.co.il', // prod alias
   'https://aguy.co.il', // prod alias (apex)
-  'https://a-guy-dev-aguy.vercel.app', // dev preview
+  'https://a-guy-dev-aguy.vercel.app', // dev preview (Vercel canonical)
+  'https://dev.aguy.co.il', // dev alias (apex)
+  'https://www.dev.aguy.co.il', // dev alias (www)
   'http://localhost:3000', // local dev
 ]
 

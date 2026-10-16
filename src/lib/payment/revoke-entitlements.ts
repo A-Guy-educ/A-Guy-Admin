@@ -18,7 +18,7 @@
 import { ObjectId } from 'mongodb'
 import type { Payload, PayloadRequest } from 'payload'
 
-// Tier recompute disabled — see parent-folder TIERS.md.
+// Tier recompute disabled — see ../TIERS.md.
 // import { recomputeUserTier } from './recompute-tier'
 
 interface RevokeParams {
@@ -96,7 +96,7 @@ export async function revokeProductEntitlements({
   )
 
   // 3. Tier recompute is disabled while `user.currentTier` is a hardcoded
-  // enum managed manually by admins (see parent-folder TIERS.md). A refund
+  // enum managed manually by admins (see ../TIERS.md). A refund
   // only strips the user's entitlements array here; an admin bumps tier down
   // separately if that's warranted. Re-enable this block if automatic
   // promotion is revived.

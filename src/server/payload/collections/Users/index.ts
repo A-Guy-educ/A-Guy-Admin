@@ -16,6 +16,7 @@ import { adminOrSelf } from '../../access/adminOrSelf'
 import { isUsersCollectionUser } from '@/server/payload/access/isUsersCollectionUser'
 import { DEFAULT_TIER, TIER_LABEL_HE, TIER_SLUGS } from '@/lib/tiers/constants'
 import { anyone } from '../../access/anyone'
+import { attachActiveSubscription } from './hooks/attachActiveSubscription-hook'
 import { auditRoleChange } from './hooks/auditRoleChange-hook'
 import { createUserSettings } from './hooks/createUserSettings-hook'
 import { ensureRoleOnSignup } from './hooks/ensureRoleOnSignup-hook'
@@ -23,7 +24,6 @@ import { preventLastAdminDemotion } from './hooks/preventLastAdminDemotion-hook'
 import { optionalTenantField } from '../../fields/tenant'
 import { ACCOUNT_ROLE_LABEL, AccountRole } from './roles'
 
-// eslint-disable-next-line no-control-regex
 const CONTROL_CHAR_RE = /[\x00-\x1F\x7F]/
 
 const validateUtmString = (value: unknown): true | string => {
@@ -258,9 +258,9 @@ export const Users: CollectionConfig = {
       ],
     },
     // Current subscription tier. Hardcoded enum of four slugs — see
-    // src/lib/tiers/constants.ts and the parent-folder TIERS.md for the
-    // source-of-truth definition. Admin-editable; blocked from client
-    // create/update so signup POSTs and self-PATCHes can't forge a tier.
+    // src/lib/tiers/constants.ts and ../TIERS.md for the source-of-truth
+    // definition. Admin-editable; blocked from client create/update so
+    // signup POSTs and self-PATCHes can't forge a tier.
     {
       name: 'currentTier',
       type: 'select',
@@ -278,7 +278,57 @@ export const Users: CollectionConfig = {
       admin: {
         position: 'sidebar',
         description:
-          'Subscription tier. Set manually by admin. See parent-folder TIERS.md for the full gating contract.',
+          'Subscription tier. Set manually by admin OR by the subscription webhook/cron via extendTierSubscription. See ../TIERS.md for the full gating contract.',
+      },
+    },
+    // Provenance of the current tier grant. Lets the gate distinguish
+    //   - 'subscription' — paid-and-renewing (Tranzilla cron / PayPal webhook)
+    //   - 'legacy_one_time' — one-time PayPal buyer from before recurring was
+    //     wired. Grandfathered; indefinite access.
+    //   - 'manual' — admin set the tier by hand (comp, trial, support case).
+    //
+    // Backfilled on cold boot by `backfillTierGrantSource` migration for
+    // existing non-free users. Written by extendTierSubscription on each
+    // successful subscription charge. Admins can edit this freely.
+    {
+      name: 'tierGrantSource',
+      type: 'select',
+      options: [
+        { label: 'Subscription', value: 'subscription' },
+        { label: 'Legacy One-Time', value: 'legacy_one_time' },
+        { label: 'Manual', value: 'manual' },
+      ],
+      access: {
+        create: ({ req: { user } }) =>
+          isUsersCollectionUser(user) && user.role === AccountRole.Admin,
+        update: ({ req: { user } }) =>
+          isUsersCollectionUser(user) && user.role === AccountRole.Admin,
+      },
+      admin: {
+        position: 'sidebar',
+        description:
+          'How the current tier was granted. Null = free user (default) or no record. Written by the subscription path and the legacy backfill migration.',
+      },
+    },
+    // Which Subscription row granted the current tier (if any). Written by
+    // promoteUserForTierSub so expireAndDowngrade can scope the downgrade
+    // predicate to the exact sub that promoted the user — a user who
+    // cancels sub A and re-subscribes via sub B won't be downgraded when
+    // sub A's deferred-cancel period lapses.
+    {
+      name: 'tierGrantSubscriptionId',
+      type: 'relationship',
+      relationTo: 'subscriptions',
+      maxDepth: 0,
+      access: {
+        create: () => false,
+        update: () => false,
+      },
+      admin: {
+        position: 'sidebar',
+        readOnly: true,
+        description:
+          'Subscription that granted the current tier (null for non-sub grants). Written by extendTierSubscription; read by expireAndDowngrade.',
       },
     },
     {
@@ -512,6 +562,9 @@ export const Users: CollectionConfig = {
     beforeChange: [preventLastAdminDemotion],
     // Audit trail for role changes
     afterChange: [auditRoleChange, createUserSettings],
+    // Enrich /api/users/me with the caller's active subscription summary.
+    // Self-reads only — admin reads of other users short-circuit (see hook).
+    afterRead: [attachActiveSubscription],
   },
   timestamps: true,
 }

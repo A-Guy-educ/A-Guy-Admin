@@ -529,9 +529,17 @@ export interface User {
       }[]
     | null;
   /**
-   * Subscription tier. Set manually by admin. See parent-folder TIERS.md for the full gating contract.
+   * Subscription tier. Set manually by admin OR by the subscription webhook/cron via extendTierSubscription. See ../TIERS.md for the full gating contract.
    */
   currentTier?: ('free' | 'basic' | 'advanced' | 'premium') | null;
+  /**
+   * How the current tier was granted. Null = free user (default) or no record. Written by the subscription path and the legacy backfill migration.
+   */
+  tierGrantSource?: ('subscription' | 'legacy_one_time' | 'manual') | null;
+  /**
+   * Subscription that granted the current tier (null for non-sub grants). Written by extendTierSubscription; read by expireAndDowngrade.
+   */
+  tierGrantSubscriptionId?: (string | null) | Subscription;
   /**
    * Standalone feature access granted via payment
    */
@@ -959,6 +967,424 @@ export interface TableBlock {
   id?: string | null;
   blockName?: string | null;
   blockType: 'tableBlock';
+}
+/**
+ * Subscriptions are created by the Web checkout (PayPal) or admin bootstrap (Tranzilla) routes. Status is driven by provider webhooks or the Tranzilla renewal cron — do not edit `status`, `currentPeriodEnd`, or token/intro fields by hand.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "subscriptions".
+ */
+export interface Subscription {
+  id: string;
+  /**
+   * Tenant scope for this document
+   */
+  tenant: string | Tenant;
+  /**
+   * User who owns the subscription
+   */
+  user: string | User;
+  /**
+   * Subscription product (null for tier-subscription rows — see tierSlug)
+   */
+  product?: (string | null) | Product;
+  /**
+   * Tier purchased (set for tier-subscription rows where product is null). See ../TIERS.md.
+   */
+  tierSlug?: ('basic' | 'advanced' | 'premium') | null;
+  /**
+   * Payment provider. Tranzilla is the primary path for new subscriptions; PayPal is kept for grandfathered subs.
+   */
+  provider: 'paypal' | 'tranzilla';
+  /**
+   * Pricing offer selected at checkout ("default" / "intro3mo"). Null for PayPal rows.
+   */
+  offerSlug?: ('default' | 'intro3mo' | 'test') | null;
+  /**
+   * Intro-period price in ILS (null = no intro). Snapshot from the pricing catalog at bootstrap; immutable.
+   */
+  introPriceIls?: number | null;
+  /**
+   * Total number of intro-priced charges (null = no intro). Snapshot at bootstrap; immutable.
+   */
+  introChargesTotal?: number | null;
+  /**
+   * Successful intro-priced charges applied so far. Incremented only on success; failed retries do not advance.
+   */
+  introChargesUsed?: number | null;
+  /**
+   * Steady-state monthly price in ILS. Used after introChargesUsed reaches introChargesTotal.
+   */
+  regularPriceIls?: number | null;
+  /**
+   * TranzilaTK reusable card token for merchant-initiated renewal charges. Nulled after a successful createstov2 handoff — once Tranzila stores the token with the STO, we have no reason to keep our copy. Server-only read; never surfaces in admin UI or REST.
+   */
+  tranzillaCardToken?: string | null;
+  /**
+   * Tranzila My-Billing standing-order id. Set after bootstrap handoff; null means the sub is still cron-driven (fallback path).
+   */
+  stoId?: string | null;
+  /**
+   * Consecutive failed renewal attempts on the Tranzilla path. Reset to 0 on success; sub transitions to expired after a threshold (see cron handler).
+   */
+  tranzillaRetryCount?: number | null;
+  /**
+   * Timestamp of the most recent renewal-charge attempt. Doubles as the cron CAS lock; stale values are released after ~30 minutes.
+   */
+  lastRenewalAttemptAt?: string | null;
+  /**
+   * PayPal Billing subscription ID (I-...). Null for Tranzilla subs.
+   */
+  paypalSubscriptionId?: string | null;
+  /**
+   * Current lifecycle state. PayPal: driven by webhooks. Tranzilla: driven by bootstrap + renewal cron + cancel endpoint.
+   */
+  status: 'pending' | 'active' | 'past_due' | 'cancelled' | 'suspended' | 'expired';
+  /**
+   * Start of the current billing period
+   */
+  currentPeriodStart?: string | null;
+  /**
+   * End of the current billing period — access continues until this date even after cancellation. The Tranzilla cron selects on this field.
+   */
+  currentPeriodEnd?: string | null;
+  /**
+   * User has cancelled but retains access until currentPeriodEnd
+   */
+  cancelAtPeriodEnd?: boolean | null;
+  /**
+   * When cancellation was received (PayPal webhook or admin cancel endpoint)
+   */
+  cancelledAt?: string | null;
+  /**
+   * The pending Transaction created at checkout/bootstrap; flipped to succeeded on first successful charge.
+   */
+  initialTransaction?: (string | null) | Transaction;
+  /**
+   * User who created this document
+   */
+  createdBy?: (string | null) | User;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "products".
+ */
+export interface Product {
+  id: string;
+  /**
+   * Tenant scope for this document (leave empty for global/legacy products)
+   */
+  tenant?: (string | null) | Tenant;
+  /**
+   * שם המוצר (יוצג למשתמשים)
+   */
+  name: string;
+  /**
+   * מזהה ייחודי (URL-friendly, נוצר אוטומטית מהשם)
+   */
+  slug: string;
+  /**
+   * סוג החיוב: חד-פעמי או מנוי חוזר
+   */
+  billingType: 'one_time' | 'subscription';
+  /**
+   * Tier granted on purchase. Leave empty for legacy/one-off products that do not participate in the tier model.
+   */
+  tier?: (string | null) | Tier;
+  /**
+   * מרווח החיוב (למנוי בלבד)
+   */
+  interval?: ('month' | 'year') | null;
+  /**
+   * מחיר המוצר
+   */
+  price: number;
+  /**
+   * מטבע התשלום
+   */
+  currency: 'ILS' | 'USD' | 'EUR';
+  /**
+   * תקופת גישה בימים מרגע הרכישה (השאר ריק לגישה ללא הגבלת זמן). מוחל אוטומטית על Enrollments בעת רכישה. תקף רק לרכישה חד-פעמית — במנוי תקופת הגישה מוכתבת על-ידי מרווח החיוב.
+   */
+  durationDays?: number | null;
+  /**
+   * PayPal catalog product ID — auto-populated on first subscription checkout
+   */
+  paypalProductId?: string | null;
+  /**
+   * PayPal billing plan ID — auto-populated on first subscription checkout
+   */
+  paypalPlanId?: string | null;
+  /**
+   * מספר מקסימלי של מכשירים למשתמש (השאר ריק = ללא הגבלה). שדה לתצורה בלבד — האכיפה אינה מיושמת.
+   */
+  maxDevices?: number | null;
+  /**
+   * מה כלול במוצר. הוסף בלוקים של גישה לקורס ושל תכונות. ניתן לגרור כדי לסדר מחדש.
+   */
+  contents?:
+    | (
+        | {
+            /**
+             * הקורס שהקונה מקבל גישה אליו
+             */
+            course: string | Course;
+            /**
+             * סוגי שיעורים שייכללו (השאר ריק = כל הסוגים). ⚠️ מטא־דאטה בלבד — Enrollments מעניק גישה לקורס כולו.
+             */
+            lessonTypes?: ('learning' | 'practice' | 'exam')[] | null;
+            id?: string | null;
+            blockName?: string | null;
+            blockType: 'courseBlock';
+          }
+        | {
+            /**
+             * בחר תכונה מהקטלוג. אם חסרה — הוסף ב־Features.
+             */
+            feature: string | Feature;
+            /**
+             * מגבלה מספרית (לדוגמה: 5). השאר ריק לתכונה ללא מגבלת כמות / לתכונה בוליאנית.
+             */
+            limit?: number | null;
+            /**
+             * תקופת איפוס המגבלה (רלוונטי רק לתכונות עם limit).
+             */
+            period?: ('day' | 'lifetime') | null;
+            id?: string | null;
+            blockName?: string | null;
+            blockType: 'featureBlock';
+          }
+      )[]
+    | null;
+  /**
+   * האם המוצר פעיל וזמין למכירה
+   */
+  isActive?: boolean | null;
+  /**
+   * User who created this document
+   */
+  createdBy?: (string | null) | User;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Legacy — tier is now a hardcoded enum on the User doc. See ../TIERS.md.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "tiers".
+ */
+export interface Tier {
+  id: string;
+  /**
+   * Stable identifier used by runtime code (e.g. "free", "basic", "pro", "elite"). kebab-case, lowercase. Changing this after grants exist orphans user.currentTier references.
+   */
+  slug: string;
+  /**
+   * Numeric level for "higher includes lower" comparisons. Free = 0, top tier gets the largest number. Ranks should be unique but the schema does not enforce it — allowing a temporary duplicate is the only way to reorder tiers via two individual writes. Ties resolve arbitrarily but deterministically in the recompute helper.
+   */
+  rank: number;
+  /**
+   * Display name (localized, EN + HE).
+   */
+  name: string;
+  /**
+   * Marketing copy shown on the pricing page (localized).
+   */
+  description?: string | null;
+  /**
+   * Fallback tier assigned to users with no active paid grants. Exactly one tier should have this on (Free).
+   */
+  isDefault?: boolean | null;
+  /**
+   * Hex badge colour used in the admin + pricing UI (e.g. #4F46E5).
+   */
+  color?: string | null;
+  /**
+   * Display order on the pricing page (ascending).
+   */
+  sortOrder?: number | null;
+  /**
+   * When off, the tier is hidden from the pricing page. Existing grants remain valid.
+   */
+  isActive?: boolean | null;
+  /**
+   * User who created this document
+   */
+  createdBy?: (string | null) | User;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Reusable feature definitions. Bundle into products via the Product "What's in this product" blocks.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "features".
+ */
+export interface Feature {
+  id: string;
+  /**
+   * Stable identifier used by runtime gates (e.g. ai-questions). kebab-case, lowercase. Changing this after grants exist will orphan featureEntitlements.
+   */
+  key: string;
+  /**
+   * Human-friendly name shown in the admin feature picker.
+   */
+  label: string;
+  /**
+   * What this feature does. Shown next to the picker so admins choose the right one.
+   */
+  description?: string | null;
+  /**
+   * Numeric features carry a limit + period when added to a product; boolean features are simple unlocks.
+   */
+  type: 'numeric' | 'boolean';
+  /**
+   * Display hint for the limit (e.g., "questions", "messages"). Numeric only.
+   */
+  unit?: string | null;
+  /**
+   * Default reset window used when a product adds this feature. Admin can override per-product.
+   */
+  defaultPeriod?: ('day' | 'lifetime') | null;
+  /**
+   * When on, denials are silent — endpoints return a generic error without revealing the limit (e.g. chat-limit).
+   */
+  isSilent?: boolean | null;
+  /**
+   * Whether a runtime consumer reads this feature. "Metadata only" means it appears on entitlements but nothing checks it.
+   */
+  enforcement: 'enforced' | 'metadata';
+  /**
+   * Hide from the admin feature picker when off (existing references continue to work).
+   */
+  isActive?: boolean | null;
+  /**
+   * User who created this document
+   */
+  createdBy?: (string | null) | User;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Transactions are auto-created by payment webhooks and the checkout route. Manual creation is disabled — dangling records break revenue stats, refunds, and the purchases page.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "transactions".
+ */
+export interface Transaction {
+  id: string;
+  /**
+   * Tenant scope for this document
+   */
+  tenant: string | Tenant;
+  /**
+   * User who initiated the payment
+   */
+  user: string | User;
+  /**
+   * Product being purchased (null for tier-subscription purchases — see tierSlug)
+   */
+  product?: (string | null) | Product;
+  /**
+   * Tier purchased (set for tier-subscription transactions where product is null).
+   */
+  tierSlug?: ('free' | 'basic' | 'advanced' | 'premium') | null;
+  /**
+   * Payment provider used for this transaction
+   */
+  provider: 'stripe' | 'paypal' | 'tranzilla';
+  /**
+   * Transaction ID from the payment provider
+   */
+  providerTransactionId: string;
+  /**
+   * Stripe PaymentIntent ID (pi_...) — used for refunds and webhook lookup
+   */
+  paymentIntentId?: string | null;
+  /**
+   * PayPal Capture ID — used for refunds and refund webhook lookup
+   */
+  captureId?: string | null;
+  /**
+   * Current status of the transaction
+   */
+  status: 'pending' | 'succeeded' | 'failed' | 'refunded';
+  /**
+   * Amount in agorot (1 ILS = 100 agorot)
+   */
+  amount: number;
+  /**
+   * Currency code (e.g., ILS, USD, EUR)
+   */
+  currency: string;
+  /**
+   * Additional metadata (item IDs, lesson IDs, etc.)
+   */
+  metadata?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Parent subscription (set for initial + renewal transactions of a sub)
+   */
+  subscription?: (string | null) | Subscription;
+  /**
+   * True when this transaction records a recurring renewal charge, not the initial checkout
+   */
+  isRenewal?: boolean | null;
+  /**
+   * True when this transaction was charged at the subscription intro price (not the regular monthly price).
+   */
+  isIntroCharge?: boolean | null;
+  /**
+   * Original success redirect URL
+   */
+  successUrl?: string | null;
+  /**
+   * Original cancel redirect URL
+   */
+  cancelUrl?: string | null;
+  /**
+   * Error message if transaction failed
+   */
+  errorMessage?: string | null;
+  /**
+   * Timestamp when product entitlements were granted to the user
+   */
+  entitlementsGrantedAt?: string | null;
+  /**
+   * Timestamp when coupon was consumed on this transaction
+   */
+  couponConsumedAt?: string | null;
+  /**
+   * Timestamp when the purchase receipt email was sent to the user
+   */
+  emailSentAt?: string | null;
+  /**
+   * Amount refunded in agorot (smallest currency unit)
+   */
+  refundedAmount?: number | null;
+  /**
+   * Admin who processed the refund
+   */
+  refundedBy?: (string | null) | User;
+  /**
+   * When the refund was processed
+   */
+  refundedAt?: string | null;
+  /**
+   * User who created this document
+   */
+  createdBy?: (string | null) | User;
+  updatedAt: string;
+  createdAt: string;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -1958,380 +2384,6 @@ export interface Coupon {
    * Formatted discount for quick scanning
    */
   discountDisplay?: string | null;
-  /**
-   * User who created this document
-   */
-  createdBy?: (string | null) | User;
-  updatedAt: string;
-  createdAt: string;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "products".
- */
-export interface Product {
-  id: string;
-  /**
-   * Tenant scope for this document (leave empty for global/legacy products)
-   */
-  tenant?: (string | null) | Tenant;
-  /**
-   * שם המוצר (יוצג למשתמשים)
-   */
-  name: string;
-  /**
-   * מזהה ייחודי (URL-friendly, נוצר אוטומטית מהשם)
-   */
-  slug: string;
-  /**
-   * סוג החיוב: חד-פעמי או מנוי חוזר
-   */
-  billingType: 'one_time' | 'subscription';
-  /**
-   * Tier granted on purchase. Leave empty for legacy/one-off products that do not participate in the tier model.
-   */
-  tier?: (string | null) | Tier;
-  /**
-   * מרווח החיוב (למנוי בלבד)
-   */
-  interval?: ('month' | 'year') | null;
-  /**
-   * מחיר המוצר
-   */
-  price: number;
-  /**
-   * מטבע התשלום
-   */
-  currency: 'ILS' | 'USD' | 'EUR';
-  /**
-   * תקופת גישה בימים מרגע הרכישה (השאר ריק לגישה ללא הגבלת זמן). מוחל אוטומטית על Enrollments בעת רכישה. תקף רק לרכישה חד-פעמית — במנוי תקופת הגישה מוכתבת על-ידי מרווח החיוב.
-   */
-  durationDays?: number | null;
-  /**
-   * PayPal catalog product ID — auto-populated on first subscription checkout
-   */
-  paypalProductId?: string | null;
-  /**
-   * PayPal billing plan ID — auto-populated on first subscription checkout
-   */
-  paypalPlanId?: string | null;
-  /**
-   * מספר מקסימלי של מכשירים למשתמש (השאר ריק = ללא הגבלה). שדה לתצורה בלבד — האכיפה אינה מיושמת.
-   */
-  maxDevices?: number | null;
-  /**
-   * מה כלול במוצר. הוסף בלוקים של גישה לקורס ושל תכונות. ניתן לגרור כדי לסדר מחדש.
-   */
-  contents?:
-    | (
-        | {
-            /**
-             * הקורס שהקונה מקבל גישה אליו
-             */
-            course: string | Course;
-            /**
-             * סוגי שיעורים שייכללו (השאר ריק = כל הסוגים). ⚠️ מטא־דאטה בלבד — Enrollments מעניק גישה לקורס כולו.
-             */
-            lessonTypes?: ('learning' | 'practice' | 'exam')[] | null;
-            id?: string | null;
-            blockName?: string | null;
-            blockType: 'courseBlock';
-          }
-        | {
-            /**
-             * בחר תכונה מהקטלוג. אם חסרה — הוסף ב־Features.
-             */
-            feature: string | Feature;
-            /**
-             * מגבלה מספרית (לדוגמה: 5). השאר ריק לתכונה ללא מגבלת כמות / לתכונה בוליאנית.
-             */
-            limit?: number | null;
-            /**
-             * תקופת איפוס המגבלה (רלוונטי רק לתכונות עם limit).
-             */
-            period?: ('day' | 'lifetime') | null;
-            id?: string | null;
-            blockName?: string | null;
-            blockType: 'featureBlock';
-          }
-      )[]
-    | null;
-  /**
-   * האם המוצר פעיל וזמין למכירה
-   */
-  isActive?: boolean | null;
-  /**
-   * User who created this document
-   */
-  createdBy?: (string | null) | User;
-  updatedAt: string;
-  createdAt: string;
-}
-/**
- * Legacy — tier is now a hardcoded enum on the User doc. See parent-folder TIERS.md.
- *
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "tiers".
- */
-export interface Tier {
-  id: string;
-  /**
-   * Stable identifier used by runtime code (e.g. "free", "basic", "pro", "elite"). kebab-case, lowercase. Changing this after grants exist orphans user.currentTier references.
-   */
-  slug: string;
-  /**
-   * Numeric level for "higher includes lower" comparisons. Free = 0, top tier gets the largest number. Ranks should be unique but the schema does not enforce it — allowing a temporary duplicate is the only way to reorder tiers via two individual writes. Ties resolve arbitrarily but deterministically in the recompute helper.
-   */
-  rank: number;
-  /**
-   * Display name (localized, EN + HE).
-   */
-  name: string;
-  /**
-   * Marketing copy shown on the pricing page (localized).
-   */
-  description?: string | null;
-  /**
-   * Fallback tier assigned to users with no active paid grants. Exactly one tier should have this on (Free).
-   */
-  isDefault?: boolean | null;
-  /**
-   * Hex badge colour used in the admin + pricing UI (e.g. #4F46E5).
-   */
-  color?: string | null;
-  /**
-   * Display order on the pricing page (ascending).
-   */
-  sortOrder?: number | null;
-  /**
-   * When off, the tier is hidden from the pricing page. Existing grants remain valid.
-   */
-  isActive?: boolean | null;
-  /**
-   * User who created this document
-   */
-  createdBy?: (string | null) | User;
-  updatedAt: string;
-  createdAt: string;
-}
-/**
- * Reusable feature definitions. Bundle into products via the Product "What's in this product" blocks.
- *
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "features".
- */
-export interface Feature {
-  id: string;
-  /**
-   * Stable identifier used by runtime gates (e.g. ai-questions). kebab-case, lowercase. Changing this after grants exist will orphan featureEntitlements.
-   */
-  key: string;
-  /**
-   * Human-friendly name shown in the admin feature picker.
-   */
-  label: string;
-  /**
-   * What this feature does. Shown next to the picker so admins choose the right one.
-   */
-  description?: string | null;
-  /**
-   * Numeric features carry a limit + period when added to a product; boolean features are simple unlocks.
-   */
-  type: 'numeric' | 'boolean';
-  /**
-   * Display hint for the limit (e.g., "questions", "messages"). Numeric only.
-   */
-  unit?: string | null;
-  /**
-   * Default reset window used when a product adds this feature. Admin can override per-product.
-   */
-  defaultPeriod?: ('day' | 'lifetime') | null;
-  /**
-   * When on, denials are silent — endpoints return a generic error without revealing the limit (e.g. chat-limit).
-   */
-  isSilent?: boolean | null;
-  /**
-   * Whether a runtime consumer reads this feature. "Metadata only" means it appears on entitlements but nothing checks it.
-   */
-  enforcement: 'enforced' | 'metadata';
-  /**
-   * Hide from the admin feature picker when off (existing references continue to work).
-   */
-  isActive?: boolean | null;
-  /**
-   * User who created this document
-   */
-  createdBy?: (string | null) | User;
-  updatedAt: string;
-  createdAt: string;
-}
-/**
- * Transactions are auto-created by payment webhooks and the checkout route. Manual creation is disabled — dangling records break revenue stats, refunds, and the purchases page.
- *
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "transactions".
- */
-export interface Transaction {
-  id: string;
-  /**
-   * Tenant scope for this document
-   */
-  tenant: string | Tenant;
-  /**
-   * User who initiated the payment
-   */
-  user: string | User;
-  /**
-   * Product being purchased (null for tier-subscription purchases — see tierSlug)
-   */
-  product?: (string | null) | Product;
-  /**
-   * Tier purchased (set for tier-subscription transactions where product is null).
-   */
-  tierSlug?: ('free' | 'basic' | 'advanced' | 'premium') | null;
-  /**
-   * Payment provider used for this transaction
-   */
-  provider: 'stripe' | 'paypal' | 'tranzilla';
-  /**
-   * Transaction ID from the payment provider
-   */
-  providerTransactionId: string;
-  /**
-   * Stripe PaymentIntent ID (pi_...) — used for refunds and webhook lookup
-   */
-  paymentIntentId?: string | null;
-  /**
-   * PayPal Capture ID — used for refunds and refund webhook lookup
-   */
-  captureId?: string | null;
-  /**
-   * Current status of the transaction
-   */
-  status: 'pending' | 'succeeded' | 'failed' | 'refunded';
-  /**
-   * Amount in agorot (1 ILS = 100 agorot)
-   */
-  amount: number;
-  /**
-   * Currency code (e.g., ILS, USD, EUR)
-   */
-  currency: string;
-  /**
-   * Additional metadata (item IDs, lesson IDs, etc.)
-   */
-  metadata?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
-  /**
-   * Parent subscription (set for initial + renewal transactions of a sub)
-   */
-  subscription?: (string | null) | Subscription;
-  /**
-   * True when this transaction records a recurring renewal charge, not the initial checkout
-   */
-  isRenewal?: boolean | null;
-  /**
-   * Original success redirect URL
-   */
-  successUrl?: string | null;
-  /**
-   * Original cancel redirect URL
-   */
-  cancelUrl?: string | null;
-  /**
-   * Error message if transaction failed
-   */
-  errorMessage?: string | null;
-  /**
-   * Timestamp when product entitlements were granted to the user
-   */
-  entitlementsGrantedAt?: string | null;
-  /**
-   * Timestamp when coupon was consumed on this transaction
-   */
-  couponConsumedAt?: string | null;
-  /**
-   * Timestamp when the purchase receipt email was sent to the user
-   */
-  emailSentAt?: string | null;
-  /**
-   * Amount refunded in agorot (smallest currency unit)
-   */
-  refundedAmount?: number | null;
-  /**
-   * Admin who processed the refund
-   */
-  refundedBy?: (string | null) | User;
-  /**
-   * When the refund was processed
-   */
-  refundedAt?: string | null;
-  /**
-   * User who created this document
-   */
-  createdBy?: (string | null) | User;
-  updatedAt: string;
-  createdAt: string;
-}
-/**
- * Subscriptions are created by the Web checkout route when a user starts a recurring purchase. Status is driven by PayPal webhook events — do not edit `status` or `currentPeriodEnd` by hand.
- *
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "subscriptions".
- */
-export interface Subscription {
-  id: string;
-  /**
-   * Tenant scope for this document
-   */
-  tenant: string | Tenant;
-  /**
-   * User who owns the subscription
-   */
-  user: string | User;
-  /**
-   * Subscription product being purchased
-   */
-  product: string | Product;
-  /**
-   * Payment provider (only PayPal is supported today)
-   */
-  provider: 'paypal';
-  /**
-   * PayPal Billing subscription ID (I-...)
-   */
-  paypalSubscriptionId: string;
-  /**
-   * Current lifecycle state driven by PayPal webhooks
-   */
-  status: 'pending' | 'active' | 'past_due' | 'cancelled' | 'suspended' | 'expired';
-  /**
-   * Start of the current billing period
-   */
-  currentPeriodStart?: string | null;
-  /**
-   * End of the current billing period — access continues until this date even after cancellation
-   */
-  currentPeriodEnd?: string | null;
-  /**
-   * User has cancelled but retains access until currentPeriodEnd
-   */
-  cancelAtPeriodEnd?: boolean | null;
-  /**
-   * When cancellation was received from PayPal
-   */
-  cancelledAt?: string | null;
-  /**
-   * The pending Transaction created at checkout; flipped to succeeded on ACTIVATED
-   */
-  initialTransaction?: (string | null) | Transaction;
   /**
    * User who created this document
    */
@@ -4939,6 +4991,8 @@ export interface UsersSelect<T extends boolean = true> {
         id?: T;
       };
   currentTier?: T;
+  tierGrantSource?: T;
+  tierGrantSubscriptionId?: T;
   featureEntitlements?:
     | T
     | {
@@ -5288,6 +5342,7 @@ export interface TransactionsSelect<T extends boolean = true> {
   metadata?: T;
   subscription?: T;
   isRenewal?: T;
+  isIntroCharge?: T;
   successUrl?: T;
   cancelUrl?: T;
   errorMessage?: T;
@@ -5309,7 +5364,17 @@ export interface SubscriptionsSelect<T extends boolean = true> {
   tenant?: T;
   user?: T;
   product?: T;
+  tierSlug?: T;
   provider?: T;
+  offerSlug?: T;
+  introPriceIls?: T;
+  introChargesTotal?: T;
+  introChargesUsed?: T;
+  regularPriceIls?: T;
+  tranzillaCardToken?: T;
+  stoId?: T;
+  tranzillaRetryCount?: T;
+  lastRenewalAttemptAt?: T;
   paypalSubscriptionId?: T;
   status?: T;
   currentPeriodStart?: T;
