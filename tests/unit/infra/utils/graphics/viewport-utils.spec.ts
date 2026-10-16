@@ -66,7 +66,12 @@ describe('viewport-utils', () => {
       expect(result.yMax).toBeGreaterThanOrEqual(7)
     })
 
-    it('includes graph function range', () => {
+    it('fits auto viewport around feature points of a single-graph spec', () => {
+      // The viewport is anchored on landmark points — the graph's y-intercept
+      // and x-intercept — rather than sampling the function across [-10, 10].
+      // For `x^2` alone the only landmark is the origin, so we expand to the
+      // minimum readable window around it (centered on 0, span ≥ 4 on each
+      // axis before padding).
       const specWithGraph: AxisSpecV1 = {
         kind: 'cartesian',
         units: 1,
@@ -92,9 +97,50 @@ describe('viewport-utils', () => {
       }
 
       const result = calculateAutoViewport(specWithGraph)
-      // x^2 ranges from 0 to 100 in x:[-10,10], so Y should include this range
+      // Centered on origin, both axes span the min feature span + padding.
+      expect(result.xMin).toBeLessThanOrEqual(-2)
+      expect(result.xMax).toBeGreaterThanOrEqual(2)
       expect(result.yMin).toBeLessThanOrEqual(0)
-      expect(result.yMax).toBeGreaterThanOrEqual(100)
+      expect(result.yMax).toBeGreaterThanOrEqual(0)
+      // Must not blow up to [-10, 10] y: [0, 100] like the old sample window did.
+      expect(result.yMax).toBeLessThan(20)
+    })
+
+    it('fits auto viewport around graph intersections and intercepts', () => {
+      // Three lines (y=2x+1, y=-x+3, y=2) intersecting around x≈0.5–1, y≈2–2.33.
+      // The viewport should sit snugly around the intersection cluster plus
+      // axis intercepts, not sample lines across [-10, 10] and inflate.
+      const spec: AxisSpecV1 = {
+        kind: 'cartesian',
+        units: 1,
+        grid: { enabled: true },
+        axes: {
+          showNumbers: true,
+          showLabels: true,
+          ticks: 1,
+          labels: { x: 'x', y: 'y' },
+          origin: { x: 0, y: 0 },
+        },
+        elements: {
+          points: [],
+          graphs: [
+            { id: 'g1', fn: '2*x+1', style: 'solid', thickness: 2 },
+            { id: 'g2', fn: '-x+3', style: 'solid', thickness: 2 },
+            { id: 'g3', fn: '2', style: 'solid', thickness: 2 },
+          ],
+        },
+      }
+
+      const result = calculateAutoViewport(spec)
+      // Must include the three intersection points (≈(0.67, 2.33), (0.5, 2), (1, 2))
+      // plus the y-intercepts (0, 1), (0, 3), (0, 2) and x-intercepts (-0.5, 0), (3, 0).
+      expect(result.xMin).toBeLessThanOrEqual(-0.5)
+      expect(result.xMax).toBeGreaterThanOrEqual(3)
+      expect(result.yMin).toBeLessThanOrEqual(0)
+      expect(result.yMax).toBeGreaterThanOrEqual(3)
+      // But not the sprawling [-10, 10]-sampled range the old logic produced.
+      expect(result.xMin).toBeGreaterThan(-10)
+      expect(result.yMax).toBeLessThan(20)
     })
 
     it('fits first-quadrant anchor content without extending to negative defaults', () => {
@@ -386,9 +432,12 @@ describe('viewport-utils', () => {
 
       const result = resolveViewport(spec)
 
-      // Should NOT return manual values, should calculate from elements
-      expect(result.xMin).not.toBe(-5)
-      expect(result.xMax).not.toBe(5)
+      // Should NOT return manual values, should fit tightly around the point.
+      expect(result.yMin).toBeGreaterThan(-20)
+      expect(result.yMax).toBeLessThan(20)
+      // Y must still include the point.
+      expect(result.yMin).toBeLessThanOrEqual(3)
+      expect(result.yMax).toBeGreaterThanOrEqual(3)
     })
 
     it('returns auto-calculated viewport when viewportMode is undefined (backward compat)', () => {
