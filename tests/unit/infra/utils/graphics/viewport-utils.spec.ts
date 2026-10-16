@@ -489,6 +489,104 @@ describe('viewport-utils', () => {
       expect(result).toEqual({ xMin: 0, xMax: 10, yMin: 0, yMax: 10 })
     })
 
+    it('clamps the viewport aspect when a graph-only spec has a tall manual viewport', () => {
+      // User's reported case: LLM-generated .txt with 3 lines but no explicit
+      // points. Manual viewport came out tall (2:1 y:x), making the render
+      // box taller than a mobile screen. Tightening doesn't fire (no anchor),
+      // so the aspect clamp has to widen x symmetrically.
+      const spec: AxisSpecV1 = {
+        kind: 'cartesian',
+        units: 1,
+        grid: { enabled: true },
+        axes: {
+          showNumbers: true,
+          showLabels: true,
+          ticks: 1,
+          labels: { x: 'x', y: 'y' },
+          origin: { x: 0, y: 0 },
+        },
+        viewportMode: 'manual',
+        viewport: { xMin: -3.5, xMax: 3.5, yMin: -5, yMax: 9 },
+        elements: {
+          points: [],
+          graphs: [
+            { id: 'g1', fn: 'x+1', style: 'solid', thickness: 2 },
+            { id: 'g2', fn: '-x+4', style: 'solid', thickness: 2 },
+            { id: 'g3', fn: '2', style: 'solid', thickness: 2 },
+          ],
+        },
+      }
+
+      const result = resolveViewport(spec)
+      const xSpan = result.xMax - result.xMin
+      const ySpan = result.yMax - result.yMin
+      // Aspect ratio must be within the 1.2 clamp
+      expect(ySpan / xSpan).toBeLessThanOrEqual(1.2 + 0.001)
+      // Y must be preserved (never shrunk)
+      expect(result.yMin).toBe(-5)
+      expect(result.yMax).toBe(9)
+      // X widened symmetrically around the original center (0)
+      expect(result.xMin).toBeLessThanOrEqual(-3.5)
+      expect(result.xMax).toBeGreaterThanOrEqual(3.5)
+      expect(result.xMin + result.xMax).toBeCloseTo(0, 5)
+    })
+
+    it('clamps a wide manual viewport by growing y symmetrically', () => {
+      const spec: AxisSpecV1 = {
+        kind: 'cartesian',
+        units: 1,
+        grid: { enabled: true },
+        axes: {
+          showNumbers: true,
+          showLabels: true,
+          ticks: 1,
+          labels: { x: 'x', y: 'y' },
+          origin: { x: 0, y: 0 },
+        },
+        viewportMode: 'manual',
+        viewport: { xMin: -20, xMax: 20, yMin: 0, yMax: 4 },
+        elements: {
+          points: [],
+          graphs: [{ id: 'g1', fn: '2', style: 'solid', thickness: 2 }],
+        },
+      }
+
+      const result = resolveViewport(spec)
+      const xSpan = result.xMax - result.xMin
+      const ySpan = result.yMax - result.yMin
+      expect(xSpan / ySpan).toBeLessThanOrEqual(1.2 + 0.001)
+      // X preserved
+      expect(result.xMin).toBe(-20)
+      expect(result.xMax).toBe(20)
+      // Y widened symmetrically around original center (2)
+      expect(result.yMin).toBeLessThanOrEqual(0)
+      expect(result.yMax).toBeGreaterThanOrEqual(4)
+      expect(result.yMin + result.yMax).toBeCloseTo(4, 5)
+    })
+
+    it('does NOT clamp when the spec has no renderable content', () => {
+      // Empty spec with an extreme manual viewport: author's declared
+      // bounds are the only signal, so honor them untouched.
+      const spec: AxisSpecV1 = {
+        kind: 'cartesian',
+        units: 1,
+        grid: { enabled: true },
+        axes: {
+          showNumbers: true,
+          showLabels: true,
+          ticks: 1,
+          labels: { x: 'x', y: 'y' },
+          origin: { x: 0, y: 0 },
+        },
+        viewportMode: 'manual',
+        viewport: { xMin: -5, xMax: 5, yMin: -20, yMax: 20 },
+        elements: { points: [], graphs: [] },
+      }
+
+      const result = resolveViewport(spec)
+      expect(result).toEqual({ xMin: -5, xMax: 5, yMin: -20, yMax: 20 })
+    })
+
     it('tightens a wasteful manual viewport only in the wasted dimension', () => {
       // Only the y-axis is wasteful here; x is well-fit. Verify that
       // tightening is axis-independent so we don't shrink a dimension
