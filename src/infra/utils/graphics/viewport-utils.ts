@@ -101,6 +101,120 @@ function collectAnchorBounds(spec: AxisSpecV1): ViewportBounds | null {
   return { xMin, xMax, yMin, yMax }
 }
 
+/** Width of the window we scan for intersections and axis crossings. */
+const FEATURE_SCAN_MIN = -10
+const FEATURE_SCAN_MAX = 10
+const FEATURE_SCAN_SAMPLES = 200
+
+/**
+ * Bisect to a precise root of `diffFn(x) = 0` inside `[a, b]`, assuming
+ * `diffFn` has a sign change on the interval. Returns `null` if either
+ * endpoint fails to evaluate or the signs don't bracket a root.
+ */
+function bisectRoot(
+  diffFn: (x: number) => number | null,
+  a: number,
+  b: number,
+  tol = 1e-6,
+  maxIter = 50,
+): number | null {
+  let lo = a
+  let hi = b
+  let flo = diffFn(lo)
+  const fhi = diffFn(hi)
+  if (flo === null || fhi === null) return null
+  if (flo === 0) return lo
+  if (fhi === 0) return hi
+  if (flo * fhi > 0) return null
+  for (let i = 0; i < maxIter; i++) {
+    const mid = (lo + hi) / 2
+    const fmid = diffFn(mid)
+    if (fmid === null) return null
+    if (Math.abs(fmid) < tol || (hi - lo) / 2 < tol) return mid
+    if (flo * fmid < 0) {
+      hi = mid
+    } else {
+      lo = mid
+      flo = fmid
+    }
+  }
+  return (lo + hi) / 2
+}
+
+/**
+ * Sample `diffFn(x)` across `[FEATURE_SCAN_MIN, FEATURE_SCAN_MAX]` and
+ * bisect every sign change to find roots. Used both for intersections
+ * (f(x) - g(x) = 0) and x-intercepts (f(x) = 0).
+ */
+function findSignChangeRoots(diffFn: (x: number) => number | null): number[] {
+  const roots: number[] = []
+  const span = FEATURE_SCAN_MAX - FEATURE_SCAN_MIN
+  let prevX = FEATURE_SCAN_MIN
+  let prevV = diffFn(prevX)
+  for (let i = 1; i <= FEATURE_SCAN_SAMPLES; i++) {
+    const x = FEATURE_SCAN_MIN + (i / FEATURE_SCAN_SAMPLES) * span
+    const v = diffFn(x)
+    if (prevV !== null && v !== null && prevV !== v && prevV * v <= 0) {
+      const root = bisectRoot(diffFn, prevX, x)
+      if (root !== null) roots.push(root)
+    }
+    prevX = x
+    prevV = v
+  }
+  return roots
+}
+
+/**
+ * Collect the "interesting" points that an educator would want in view
+ * for a given spec: author-placed points, line endpoints, y-intercepts,
+ * x-intercepts, and pairwise graph intersections. These landmark points
+ * drive the auto-viewport bounds — the viewport fits them snugly
+ * (plus padding), instead of sampling graphs across an arbitrary x
+ * window and ballooning when a line extends far.
+ */
+function collectFeaturePoints(spec: AxisSpecV1): Array<{ x: number; y: number }> {
+  const points: Array<{ x: number; y: number }> = []
+
+  for (const p of spec.elements.points) points.push({ x: p.x, y: p.y })
+  for (const l of spec.elements.lineBetweenPoints ?? []) {
+    points.push({ x: l.a.x, y: l.a.y })
+    points.push({ x: l.b.x, y: l.b.y })
+  }
+
+  const graphs = spec.elements.graphs
+  for (const g of graphs) {
+    // y-intercept: f(0)
+    const y0 = evaluateMathExpression(g.fn, 0)
+    if (y0 !== null) points.push({ x: 0, y: y0 })
+    // x-intercepts: solve f(x) = 0 in the scan window
+    for (const xRoot of findSignChangeRoots((x) => evaluateMathExpression(g.fn, x))) {
+      points.push({ x: xRoot, y: 0 })
+    }
+  }
+
+  // Pairwise intersections of graphs
+  for (let i = 0; i < graphs.length; i++) {
+    for (let j = i + 1; j < graphs.length; j++) {
+      const fnA = graphs[i].fn
+      const fnB = graphs[j].fn
+      const diff = (x: number) => {
+        const a = evaluateMathExpression(fnA, x)
+        const b = evaluateMathExpression(fnB, x)
+        return a === null || b === null ? null : a - b
+      }
+      for (const xRoot of findSignChangeRoots(diff)) {
+        const y = evaluateMathExpression(fnA, xRoot)
+        if (y !== null) points.push({ x: xRoot, y })
+      }
+    }
+  }
+
+  return points
+}
+
+/** Minimum extent on each axis — a single feature point still gets a visible window. */
+const MIN_FEATURE_SPAN = 4
+
 /**
  * Calculate the auto viewport based on graph elements
  * Analyzes points, graphs, asymptotes, and line segments to determine a bounding box
@@ -114,45 +228,41 @@ export function calculateAutoViewport(spec: AxisSpecV1): ViewportBounds {
   }
 
   const anchor = collectAnchorBounds(spec)
+  const features = collectFeaturePoints(spec)
 
-  // Start from anchor bounds when they exist, otherwise defaults. Previously
-  // we started from DEFAULT_BOUNDS unconditionally and used Math.min/max to
-  // "expand" — but Math.min against a default of -10 means a point at x=5
-  // yields xMin = -10, not 5. First-quadrant content ended up with a
-  // -10..10 symmetric viewport, which looked like the renderer was
-  // mirroring the axes.
-  let xMin = anchor?.xMin ?? DEFAULT_BOUNDS.xMin
-  let xMax = anchor?.xMax ?? DEFAULT_BOUNDS.xMax
-  let yMin = anchor?.yMin ?? DEFAULT_BOUNDS.yMin
-  let yMax = anchor?.yMax ?? DEFAULT_BOUNDS.yMax
-
-  let hasContent = anchor !== null
-
-  // Analyze graphs by sampling. We DO use the anchor's x-range when it
-  // exists so a line through (0,0)–(5,5) doesn't drag y-samples at
-  // x=-10/x=10 into the bounds. When no anchor is set we fall back to the
-  // historical [-10, 10] sample window.
-  const sampleCount = 20
-  const sampleXMin = anchor?.xMin ?? -10
-  const sampleXMax = anchor?.xMax ?? 10
-  const sampleXSpan = sampleXMax - sampleXMin
-
-  for (const graph of spec.elements.graphs) {
-    hasContent = true
-    for (let i = 0; i <= sampleCount; i++) {
-      const x = sampleXMin + (i / sampleCount) * sampleXSpan
-      const y = evaluateMathExpression(graph.fn, x)
-      if (y !== null) {
-        xMin = Math.min(xMin, x)
-        xMax = Math.max(xMax, x)
-        yMin = Math.min(yMin, y)
-        yMax = Math.max(yMax, y)
-      }
-    }
+  // If we have no anchor AND no derived features, the spec is empty —
+  // fall back to the classroom default.
+  if (!anchor && features.length === 0) {
+    return DEFAULT_BOUNDS
   }
 
-  if (!hasContent) {
-    return DEFAULT_BOUNDS
+  // Combine anchor bounds with feature-point bounds. Features drive the
+  // viewport for pure-graph specs (no author-placed points); when the
+  // author DID place points, those still contribute via the anchor path.
+  let xMin = anchor?.xMin ?? Infinity
+  let xMax = anchor?.xMax ?? -Infinity
+  let yMin = anchor?.yMin ?? Infinity
+  let yMax = anchor?.yMax ?? -Infinity
+
+  for (const p of features) {
+    xMin = Math.min(xMin, p.x)
+    xMax = Math.max(xMax, p.x)
+    yMin = Math.min(yMin, p.y)
+    yMax = Math.max(yMax, p.y)
+  }
+
+  // Guarantee a readable window around a single feature point (e.g. the
+  // vertex of a lonely parabola) by expanding each axis to at least
+  // MIN_FEATURE_SPAN.
+  if (xMax - xMin < MIN_FEATURE_SPAN) {
+    const cx = (xMin + xMax) / 2
+    xMin = cx - MIN_FEATURE_SPAN / 2
+    xMax = cx + MIN_FEATURE_SPAN / 2
+  }
+  if (yMax - yMin < MIN_FEATURE_SPAN) {
+    const cy = (yMin + yMax) / 2
+    yMin = cy - MIN_FEATURE_SPAN / 2
+    yMax = cy + MIN_FEATURE_SPAN / 2
   }
 
   // Add 10% padding (minimum 1 unit)
