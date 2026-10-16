@@ -335,6 +335,71 @@ function tightenManualViewport(spec: AxisSpecV1, manual: ViewportBounds): Viewpo
 }
 
 /**
+ * Max allowed ratio between the longer and shorter viewport dimension.
+ * The pixel container in `computeBoardSize` matches the viewport aspect
+ * so grid squares stay square — but when the aspect is extreme the
+ * container becomes a thin strip, which is unreadable on mobile and
+ * causes the "graph taller than my screen" complaint. Clamping the
+ * viewport (not the pixel box) preserves correct line angles while
+ * keeping the rendered box in a usable shape.
+ *
+ * 1.2 lets us hit the common offenders (symmetric `-6..6` on y combined
+ * with a tight x range) without ballooning the viewport for authors
+ * who intentionally picked a slightly tall or wide window.
+ */
+const MAX_VIEWPORT_ASPECT = 1.2
+
+/**
+ * Any element that signals a non-empty spec. Graphs count because
+ * they're the common LLM-generated case (lines/curves with no explicit
+ * points) where the aspect clamp needs to fire.
+ */
+function hasAnyRenderableContent(spec: AxisSpecV1): boolean {
+  return (
+    spec.elements.points.length > 0 ||
+    spec.elements.graphs.length > 0 ||
+    (spec.elements.lineBetweenPoints?.length ?? 0) > 0 ||
+    (spec.elements.asymptotesVertical?.length ?? 0) > 0 ||
+    (spec.elements.asymptotesHorizontal?.length ?? 0) > 0 ||
+    (spec.elements.geometricLoci?.length ?? 0) > 0
+  )
+}
+
+/**
+ * Expand the shorter dimension symmetrically so neither axis is more
+ * than MAX_VIEWPORT_ASPECT times the other. Never shrinks — the input
+ * viewport is treated as a floor, so anchor content stays visible even
+ * if the aspect clamp fires after a tightening step.
+ */
+function clampViewportAspect(viewport: ViewportBounds): ViewportBounds {
+  const xSpan = viewport.xMax - viewport.xMin
+  const ySpan = viewport.yMax - viewport.yMin
+  if (xSpan <= 0 || ySpan <= 0) return viewport
+
+  if (ySpan > xSpan * MAX_VIEWPORT_ASPECT) {
+    // Too tall — grow x symmetrically around the current x-center.
+    const neededXSpan = ySpan / MAX_VIEWPORT_ASPECT
+    const extra = (neededXSpan - xSpan) / 2
+    return {
+      ...viewport,
+      xMin: viewport.xMin - extra,
+      xMax: viewport.xMax + extra,
+    }
+  }
+  if (xSpan > ySpan * MAX_VIEWPORT_ASPECT) {
+    // Too wide — grow y symmetrically around the current y-center.
+    const neededYSpan = xSpan / MAX_VIEWPORT_ASPECT
+    const extra = (neededYSpan - ySpan) / 2
+    return {
+      ...viewport,
+      yMin: viewport.yMin - extra,
+      yMax: viewport.yMax + extra,
+    }
+  }
+  return viewport
+}
+
+/**
  * Resolve the final viewport based on mode
  * Returns auto-calculated viewport for 'auto' mode, or manual values for 'manual' mode
  */
@@ -354,9 +419,14 @@ export function resolveViewport(spec: AxisSpecV1): ViewportBounds {
       yMin: spec.viewport!.yMin!,
       yMax: spec.viewport!.yMax!,
     }
-    return tightenManualViewport(spec, manual)
+    const tightened = tightenManualViewport(spec, manual)
+    // Skip aspect clamp when the spec is empty — the author's declared
+    // viewport is the only signal we have about what they want to show.
+    return hasAnyRenderableContent(spec) ? clampViewportAspect(tightened) : tightened
   }
 
-  // Otherwise, calculate auto viewport
-  return calculateAutoViewport(spec)
+  // Auto path: clamp when there's content; otherwise `calculateAutoViewport`
+  // already returned DEFAULT_BOUNDS which is a safe 1:1 ratio.
+  const auto = calculateAutoViewport(spec)
+  return hasAnyRenderableContent(spec) ? clampViewportAspect(auto) : auto
 }
