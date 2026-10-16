@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- promote: dev -> main (v0.57.0) ([#623](https://github.com/A-Guy-educ/A-Guy-Admin/pull/623)) — @aguyshayb
 - chore: Release v0.57.0 ([#622](https://github.com/A-Guy-educ/A-Guy-Admin/pull/622)) — @aguyshayb
 
 ## v0.57.0 — 2026-10-16
