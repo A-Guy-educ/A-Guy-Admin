@@ -2,17 +2,20 @@
 
 ## [Unreleased]
 
-- fix(geometry): Lower renderer size fallback from 4 to 2 ([#634](https://github.com/A-Guy-educ/A-Guy-Admin/pull/634)) — @aguyshayb
-- fix(payments): STO payload — items[].name + card expiry + local smoke iterator ([#633](https://github.com/A-Guy-educ/A-Guy-Admin/pull/633)) — @aguyshayb
-- feat(graphics): Bake feature-point viewport at import time ([#631](https://github.com/A-Guy-educ/A-Guy-Admin/pull/631)) — @aguyshayb
-- fix(payments): Send currency_code as ISO 4217 alpha (ILS), not numeric ([#632](https://github.com/A-Guy-educ/A-Guy-Admin/pull/632)) — @aguyshayb
-- fix(payments): currency_code as string + remove token-keeping fallback ([#630](https://github.com/A-Guy-educ/A-Guy-Admin/pull/630)) — @aguyshayb
-- feat(geometry): Smaller point/angle defaults and sketch-aware labels ([#629](https://github.com/A-Guy-educ/A-Guy-Admin/pull/629)) — @aguyshayb
-- fix(payments): Gate webhook signature requirement on VERCEL_ENV=production ([#628](https://github.com/A-Guy-educ/A-Guy-Admin/pull/628)) — @aguyshayb
-- feat(graphics): Fixed-height 330px sketch sizing with container-relative width ([#626](https://github.com/A-Guy-educ/A-Guy-Admin/pull/626)) — @aguyshayb
-- fix(payments): Run iframe on fxpaguy, not fxpaguytok ([#627](https://github.com/A-Guy-educ/A-Guy-Admin/pull/627)) — @aguyshayb
-- promote: dev -> main (v0.57.0) ([#623](https://github.com/A-Guy-educ/A-Guy-Admin/pull/623)) — @aguyshayb
-- chore: Release v0.57.0 ([#622](https://github.com/A-Guy-educ/A-Guy-Admin/pull/622)) — @aguyshayb
+## v0.58.0 — 2026-10-18
+
+### Features
+- Graphics / viewport: feature-point viewport is now baked at lesson-import time so renderers get a stable auto-fit window instead of recomputing on every mount ([#631](https://github.com/A-Guy-educ/A-Guy-Admin/pull/631))
+- Graphics / sketch sizing: SVG and geometry sketches render at a fixed 330px height with container-relative width, replacing the previous aspect-ratio-based sizing that produced wildly different vertical footprints across sketches ([#626](https://github.com/A-Guy-educ/A-Guy-Admin/pull/626))
+- Geometry editor: smaller default point and angle label sizes plus sketch-aware label placement — new sketches no longer need a manual "shrink the labels" pass before publish ([#629](https://github.com/A-Guy-educ/A-Guy-Admin/pull/629))
+
+### Bug Fixes
+- Payments / Tranzila STO: send `currency_code` as ISO 4217 alpha (`ILS`) instead of the numeric code, after Tranzila support confirmed the terminal expects the alpha form ([#632](https://github.com/A-Guy-educ/A-Guy-Admin/pull/632))
+- Payments / Tranzila STO: round-trip `currency_code` as a string and remove the token-keeping fallback that was masking real auth failures during STO create ([#630](https://github.com/A-Guy-educ/A-Guy-Admin/pull/630))
+- Payments / Tranzila STO: `createstov2` payload now ships `items[].name`, correct card-expiry shape, and a local smoke iterator for faster shape iteration without burning real terminal calls ([#633](https://github.com/A-Guy-educ/A-Guy-Admin/pull/633))
+- Payments / Tranzila webhook: HMAC signature requirement is now gated on `VERCEL_ENV=production` so dev-preview smoke runs don't 401 on unsigned test posts ([#628](https://github.com/A-Guy-educ/A-Guy-Admin/pull/628))
+- Payments / Tranzila iframe: run the hosted iframe on the `fxpaguy` terminal rather than the `fxpaguytok` tokenization terminal — fixes the "terminal not permitted" rejection on live STO create ([#627](https://github.com/A-Guy-educ/A-Guy-Admin/pull/627))
+- Geometry renderer: lower the point-size fallback from 4 to 2 so legacy saved sketches (without an explicit size) render at the new default scale and don't appear as oversized dots next to new sketches ([#634](https://github.com/A-Guy-educ/A-Guy-Admin/pull/634))
 
 ## v0.57.0 — 2026-10-16
 
