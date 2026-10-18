@@ -24,6 +24,7 @@ import type {
 import { generateId } from '@/server/payload/collections/Exercises/types'
 import type { AxisSpecV1 } from '@/infra/contracts/graphics/axis.v1'
 import type { GeometrySpecV1 } from '@/infra/contracts/graphics/geometry.v1'
+import { withFeaturePointViewport } from '@/infra/utils/graphics/viewport-utils'
 
 import type { TextExerciseV2, TextSectionV2 } from './parse-text-v2'
 
@@ -62,7 +63,9 @@ function standaloneAxisBlock(axis: AxisSpecV1): QuestionAxisBlock {
     type: 'question_axis',
     prompt: inlineRichText(''),
     layout: 'textRight',
-    axis,
+    // Viewport baked at import time — see note in convert-exercise.ts
+    // (JSON importer) and convert-text-exercise.ts (v1 text importer).
+    axis: withFeaturePointViewport(axis),
     displaySize: DEFAULT_DISPLAY_SIZE,
   }
 }
@@ -84,7 +87,7 @@ function axisAttachment(axis: AxisSpecV1): QuestionAttachment {
   return {
     kind: 'axis',
     layout: 'textRight',
-    axis,
+    axis: withFeaturePointViewport(axis),
     displaySize: DEFAULT_DISPLAY_SIZE,
   }
 }

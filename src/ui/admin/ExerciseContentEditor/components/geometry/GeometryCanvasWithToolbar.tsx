@@ -20,7 +20,7 @@ interface GeometryCanvasWithToolbarProps {
   onGridToggle: (showGrid: boolean) => void
   onTextMoved?: (index: number, x: number, y: number) => void
   onPointLabelMoved?: (name: string, position: string) => void
-  onAngleLabelMoved?: (index: number, distance: 'near' | 'mid' | 'far') => void
+  onAngleLabelMoved?: (index: number, position: 'inside' | 'outside') => void
 }
 
 export const GeometryCanvasWithToolbar: React.FC<GeometryCanvasWithToolbarProps> = ({

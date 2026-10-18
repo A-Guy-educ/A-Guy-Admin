@@ -100,24 +100,31 @@ export async function POST(request: NextRequest) {
   }
 
   // ─── 2. Verify signature ────────────────────────────────────────────────
-  // When TRANZILLA_PRIVATE_KEY is configured (any non-dev environment), the
-  // webhook is REQUIRED to carry a valid response_hash. Early iterations
-  // allowed an unsigned log-and-accept fallback for the one-time flow, but
-  // the subscription-bootstrap branch writes a reusable card token and
-  // promotes a user tier, so an unsigned POST with a guessed subscription
-  // id would be a direct privilege-escalation path. The fallback stays
-  // available only when the private key env is absent (local dev / sandbox
-  // without the signing feature enabled on the terminal).
+  // Policy: unsigned webhooks are rejected only in production. The signing
+  // feature on Tranzila ("Hand Shake" / response_hash) is two-way — enabling
+  // it requires us to also sign outgoing iframe URLs, which we don't do yet.
+  // Until that outgoing work lands and Shai flips Hand Shake on, dev + preview
+  // deploys MUST tolerate unsigned notify_url POSTs or no subscription smoke
+  // can complete. VERCEL_ENV='production' is the right gate because Vercel
+  // builds every target with NODE_ENV=production regardless of env.
+  //
+  // When Tranzila DOES send a response_hash (prod with Hand Shake on, OR a
+  // sandbox merchant with signing enabled), we still verify it fully — the
+  // if-hasHash branch below is unconditional.
+  //
+  // Pre-prod hardening: implement outgoing URL signing in createTranzillaCheckout,
+  // enable Hand Shake on both terminals, then this gate becomes a backstop
+  // rather than the only line of defence.
   const hasHash = typeof body.response_hash === 'string' && body.response_hash.length > 0
-  const privateKeyConfigured = Boolean(process.env.TRANZILLA_PRIVATE_KEY)
+  const requireSignature = process.env.VERCEL_ENV === 'production'
   let authMethod: 'response_hash' | 'unsigned' = 'unsigned'
 
-  if (privateKeyConfigured && !hasHash) {
+  if (requireSignature && !hasHash) {
     const sourceIp =
       request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
     payload.logger.warn(
       { sourceIp, index: body.index },
-      '[tranzilla-webhook] missing response_hash while private key is configured — rejecting',
+      '[tranzilla-webhook] missing response_hash in production — rejecting',
     )
     return NextResponse.json({ error: 'response_hash required' }, { status: 401 })
   }
@@ -422,6 +429,35 @@ interface HandoffArgs {
   regularPriceIls: number
   newPeriodEnd: Date
   cardToken: string
+  cardExpireMonth: number
+  cardExpireYear: number
+}
+
+/**
+ * Parse the card expiry from Tranzila's notify_url POST body. Tranzila's
+ * hosted iframe sends `expdate` in MMYY form (e.g. "1230" for Dec 2030);
+ * some flows send separate `expmonth`/`expyear` fields instead. We accept
+ * either. Returns null when neither is parseable — the caller must log
+ * and skip the STO handoff in that case (the user still has their
+ * promoted tier and month-1 charge, just no auto-renewal).
+ */
+function parseCardExpiry(body: Record<string, string>): { month: number; year: number } | null {
+  // Format 1: expdate as MMYY string (most common on fxpaguy's notify_url).
+  const expdate = body.expdate ?? body.expDate
+  if (expdate && /^\d{4}$/.test(expdate)) {
+    const month = parseInt(expdate.slice(0, 2), 10)
+    const year = 2000 + parseInt(expdate.slice(2, 4), 10)
+    if (month >= 1 && month <= 12 && year >= 2020) return { month, year }
+  }
+  // Format 2: separate expmonth + expyear fields (older iframes).
+  const monthRaw = parseInt(body.expmonth ?? body.expMonth ?? '', 10)
+  const yearRaw = parseInt(body.expyear ?? body.expYear ?? '', 10)
+  if (monthRaw >= 1 && monthRaw <= 12 && yearRaw > 0) {
+    // yearRaw may be 2-digit (30) or 4-digit (2030); normalize.
+    const year = yearRaw < 100 ? 2000 + yearRaw : yearRaw
+    if (year >= 2020) return { month: monthRaw, year }
+  }
+  return null
 }
 
 /**
@@ -455,8 +491,17 @@ interface HandoffArgs {
  * cleanup.
  */
 async function handoffToStandingOrder(args: HandoffArgs): Promise<void> {
-  const { payload, subscriptionRowId, userId, tierSlug, regularPriceIls, newPeriodEnd, cardToken } =
-    args
+  const {
+    payload,
+    subscriptionRowId,
+    userId,
+    tierSlug,
+    regularPriceIls,
+    newPeriodEnd,
+    cardToken,
+    cardExpireMonth,
+    cardExpireYear,
+  } = args
 
   if (!cardToken) {
     payload.logger.error(
@@ -498,10 +543,19 @@ async function handoffToStandingOrder(args: HandoffArgs): Promise<void> {
   // Helper to release the sentinel if we abort. Idempotent: only clears
   // the field when it still holds *our* sentinel, so a concurrent handler
   // that somehow raced in can't be clobbered.
+  //
+  // ALSO nulls `tranzillaCardToken` on every failure path. Keeping the
+  // token as a cron-fallback was defense-in-depth that undermined the
+  // whole point of moving to STO (minimize card-credential custody).
+  // The explicit trade-off: on handoff failure the user has month 1 of
+  // paid access with no auto-renewal. We'd rather lose that revenue than
+  // store a reusable charge credential on a failure path we can't
+  // automatically recover from. Ops gets a fatal log and can either
+  // manually create the STO via Tranzila's dashboard or refund the user.
   const releaseClaim = async (): Promise<void> => {
     await subsCollection.updateOne(
       { _id: subObjectId, stoId: claimSentinel },
-      { $set: { stoId: null, updatedAt: new Date() } },
+      { $set: { stoId: null, tranzillaCardToken: null, updatedAt: new Date() } },
     )
   }
 
@@ -525,6 +579,8 @@ async function handoffToStandingOrder(args: HandoffArgs): Promise<void> {
     result = await createStandingOrder({
       terminalName: terminal,
       cardToken,
+      cardExpireMonth,
+      cardExpireYear,
       stoPaymentsNumber: STO_TOTAL_PAYMENTS_FROM_IFRAME_BOOTSTRAP,
       chargeFrequency: 'monthly',
       firstChargeDate: formatTranzilaDate(newPeriodEnd),
@@ -793,15 +849,37 @@ async function handleTranzillaSubscriptionBootstrap(
   // cron (failure case), and either way the token-based retry on replay
   // would double-create.
   if (subscription.status === 'pending' && !subscription.stoId) {
-    await handoffToStandingOrder({
-      payload,
-      subscriptionRowId,
-      userId,
-      tierSlug: tierSlug as TierSlug,
-      regularPriceIls: subscription.regularPriceIls ?? 0,
-      newPeriodEnd,
-      cardToken: body.TranzilaTK || '',
-    })
+    const expiry = parseCardExpiry(body)
+    if (!expiry) {
+      // Can't call createstov2 without card expiry. Log fatal with the full
+      // key list so ops can see which fields Tranzila actually sent — the
+      // field name probably just needs updating in parseCardExpiry.
+      payload.logger.fatal(
+        {
+          subscriptionRowId,
+          availableBodyKeys: Object.keys(body),
+          expdateVariants: {
+            expdate: body.expdate,
+            expDate: body.expDate,
+            expmonth: body.expmonth,
+            expyear: body.expyear,
+          },
+        },
+        '[tranzilla-webhook/sub-bootstrap] CRITICAL — no parseable card expiry in notify_url body; cannot call createstov2',
+      )
+    } else {
+      await handoffToStandingOrder({
+        payload,
+        subscriptionRowId,
+        userId,
+        tierSlug: tierSlug as TierSlug,
+        regularPriceIls: subscription.regularPriceIls ?? 0,
+        newPeriodEnd,
+        cardToken: body.TranzilaTK || '',
+        cardExpireMonth: expiry.month,
+        cardExpireYear: expiry.year,
+      })
+    }
   }
 
   // Flip only when still pending — on replay the Tx may already be

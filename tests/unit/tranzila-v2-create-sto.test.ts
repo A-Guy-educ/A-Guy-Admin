@@ -68,6 +68,8 @@ describe('createStandingOrder', () => {
     return createStandingOrder({
       terminalName: 'fxpaguytok',
       cardToken: 'TK-abc123',
+      cardExpireMonth: 12,
+      cardExpireYear: 2030,
       stoPaymentsNumber: 119,
       chargeFrequency: 'monthly',
       firstChargeDate: '2026-11-15',
@@ -98,7 +100,10 @@ describe('createStandingOrder', () => {
       charge_frequency: 'monthly',
       first_charge_date: '2026-11-15',
       charge_dom: 15,
-      currency_code: 1,
+      // currency_code is serialized as an ISO 4217 ALPHA code (ILS/USD/EUR) —
+      // Tranzila's /v2/sto/create validator rejects both integers (20004 "expected
+      // string, used integer") AND numeric strings (20004 "expected enum of ILS/USD/EUR").
+      currency_code: 'ILS',
       vat_percent: 0,
       client: {
         name: 'Test User',
@@ -106,14 +111,14 @@ describe('createStandingOrder', () => {
       },
       items: [
         {
-          item_name: 'AGuy Subscription — basic',
+          name: 'AGuy Subscription — basic',
           unit_price: 59,
           quantity: 1,
-          currency_code: 1,
+          currency_code: 'ILS',
           vat_percent: 0,
         },
       ],
-      card: { token: 'TK-abc123' },
+      card: { token: 'TK-abc123', expire_month: 12, expire_year: 2030 },
     })
   })
 
@@ -121,6 +126,8 @@ describe('createStandingOrder', () => {
     await createStandingOrder({
       terminalName: 'fxpaguytok',
       cardToken: 'TK-abc123',
+      cardExpireMonth: 12,
+      cardExpireYear: 2030,
       stoPaymentsNumber: 119,
       chargeFrequency: 'monthly',
       firstChargeDate: '2026-11-15',
@@ -157,6 +164,8 @@ describe('createStandingOrder', () => {
       createStandingOrder({
         terminalName: 'fxpaguytok',
         cardToken: 'TK',
+        cardExpireMonth: 12,
+        cardExpireYear: 2030,
         stoPaymentsNumber: 0,
         chargeFrequency: 'monthly',
         firstChargeDate: '2026-11-15',
@@ -172,6 +181,8 @@ describe('createStandingOrder', () => {
       createStandingOrder({
         terminalName: 'fxpaguytok',
         cardToken: '',
+        cardExpireMonth: 12,
+        cardExpireYear: 2030,
         stoPaymentsNumber: 119,
         chargeFrequency: 'monthly',
         firstChargeDate: '2026-11-15',
@@ -187,6 +198,8 @@ describe('createStandingOrder', () => {
       createStandingOrder({
         terminalName: 'fxpaguytok',
         cardToken: 'TK',
+        cardExpireMonth: 12,
+        cardExpireYear: 2030,
         stoPaymentsNumber: 119,
         chargeFrequency: 'monthly',
         firstChargeDate: '2026-11-15',

@@ -10,6 +10,7 @@ import { generateId } from '@/server/payload/collections/Exercises/types'
 
 import type { LessonJsonContentBlock, LessonJsonExercise, LessonJsonSection } from './json-schema'
 import { parseFunctionDsl } from './parse-function-dsl'
+import { withFeaturePointViewport } from '@/infra/utils/graphics/viewport-utils'
 
 const isNonEmpty = (s: string | undefined): s is string => typeof s === 'string' && s.trim() !== ''
 
@@ -51,13 +52,18 @@ function functionBlock(source: string): QuestionAxisBlock {
   // The parser always returns a spec, so even a partially-broken input
   // renders as an axis with whatever it could recover, which is more
   // useful for the author than silently dropping the block.
+  //
+  // Viewport is baked at import time using feature-point auto-ranging
+  // (intersections + axis intercepts). The LLM's x:[…] / y:[…] bounds
+  // are routinely too wide, so overriding here means new imports land
+  // with sensible ranges without needing a follow-up heal script.
   const { spec } = parseFunctionDsl(source)
   return {
     id: generateId(),
     type: 'question_axis',
     prompt: inlineRichText(''),
     layout: 'textRight',
-    axis: spec,
+    axis: withFeaturePointViewport(spec),
     displaySize: 'medium',
   }
 }

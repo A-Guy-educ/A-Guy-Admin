@@ -90,13 +90,14 @@ export const GeometrySpecEditor: React.FC<GeometrySpecEditorProps> = ({
   )
 
   const handleAngleLabelMoved = useCallback(
-    (index: number, distance: 'near' | 'mid' | 'far') => {
+    (index: number, position: 'inside' | 'outside') => {
       const newAngles = spec.elements.angles.map((a, i) => {
         if (i !== index || !a.label?.value) return a
-        return {
-          ...a,
-          label: { ...a.label, distance, position: a.label.position ?? 'inside' },
-        }
+        // Drop the legacy `distance` ring on drop — the drag targets the new
+        // inside/outside buckets, so keeping the stale ring would leave it
+        // overriding the dropped position via the legacy fallback.
+        const { distance: _legacy, ...rest } = a.label
+        return { ...a, label: { ...rest, position } }
       })
       updateElements({ angles: newAngles })
     },

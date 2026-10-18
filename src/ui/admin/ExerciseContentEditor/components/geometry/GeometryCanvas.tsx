@@ -7,14 +7,14 @@ import {
   getDefaultCanvasElementColor,
   sizeScaleToPixels,
 } from '@/infra/contracts/graphics/textColors'
-import { computeBoardSize } from '@/infra/utils/graphics/board-sizing'
 import {
   computeAngleLabelPos,
   orderRaysForMinorAngle,
-  snapAngleLabelDistance,
-  type AngleLabelDistance,
+  snapAngleLabelPosition,
+  type AngleLabelPosition,
   type BoardPixelScale,
 } from '@/infra/utils/graphics/angle-label'
+import { collectEdgeAngles, pickSafeCompassPosition } from '@/infra/utils/graphics/point-label'
 import type { JXGBoard, JXGElement } from 'jsxgraph'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { JSXGraphBoard } from '../shared/JSXGraphBoard'
@@ -34,7 +34,7 @@ interface GeometryCanvasProps {
   onCanvasClick?: (x: number, y: number) => void
   onTextMoved?: (index: number, x: number, y: number) => void
   onPointLabelMoved?: (name: string, position: string) => void
-  onAngleLabelMoved?: (index: number, distance: AngleLabelDistance) => void
+  onAngleLabelMoved?: (index: number, position: AngleLabelPosition) => void
 }
 
 // Fallback pixel width used on the very first render, before the
@@ -50,9 +50,11 @@ const EQ_TICK_SPACING_PX = 5
 
 const round1 = (n: number) => Math.round(n * 10) / 10
 
-/** Map compass direction to a pixel [x, y] offset for JSXGraph labels. */
+/** Map compass direction to a pixel [x, y] offset for JSXGraph labels. The
+ *  base distance was reduced from 15px → 11px (~27% closer) so labels sit
+ *  snugly next to the dot instead of floating well off the sketch. */
 function mapLabelOffset(pos?: string): [number, number] {
-  const d = 15
+  const d = 11
   const map: Record<string, [number, number]> = {
     tl: [-d, d],
     t: [0, d],
@@ -240,18 +242,38 @@ export const GeometryCanvas: React.FC<GeometryCanvasProps> = ({
   // Fit the editor canvas into the measured column while preserving the
   // bounding box's aspect ratio. Without this the old 420×320 default warped
   // circles into ~1.3:1 ellipses even when the underlying box was square.
+  //
+  // Editor-only sizing: deliberately NOT routed through the shared
+  // `computeBoardSize` helper. The student renderer caps every sketch at
+  // 330px tall and 75% of its container, which is right for an exercise
+  // page but too cramped for authoring. Authors need the full MIN/MAX
+  // editor-column range so detail work (dragging points, labelling
+  // vertices) stays legible.
   const { width: boardWidth, height: boardHeight } = useMemo(() => {
     const xRange = Math.abs(bbox[2] - bbox[0])
     const yRange = Math.abs(bbox[1] - bbox[3])
-    return computeBoardSize({
-      xRange,
-      yRange,
-      availableWidth: containerWidth,
-      maxWidth: containerWidth,
-      maxHeight: MAX_BOARD_PX,
-      minWidth: MIN_BOARD_PX,
-      minHeight: MIN_BOARD_PX,
-    })
+    const degenerate =
+      !Number.isFinite(xRange) || !Number.isFinite(yRange) || xRange <= 0 || yRange <= 0
+    if (degenerate || !containerWidth) {
+      const square = Math.max(MIN_BOARD_PX, Math.min(MAX_BOARD_PX, containerWidth || MIN_BOARD_PX))
+      return { width: square, height: square }
+    }
+    const aspect = xRange / yRange
+    let w = Math.min(containerWidth, MAX_BOARD_PX)
+    let h = w / aspect
+    if (h > MAX_BOARD_PX) {
+      h = MAX_BOARD_PX
+      w = h * aspect
+    }
+    if (w < MIN_BOARD_PX) {
+      w = MIN_BOARD_PX
+      h = w / aspect
+    }
+    if (h < MIN_BOARD_PX) {
+      h = MIN_BOARD_PX
+      w = h * aspect
+    }
+    return { width: Math.min(w, containerWidth), height: h }
   }, [bbox, containerWidth])
 
   return (
@@ -300,10 +322,16 @@ function syncPoints(
     const existing = elementsRef.current.get(elemId)
 
     const pointColor = point.color ?? getDefaultCanvasElementColor()
-    // Renderer fallback stays at 4 so legacy points saved without an explicit
-    // size don't shrink. New-point authoring uses 2 in PointsPanel.
-    const pointSize = point.size ?? 4
-    const labelOffset = mapLabelOffset(point.position)
+    // Fallback matches the authored default (2) so legacy data without a size
+    // field renders at the new default instead of the pre-change 4.
+    const pointSize = point.size ?? 2
+    // Nudge the label off any incident edge so it doesn't render on top of
+    // the sketch. Author's compass choice is kept whenever it's already free.
+    const safePosition = pickSafeCompassPosition(
+      point.position,
+      collectEdgeAngles(geometry, point.name),
+    )
+    const labelOffset = mapLabelOffset(safePosition)
     const labelVisible = point.labelVisible !== false
     // Include labelVisible in the change key so toggling it forces a full
     // recreation. JSXGraph's `withLabel` can't be flipped reliably via
@@ -519,7 +547,7 @@ function syncAngles(
   isSyncingRef: React.MutableRefObject<boolean>,
   isDraggingRef: React.MutableRefObject<boolean>,
   onAngleLabelMovedRef: React.RefObject<
-    ((index: number, distance: 'near' | 'mid' | 'far') => void) | undefined
+    ((index: number, position: AngleLabelPosition) => void) | undefined
   >,
 ) {
   for (let i = 0; i < geometry.elements.angles.length; i++) {
@@ -581,8 +609,8 @@ function syncAngles(
       strokeWidth: 2,
       fixed: true,
       // The angle's built-in label is disabled — we render our own draggable
-      // text element along the bisector so the admin can pick one of three
-      // distances (near/mid/far).
+      // text element along the bisector so the admin can pick inside or
+      // outside placement (and drag to flip between the two).
       withLabel: false,
       name: '',
       label: { visible: false } as Record<string, unknown>,
@@ -590,7 +618,6 @@ function syncAngles(
     elementsRef.current.set(elemId, el)
 
     if (hasLabel) {
-      const distance = angle.label!.distance ?? 'mid'
       const scale = getBoardScale(board)
       const { x: lx, y: ly } = computeAngleLabelPos(
         scale,
@@ -601,7 +628,7 @@ function syncAngles(
         ray2El.X(),
         ray2El.Y(),
         arcRadius,
-        distance,
+        { position: angle.label!.position, distance: angle.label!.distance },
       )
       const labelEl = board.create('text', [lx, ly, angle.label!.value!], {
         fontSize: angle.label!.fontSize || 12,
@@ -620,7 +647,7 @@ function syncAngles(
       })
       labelEl.on('up', () => {
         const t = labelEl as unknown as { X: () => number; Y: () => number }
-        const snapped = snapAngleLabelDistance(
+        const snapped = snapAngleLabelPosition(
           getBoardScale(board),
           centerEl.X(),
           centerEl.Y(),
