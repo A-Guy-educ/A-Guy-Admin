@@ -100,24 +100,31 @@ export async function POST(request: NextRequest) {
   }
 
   // ─── 2. Verify signature ────────────────────────────────────────────────
-  // When TRANZILLA_PRIVATE_KEY is configured (any non-dev environment), the
-  // webhook is REQUIRED to carry a valid response_hash. Early iterations
-  // allowed an unsigned log-and-accept fallback for the one-time flow, but
-  // the subscription-bootstrap branch writes a reusable card token and
-  // promotes a user tier, so an unsigned POST with a guessed subscription
-  // id would be a direct privilege-escalation path. The fallback stays
-  // available only when the private key env is absent (local dev / sandbox
-  // without the signing feature enabled on the terminal).
+  // Policy: unsigned webhooks are rejected only in production. The signing
+  // feature on Tranzila ("Hand Shake" / response_hash) is two-way — enabling
+  // it requires us to also sign outgoing iframe URLs, which we don't do yet.
+  // Until that outgoing work lands and Shai flips Hand Shake on, dev + preview
+  // deploys MUST tolerate unsigned notify_url POSTs or no subscription smoke
+  // can complete. VERCEL_ENV='production' is the right gate because Vercel
+  // builds every target with NODE_ENV=production regardless of env.
+  //
+  // When Tranzila DOES send a response_hash (prod with Hand Shake on, OR a
+  // sandbox merchant with signing enabled), we still verify it fully — the
+  // if-hasHash branch below is unconditional.
+  //
+  // Pre-prod hardening: implement outgoing URL signing in createTranzillaCheckout,
+  // enable Hand Shake on both terminals, then this gate becomes a backstop
+  // rather than the only line of defence.
   const hasHash = typeof body.response_hash === 'string' && body.response_hash.length > 0
-  const privateKeyConfigured = Boolean(process.env.TRANZILLA_PRIVATE_KEY)
+  const requireSignature = process.env.VERCEL_ENV === 'production'
   let authMethod: 'response_hash' | 'unsigned' = 'unsigned'
 
-  if (privateKeyConfigured && !hasHash) {
+  if (requireSignature && !hasHash) {
     const sourceIp =
       request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
     payload.logger.warn(
       { sourceIp, index: body.index },
-      '[tranzilla-webhook] missing response_hash while private key is configured — rejecting',
+      '[tranzilla-webhook] missing response_hash in production — rejecting',
     )
     return NextResponse.json({ error: 'response_hash required' }, { status: 401 })
   }
