@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- fix(payments): Send currency_code as ISO 4217 alpha (ILS), not numeric ([#632](https://github.com/A-Guy-educ/A-Guy-Admin/pull/632)) — @aguyshayb
 - fix(payments): currency_code as string + remove token-keeping fallback ([#630](https://github.com/A-Guy-educ/A-Guy-Admin/pull/630)) — @aguyshayb
 - feat(geometry): Smaller point/angle defaults and sketch-aware labels ([#629](https://github.com/A-Guy-educ/A-Guy-Admin/pull/629)) — @aguyshayb
 - fix(payments): Gate webhook signature requirement on VERCEL_ENV=production ([#628](https://github.com/A-Guy-educ/A-Guy-Admin/pull/628)) — @aguyshayb
