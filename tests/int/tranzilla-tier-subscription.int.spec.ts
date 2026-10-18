@@ -37,6 +37,27 @@ vi.mock('@/lib/payment/tranzilla', async () => {
   }
 })
 
+// Mock the Tranzila V2 REST client — the user-cancel tests need to assert
+// that cancelStandingOrder was (or was not) called, and we never want
+// tests to hit the real api.tranzila.com endpoint. Default resolves to
+// error_code 0 (success); individual tests override per-call.
+vi.mock('@/lib/payment/tranzila-v2-client', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/payment/tranzila-v2-client')>(
+    '@/lib/payment/tranzila-v2-client',
+  )
+  return {
+    ...actual,
+    cancelStandingOrder: vi.fn().mockResolvedValue({
+      httpStatus: 200,
+      errorCode: 0,
+      message: null,
+      body: {},
+      rawText: '',
+      contentType: 'application/json',
+    }),
+  }
+})
+
 let payload: Payload
 let originalDatabaseUrl: string | undefined
 let tenantId: string
@@ -137,6 +158,7 @@ async function createPendingSub(args: {
   currentPeriodEnd?: Date
   status?: string
   cancelAtPeriodEnd?: boolean
+  stoId?: string | null
 }) {
   const introPriceIls = args.offerSlug === 'intro3mo' ? 33 : null
   const introChargesTotal = args.offerSlug === 'intro3mo' ? 3 : null
@@ -176,6 +198,7 @@ async function createPendingSub(args: {
       ...(args.cancelAtPeriodEnd !== undefined
         ? { cancelAtPeriodEnd: args.cancelAtPeriodEnd }
         : {}),
+      ...(args.stoId !== undefined ? { stoId: args.stoId } : {}),
     } as any,
     overrideAccess: true,
   })
@@ -447,6 +470,176 @@ describe('PATCH /api/subscriptions/[id]/cancel', () => {
       authMock.mockRestore()
       await payload.delete({ collection: 'users', id: otherUser.id, overrideAccess: true })
     }
+  })
+
+  it('cancels the Tranzila STO before flipping local status when stoId is set', async () => {
+    const route = await import('@/app/api/subscriptions/[id]/cancel/route')
+    const v2 = await import('@/lib/payment/tranzila-v2-client')
+    const cancelMock = v2.cancelStandingOrder as unknown as ReturnType<typeof vi.fn>
+    cancelMock.mockClear()
+    cancelMock.mockResolvedValueOnce({
+      httpStatus: 200,
+      errorCode: 0,
+      message: null,
+      body: {},
+      rawText: '',
+      contentType: 'application/json',
+    })
+
+    const { sub } = await createPendingSub({
+      tierSlug: 'basic',
+      offerSlug: 'default',
+      status: 'active',
+      currentPeriodEnd: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
+      cancelAtPeriodEnd: false,
+      stoId: '487539',
+    })
+
+    const authMock = vi
+      .spyOn(payload as any, 'auth')
+      .mockResolvedValue({ user: { id: userId, collection: 'users' } } as any)
+    try {
+      const request = new NextRequest(`http://localhost:3000/api/subscriptions/${sub.id}/cancel`, {
+        method: 'PATCH',
+      })
+      const res = await route.PATCH(request, { params: Promise.resolve({ id: sub.id }) })
+      expect(res.status).toBe(200)
+      expect(cancelMock).toHaveBeenCalledTimes(1)
+      expect(cancelMock.mock.calls[0]?.[0]).toMatchObject({ stoId: '487539' })
+    } finally {
+      authMock.mockRestore()
+    }
+
+    const after = (await payload.findByID({
+      collection: 'subscriptions',
+      id: sub.id,
+      overrideAccess: true,
+    })) as any
+    expect(after.status).toBe('cancelled')
+    expect(after.cancelAtPeriodEnd).toBe(true)
+  })
+
+  it('leaves local status unchanged and returns 502 when Tranzila cancel fails', async () => {
+    const route = await import('@/app/api/subscriptions/[id]/cancel/route')
+    const v2 = await import('@/lib/payment/tranzila-v2-client')
+    const cancelMock = v2.cancelStandingOrder as unknown as ReturnType<typeof vi.fn>
+    cancelMock.mockClear()
+    cancelMock.mockResolvedValueOnce({
+      httpStatus: 200,
+      errorCode: 10001,
+      message: 'standing order not found',
+      body: { error_code: 10001, message: 'standing order not found' },
+      rawText: '',
+      contentType: 'application/json',
+    })
+
+    const { sub } = await createPendingSub({
+      tierSlug: 'basic',
+      offerSlug: 'default',
+      status: 'active',
+      currentPeriodEnd: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
+      cancelAtPeriodEnd: false,
+      stoId: '999999',
+    })
+
+    const authMock = vi
+      .spyOn(payload as any, 'auth')
+      .mockResolvedValue({ user: { id: userId, collection: 'users' } } as any)
+    try {
+      const request = new NextRequest(`http://localhost:3000/api/subscriptions/${sub.id}/cancel`, {
+        method: 'PATCH',
+      })
+      const res = await route.PATCH(request, { params: Promise.resolve({ id: sub.id }) })
+      expect(res.status).toBe(502)
+      expect(cancelMock).toHaveBeenCalledTimes(1)
+    } finally {
+      authMock.mockRestore()
+    }
+
+    const after = (await payload.findByID({
+      collection: 'subscriptions',
+      id: sub.id,
+      overrideAccess: true,
+    })) as any
+    expect(after.status).toBe('active')
+    expect(after.cancelAtPeriodEnd).toBe(false)
+    expect(after.cancelledAt ?? null).toBeNull()
+  })
+
+  it('returns 409 for a sub in mid-handoff (stoId sentinel) without calling Tranzila', async () => {
+    const route = await import('@/app/api/subscriptions/[id]/cancel/route')
+    const v2 = await import('@/lib/payment/tranzila-v2-client')
+    const cancelMock = v2.cancelStandingOrder as unknown as ReturnType<typeof vi.fn>
+    cancelMock.mockClear()
+
+    const { sub } = await createPendingSub({
+      tierSlug: 'basic',
+      offerSlug: 'default',
+      status: 'active',
+      currentPeriodEnd: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
+      cancelAtPeriodEnd: false,
+      stoId: `pending-handoff:${new ObjectId().toHexString()}`,
+    })
+
+    const authMock = vi
+      .spyOn(payload as any, 'auth')
+      .mockResolvedValue({ user: { id: userId, collection: 'users' } } as any)
+    try {
+      const request = new NextRequest(`http://localhost:3000/api/subscriptions/${sub.id}/cancel`, {
+        method: 'PATCH',
+      })
+      const res = await route.PATCH(request, { params: Promise.resolve({ id: sub.id }) })
+      expect(res.status).toBe(409)
+      expect(cancelMock).not.toHaveBeenCalled()
+    } finally {
+      authMock.mockRestore()
+    }
+
+    const after = (await payload.findByID({
+      collection: 'subscriptions',
+      id: sub.id,
+      overrideAccess: true,
+    })) as any
+    expect(after.status).toBe('active')
+  })
+
+  it('soft-cancels a cron-driven Tranzila sub (stoId null) without calling Tranzila', async () => {
+    const route = await import('@/app/api/subscriptions/[id]/cancel/route')
+    const v2 = await import('@/lib/payment/tranzila-v2-client')
+    const cancelMock = v2.cancelStandingOrder as unknown as ReturnType<typeof vi.fn>
+    cancelMock.mockClear()
+
+    const { sub } = await createPendingSub({
+      tierSlug: 'basic',
+      offerSlug: 'default',
+      cardToken: 'tk-cron-only',
+      status: 'active',
+      currentPeriodEnd: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
+      cancelAtPeriodEnd: false,
+      // No stoId → cron owns renewals, nothing to tell Tranzila
+    })
+
+    const authMock = vi
+      .spyOn(payload as any, 'auth')
+      .mockResolvedValue({ user: { id: userId, collection: 'users' } } as any)
+    try {
+      const request = new NextRequest(`http://localhost:3000/api/subscriptions/${sub.id}/cancel`, {
+        method: 'PATCH',
+      })
+      const res = await route.PATCH(request, { params: Promise.resolve({ id: sub.id }) })
+      expect(res.status).toBe(200)
+      expect(cancelMock).not.toHaveBeenCalled()
+    } finally {
+      authMock.mockRestore()
+    }
+
+    const after = (await payload.findByID({
+      collection: 'subscriptions',
+      id: sub.id,
+      overrideAccess: true,
+    })) as any
+    expect(after.status).toBe('cancelled')
+    expect(after.cancelAtPeriodEnd).toBe(true)
   })
 })
 
