@@ -204,6 +204,13 @@ export interface CreateStandingOrderArgs {
   terminalName: string
   /** Reusable TranzilaTK token issued by the tokenization terminal's iframe. */
   cardToken: string
+  /** Card expiry month 1-12. Tranzila's STO schema wants an integer here
+   * (unlike currency_code which must be a string). */
+  cardExpireMonth: number
+  /** Card expiry year 4-digit (e.g. 2030). Tranzila's STO schema enforces
+   * `minimum: 2020`, so pass the full year — NOT the 2-digit form Tranzila's
+   * iframe uses on the inbound notify_url. */
+  cardExpireYear: number
   /** Total number of charges Tranzila will run on this STO. Finite — we pick a long horizon. */
   stoPaymentsNumber: number
   chargeFrequency: TranzilaChargeFrequency
@@ -288,15 +295,26 @@ export async function createStandingOrder(
       email: args.client.email,
       ...(args.client.phone ? { phone: args.client.phone } : {}),
     },
+    // Each item's product name field is `name`, NOT `item_name`. Tranzila's
+    // v2 STO validator reports `{keyword: "required", missing: "name",
+    // data_path: ["items", 0]}` when given item_name. The error payload also
+    // echoes the fields Tranzila defaults (internal_id: null, code: null,
+    // type: "I", unit_type: 1, index_link: "N") — leaving those unset works.
     items: args.items.map((item) => ({
-      item_name: item.itemName,
+      name: item.itemName,
       unit_price: item.unitPriceIls,
       quantity: item.quantity ?? 1,
       currency_code: currencyCode,
       vat_percent: args.vatPercent ?? 0,
     })),
+    // Tranzila's STO validator requires card expiry on the card object even
+    // when a stored token is used. `expire_month` + `expire_year` are both
+    // required strings. The webhook captures these from the first-charge
+    // notify_url POST (fields `expmonth` and `expyear`) and passes them in.
     card: {
       token: args.cardToken,
+      expire_month: args.cardExpireMonth,
+      expire_year: args.cardExpireYear,
     },
   }
 
