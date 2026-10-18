@@ -219,24 +219,29 @@ export const AnglesPanel: React.FC<AnglesPanelProps> = ({
               />
             </div>
             <div className="panel-field">
-              <span className="panel-field-label">Dist</span>
+              <span className="panel-field-label">Pos</span>
               <select
                 className="panel-field-select"
                 disabled={!angle.label?.value}
-                value={angle.label?.distance ?? 'mid'}
+                value={angle.label?.position ?? 'inside'}
                 onChange={(e) => {
                   if (!angle.label?.value) return
+                  // Drop the legacy `distance` ring when the admin touches
+                  // the picker — from this edit on the label is driven by
+                  // `position` alone, matching the simplified inside/outside
+                  // UX. Untouched legacy labels still render identically via
+                  // the distance fallback in computeAngleLabelPos.
+                  const { distance: _legacy, ...rest } = angle.label
                   handleUpdate(index, {
                     label: {
-                      ...angle.label,
-                      distance: e.target.value as 'near' | 'mid' | 'far',
+                      ...rest,
+                      position: e.target.value as 'inside' | 'outside',
                     },
                   })
                 }}
               >
-                <option value="near">Near</option>
-                <option value="mid">Mid</option>
-                <option value="far">Far</option>
+                <option value="inside">Inside</option>
+                <option value="outside">Outside</option>
               </select>
             </div>
             <button type="button" className="panel-remove-btn" onClick={() => handleRemove(index)}>

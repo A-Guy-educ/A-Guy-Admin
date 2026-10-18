@@ -2,26 +2,36 @@
  * Shared placement helpers for geometry angle labels.
  *
  * The admin editor and the shared renderer both position angle labels along
- * the bisector at one of three preset distances relative to the angle's arc
- * radius. Extracted here so the multipliers stay in a single place — drifting
- * between editor and renderer would cause label positions to jump when a
- * lesson is opened in one but rendered in the other.
+ * the bisector. New authored content picks between two spots — inside the
+ * angle wedge or just outside the arc — via the `position` field. Legacy
+ * content may have a `distance` ring (near/mid/far) set; we keep honoring it
+ * so historical lessons render identically.
  */
 
+export type AngleLabelPosition = 'inside' | 'outside'
+
+/** Legacy ring presets — kept so content authored before the inside/outside
+ *  simplification keeps its original visual placement. New authoring never
+ *  writes `distance` and always goes through the position-based path. */
 export type AngleLabelDistance = 'near' | 'mid' | 'far'
 
 /**
- * Multipliers of the angle's `arcRadius` (in pixel units) used to place the
- * label along the interior bisector. `mid` sits ~one arc-radius outside the
- * arc; `near` hugs it; `far` pushes it a bit further out.
+ * Multipliers of the angle's `arcRadius` along the interior bisector.
+ *   - `inside` sits inside the arc wedge, roughly between the vertex and arc
+ *   - `outside` sits just past the arc on the same bisector ray
  */
+export const ANGLE_LABEL_POSITION_MULTIPLIERS: Record<AngleLabelPosition, number> = {
+  inside: 0.65,
+  outside: 1.5,
+}
+
+/** Legacy ring multipliers — only used when a label still carries a `distance`
+ *  value from the old near/mid/far picker. */
 export const ANGLE_LABEL_DISTANCE_MULTIPLIERS: Record<AngleLabelDistance, number> = {
   near: 1.3,
   mid: 2.0,
   far: 2.8,
 }
-
-const DISTANCE_ORDER: AngleLabelDistance[] = ['near', 'mid', 'far']
 
 /** Board pixel-per-user-unit scale (as JSXGraph exposes it at runtime). */
 export interface BoardPixelScale {
@@ -30,10 +40,22 @@ export interface BoardPixelScale {
 }
 
 /**
- * Return the (x, y) user-space coordinates for the label of an angle at the
- * given ring distance. The math runs in pixel space (via `unitX`, `unitY`) so
- * the label sits the same visual distance from the vertex regardless of the
- * board's aspect ratio, then converts back to user coords.
+ * Resolve the arc-radius multiplier for a label spec. Legacy data wins when
+ * `distance` is present so historical lessons keep their visual positioning;
+ * new data (no distance) uses the position-based multiplier.
+ */
+export function resolveAngleLabelMultiplier(
+  spec: { position?: AngleLabelPosition; distance?: AngleLabelDistance },
+): number {
+  if (spec.distance) return ANGLE_LABEL_DISTANCE_MULTIPLIERS[spec.distance]
+  return ANGLE_LABEL_POSITION_MULTIPLIERS[spec.position ?? 'inside']
+}
+
+/**
+ * Return the (x, y) user-space coordinates for the label of an angle. The math
+ * runs in pixel space (via `unitX`, `unitY`) so the label sits the same visual
+ * distance from the vertex regardless of the board's aspect ratio, then
+ * converts back to user coords.
  */
 export function computeAngleLabelPos(
   scale: BoardPixelScale,
@@ -44,7 +66,7 @@ export function computeAngleLabelPos(
   r2x: number,
   r2y: number,
   arcRadiusPx: number,
-  distance: AngleLabelDistance,
+  spec: { position?: AngleLabelPosition; distance?: AngleLabelDistance },
 ): { x: number; y: number } {
   const unitX = scale.unitX || 1
   const unitY = scale.unitY || 1
@@ -66,7 +88,7 @@ export function computeAngleLabelPos(
     bx /= bl
     by /= bl
   }
-  const distPx = arcRadiusPx * ANGLE_LABEL_DISTANCE_MULTIPLIERS[distance]
+  const distPx = arcRadiusPx * resolveAngleLabelMultiplier(spec)
   return { x: cx + (bx * distPx) / unitX, y: cy + (by * distPx) / unitY }
 }
 
@@ -96,31 +118,26 @@ export function orderRaysForMinorAngle<T extends { X: () => number; Y: () => num
 }
 
 /**
- * Given the drag-drop position of an angle label, return the distance ring
- * whose target position is closest. All math done in pixel space.
+ * Given the drag-drop position of an angle label, return the position bucket
+ * (`inside` vs `outside`) whose target is closest. All math done in pixel
+ * space. The midpoint between the two multipliers acts as the snap boundary,
+ * so dropping within the arc snaps to `inside` and dropping past it snaps to
+ * `outside`.
  */
-export function snapAngleLabelDistance(
+export function snapAngleLabelPosition(
   scale: BoardPixelScale,
   cx: number,
   cy: number,
   labelX: number,
   labelY: number,
   arcRadiusPx: number,
-): AngleLabelDistance {
+): AngleLabelPosition {
   const unitX = scale.unitX || 1
   const unitY = scale.unitY || 1
   const dx = (labelX - cx) * unitX
   const dy = (labelY - cy) * unitY
   const distPx = Math.hypot(dx, dy)
-  let best: AngleLabelDistance = 'mid'
-  let bestGap = Infinity
-  for (const key of DISTANCE_ORDER) {
-    const target = arcRadiusPx * ANGLE_LABEL_DISTANCE_MULTIPLIERS[key]
-    const gap = Math.abs(distPx - target)
-    if (gap < bestGap) {
-      bestGap = gap
-      best = key
-    }
-  }
-  return best
+  const insideTarget = arcRadiusPx * ANGLE_LABEL_POSITION_MULTIPLIERS.inside
+  const outsideTarget = arcRadiusPx * ANGLE_LABEL_POSITION_MULTIPLIERS.outside
+  return Math.abs(distPx - insideTarget) <= Math.abs(distPx - outsideTarget) ? 'inside' : 'outside'
 }

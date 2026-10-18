@@ -34,9 +34,9 @@ const defaultGeometry = (): GeometrySpecV1 => ({
   canvas: { width: 500, height: 500, background: '#ffffff', grid: true },
   elements: {
     points: [
-      { name: 'A', x: 150, y: 150, position: 'tl', visible: true, color: '#1a1a2e' },
-      { name: 'B', x: 350, y: 150, position: 'tr', visible: true, color: '#1a1a2e' },
-      { name: 'C', x: 250, y: 350, position: 'b', visible: true, color: '#1a1a2e' },
+      { name: 'A', x: 150, y: 150, position: 'tl', visible: true, color: '#1a1a2e', size: 2 },
+      { name: 'B', x: 350, y: 150, position: 'tr', visible: true, color: '#1a1a2e', size: 2 },
+      { name: 'C', x: 250, y: 350, position: 'b', visible: true, color: '#1a1a2e', size: 2 },
     ],
     lines: [],
     circles: [],
