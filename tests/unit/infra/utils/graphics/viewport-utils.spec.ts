@@ -7,6 +7,7 @@ import {
   validateViewportRange,
   checkGraphVisibility,
   resolveViewport,
+  withFeaturePointViewport,
 } from '@/infra/utils/graphics/viewport-utils'
 
 describe('viewport-utils', () => {
@@ -669,6 +670,131 @@ describe('viewport-utils', () => {
       // Y was 40 units for a 1-unit anchor — must tighten.
       expect(result.yMin).toBeGreaterThan(-20)
       expect(result.yMax).toBeLessThan(20)
+    })
+  })
+
+  describe('withFeaturePointViewport (import-time baking)', () => {
+    it('overrides a wasteful LLM-written manual viewport with feature-point bounds', () => {
+      // Mirrors the real-world case the content manager hit: the LLM
+      // wrote a manual viewport of x=[-12,12], y=[-22,22] for three
+      // lines whose intersections cluster around (0.5, 2). Importer
+      // should bake tight feature-point bounds, not store the LLM's.
+      const spec: AxisSpecV1 = {
+        kind: 'cartesian',
+        units: 1,
+        grid: { enabled: true },
+        axes: {
+          showNumbers: true,
+          showLabels: true,
+          ticks: 1,
+          labels: { x: 'x', y: 'y' },
+          origin: { x: 0, y: 0 },
+        },
+        viewportMode: 'manual',
+        viewport: { xMin: -12, xMax: 12, yMin: -22, yMax: 22 },
+        elements: {
+          points: [],
+          graphs: [
+            { id: 'g1', fn: '2*x+1', style: 'solid', thickness: 2 },
+            { id: 'g2', fn: '-x+3', style: 'solid', thickness: 2 },
+            { id: 'g3', fn: '2', style: 'solid', thickness: 2 },
+          ],
+        },
+      }
+
+      const baked = withFeaturePointViewport(spec)
+      expect(baked.viewportMode).toBe('manual')
+      // Much tighter than the LLM's bounds
+      expect(baked.viewport!.xMin!).toBeGreaterThan(-12)
+      expect(baked.viewport!.xMax!).toBeLessThan(12)
+      expect(baked.viewport!.yMin!).toBeGreaterThan(-22)
+      expect(baked.viewport!.yMax!).toBeLessThan(22)
+      // Still includes the intersection cluster
+      expect(baked.viewport!.xMin!).toBeLessThanOrEqual(0.5)
+      expect(baked.viewport!.xMax!).toBeGreaterThanOrEqual(1)
+      expect(baked.viewport!.yMax!).toBeGreaterThanOrEqual(3)
+    })
+
+    it('bakes a viewport for auto-mode specs with no stored bounds', () => {
+      const spec: AxisSpecV1 = {
+        kind: 'cartesian',
+        units: 1,
+        grid: { enabled: true },
+        axes: {
+          showNumbers: true,
+          showLabels: true,
+          ticks: 1,
+          labels: { x: 'x', y: 'y' },
+          origin: { x: 0, y: 0 },
+        },
+        viewportMode: 'auto',
+        elements: {
+          points: [],
+          graphs: [{ id: 'g1', fn: '2*x+1', style: 'solid', thickness: 2 }],
+        },
+      }
+
+      const baked = withFeaturePointViewport(spec)
+      expect(baked.viewportMode).toBe('manual')
+      expect(baked.viewport!.xMin).toBeDefined()
+      expect(baked.viewport!.xMax).toBeDefined()
+    })
+
+    it('leaves an empty spec untouched (no graph content to compute from)', () => {
+      const spec: AxisSpecV1 = {
+        kind: 'cartesian',
+        units: 1,
+        grid: { enabled: true },
+        axes: {
+          showNumbers: true,
+          showLabels: true,
+          ticks: 1,
+          labels: { x: 'x', y: 'y' },
+          origin: { x: 0, y: 0 },
+        },
+        viewportMode: 'auto',
+        viewport: { xMin: -5, xMax: 5, yMin: -5, yMax: 5 },
+        elements: { points: [], graphs: [] },
+      }
+
+      const baked = withFeaturePointViewport(spec)
+      // Author's declared viewport preserved — nothing to compute from
+      expect(baked.viewportMode).toBe('auto')
+      expect(baked.viewport).toEqual({ xMin: -5, xMax: 5, yMin: -5, yMax: 5 })
+    })
+
+    it('rounds bounds to 4 decimal places for storage cleanliness', () => {
+      // sqrt(2) intercepts in x^2 = 2 → test precision cap
+      const spec: AxisSpecV1 = {
+        kind: 'cartesian',
+        units: 1,
+        grid: { enabled: true },
+        axes: {
+          showNumbers: true,
+          showLabels: true,
+          ticks: 1,
+          labels: { x: 'x', y: 'y' },
+          origin: { x: 0, y: 0 },
+        },
+        viewportMode: 'auto',
+        elements: {
+          points: [],
+          graphs: [
+            { id: 'g1', fn: 'x^2', style: 'solid', thickness: 2 },
+            { id: 'g2', fn: '2', style: 'solid', thickness: 2 },
+          ],
+        },
+      }
+
+      const baked = withFeaturePointViewport(spec)
+      for (const v of [
+        baked.viewport!.xMin!,
+        baked.viewport!.xMax!,
+        baked.viewport!.yMin!,
+        baked.viewport!.yMax!,
+      ]) {
+        expect(v).toBeCloseTo(Math.round(v * 10000) / 10000, 10)
+      }
     })
   })
 })

@@ -278,6 +278,44 @@ export function calculateAutoViewport(spec: AxisSpecV1): ViewportBounds {
 }
 
 /**
+ * Round viewport bounds to 4 decimal places. Keeps stored docs clean in
+ * Compass without visible precision loss (intersections at e.g. √2 still
+ * resolve to the same y-value within rendering tolerance).
+ */
+function round4(n: number): number {
+  return Math.round(n * 10000) / 10000
+}
+
+/**
+ * Return a copy of `spec` with its viewport baked to the feature-point
+ * auto-viewport (manual mode). Used at import time so new content lands
+ * with good bounds regardless of what the generator wrote in its
+ * `x:[…]` / `y:[…]` DSL. Mirrors the one-shot heal script (`scripts/
+ * heal-axis-viewports.mts`) but applies on every create, so the viewport
+ * is correct in Mongo without needing a batch job.
+ *
+ * No-op when the spec has no graph content to compute from — the parsed
+ * viewport (if any) is left untouched in that case.
+ */
+export function withFeaturePointViewport<T extends AxisSpecV1>(spec: T): T {
+  const hasGraphs = (spec.elements?.graphs?.length ?? 0) > 0
+  const hasAnchors = collectAnchorBounds(spec) !== null
+  if (!hasGraphs && !hasAnchors) return spec
+
+  const bounds = calculateAutoViewport(spec)
+  return {
+    ...spec,
+    viewportMode: 'manual',
+    viewport: {
+      xMin: round4(bounds.xMin),
+      xMax: round4(bounds.xMax),
+      yMin: round4(bounds.yMin),
+      yMax: round4(bounds.yMax),
+    },
+  }
+}
+
+/**
  * Validate viewport range values
  */
 export function validateViewportRange(viewport: ViewportBounds): ViewportValidationResult {
