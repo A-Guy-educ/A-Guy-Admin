@@ -322,9 +322,9 @@ function syncPoints(
     const existing = elementsRef.current.get(elemId)
 
     const pointColor = point.color ?? getDefaultCanvasElementColor()
-    // Renderer fallback stays at 4 so legacy points saved without an explicit
-    // size don't shrink. New-point authoring uses 2 in PointsPanel.
-    const pointSize = point.size ?? 4
+    // Fallback matches the authored default (2) so legacy data without a size
+    // field renders at the new default instead of the pre-change 4.
+    const pointSize = point.size ?? 2
     // Nudge the label off any incident edge so it doesn't render on top of
     // the sketch. Author's compass choice is kept whenever it's already free.
     const safePosition = pickSafeCompassPosition(
