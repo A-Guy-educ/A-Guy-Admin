@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- fix(geometry): Lower renderer size fallback from 4 to 2 ([#634](https://github.com/A-Guy-educ/A-Guy-Admin/pull/634)) — @aguyshayb
 - fix(payments): STO payload — items[].name + card expiry + local smoke iterator ([#633](https://github.com/A-Guy-educ/A-Guy-Admin/pull/633)) — @aguyshayb
 - feat(graphics): Bake feature-point viewport at import time ([#631](https://github.com/A-Guy-educ/A-Guy-Admin/pull/631)) — @aguyshayb
 - fix(payments): Send currency_code as ISO 4217 alpha (ILS), not numeric ([#632](https://github.com/A-Guy-educ/A-Guy-Admin/pull/632)) — @aguyshayb
