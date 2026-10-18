@@ -321,6 +321,14 @@ export async function POST(request: NextRequest) {
 
     const base = serverBaseUrl(request)
     const notifyUrl = `${base}/api/webhooks/tranzilla`
+    // Hosted-iframe charge runs on the REGULAR terminal (fxpaguy), not the
+    // tokenization terminal (fxpaguytok). Per Tranzila support: the
+    // tokenization terminal is API-only and has no hosted payment page
+    // (every /{fxpaguytok}/*.php returns 404). The regular terminal issues
+    // a TranzilaTK on the notify_url POST that's valid account-wide, and
+    // the webhook then passes that token to createstov2 with
+    // terminal_name=fxpaguytok where My-Billing takes over for recurring
+    // charges. Tokens are account-scoped, not terminal-scoped.
     const checkout = createTranzillaCheckout({
       sum: priceIls,
       currency: 'ILS',
@@ -329,7 +337,6 @@ export async function POST(request: NextRequest) {
       cancelUrl,
       notifyUrl,
       lang: 'il',
-      useTokenTerminal: true,
       cField1: String(user.id),
       cField2: String(transaction.id),
       cField3: String(subscription.id),
