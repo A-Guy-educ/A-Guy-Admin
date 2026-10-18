@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- fix(payments): STO payload — items[].name + card expiry + local smoke iterator ([#633](https://github.com/A-Guy-educ/A-Guy-Admin/pull/633)) — @aguyshayb
 - feat(graphics): Bake feature-point viewport at import time ([#631](https://github.com/A-Guy-educ/A-Guy-Admin/pull/631)) — @aguyshayb
 - fix(payments): Send currency_code as ISO 4217 alpha (ILS), not numeric ([#632](https://github.com/A-Guy-educ/A-Guy-Admin/pull/632)) — @aguyshayb
 - fix(payments): currency_code as string + remove token-keeping fallback ([#630](https://github.com/A-Guy-educ/A-Guy-Admin/pull/630)) — @aguyshayb
