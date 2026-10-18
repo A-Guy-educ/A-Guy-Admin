@@ -429,6 +429,35 @@ interface HandoffArgs {
   regularPriceIls: number
   newPeriodEnd: Date
   cardToken: string
+  cardExpireMonth: number
+  cardExpireYear: number
+}
+
+/**
+ * Parse the card expiry from Tranzila's notify_url POST body. Tranzila's
+ * hosted iframe sends `expdate` in MMYY form (e.g. "1230" for Dec 2030);
+ * some flows send separate `expmonth`/`expyear` fields instead. We accept
+ * either. Returns null when neither is parseable — the caller must log
+ * and skip the STO handoff in that case (the user still has their
+ * promoted tier and month-1 charge, just no auto-renewal).
+ */
+function parseCardExpiry(body: Record<string, string>): { month: number; year: number } | null {
+  // Format 1: expdate as MMYY string (most common on fxpaguy's notify_url).
+  const expdate = body.expdate ?? body.expDate
+  if (expdate && /^\d{4}$/.test(expdate)) {
+    const month = parseInt(expdate.slice(0, 2), 10)
+    const year = 2000 + parseInt(expdate.slice(2, 4), 10)
+    if (month >= 1 && month <= 12 && year >= 2020) return { month, year }
+  }
+  // Format 2: separate expmonth + expyear fields (older iframes).
+  const monthRaw = parseInt(body.expmonth ?? body.expMonth ?? '', 10)
+  const yearRaw = parseInt(body.expyear ?? body.expYear ?? '', 10)
+  if (monthRaw >= 1 && monthRaw <= 12 && yearRaw > 0) {
+    // yearRaw may be 2-digit (30) or 4-digit (2030); normalize.
+    const year = yearRaw < 100 ? 2000 + yearRaw : yearRaw
+    if (year >= 2020) return { month: monthRaw, year }
+  }
+  return null
 }
 
 /**
@@ -462,8 +491,17 @@ interface HandoffArgs {
  * cleanup.
  */
 async function handoffToStandingOrder(args: HandoffArgs): Promise<void> {
-  const { payload, subscriptionRowId, userId, tierSlug, regularPriceIls, newPeriodEnd, cardToken } =
-    args
+  const {
+    payload,
+    subscriptionRowId,
+    userId,
+    tierSlug,
+    regularPriceIls,
+    newPeriodEnd,
+    cardToken,
+    cardExpireMonth,
+    cardExpireYear,
+  } = args
 
   if (!cardToken) {
     payload.logger.error(
@@ -541,6 +579,8 @@ async function handoffToStandingOrder(args: HandoffArgs): Promise<void> {
     result = await createStandingOrder({
       terminalName: terminal,
       cardToken,
+      cardExpireMonth,
+      cardExpireYear,
       stoPaymentsNumber: STO_TOTAL_PAYMENTS_FROM_IFRAME_BOOTSTRAP,
       chargeFrequency: 'monthly',
       firstChargeDate: formatTranzilaDate(newPeriodEnd),
@@ -809,15 +849,37 @@ async function handleTranzillaSubscriptionBootstrap(
   // cron (failure case), and either way the token-based retry on replay
   // would double-create.
   if (subscription.status === 'pending' && !subscription.stoId) {
-    await handoffToStandingOrder({
-      payload,
-      subscriptionRowId,
-      userId,
-      tierSlug: tierSlug as TierSlug,
-      regularPriceIls: subscription.regularPriceIls ?? 0,
-      newPeriodEnd,
-      cardToken: body.TranzilaTK || '',
-    })
+    const expiry = parseCardExpiry(body)
+    if (!expiry) {
+      // Can't call createstov2 without card expiry. Log fatal with the full
+      // key list so ops can see which fields Tranzila actually sent — the
+      // field name probably just needs updating in parseCardExpiry.
+      payload.logger.fatal(
+        {
+          subscriptionRowId,
+          availableBodyKeys: Object.keys(body),
+          expdateVariants: {
+            expdate: body.expdate,
+            expDate: body.expDate,
+            expmonth: body.expmonth,
+            expyear: body.expyear,
+          },
+        },
+        '[tranzilla-webhook/sub-bootstrap] CRITICAL — no parseable card expiry in notify_url body; cannot call createstov2',
+      )
+    } else {
+      await handoffToStandingOrder({
+        payload,
+        subscriptionRowId,
+        userId,
+        tierSlug: tierSlug as TierSlug,
+        regularPriceIls: subscription.regularPriceIls ?? 0,
+        newPeriodEnd,
+        cardToken: body.TranzilaTK || '',
+        cardExpireMonth: expiry.month,
+        cardExpireYear: expiry.year,
+      })
+    }
   }
 
   // Flip only when still pending — on replay the Tx may already be
