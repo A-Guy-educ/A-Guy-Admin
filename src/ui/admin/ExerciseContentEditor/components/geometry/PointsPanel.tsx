@@ -14,11 +14,9 @@ interface PointsPanelProps {
   onChange: (points: GeoPoint[]) => void
 }
 
-/** Renderer fallback (mirrored in geometryElements.ts / GeometryCanvas.tsx) —
- *  legacy points saved without an explicit size render at this value, so it
- *  must stay 4 to preserve existing content. Newly-added points use
- *  NEW_POINT_SIZE. */
-const DEFAULT_POINT_SIZE = 4
+/** Shared default for both newly-added points and the renderer fallback —
+ *  mirrored in GeometryCanvas.tsx and geometryElements.ts. */
+const DEFAULT_POINT_SIZE = 2
 const NEW_POINT_SIZE = 2
 const DEFAULT_POINT_POSITION = 'r' as const
 

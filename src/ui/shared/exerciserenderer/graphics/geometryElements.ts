@@ -56,9 +56,9 @@ function renderPoints(
       visible: p.visible !== false,
       fillColor: pointColor,
       strokeColor: pointColor,
-      // Renderer fallback stays at 4 so legacy points saved without an explicit
-      // size don't shrink. Author-time default is 2 (set in the admin editor).
-      size: p.size ?? 4,
+      // Fallback matches the authored default (2) so legacy data without a size
+      // field renders at the new default instead of the pre-change 4.
+      size: p.size ?? 2,
       withLabel: labelVisible,
       label: {
         offset: mapLabelOffset(safePosition),

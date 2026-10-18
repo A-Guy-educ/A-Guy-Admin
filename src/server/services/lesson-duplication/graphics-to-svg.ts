@@ -127,7 +127,7 @@ export function geometrySpecToSvg(spec: unknown): string {
     const cx = point.x
     const cy = height - point.y // Flip Y for SVG
     const color = point.color || DEFAULT_STROKE
-    const size = point.size || 4
+    const size = point.size || 2
     parts.push(
       `<circle cx="${cx}" cy="${cy}" r="${size}" fill="${escapeXml(color)}" stroke="${escapeXml(color)}"/>`,
     )
