@@ -10,10 +10,11 @@ import {
 import {
   computeAngleLabelPos,
   orderRaysForMinorAngle,
-  snapAngleLabelDistance,
-  type AngleLabelDistance,
+  snapAngleLabelPosition,
+  type AngleLabelPosition,
   type BoardPixelScale,
 } from '@/infra/utils/graphics/angle-label'
+import { collectEdgeAngles, pickSafeCompassPosition } from '@/infra/utils/graphics/point-label'
 import type { JXGBoard, JXGElement } from 'jsxgraph'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { JSXGraphBoard } from '../shared/JSXGraphBoard'
@@ -33,7 +34,7 @@ interface GeometryCanvasProps {
   onCanvasClick?: (x: number, y: number) => void
   onTextMoved?: (index: number, x: number, y: number) => void
   onPointLabelMoved?: (name: string, position: string) => void
-  onAngleLabelMoved?: (index: number, distance: AngleLabelDistance) => void
+  onAngleLabelMoved?: (index: number, position: AngleLabelPosition) => void
 }
 
 // Fallback pixel width used on the very first render, before the
@@ -49,9 +50,11 @@ const EQ_TICK_SPACING_PX = 5
 
 const round1 = (n: number) => Math.round(n * 10) / 10
 
-/** Map compass direction to a pixel [x, y] offset for JSXGraph labels. */
+/** Map compass direction to a pixel [x, y] offset for JSXGraph labels. The
+ *  base distance was reduced from 15px → 11px (~27% closer) so labels sit
+ *  snugly next to the dot instead of floating well off the sketch. */
 function mapLabelOffset(pos?: string): [number, number] {
-  const d = 15
+  const d = 11
   const map: Record<string, [number, number]> = {
     tl: [-d, d],
     t: [0, d],
@@ -322,7 +325,13 @@ function syncPoints(
     // Renderer fallback stays at 4 so legacy points saved without an explicit
     // size don't shrink. New-point authoring uses 2 in PointsPanel.
     const pointSize = point.size ?? 4
-    const labelOffset = mapLabelOffset(point.position)
+    // Nudge the label off any incident edge so it doesn't render on top of
+    // the sketch. Author's compass choice is kept whenever it's already free.
+    const safePosition = pickSafeCompassPosition(
+      point.position,
+      collectEdgeAngles(geometry, point.name),
+    )
+    const labelOffset = mapLabelOffset(safePosition)
     const labelVisible = point.labelVisible !== false
     // Include labelVisible in the change key so toggling it forces a full
     // recreation. JSXGraph's `withLabel` can't be flipped reliably via
@@ -538,7 +547,7 @@ function syncAngles(
   isSyncingRef: React.MutableRefObject<boolean>,
   isDraggingRef: React.MutableRefObject<boolean>,
   onAngleLabelMovedRef: React.RefObject<
-    ((index: number, distance: 'near' | 'mid' | 'far') => void) | undefined
+    ((index: number, position: AngleLabelPosition) => void) | undefined
   >,
 ) {
   for (let i = 0; i < geometry.elements.angles.length; i++) {
@@ -600,8 +609,8 @@ function syncAngles(
       strokeWidth: 2,
       fixed: true,
       // The angle's built-in label is disabled — we render our own draggable
-      // text element along the bisector so the admin can pick one of three
-      // distances (near/mid/far).
+      // text element along the bisector so the admin can pick inside or
+      // outside placement (and drag to flip between the two).
       withLabel: false,
       name: '',
       label: { visible: false } as Record<string, unknown>,
@@ -609,7 +618,6 @@ function syncAngles(
     elementsRef.current.set(elemId, el)
 
     if (hasLabel) {
-      const distance = angle.label!.distance ?? 'mid'
       const scale = getBoardScale(board)
       const { x: lx, y: ly } = computeAngleLabelPos(
         scale,
@@ -620,7 +628,7 @@ function syncAngles(
         ray2El.X(),
         ray2El.Y(),
         arcRadius,
-        distance,
+        { position: angle.label!.position, distance: angle.label!.distance },
       )
       const labelEl = board.create('text', [lx, ly, angle.label!.value!], {
         fontSize: angle.label!.fontSize || 12,
@@ -639,7 +647,7 @@ function syncAngles(
       })
       labelEl.on('up', () => {
         const t = labelEl as unknown as { X: () => number; Y: () => number }
-        const snapped = snapAngleLabelDistance(
+        const snapped = snapAngleLabelPosition(
           getBoardScale(board),
           centerEl.X(),
           centerEl.Y(),

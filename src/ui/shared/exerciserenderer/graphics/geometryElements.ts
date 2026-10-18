@@ -6,6 +6,7 @@ import {
   sizeScaleToPixels,
 } from '@/infra/contracts/graphics/textColors'
 import { computeAngleLabelPos, orderRaysForMinorAngle } from '@/infra/utils/graphics/angle-label'
+import { collectEdgeAngles, pickSafeCompassPosition } from '@/infra/utils/graphics/point-label'
 
 type PointSpec = GeometrySpecV1['elements']['points'][number]
 type LineSpec = GeometrySpecV1['elements']['lines'][number]
@@ -19,9 +20,11 @@ type EqualAngleGroup = NonNullable<GeometrySpecV1['elements']['equalAngles']>[nu
 const EQ_TICK_LENGTH_PX = 10.4
 const EQ_TICK_SPACING_PX = 5
 
-/** Map compass direction to a pixel [x, y] offset for JSXGraph labels. */
+/** Map compass direction to a pixel [x, y] offset for JSXGraph labels. The
+ *  base distance was reduced from 15px → 11px (~27% closer) so labels sit
+ *  snugly next to the dot instead of floating well off the sketch. */
 function mapLabelOffset(pos?: string): [number, number] {
-  const d = 15
+  const d = 11
   const map: Record<string, [number, number]> = {
     tl: [-d, d],
     t: [0, d],
@@ -35,11 +38,18 @@ function mapLabelOffset(pos?: string): [number, number] {
   return map[pos || 'r'] || [d, 0]
 }
 
-function renderPoints(board: JXG.Board, points: PointSpec[]): Map<string, any> {
+function renderPoints(
+  board: JXG.Board,
+  points: PointSpec[],
+  spec: GeometrySpecV1,
+): Map<string, any> {
   const pointMap = new Map<string, any>()
   for (const p of points) {
     const pointColor = p.color ?? getDefaultTextColor()
     const labelVisible = p.labelVisible !== false
+    // Nudge off incident edges so the label doesn't render on top of lines or
+    // polygon sides. Author's position is kept when it's already free.
+    const safePosition = pickSafeCompassPosition(p.position, collectEdgeAngles(spec, p.name))
     const pt = board.create('point', [p.x, p.y], {
       name: p.name,
       fixed: true,
@@ -51,7 +61,7 @@ function renderPoints(board: JXG.Board, points: PointSpec[]): Map<string, any> {
       size: p.size ?? 4,
       withLabel: labelVisible,
       label: {
-        offset: mapLabelOffset(p.position),
+        offset: mapLabelOffset(safePosition),
         fontSize: p.fontSize ?? 15,
         cssStyle: "font-family: 'Times New Roman', Times, serif;",
         visible: labelVisible,
@@ -155,7 +165,7 @@ function renderAngles(board: JXG.Board, angles: AngleSpec[], pointMap: Map<strin
     // arcRadius don't grow. Author-time default is 50 (set in the admin editor).
     const arcRadius = a.arcRadius || 30
     // Built-in label disabled — the editor renders a separate text element
-    // along the bisector so admins can pick one of three preset distances.
+    // along the bisector so admins can pick inside/outside placement.
     // Web mirrors that here so the rendered lesson matches what the editor
     // shows.
     // Reorder rays so JSXGraph draws the minor angle, never the reflex one.
@@ -179,7 +189,6 @@ function renderAngles(board: JXG.Board, angles: AngleSpec[], pointMap: Map<strin
     })
 
     if (a.label?.value) {
-      const distance = a.label.distance ?? 'mid'
       const { x, y } = computeAngleLabelPos(
         getBoardScale(board),
         center.X(),
@@ -189,7 +198,7 @@ function renderAngles(board: JXG.Board, angles: AngleSpec[], pointMap: Map<strin
         ray2.X(),
         ray2.Y(),
         arcRadius,
-        distance,
+        { position: a.label.position, distance: a.label.distance },
       )
       board.create('text', [x, y, a.label.value], {
         fontSize: a.label.fontSize ?? 12,
@@ -345,7 +354,7 @@ function renderEqualAngles(
  * Render all geometry elements from a GeometrySpecV1 onto a JSXGraph board.
  */
 export function renderGeometrySpec(board: JXG.Board, spec: GeometrySpecV1): void {
-  const pointMap = renderPoints(board, spec.elements.points)
+  const pointMap = renderPoints(board, spec.elements.points, spec)
   renderLines(board, spec.elements.lines, pointMap, spec.canvas.height)
   renderCircles(board, spec.elements.circles, pointMap)
   renderAngles(board, spec.elements.angles, pointMap)
