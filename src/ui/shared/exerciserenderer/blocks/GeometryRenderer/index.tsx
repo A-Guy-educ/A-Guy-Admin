@@ -15,25 +15,18 @@ const JSXGraphBoard = dynamic(
   },
 )
 
-/**
- * Percentage of the surrounding container the board should occupy. Mirrors
- * `SIZE_MAP` in AxisRenderer so all three sketch blocks share the same scale.
- */
-const GEOMETRY_SIZE_MAP: Record<DisplaySize, number> = {
-  xsmall: 0.25,
-  small: 0.33,
-  medium: 0.5,
-  large: 0.75,
-  full: 1,
-}
-
 interface GeometryRendererProps {
   blockId: string
   spec: GeometrySpecV1
+  /**
+   * Legacy field kept for prop compatibility with existing callers.
+   * Sizing now comes from the shared sketch rules in `board-sizing.ts`
+   * (fixed height, aspect-driven width, container-relative max).
+   */
   displaySize?: DisplaySize
 }
 
-export function GeometryRenderer({ blockId, spec, displaySize = 'full' }: GeometryRendererProps) {
+export function GeometryRenderer({ blockId, spec }: GeometryRendererProps) {
   const handleBoardReady = useCallback(
     (board: JXG.Board) => {
       renderGeometrySpec(board, spec)
@@ -66,8 +59,6 @@ export function GeometryRenderer({ blockId, spec, displaySize = 'full' }: Geomet
   const containerRef = useRef<HTMLDivElement>(null)
   const [dimensions, setDimensions] = useState({ width: canvas.width, height: canvas.height })
 
-  const sizePercent = GEOMETRY_SIZE_MAP[displaySize]
-
   useEffect(() => {
     const container = containerRef.current
     if (!container) return
@@ -75,11 +66,7 @@ export function GeometryRenderer({ blockId, spec, displaySize = 'full' }: Geomet
       const size = computeBoardSize({
         xRange,
         yRange,
-        availableWidth: container.clientWidth * sizePercent,
-        maxWidth: canvas.width,
-        maxHeight: canvas.height,
-        minWidth: Math.min(200, canvas.width),
-        minHeight: Math.min(200, canvas.height),
+        availableWidth: container.clientWidth,
       })
       setDimensions(size)
     }
@@ -87,10 +74,10 @@ export function GeometryRenderer({ blockId, spec, displaySize = 'full' }: Geomet
     const observer = new ResizeObserver(recompute)
     observer.observe(container)
     return () => observer.disconnect()
-  }, [xRange, yRange, canvas.width, canvas.height, sizePercent])
+  }, [xRange, yRange])
 
   return (
-    <div className="my-4 flex justify-center" ref={containerRef}>
+    <div className="my-4 flex justify-center w-full" ref={containerRef}>
       <JSXGraphBoard
         key={specKey}
         id={blockId}

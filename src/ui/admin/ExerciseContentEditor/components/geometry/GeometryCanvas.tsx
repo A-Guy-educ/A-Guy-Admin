@@ -7,7 +7,6 @@ import {
   getDefaultCanvasElementColor,
   sizeScaleToPixels,
 } from '@/infra/contracts/graphics/textColors'
-import { computeBoardSize } from '@/infra/utils/graphics/board-sizing'
 import {
   computeAngleLabelPos,
   orderRaysForMinorAngle,
@@ -240,18 +239,38 @@ export const GeometryCanvas: React.FC<GeometryCanvasProps> = ({
   // Fit the editor canvas into the measured column while preserving the
   // bounding box's aspect ratio. Without this the old 420×320 default warped
   // circles into ~1.3:1 ellipses even when the underlying box was square.
+  //
+  // Editor-only sizing: deliberately NOT routed through the shared
+  // `computeBoardSize` helper. The student renderer caps every sketch at
+  // 330px tall and 75% of its container, which is right for an exercise
+  // page but too cramped for authoring. Authors need the full MIN/MAX
+  // editor-column range so detail work (dragging points, labelling
+  // vertices) stays legible.
   const { width: boardWidth, height: boardHeight } = useMemo(() => {
     const xRange = Math.abs(bbox[2] - bbox[0])
     const yRange = Math.abs(bbox[1] - bbox[3])
-    return computeBoardSize({
-      xRange,
-      yRange,
-      availableWidth: containerWidth,
-      maxWidth: containerWidth,
-      maxHeight: MAX_BOARD_PX,
-      minWidth: MIN_BOARD_PX,
-      minHeight: MIN_BOARD_PX,
-    })
+    const degenerate =
+      !Number.isFinite(xRange) || !Number.isFinite(yRange) || xRange <= 0 || yRange <= 0
+    if (degenerate || !containerWidth) {
+      const square = Math.max(MIN_BOARD_PX, Math.min(MAX_BOARD_PX, containerWidth || MIN_BOARD_PX))
+      return { width: square, height: square }
+    }
+    const aspect = xRange / yRange
+    let w = Math.min(containerWidth, MAX_BOARD_PX)
+    let h = w / aspect
+    if (h > MAX_BOARD_PX) {
+      h = MAX_BOARD_PX
+      w = h * aspect
+    }
+    if (w < MIN_BOARD_PX) {
+      w = MIN_BOARD_PX
+      h = w / aspect
+    }
+    if (h < MIN_BOARD_PX) {
+      h = MIN_BOARD_PX
+      w = h * aspect
+    }
+    return { width: Math.min(w, containerWidth), height: h }
   }, [bbox, containerWidth])
 
   return (

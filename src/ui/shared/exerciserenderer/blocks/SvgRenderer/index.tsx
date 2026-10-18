@@ -7,16 +7,6 @@ import { RichTextRenderer } from '../RichTextRenderer'
 import { sanitizeSvg } from '../../utils/svgSanitize'
 import type { DisplaySize } from '../AxisRenderer'
 
-/** Mirrors SIZE_MAP in AxisRenderer so all three sketch blocks share the same
- *  scale. `xsmall` = 25 %; `small` stays at 33 % for backwards compat. */
-const SVG_SIZE_MAP: Record<DisplaySize, string> = {
-  xsmall: '25%',
-  small: '33%',
-  medium: '50%',
-  large: '75%',
-  full: '100%',
-}
-
 interface SvgRendererProps {
   block: SvgBlock
   selectedHotspotIds?: string[]
@@ -34,7 +24,6 @@ export function SvgRenderer({
   disabled,
   checkResult,
   correctHotspotIds,
-  displaySize,
 }: SvgRendererProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const sanitizedSvg = useMemo(() => sanitizeSvg(block.value), [block.value])
@@ -122,24 +111,33 @@ export function SvgRenderer({
     ? { ...block.caption, id: `${block.id}-caption`, mediaIds: block.caption.mediaIds || [] }
     : null
 
-  // Prefer the prop; fall back to the block's authored value; then to 'full'.
-  // Applied on the outer wrapper so the caption tracks the sketch width.
-  const effectiveSize = displaySize ?? block.displaySize ?? 'full'
-  const widthStyle = SVG_SIZE_MAP[effectiveSize]
+  // Sizing follows the shared sketch rules (height 330, max 75% of
+  // container, min 280). The outer wrapper is capped so the whole card
+  // including caption tracks the sketch width; the SVG inside fills the
+  // card and lets its intrinsic aspect ratio pick the width.
+  //
+  // `displaySize` is intentionally no longer consulted — the spec uses a
+  // single container-relative max rather than per-block percentage scales.
+  // The prop stays in the interface for backwards compatibility; see
+  // AxisRenderer for the matching change.
 
   return (
     <div
       className="rounded-xl border border-border/20 overflow-hidden bg-card shadow-elevation-1 p-3 mx-auto"
-      style={{ width: widthStyle, maxWidth: '100%' }}
+      style={{
+        maxWidth: `min(75%, 100%)`,
+        minWidth: 'min(280px, 100%)',
+      }}
     >
       <div
         ref={containerRef}
         role={isInteractive ? 'application' : 'img'}
         aria-label={block.altText || 'Diagram'}
         className={cn(
-          'w-full max-w-full overflow-hidden [&>svg]:max-w-full [&>svg]:h-auto',
+          'overflow-hidden [&>svg]:w-auto [&>svg]:h-full [&>svg]:max-w-full [&>svg]:mx-auto',
           isInteractive && 'select-none',
         )}
+        style={{ height: '330px' }}
         dangerouslySetInnerHTML={{ __html: sanitizedSvg }}
       />
       {captionBlock && (

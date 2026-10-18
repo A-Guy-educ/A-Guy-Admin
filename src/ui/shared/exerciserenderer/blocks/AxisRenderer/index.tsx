@@ -15,28 +15,20 @@ const JSXGraphBoard = dynamic(
   },
 )
 
-// Display size to percentage mapping.
-// `xsmall` (25 %) was introduced so authors can pick a "quarter width" option
-// without changing the historical `small` = 33 % values already stored on
-// existing content. All five keys stay valid in the schema; editors show all
-// five in the dropdown so authors can pick either 25 % or 33 %.
-const SIZE_MAP = {
-  xsmall: 0.25,
-  small: 0.33,
-  medium: 0.5,
-  large: 0.75,
-  full: 1,
-} as const
-
+// Legacy display-size enum kept for backward compatibility — the renderer
+// no longer multiplies the container width by this value. Sizing is now a
+// single container-relative rule in `board-sizing.ts` (fixed 330px height,
+// aspect-driven width, min 280px, max 75% of container).
 export type DisplaySize = 'xsmall' | 'small' | 'medium' | 'large' | 'full'
 
 interface AxisRendererProps {
   blockId: string
   spec: AxisSpecV1
+  /** Legacy — see note on `DisplaySize` above. Unused in sizing math. */
   displaySize?: DisplaySize
 }
 
-export function AxisRenderer({ blockId, spec, displaySize = 'full' }: AxisRendererProps) {
+export function AxisRenderer({ blockId, spec }: AxisRendererProps) {
   // Guard against callers that pass an axis block with a missing `axis` field.
   // Previously `renderAxisSpec(board, undefined)` threw `Cannot read
   // properties of undefined (reading 'elements')` and crashed the whole
@@ -77,19 +69,16 @@ export function AxisRenderer({ blockId, spec, displaySize = 'full' }: AxisRender
     const container = containerRef.current
     if (!container) return
 
-    const percentage = SIZE_MAP[displaySize]
-
     const recompute = () => {
-      const availableWidth = container.clientWidth * percentage
+      // Pass the raw container width — board-sizing now handles the
+      // 75%-of-container cap, min width, and narrow-screen fallbacks
+      // internally. `displaySize` is intentionally unused here: the spec
+      // uses a single container-relative max rather than per-block scales.
       const size = computeBoardSize({
         xRange: viewportSignature.xRange,
         yRange: viewportSignature.yRange,
-        availableWidth,
+        availableWidth: container.clientWidth,
         proportion,
-        maxWidth: 600,
-        maxHeight: 600,
-        minWidth: 200,
-        minHeight: 200,
       })
       setDimensions(size)
     }
@@ -98,13 +87,10 @@ export function AxisRenderer({ blockId, spec, displaySize = 'full' }: AxisRender
     const resizeObserver = new ResizeObserver(recompute)
     resizeObserver.observe(container)
     return () => resizeObserver.disconnect()
-  }, [displaySize, viewportSignature.xRange, viewportSignature.yRange, proportion])
-
-  // Determine container width style based on displaySize
-  const containerWidth = displaySize === 'full' ? 'w-full' : ''
+  }, [viewportSignature.xRange, viewportSignature.yRange, proportion])
 
   return (
-    <div className={`my-4 flex justify-center ${containerWidth}`} ref={containerRef}>
+    <div className="my-4 flex justify-center w-full" ref={containerRef}>
       <JSXGraphBoard
         id={blockId}
         width={dimensions.width}
