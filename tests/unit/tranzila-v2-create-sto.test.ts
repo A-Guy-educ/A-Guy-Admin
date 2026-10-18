@@ -98,7 +98,9 @@ describe('createStandingOrder', () => {
       charge_frequency: 'monthly',
       first_charge_date: '2026-11-15',
       charge_dom: 15,
-      currency_code: 1,
+      // currency_code is serialized as a STRING (per Tranzila's /v2/sto/create
+      // validator — int fails with error_code 20004).
+      currency_code: '1',
       vat_percent: 0,
       client: {
         name: 'Test User',
@@ -109,7 +111,7 @@ describe('createStandingOrder', () => {
           item_name: 'AGuy Subscription — basic',
           unit_price: 59,
           quantity: 1,
-          currency_code: 1,
+          currency_code: '1',
           vat_percent: 0,
         },
       ],
