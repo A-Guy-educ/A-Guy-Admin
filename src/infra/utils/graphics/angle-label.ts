@@ -44,9 +44,10 @@ export interface BoardPixelScale {
  * `distance` is present so historical lessons keep their visual positioning;
  * new data (no distance) uses the position-based multiplier.
  */
-export function resolveAngleLabelMultiplier(
-  spec: { position?: AngleLabelPosition; distance?: AngleLabelDistance },
-): number {
+export function resolveAngleLabelMultiplier(spec: {
+  position?: AngleLabelPosition
+  distance?: AngleLabelDistance
+}): number {
   if (spec.distance) return ANGLE_LABEL_DISTANCE_MULTIPLIERS[spec.distance]
   return ANGLE_LABEL_POSITION_MULTIPLIERS[spec.position ?? 'inside']
 }

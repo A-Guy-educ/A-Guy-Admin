@@ -546,7 +546,9 @@ function syncAngles(
   elementsRef: React.MutableRefObject<Map<string, JXGElement>>,
   isSyncingRef: React.MutableRefObject<boolean>,
   isDraggingRef: React.MutableRefObject<boolean>,
-  onAngleLabelMovedRef: React.RefObject<((index: number, position: AngleLabelPosition) => void) | undefined>,
+  onAngleLabelMovedRef: React.RefObject<
+    ((index: number, position: AngleLabelPosition) => void) | undefined
+  >,
 ) {
   for (let i = 0; i < geometry.elements.angles.length; i++) {
     const angle = geometry.elements.angles[i]
