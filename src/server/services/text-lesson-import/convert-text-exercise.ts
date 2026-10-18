@@ -22,6 +22,7 @@ import type {
 } from '@/server/payload/collections/Exercises/types'
 import { generateId } from '@/server/payload/collections/Exercises/types'
 import { parseFunctionDsl } from '@/server/services/lesson-json-import/parse-function-dsl'
+import { withFeaturePointViewport } from '@/infra/utils/graphics/viewport-utils'
 
 import { parseGeometryDsl } from './parse-geometry-dsl'
 import type { TextExercise, TextSection } from './parse-text'
@@ -50,13 +51,17 @@ function functionBlock(source: string): QuestionAxisBlock {
   // returns a spec, so partially-broken input still renders as an axis
   // with whatever it could recover. That's more useful for the author
   // than silently dropping the block.
+  //
+  // Viewport baked at import time using feature-point auto-ranging to
+  // override the LLM-written `x:[…]` / `y:[…]` DSL bounds (which are
+  // routinely too wide). See the matching call in the JSON importer.
   const { spec } = parseFunctionDsl(source)
   return {
     id: generateId(),
     type: 'question_axis',
     prompt: inlineRichText(''),
     layout: 'textRight',
-    axis: spec,
+    axis: withFeaturePointViewport(spec),
     displaySize: 'medium',
   }
 }
