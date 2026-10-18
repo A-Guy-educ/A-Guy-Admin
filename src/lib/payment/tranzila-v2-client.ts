@@ -213,8 +213,9 @@ export interface CreateStandingOrderArgs {
   chargeDayOfMonth: number
   client: TranzilaStoClient
   items: TranzilaStoItem[]
-  /** Optional override — defaults to '1' (ILS). */
-  currencyCode?: number
+  /** ISO 4217 alpha code. Defaults to 'ILS'. Tranzila's STO validator accepts
+   * only 'ILS' | 'USD' | 'EUR' (not the numeric 1/2/978 the iframe accepts). */
+  currencyCode?: 'ILS' | 'USD' | 'EUR'
   /** Optional VAT percent — defaults to 0 (receipts come from Green Invoice). */
   vatPercent?: number
 }
@@ -266,20 +267,21 @@ export async function createStandingOrder(
     )
   }
 
-  // Tranzila's /v2/sto/create validator expects `currency_code` as a STRING,
-  // not an integer. Live request against admin.dev returned error_code 20004
-  // with `mismatch_info: [{keyword_args: {expected: "string", used: "integer"}, data_path: ["currency_code"]}]`
-  // on the first real smoke. Stringify at both the top-level and inside each
-  // item. Other numeric fields (sto_payments_number, charge_dom, vat_percent,
-  // unit_price, quantity) were accepted as integers, so leave those as-is.
-  const currencyCodeStr = String(args.currencyCode ?? 1)
+  // Tranzila's /v2/sto/create validator expects `currency_code` as an ISO 4217
+  // ALPHA code string: "ILS" | "USD" | "EUR". The hosted-iframe API uses the
+  // numeric ISO 4217 code (1/2/978) — two different Tranzila APIs, two different
+  // conventions. Live request against admin.dev first returned error_code 20004
+  // "expected string, used integer", then after stringifying returned 20004
+  // again with `mismatch_info: [{keyword: "enum", expected: ["ILS","USD","EUR"], used: "1"}]`.
+  // Alpha code required at both top-level and inside each item.
+  const currencyCode = args.currencyCode ?? 'ILS'
   const body = {
     terminal_name: args.terminalName,
     sto_payments_number: args.stoPaymentsNumber,
     charge_frequency: args.chargeFrequency,
     first_charge_date: args.firstChargeDate,
     charge_dom: args.chargeDayOfMonth,
-    currency_code: currencyCodeStr,
+    currency_code: currencyCode,
     vat_percent: args.vatPercent ?? 0,
     client: {
       name: args.client.name,
@@ -290,7 +292,7 @@ export async function createStandingOrder(
       item_name: item.itemName,
       unit_price: item.unitPriceIls,
       quantity: item.quantity ?? 1,
-      currency_code: currencyCodeStr,
+      currency_code: currencyCode,
       vat_percent: args.vatPercent ?? 0,
     })),
     card: {
