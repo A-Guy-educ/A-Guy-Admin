@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- feat(geometry): Smaller point/angle defaults and sketch-aware labels ([#629](https://github.com/A-Guy-educ/A-Guy-Admin/pull/629)) — @aguyshayb
 - fix(payments): Gate webhook signature requirement on VERCEL_ENV=production ([#628](https://github.com/A-Guy-educ/A-Guy-Admin/pull/628)) — @aguyshayb
 - feat(graphics): Fixed-height 330px sketch sizing with container-relative width ([#626](https://github.com/A-Guy-educ/A-Guy-Admin/pull/626)) — @aguyshayb
 - fix(payments): Run iframe on fxpaguy, not fxpaguytok ([#627](https://github.com/A-Guy-educ/A-Guy-Admin/pull/627)) — @aguyshayb
