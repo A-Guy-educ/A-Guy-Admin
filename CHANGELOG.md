@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- fix(payments): Gate webhook signature requirement on VERCEL_ENV=production ([#628](https://github.com/A-Guy-educ/A-Guy-Admin/pull/628)) — @aguyshayb
 - feat(graphics): Fixed-height 330px sketch sizing with container-relative width ([#626](https://github.com/A-Guy-educ/A-Guy-Admin/pull/626)) — @aguyshayb
 - fix(payments): Run iframe on fxpaguy, not fxpaguytok ([#627](https://github.com/A-Guy-educ/A-Guy-Admin/pull/627)) — @aguyshayb
 - promote: dev -> main (v0.57.0) ([#623](https://github.com/A-Guy-educ/A-Guy-Admin/pull/623)) — @aguyshayb
