@@ -266,13 +266,20 @@ export async function createStandingOrder(
     )
   }
 
+  // Tranzila's /v2/sto/create validator expects `currency_code` as a STRING,
+  // not an integer. Live request against admin.dev returned error_code 20004
+  // with `mismatch_info: [{keyword_args: {expected: "string", used: "integer"}, data_path: ["currency_code"]}]`
+  // on the first real smoke. Stringify at both the top-level and inside each
+  // item. Other numeric fields (sto_payments_number, charge_dom, vat_percent,
+  // unit_price, quantity) were accepted as integers, so leave those as-is.
+  const currencyCodeStr = String(args.currencyCode ?? 1)
   const body = {
     terminal_name: args.terminalName,
     sto_payments_number: args.stoPaymentsNumber,
     charge_frequency: args.chargeFrequency,
     first_charge_date: args.firstChargeDate,
     charge_dom: args.chargeDayOfMonth,
-    currency_code: args.currencyCode ?? 1,
+    currency_code: currencyCodeStr,
     vat_percent: args.vatPercent ?? 0,
     client: {
       name: args.client.name,
@@ -283,7 +290,7 @@ export async function createStandingOrder(
       item_name: item.itemName,
       unit_price: item.unitPriceIls,
       quantity: item.quantity ?? 1,
-      currency_code: args.currencyCode ?? 1,
+      currency_code: currencyCodeStr,
       vat_percent: args.vatPercent ?? 0,
     })),
     card: {

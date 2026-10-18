@@ -505,10 +505,19 @@ async function handoffToStandingOrder(args: HandoffArgs): Promise<void> {
   // Helper to release the sentinel if we abort. Idempotent: only clears
   // the field when it still holds *our* sentinel, so a concurrent handler
   // that somehow raced in can't be clobbered.
+  //
+  // ALSO nulls `tranzillaCardToken` on every failure path. Keeping the
+  // token as a cron-fallback was defense-in-depth that undermined the
+  // whole point of moving to STO (minimize card-credential custody).
+  // The explicit trade-off: on handoff failure the user has month 1 of
+  // paid access with no auto-renewal. We'd rather lose that revenue than
+  // store a reusable charge credential on a failure path we can't
+  // automatically recover from. Ops gets a fatal log and can either
+  // manually create the STO via Tranzila's dashboard or refund the user.
   const releaseClaim = async (): Promise<void> => {
     await subsCollection.updateOne(
       { _id: subObjectId, stoId: claimSentinel },
-      { $set: { stoId: null, updatedAt: new Date() } },
+      { $set: { stoId: null, tranzillaCardToken: null, updatedAt: new Date() } },
     )
   }
 
