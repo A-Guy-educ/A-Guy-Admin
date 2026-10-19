@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- fix(payments): Cancel STO — sto_id must be an integer in /v2/sto/update ([#655](https://github.com/A-Guy-educ/A-Guy-Admin/pull/655)) — @aguyshayb
 - fix(payments): Hotfix — drop notification_url from createstov2 body ([#654](https://github.com/A-Guy-educ/A-Guy-Admin/pull/654)) — @aguyshayb
 - feat: Restrict line label position to above/below and add media badge ([#653](https://github.com/A-Guy-educ/A-Guy-Admin/pull/653)) — @aguyshayb
 - feat: Add daily LLM token counter fields to user schema ([#652](https://github.com/A-Guy-educ/A-Guy-Admin/pull/652)) — @aguyshayb
