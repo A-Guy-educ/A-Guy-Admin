@@ -87,16 +87,72 @@ export interface TranzillaCheckoutResult {
 }
 
 /**
+ * The ordered field list that the outgoing Hand Shake signature covers.
+ * Mirrors the inbound `response_hash` shape — four pipe-joined fields that
+ * must not be tampered with on the wire: sum (price), currency, cred_type
+ * (payment type), tranmode (charge vs auth). A MITM attacker who altered
+ * any of these could change price, currency, or the whole transaction mode;
+ * everything else in the iframe URL is either operational (URLs, lang) or
+ * already correlated via our custom u72/u73 fields.
+ *
+ * NOT YET VERIFIED against Tranzila's official Hand Shake spec. If the
+ * terminal rejects the signed URL once Hand Shake is enabled on their side,
+ * the fix is in this one array — extend or reorder, then re-smoke. The
+ * TRANZILLA_HAND_SHAKE_ENABLED env flag means we can ship this code with
+ * zero behavior change while that confirmation is pending.
+ */
+export const TRANZILLA_HAND_SHAKE_SIGNED_FIELDS = [
+  'sum',
+  'currency',
+  'cred_type',
+  'tranmode',
+] as const
+
+/**
+ * Compute the Hand Shake signature over the outgoing iframe URL fields.
+ *
+ * Shape mirrors `verifyTranzillaWebhook`'s inbound verification: pipe-joined
+ * values, HMAC-SHA256 with the private key, hex-encoded. The same private
+ * key signs both directions in Tranzila's Hand Shake model.
+ *
+ * Exported for unit tests; the live call-site is `createTranzillaCheckout`.
+ */
+export function signCheckoutParams(args: {
+  privateKey: string
+  params: Record<string, string>
+  signedFields?: readonly string[]
+}): string {
+  const { privateKey, params } = args
+  const signedFields = args.signedFields ?? TRANZILLA_HAND_SHAKE_SIGNED_FIELDS
+  if (!privateKey) {
+    throw new Error('signCheckoutParams: privateKey required')
+  }
+  const payload = signedFields.map((f) => params[f] ?? '').join('|')
+  return crypto.createHmac('sha256', privateKey).update(payload).digest('hex')
+}
+
+/**
  * Build a hosted-checkout URL. The buyer-facing page is served by Tranzilla
  * on `direct.tranzila.com/<terminal>/iframenew.php`.
  *
  * This function never calls Tranzilla — it just builds a signed URL. The
  * actual charge happens when the buyer submits the card form.
+ *
+ * Hand Shake: when `TRANZILLA_HAND_SHAKE_ENABLED=true`, a `response_hash`
+ * query param is appended, computed over the critical money fields. Default
+ * off — the iframe URL stays identical to today's unsigned shape until Shai
+ * is ready to flip Hand Shake on at the terminal dashboard. See the signed-
+ * fields constant above for the exact HMAC input layout.
  */
 export function createTranzillaCheckout(
   options: CreateTranzillaCheckoutOptions,
 ): TranzillaCheckoutResult {
-  const { tranzillaTerminal, tranzillaTerminalToken } = getPaymentEnv()
+  const {
+    tranzillaTerminal,
+    tranzillaTerminalToken,
+    tranzillaPrivateKey,
+    tranzillaHandShakeEnabled,
+  } = getPaymentEnv()
 
   const terminal = options.useTokenTerminal
     ? tranzillaTerminalToken || tranzillaTerminal
@@ -131,6 +187,15 @@ export function createTranzillaCheckout(
   if (options.cField3) params.u73 = options.cField3
   if (options.cField4) params.u74 = options.cField4
   if (options.cField5) params.u75 = options.cField5
+
+  if (tranzillaHandShakeEnabled) {
+    if (!tranzillaPrivateKey) {
+      throw new Error(
+        'TRANZILLA_HAND_SHAKE_ENABLED=true but TRANZILLA_PRIVATE_KEY is unset — refusing to build an unsigned iframe URL under Hand Shake.',
+      )
+    }
+    params.response_hash = signCheckoutParams({ privateKey: tranzillaPrivateKey, params })
+  }
 
   const query = new URLSearchParams(params).toString()
   const checkoutUrl = `${TRANZILLA_DIRECT_BASE}/${terminal}/iframenew.php?${query}`
