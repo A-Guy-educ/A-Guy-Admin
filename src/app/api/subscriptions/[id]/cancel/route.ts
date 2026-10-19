@@ -222,6 +222,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       }
     }
 
+    // skipStoCancel tells the Subscriptions.beforeChange hook not to call
+    // cancelStandingOrder — we already did that above and don't want a
+    // second call. The hook defaults to running Tranzila's cancel on any
+    // active→cancelled transition that lacks this flag (i.e. admin UI).
     const updated = await payload.update({
       collection: 'subscriptions',
       id,
@@ -231,6 +235,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         cancelledAt: new Date().toISOString(),
       },
       overrideAccess: true,
+      context: { skipStoCancel: true },
     })
 
     return applyCorsHeaders(
