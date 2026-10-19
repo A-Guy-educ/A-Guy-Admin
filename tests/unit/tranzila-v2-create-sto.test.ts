@@ -122,28 +122,16 @@ describe('createStandingOrder', () => {
     })
   })
 
-  it('omits notification_url when not provided (back-compat with existing callers)', async () => {
+  it('never sends notification_url — Tranzila rejects it with error_code 20004 (additionalProperties)', async () => {
+    // Per-STO notify URL is NOT a createstov2 field. The My-Billing notify
+    // URL is configured at the terminal level in the Tranzila dashboard, not
+    // per-STO. Attempting to pass it in the body trips Tranzila's validator:
+    // regression test to prevent re-introducing the field.
     await callDefaults()
     const body = JSON.parse(String(capturedRequest.init?.body))
     expect(body).not.toHaveProperty('notification_url')
-  })
-
-  it('includes notification_url when provided — Tranzila POSTs recurring charges there', async () => {
-    await createStandingOrder({
-      terminalName: 'fxpaguytok',
-      cardToken: 'TK-abc123',
-      cardExpireMonth: 12,
-      cardExpireYear: 2030,
-      stoPaymentsNumber: 119,
-      chargeFrequency: 'monthly',
-      firstChargeDate: '2026-11-15',
-      chargeDayOfMonth: 15,
-      client: { name: 'Test User', email: 'test@example.com' },
-      items: [{ itemName: 'basic', unitPriceIls: 59 }],
-      notificationUrl: 'https://admin.aguy.co.il/api/webhooks/tranzilla',
-    })
-    const body = JSON.parse(String(capturedRequest.init?.body))
-    expect(body.notification_url).toBe('https://admin.aguy.co.il/api/webhooks/tranzilla')
+    expect(body).not.toHaveProperty('notify_url')
+    expect(body).not.toHaveProperty('callback_url')
   })
 
   it('includes phone on the client object when provided', async () => {

@@ -225,11 +225,6 @@ export interface CreateStandingOrderArgs {
   currencyCode?: 'ILS' | 'USD' | 'EUR'
   /** Optional VAT percent — defaults to 0 (receipts come from Green Invoice). */
   vatPercent?: number
-  /** URL Tranzila's My-Billing engine POSTs on each recurring STO charge
-   * (approved AND declined). Without this, Tranzila charges silently and our
-   * webhook never fires — subs created pre-this-field have no notification
-   * path. Set once at createstov2 and inherited by every charge the STO runs. */
-  notificationUrl?: string
 }
 
 export interface CreateStandingOrderResult {
@@ -321,13 +316,12 @@ export async function createStandingOrder(
       expire_month: args.cardExpireMonth,
       expire_year: args.cardExpireYear,
     },
-    // Tranzila's STO docs name this field `notification_url` (snake_case) and
-    // POST the same shape as the hosted-iframe notify_url POST on each
-    // recurring charge. If the field name turns out to be different in
-    // practice ("notify_url", "callback_url"), the response's mismatch_info
-    // on error_code 20004 will tell us. Omitted on `undefined` so pre-prod
-    // smokes that don't want callbacks aren't forced into them.
-    ...(args.notificationUrl ? { notification_url: args.notificationUrl } : {}),
+    // Per-STO notification URL is NOT a createstov2 field. Tranzila rejects
+    // `notification_url` as additionalProperties (error_code 20004) and the
+    // documented schema has zero callback fields. Config is terminal-scoped:
+    // set the My-Billing notify URL at my.tranzila.com → Settings → Terminal →
+    // My-Billing on terminal `fxpaguytok`. Once set, every STO run POSTs to
+    // that URL and the webhook's sto_id correlation branch picks it up.
   }
 
   const raw = await postV2({
