@@ -147,7 +147,7 @@ importers:
         version: 1.28.0(@google-cloud/firestore@7.11.6)(firebase-admin@13.6.1)
       genkitx-openai:
         specifier: ^0.30.0
-        version: 0.30.0(genkit@1.28.0(@google-cloud/firestore@7.11.6)(firebase-admin@13.6.1))(ws@8.19.0)(zod@4.3.6)
+        version: 0.30.0(genkit@1.28.0(@google-cloud/firestore@7.11.6)(firebase-admin@13.6.1))(zod@4.3.6)
       graphql:
         specifier: ^16.8.2
         version: 16.12.0
@@ -182,8 +182,8 @@ importers:
         specifier: 15.5.9
         version: 15.5.9(@babel/core@7.28.6)(@opentelemetry/api@1.9.0)(@playwright/test@1.60.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(sass@1.77.4)
       openai:
-        specifier: ^4.77.3
-        version: 4.104.0(ws@8.19.0)(zod@4.3.6)
+        specifier: ^7.34.0
+        version: 7.34.0(undici@8.11.2)(zod@4.3.6)
       payload:
         specifier: 3.73.0
         version: 3.73.0(graphql@16.12.0)(typescript@5.9.3)
@@ -7241,6 +7241,30 @@ packages:
       ws: ^8.18.0
       zod: ^3.23.8
     peerDependenciesMeta:
+      ws:
+        optional: true
+      zod:
+        optional: true
+
+  openai@7.34.0:
+    resolution: {integrity: sha512-PMwuTQ/3cVyWZJOVpb6bzlrQj17uImlnUGQWqh5zHlN/snwK5ww4ZUHW8NYGtH6f9PQOEPxyD/f8WJVIHp1q2A==}
+    engines: {node: '>=22.0.0'}
+    peerDependencies:
+      '@aws-sdk/credential-provider-node': '>=3.972.0 <4'
+      '@smithy/hash-node': '>=4.3.0 <5'
+      '@smithy/signature-v4': '>=5.4.0 <6'
+      undici: '>=5 <9'
+      ws: ^8.21.0
+      zod: ^3.25 || ^4.0
+    peerDependenciesMeta:
+      '@aws-sdk/credential-provider-node':
+        optional: true
+      '@smithy/hash-node':
+        optional: true
+      '@smithy/signature-v4':
+        optional: true
+      undici:
+        optional: true
       ws:
         optional: true
       zod:
@@ -15244,10 +15268,10 @@ snapshots:
       - firebase-admin
       - supports-color
 
-  genkitx-openai@0.30.0(genkit@1.28.0(@google-cloud/firestore@7.11.6)(firebase-admin@13.6.1))(ws@8.19.0)(zod@4.3.6):
+  genkitx-openai@0.30.0(genkit@1.28.0(@google-cloud/firestore@7.11.6)(firebase-admin@13.6.1))(zod@4.3.6):
     dependencies:
       genkit: 1.28.0(@google-cloud/firestore@7.11.6)(firebase-admin@13.6.1)
-      openai: 4.104.0(ws@8.19.0)(zod@4.3.6)
+      openai: 4.104.0(zod@4.3.6)
     transitivePeerDependencies:
       - encoding
       - ws
@@ -17059,7 +17083,7 @@ snapshots:
     dependencies:
       mimic-function: 5.0.1
 
-  openai@4.104.0(ws@8.19.0)(zod@4.3.6):
+  openai@4.104.0(zod@4.3.6):
     dependencies:
       '@types/node': 18.19.130
       '@types/node-fetch': 2.6.13
@@ -17069,10 +17093,14 @@ snapshots:
       formdata-node: 4.4.1
       node-fetch: 2.7.0
     optionalDependencies:
-      ws: 8.19.0
       zod: 4.3.6
     transitivePeerDependencies:
       - encoding
+
+  openai@7.34.0(undici@8.11.2)(zod@4.3.6):
+    optionalDependencies:
+      undici: 8.11.2
+      zod: 4.3.6
 
   opencollective-postinstall@2.0.3: {}
 
