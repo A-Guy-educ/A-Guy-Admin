@@ -38,6 +38,7 @@ import { tenantField } from '../fields/tenant'
 // managed manually by admins (see ../TIERS.md). The hook file is kept on
 // disk for a future revival of automatic promotion.
 // import { recomputeTierOnStatusChange } from './Subscriptions/hooks/recomputeTierOnStatusChange-hook'
+import { cancelTranzilaStoOnAdminCancel } from './Subscriptions/hooks/cancelTranzilaStoOnAdminCancel-hook'
 
 export const Subscriptions: CollectionConfig = {
   slug: 'subscriptions',
@@ -68,6 +69,7 @@ export const Subscriptions: CollectionConfig = {
     group: 'Payments',
   },
   hooks: {
+    beforeChange: [cancelTranzilaStoOnAdminCancel],
     afterChange: [],
   },
   fields: [
