@@ -55,6 +55,14 @@ vi.mock('@/lib/payment/tranzila-v2-client', async () => {
       rawText: '',
       contentType: 'application/json',
     }),
+    swapStandingOrderItems: vi.fn().mockResolvedValue({
+      httpStatus: 200,
+      errorCode: 0,
+      message: 'Success',
+      body: {},
+      rawText: '',
+      contentType: 'application/json',
+    }),
   }
 })
 
@@ -1223,5 +1231,249 @@ describe('Tranzila webhook — STO renewal correlation (Mission 1)', () => {
       overrideAccess: true,
     })
     expect(txs.docs.length).toBe(1)
+  })
+})
+
+describe('PATCH /api/subscriptions/[id]/change-tier (Mission 2 — upgrade)', () => {
+  async function patchChangeTier(subId: string, tierSlug: string) {
+    const route = await import('@/app/api/subscriptions/[id]/change-tier/route')
+    const request = new NextRequest(
+      `http://localhost:3000/api/subscriptions/${subId}/change-tier`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ tierSlug }),
+        headers: { 'content-type': 'application/json' },
+      },
+    )
+    return route.PATCH(request, { params: Promise.resolve({ id: subId }) })
+  }
+
+  it('swaps items on Tranzila + flips tier + updates sub on a valid upgrade', async () => {
+    const v2 = await import('@/lib/payment/tranzila-v2-client')
+    const swapMock = v2.swapStandingOrderItems as unknown as ReturnType<typeof vi.fn>
+    swapMock.mockClear()
+    swapMock.mockResolvedValueOnce({
+      httpStatus: 200,
+      errorCode: 0,
+      message: 'Success',
+      body: {},
+      rawText: '',
+      contentType: 'application/json',
+    })
+
+    const { sub } = await createPendingSub({
+      tierSlug: 'basic',
+      offerSlug: 'default',
+      status: 'active',
+      currentPeriodEnd: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
+      cancelAtPeriodEnd: false,
+      stoId: '500001',
+    })
+
+    const authMock = vi
+      .spyOn(payload as any, 'auth')
+      .mockResolvedValue({ user: { id: userId, collection: 'users' } } as any)
+    try {
+      const res = await patchChangeTier(sub.id, 'advanced')
+      expect(res.status).toBe(200)
+      const body = (await res.json()) as any
+      expect(body.success).toBe(true)
+      expect(body.tierSlug).toBe('advanced')
+      expect(body.regularPriceIls).toBe(119)
+    } finally {
+      authMock.mockRestore()
+    }
+
+    expect(swapMock).toHaveBeenCalledTimes(1)
+    expect(swapMock.mock.calls[0]?.[0]).toMatchObject({
+      stoId: '500001',
+      unitPriceIls: 119,
+      itemName: 'AGuy Subscription — advanced',
+    })
+
+    const after = (await payload.findByID({
+      collection: 'subscriptions',
+      id: sub.id,
+      overrideAccess: true,
+    })) as any
+    expect(after.tierSlug).toBe('advanced')
+    expect(after.regularPriceIls).toBe(119)
+
+    const user = (await payload.findByID({
+      collection: 'users',
+      id: userId,
+      overrideAccess: true,
+    })) as any
+    expect(user.currentTier).toBe('advanced')
+  })
+
+  it('rejects a downgrade (not yet supported)', async () => {
+    const v2 = await import('@/lib/payment/tranzila-v2-client')
+    const swapMock = v2.swapStandingOrderItems as unknown as ReturnType<typeof vi.fn>
+    swapMock.mockClear()
+
+    const { sub } = await createPendingSub({
+      tierSlug: 'advanced',
+      offerSlug: 'default',
+      status: 'active',
+      currentPeriodEnd: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
+      cancelAtPeriodEnd: false,
+      stoId: '500002',
+    })
+
+    const authMock = vi
+      .spyOn(payload as any, 'auth')
+      .mockResolvedValue({ user: { id: userId, collection: 'users' } } as any)
+    try {
+      const res = await patchChangeTier(sub.id, 'basic')
+      expect(res.status).toBe(400)
+      const body = (await res.json()) as any
+      expect(body.error).toMatch(/downgrade/i)
+    } finally {
+      authMock.mockRestore()
+    }
+    expect(swapMock).not.toHaveBeenCalled()
+  })
+
+  it('rejects same-tier change', async () => {
+    const { sub } = await createPendingSub({
+      tierSlug: 'basic',
+      offerSlug: 'default',
+      status: 'active',
+      currentPeriodEnd: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
+      cancelAtPeriodEnd: false,
+      stoId: '500003',
+    })
+
+    const authMock = vi
+      .spyOn(payload as any, 'auth')
+      .mockResolvedValue({ user: { id: userId, collection: 'users' } } as any)
+    try {
+      const res = await patchChangeTier(sub.id, 'basic')
+      expect(res.status).toBe(400)
+      const body = (await res.json()) as any
+      expect(body.error).toMatch(/already on tier/i)
+    } finally {
+      authMock.mockRestore()
+    }
+  })
+
+  it('rejects when the sub has no stoId (cron-driven, no STO to update)', async () => {
+    const { sub } = await createPendingSub({
+      tierSlug: 'basic',
+      offerSlug: 'default',
+      cardToken: 'tk',
+      status: 'active',
+      currentPeriodEnd: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
+      cancelAtPeriodEnd: false,
+      // No stoId
+    })
+
+    const authMock = vi
+      .spyOn(payload as any, 'auth')
+      .mockResolvedValue({ user: { id: userId, collection: 'users' } } as any)
+    try {
+      const res = await patchChangeTier(sub.id, 'advanced')
+      expect(res.status).toBe(400)
+      const body = (await res.json()) as any
+      expect(body.error).toMatch(/standing-order id/)
+    } finally {
+      authMock.mockRestore()
+    }
+  })
+
+  it('returns 409 on mid-handoff sentinel stoId', async () => {
+    const { sub } = await createPendingSub({
+      tierSlug: 'basic',
+      offerSlug: 'default',
+      status: 'active',
+      currentPeriodEnd: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
+      cancelAtPeriodEnd: false,
+      stoId: `pending-handoff:${new ObjectId().toHexString()}`,
+    })
+
+    const authMock = vi
+      .spyOn(payload as any, 'auth')
+      .mockResolvedValue({ user: { id: userId, collection: 'users' } } as any)
+    try {
+      const res = await patchChangeTier(sub.id, 'advanced')
+      expect(res.status).toBe(409)
+      const body = (await res.json()) as any
+      expect(body.error).toMatch(/handoff/i)
+    } finally {
+      authMock.mockRestore()
+    }
+  })
+
+  it('returns 502 when Tranzila refuses the swap', async () => {
+    const v2 = await import('@/lib/payment/tranzila-v2-client')
+    const swapMock = v2.swapStandingOrderItems as unknown as ReturnType<typeof vi.fn>
+    swapMock.mockClear()
+    swapMock.mockResolvedValueOnce({
+      httpStatus: 200,
+      errorCode: 20004,
+      message: 'Json does not match validation schema',
+      body: {},
+      rawText: '',
+      contentType: 'application/json',
+    })
+
+    const { sub } = await createPendingSub({
+      tierSlug: 'basic',
+      offerSlug: 'default',
+      status: 'active',
+      currentPeriodEnd: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
+      cancelAtPeriodEnd: false,
+      stoId: '500004',
+    })
+
+    const authMock = vi
+      .spyOn(payload as any, 'auth')
+      .mockResolvedValue({ user: { id: userId, collection: 'users' } } as any)
+    try {
+      const res = await patchChangeTier(sub.id, 'advanced')
+      expect(res.status).toBe(502)
+    } finally {
+      authMock.mockRestore()
+    }
+
+    // Local sub stays untouched when Tranzila refuses.
+    const after = (await payload.findByID({
+      collection: 'subscriptions',
+      id: sub.id,
+      overrideAccess: true,
+    })) as any
+    expect(after.tierSlug).toBe('basic')
+    expect(after.regularPriceIls).toBe(59)
+  })
+
+  it('rejects when the user does not own the sub', async () => {
+    const { sub } = await createPendingSub({
+      tierSlug: 'basic',
+      offerSlug: 'default',
+      status: 'active',
+      stoId: '500005',
+    })
+
+    const otherUser = await payload.create({
+      collection: 'users',
+      data: {
+        email: `other-${Date.now()}@test.com`,
+        password: 'test-password-123!',
+        name: 'Other',
+        tenant: tenantId,
+      } as any,
+      overrideAccess: true,
+    })
+    const authMock = vi
+      .spyOn(payload as any, 'auth')
+      .mockResolvedValue({ user: { id: otherUser.id, collection: 'users' } } as any)
+    try {
+      const res = await patchChangeTier(sub.id, 'advanced')
+      expect(res.status).toBe(403)
+    } finally {
+      authMock.mockRestore()
+      await payload.delete({ collection: 'users', id: otherUser.id, overrideAccess: true })
+    }
   })
 })

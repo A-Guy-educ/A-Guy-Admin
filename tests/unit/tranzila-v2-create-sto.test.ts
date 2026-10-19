@@ -13,6 +13,7 @@ import {
   cancelStandingOrder,
   createStandingOrder,
   formatTranzilaDate,
+  swapStandingOrderItems,
 } from '@/lib/payment/tranzila-v2-client'
 import { resetPaymentEnvCache } from '@/lib/payment/env'
 
@@ -289,5 +290,77 @@ describe('cancelStandingOrder', () => {
         stoId: 'pending-handoff:689a1b2c3d4e5f6a7b8c9d0e',
       }),
     ).rejects.toThrow(/positive integer/)
+  })
+})
+
+describe('swapStandingOrderItems', () => {
+  let fetchMock: ReturnType<typeof vi.fn>
+  let capturedRequest: { url?: string; init?: RequestInit } = {}
+
+  beforeEach(() => {
+    process.env.TRANZILLA_TERMINAL = 'fxpaguy'
+    process.env.TRANZILLA_TERMINAL_TOKEN = 'fxpaguytok'
+    process.env.TRANZILLA_PUBLIC_KEY = 'pub-test-key'
+    process.env.TRANZILLA_PRIVATE_KEY = 'priv-test-key'
+    process.env.TRANZILLA_SANDBOX = 'true'
+    resetPaymentEnvCache()
+
+    capturedRequest = {}
+    fetchMock = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+      capturedRequest = { url: typeof url === 'string' ? url : String(url), init }
+      return new Response(JSON.stringify({ error_code: 0, message: 'Success' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    })
+    global.fetch = fetchMock as unknown as typeof fetch
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+    resetPaymentEnvCache()
+  })
+
+  it('POSTs to /v2/sto/update with sto_id as integer + minimal items shape', async () => {
+    await swapStandingOrderItems({
+      terminalName: 'fxpaguytok',
+      stoId: '488344',
+      itemName: 'AGuy Subscription — advanced',
+      unitPriceIls: 119,
+    })
+    expect(capturedRequest.url).toBe('https://api.tranzila.com/v2/sto/update')
+    const body = JSON.parse(String(capturedRequest.init?.body))
+    // The items schema for /v2/sto/update is minimal — ONLY name + unit_price.
+    // Any other field (quantity, currency_code, vat_percent, type) trips
+    // Tranzila's additionalProperties validator. Verified live 2026-10-19 via
+    // scripts/probe-tranzila-sto-items-swap.ts.
+    expect(body).toEqual({
+      terminal_name: 'fxpaguytok',
+      sto_id: 488344,
+      items: [{ name: 'AGuy Subscription — advanced', unit_price: 119 }],
+    })
+    expect(typeof body.sto_id).toBe('number')
+  })
+
+  it('throws when stoId is not a parseable positive integer', async () => {
+    await expect(
+      swapStandingOrderItems({
+        terminalName: 'fxpaguytok',
+        stoId: 'bad',
+        itemName: 'x',
+        unitPriceIls: 1,
+      }),
+    ).rejects.toThrow(/positive integer/)
+  })
+
+  it('throws when unitPriceIls is non-positive', async () => {
+    await expect(
+      swapStandingOrderItems({
+        terminalName: 'fxpaguytok',
+        stoId: '123',
+        itemName: 'x',
+        unitPriceIls: 0,
+      }),
+    ).rejects.toThrow(/unitPriceIls/)
   })
 })
