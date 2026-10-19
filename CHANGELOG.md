@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- feat(payments): Hand Shake outgoing iframe signing (feature-flagged) ([#641](https://github.com/A-Guy-educ/A-Guy-Admin/pull/641)) — @aguyshayb
 - fix(payments): Correlate recurring STO charges and record renewals ([#640](https://github.com/A-Guy-educ/A-Guy-Admin/pull/640)) — @aguyshayb
 - fix(ci): Patch commitlint parser for Node 24 compatibility ([#639](https://github.com/A-Guy-educ/A-Guy-Admin/pull/639)) — @aguyshayb
 - fix(payments): Cancel Tranzila STO on user-initiated subscription cancel ([#635](https://github.com/A-Guy-educ/A-Guy-Admin/pull/635)) — @aguyshayb
