@@ -36,6 +36,15 @@ export interface PaymentEnv {
   tranzillaPublicKey: string
   tranzillaPrivateKey: string
   tranzillaSandbox: boolean
+  /**
+   * Hand Shake / outgoing-iframe HMAC: when `true`, `createTranzillaCheckout`
+   * appends a `response_hash` query param computed from the critical money
+   * fields. Default `false` so the iframe URL stays identical to today's
+   * shape until Shai is ready to flip Hand Shake on at the Tranzila terminal
+   * dashboard. Toggling this ON while Hand Shake is OFF on the terminal is
+   * harmless — Tranzila just ignores the extra param.
+   */
+  tranzillaHandShakeEnabled: boolean
 }
 
 const STRIPE_REQUIRED = ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET'] as const
@@ -132,6 +141,7 @@ export function getPaymentEnv(): PaymentEnv {
     tranzillaPublicKey: process.env.TRANZILLA_PUBLIC_KEY ?? '',
     tranzillaPrivateKey: process.env.TRANZILLA_PRIVATE_KEY ?? '',
     tranzillaSandbox: process.env.TRANZILLA_SANDBOX !== 'false',
+    tranzillaHandShakeEnabled: process.env.TRANZILLA_HAND_SHAKE_ENABLED === 'true',
   }
 
   return validatedEnv
