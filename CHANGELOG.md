@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- chore(deps): bump @napi-rs/canvas from 0.1.89 to 1.0.11 ([#650](https://github.com/A-Guy-educ/A-Guy-Admin/pull/650)) — @dependabot[bot]
 - chore(deps): bump framer-motion from 12.38.0 to 14.3.0 ([#645](https://github.com/A-Guy-educ/A-Guy-Admin/pull/645)) — @dependabot[bot]
 - chore(deps): bump dotenv from 17.2.3 to 18.0.8 ([#644](https://github.com/A-Guy-educ/A-Guy-Admin/pull/644)) — @dependabot[bot]
 - fix(payments): Admin-panel cancel calls Tranzila STO + bootstrap 400 logs ([#651](https://github.com/A-Guy-educ/A-Guy-Admin/pull/651)) — @aguyshayb
