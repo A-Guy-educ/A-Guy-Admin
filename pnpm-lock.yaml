@@ -7,6 +7,11 @@ settings:
 overrides:
   '@modelcontextprotocol/sdk': '>=1.25.2'
 
+patchedDependencies:
+  conventional-changelog-conventionalcommits@10.4.1:
+    hash: 2c71bdef402511b2249d7f2bc9692c2f6b9fb073beb122e19fa2e633979e7f56
+    path: patches/conventional-changelog-conventionalcommits@10.4.1.patch
+
 importers:
 
   .:
@@ -9342,7 +9347,7 @@ snapshots:
   '@commitlint/config-conventional@21.2.3':
     dependencies:
       '@commitlint/types': 21.2.3
-      conventional-changelog-conventionalcommits: 10.4.1
+      conventional-changelog-conventionalcommits: 10.4.1(patch_hash=2c71bdef402511b2249d7f2bc9692c2f6b9fb073beb122e19fa2e633979e7f56)
 
   '@commitlint/config-validator@21.0.1':
     dependencies:
@@ -14200,7 +14205,7 @@ snapshots:
     dependencies:
       compare-func: 2.0.0
 
-  conventional-changelog-conventionalcommits@10.4.1:
+  conventional-changelog-conventionalcommits@10.4.1(patch_hash=2c71bdef402511b2249d7f2bc9692c2f6b9fb073beb122e19fa2e633979e7f56):
     dependencies:
       '@conventional-changelog/template': 1.4.0
 
