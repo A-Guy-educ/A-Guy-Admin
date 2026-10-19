@@ -25,6 +25,8 @@ interface Strings {
   exercises: string
   reviewDotTitle: string
   failedToUpdateReview: string
+  mediaBadgeAttached: string
+  mediaBadgeMissing: string
 }
 
 const EN: Strings = {
@@ -47,6 +49,8 @@ const EN: Strings = {
   exercises: 'exercises',
   reviewDotTitle: 'Click to cycle review status (red → orange → green)',
   failedToUpdateReview: 'Failed to update review status',
+  mediaBadgeAttached: 'Media attached',
+  mediaBadgeMissing: 'No media attached',
 }
 
 const HE: Strings = {
@@ -69,6 +73,8 @@ const HE: Strings = {
   exercises: 'תרגילים',
   reviewDotTitle: 'לחיצה מחליפה סטטוס ביקורת (אדום → כתום → ירוק)',
   failedToUpdateReview: 'עדכון סטטוס הביקורת נכשל',
+  mediaBadgeAttached: 'קיימת מדיה מצורפת',
+  mediaBadgeMissing: 'אין מדיה מצורפת',
 }
 
 export function getStrings(lang: string): Strings {

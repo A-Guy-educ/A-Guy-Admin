@@ -103,8 +103,7 @@ function renderLines(
       const dy = to.Y() - from.Y()
       const len = Math.sqrt(dx * dx + dy * dy) || 1
       const baseOffset = canvasHeight * 0.03
-      const offsetDist =
-        line.label.position === 'b' ? -baseOffset : line.label.position === 'm' ? 0 : baseOffset
+      const offsetDist = line.label.position === 'b' ? -baseOffset : baseOffset
       const midX = (from.X() + to.X()) / 2 + (-dy / len) * offsetDist
       const midY = (from.Y() + to.Y()) / 2 + (dx / len) * offsetDist
       let deg = (Math.atan2(dy, dx) * 180) / Math.PI

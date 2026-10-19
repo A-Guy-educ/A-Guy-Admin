@@ -9,7 +9,7 @@
  *
  * Caveats — unsupported fields are dropped (no DSL slot to put them in):
  *   - Point: fontSize, labelVisible
- *   - Line: label position (always 'm' on round-trip)
+ *   - Line: label position (always 't' on round-trip)
  *   - Circle: radius via `radius:` numeric (we only emit `רדיוס גרפי` for
  *     the stored `radius` number OR `עובר דרך` for the `through` point ref)
  *   - Angle: label position/distance, fontSize

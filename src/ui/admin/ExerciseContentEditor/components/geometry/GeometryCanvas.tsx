@@ -463,8 +463,7 @@ function syncLineLabels(
     const t = toEl as unknown as { X: () => number; Y: () => number }
     // Scale offset to ~3% of canvas height so it's visible on large coordinate spaces
     const baseOffset = geometry.canvas.height * 0.03
-    const offsetDist =
-      line.label.position === 'b' ? -baseOffset : line.label.position === 'm' ? 0 : baseOffset
+    const offsetDist = line.label.position === 'b' ? -baseOffset : baseOffset
     const el = board.create(
       'text',
       [
