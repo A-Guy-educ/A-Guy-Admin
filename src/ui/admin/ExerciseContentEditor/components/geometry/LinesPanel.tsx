@@ -111,13 +111,12 @@ export const LinesPanel: React.FC<LinesPanelProps> = ({ lines, points, onChange 
                       label: {
                         ...line.label,
                         value: line.label?.value || '',
-                        position: e.target.value as 't' | 'b' | 'm',
+                        position: e.target.value as 't' | 'b',
                       },
                     })
                   }
                 >
                   <option value="t">Above</option>
-                  <option value="m">On line</option>
                   <option value="b">Below</option>
                 </select>
               </div>

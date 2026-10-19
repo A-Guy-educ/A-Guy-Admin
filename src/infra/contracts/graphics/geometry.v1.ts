@@ -35,7 +35,7 @@ const GeometryPointSchema = z.object({
 /** Line label */
 const LineLabelSchema = z.object({
   value: z.string().optional(),
-  position: z.enum(['t', 'b', 'm']),
+  position: z.enum(['t', 'b']),
   fontSize: z.number().positive().optional(),
 })
 

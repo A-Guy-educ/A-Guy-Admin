@@ -94,7 +94,7 @@ const fullGeometrySpec: GeometrySpecV1 = {
       { name: 'C', x: 150, y: 200 },
     ],
     lines: [
-      { from: 'A', to: 'B', style: 'dashed', thickness: 1, label: { value: 'AB', position: 'm' } },
+      { from: 'A', to: 'B', style: 'dashed', thickness: 1, label: { value: 'AB', position: 't' } },
     ],
     circles: [{ center: 'C', radius: 50, style: 'solid', color: '#16a34a' }],
     angles: [

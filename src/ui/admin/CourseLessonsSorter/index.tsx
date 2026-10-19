@@ -27,6 +27,7 @@ interface LessonDoc {
   status: LessonStatus
   reviewStatus: ReviewStatus
   exerciseCount: number
+  hasMedia: boolean
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -74,6 +75,7 @@ function normalizeLesson(raw: RawLesson): LessonDoc {
     status: (raw.status as LessonStatus | undefined) ?? 'draft',
     reviewStatus: (raw.reviewStatus as ReviewStatus | undefined) ?? 'red',
     exerciseCount: countExercises(raw.blocks),
+    hasMedia: Array.isArray(raw.contentFiles) && raw.contentFiles.length > 0,
   }
 }
 
@@ -287,6 +289,21 @@ const exerciseCountStyle: React.CSSProperties = {
   flexShrink: 0,
   whiteSpace: 'nowrap',
 }
+
+const mediaBadgeStyle = (hasMedia: boolean): React.CSSProperties => ({
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  width: 20,
+  height: 20,
+  borderRadius: 4,
+  fontSize: 11,
+  fontWeight: 700,
+  flexShrink: 0,
+  background: hasMedia ? 'var(--theme-success-100, #dcfce7)' : 'var(--theme-elevation-50)',
+  color: hasMedia ? 'var(--theme-success-600, #16a34a)' : 'var(--theme-elevation-400)',
+  border: '1px solid var(--theme-elevation-200)',
+})
 
 const filterBtnStyle = (active: boolean): React.CSSProperties => ({
   display: 'inline-flex',
@@ -726,6 +743,15 @@ export const CourseLessonsSorter: React.FC = () => {
                   {/* Exercise count */}
                   <span style={exerciseCountStyle}>
                     {lesson.exerciseCount} {s.exercises}
+                  </span>
+
+                  {/* Media badge */}
+                  <span
+                    style={mediaBadgeStyle(lesson.hasMedia)}
+                    title={lesson.hasMedia ? s.mediaBadgeAttached : s.mediaBadgeMissing}
+                    aria-label={lesson.hasMedia ? s.mediaBadgeAttached : s.mediaBadgeMissing}
+                  >
+                    M
                   </span>
 
                   {/* Publication status badge */}

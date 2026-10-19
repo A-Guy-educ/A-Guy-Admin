@@ -158,7 +158,7 @@ describe('QuestionGeometryBlockSchema', () => {
             { name: 'C', x: 200, y: 300, position: 'm' },
           ],
           lines: [
-            { from: 'A', to: 'B', style: 'solid', label: { value: 'c', position: 'm' } },
+            { from: 'A', to: 'B', style: 'solid', label: { value: 'c', position: 't' } },
             { from: 'B', to: 'C', style: 'solid' },
             { from: 'C', to: 'A', style: 'solid' },
           ],
