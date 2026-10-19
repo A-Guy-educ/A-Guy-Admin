@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- fix(ci): Patch commitlint parser for Node 24 compatibility ([#639](https://github.com/A-Guy-educ/A-Guy-Admin/pull/639)) — @aguyshayb
 - fix(payments): Cancel Tranzila STO on user-initiated subscription cancel ([#635](https://github.com/A-Guy-educ/A-Guy-Admin/pull/635)) — @aguyshayb
 ## [v0.58.0] - 2026-10-18
 
