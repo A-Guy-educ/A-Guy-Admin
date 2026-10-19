@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- chore(deps): bump dotenv from 17.2.3 to 18.0.8 ([#644](https://github.com/A-Guy-educ/A-Guy-Admin/pull/644)) — @dependabot[bot]
 - fix(payments): Admin-panel cancel calls Tranzila STO + bootstrap 400 logs ([#651](https://github.com/A-Guy-educ/A-Guy-Admin/pull/651)) — @aguyshayb
 - feat(payments): Hand Shake outgoing iframe signing (feature-flagged) ([#641](https://github.com/A-Guy-educ/A-Guy-Admin/pull/641)) — @aguyshayb
 - fix(payments): Correlate recurring STO charges and record renewals ([#640](https://github.com/A-Guy-educ/A-Guy-Admin/pull/640)) — @aguyshayb
