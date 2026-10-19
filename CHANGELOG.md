@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- fix(payments): Cancel Tranzila STO on user-initiated subscription cancel ([#635](https://github.com/A-Guy-educ/A-Guy-Admin/pull/635)) — @aguyshayb
 ## [v0.58.0] - 2026-10-18
 
 - promote: dev -> main (v0.58.0) ([#637](https://github.com/A-Guy-educ/A-Guy-Admin/pull/637)) — @aguyshayb
