@@ -647,14 +647,13 @@ async function handoffToStandingOrder(args: HandoffArgs): Promise<void> {
   const { tranzillaTerminalToken, tranzillaTerminal } = getPaymentEnv()
   const terminal = tranzillaTerminalToken || tranzillaTerminal
 
-  // Point Tranzila's My-Billing engine at our own notify_url for recurring
-  // charges. Without this, Tranzila charges silently and the user's local
-  // sub never advances past month 1 — see "STO renewal correctness" in the
-  // mission tracker. NEXT_PUBLIC_SERVER_URL is what the bootstrap endpoint
-  // already uses when building the first-charge iframe's notify_url.
-  const serverUrl = process.env.NEXT_PUBLIC_SERVER_URL
-  const notificationUrl = serverUrl ? `${serverUrl}/api/webhooks/tranzilla` : undefined
-
+  // Tranzila POSTs to our webhook on each STO charge via a TERMINAL-level
+  // notify URL configured in the My-Billing dashboard (my.tranzila.com →
+  // Settings → Terminal → My-Billing). There is no per-STO notify field on
+  // createstov2; attempting to pass one trips error_code 20004 "Json does
+  // not match validation schema" (additionalProperties). Our sto_id
+  // correlation branch in POST / handles the resulting POST — it just
+  // depends on the dashboard URL being set.
   let result
   try {
     result = await createStandingOrder({
@@ -677,7 +676,6 @@ async function handoffToStandingOrder(args: HandoffArgs): Promise<void> {
           quantity: 1,
         },
       ],
-      notificationUrl,
     })
   } catch (err) {
     payload.logger.fatal(
