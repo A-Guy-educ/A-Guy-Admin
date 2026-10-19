@@ -180,12 +180,17 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         // than risk a "cancelled on our side, still billing on theirs"
         // split-brain.
         if (result.errorCode !== 0 && result.errorCode !== null) {
+          // rawText contains Tranzila's `mismatch_info` on 20004 schema
+          // errors — essential for diagnosing future field-shape bugs
+          // (sto_id-string-vs-int was invisible without it, 2026-10-19).
           logger.error(
             {
               subscriptionId: id,
               stoId: sub.stoId,
               errorCode: result.errorCode,
               message: result.message,
+              rawText: result.rawText,
+              httpStatus: result.httpStatus,
             },
             '[subscriptions/cancel] Tranzila cancelStandingOrder returned non-zero error_code',
           )

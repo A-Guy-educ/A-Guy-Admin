@@ -736,6 +736,8 @@ async function handoffToStandingOrder(args: HandoffArgs): Promise<void> {
             stoId: result.stoId,
             errorCode: cancelResult.errorCode,
             message: cancelResult.message,
+            rawText: cancelResult.rawText,
+            httpStatus: cancelResult.httpStatus,
           },
           '[tranzilla-webhook/sto-handoff] ALSO failed to cancel orphan STO (non-zero error_code) — manual intervention required.',
         )
