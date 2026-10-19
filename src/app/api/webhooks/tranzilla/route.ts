@@ -42,6 +42,7 @@ import {
   createStandingOrder,
   formatTranzilaDate,
 } from '@/lib/payment/tranzila-v2-client'
+import { computeNextChargePriceIls } from '@/lib/payment/tier-tranzilla-pricing'
 import { verifyTranzillaWebhook } from '@/lib/payment/tranzilla'
 import { isTierSlug, type TierSlug } from '@/lib/tiers/constants'
 import { sendPurchaseReceipt } from '@/server/email/services/purchase-receipt-service'
@@ -157,22 +158,63 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ received: true, warning: 'missing_index' }, { status: 200 })
   }
 
-  // Raw-dashboard charges (manual Tranzilla admin, no u72) land here. Log
-  // the payload shape and ack — not our transaction to process.
+  // When no u72 is present we have three sub-cases, resolved in order:
+  //   1. STO renewal: `sto_id` in the body maps to a live Subscription.
+  //      Tranzila's My-Billing engine owns these POSTs; the sub was already
+  //      bootstrapped by a prior iframe charge. Route to the renewal handler.
+  //   2. STO renewal with unknown sto_id (orphan STO, different env, race
+  //      against handoff): log + ack, nothing to process locally.
+  //   3. Raw-dashboard charge (manual Tranzila admin): log + ack.
+  // The expanded log in sub-cases 2 and 3 includes the full body-key list so
+  // ops can see what Tranzila actually sends if the correlation strategy
+  // needs updating (e.g. different field name for sto_id).
+  let stoRenewalSubscriptionId: string | null = null
   if (!transactionRowId) {
-    payload.logger.info(
-      {
-        authMethod,
-        index,
-        responseCode,
-        sum: body.sum,
-        currency: body.currency,
-        confirmationCode: body.ConfirmationCode,
-        hasToken: Boolean(body.TranzilaTK),
-      },
-      '[tranzilla-webhook] no u72 correlation — logging unassociated charge',
-    )
-    return NextResponse.json({ received: true, unassociated: true }, { status: 200 })
+    const stoIdFromBody = extractStoIdFromBody(body)
+    if (stoIdFromBody) {
+      const subResult = await payload.find({
+        collection: 'subscriptions',
+        where: {
+          and: [{ provider: { equals: 'tranzilla' } }, { stoId: { equals: stoIdFromBody } }],
+        },
+        limit: 1,
+        depth: 0,
+        overrideAccess: true,
+      })
+      const matchedSub = subResult.docs[0] as { id: string } | undefined
+      if (matchedSub) {
+        stoRenewalSubscriptionId = matchedSub.id
+      } else {
+        payload.logger.warn(
+          {
+            authMethod,
+            index,
+            responseCode,
+            stoIdFromBody,
+            bodyKeys: Object.keys(body),
+          },
+          '[tranzilla-webhook] sto_id in body but no Subscription matches — orphan STO or wrong environment',
+        )
+      }
+    }
+
+    if (!stoRenewalSubscriptionId) {
+      payload.logger.info(
+        {
+          authMethod,
+          index,
+          responseCode,
+          sum: body.sum,
+          currency: body.currency,
+          confirmationCode: body.ConfirmationCode,
+          hasToken: Boolean(body.TranzilaTK),
+          hasStoId: Boolean(stoIdFromBody),
+          bodyKeys: Object.keys(body),
+        },
+        '[tranzilla-webhook] unassociated charge — no u72 and no matching stoId',
+      )
+      return NextResponse.json({ received: true, unassociated: true }, { status: 200 })
+    }
   }
 
   // ─── 4. Dedup gate — WebhookEvents (provider, eventId) is unique ────────
@@ -232,11 +274,25 @@ export async function POST(request: NextRequest) {
   }
 
   // ─── 5. Process the transaction ─────────────────────────────────────────
+  // Routing invariants (set up above in sections 3 + 3b):
+  //   - stoRenewalSubscriptionId set  → u72 absent, u73 absent, sto_id matched a sub
+  //     → recurring STO charge from Tranzila's My-Billing engine
+  //   - subscriptionRowId set         → u72 present, u73 present
+  //     → bootstrap first charge from the hosted iframe
+  //   - only transactionRowId set     → u72 present, u73 absent
+  //     → one-time (non-subscription) charge
+  // Section 3b early-returns on "no u72 AND no stoId match", so by this
+  // point at least one of the three correlation keys is populated.
   try {
-    if (subscriptionRowId) {
-      // Subscription-bootstrap path (first charge against the hosted iframe
-      // with the token terminal). Captures TranzilaTK, flips sub to active,
-      // and promotes the user via extendTierSubscription.
+    if (stoRenewalSubscriptionId) {
+      await handleTranzillaStoRenewal(payload, {
+        subscriptionId: stoRenewalSubscriptionId,
+        index,
+        responseCode,
+        body,
+        authMethod,
+      })
+    } else if (subscriptionRowId) {
       await handleTranzillaSubscriptionBootstrap(payload, {
         index,
         responseCode,
@@ -245,7 +301,7 @@ export async function POST(request: NextRequest) {
         body,
         authMethod,
       })
-    } else {
+    } else if (transactionRowId) {
       await handleTranzillaCallback(payload, {
         index,
         responseCode,
@@ -409,6 +465,7 @@ interface TranzillaSubBootstrapArgs {
 
 interface TranzillaSubscriptionDoc {
   id: string
+  tenant?: string | { id: string } | null
   user: string | { id: string } | null
   tierSlug?: string | null
   status: string
@@ -419,6 +476,22 @@ interface TranzillaSubscriptionDoc {
   currentPeriodStart?: string | Date | null
   currentPeriodEnd?: string | Date | null
   stoId?: string | null
+}
+
+/**
+ * Pull the Tranzila standing-order id out of the recurring-charge notify_url
+ * POST body. Tranzila's docs don't nail down a single field name across API
+ * versions, so we accept the common variants. If an actual prod STO renewal
+ * POST uses yet another name, the enhanced "unassociated" log below prints
+ * every body key — eyeball that in production logs and extend this list.
+ */
+function extractStoIdFromBody(body: Record<string, string>): string | null {
+  const candidates = ['sto_id', 'stoId', 'standing_order_id', 'standingOrderId', 'sto']
+  for (const key of candidates) {
+    const value = body[key]
+    if (typeof value === 'string' && value.length > 0) return value
+  }
+  return null
 }
 
 interface HandoffArgs {
@@ -574,6 +647,14 @@ async function handoffToStandingOrder(args: HandoffArgs): Promise<void> {
   const { tranzillaTerminalToken, tranzillaTerminal } = getPaymentEnv()
   const terminal = tranzillaTerminalToken || tranzillaTerminal
 
+  // Point Tranzila's My-Billing engine at our own notify_url for recurring
+  // charges. Without this, Tranzila charges silently and the user's local
+  // sub never advances past month 1 — see "STO renewal correctness" in the
+  // mission tracker. NEXT_PUBLIC_SERVER_URL is what the bootstrap endpoint
+  // already uses when building the first-charge iframe's notify_url.
+  const serverUrl = process.env.NEXT_PUBLIC_SERVER_URL
+  const notificationUrl = serverUrl ? `${serverUrl}/api/webhooks/tranzilla` : undefined
+
   let result
   try {
     result = await createStandingOrder({
@@ -596,6 +677,7 @@ async function handoffToStandingOrder(args: HandoffArgs): Promise<void> {
           quantity: 1,
         },
       ],
+      notificationUrl,
     })
   } catch (err) {
     payload.logger.fatal(
@@ -917,9 +999,255 @@ async function handleTranzillaSubscriptionBootstrap(
   )
 }
 
+interface StoRenewalArgs {
+  subscriptionId: string
+  index: string
+  responseCode: string
+  body: Record<string, string>
+  authMethod: 'response_hash' | 'unsigned'
+}
+
+/**
+ * Handle a recurring STO charge POST from Tranzila's My-Billing engine.
+ *
+ * Called when (a) the inbound POST has no u72/u73 (not a bootstrap), and
+ * (b) its `sto_id` field matches a Subscriptions row that we created at
+ * handoff. Routed to from section 5 of the main handler; the dedup gate
+ * has already filtered replays by `index`.
+ *
+ * Idempotency: safe to re-run on a replayed delivery.
+ *   - extendTierSubscription CAS-guards on currentPeriodEnd + llmTokensResetAt;
+ *     a repeated call with the same newPeriodEnd is a no-op.
+ *   - The renewal Tx uses `providerTransactionId: index` which is unique per
+ *     Tranzila charge; a duplicate-key error on retry means the Tx was
+ *     already recorded on a prior delivery and we can safely continue.
+ *
+ * Correctness invariants:
+ *   1. extendTierSubscription runs BEFORE Tx create — advancing the sub's
+ *      period first makes the row ineligible for re-selection, so a Tx
+ *      create failure cannot expose a double-charge vector.
+ *   2. Approved charges clear past_due back to active (via extend's $set:
+ *      status='active' + tranzillaRetryCount=0 inside advanceSubscriptionPeriod).
+ *   3. Declines flip to past_due + increment retry count, but do NOT expire
+ *      the sub here — Tranzila's My-Billing engine owns the retry cadence
+ *      on their side; downgrade belongs in a separate dunning policy
+ *      (Mission 5 in the mission tracker). The failure is recorded as a
+ *      Transactions row for accounting + ops visibility.
+ */
+async function handleTranzillaStoRenewal(
+  payload: PayloadInstance,
+  args: StoRenewalArgs,
+): Promise<void> {
+  const { subscriptionId, index, responseCode, body, authMethod } = args
+
+  let sub: TranzillaSubscriptionDoc | null
+  try {
+    sub = (await payload.findByID({
+      collection: 'subscriptions',
+      id: subscriptionId,
+      depth: 0,
+      overrideAccess: true,
+    })) as TranzillaSubscriptionDoc
+  } catch {
+    sub = null
+  }
+  if (!sub) {
+    payload.logger.warn(
+      { index, subscriptionId },
+      '[tranzilla-webhook/sto-renewal] sub vanished between correlation and process',
+    )
+    return
+  }
+
+  const tenantId = resolveTenantId(sub.tenant)
+  const userId = resolveUserId(sub.user)
+  if (!tenantId || !userId) {
+    payload.logger.error(
+      { index, subscriptionId, hasTenant: Boolean(tenantId), hasUser: Boolean(userId) },
+      '[tranzilla-webhook/sto-renewal] sub missing tenant or user — cannot record renewal',
+    )
+    return
+  }
+
+  const tierSlug = sub.tierSlug
+  if (!isTierSlug(tierSlug) || tierSlug === 'free') {
+    payload.logger.error(
+      { index, subscriptionId, tierSlug },
+      '[tranzilla-webhook/sto-renewal] sub has invalid tier — cannot record renewal',
+    )
+    return
+  }
+
+  const isApproved = responseCode === TRANZILLA_APPROVED_CODE
+
+  // Decline branch — Tranzila's My-Billing engine owns retries. We just
+  // reflect state locally so UI dunning can show + ops can see the failure.
+  if (!isApproved) {
+    const subsCollection = payload.db.collections['subscriptions']
+    await subsCollection.updateOne(
+      {
+        _id: new ObjectId(subscriptionId),
+        status: { $in: ['active', 'past_due'] },
+      },
+      {
+        $set: { status: 'past_due', updatedAt: new Date() },
+        $inc: { tranzillaRetryCount: 1 },
+      },
+    )
+    try {
+      await payload.create({
+        collection: 'transactions',
+        data: {
+          tenant: tenantId,
+          user: userId,
+          tierSlug,
+          provider: 'tranzilla',
+          providerTransactionId: index,
+          status: 'failed',
+          amount: Math.round((Number(body.sum) || 0) * 100),
+          currency: 'ILS',
+          isRenewal: true,
+          subscription: subscriptionId,
+          metadata: {
+            tranzilla: { responseCode, authMethod },
+          },
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } as any,
+        draft: false,
+        overrideAccess: true,
+      })
+    } catch (txErr) {
+      if (!isDuplicateKeyError(txErr)) {
+        payload.logger.error(
+          {
+            err: txErr instanceof Error ? txErr.message : String(txErr),
+            index,
+            subscriptionId,
+          },
+          '[tranzilla-webhook/sto-renewal] failed to record decline Tx',
+        )
+      }
+    }
+    payload.logger.info(
+      { index, subscriptionId, responseCode, authMethod },
+      '[tranzilla-webhook/sto-renewal] decline recorded — sub flipped to past_due',
+    )
+    return
+  }
+
+  // Approved path.
+  const anchor = sub.currentPeriodEnd ? new Date(sub.currentPeriodEnd) : new Date()
+  const newPeriodEnd = addCalendarMonths(anchor, 1)
+
+  const { priceIls, isIntroCharge } = computeNextChargePriceIls({
+    introPriceIls: sub.introPriceIls ?? null,
+    introChargesTotal: sub.introChargesTotal ?? null,
+    introChargesUsed: sub.introChargesUsed ?? 0,
+    regularPriceIls: sub.regularPriceIls ?? 0,
+  })
+
+  await extendTierSubscription({
+    payload,
+    userId,
+    tierSlug: tierSlug as TierSlug,
+    subscriptionId,
+    newPeriodStart: anchor,
+    newPeriodEnd,
+    isIntroCharge,
+    order: 'renewal',
+  })
+
+  // Create renewal Tx row. Duplicate key = Tx was already created on a
+  // prior delivery (replay path) — safe to continue.
+  let renewalTxId: string | null = null
+  try {
+    const renewalTx = await payload.create({
+      collection: 'transactions',
+      data: {
+        tenant: tenantId,
+        user: userId,
+        tierSlug,
+        provider: 'tranzilla',
+        providerTransactionId: index,
+        status: 'succeeded',
+        amount: Math.round((Number(body.sum) || priceIls) * 100),
+        currency: 'ILS',
+        isRenewal: true,
+        isIntroCharge,
+        subscription: subscriptionId,
+        entitlementsGrantedAt: new Date().toISOString(),
+        metadata: {
+          tranzilla: {
+            confirmationCode: body.ConfirmationCode ?? null,
+            responseCode,
+            authMethod,
+          },
+        },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any,
+      draft: false,
+      overrideAccess: true,
+    })
+    renewalTxId = renewalTx.id
+  } catch (txErr) {
+    if (isDuplicateKeyError(txErr)) {
+      payload.logger.info(
+        { index, subscriptionId },
+        '[tranzilla-webhook/sto-renewal] renewal Tx already recorded on prior delivery — replay no-op',
+      )
+    } else {
+      payload.logger.fatal(
+        {
+          err: txErr instanceof Error ? txErr.message : String(txErr),
+          index,
+          subscriptionId,
+        },
+        '[tranzilla-webhook/sto-renewal] CRITICAL — card charged + sub extended, but renewal Tx create FAILED. Reconcile manually.',
+      )
+      // Don't throw — sub is already extended so retrying the whole webhook
+      // would advance nothing. Ops has the fatal log to repair the Tx row.
+    }
+  }
+
+  // Receipt for the renewal charge. Green Invoice issues the tax invoice;
+  // our email is just a payment-confirmation note. Fire-and-forget,
+  // idempotent via emailSentAt. Skipped on duplicate-Tx replays because
+  // renewalTxId stays null.
+  if (renewalTxId) {
+    void sendPurchaseReceipt(payload, {
+      transactionId: renewalTxId,
+      userId,
+      productId: '',
+      providerTransactionId: index,
+      amount: Math.round((Number(body.sum) || priceIls) * 100),
+      currency: 'ILS',
+      appliedCoupon: null,
+      tierSlug: tierSlug as TierSlug,
+    })
+  }
+
+  payload.logger.info(
+    {
+      index,
+      subscriptionId,
+      tierSlug,
+      priceIls,
+      isIntroCharge,
+      newPeriodEnd: newPeriodEnd.toISOString(),
+      renewalTxId,
+    },
+    '[tranzilla-webhook/sto-renewal] renewal applied',
+  )
+}
+
 function resolveUserId(user: TranzillaTx['user']): string | null {
   if (!user) return null
   return typeof user === 'string' ? user : user.id
+}
+
+function resolveTenantId(tenant: TranzillaSubscriptionDoc['tenant']): string | null {
+  if (!tenant) return null
+  return typeof tenant === 'string' ? tenant : tenant.id
 }
 
 function resolveProductId(product: TranzillaTx['product']): string | null {
