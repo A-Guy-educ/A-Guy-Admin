@@ -868,3 +868,194 @@ describe('sweepTranzillaRenewals', () => {
     expect(user.currentTier).toBe('free')
   })
 })
+
+describe('Tranzila webhook — STO renewal correlation (Mission 1)', () => {
+  async function postToWebhook(body: Record<string, string>) {
+    const route = await import('@/app/api/webhooks/tranzilla/route')
+    const request = new NextRequest('http://localhost:3000/api/webhooks/tranzilla', {
+      method: 'POST',
+      body: JSON.stringify(body),
+      headers: { 'content-type': 'application/json' },
+    })
+    return route.POST(request)
+  }
+
+  it('advances the sub and records a renewal Tx when sto_id correlates', async () => {
+    const originalEnd = new Date(Date.now() + 15 * 24 * 60 * 60 * 1000)
+    const { sub } = await createPendingSub({
+      tierSlug: 'basic',
+      offerSlug: 'default',
+      status: 'active',
+      currentPeriodEnd: originalEnd,
+      cancelAtPeriodEnd: false,
+      stoId: '487700',
+    })
+
+    const res = await postToWebhook({
+      index: `tz-renewal-${new ObjectId().toHexString()}`,
+      Response: '000',
+      sum: '59.00',
+      currency: '1',
+      ConfirmationCode: '9988',
+      TranzilaTK: 'tk-sto-renew',
+      sto_id: '487700',
+    })
+    expect(res.status).toBe(200)
+
+    const refreshed = (await payload.findByID({
+      collection: 'subscriptions',
+      id: sub.id,
+      overrideAccess: true,
+    })) as any
+    expect(refreshed.status).toBe('active')
+    expect(new Date(refreshed.currentPeriodEnd).getTime()).toBeGreaterThan(originalEnd.getTime())
+
+    const txs = await payload.find({
+      collection: 'transactions',
+      where: {
+        and: [{ subscription: { equals: sub.id } }, { isRenewal: { equals: true } }],
+      },
+      limit: 10,
+      overrideAccess: true,
+    })
+    expect(txs.docs.length).toBe(1)
+    const renewalTx = txs.docs[0] as any
+    expect(renewalTx.status).toBe('succeeded')
+    expect(renewalTx.amount).toBe(5900)
+  })
+
+  it('increments introChargesUsed when the sub is still on an intro offer', async () => {
+    const { sub } = await createPendingSub({
+      tierSlug: 'basic',
+      offerSlug: 'intro3mo',
+      status: 'active',
+      currentPeriodEnd: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
+      cancelAtPeriodEnd: false,
+      stoId: '487701',
+    })
+
+    await postToWebhook({
+      index: `tz-renewal-${new ObjectId().toHexString()}`,
+      Response: '000',
+      sum: '33.00',
+      currency: '1',
+      TranzilaTK: 'tk-intro',
+      sto_id: '487701',
+    })
+
+    const refreshed = (await payload.findByID({
+      collection: 'subscriptions',
+      id: sub.id,
+      overrideAccess: true,
+    })) as any
+    expect(refreshed.introChargesUsed).toBe(1)
+  })
+
+  it('flips sub to past_due and records a failure Tx on decline', async () => {
+    const { sub } = await createPendingSub({
+      tierSlug: 'basic',
+      offerSlug: 'default',
+      status: 'active',
+      currentPeriodEnd: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
+      cancelAtPeriodEnd: false,
+      stoId: '487702',
+    })
+
+    const res = await postToWebhook({
+      index: `tz-renewal-${new ObjectId().toHexString()}`,
+      Response: '051', // insufficient funds
+      sum: '59.00',
+      currency: '1',
+      TranzilaTK: 'tk-decline',
+      sto_id: '487702',
+    })
+    expect(res.status).toBe(200)
+
+    const refreshed = (await payload.findByID({
+      collection: 'subscriptions',
+      id: sub.id,
+      overrideAccess: true,
+    })) as any
+    expect(refreshed.status).toBe('past_due')
+    expect(refreshed.tranzillaRetryCount).toBe(1)
+
+    const txs = await payload.find({
+      collection: 'transactions',
+      where: {
+        and: [{ subscription: { equals: sub.id } }, { isRenewal: { equals: true } }],
+      },
+      limit: 10,
+      overrideAccess: true,
+    })
+    expect(txs.docs.length).toBe(1)
+    expect((txs.docs[0] as any).status).toBe('failed')
+  })
+
+  it('acks and logs unassociated when sto_id matches no Subscriptions row', async () => {
+    const res = await postToWebhook({
+      index: `tz-orphan-${new ObjectId().toHexString()}`,
+      Response: '000',
+      sum: '59.00',
+      currency: '1',
+      sto_id: '999999', // no sub has this
+    })
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as any
+    expect(body.unassociated).toBe(true)
+  })
+
+  it('is idempotent on replay — second POST with the same index no-ops', async () => {
+    const originalEnd = new Date(Date.now() + 15 * 24 * 60 * 60 * 1000)
+    const { sub } = await createPendingSub({
+      tierSlug: 'basic',
+      offerSlug: 'default',
+      status: 'active',
+      currentPeriodEnd: originalEnd,
+      cancelAtPeriodEnd: false,
+      stoId: '487703',
+    })
+
+    const sharedIndex = `tz-replay-${new ObjectId().toHexString()}`
+    await postToWebhook({
+      index: sharedIndex,
+      Response: '000',
+      sum: '59.00',
+      currency: '1',
+      sto_id: '487703',
+    })
+    const afterFirst = (await payload.findByID({
+      collection: 'subscriptions',
+      id: sub.id,
+      overrideAccess: true,
+    })) as any
+    const periodEndAfterFirst = new Date(afterFirst.currentPeriodEnd).getTime()
+
+    const res = await postToWebhook({
+      index: sharedIndex,
+      Response: '000',
+      sum: '59.00',
+      currency: '1',
+      sto_id: '487703',
+    })
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as any
+    expect(body.deduped).toBe(true)
+
+    const afterSecond = (await payload.findByID({
+      collection: 'subscriptions',
+      id: sub.id,
+      overrideAccess: true,
+    })) as any
+    expect(new Date(afterSecond.currentPeriodEnd).getTime()).toBe(periodEndAfterFirst)
+
+    const txs = await payload.find({
+      collection: 'transactions',
+      where: {
+        and: [{ subscription: { equals: sub.id } }, { isRenewal: { equals: true } }],
+      },
+      limit: 10,
+      overrideAccess: true,
+    })
+    expect(txs.docs.length).toBe(1)
+  })
+})
