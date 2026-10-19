@@ -578,6 +578,18 @@ export interface User {
    */
   llmTokensResetAt?: string | null;
   /**
+   * Tokens consumed in the current daily window. Reset by Web on the first increment after llmTokensDailyResetAt.
+   */
+  llmTokensUsedToday?: number | null;
+  /**
+   * Daily token cap. Null = no daily cap. Seeded from tier (TIER_LLM_TOKEN_CAP_DAILY in Web) on login iff never set; admin-set values are never auto-overwritten.
+   */
+  llmTokensDailyLimit?: number | null;
+  /**
+   * First moment of the next daily window — stamped by Web when the counter resets.
+   */
+  llmTokensDailyResetAt?: string | null;
+  /**
    * AI questions used in the current Asia/Jerusalem day
    */
   aiQuestionsUsedDay?: number | null;
@@ -5009,6 +5021,9 @@ export interface UsersSelect<T extends boolean = true> {
   llmTokensUsed?: T;
   llmTokensLimit?: T;
   llmTokensResetAt?: T;
+  llmTokensUsedToday?: T;
+  llmTokensDailyLimit?: T;
+  llmTokensDailyResetAt?: T;
   aiQuestionsUsedDay?: T;
   aiQuestionsBucketDay?: T;
   chatLimitUsedDay?: T;
