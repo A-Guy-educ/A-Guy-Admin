@@ -463,6 +463,61 @@ export const Users: CollectionConfig = {
           'When llmTokensUsed rolls back to 0. Web sets this to first-of-next-month on first increment of a new month.',
       },
     },
+    // Daily LLM token accounting. Mirrors the monthly block above but on a
+    // 24h window. Written by A-Guy-Web via the raw MongoDB driver ($inc).
+    // Declared here so Payload's full-doc save on admin edits does not wipe
+    // the counters. Introduced alongside Web PR #1405 (daily cap).
+    {
+      name: 'llmTokensUsedToday',
+      type: 'number',
+      defaultValue: 0,
+      // Server-only: written by A-Guy-Web via raw MongoDB $inc. Blocking REST/
+      // GraphQL create+update prevents signup POSTs from seeding a negative
+      // starting balance and PATCHes from resetting the counter.
+      access: {
+        create: () => false,
+        update: () => false,
+      },
+      admin: {
+        readOnly: true,
+        description:
+          'Tokens consumed in the current daily window. Reset by Web on the first increment after llmTokensDailyResetAt.',
+      },
+    },
+    {
+      name: 'llmTokensDailyLimit',
+      type: 'number',
+      // Nullable: null = no daily cap. Seeded from TIER_LLM_TOKEN_CAP_DAILY
+      // in Web on login iff never set; admin-set values are never auto-
+      // overwritten.
+      // Admin-only for both create and update: managers set per-user caps.
+      // Without the create guard, `create: anyone` at the collection level
+      // would let a signup POST inject an unbounded limit.
+      access: {
+        create: ({ req: { user } }) =>
+          isUsersCollectionUser(user) && user.role === AccountRole.Admin,
+        update: ({ req: { user } }) =>
+          isUsersCollectionUser(user) && user.role === AccountRole.Admin,
+      },
+      admin: {
+        description:
+          'Daily token cap. Null = no daily cap. Seeded from tier (TIER_LLM_TOKEN_CAP_DAILY in Web) on login iff never set; admin-set values are never auto-overwritten.',
+      },
+    },
+    {
+      name: 'llmTokensDailyResetAt',
+      type: 'date',
+      // Server-only: stamped by Web when the daily counter resets.
+      access: {
+        create: () => false,
+        update: () => false,
+      },
+      admin: {
+        readOnly: true,
+        description:
+          'First moment of the next daily window — stamped by Web when the counter resets.',
+      },
+    },
     // Feature-quota counters (Asia/Jerusalem calendar day). One bucket pair
     // per enforceable feature key. Bucket strings are YYYY-MM-DD in IL time;
     // counter resets when the bucket changes.
