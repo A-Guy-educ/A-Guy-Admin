@@ -256,13 +256,38 @@ describe('cancelStandingOrder', () => {
     expect(capturedRequest.url).toBe('https://api.tranzila.com/v2/sto/update')
     expect(capturedRequest.init?.method).toBe('POST')
     const body = JSON.parse(String(capturedRequest.init?.body))
+    // sto_id MUST be a number — Tranzila's validator rejects it as a string
+    // with error_code 20004 (type: expected integer, used string). Proven
+    // live 2026-10-19 via scripts/probe-tranzila-sto-update.ts.
     expect(body).toEqual({
       terminal_name: 'fxpaguytok',
-      sto_id: '189976',
+      sto_id: 189976,
       sto_status: 'inactive',
     })
+    expect(typeof body.sto_id).toBe('number')
     const headers = capturedRequest.init?.headers as Record<string, string>
     expect(headers['X-tranzila-api-app-key']).toBe('pub-test-key')
     expect(headers['X-tranzila-api-access-token']).toMatch(/^[0-9a-f]{64}$/)
+  })
+
+  it('throws when stoId is not a parseable positive integer', async () => {
+    await expect(
+      cancelStandingOrder({ terminalName: 'fxpaguytok', stoId: 'not-a-number' }),
+    ).rejects.toThrow(/positive integer/)
+    await expect(cancelStandingOrder({ terminalName: 'fxpaguytok', stoId: '-5' })).rejects.toThrow(
+      /positive integer/,
+    )
+    await expect(cancelStandingOrder({ terminalName: 'fxpaguytok', stoId: '' })).rejects.toThrow(
+      /positive integer/,
+    )
+    // The webhook's CAS claim sentinel must NOT reach this function —
+    // callers are expected to short-circuit on it (see user-cancel
+    // endpoint and admin-cancel hook). Verify the throw as a backstop.
+    await expect(
+      cancelStandingOrder({
+        terminalName: 'fxpaguytok',
+        stoId: 'pending-handoff:689a1b2c3d4e5f6a7b8c9d0e',
+      }),
+    ).rejects.toThrow(/positive integer/)
   })
 })

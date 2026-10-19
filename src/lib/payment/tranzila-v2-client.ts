@@ -353,21 +353,39 @@ export interface CancelStandingOrderArgs {
 }
 
 /**
- * Flip a standing order to `inactive`. Two call sites:
+ * Flip a standing order to `inactive`. Three call sites:
  *   1. User-initiated cancellation (PATCH /api/subscriptions/:id/cancel).
- *   2. Rollback of an orphaned STO when our DB write after a successful
+ *   2. Admin-UI cancel via the Subscriptions.beforeChange hook.
+ *   3. Rollback of an orphaned STO when our DB write after a successful
  *      createstov2 fails — without this cleanup the user would be billed
  *      both by Tranzila's STO AND by our own fallback cron.
  *
- * Tranzila's STO update endpoint reads `sto_status: 'active' | 'inactive'`.
+ * Shape (verified live 2026-10-19 via scripts/probe-tranzila-sto-update.ts):
+ *   POST /v2/sto/update
+ *   { terminal_name: string, sto_id: integer, sto_status: 'active' | 'inactive' }
+ *
+ * CRITICAL: Tranzila's validator rejects `sto_id` as a string with
+ * error_code 20004 "Json does not match validation schema" (type expected
+ * integer, used string). We store stoId as text in Mongo but MUST convert
+ * to a number here or every cancel 20004s. Parsed + guarded locally so
+ * callers can keep passing the DB-shape string.
+ *
  * Idempotent server-side — flipping an already-inactive STO is a no-op.
  */
-export function cancelStandingOrder(args: CancelStandingOrderArgs): Promise<TranzilaV2Response> {
+export async function cancelStandingOrder(
+  args: CancelStandingOrderArgs,
+): Promise<TranzilaV2Response> {
+  const stoIdNum = Number(args.stoId)
+  if (!Number.isSafeInteger(stoIdNum) || stoIdNum <= 0) {
+    throw new Error(
+      `cancelStandingOrder: stoId must be a positive integer string, got "${args.stoId}"`,
+    )
+  }
   return postV2({
     path: '/v2/sto/update',
     body: {
       terminal_name: args.terminalName,
-      sto_id: args.stoId,
+      sto_id: stoIdNum,
       sto_status: 'inactive',
     },
   })

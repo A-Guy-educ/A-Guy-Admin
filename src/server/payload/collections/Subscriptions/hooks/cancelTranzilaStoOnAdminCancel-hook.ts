@@ -96,12 +96,16 @@ export const cancelTranzilaStoOnAdminCancel: CollectionBeforeChangeHook = async 
   // Mirror the user-cancel endpoint's predicate: errorCode 0 or null (no
   // JSON parsed) → accepted. Non-zero → real failure.
   if (result.errorCode !== 0 && result.errorCode !== null) {
+    // rawText + mismatch_info are essential for diagnosing schema errors
+    // when Tranzila's accepted body shape drifts (see 2026-10-19 incident).
     req.payload.logger.error(
       {
         subscriptionId: originalDoc!.id,
         stoId,
         errorCode: result.errorCode,
         message: result.message,
+        rawText: result.rawText,
+        httpStatus: result.httpStatus,
       },
       '[subs-hook/admin-cancel] Tranzila cancelStandingOrder returned non-zero error_code — admin save aborted',
     )
