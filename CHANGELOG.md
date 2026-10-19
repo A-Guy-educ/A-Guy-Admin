@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- feat: Restrict line label position to above/below and add media badge ([#653](https://github.com/A-Guy-educ/A-Guy-Admin/pull/653)) — @aguyshayb
 - feat: Add daily LLM token counter fields to user schema ([#652](https://github.com/A-Guy-educ/A-Guy-Admin/pull/652)) — @aguyshayb
 - chore(deps): bump openai from 4.104.0 to 7.34.0 ([#648](https://github.com/A-Guy-educ/A-Guy-Admin/pull/648)) — @dependabot[bot]
 - chore(deps): bump @napi-rs/canvas from 0.1.89 to 1.0.11 ([#650](https://github.com/A-Guy-educ/A-Guy-Admin/pull/650)) — @dependabot[bot]
