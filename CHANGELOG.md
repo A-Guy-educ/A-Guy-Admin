@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- fix(payments): Admin-panel cancel calls Tranzila STO + bootstrap 400 logs ([#651](https://github.com/A-Guy-educ/A-Guy-Admin/pull/651)) — @aguyshayb
 - feat(payments): Hand Shake outgoing iframe signing (feature-flagged) ([#641](https://github.com/A-Guy-educ/A-Guy-Admin/pull/641)) — @aguyshayb
 - fix(payments): Correlate recurring STO charges and record renewals ([#640](https://github.com/A-Guy-educ/A-Guy-Admin/pull/640)) — @aguyshayb
 - fix(ci): Patch commitlint parser for Node 24 compatibility ([#639](https://github.com/A-Guy-educ/A-Guy-Admin/pull/639)) — @aguyshayb
