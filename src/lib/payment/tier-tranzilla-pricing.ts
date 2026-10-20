@@ -30,11 +30,11 @@ export interface TranzillaOffer {
   regularPriceIls: number
 }
 
-// Partial — not every tier offers every slug. `test` is `basic`-only
-// (used by web's /subtest smoke flow); advanced/premium intentionally
-// omit it. resolveTranzillaOffer returns null on a tier/offer gap so
-// the bootstrap endpoint can 400 the request instead of silently
-// defaulting to another offer.
+// Partial — not every tier offers every slug. `test` offers are enabled on
+// all three tiers at trivially-small prices (₪0.01/0.02/0.03) so Web's
+// /subtest page can exercise upgrade and downgrade flows cheaply.
+// Env-gated via isOfferAllowedForEnvironment below — a prod deploy refuses
+// the test offer even if someone passes `?offer=test` on the subscribe link.
 type TierOfferCatalog = Partial<Record<TranzillaOfferSlug, TranzillaOffer>>
 
 // `free` is not a paid tier — the catalog only enumerates purchasable tiers.
@@ -46,18 +46,17 @@ export const TIER_TRANZILLA_PRICING: Record<PaidTierSlug, TierOfferCatalog> = {
   basic: {
     default: { introPriceIls: null, introChargesTotal: null, regularPriceIls: 59 },
     intro3mo: { introPriceIls: 33, introChargesTotal: 3, regularPriceIls: 59 },
-    // 1 ILS smoke-test offer for /subtest. Env-gated via
-    // isOfferAllowedForEnvironment below — a prod deploy refuses the
-    // offer even if someone passes `?offer=test` on the subscribe link.
-    test: { introPriceIls: null, introChargesTotal: null, regularPriceIls: 1 },
+    test: { introPriceIls: null, introChargesTotal: null, regularPriceIls: 0.01 },
   },
   advanced: {
     default: { introPriceIls: null, introChargesTotal: null, regularPriceIls: 119 },
     intro3mo: { introPriceIls: 50, introChargesTotal: 3, regularPriceIls: 119 },
+    test: { introPriceIls: null, introChargesTotal: null, regularPriceIls: 0.02 },
   },
   premium: {
     default: { introPriceIls: null, introChargesTotal: null, regularPriceIls: 239 },
     intro3mo: { introPriceIls: 100, introChargesTotal: 3, regularPriceIls: 239 },
+    test: { introPriceIls: null, introChargesTotal: null, regularPriceIls: 0.03 },
   },
 }
 
