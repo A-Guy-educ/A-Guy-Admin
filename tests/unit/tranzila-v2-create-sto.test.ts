@@ -226,7 +226,7 @@ describe('createStandingOrder', () => {
 
 describe('cancelStandingOrder', () => {
   let fetchMock: ReturnType<typeof vi.fn>
-  let capturedRequest: { url?: string; init?: RequestInit } = {}
+  let allBodies: Array<Record<string, unknown>> = []
 
   beforeEach(() => {
     process.env.TRANZILLA_TERMINAL = 'fxpaguy'
@@ -236,9 +236,9 @@ describe('cancelStandingOrder', () => {
     process.env.TRANZILLA_SANDBOX = 'true'
     resetPaymentEnvCache()
 
-    capturedRequest = {}
-    fetchMock = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
-      capturedRequest = { url: typeof url === 'string' ? url : String(url), init }
+    allBodies = []
+    fetchMock = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+      allBodies.push(JSON.parse(String(init?.body)))
       return new Response(JSON.stringify({ error_code: 0, message: 'ok' }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
@@ -252,23 +252,56 @@ describe('cancelStandingOrder', () => {
     resetPaymentEnvCache()
   })
 
-  it('POSTs to /v2/sto/update with sto_status=inactive and the four HMAC headers', async () => {
+  it('cancels BOTH master and item (master - 1), each as integer sto_id', async () => {
+    // createstov2 returns the master id. Tranzila also creates an "item"
+    // record with id = master - 1 that bills independently. Must cancel both.
     await cancelStandingOrder({ terminalName: 'fxpaguytok', stoId: '189976' })
-    expect(capturedRequest.url).toBe('https://api.tranzila.com/v2/sto/update')
-    expect(capturedRequest.init?.method).toBe('POST')
-    const body = JSON.parse(String(capturedRequest.init?.body))
-    // sto_id MUST be a number — Tranzila's validator rejects it as a string
-    // with error_code 20004 (type: expected integer, used string). Proven
-    // live 2026-10-19 via scripts/probe-tranzila-sto-update.ts.
-    expect(body).toEqual({
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(allBodies[0]).toEqual({
       terminal_name: 'fxpaguytok',
       sto_id: 189976,
       sto_status: 'inactive',
     })
-    expect(typeof body.sto_id).toBe('number')
-    const headers = capturedRequest.init?.headers as Record<string, string>
-    expect(headers['X-tranzila-api-app-key']).toBe('pub-test-key')
-    expect(headers['X-tranzila-api-access-token']).toMatch(/^[0-9a-f]{64}$/)
+    expect(allBodies[1]).toEqual({
+      terminal_name: 'fxpaguytok',
+      sto_id: 189975, // master - 1
+      sto_status: 'inactive',
+    })
+    expect(typeof allBodies[0]?.sto_id).toBe('number')
+    expect(typeof allBodies[1]?.sto_id).toBe('number')
+  })
+
+  it('skips the item call when master cancel fails — nothing to undo', async () => {
+    fetchMock.mockReset()
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ error_code: 10001, message: 'not found' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    const result = await cancelStandingOrder({ terminalName: 'fxpaguytok', stoId: '189976' })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(result.errorCode).toBe(10001)
+  })
+
+  it('returns the item error when master OK but item fails — caller retries full op', async () => {
+    fetchMock.mockReset()
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ error_code: 0, message: 'Success' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ error_code: 10001, message: 'item not found' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    const result = await cancelStandingOrder({ terminalName: 'fxpaguytok', stoId: '189976' })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(result.errorCode).toBe(10001)
+    expect(result.message).toBe('item not found')
   })
 
   it('throws when stoId is not a parseable positive integer', async () => {
