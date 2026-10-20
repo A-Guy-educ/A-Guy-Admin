@@ -1220,7 +1220,7 @@ describe('PATCH /api/subscriptions/[id]/change-tier (Mission 2 — upgrade)', ()
     return route.PATCH(request, { params: Promise.resolve({ id: subId }) })
   }
 
-  it('charges + swaps items + flips tier + resets period on a valid upgrade (above min)', async () => {
+  it('swaps items on Tranzila + flips tier + updates sub on a valid upgrade', async () => {
     const v2 = await import('@/lib/payment/tranzila-v2-client')
     const swapMock = v2.swapStandingOrderItems as unknown as ReturnType<typeof vi.fn>
     swapMock.mockClear()
@@ -1233,22 +1233,9 @@ describe('PATCH /api/subscriptions/[id]/change-tier (Mission 2 — upgrade)', ()
       contentType: 'application/json',
     })
 
-    const tranzillaLib = await import('@/lib/payment/tranzilla')
-    const chargeMock = tranzillaLib.chargeTranzillaToken as any
-    chargeMock.mockReset().mockResolvedValue({
-      approved: true,
-      providerError: false,
-      providerErrorReason: null,
-      responseCode: '000',
-      index: 'TZ-UPGRADE-1',
-      confirmationCode: '1234',
-      raw: {},
-    })
-
     const { sub } = await createPendingSub({
       tierSlug: 'basic',
       offerSlug: 'default',
-      cardToken: 'tk-upgrade',
       status: 'active',
       currentPeriodEnd: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
       cancelAtPeriodEnd: false,
@@ -1265,24 +1252,15 @@ describe('PATCH /api/subscriptions/[id]/change-tier (Mission 2 — upgrade)', ()
       expect(body.success).toBe(true)
       expect(body.tierSlug).toBe('advanced')
       expect(body.regularPriceIls).toBe(119)
-      expect(body.upgradeChargeIndex).toBe('TZ-UPGRADE-1')
     } finally {
       authMock.mockRestore()
     }
 
-    // Charge fired at the new tier price with the stored token.
-    expect(chargeMock).toHaveBeenCalledTimes(1)
-    expect(chargeMock.mock.calls[0]?.[0]).toMatchObject({
-      token: 'tk-upgrade',
-      sum: 119,
-      currency: 'ILS',
-    })
-
-    // STO items swapped.
     expect(swapMock).toHaveBeenCalledTimes(1)
     expect(swapMock.mock.calls[0]?.[0]).toMatchObject({
       stoId: '500001',
       unitPriceIls: 119,
+      itemName: 'AGuy Subscription — advanced',
     })
 
     const after = (await payload.findByID({
@@ -1292,12 +1270,6 @@ describe('PATCH /api/subscriptions/[id]/change-tier (Mission 2 — upgrade)', ()
     })) as any
     expect(after.tierSlug).toBe('advanced')
     expect(after.regularPriceIls).toBe(119)
-    // Period reset to +1 calendar month (addCalendarMonths — not exactly
-    // 30 days, varies with the month's length).
-    const expected = new Date()
-    expected.setMonth(expected.getMonth() + 1)
-    const periodEndMs = new Date(after.currentPeriodEnd).getTime()
-    expect(Math.abs(periodEndMs - expected.getTime())).toBeLessThan(60_000) // within 1min
 
     const user = (await payload.findByID({
       collection: 'users',
@@ -1305,156 +1277,6 @@ describe('PATCH /api/subscriptions/[id]/change-tier (Mission 2 — upgrade)', ()
       overrideAccess: true,
     })) as any
     expect(user.currentTier).toBe('advanced')
-
-    // Upgrade charge recorded as a Transaction row.
-    const txs = await payload.find({
-      collection: 'transactions',
-      where: {
-        and: [
-          { subscription: { equals: sub.id } },
-          { providerTransactionId: { equals: 'TZ-UPGRADE-1' } },
-        ],
-      },
-      limit: 1,
-      overrideAccess: true,
-    })
-    expect(txs.docs.length).toBe(1)
-    expect((txs.docs[0] as any).amount).toBe(11900)
-  })
-
-  it('skips the charge when new tier price is below Tranzila minimum (test offers)', async () => {
-    const v2 = await import('@/lib/payment/tranzila-v2-client')
-    const swapMock = v2.swapStandingOrderItems as unknown as ReturnType<typeof vi.fn>
-    swapMock.mockClear()
-    swapMock.mockResolvedValueOnce({
-      httpStatus: 200,
-      errorCode: 0,
-      message: 'Success',
-      body: {},
-      rawText: '',
-      contentType: 'application/json',
-    })
-
-    const tranzillaLib = await import('@/lib/payment/tranzilla')
-    const chargeMock = tranzillaLib.chargeTranzillaToken as any
-    chargeMock.mockReset()
-
-    // Seed as `test` offer. Need to force low regularPriceIls on the sub
-    // because createPendingSub's helper hard-codes based on tierSlug.
-    const { sub } = await createPendingSub({
-      tierSlug: 'basic',
-      offerSlug: 'default',
-      cardToken: 'tk-cheap',
-      status: 'active',
-      stoId: '500010',
-    })
-    // Mutate the sub to look like a test-tier upgrade target: current price
-    // 0.01, upgrading to 0.02. Both below the 1 ILS min, so charge skipped.
-    await payload.update({
-      collection: 'subscriptions',
-      id: sub.id,
-      data: { offerSlug: 'test', regularPriceIls: 0.01 } as any,
-      overrideAccess: true,
-    })
-
-    const authMock = vi
-      .spyOn(payload as any, 'auth')
-      .mockResolvedValue({ user: { id: userId, collection: 'users' } } as any)
-    try {
-      const res = await patchChangeTier(sub.id, 'advanced')
-      expect(res.status).toBe(200)
-      const body = (await res.json()) as any
-      expect(body.upgradeChargeIndex).toBeNull()
-    } finally {
-      authMock.mockRestore()
-    }
-
-    // No charge fired — new price (0.02) is below the ₪1 min threshold.
-    expect(chargeMock).not.toHaveBeenCalled()
-    // STO was still swapped and tier flipped.
-    expect(swapMock).toHaveBeenCalledTimes(1)
-    const after = (await payload.findByID({
-      collection: 'subscriptions',
-      id: sub.id,
-      overrideAccess: true,
-    })) as any
-    expect(after.tierSlug).toBe('advanced')
-  })
-
-  it('returns 502 and leaves local state unchanged when upgrade charge is declined', async () => {
-    const v2 = await import('@/lib/payment/tranzila-v2-client')
-    const swapMock = v2.swapStandingOrderItems as unknown as ReturnType<typeof vi.fn>
-    swapMock.mockClear()
-
-    const tranzillaLib = await import('@/lib/payment/tranzilla')
-    const chargeMock = tranzillaLib.chargeTranzillaToken as any
-    chargeMock.mockReset().mockResolvedValue({
-      approved: false,
-      providerError: false,
-      providerErrorReason: null,
-      responseCode: '051', // insufficient funds
-      index: null,
-      confirmationCode: null,
-      raw: {},
-    })
-
-    const { sub } = await createPendingSub({
-      tierSlug: 'basic',
-      offerSlug: 'default',
-      cardToken: 'tk-decline',
-      status: 'active',
-      stoId: '500020',
-    })
-
-    const authMock = vi
-      .spyOn(payload as any, 'auth')
-      .mockResolvedValue({ user: { id: userId, collection: 'users' } } as any)
-    try {
-      const res = await patchChangeTier(sub.id, 'advanced')
-      expect(res.status).toBe(502)
-    } finally {
-      authMock.mockRestore()
-    }
-
-    // Charge was attempted, swap was NOT (we charge first).
-    expect(chargeMock).toHaveBeenCalledTimes(1)
-    expect(swapMock).not.toHaveBeenCalled()
-
-    // Local sub untouched.
-    const after = (await payload.findByID({
-      collection: 'subscriptions',
-      id: sub.id,
-      overrideAccess: true,
-    })) as any
-    expect(after.tierSlug).toBe('basic')
-    expect(after.regularPriceIls).toBe(59)
-  })
-
-  it('returns 500 when sub has no card token and upgrade would require a charge', async () => {
-    const tranzillaLib = await import('@/lib/payment/tranzilla')
-    const chargeMock = tranzillaLib.chargeTranzillaToken as any
-    chargeMock.mockReset()
-
-    const { sub } = await createPendingSub({
-      tierSlug: 'basic',
-      offerSlug: 'default',
-      // No cardToken — simulates a sub that lost its token somehow
-      status: 'active',
-      stoId: '500030',
-    })
-
-    const authMock = vi
-      .spyOn(payload as any, 'auth')
-      .mockResolvedValue({ user: { id: userId, collection: 'users' } } as any)
-    try {
-      const res = await patchChangeTier(sub.id, 'advanced')
-      expect(res.status).toBe(500)
-      const body = (await res.json()) as any
-      expect(body.error).toMatch(/no stored card/i)
-    } finally {
-      authMock.mockRestore()
-    }
-    expect(chargeMock).not.toHaveBeenCalled()
   })
 
   it('rejects a downgrade (not yet supported)', async () => {
@@ -1568,23 +1390,9 @@ describe('PATCH /api/subscriptions/[id]/change-tier (Mission 2 — upgrade)', ()
       contentType: 'application/json',
     })
 
-    // Charge-first ordering: charge must succeed before swap is attempted.
-    const tranzillaLib = await import('@/lib/payment/tranzilla')
-    const chargeMock = tranzillaLib.chargeTranzillaToken as any
-    chargeMock.mockReset().mockResolvedValue({
-      approved: true,
-      providerError: false,
-      providerErrorReason: null,
-      responseCode: '000',
-      index: 'TZ-SWAP-FAIL',
-      confirmationCode: '9999',
-      raw: {},
-    })
-
     const { sub } = await createPendingSub({
       tierSlug: 'basic',
       offerSlug: 'default',
-      cardToken: 'tk-swap-test',
       status: 'active',
       currentPeriodEnd: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
       cancelAtPeriodEnd: false,

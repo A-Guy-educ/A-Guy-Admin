@@ -3,34 +3,27 @@
  *
  * User-initiated mid-cycle tier change on a Tranzila STO-managed subscription.
  *
- * Semantics (Mission 2 of the Tranzila tracker, upgrade path only):
+ * Semantics (upgrade path only in this PR):
  *   - UPGRADE (new tier's regular price > current):
- *       1. Charge the full new-tier price now via chargeTranzillaToken (the
- *          stored card token). Option-b "full new period" per Web's RFC —
- *          user pays today for a fresh 30-day cycle at the new tier.
- *          Skipped when newPrice < MIN_CHARGE_ILS (test offers under
- *          Tranzila's processing minimum).
- *       2. Swap the STO's items via /v2/sto/update so NEXT cycle also bills
- *          at the new price.
- *       3. Update sub.tierSlug + sub.regularPriceIls + reset
- *          currentPeriodStart/End to today + 30d.
- *       4. Flip User.currentTier via applyTierPurchase.
- *     Charge fails → 502, no local state changes (clean retry).
+ *       1. Swap the STO's items via /v2/sto/update so NEXT cycle bills at
+ *          the new tier price.
+ *       2. Update sub.tierSlug + sub.regularPriceIls.
+ *       3. Flip User.currentTier via applyTierPurchase (immediate access).
+ *     NO mid-cycle delta charge. User gets a "free upgrade window" through
+ *     the end of the current paid cycle, then pays the new tier next cycle.
+ *     This is a deliberate tradeoff of the no-stored-token policy — we can't
+ *     charge the card out-of-band because we don't retain the TranzilaTK.
  *   - DOWNGRADE and SAME-TIER: not supported in this PR; return 400.
- *     Downgrade needs a cycle-boundary tier flip + swap (follow-up).
+ *     Downgrade needs cycle-boundary tier flip + swap (follow-up).
  *
  * Design notes:
- *   - Charge-first ordering: if the charge fails we've changed nothing. The
- *     alternative (swap first) would strand us at "next cycle at new price
- *     but user still on old tier" if the charge fails after the swap.
- *   - Items-swap uses the same sto_id (keeps the card attached on Tranzila's
- *     side). The webhook's STO handoff NO LONGER nullifies tranzillaCardToken
- *     — it stays on the sub precisely so this endpoint can charge against it.
+ *   - Items-swap on the existing STO (same sto_id, same card on Tranzila's
+ *     side). No card token needed on our side — the webhook nullifies
+ *     tranzillaCardToken after handoff per the no-stored-tokens policy.
  *   - introChargesUsed carries over across a tier change — intro grant is
  *     per-user, not per-tier. User doesn't get a fresh intro by upgrading.
  */
 
-import { ObjectId } from 'mongodb'
 import { NextRequest, NextResponse } from 'next/server'
 import { getPayload } from 'payload'
 
@@ -39,25 +32,12 @@ import { applyCorsHeaders, createPreflightResponse } from '@/lib/http/cors'
 import { logger } from '@/infra/utils/logger'
 import { applyTierPurchase } from '@/lib/payment/apply-tier-purchase'
 import { getPaymentEnv } from '@/lib/payment/env'
-import { addCalendarMonths } from '@/lib/payment/grant-entitlements'
 import { isPaidTierSlug, resolveTranzillaOffer } from '@/lib/payment/tier-tranzilla-pricing'
-import { chargeTranzillaToken } from '@/lib/payment/tranzilla'
 import { swapStandingOrderItems } from '@/lib/payment/tranzila-v2-client'
 import type { TierSlug } from '@/lib/tiers/constants'
 
-/**
- * Tranzila's card-processing minimum (approximate). Upgrade charges below
- * this threshold are skipped — user gets the tier bump "for free" because
- * Tranzila won't accept a sub-₪1 one-off charge. In practice this only
- * matters for the `test` offer prices (0.01/0.02/0.03) used by Web's
- * /subtest page; real tier prices (basic 59, advanced 119, premium 239)
- * are all well above this floor.
- */
-const MIN_CHARGE_ILS = 1
-
 interface SubscriptionDoc {
   id: string
-  tenant?: string | { id: string } | null
   user: string | { id: string } | null
   status: string
   provider?: string | null
@@ -65,7 +45,6 @@ interface SubscriptionDoc {
   offerSlug?: string | null
   stoId?: string | null
   regularPriceIls?: number | null
-  tranzillaCardToken?: string | null
 }
 
 interface ChangeTierBody {
@@ -267,147 +246,13 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       )
     }
 
-    // Upgrade path — order: charge FIRST, then swap, then flip. Charge-first
-    // means a failed charge leaves zero state changed (clean retry). The
-    // alternative (swap first) would strand us at "new price for next cycle
-    // but user still on old tier" if charge fails.
+    // Upgrade path — swap items on the existing STO, flip tier locally.
+    // No immediate charge: policy is no-stored-tokens, so we can't charge
+    // mid-cycle. User gets premium access now, pays the new tier at the
+    // next scheduled STO charge (free-upgrade-window tradeoff).
     const { tranzillaTerminalToken, tranzillaTerminal } = getPaymentEnv()
     const terminal = tranzillaTerminalToken || tranzillaTerminal
 
-    const tenantId =
-      typeof sub.tenant === 'object' && sub.tenant
-        ? sub.tenant.id
-        : (sub.tenant as string | null | undefined)
-
-    // 1. Charge the full new-tier amount (option-b "full new period" semantics
-    //    — user gets a fresh 30-day cycle at the new price). Skipped for
-    //    amounts below the Tranzila minimum so test flows (0.01-0.03 ILS)
-    //    still exercise the upgrade mechanics.
-    let upgradeChargeIndex: string | null = null
-    if (newPrice >= MIN_CHARGE_ILS) {
-      if (!sub.tranzillaCardToken) {
-        logger.error(
-          { subscriptionId: id },
-          '[subscriptions/change-tier] sub has no tranzillaCardToken — cannot charge for upgrade',
-        )
-        return applyCorsHeaders(
-          NextResponse.json(
-            {
-              success: false,
-              error: 'Subscription has no stored card. Cancel and resubscribe to upgrade.',
-            },
-            { status: 500 },
-          ),
-          request,
-        )
-      }
-
-      const charge = await chargeTranzillaToken({
-        token: sub.tranzillaCardToken,
-        sum: newPrice,
-        currency: 'ILS',
-        description: `AGuy ${newTierSlug} — upgrade`,
-      }).catch((err: unknown) => {
-        logger.error(
-          { subscriptionId: id, err: err instanceof Error ? err.message : String(err) },
-          '[subscriptions/change-tier] chargeTranzillaToken threw',
-        )
-        return null
-      })
-
-      if (!charge) {
-        return applyCorsHeaders(
-          NextResponse.json(
-            {
-              success: false,
-              error: 'Failed to reach Tranzila for upgrade charge, please try again',
-            },
-            { status: 502 },
-          ),
-          request,
-        )
-      }
-      if (charge.providerError) {
-        logger.error(
-          { subscriptionId: id, reason: charge.providerErrorReason },
-          '[subscriptions/change-tier] Tranzila provider error on upgrade charge',
-        )
-        return applyCorsHeaders(
-          NextResponse.json(
-            { success: false, error: 'Tranzila provider error, please try again' },
-            { status: 502 },
-          ),
-          request,
-        )
-      }
-      if (!charge.approved) {
-        logger.warn(
-          { subscriptionId: id, responseCode: charge.responseCode },
-          '[subscriptions/change-tier] upgrade charge declined',
-        )
-        return applyCorsHeaders(
-          NextResponse.json(
-            {
-              success: false,
-              error: 'Card declined on upgrade charge, please update your card or try again',
-            },
-            { status: 502 },
-          ),
-          request,
-        )
-      }
-      upgradeChargeIndex = charge.index
-
-      // Record the upgrade charge as a Transaction row. Best-effort: if this
-      // throws we log fatal + continue — the money moved, we don't want to
-      // undo the upgrade.
-      if (tenantId) {
-        try {
-          await payload.create({
-            collection: 'transactions',
-            data: {
-              tenant: tenantId,
-              user: user.id,
-              tierSlug: newTierSlug,
-              provider: 'tranzilla',
-              providerTransactionId: charge.index ?? `tz-upgrade-${new ObjectId().toHexString()}`,
-              status: 'succeeded',
-              amount: Math.round(newPrice * 100),
-              currency: 'ILS',
-              subscription: id,
-              entitlementsGrantedAt: new Date().toISOString(),
-              metadata: {
-                tranzilla: {
-                  confirmationCode: charge.confirmationCode,
-                  responseCode: charge.responseCode,
-                  upgradeFromTier: sub.tierSlug,
-                  upgradeToTier: newTierSlug,
-                },
-              },
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            } as any,
-            draft: false,
-            overrideAccess: true,
-          })
-        } catch (txErr) {
-          logger.fatal(
-            {
-              subscriptionId: id,
-              upgradeChargeIndex: charge.index,
-              err: txErr instanceof Error ? txErr.message : String(txErr),
-            },
-            '[subscriptions/change-tier] CRITICAL — upgrade charged but Transactions row create FAILED. Reconcile manually.',
-          )
-        }
-      }
-    } else {
-      logger.info(
-        { subscriptionId: id, newPrice, minChargeIls: MIN_CHARGE_ILS },
-        '[subscriptions/change-tier] upgrade charge skipped — amount below Tranzila minimum',
-      )
-    }
-
-    // 2. Swap STO items so future cycles bill at the new price.
     const result = await swapStandingOrderItems({
       terminalName: terminal,
       stoId: sub.stoId,
@@ -462,21 +307,15 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       )
     }
 
-    // 3. Tranzila accepted the price change. Update local sub + flip tier.
-    //    The order (sub first, then user tier) matches extendTierSubscription's
-    //    "write the authoritative state first, derived state second" invariant.
-    //    Period dates reset to now + 30d — fresh cycle at the new tier, which
-    //    the upgrade charge paid for (option-b full new period semantics).
-    const now = new Date()
-    const newPeriodEnd = addCalendarMonths(now, 1)
+    // Tranzila accepted the price change. Update local sub + flip tier.
+    // Period dates NOT reset — user keeps their paid-for cycle at the old
+    // tier end-date; the new tier price only takes effect at next STO run.
     await payload.update({
       collection: 'subscriptions',
       id,
       data: {
         tierSlug: newTierSlug,
         regularPriceIls: newPrice,
-        currentPeriodStart: now.toISOString(),
-        currentPeriodEnd: newPeriodEnd.toISOString(),
       },
       overrideAccess: true,
     })
@@ -490,10 +329,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         fromTier: sub.tierSlug,
         toTier: newTierSlug,
         newPriceIls: newPrice,
-        upgradeChargeIndex,
-        newPeriodEnd: newPeriodEnd.toISOString(),
       },
-      '[subscriptions/change-tier] upgrade applied',
+      '[subscriptions/change-tier] upgrade applied (free window; next cycle at new price)',
     )
 
     return applyCorsHeaders(
@@ -504,8 +341,6 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
           tierSlug: newTierSlug,
           regularPriceIls: newPrice,
           effectiveAt: 'immediately',
-          upgradeChargeIndex,
-          currentPeriodEnd: newPeriodEnd.toISOString(),
         },
         { status: 200 },
       ),
