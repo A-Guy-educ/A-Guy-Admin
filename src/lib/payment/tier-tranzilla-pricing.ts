@@ -46,17 +46,21 @@ export const TIER_TRANZILLA_PRICING: Record<PaidTierSlug, TierOfferCatalog> = {
   basic: {
     default: { introPriceIls: null, introChargesTotal: null, regularPriceIls: 59 },
     intro3mo: { introPriceIls: 33, introChargesTotal: 3, regularPriceIls: 59 },
-    test: { introPriceIls: null, introChargesTotal: null, regularPriceIls: 0.01 },
+    // Test prices bumped above ₪1 (Tranzila's rough card-processing minimum)
+    // so Web's /subtest page can exercise the full upgrade-charge path during
+    // testing instead of hitting the MIN_CHARGE_ILS skip. 1.5 ILS gap between
+    // tiers keeps the deltas meaningful.
+    test: { introPriceIls: null, introChargesTotal: null, regularPriceIls: 1.5 },
   },
   advanced: {
     default: { introPriceIls: null, introChargesTotal: null, regularPriceIls: 119 },
     intro3mo: { introPriceIls: 50, introChargesTotal: 3, regularPriceIls: 119 },
-    test: { introPriceIls: null, introChargesTotal: null, regularPriceIls: 0.02 },
+    test: { introPriceIls: null, introChargesTotal: null, regularPriceIls: 3 },
   },
   premium: {
     default: { introPriceIls: null, introChargesTotal: null, regularPriceIls: 239 },
     intro3mo: { introPriceIls: 100, introChargesTotal: 3, regularPriceIls: 239 },
-    test: { introPriceIls: null, introChargesTotal: null, regularPriceIls: 0.03 },
+    test: { introPriceIls: null, introChargesTotal: null, regularPriceIls: 4.5 },
   },
 }
 
