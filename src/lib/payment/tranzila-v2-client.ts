@@ -360,17 +360,28 @@ export interface CancelStandingOrderArgs {
  *      createstov2 fails — without this cleanup the user would be billed
  *      both by Tranzila's STO AND by our own fallback cron.
  *
- * Shape (verified live 2026-10-19 via scripts/probe-tranzila-sto-update.ts):
+ * CRITICAL — cancels BOTH the master AND the item (master - 1).
+ * Tranzila's createstov2 produces TWO linked records per call: a "master"
+ * (0 ILS wrapper, carries customer + payment counter) and an "item"
+ * (billable line with product name + unit price). The API returns only the
+ * master id; the item id is always `master - 1` across every observation
+ * we have (verified live 2026-10-20 against sto_ids 487538/487539,
+ * 487549/487550, 488323/488324, 488335/488336, 488341–488344). Cancelling
+ * only the master does NOT stop the item from billing. Must cancel both.
+ *
+ * Shape (verified live 2026-10-19):
  *   POST /v2/sto/update
  *   { terminal_name: string, sto_id: integer, sto_status: 'active' | 'inactive' }
- *
- * CRITICAL: Tranzila's validator rejects `sto_id` as a string with
- * error_code 20004 "Json does not match validation schema" (type expected
- * integer, used string). We store stoId as text in Mongo but MUST convert
- * to a number here or every cancel 20004s. Parsed + guarded locally so
- * callers can keep passing the DB-shape string.
+ * sto_id MUST be an integer — Tranzila rejects string sto_ids with
+ * error_code 20004. We store stoId as text in Mongo but convert here.
  *
  * Idempotent server-side — flipping an already-inactive STO is a no-op.
+ *
+ * Failure semantics: master cancel runs first. If it fails, we return
+ * its error without attempting the item (nothing to undo). If master
+ * succeeds, item cancel runs. If item cancel fails, we return the item's
+ * error so the caller treats the whole operation as failed — the user
+ * then retries and both calls run again (both idempotent).
  */
 export interface SwapStoItemsArgs {
   terminalName: string
@@ -424,12 +435,32 @@ export async function cancelStandingOrder(
       `cancelStandingOrder: stoId must be a positive integer string, got "${args.stoId}"`,
     )
   }
-  return postV2({
-    path: '/v2/sto/update',
-    body: {
-      terminal_name: args.terminalName,
-      sto_id: stoIdNum,
-      sto_status: 'inactive',
-    },
-  })
+
+  const inactivate = (sto_id: number) =>
+    postV2({
+      path: '/v2/sto/update',
+      body: { terminal_name: args.terminalName, sto_id, sto_status: 'inactive' },
+    })
+
+  // 1. Master. If this fails, don't attempt the item — nothing's changed yet.
+  const masterResult = await inactivate(stoIdNum)
+  if (masterResult.errorCode !== 0 && masterResult.errorCode !== null) {
+    return masterResult
+  }
+
+  // 2. Item (master - 1). Guarded against stoIdNum === 1 (which would make
+  // the item id 0, invalid). In practice sto_ids are 5+ digits, so this is
+  // defensive only.
+  const itemIdNum = stoIdNum - 1
+  if (itemIdNum >= 1) {
+    const itemResult = await inactivate(itemIdNum)
+    if (itemResult.errorCode !== 0 && itemResult.errorCode !== null) {
+      // Master cancelled, item did not. Caller sees failure, retries. On
+      // retry both calls run; master's second cancel is idempotent, item's
+      // first attempt completes the operation.
+      return itemResult
+    }
+  }
+
+  return masterResult
 }
