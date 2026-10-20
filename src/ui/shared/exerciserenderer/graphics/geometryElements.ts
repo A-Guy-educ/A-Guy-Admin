@@ -103,7 +103,14 @@ function renderLines(
       const dy = to.Y() - from.Y()
       const len = Math.sqrt(dx * dx + dy * dy) || 1
       const baseOffset = canvasHeight * 0.03
-      const offsetDist = line.label.position === 'b' ? -baseOffset : baseOffset
+      // The perpendicular normal is (-dy/len, dx/len). Its Y component is dx/len,
+      // which flips sign when from→to goes right-to-left (or top-to-bottom).
+      // Multiply by sign(dx) so "above/below" refers to the screen Y axis
+      // rather than the direction-relative perpendicular. Near-vertical lines
+      // (|dx| ≈ 0) have no meaningful "above/below" — keep a stable side there.
+      const userSign = line.label.position === 'b' ? -1 : 1
+      const sign = Math.abs(dx) / len < 0.05 ? userSign : userSign * Math.sign(dx)
+      const offsetDist = sign * baseOffset
       const midX = (from.X() + to.X()) / 2 + (-dy / len) * offsetDist
       const midY = (from.Y() + to.Y()) / 2 + (dx / len) * offsetDist
       let deg = (Math.atan2(dy, dx) * 180) / Math.PI

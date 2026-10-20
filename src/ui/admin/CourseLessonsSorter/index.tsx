@@ -300,9 +300,12 @@ const mediaBadgeStyle = (hasMedia: boolean): React.CSSProperties => ({
   fontSize: 11,
   fontWeight: 700,
   flexShrink: 0,
-  background: hasMedia ? 'var(--theme-success-100, #dcfce7)' : 'var(--theme-elevation-50)',
-  color: hasMedia ? 'var(--theme-success-600, #16a34a)' : 'var(--theme-elevation-400)',
-  border: '1px solid var(--theme-elevation-200)',
+  background: hasMedia ? '#22c55e' : 'var(--theme-elevation-50)',
+  color: hasMedia ? '#ffffff' : 'var(--theme-elevation-400)',
+  border: hasMedia ? '1px solid #22c55e' : '1px solid var(--theme-elevation-200)',
+  boxShadow: hasMedia
+    ? '0 0 6px rgba(34, 197, 94, 0.75), 0 0 12px rgba(34, 197, 94, 0.45)'
+    : 'none',
 })
 
 const filterBtnStyle = (active: boolean): React.CSSProperties => ({
