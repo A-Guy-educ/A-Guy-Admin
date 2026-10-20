@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- feat(payments): DirectNG iframe + Hand Shake V2 (thtk flow) ([#663](https://github.com/A-Guy-educ/A-Guy-Admin/pull/663)) — @aguyshayb
 - feat(payments): Test offers on all 3 tiers at 0.01/0.02/0.03 ILS ([#662](https://github.com/A-Guy-educ/A-Guy-Admin/pull/662)) — @aguyshayb
 - fix(payments): Cancel BOTH master and item (master - 1) on STO cancel ([#661](https://github.com/A-Guy-educ/A-Guy-Admin/pull/661)) — @aguyshayb
 - fix: Geometry line label above/below respects screen axis; media badge green ([#660](https://github.com/A-Guy-educ/A-Guy-Admin/pull/660)) — @aguyshayb
