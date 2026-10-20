@@ -150,6 +150,24 @@ describe('createTranzillaCheckout — Hand Shake wiring', () => {
     expect(() => callDefaults()).toThrow(/TRANZILLA_PRIVATE_KEY/)
   })
 
+  it('TRANZILLA_USE_DIRECTNG=true routes to directng.tranzila.com', () => {
+    process.env.TRANZILLA_USE_DIRECTNG = 'true'
+    resetPaymentEnvCache()
+
+    const { checkoutUrl } = callDefaults()
+    expect(checkoutUrl).toMatch(/^https:\/\/directng\.tranzila\.com\//)
+    expect(checkoutUrl).not.toMatch(/^https:\/\/direct\.tranzila\.com/)
+  })
+
+  it('TRANZILLA_USE_DIRECTNG unset (default) uses the legacy direct.tranzila.com', () => {
+    delete process.env.TRANZILLA_USE_DIRECTNG
+    resetPaymentEnvCache()
+
+    const { checkoutUrl } = callDefaults()
+    expect(checkoutUrl).toMatch(/^https:\/\/direct\.tranzila\.com\//)
+    expect(checkoutUrl).not.toMatch(/directng/)
+  })
+
   it('ON — swapping the amount changes the hash (regression against unsigned-field leaks)', () => {
     process.env.TRANZILLA_HAND_SHAKE_ENABLED = 'true'
     resetPaymentEnvCache()

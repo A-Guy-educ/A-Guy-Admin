@@ -30,6 +30,7 @@ import crypto from 'node:crypto'
 import { getPaymentEnv } from './env'
 
 const TRANZILLA_DIRECT_BASE = 'https://direct.tranzila.com'
+const TRANZILLA_DIRECTNG_BASE = 'https://directng.tranzila.com'
 
 export type TranzillaCurrency = 'ILS' | 'USD' | 'EUR' | 'GBP'
 
@@ -152,6 +153,7 @@ export function createTranzillaCheckout(
     tranzillaTerminalToken,
     tranzillaPrivateKey,
     tranzillaHandShakeEnabled,
+    tranzillaUseDirectng,
   } = getPaymentEnv()
 
   const terminal = options.useTokenTerminal
@@ -198,7 +200,8 @@ export function createTranzillaCheckout(
   }
 
   const query = new URLSearchParams(params).toString()
-  const checkoutUrl = `${TRANZILLA_DIRECT_BASE}/${terminal}/iframenew.php?${query}`
+  const baseUrl = tranzillaUseDirectng ? TRANZILLA_DIRECTNG_BASE : TRANZILLA_DIRECT_BASE
+  const checkoutUrl = `${baseUrl}/${terminal}/iframenew.php?${query}`
 
   return { checkoutUrl, terminal }
 }
