@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- revert(payments): Drop upgrade charge; restore no-stored-tokens policy ([#666](https://github.com/A-Guy-educ/A-Guy-Admin/pull/666)) — @aguyshayb
 - feat(payments): Bump test tier prices above Tranzila ₪1 min (1.5/3/4.5) ([#665](https://github.com/A-Guy-educ/A-Guy-Admin/pull/665)) — @aguyshayb
 - feat(payments): Charge full new-tier amount on mid-cycle upgrade ([#664](https://github.com/A-Guy-educ/A-Guy-Admin/pull/664)) — @aguyshayb
 - feat(payments): DirectNG iframe + Hand Shake V2 (thtk flow) ([#663](https://github.com/A-Guy-educ/A-Guy-Admin/pull/663)) — @aguyshayb
