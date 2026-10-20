@@ -372,6 +372,49 @@ export interface CancelStandingOrderArgs {
  *
  * Idempotent server-side — flipping an already-inactive STO is a no-op.
  */
+export interface SwapStoItemsArgs {
+  terminalName: string
+  stoId: string
+  /** Item name shown on Tranzila's dashboard — becomes the "product name" column. */
+  itemName: string
+  /** New per-charge price in ILS major units (e.g. 119 = ₪119.00). */
+  unitPriceIls: number
+}
+
+/**
+ * Replace an STO's items array in place — Tranzila's documented "items are
+ * deleted and replaced" behavior for /v2/sto/update. Used by the tier-change
+ * endpoint to swap the recurring charge amount without needing a card token
+ * (we no longer have one post-handoff). Keeps the same sto_id and card.
+ *
+ * CRITICAL schema quirk (verified live via scripts/probe-tranzila-sto-items-swap.ts):
+ * the items schema for /v2/sto/update accepts ONLY `name` and `unit_price`.
+ * Any other field (quantity, currency_code, vat_percent, type, etc.) trips
+ * additionalProperties — error_code 20004. The create endpoint accepts a
+ * much wider shape, so don't copy the createStandingOrder items shape here.
+ */
+export async function swapStandingOrderItems(args: SwapStoItemsArgs): Promise<TranzilaV2Response> {
+  const stoIdNum = Number(args.stoId)
+  if (!Number.isSafeInteger(stoIdNum) || stoIdNum <= 0) {
+    throw new Error(
+      `swapStandingOrderItems: stoId must be a positive integer string, got "${args.stoId}"`,
+    )
+  }
+  if (!(args.unitPriceIls > 0)) {
+    throw new Error(
+      `swapStandingOrderItems: unitPriceIls must be positive, got ${args.unitPriceIls}`,
+    )
+  }
+  return postV2({
+    path: '/v2/sto/update',
+    body: {
+      terminal_name: args.terminalName,
+      sto_id: stoIdNum,
+      items: [{ name: args.itemName, unit_price: args.unitPriceIls }],
+    },
+  })
+}
+
 export async function cancelStandingOrder(
   args: CancelStandingOrderArgs,
 ): Promise<TranzilaV2Response> {
