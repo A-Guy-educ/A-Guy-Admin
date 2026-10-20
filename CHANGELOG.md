@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- fix: Geometry line label above/below respects screen axis; media badge green ([#660](https://github.com/A-Guy-educ/A-Guy-Admin/pull/660)) — @aguyshayb
 - feat(payments): Mid-cycle tier upgrade via STO items-swap (M2) ([#656](https://github.com/A-Guy-educ/A-Guy-Admin/pull/656)) — @aguyshayb
 - feat(admin): JSON import/export for geometry & graph specs, drag whole geometry sketch ([#658](https://github.com/A-Guy-educ/A-Guy-Admin/pull/658)) — @aguyshayb
 - fix(payments): Cancel STO — sto_id must be an integer in /v2/sto/update ([#655](https://github.com/A-Guy-educ/A-Guy-Admin/pull/655)) — @aguyshayb
