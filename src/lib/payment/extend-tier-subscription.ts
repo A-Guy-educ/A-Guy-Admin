@@ -7,10 +7,9 @@
  *     Call with `order: 'bootstrap'` — user writes run first so a partial
  *     failure leaves the Sub pending (admin UI reflects "payment not
  *     complete") rather than active-without-tier.
- *   - Tranzilla renewal cron: on each successful merchant-initiated charge.
- *     Call with `order: 'renewal'` — Sub advance runs first so the row
- *     becomes ineligible for re-selection even if later writes crash
- *     (prevents double-charge via the stale-lock-expired retry path).
+ *   - Tranzila STO renewal webhook: on each successful STO notify_url POST.
+ *     Call with `order: 'renewal'` — Sub advance runs first so period math
+ *     stays monotonic even if later writes crash.
  *
  * Idempotency: both writes are internally guarded. Replaying the same
  * (subscriptionId, newPeriodEnd) is a safe no-op:

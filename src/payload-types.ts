@@ -981,7 +981,7 @@ export interface TableBlock {
   blockType: 'tableBlock';
 }
 /**
- * Subscriptions are created by the Web checkout (PayPal) or admin bootstrap (Tranzilla) routes. Status is driven by provider webhooks or the Tranzilla renewal cron — do not edit `status`, `currentPeriodEnd`, or token/intro fields by hand.
+ * Subscriptions are created by the Web checkout (PayPal) or admin bootstrap (Tranzilla) routes. Status is driven by provider webhooks — do not edit `status`, `currentPeriodEnd`, or intro fields by hand.
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "subscriptions".
@@ -1029,21 +1029,13 @@ export interface Subscription {
    */
   regularPriceIls?: number | null;
   /**
-   * TranzilaTK reusable card token for merchant-initiated renewal charges. Nulled after a successful createstov2 handoff — once Tranzila stores the token with the STO, we have no reason to keep our copy. Server-only read; never surfaces in admin UI or REST.
-   */
-  tranzillaCardToken?: string | null;
-  /**
-   * Tranzila My-Billing standing-order id. Set after bootstrap handoff; null means the sub is still cron-driven (fallback path).
+   * Tranzila My-Billing standing-order id. Set after bootstrap handoff; null means handoff never completed.
    */
   stoId?: string | null;
   /**
-   * Consecutive failed renewal attempts on the Tranzilla path. Reset to 0 on success; sub transitions to expired after a threshold (see cron handler).
+   * Consecutive failed STO-renewal notify_url POSTs. Reset to 0 on success; sub flips to past_due on decline (see webhook renewal handler).
    */
   tranzillaRetryCount?: number | null;
-  /**
-   * Timestamp of the most recent renewal-charge attempt. Doubles as the cron CAS lock; stale values are released after ~30 minutes.
-   */
-  lastRenewalAttemptAt?: string | null;
   /**
    * PayPal Billing subscription ID (I-...). Null for Tranzilla subs.
    */
@@ -5386,10 +5378,8 @@ export interface SubscriptionsSelect<T extends boolean = true> {
   introChargesTotal?: T;
   introChargesUsed?: T;
   regularPriceIls?: T;
-  tranzillaCardToken?: T;
   stoId?: T;
   tranzillaRetryCount?: T;
-  lastRenewalAttemptAt?: T;
   paypalSubscriptionId?: T;
   status?: T;
   currentPeriodStart?: T;

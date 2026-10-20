@@ -6,9 +6,10 @@
  *   - extendTierSubscription writes tier + token-reset + Sub rollforward
  *   - POST /api/subscriptions/bootstrap/tranzilla happy path + rejections
  *   - Tranzilla webhook subscription branch (approved + declined bootstrap)
- *   - sweepTranzillaRenewals: due-charge success, decline-with-retry, max-retry
- *     expiration, soft-cancel expiration
+ *   - Tranzila webhook STO renewal correlation
  *   - PATCH /api/subscriptions/[id]/cancel soft-cancel semantics
+ *   - Admin-driven cancel beforeChange hook
+ *   - PATCH /api/subscriptions/[id]/change-tier upgrade (items-swap)
  *
  * @fileType integration-test
  * @domain payments
@@ -24,18 +25,6 @@ import { ObjectId } from 'mongodb'
 import { startMongoContainer, stopMongoContainer } from '@/infra/utils/test/mongodb-container'
 import { extendTierSubscription } from '@/lib/payment/extend-tier-subscription'
 import { TIER_LLM_TOKEN_CAP_MONTHLY } from '@/lib/tiers/constants'
-
-// Mock the Tranzilla direct-charge API — the cron tests exercise success and
-// decline paths without hitting Tranzilla's real endpoint. The webhook tests
-// go through the signed-body parsing path and don't hit the API.
-vi.mock('@/lib/payment/tranzilla', async () => {
-  const actual =
-    await vi.importActual<typeof import('@/lib/payment/tranzilla')>('@/lib/payment/tranzilla')
-  return {
-    ...actual,
-    chargeTranzillaToken: vi.fn(),
-  }
-})
 
 // Mock the Tranzila V2 REST client — the user-cancel tests need to assert
 // that cancelStandingOrder was (or was not) called, and we never want
@@ -161,7 +150,6 @@ afterEach(async () => {
 async function createPendingSub(args: {
   tierSlug: 'basic' | 'advanced' | 'premium'
   offerSlug: 'default' | 'intro3mo'
-  cardToken?: string
   introChargesUsed?: number
   currentPeriodEnd?: Date
   status?: string
@@ -201,7 +189,6 @@ async function createPendingSub(args: {
       regularPriceIls,
       status: args.status ?? 'pending',
       initialTransaction: tx.id,
-      ...(args.cardToken ? { tranzillaCardToken: args.cardToken } : {}),
       ...(args.currentPeriodEnd ? { currentPeriodEnd: args.currentPeriodEnd.toISOString() } : {}),
       ...(args.cancelAtPeriodEnd !== undefined
         ? { cancelAtPeriodEnd: args.cancelAtPeriodEnd }
@@ -386,7 +373,6 @@ describe('PATCH /api/subscriptions/[id]/cancel', () => {
     const { sub } = await createPendingSub({
       tierSlug: 'basic',
       offerSlug: 'default',
-      cardToken: 'tk1',
       status: 'active',
       currentPeriodEnd: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
       cancelAtPeriodEnd: false,
@@ -423,7 +409,6 @@ describe('PATCH /api/subscriptions/[id]/cancel', () => {
     const { sub } = await createPendingSub({
       tierSlug: 'basic',
       offerSlug: 'default',
-      cardToken: 'tk2',
       status: 'active',
     })
 
@@ -583,7 +568,7 @@ describe('PATCH /api/subscriptions/[id]/cancel', () => {
     expect(after.status).toBe('active')
   })
 
-  it('soft-cancels a cron-driven Tranzila sub (stoId null) without calling Tranzila', async () => {
+  it('soft-cancels a sub with no stoId without calling Tranzila', async () => {
     const route = await import('@/app/api/subscriptions/[id]/cancel/route')
     const v2 = await import('@/lib/payment/tranzila-v2-client')
     const cancelMock = v2.cancelStandingOrder as unknown as ReturnType<typeof vi.fn>
@@ -592,11 +577,10 @@ describe('PATCH /api/subscriptions/[id]/cancel', () => {
     const { sub } = await createPendingSub({
       tierSlug: 'basic',
       offerSlug: 'default',
-      cardToken: 'tk-cron-only',
       status: 'active',
       currentPeriodEnd: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
       cancelAtPeriodEnd: false,
-      // No stoId → cron owns renewals, nothing to tell Tranzila
+      // No stoId → nothing to tell Tranzila (handoff never completed)
     })
 
     const authMock = vi
@@ -720,7 +704,7 @@ describe('Subscriptions beforeChange — admin-driven cancel (Mission 4)', () =>
     expect(cancelMock).not.toHaveBeenCalled()
   })
 
-  it('skips the Tranzila call when stoId is null (cron-driven sub)', async () => {
+  it('skips the Tranzila call when stoId is null', async () => {
     const v2 = await import('@/lib/payment/tranzila-v2-client')
     const cancelMock = v2.cancelStandingOrder as unknown as ReturnType<typeof vi.fn>
     cancelMock.mockClear()
@@ -728,7 +712,6 @@ describe('Subscriptions beforeChange — admin-driven cancel (Mission 4)', () =>
     const { sub } = await createPendingSub({
       tierSlug: 'basic',
       offerSlug: 'default',
-      cardToken: 'tk-cron',
       status: 'active',
       currentPeriodEnd: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
       cancelAtPeriodEnd: false,
@@ -786,232 +769,6 @@ describe('Subscriptions beforeChange — admin-driven cancel (Mission 4)', () =>
       overrideAccess: true,
     })
     expect(cancelMock).not.toHaveBeenCalled()
-  })
-})
-
-describe('sweepTranzillaRenewals', () => {
-  it('charges a due sub, extends the period, and increments intro counter', async () => {
-    const { sweepTranzillaRenewals } =
-      await import('@/server/payload/endpoints/cron/tranzilla-renewals')
-    const tranzillaLib = await import('@/lib/payment/tranzilla')
-    ;(tranzillaLib.chargeTranzillaToken as any).mockReset().mockResolvedValue({
-      approved: true,
-      responseCode: '000',
-      index: `TZIDX-${Date.now()}`,
-      confirmationCode: '1234',
-      raw: {},
-    })
-
-    const originalEnd = new Date(Date.now() + 30 * 60 * 1000) // 30 min in future
-    const { sub } = await createPendingSub({
-      tierSlug: 'basic',
-      offerSlug: 'intro3mo',
-      cardToken: 'tk-renew',
-      status: 'active',
-      currentPeriodEnd: originalEnd,
-      cancelAtPeriodEnd: false,
-    })
-
-    const result = await sweepTranzillaRenewals(payload)
-    expect(result.renewed).toBeGreaterThanOrEqual(1)
-
-    const refreshed = (await payload.findByID({
-      collection: 'subscriptions',
-      id: sub.id,
-      overrideAccess: true,
-    })) as any
-    expect(refreshed.status).toBe('active')
-    expect(new Date(refreshed.currentPeriodEnd).getTime()).toBeGreaterThan(originalEnd.getTime())
-    expect(refreshed.introChargesUsed).toBe(1)
-  })
-
-  it('increments retry counter on decline and flips to past_due', async () => {
-    const { sweepTranzillaRenewals } =
-      await import('@/server/payload/endpoints/cron/tranzilla-renewals')
-    const tranzillaLib = await import('@/lib/payment/tranzilla')
-    ;(tranzillaLib.chargeTranzillaToken as any).mockReset().mockResolvedValue({
-      approved: false,
-      responseCode: '051',
-      index: null,
-      confirmationCode: null,
-      raw: {},
-    })
-
-    const { sub } = await createPendingSub({
-      tierSlug: 'basic',
-      offerSlug: 'default',
-      cardToken: 'tk-fail',
-      status: 'active',
-      currentPeriodEnd: new Date(Date.now() + 5 * 60 * 1000),
-      cancelAtPeriodEnd: false,
-    })
-
-    const result = await sweepTranzillaRenewals(payload)
-    expect(result.retried).toBeGreaterThanOrEqual(1)
-
-    const refreshed = (await payload.findByID({
-      collection: 'subscriptions',
-      id: sub.id,
-      overrideAccess: true,
-    })) as any
-    expect(refreshed.status).toBe('past_due')
-    expect(refreshed.tranzillaRetryCount).toBe(1)
-  })
-
-  it('expires + downgrades the user when retry count hits the ceiling', async () => {
-    const { sweepTranzillaRenewals, MAX_RENEWAL_RETRIES } =
-      await import('@/server/payload/endpoints/cron/tranzilla-renewals')
-    const tranzillaLib = await import('@/lib/payment/tranzilla')
-    ;(tranzillaLib.chargeTranzillaToken as any).mockReset().mockResolvedValue({
-      approved: false,
-      responseCode: '051',
-      index: null,
-      confirmationCode: null,
-      raw: {},
-    })
-
-    const { sub } = await createPendingSub({
-      tierSlug: 'basic',
-      offerSlug: 'default',
-      cardToken: 'tk-expire',
-      status: 'pending',
-      cancelAtPeriodEnd: false,
-    })
-
-    // Drive promotion through the REAL extendTierSubscription path. This
-    // is deliberately NOT a hand-rolled seed via the Mongoose Model: the
-    // Model casts writes per the schema, which would mask any type-
-    // coercion drift between the real write path (raw driver) and the
-    // downgrade predicate (ObjectId filter). This is exactly the hole
-    // Kody surfaced on round 4 — the previous test seeded via the Model,
-    // so the write stored a correct ObjectId; the real path stored a
-    // string and every expiry silently no-op'd.
-    await extendTierSubscription({
-      payload,
-      userId,
-      tierSlug: 'basic',
-      subscriptionId: sub.id,
-      newPeriodStart: new Date(Date.now() - 24 * 60 * 60 * 1000),
-      newPeriodEnd: new Date(Date.now() + 60 * 1000),
-      isIntroCharge: false,
-      order: 'bootstrap',
-    })
-    // One retry short of the ceiling so the next failed charge expires.
-    const subsColl = payload.db.collections['subscriptions']
-    await subsColl.updateOne(
-      { _id: new ObjectId(sub.id) },
-      { $set: { tranzillaRetryCount: MAX_RENEWAL_RETRIES - 1, status: 'past_due' } },
-    )
-
-    const result = await sweepTranzillaRenewals(payload)
-    expect(result.expired).toBeGreaterThanOrEqual(1)
-
-    const refreshed = (await payload.findByID({
-      collection: 'subscriptions',
-      id: sub.id,
-      overrideAccess: true,
-    })) as any
-    expect(refreshed.status).toBe('expired')
-
-    const user = (await payload.findByID({
-      collection: 'users',
-      id: userId,
-      overrideAccess: true,
-    })) as any
-    expect(user.currentTier).toBe('free')
-    expect(user.tierGrantSource).toBeFalsy()
-    expect(user.tierGrantSubscriptionId).toBeFalsy()
-  })
-
-  it('does NOT downgrade users whose tier was granted via legacy_one_time or manual', async () => {
-    const { sweepTranzillaRenewals } =
-      await import('@/server/payload/endpoints/cron/tranzilla-renewals')
-
-    // Legacy tier buyer who then also bootstrapped (and cancelled) a sub.
-    // Their currentTier stayed basic throughout and tierGrantSource was
-    // never flipped to 'subscription' because no charge ever landed.
-    const { sub } = await createPendingSub({
-      tierSlug: 'basic',
-      offerSlug: 'default',
-      cardToken: 'tk-legacy',
-      status: 'cancelled',
-      currentPeriodEnd: new Date(Date.now() - 60 * 1000),
-      cancelAtPeriodEnd: true,
-    })
-    const usersColl = payload.db.collections['users']
-    await usersColl.updateOne(
-      { _id: new ObjectId(userId) },
-      { $set: { currentTier: 'basic', tierGrantSource: 'legacy_one_time' } },
-    )
-
-    await sweepTranzillaRenewals(payload)
-
-    const user = (await payload.findByID({
-      collection: 'users',
-      id: userId,
-      overrideAccess: true,
-    })) as any
-    // The sub expired but the legacy tier survived.
-    expect(user.currentTier).toBe('basic')
-    expect(user.tierGrantSource).toBe('legacy_one_time')
-
-    const refreshed = (await payload.findByID({
-      collection: 'subscriptions',
-      id: sub.id,
-      overrideAccess: true,
-    })) as any
-    expect(refreshed.status).toBe('expired')
-  })
-
-  it('expires soft-cancelled subs whose period has passed', async () => {
-    const { sweepTranzillaRenewals } =
-      await import('@/server/payload/endpoints/cron/tranzilla-renewals')
-
-    const { sub } = await createPendingSub({
-      tierSlug: 'basic',
-      offerSlug: 'default',
-      cardToken: 'tk-soft',
-      status: 'pending',
-      cancelAtPeriodEnd: false,
-    })
-
-    // Drive promotion through the REAL path (not a hand-rolled seed) so the
-    // tierGrantSubscriptionId value stored on the User is what the raw
-    // driver actually writes. Then flip the sub into the soft-cancelled
-    // state with an expired period.
-    const periodEnd = new Date(Date.now() - 60 * 1000)
-    await extendTierSubscription({
-      payload,
-      userId,
-      tierSlug: 'basic',
-      subscriptionId: sub.id,
-      newPeriodStart: new Date(Date.now() - 31 * 24 * 60 * 60 * 1000),
-      newPeriodEnd: periodEnd,
-      isIntroCharge: false,
-      order: 'bootstrap',
-    })
-    const subsColl = payload.db.collections['subscriptions']
-    await subsColl.updateOne(
-      { _id: new ObjectId(sub.id) },
-      { $set: { status: 'cancelled', cancelAtPeriodEnd: true } },
-    )
-
-    const result = await sweepTranzillaRenewals(payload)
-    expect(result.softCancelExpired).toBeGreaterThanOrEqual(1)
-
-    const refreshed = (await payload.findByID({
-      collection: 'subscriptions',
-      id: sub.id,
-      overrideAccess: true,
-    })) as any
-    expect(refreshed.status).toBe('expired')
-
-    const user = (await payload.findByID({
-      collection: 'users',
-      id: userId,
-      overrideAccess: true,
-    })) as any
-    expect(user.currentTier).toBe('free')
   })
 })
 
@@ -1330,11 +1087,10 @@ describe('PATCH /api/subscriptions/[id]/change-tier (Mission 2 — upgrade)', ()
     }
   })
 
-  it('rejects when the sub has no stoId (cron-driven, no STO to update)', async () => {
+  it('rejects when the sub has no stoId (no STO to update)', async () => {
     const { sub } = await createPendingSub({
       tierSlug: 'basic',
       offerSlug: 'default',
-      cardToken: 'tk',
       status: 'active',
       currentPeriodEnd: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
       cancelAtPeriodEnd: false,

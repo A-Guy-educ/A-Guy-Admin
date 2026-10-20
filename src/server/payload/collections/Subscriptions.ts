@@ -12,11 +12,11 @@
  *
  *   Tranzilla (primary — tier-only): sub is created by the admin bootstrap
  *   endpoint when Web redirects a buyer to the hosted iframe with a
- *   subscription offer. The first notify_url POST carries the reusable card
- *   token (TranzilaTK) and flips status pending→active via
- *   extendTierSubscription. Subsequent renewals are driven by
- *   /api/cron/tranzilla-renewals (merchant-initiated token charges), not
- *   webhooks — Tranzilla has no provider-side renewal event.
+ *   subscription offer. The first notify_url POST hands the card off to
+ *   Tranzila's My-Billing standing-order engine via createstov2, which from
+ *   that point owns the recurring charge cadence. Renewals arrive as
+ *   additional notify_url POSTs correlated by stoId — no stored tokens,
+ *   no merchant-initiated charges on our side.
  *
  * One row represents either (product) — PayPal product-subscription — or
  * (tierSlug) — tier-subscription. Mutually exclusive; mirror of the pattern
@@ -50,7 +50,7 @@ export const Subscriptions: CollectionConfig = {
   },
   admin: {
     description:
-      'Subscriptions are created by the Web checkout (PayPal) or admin bootstrap (Tranzilla) routes. Status is driven by provider webhooks or the Tranzilla renewal cron — do not edit `status`, `currentPeriodEnd`, or token/intro fields by hand.',
+      'Subscriptions are created by the Web checkout (PayPal) or admin bootstrap (Tranzilla) routes. Status is driven by provider webhooks — do not edit `status`, `currentPeriodEnd`, or intro fields by hand.',
     useAsTitle: 'id',
     defaultColumns: [
       'createdAt',
@@ -61,8 +61,6 @@ export const Subscriptions: CollectionConfig = {
       'status',
       'currentPeriodEnd',
     ],
-    // tranzillaCardToken is explicitly excluded — it's a reusable payment
-    // credential and must stay out of admin list views and search queries.
     // tierSlug + offerSlug give admins a way to find Tranzilla subs by tier
     // (which has no human-identifiable ID field like paypalSubscriptionId).
     listSearchableFields: ['paypalSubscriptionId', 'tierSlug', 'offerSlug'],
@@ -171,45 +169,17 @@ export const Subscriptions: CollectionConfig = {
           'Steady-state monthly price in ILS. Used after introChargesUsed reaches introChargesTotal.',
       },
     },
-    // Tranzilla-specific: reusable card token (TranzilaTK) captured by the
-    // first notify_url POST. The renewal cron charges this token monthly
-    // using the TranzilaPG REST API (merchant-initiated, no buyer prompt).
-    //
-    // Field-level access.read: () => false means the token is NEVER returned
-    // on standard REST/GraphQL reads (not even to admin users with full
-    // collection access). Server code reads via overrideAccess: true
-    // (cron + webhook paths) or directly via raw MongoDB — both bypass
-    // access control intentionally. This cuts the blast radius of a
-    // compromised admin session: a session with full `subscriptions`
-    // access cannot enumerate stored payment tokens.
-    {
-      name: 'tranzillaCardToken',
-      type: 'text',
-      access: {
-        read: () => false,
-        create: () => true,
-        update: () => true,
-      },
-      admin: {
-        hidden: true,
-        readOnly: true,
-        description:
-          'TranzilaTK reusable card token for merchant-initiated renewal charges. Nulled after a successful createstov2 handoff — once Tranzila stores the token with the STO, we have no reason to keep our copy. Server-only read; never surfaces in admin UI or REST.',
-      },
-    },
     // Tranzila My-Billing standing order id. Populated after a successful
     // createstov2 call on the bootstrap webhook; from that point on,
     // Tranzila owns the recurring charge cadence and we only use this id
-    // to cancel/update the STO. Nullable: a legacy cron-driven sub, or a
-    // bootstrap where createstov2 failed and we fell back to the cron
-    // path, has stoId=null + tranzillaCardToken set.
+    // to cancel/update the STO.
     {
       name: 'stoId',
       type: 'text',
       index: true,
       admin: {
         description:
-          'Tranzila My-Billing standing-order id. Set after bootstrap handoff; null means the sub is still cron-driven (fallback path).',
+          'Tranzila My-Billing standing-order id. Set after bootstrap handoff; null means handoff never completed.',
       },
     },
     {
@@ -218,22 +188,7 @@ export const Subscriptions: CollectionConfig = {
       defaultValue: 0,
       admin: {
         description:
-          'Consecutive failed renewal attempts on the Tranzilla path. Reset to 0 on success; sub transitions to expired after a threshold (see cron handler).',
-      },
-    },
-    // Set by the renewal cron just before it calls the Tranzilla direct-
-    // charge API; serves as a per-sub CAS lock. A second overlapping
-    // sweeper reading the same row will fail the CAS predicate
-    // (lastRenewalAttemptAt > now - staleThreshold) and skip the charge
-    // entirely. Stale value is auto-released after staleThreshold so a
-    // crashed sweeper never permanently locks the sub.
-    {
-      name: 'lastRenewalAttemptAt',
-      type: 'date',
-      admin: {
-        description:
-          'Timestamp of the most recent renewal-charge attempt. Doubles as the cron CAS lock; stale values are released after ~30 minutes.',
-        readOnly: true,
+          'Consecutive failed STO-renewal notify_url POSTs. Reset to 0 on success; sub flips to past_due on decline (see webhook renewal handler).',
       },
     },
     // PayPal path — made optional + non-unique at the DB layer. Non-unique
