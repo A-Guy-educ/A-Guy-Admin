@@ -252,9 +252,9 @@ describe('cancelStandingOrder', () => {
     resetPaymentEnvCache()
   })
 
-  it('cancels BOTH master and item (master - 1), each as integer sto_id', async () => {
+  it('cancels BOTH master and item (master + 1), each as integer sto_id', async () => {
     // createstov2 returns the master id. Tranzila also creates an "item"
-    // record with id = master - 1 that bills independently. Must cancel both.
+    // record with id = master + 1 that bills independently. Must cancel both.
     await cancelStandingOrder({ terminalName: 'fxpaguytok', stoId: '189976' })
     expect(fetchMock).toHaveBeenCalledTimes(2)
     expect(allBodies[0]).toEqual({
@@ -264,7 +264,7 @@ describe('cancelStandingOrder', () => {
     })
     expect(allBodies[1]).toEqual({
       terminal_name: 'fxpaguytok',
-      sto_id: 189975, // master - 1
+      sto_id: 189977, // master + 1
       sto_status: 'inactive',
     })
     expect(typeof allBodies[0]?.sto_id).toBe('number')
@@ -354,10 +354,10 @@ describe('swapStandingOrderItems', () => {
     resetPaymentEnvCache()
   })
 
-  it('POSTs to /v2/sto/update with sto_id as integer + minimal items shape', async () => {
+  it('POSTs to /v2/sto/update targeting the item (master + 1) with integer sto_id + minimal items shape', async () => {
     await swapStandingOrderItems({
       terminalName: 'fxpaguytok',
-      stoId: '488344',
+      stoId: '488344', // master
       itemName: 'AGuy Subscription — advanced',
       unitPriceIls: 119,
     })
@@ -367,9 +367,13 @@ describe('swapStandingOrderItems', () => {
     // Any other field (quantity, currency_code, vat_percent, type) trips
     // Tranzila's additionalProperties validator. Verified live 2026-10-19 via
     // scripts/probe-tranzila-sto-items-swap.ts.
+    //
+    // sto_id = 488345 (master + 1) — the master row is a 0-ILS wrapper and
+    // hitting it with a price would stack on top of the item. See
+    // swapStandingOrderItems doc comment.
     expect(body).toEqual({
       terminal_name: 'fxpaguytok',
-      sto_id: 488344,
+      sto_id: 488345,
       items: [{ name: 'AGuy Subscription — advanced', unit_price: 119 }],
     })
     expect(typeof body.sto_id).toBe('number')
