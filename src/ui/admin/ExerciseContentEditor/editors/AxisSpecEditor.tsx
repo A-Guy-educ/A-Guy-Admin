@@ -11,6 +11,7 @@ import { LineBetweenPointsPanel } from '../components/axis/LineBetweenPointsPane
 import { PaintPanel } from '../components/axis/PaintPanel'
 import { LociPanel } from '../components/axis/LociPanel'
 import { CollapsibleSection } from '@/ui/admin/shared/CollapsibleSection'
+import { SpecImportExportBar } from './SpecImportExportBar'
 
 interface AxisSpecEditorProps {
   canvasId: string
@@ -49,6 +50,13 @@ export const AxisSpecEditor: React.FC<AxisSpecEditorProps> = ({ canvasId, spec, 
   return (
     <div className="graph-editor-layout">
       <div className="graph-editor-form">
+        <SpecImportExportBar<AxisSpecV1>
+          spec={spec}
+          kind="cartesian"
+          label="graph"
+          onImport={onChange}
+        />
+
         <CollapsibleSection title="Configuration" defaultExpanded={false}>
           <AxisConfigPanel spec={spec} onChange={(s) => onChange(s)} />
         </CollapsibleSection>

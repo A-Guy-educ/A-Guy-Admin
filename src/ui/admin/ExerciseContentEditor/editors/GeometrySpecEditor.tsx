@@ -13,6 +13,7 @@ import { PointsPanel } from '../components/geometry/PointsPanel'
 import { ShapesPanel } from '../components/geometry/ShapesPanel'
 import { TextsPanel } from '../components/geometry/TextsPanel'
 import { VectorsPanel } from '../components/geometry/VectorsPanel'
+import { SpecImportExportBar } from './SpecImportExportBar'
 
 interface GeometrySpecEditorProps {
   canvasId: string
@@ -124,6 +125,13 @@ export const GeometrySpecEditor: React.FC<GeometrySpecEditorProps> = ({
   return (
     <div className="graph-editor-layout">
       <div className="graph-editor-form">
+        <SpecImportExportBar<GeometrySpecV1>
+          spec={spec}
+          kind="euclidean"
+          label="geometry"
+          onImport={onChange}
+        />
+
         <CollapsibleSection title="Canvas" defaultExpanded={false}>
           <CanvasConfigPanel canvas={spec.canvas} onChange={(canvas) => updateSpec({ canvas })} />
         </CollapsibleSection>

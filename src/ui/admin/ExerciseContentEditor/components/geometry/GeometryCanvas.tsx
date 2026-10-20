@@ -28,7 +28,7 @@ interface PointUpdate {
 interface GeometryCanvasProps {
   id: string
   geometry: GeometrySpecV1
-  interactionMode?: 'move' | 'addPoint'
+  interactionMode?: 'move' | 'addPoint' | 'moveSketch'
   onPointMoved?: (name: string, x: number, y: number) => void
   onMultiPointMoved?: (updates: PointUpdate[]) => void
   onCanvasClick?: (x: number, y: number) => void
@@ -107,6 +107,16 @@ export const GeometryCanvas: React.FC<GeometryCanvasProps> = ({
   const onTextMovedRef = useRef(onTextMoved)
   const onPointLabelMovedRef = useRef(onPointLabelMoved)
   const onAngleLabelMovedRef = useRef(onAngleLabelMoved)
+  // Snapshot of all point positions captured on sketch-drag start, so each
+  // move handler shifts the sketch by (cursor - startCursor) against the
+  // original positions rather than accumulating drift.
+  const sketchDragRef = useRef<{
+    startX: number
+    startY: number
+    points: Array<{ name: string; x: number; y: number }>
+    lastUpdates?: PointUpdate[]
+  } | null>(null)
+  const geometryRef = useRef(geometry)
   modeRef.current = interactionMode
   onCanvasClickRef.current = onCanvasClick
   onPointMovedRef.current = onPointMoved
@@ -114,6 +124,7 @@ export const GeometryCanvas: React.FC<GeometryCanvasProps> = ({
   onTextMovedRef.current = onTextMoved
   onPointLabelMovedRef.current = onPointLabelMoved
   onAngleLabelMovedRef.current = onAngleLabelMoved
+  geometryRef.current = geometry
 
   const syncToBoard = useCallback(() => {
     const board = boardRef.current
@@ -135,6 +146,7 @@ export const GeometryCanvas: React.FC<GeometryCanvasProps> = ({
         isDraggingRef,
         onPointMovedRef,
         onPointLabelMovedRef,
+        modeRef,
       )
 
       // When points are recreated (e.g. label position change), dependent
@@ -200,17 +212,102 @@ export const GeometryCanvas: React.FC<GeometryCanvasProps> = ({
     boardRef.current = board
     elementsRef.current.clear()
     syncToBoardRef.current()
-    const b = board as unknown as Record<string, (...args: unknown[]) => unknown>
-    b.on('down', (e: unknown) => {
-      if (modeRef.current !== 'addPoint') return
-      const coords = b.getUsrCoordsOfMouse(e) as number[]
+    const b = board as unknown as {
+      on: (event: string, handler: (e: unknown) => void) => void
+      getUsrCoordsOfMouse: (e: unknown) => number[]
+      suspendUpdate: () => void
+      unsuspendUpdate: () => void
+      update: () => void
+    }
+    const getUsr = (e: unknown): [number, number] | null => {
+      const coords = b.getUsrCoordsOfMouse(e)
       const x = coords.length > 2 ? coords[1] : coords[0]
       const y = coords.length > 2 ? coords[2] : coords[1]
-      if (typeof x === 'number' && typeof y === 'number' && !isNaN(x) && !isNaN(y)) {
-        onCanvasClickRef.current?.(round1(x), round1(y))
+      if (typeof x !== 'number' || typeof y !== 'number' || isNaN(x) || isNaN(y)) return null
+      return [x, y]
+    }
+    b.on('down', (e: unknown) => {
+      if (modeRef.current === 'addPoint') {
+        const pt = getUsr(e)
+        if (pt) onCanvasClickRef.current?.(round1(pt[0]), round1(pt[1]))
+        return
+      }
+      if (modeRef.current === 'moveSketch') {
+        const pt = getUsr(e)
+        if (!pt) return
+        sketchDragRef.current = {
+          startX: pt[0],
+          startY: pt[1],
+          points: geometryRef.current.elements.points.map((p) => ({
+            name: p.name,
+            x: p.x,
+            y: p.y,
+          })),
+        }
+        isDraggingRef.current = true
       }
     })
+    b.on('move', (e: unknown) => {
+      if (modeRef.current !== 'moveSketch' || !sketchDragRef.current) return
+      const pt = getUsr(e)
+      if (!pt) return
+      const dx = pt[0] - sketchDragRef.current.startX
+      const dy = pt[1] - sketchDragRef.current.startY
+      const updates: PointUpdate[] = sketchDragRef.current.points.map((p) => ({
+        name: p.name,
+        x: round1(p.x + dx),
+        y: round1(p.y + dy),
+      }))
+      // Move the JSXGraph point elements live so dependent segments / circles
+      // / angles track along. Spec state is flushed once on `up` to avoid a
+      // React re-render per frame.
+      isSyncingRef.current = true
+      b.suspendUpdate()
+      try {
+        for (const u of updates) {
+          const el = elementsRef.current.get(`point-${u.name}`) as unknown as
+            | { moveTo?: (xy: [number, number]) => void }
+            | undefined
+          el?.moveTo?.([u.x, u.y])
+        }
+      } finally {
+        b.unsuspendUpdate()
+        isSyncingRef.current = false
+      }
+      sketchDragRef.current.lastUpdates = updates
+    })
+    b.on('up', () => {
+      if (!sketchDragRef.current) return
+      const final = sketchDragRef.current.lastUpdates
+      sketchDragRef.current = null
+      isDraggingRef.current = false
+      if (final && final.length) onMultiPointMovedRef.current?.(final)
+    })
   }, [])
+
+  // In moveSketch mode, freeze individual-element drags (points, texts,
+  // polygons, angle labels) so dragging grabs the whole sketch instead of
+  // whatever element the pointer landed on. The sketch-drag handlers above
+  // provide the global movement.
+  useEffect(() => {
+    const board = boardRef.current
+    if (!board) return
+    const freeze = interactionMode === 'moveSketch'
+    for (const [elemId, el] of elementsRef.current) {
+      if (
+        elemId.startsWith('point-') ||
+        elemId.startsWith('text-') ||
+        elemId.startsWith('triangle-') ||
+        elemId.startsWith('rectangle-') ||
+        elemId.startsWith('anglelabel-')
+      ) {
+        ;(el as unknown as { setAttribute?: (a: Record<string, unknown>) => void }).setAttribute?.({
+          fixed: freeze,
+        })
+      }
+    }
+    ;(board as unknown as { update: () => void }).update()
+  }, [interactionMode])
 
   const { canvas } = geometry
   // Respect the geometry's own boundingBox (needed for content with negative
@@ -314,6 +411,7 @@ function syncPoints(
   isDraggingRef: React.MutableRefObject<boolean>,
   onPointMovedRef: React.RefObject<((name: string, x: number, y: number) => void) | undefined>,
   onPointLabelMovedRef: React.RefObject<((name: string, position: string) => void) | undefined>,
+  modeRef: React.MutableRefObject<'move' | 'addPoint' | 'moveSketch'>,
 ): Set<string> {
   const recreated = new Set<string>()
   for (const point of geometry.elements.points) {
@@ -362,6 +460,7 @@ function syncPoints(
         fillColor: pointColor,
         strokeColor: pointColor,
         visible: point.visible !== false,
+        fixed: modeRef.current === 'moveSketch',
         withLabel: labelVisible,
         label: {
           offset: labelOffset,
@@ -372,6 +471,7 @@ function syncPoints(
       })
       el.on('drag', () => {
         if (isSyncingRef.current) return
+        if (modeRef.current === 'moveSketch') return
         isDraggingRef.current = true
         if (el.X && el.Y) onPointMovedRef.current?.(point.name, round1(el.X()), round1(el.Y()))
       })
