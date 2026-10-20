@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- fix(payments): STO item is master+1 not master-1 ([#668](https://github.com/A-Guy-educ/A-Guy-Admin/pull/668)) — @aguyshayb
 - chore(payments): Drop dead tranzila token-charge code ([#667](https://github.com/A-Guy-educ/A-Guy-Admin/pull/667)) — @aguyshayb
 - revert(payments): Drop upgrade charge; restore no-stored-tokens policy ([#666](https://github.com/A-Guy-educ/A-Guy-Admin/pull/666)) — @aguyshayb
 - feat(payments): Bump test tier prices above Tranzila ₪1 min (1.5/3/4.5) ([#665](https://github.com/A-Guy-educ/A-Guy-Admin/pull/665)) — @aguyshayb
