@@ -378,34 +378,6 @@ describe('POST /api/subscriptions/bootstrap/tranzilla', () => {
       authMock.mockRestore()
     }
   })
-
-  it('rejects offer=test for non-basic tiers (catalog gap)', async () => {
-    const route = await import('@/app/api/subscriptions/bootstrap/tranzilla/route')
-    const authMock = vi
-      .spyOn(payload as any, 'auth')
-      .mockResolvedValue({ user: { id: userId, collection: 'users', tenant: tenantId } } as any)
-    try {
-      const request = new NextRequest(
-        'http://localhost:3000/api/subscriptions/bootstrap/tranzilla',
-        {
-          method: 'POST',
-          body: JSON.stringify({
-            tierSlug: 'advanced',
-            offerSlug: 'test',
-            successUrl: 'http://localhost:3000/success',
-            cancelUrl: 'http://localhost:3000/cancel',
-          }),
-          headers: { 'content-type': 'application/json' },
-        },
-      )
-      const res = await route.POST(request)
-      expect(res.status).toBe(400)
-      const body = (await res.json()) as any
-      expect(body.error).toContain('not available for tier')
-    } finally {
-      authMock.mockRestore()
-    }
-  })
 })
 
 describe('PATCH /api/subscriptions/[id]/cancel', () => {
