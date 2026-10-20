@@ -563,7 +563,14 @@ function syncLineLabels(
     const t = toEl as unknown as { X: () => number; Y: () => number }
     // Scale offset to ~3% of canvas height so it's visible on large coordinate spaces
     const baseOffset = geometry.canvas.height * 0.03
-    const offsetDist = line.label.position === 'b' ? -baseOffset : baseOffset
+    const userSign = line.label.position === 'b' ? -1 : 1
+    // Compute offsetDist dynamically so dragging a point past a direction flip
+    // keeps the label on the same screen side as the user requested, rather
+    // than tracking the from→to perpendicular (see geometryElements.ts).
+    const computeOffsetDist = (dx: number, len: number) => {
+      const sign = Math.abs(dx) / len < 0.05 ? userSign : userSign * Math.sign(dx)
+      return sign * baseOffset
+    }
     const el = board.create(
       'text',
       [
@@ -571,13 +578,13 @@ function syncLineLabels(
           const dx = t.X() - f.X()
           const dy = t.Y() - f.Y()
           const len = Math.sqrt(dx * dx + dy * dy) || 1
-          return (f.X() + t.X()) / 2 + (-dy / len) * offsetDist
+          return (f.X() + t.X()) / 2 + (-dy / len) * computeOffsetDist(dx, len)
         },
         () => {
           const dx = t.X() - f.X()
           const dy = t.Y() - f.Y()
           const len = Math.sqrt(dx * dx + dy * dy) || 1
-          return (f.Y() + t.Y()) / 2 + (dx / len) * offsetDist
+          return (f.Y() + t.Y()) / 2 + (dx / len) * computeOffsetDist(dx, len)
         },
         line.label.value,
       ],
