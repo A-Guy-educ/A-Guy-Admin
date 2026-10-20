@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- feat(payments): Bump test tier prices above Tranzila ₪1 min (1.5/3/4.5) ([#665](https://github.com/A-Guy-educ/A-Guy-Admin/pull/665)) — @aguyshayb
 - feat(payments): Charge full new-tier amount on mid-cycle upgrade ([#664](https://github.com/A-Guy-educ/A-Guy-Admin/pull/664)) — @aguyshayb
 - feat(payments): DirectNG iframe + Hand Shake V2 (thtk flow) ([#663](https://github.com/A-Guy-educ/A-Guy-Admin/pull/663)) — @aguyshayb
 - feat(payments): Test offers on all 3 tiers at 0.01/0.02/0.03 ILS ([#662](https://github.com/A-Guy-educ/A-Guy-Admin/pull/662)) — @aguyshayb
