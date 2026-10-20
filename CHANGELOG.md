@@ -2,30 +2,44 @@
 
 ## [Unreleased]
 
-- fix(payments): STO item is master+1 not master-1 ([#668](https://github.com/A-Guy-educ/A-Guy-Admin/pull/668)) — @aguyshayb
-- chore(payments): Drop dead tranzila token-charge code ([#667](https://github.com/A-Guy-educ/A-Guy-Admin/pull/667)) — @aguyshayb
-- revert(payments): Drop upgrade charge; restore no-stored-tokens policy ([#666](https://github.com/A-Guy-educ/A-Guy-Admin/pull/666)) — @aguyshayb
-- feat(payments): Bump test tier prices above Tranzila ₪1 min (1.5/3/4.5) ([#665](https://github.com/A-Guy-educ/A-Guy-Admin/pull/665)) — @aguyshayb
-- feat(payments): Charge full new-tier amount on mid-cycle upgrade ([#664](https://github.com/A-Guy-educ/A-Guy-Admin/pull/664)) — @aguyshayb
-- feat(payments): DirectNG iframe + Hand Shake V2 (thtk flow) ([#663](https://github.com/A-Guy-educ/A-Guy-Admin/pull/663)) — @aguyshayb
-- feat(payments): Test offers on all 3 tiers at 0.01/0.02/0.03 ILS ([#662](https://github.com/A-Guy-educ/A-Guy-Admin/pull/662)) — @aguyshayb
-- fix(payments): Cancel BOTH master and item (master - 1) on STO cancel ([#661](https://github.com/A-Guy-educ/A-Guy-Admin/pull/661)) — @aguyshayb
-- fix: Geometry line label above/below respects screen axis; media badge green ([#660](https://github.com/A-Guy-educ/A-Guy-Admin/pull/660)) — @aguyshayb
-- feat(payments): Mid-cycle tier upgrade via STO items-swap (M2) ([#656](https://github.com/A-Guy-educ/A-Guy-Admin/pull/656)) — @aguyshayb
-- feat(admin): JSON import/export for geometry & graph specs, drag whole geometry sketch ([#658](https://github.com/A-Guy-educ/A-Guy-Admin/pull/658)) — @aguyshayb
-- fix(payments): Cancel STO — sto_id must be an integer in /v2/sto/update ([#655](https://github.com/A-Guy-educ/A-Guy-Admin/pull/655)) — @aguyshayb
-- fix(payments): Hotfix — drop notification_url from createstov2 body ([#654](https://github.com/A-Guy-educ/A-Guy-Admin/pull/654)) — @aguyshayb
-- feat: Restrict line label position to above/below and add media badge ([#653](https://github.com/A-Guy-educ/A-Guy-Admin/pull/653)) — @aguyshayb
-- feat: Add daily LLM token counter fields to user schema ([#652](https://github.com/A-Guy-educ/A-Guy-Admin/pull/652)) — @aguyshayb
-- chore(deps): bump openai from 4.104.0 to 7.34.0 ([#648](https://github.com/A-Guy-educ/A-Guy-Admin/pull/648)) — @dependabot[bot]
-- chore(deps): bump @napi-rs/canvas from 0.1.89 to 1.0.11 ([#650](https://github.com/A-Guy-educ/A-Guy-Admin/pull/650)) — @dependabot[bot]
-- chore(deps): bump framer-motion from 12.38.0 to 14.3.0 ([#645](https://github.com/A-Guy-educ/A-Guy-Admin/pull/645)) — @dependabot[bot]
-- chore(deps): bump dotenv from 17.2.3 to 18.0.8 ([#644](https://github.com/A-Guy-educ/A-Guy-Admin/pull/644)) — @dependabot[bot]
-- fix(payments): Admin-panel cancel calls Tranzila STO + bootstrap 400 logs ([#651](https://github.com/A-Guy-educ/A-Guy-Admin/pull/651)) — @aguyshayb
-- feat(payments): Hand Shake outgoing iframe signing (feature-flagged) ([#641](https://github.com/A-Guy-educ/A-Guy-Admin/pull/641)) — @aguyshayb
-- fix(payments): Correlate recurring STO charges and record renewals ([#640](https://github.com/A-Guy-educ/A-Guy-Admin/pull/640)) — @aguyshayb
-- fix(ci): Patch commitlint parser for Node 24 compatibility ([#639](https://github.com/A-Guy-educ/A-Guy-Admin/pull/639)) — @aguyshayb
-- fix(payments): Cancel Tranzila STO on user-initiated subscription cancel ([#635](https://github.com/A-Guy-educ/A-Guy-Admin/pull/635)) — @aguyshayb
+## v0.59.0 — 2026-10-20
+
+### Features
+
+- Payments / Tranzila: mid-cycle tier upgrade via STO items-swap (M2) ([#656](https://github.com/A-Guy-educ/A-Guy-Admin/pull/656))
+- Payments / Tranzila: DirectNG iframe endpoint + Hand Shake V2 (thtk) iframe signing, behind feature flags `TRANZILLA_USE_DIRECTNG` and `TRANZILLA_HAND_SHAKE_ENABLED` ([#663](https://github.com/A-Guy-educ/A-Guy-Admin/pull/663))
+- Payments / Tranzila: Hand Shake outgoing iframe signing, feature-flagged ([#641](https://github.com/A-Guy-educ/A-Guy-Admin/pull/641))
+- Payments / Tranzila: charge full new-tier amount on mid-cycle upgrade in the change-tier endpoint ([#664](https://github.com/A-Guy-educ/A-Guy-Admin/pull/664))
+- Payments / Tranzila: bump test tier prices above the ₪1 Tranzila minimum (1.5 / 3 / 4.5 ILS) ([#665](https://github.com/A-Guy-educ/A-Guy-Admin/pull/665))
+- Payments / Tranzila: enable test offers on all 3 tiers at 0.01 / 0.02 / 0.03 ILS ([#662](https://github.com/A-Guy-educ/A-Guy-Admin/pull/662))
+- Admin / geometry editor: JSON import/export for geometry and graph specs; drag whole geometry sketch ([#658](https://github.com/A-Guy-educ/A-Guy-Admin/pull/658))
+- Admin / geometry editor: restrict line label position to above/below and add media badge ([#653](https://github.com/A-Guy-educ/A-Guy-Admin/pull/653))
+- Users: add daily LLM token counter fields to the user schema ([#652](https://github.com/A-Guy-educ/A-Guy-Admin/pull/652))
+
+### Bug Fixes
+
+- Payments / Tranzila: STO item index is `master + 1`, not `master - 1` ([#668](https://github.com/A-Guy-educ/A-Guy-Admin/pull/668))
+- Payments / Tranzila: cancel BOTH master and item (`master + 1`) on STO cancel ([#661](https://github.com/A-Guy-educ/A-Guy-Admin/pull/661))
+- Payments / Tranzila: `sto_id` must be an integer in `/v2/sto/update` ([#655](https://github.com/A-Guy-educ/A-Guy-Admin/pull/655))
+- Payments / Tranzila: hotfix — drop `notification_url` from the `createstov2` body ([#654](https://github.com/A-Guy-educ/A-Guy-Admin/pull/654))
+- Payments / Tranzila: admin-panel cancel now calls Tranzila STO, plus bootstrap-400 logging ([#651](https://github.com/A-Guy-educ/A-Guy-Admin/pull/651))
+- Payments / Tranzila: correlate recurring STO charges and record renewals ([#640](https://github.com/A-Guy-educ/A-Guy-Admin/pull/640))
+- Payments / Tranzila: cancel Tranzila STO on user-initiated subscription cancel ([#635](https://github.com/A-Guy-educ/A-Guy-Admin/pull/635))
+- Geometry renderer: line label above/below respects the screen axis; media badge turns green ([#660](https://github.com/A-Guy-educ/A-Guy-Admin/pull/660))
+- CI: patch `conventional-changelog-conventionalcommits` for Node 24 compatibility ([#639](https://github.com/A-Guy-educ/A-Guy-Admin/pull/639))
+
+### Reverts
+
+- Payments / Tranzila: drop upgrade charge; restore the no-stored-tokens policy ([#666](https://github.com/A-Guy-educ/A-Guy-Admin/pull/666))
+
+### Chores & Dependencies
+
+- Payments / Tranzila: drop dead token-charge code ([#667](https://github.com/A-Guy-educ/A-Guy-Admin/pull/667))
+- deps: bump `openai` 4.104.0 → 7.34.0 ([#648](https://github.com/A-Guy-educ/A-Guy-Admin/pull/648))
+- deps: bump `@napi-rs/canvas` 0.1.89 → 1.0.11 ([#650](https://github.com/A-Guy-educ/A-Guy-Admin/pull/650))
+- deps: bump `framer-motion` 12.38.0 → 14.3.0 ([#645](https://github.com/A-Guy-educ/A-Guy-Admin/pull/645))
+- deps: bump `dotenv` 17.2.3 → 18.0.8 ([#644](https://github.com/A-Guy-educ/A-Guy-Admin/pull/644))
+
 ## [v0.58.0] - 2026-10-18
 
 - promote: dev -> main (v0.58.0) ([#637](https://github.com/A-Guy-educ/A-Guy-Admin/pull/637)) — @aguyshayb
