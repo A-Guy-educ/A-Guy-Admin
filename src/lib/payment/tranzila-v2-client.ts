@@ -420,14 +420,20 @@ export interface CancelStandingOrderArgs {
  *      createstov2 fails — without this cleanup the user would be billed
  *      both by Tranzila's STO AND by our own fallback cron.
  *
- * CRITICAL — cancels BOTH the master AND the item (master - 1).
+ * CRITICAL — cancels BOTH the master AND the item (master + 1).
  * Tranzila's createstov2 produces TWO linked records per call: a "master"
  * (0 ILS wrapper, carries customer + payment counter) and an "item"
  * (billable line with product name + unit price). The API returns only the
- * master id; the item id is always `master - 1` across every observation
- * we have (verified live 2026-10-20 against sto_ids 487538/487539,
- * 487549/487550, 488323/488324, 488335/488336, 488341–488344). Cancelling
- * only the master does NOT stop the item from billing. Must cancel both.
+ * master id; the item id is always `master + 1` (verified live 2026-10-21
+ * against sto_id 488603 master + 488604 item). Cancelling only the master
+ * does NOT stop the item from billing. Must cancel both.
+ *
+ * NB: earlier commits assumed item = master - 1 based on 2026-10-20
+ * dashboard observations. That direction was wrong — those observations
+ * were reading an adjacent unrelated STO row. Items-swap on master-1 and
+ * cancel of master-1 would hit random other subs' sto_ids. If you see
+ * stray "someone's STO is inactive but they didn't cancel" reports in
+ * the Tranzila dashboard, this bug is why.
  *
  * Shape (verified live 2026-10-19):
  *   POST /v2/sto/update
@@ -456,17 +462,30 @@ export interface SwapStoItemsArgs {
  * Replace an STO's items array in place — Tranzila's documented "items are
  * deleted and replaced" behavior for /v2/sto/update. Used by the tier-change
  * endpoint to swap the recurring charge amount without needing a card token
- * (we no longer have one post-handoff). Keeps the same sto_id and card.
+ * (we no longer have one post-handoff). Keeps the same card on Tranzila's
+ * side.
+ *
+ * CRITICAL — master vs. item sto_id (verified live 2026-10-20):
+ * createstov2 returns the MASTER sto_id (customer + cadence, ₪0 on the
+ * dashboard). The actual charge-bearing item row is at `master + 1` and
+ * carries the product name + unit_price. Hitting the master with
+ * /v2/sto/update sets its unit_price, which Tranzila then CHARGES in
+ * addition to the untouched item at master+1 — the user ends up paying
+ * (new master price + old item price). So items-swap must target
+ * `master + 1`, not the master.
  *
  * CRITICAL schema quirk (verified live via scripts/probe-tranzila-sto-items-swap.ts):
  * the items schema for /v2/sto/update accepts ONLY `name` and `unit_price`.
  * Any other field (quantity, currency_code, vat_percent, type, etc.) trips
  * additionalProperties — error_code 20004. The create endpoint accepts a
  * much wider shape, so don't copy the createStandingOrder items shape here.
+ *
+ * @param args.stoId - The master sto_id as stored on the Subscription row.
+ *   This function targets `master + 1` internally; callers pass the master.
  */
 export async function swapStandingOrderItems(args: SwapStoItemsArgs): Promise<TranzilaV2Response> {
-  const stoIdNum = Number(args.stoId)
-  if (!Number.isSafeInteger(stoIdNum) || stoIdNum <= 0) {
+  const masterIdNum = Number(args.stoId)
+  if (!Number.isSafeInteger(masterIdNum) || masterIdNum <= 0) {
     throw new Error(
       `swapStandingOrderItems: stoId must be a positive integer string, got "${args.stoId}"`,
     )
@@ -476,11 +495,12 @@ export async function swapStandingOrderItems(args: SwapStoItemsArgs): Promise<Tr
       `swapStandingOrderItems: unitPriceIls must be positive, got ${args.unitPriceIls}`,
     )
   }
+  const itemIdNum = masterIdNum + 1
   return postV2({
     path: '/v2/sto/update',
     body: {
       terminal_name: args.terminalName,
-      sto_id: stoIdNum,
+      sto_id: itemIdNum,
       items: [{ name: args.itemName, unit_price: args.unitPriceIls }],
     },
   })
@@ -508,18 +528,14 @@ export async function cancelStandingOrder(
     return masterResult
   }
 
-  // 2. Item (master - 1). Guarded against stoIdNum === 1 (which would make
-  // the item id 0, invalid). In practice sto_ids are 5+ digits, so this is
-  // defensive only.
-  const itemIdNum = stoIdNum - 1
-  if (itemIdNum >= 1) {
-    const itemResult = await inactivate(itemIdNum)
-    if (itemResult.errorCode !== 0 && itemResult.errorCode !== null) {
-      // Master cancelled, item did not. Caller sees failure, retries. On
-      // retry both calls run; master's second cancel is idempotent, item's
-      // first attempt completes the operation.
-      return itemResult
-    }
+  // 2. Item (master + 1).
+  const itemIdNum = stoIdNum + 1
+  const itemResult = await inactivate(itemIdNum)
+  if (itemResult.errorCode !== 0 && itemResult.errorCode !== null) {
+    // Master cancelled, item did not. Caller sees failure, retries. On
+    // retry both calls run; master's second cancel is idempotent, item's
+    // first attempt completes the operation.
+    return itemResult
   }
 
   return masterResult
