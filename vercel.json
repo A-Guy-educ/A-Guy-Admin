@@ -24,10 +24,6 @@
     {
       "path": "/api/cron/verify-tx-indexes",
       "schedule": "13 6 * * *"
-    },
-    {
-      "path": "/api/cron/tranzilla-renewals",
-      "schedule": "15 * * * *"
     }
   ]
 }

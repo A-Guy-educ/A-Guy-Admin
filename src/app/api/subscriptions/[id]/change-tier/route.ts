@@ -18,8 +18,9 @@
  *
  * Design notes:
  *   - Items-swap on the existing STO (same sto_id, same card on Tranzila's
- *     side). No card token needed on our side — the webhook nullifies
- *     tranzillaCardToken after handoff per the no-stored-tokens policy.
+ *     side). No card token stored on our side per the no-stored-tokens
+ *     policy — Tranzila's My-Billing engine already holds the token
+ *     attached to the STO.
  *   - introChargesUsed carries over across a tier change — intro grant is
  *     per-user, not per-tier. User doesn't get a fresh intro by upgrading.
  */

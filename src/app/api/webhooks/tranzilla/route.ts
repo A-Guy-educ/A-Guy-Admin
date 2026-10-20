@@ -577,9 +577,9 @@ async function handoffToStandingOrder(args: HandoffArgs): Promise<void> {
   } = args
 
   if (!cardToken) {
-    payload.logger.error(
+    payload.logger.fatal(
       { subscriptionRowId },
-      '[tranzilla-webhook/sto-handoff] no card token available for createstov2 — leaving cron fallback in place',
+      '[tranzilla-webhook/sto-handoff] no card token available for createstov2 — manual STO setup required',
     )
     return
   }
@@ -617,18 +617,14 @@ async function handoffToStandingOrder(args: HandoffArgs): Promise<void> {
   // the field when it still holds *our* sentinel, so a concurrent handler
   // that somehow raced in can't be clobbered.
   //
-  // ALSO nulls `tranzillaCardToken` on every failure path. Keeping the
-  // token as a cron-fallback was defense-in-depth that undermined the
-  // whole point of moving to STO (minimize card-credential custody).
-  // The explicit trade-off: on handoff failure the user has month 1 of
-  // paid access with no auto-renewal. We'd rather lose that revenue than
-  // store a reusable charge credential on a failure path we can't
-  // automatically recover from. Ops gets a fatal log and can either
-  // manually create the STO via Tranzila's dashboard or refund the user.
+  // On handoff failure the user has month 1 of paid access with no auto-
+  // renewal. We'd rather lose that revenue than store a reusable charge
+  // credential — ops gets a fatal log and either manually creates the STO
+  // via Tranzila's dashboard or refunds the user.
   const releaseClaim = async (): Promise<void> => {
     await subsCollection.updateOne(
       { _id: subObjectId, stoId: claimSentinel },
-      { $set: { stoId: null, tranzillaCardToken: null, updatedAt: new Date() } },
+      { $set: { stoId: null, updatedAt: new Date() } },
     )
   }
 
@@ -683,7 +679,7 @@ async function handoffToStandingOrder(args: HandoffArgs): Promise<void> {
         subscriptionRowId,
         err: err instanceof Error ? err.message : String(err),
       },
-      '[tranzilla-webhook/sto-handoff] CRITICAL — createstov2 threw. User is charged + promoted; cron fallback will handle renewals until this is resolved.',
+      '[tranzilla-webhook/sto-handoff] CRITICAL — createstov2 threw. User is charged + promoted but STO was not created; manual STO setup required.',
     )
     await releaseClaim()
     return
@@ -697,27 +693,24 @@ async function handoffToStandingOrder(args: HandoffArgs): Promise<void> {
         message: result.message,
         rawText: result.raw.rawText.slice(0, 500),
       },
-      '[tranzilla-webhook/sto-handoff] CRITICAL — createstov2 returned no sto_id. User is charged + promoted; cron fallback remains in place.',
+      '[tranzilla-webhook/sto-handoff] CRITICAL — createstov2 returned no sto_id. User is charged + promoted but STO was not created; manual STO setup required.',
     )
     await releaseClaim()
     return
   }
 
-  // ─── 2. Persist real sto_id + null the card token. Rollback on DB write failure.
+  // ─── 2. Persist real sto_id. Rollback on DB write failure.
   //
   // Policy: no stored tokens, no stored cards. Once Tranzila's My-Billing
   // engine has the token attached to the STO, their side owns the recurring
-  // charge forever — we don't need our own copy. There is NO cron fallback
-  // and NO mid-cycle delta charge; keeping the token would widen PCI blast
-  // radius for zero functional gain. Upgrades work via /v2/sto/update items
-  // swap (no token needed), not merchant-initiated charges.
+  // charge forever — we never kept our own copy. Upgrades work via
+  // /v2/sto/update items-swap, not merchant-initiated charges.
   try {
     await subsCollection.updateOne(
       { _id: subObjectId },
       {
         $set: {
           stoId: result.stoId,
-          tranzillaCardToken: null,
           updatedAt: new Date(),
         },
       },
@@ -751,7 +744,7 @@ async function handoffToStandingOrder(args: HandoffArgs): Promise<void> {
       } else {
         payload.logger.info(
           { subscriptionRowId, stoId: result.stoId },
-          '[tranzilla-webhook/sto-handoff] cancelled orphan STO after DB write failure; sub will remain on cron fallback',
+          '[tranzilla-webhook/sto-handoff] cancelled orphan STO after DB write failure; sub remains without an STO — manual intervention required',
         )
       }
     } catch (cancelErr) {
@@ -874,8 +867,6 @@ async function handleTranzillaSubscriptionBootstrap(
   //
   // Handles both first delivery AND replay (unprocessed-event re-run from
   // the dedup gate) uniformly. Every step is idempotent per-period:
-  //   - Token snapshot: $set is a no-op when the same token is already in
-  //     place; only required on first delivery when sub is still pending.
   //   - extendTierSubscription: CAS on currentPeriodEnd + llmTokensResetAt
   //     means a repeat call with the same newPeriodEnd no-ops both writes,
   //     but will complete a partial state if a prior delivery crashed
@@ -885,28 +876,10 @@ async function handleTranzillaSubscriptionBootstrap(
   // Period math: on the first delivery, compute `now + 1 month`. On replay
   // (sub already advanced), reuse the Sub's stored currentPeriodEnd so the
   // CAS doesn't re-fire. This keeps introChargesUsed accurate.
-  if (subscription.status === 'pending') {
-    const token = body.TranzilaTK || null
-    if (!token) {
-      // No token means the next cron run has nothing to charge. Treat as
-      // a bootstrap failure rather than silently moving on — ops will see
-      // the error and can investigate the terminal config.
-      throw new Error(
-        `Subscription-bootstrap webhook (${subscriptionRowId}) succeeded without a TranzilaTK — terminal must be the tokenization terminal`,
-      )
-    }
-    const subsCollection = payload.db.collections['subscriptions']
-    await subsCollection.updateOne(
-      { _id: new ObjectId(subscriptionRowId) },
-      {
-        $set: {
-          tranzillaCardToken: token,
-          updatedAt: new Date(),
-        },
-      },
-    )
-  }
-
+  //
+  // TranzilaTK is passed in-memory to handoffToStandingOrder below — never
+  // persisted. The handoff's own cardToken validation handles a missing
+  // token (fatal log + releaseClaim).
   const now = subscription.currentPeriodStart
     ? new Date(subscription.currentPeriodStart)
     : new Date()

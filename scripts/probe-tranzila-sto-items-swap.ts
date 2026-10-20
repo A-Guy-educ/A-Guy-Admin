@@ -3,9 +3,9 @@
  * Probe: can /v2/sto/update swap an existing STO's items (price change)?
  *
  * Why: tier upgrade/downgrade need to change the recurring price of an
- * existing STO. After handoff, the TranzilaTK token is nullified on our
- * side (handoffToStandingOrder sets tranzillaCardToken: null), so a
- * cancel + recreate flow has no token to pass to createstov2. The clean
+ * existing STO. Per the no-stored-tokens policy we never retain the
+ * TranzilaTK after handoff, so a cancel + recreate flow has no token to
+ * pass to createstov2. The clean
  * alternative — mentioned in Tranzila's update docs ("items are deleted
  * and replaced") — is to update the existing STO's items array in place,
  * keeping the same sto_id and card.

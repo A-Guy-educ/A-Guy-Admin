@@ -6,27 +6,26 @@
  *   - cancelAtPeriodEnd = true
  *   - cancelledAt = now
  *   - User.currentTier stays set — access continues until currentPeriodEnd
- *   - The Tranzilla renewal cron picks up (cancelAtPeriodEnd=true,
- *     currentPeriodEnd < now) rows and expires + downgrades them
+ *   - Expiry + downgrade happens when Tranzila's STO renewal webhook fires
+ *     against a cancelled sub, or via the admin-triggered expiry path
  *
  * This mirrors PayPal's cancel-at-period-end semantics so the two paths
  * behave identically from the user's point of view: cancelling never
  * truncates a billing cycle you already paid for.
  *
  * Tranzila STO wrinkle: once a sub has `stoId` set, Tranzila's My-Billing
- * engine owns the recurring charge cadence — our cron excludes STO-managed
- * rows. If we only flip the local status to 'cancelled', Tranzila will
- * STILL charge the user on the next scheduled date (confirmed on the live
- * dashboard: STO rows stay 'פעיל' until explicitly inactivated). So for
- * STO-managed subs we must call Tranzila's /v2/sto/update {sto_status:
- * inactive} BEFORE flipping local state. If Tranzila's call fails we
- * return 502 and leave the DB untouched — safer for the user to see "try
- * again" than for us to lie about a billing stop that didn't happen.
+ * engine owns the recurring charge cadence. If we only flip the local
+ * status to 'cancelled', Tranzila will STILL charge the user on the next
+ * scheduled date (confirmed on the live dashboard: STO rows stay 'פעיל'
+ * until explicitly inactivated). So for STO-managed subs we must call
+ * Tranzila's /v2/sto/update {sto_status: inactive} BEFORE flipping local
+ * state. If Tranzila's call fails we return 502 and leave the DB untouched
+ * — safer for the user to see "try again" than for us to lie about a
+ * billing stop that didn't happen.
  *
  * Only the owning user may cancel their own sub via this route; admins
- * cancel via the Payload admin panel directly (admin flow doesn't go
- * through this endpoint — a separate collection hook or manual Tranzila
- * dashboard step is required there; tracked as follow-up).
+ * cancel via the Payload admin panel directly, which runs the
+ * cancelTranzilaStoOnAdminCancel beforeChange hook to inactivate the STO.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -154,7 +153,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         // whether createstov2 succeeded. Returning 409 asks the client to
         // retry in a moment — once handoff resolves, stoId is either a
         // real id (then this branch runs the cancel) or null (then we
-        // fall through to pure soft-cancel because the cron owns renewals).
+        // fall through to pure soft-cancel; there's no STO to inactivate).
         return applyCorsHeaders(
           NextResponse.json(
             {
