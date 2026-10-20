@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- fix(docker): COPY patches/ dir + bump pnpm to v10 ([#671](https://github.com/A-Guy-educ/A-Guy-Admin/pull/671)) — @aguyshayb
 ## [v0.59.0] - 2026-10-20
 
 - promote: dev -> main (v0.59.0) ([#670](https://github.com/A-Guy-educ/A-Guy-Admin/pull/670)) — @aguyshayb
