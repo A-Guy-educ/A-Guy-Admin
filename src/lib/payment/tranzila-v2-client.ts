@@ -181,6 +181,66 @@ export function queryTransactionByIndex(
   })
 }
 
+// ─── Handshake V2 — one-shot handshake token for the iframe ──────────────
+
+export interface CreateHandshakeArgs {
+  terminalName: string
+  /** Total amount of the first charge, in ILS major units. Tranzila binds the
+   * handshake token to this exact sum — the iframe URL's `sum` param MUST
+   * match or Tranzila rejects at card-submit time with 275497 Illegal Operation. */
+  sum: number
+  /** Optional free-form key/value pairs round-tripped on the resulting
+   * iframe POST. Not required. */
+  requestParams?: Record<string, unknown>
+}
+
+export interface CreateHandshakeResult {
+  /** The handshake token (`thtk`) to attach as a query param on the iframe URL. */
+  thtk: string | null
+  errorCode: number | null
+  message: string | null
+  raw: TranzilaV2Response
+}
+
+/**
+ * Create a Handshake V2 token (`thtk`) for an iframe charge. Used by
+ * `createTranzillaCheckout` when Hand Shake is enabled on the terminal.
+ *
+ * Flow (per https://docs.tranzila.com/docs/payments-and-billing/handshake-v2/createhandshakev2):
+ *   1. Server calls POST /v2/handshake/create with { terminal_name, sum }.
+ *   2. Response is `{ error_code: 0, message: "Success", thtk: "<token>" }`.
+ *   3. Server attaches `thtk=<token>` to the iframe URL query string.
+ *   4. Browser loads iframe. On card submit, Tranzila validates the token.
+ *
+ * The `response_hash` approach we tried first was wrong — we were trying to
+ * compute an HMAC Tranzila would verify. The actual protocol is a session
+ * token Tranzila issues, server-side, that we attach to the URL verbatim.
+ * No HMAC input layout to crack.
+ */
+export async function createHandshakeToken(
+  args: CreateHandshakeArgs,
+): Promise<CreateHandshakeResult> {
+  if (!(args.sum > 0)) {
+    throw new Error(`createHandshakeToken: sum must be positive, got ${args.sum}`)
+  }
+  const raw = await postV2({
+    path: '/v2/handshake/create',
+    body: {
+      terminal_name: args.terminalName,
+      sum: args.sum,
+      ...(args.requestParams ? { request_params: args.requestParams } : {}),
+    },
+  })
+  const thtkRaw = (raw.body as Record<string, unknown>).thtk
+  const thtk = typeof thtkRaw === 'string' && thtkRaw.length > 0 ? thtkRaw : null
+  return {
+    thtk,
+    errorCode: raw.errorCode,
+    message: raw.message,
+    raw,
+  }
+}
+
 // ─── My-Billing (STO) — create a standing order ──────────────────────────
 
 export type TranzilaChargeFrequency = 'weekly' | 'monthly' | 'quarterly' | 'half-yearly' | 'yearly'
