@@ -1292,10 +1292,12 @@ describe('PATCH /api/subscriptions/[id]/change-tier (Mission 2 — upgrade)', ()
     })) as any
     expect(after.tierSlug).toBe('advanced')
     expect(after.regularPriceIls).toBe(119)
-    // Period reset to fresh 30-day window.
+    // Period reset to +1 calendar month (addCalendarMonths — not exactly
+    // 30 days, varies with the month's length).
+    const expected = new Date()
+    expected.setMonth(expected.getMonth() + 1)
     const periodEndMs = new Date(after.currentPeriodEnd).getTime()
-    const expectedMs = Date.now() + 30 * 24 * 60 * 60 * 1000
-    expect(Math.abs(periodEndMs - expectedMs)).toBeLessThan(60_000) // within 1min
+    expect(Math.abs(periodEndMs - expected.getTime())).toBeLessThan(60_000) // within 1min
 
     const user = (await payload.findByID({
       collection: 'users',
@@ -1566,9 +1568,23 @@ describe('PATCH /api/subscriptions/[id]/change-tier (Mission 2 — upgrade)', ()
       contentType: 'application/json',
     })
 
+    // Charge-first ordering: charge must succeed before swap is attempted.
+    const tranzillaLib = await import('@/lib/payment/tranzilla')
+    const chargeMock = tranzillaLib.chargeTranzillaToken as any
+    chargeMock.mockReset().mockResolvedValue({
+      approved: true,
+      providerError: false,
+      providerErrorReason: null,
+      responseCode: '000',
+      index: 'TZ-SWAP-FAIL',
+      confirmationCode: '9999',
+      raw: {},
+    })
+
     const { sub } = await createPendingSub({
       tierSlug: 'basic',
       offerSlug: 'default',
+      cardToken: 'tk-swap-test',
       status: 'active',
       currentPeriodEnd: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
       cancelAtPeriodEnd: false,
