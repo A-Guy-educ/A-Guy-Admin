@@ -1,9 +1,9 @@
 'use client'
 
 import React from 'react'
-import { MousePointer2, Plus, Grid3x3 } from 'lucide-react'
+import { MousePointer2, Plus, Grid3x3, Move } from 'lucide-react'
 
-export type GeometryMode = 'move' | 'addPoint'
+export type GeometryMode = 'move' | 'addPoint' | 'moveSketch'
 
 interface GeometryToolbarProps {
   mode: GeometryMode
@@ -37,6 +37,15 @@ export const GeometryToolbar: React.FC<GeometryToolbarProps> = ({
       >
         <Plus size={16} />
         <span>Add Point</span>
+      </button>
+      <button
+        type="button"
+        className={`geo-toolbar-btn ${mode === 'moveSketch' ? 'geo-toolbar-btn--active' : ''}`}
+        onClick={() => onModeChange('moveSketch')}
+        title="Drag anywhere on the canvas to move the whole sketch"
+      >
+        <Move size={16} />
+        <span>Move Sketch</span>
       </button>
       <div className="geo-toolbar-separator" />
       <button
