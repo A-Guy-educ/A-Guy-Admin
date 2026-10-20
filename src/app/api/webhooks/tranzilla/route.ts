@@ -703,21 +703,21 @@ async function handoffToStandingOrder(args: HandoffArgs): Promise<void> {
     return
   }
 
-  // ─── 2. Persist real sto_id. Keep tranzillaCardToken on the sub.
+  // ─── 2. Persist real sto_id + null the card token. Rollback on DB write failure.
   //
-  // Historical note: we used to null the token here (minimize PCI blast
-  // radius once Tranzila has it in the STO). But that path blocked the
-  // mid-cycle upgrade endpoint — which charges a delta on the stored card
-  // via chargeTranzillaToken — because the sub no longer had a token to
-  // charge. Trade: slightly wider surface (token stays on the sub until
-  // cancel) in exchange for upgrade-on-demand working. The field already
-  // has `access.read: () => false` so admin UI / REST can't surface it.
+  // Policy: no stored tokens, no stored cards. Once Tranzila's My-Billing
+  // engine has the token attached to the STO, their side owns the recurring
+  // charge forever — we don't need our own copy. There is NO cron fallback
+  // and NO mid-cycle delta charge; keeping the token would widen PCI blast
+  // radius for zero functional gain. Upgrades work via /v2/sto/update items
+  // swap (no token needed), not merchant-initiated charges.
   try {
     await subsCollection.updateOne(
       { _id: subObjectId },
       {
         $set: {
           stoId: result.stoId,
+          tranzillaCardToken: null,
           updatedAt: new Date(),
         },
       },
