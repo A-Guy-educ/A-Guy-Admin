@@ -36,6 +36,25 @@ export interface PaymentEnv {
   tranzillaPublicKey: string
   tranzillaPrivateKey: string
   tranzillaSandbox: boolean
+  /**
+   * Hand Shake / outgoing-iframe HMAC: when `true`, `createTranzillaCheckout`
+   * appends a `response_hash` query param computed from the critical money
+   * fields. Default `false` so the iframe URL stays identical to today's
+   * shape until Shai is ready to flip Hand Shake on at the Tranzila terminal
+   * dashboard. Toggling this ON while Hand Shake is OFF on the terminal is
+   * harmless — Tranzila just ignores the extra param.
+   */
+  tranzillaHandShakeEnabled: boolean
+  /**
+   * When `true`, build the hosted iframe URL on Tranzila's newer DirectNG
+   * endpoint (`directng.tranzila.com`) instead of the legacy
+   * `direct.tranzila.com`. DirectNG uses a modernized form template and is
+   * suspected to be where Hand Shake iframe signing actually works —
+   * legacy's response_hash validation at GET time was discovered to be
+   * no-op during 2026-10-19 probing. Default `false` to keep behavior
+   * identical to today's shape until live-tested.
+   */
+  tranzillaUseDirectng: boolean
 }
 
 const STRIPE_REQUIRED = ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET'] as const
@@ -132,6 +151,8 @@ export function getPaymentEnv(): PaymentEnv {
     tranzillaPublicKey: process.env.TRANZILLA_PUBLIC_KEY ?? '',
     tranzillaPrivateKey: process.env.TRANZILLA_PRIVATE_KEY ?? '',
     tranzillaSandbox: process.env.TRANZILLA_SANDBOX !== 'false',
+    tranzillaHandShakeEnabled: process.env.TRANZILLA_HAND_SHAKE_ENABLED === 'true',
+    tranzillaUseDirectng: process.env.TRANZILLA_USE_DIRECTNG === 'true',
   }
 
   return validatedEnv

@@ -2804,6 +2804,14 @@
   cursor: crosshair;
 }
 
+.geo-canvas-wrap--moveSketch {
+  cursor: grab;
+}
+
+.geo-canvas-wrap--moveSketch:active {
+  cursor: grabbing;
+}
+
 .geo-canvas-hint {
   padding: 0.375rem 0.5rem;
   background: var(--theme-info-50);
@@ -2811,6 +2819,130 @@
   font-size: 0.75rem;
   text-align: center;
   border-top: 1px solid var(--theme-info-200);
+}
+
+/* Import / Export JSON bar (geometry + graph spec editors) */
+
+.spec-io-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.5rem;
+  margin-bottom: 0.5rem;
+  background: var(--theme-elevation-50);
+  border: 1px solid var(--theme-elevation-150);
+  border-radius: 6px;
+}
+
+.spec-io-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.6rem;
+  border: 1px solid var(--theme-elevation-200);
+  border-radius: 4px;
+  background: var(--theme-elevation-0);
+  color: var(--theme-elevation-700);
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.spec-io-btn:hover:not(:disabled) {
+  background: var(--theme-elevation-100);
+  color: var(--theme-elevation-900);
+}
+
+.spec-io-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.spec-io-btn--primary {
+  background: var(--theme-info-500);
+  border-color: var(--theme-info-600);
+  color: #fff;
+}
+
+.spec-io-btn--primary:hover:not(:disabled) {
+  background: var(--theme-info-600);
+  color: #fff;
+}
+
+.spec-io-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem;
+  border: none;
+  background: transparent;
+  color: var(--theme-elevation-600);
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.spec-io-icon-btn:hover {
+  background: var(--theme-elevation-100);
+  color: var(--theme-elevation-900);
+}
+
+.spec-io-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.spec-io-modal {
+  width: min(640px, 90vw);
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+  background: var(--theme-elevation-0);
+  border: 1px solid var(--theme-elevation-200);
+  border-radius: 8px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+.spec-io-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 600;
+  color: var(--theme-elevation-900);
+}
+
+.spec-io-textarea {
+  flex: 1;
+  min-height: 280px;
+  padding: 0.5rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.75rem;
+  color: var(--theme-elevation-900);
+  background: var(--theme-elevation-50);
+  border: 1px solid var(--theme-elevation-200);
+  border-radius: 4px;
+  resize: vertical;
+}
+
+.spec-io-error {
+  padding: 0.4rem 0.6rem;
+  background: var(--theme-error-50, #fdecea);
+  color: var(--theme-error-700, #a1261b);
+  border: 1px solid var(--theme-error-200, #f5b5b0);
+  border-radius: 4px;
+  font-size: 0.75rem;
+}
+
+.spec-io-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
 }
 
 /* Panel shared styles */

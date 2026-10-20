@@ -259,7 +259,7 @@ interface MutableLine {
   style: 'solid' | 'dashed'
   thickness?: number
   color?: string
-  label?: { value?: string; position: 't' | 'b' | 'm' }
+  label?: { value?: string; position: 't' | 'b' }
 }
 
 /**
@@ -343,7 +343,7 @@ function parseSegmentRow(head: string, fields: string[]): MutableLine | null {
   // doesn't shadow an explicit `תווית: 8 ס"מ`.
   const labelField = findField(fields, ['תווית']) ?? findField(fields, ['ערך', 'מידה'])
   if (labelField) {
-    line.label = { value: labelField, position: 'm' }
+    line.label = { value: labelField, position: 't' }
   }
 
   return line

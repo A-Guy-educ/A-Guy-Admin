@@ -52,7 +52,7 @@ describe('parseGeometryDsl', () => {
         to: 'C',
         style: 'dashed',
         color: 'red',
-        label: { value: '8 ס"מ', position: 'm' },
+        label: { value: '8 ס"מ', position: 't' },
       },
     ])
   })
@@ -166,8 +166,8 @@ describe('parseGeometryDsl', () => {
     ].join('\n')
     const { spec } = parseGeometryDsl(raw)
     expect(spec.elements.lines).toEqual([
-      { from: 'A', to: 'B', style: 'solid', label: { value: '8 ס"מ', position: 'm' } },
-      { from: 'B', to: 'C', style: 'solid', label: { value: '4 ס"מ', position: 'm' } },
+      { from: 'A', to: 'B', style: 'solid', label: { value: '8 ס"מ', position: 't' } },
+      { from: 'B', to: 'C', style: 'solid', label: { value: '4 ס"מ', position: 't' } },
     ])
   })
 

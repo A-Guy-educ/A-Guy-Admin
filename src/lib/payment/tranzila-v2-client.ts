@@ -181,6 +181,66 @@ export function queryTransactionByIndex(
   })
 }
 
+// ─── Handshake V2 — one-shot handshake token for the iframe ──────────────
+
+export interface CreateHandshakeArgs {
+  terminalName: string
+  /** Total amount of the first charge, in ILS major units. Tranzila binds the
+   * handshake token to this exact sum — the iframe URL's `sum` param MUST
+   * match or Tranzila rejects at card-submit time with 275497 Illegal Operation. */
+  sum: number
+  /** Optional free-form key/value pairs round-tripped on the resulting
+   * iframe POST. Not required. */
+  requestParams?: Record<string, unknown>
+}
+
+export interface CreateHandshakeResult {
+  /** The handshake token (`thtk`) to attach as a query param on the iframe URL. */
+  thtk: string | null
+  errorCode: number | null
+  message: string | null
+  raw: TranzilaV2Response
+}
+
+/**
+ * Create a Handshake V2 token (`thtk`) for an iframe charge. Used by
+ * `createTranzillaCheckout` when Hand Shake is enabled on the terminal.
+ *
+ * Flow (per https://docs.tranzila.com/docs/payments-and-billing/handshake-v2/createhandshakev2):
+ *   1. Server calls POST /v2/handshake/create with { terminal_name, sum }.
+ *   2. Response is `{ error_code: 0, message: "Success", thtk: "<token>" }`.
+ *   3. Server attaches `thtk=<token>` to the iframe URL query string.
+ *   4. Browser loads iframe. On card submit, Tranzila validates the token.
+ *
+ * The `response_hash` approach we tried first was wrong — we were trying to
+ * compute an HMAC Tranzila would verify. The actual protocol is a session
+ * token Tranzila issues, server-side, that we attach to the URL verbatim.
+ * No HMAC input layout to crack.
+ */
+export async function createHandshakeToken(
+  args: CreateHandshakeArgs,
+): Promise<CreateHandshakeResult> {
+  if (!(args.sum > 0)) {
+    throw new Error(`createHandshakeToken: sum must be positive, got ${args.sum}`)
+  }
+  const raw = await postV2({
+    path: '/v2/handshake/create',
+    body: {
+      terminal_name: args.terminalName,
+      sum: args.sum,
+      ...(args.requestParams ? { request_params: args.requestParams } : {}),
+    },
+  })
+  const thtkRaw = (raw.body as Record<string, unknown>).thtk
+  const thtk = typeof thtkRaw === 'string' && thtkRaw.length > 0 ? thtkRaw : null
+  return {
+    thtk,
+    errorCode: raw.errorCode,
+    message: raw.message,
+    raw,
+  }
+}
+
 // ─── My-Billing (STO) — create a standing order ──────────────────────────
 
 export type TranzilaChargeFrequency = 'weekly' | 'monthly' | 'quarterly' | 'half-yearly' | 'yearly'
@@ -316,6 +376,12 @@ export async function createStandingOrder(
       expire_month: args.cardExpireMonth,
       expire_year: args.cardExpireYear,
     },
+    // Per-STO notification URL is NOT a createstov2 field. Tranzila rejects
+    // `notification_url` as additionalProperties (error_code 20004) and the
+    // documented schema has zero callback fields. Config is terminal-scoped:
+    // set the My-Billing notify URL at my.tranzila.com → Settings → Terminal →
+    // My-Billing on terminal `fxpaguytok`. Once set, every STO run POSTs to
+    // that URL and the webhook's sto_id correlation branch picks it up.
   }
 
   const raw = await postV2({
@@ -347,22 +413,130 @@ export interface CancelStandingOrderArgs {
 }
 
 /**
- * Flip a standing order to `inactive`. Two call sites:
+ * Flip a standing order to `inactive`. Three call sites:
  *   1. User-initiated cancellation (PATCH /api/subscriptions/:id/cancel).
- *   2. Rollback of an orphaned STO when our DB write after a successful
+ *   2. Admin-UI cancel via the Subscriptions.beforeChange hook.
+ *   3. Rollback of an orphaned STO when our DB write after a successful
  *      createstov2 fails — without this cleanup the user would be billed
  *      both by Tranzila's STO AND by our own fallback cron.
  *
- * Tranzila's STO update endpoint reads `sto_status: 'active' | 'inactive'`.
+ * CRITICAL — cancels BOTH the master AND the item (master + 1).
+ * Tranzila's createstov2 produces TWO linked records per call: a "master"
+ * (0 ILS wrapper, carries customer + payment counter) and an "item"
+ * (billable line with product name + unit price). The API returns only the
+ * master id; the item id is always `master + 1` (verified live 2026-10-21
+ * against sto_id 488603 master + 488604 item). Cancelling only the master
+ * does NOT stop the item from billing. Must cancel both.
+ *
+ * NB: earlier commits assumed item = master - 1 based on 2026-10-20
+ * dashboard observations. That direction was wrong — those observations
+ * were reading an adjacent unrelated STO row. Items-swap on master-1 and
+ * cancel of master-1 would hit random other subs' sto_ids. If you see
+ * stray "someone's STO is inactive but they didn't cancel" reports in
+ * the Tranzila dashboard, this bug is why.
+ *
+ * Shape (verified live 2026-10-19):
+ *   POST /v2/sto/update
+ *   { terminal_name: string, sto_id: integer, sto_status: 'active' | 'inactive' }
+ * sto_id MUST be an integer — Tranzila rejects string sto_ids with
+ * error_code 20004. We store stoId as text in Mongo but convert here.
+ *
  * Idempotent server-side — flipping an already-inactive STO is a no-op.
+ *
+ * Failure semantics: master cancel runs first. If it fails, we return
+ * its error without attempting the item (nothing to undo). If master
+ * succeeds, item cancel runs. If item cancel fails, we return the item's
+ * error so the caller treats the whole operation as failed — the user
+ * then retries and both calls run again (both idempotent).
  */
-export function cancelStandingOrder(args: CancelStandingOrderArgs): Promise<TranzilaV2Response> {
+export interface SwapStoItemsArgs {
+  terminalName: string
+  stoId: string
+  /** Item name shown on Tranzila's dashboard — becomes the "product name" column. */
+  itemName: string
+  /** New per-charge price in ILS major units (e.g. 119 = ₪119.00). */
+  unitPriceIls: number
+}
+
+/**
+ * Replace an STO's items array in place — Tranzila's documented "items are
+ * deleted and replaced" behavior for /v2/sto/update. Used by the tier-change
+ * endpoint to swap the recurring charge amount without needing a card token
+ * (we no longer have one post-handoff). Keeps the same card on Tranzila's
+ * side.
+ *
+ * CRITICAL — master vs. item sto_id (verified live 2026-10-20):
+ * createstov2 returns the MASTER sto_id (customer + cadence, ₪0 on the
+ * dashboard). The actual charge-bearing item row is at `master + 1` and
+ * carries the product name + unit_price. Hitting the master with
+ * /v2/sto/update sets its unit_price, which Tranzila then CHARGES in
+ * addition to the untouched item at master+1 — the user ends up paying
+ * (new master price + old item price). So items-swap must target
+ * `master + 1`, not the master.
+ *
+ * CRITICAL schema quirk (verified live via scripts/probe-tranzila-sto-items-swap.ts):
+ * the items schema for /v2/sto/update accepts ONLY `name` and `unit_price`.
+ * Any other field (quantity, currency_code, vat_percent, type, etc.) trips
+ * additionalProperties — error_code 20004. The create endpoint accepts a
+ * much wider shape, so don't copy the createStandingOrder items shape here.
+ *
+ * @param args.stoId - The master sto_id as stored on the Subscription row.
+ *   This function targets `master + 1` internally; callers pass the master.
+ */
+export async function swapStandingOrderItems(args: SwapStoItemsArgs): Promise<TranzilaV2Response> {
+  const masterIdNum = Number(args.stoId)
+  if (!Number.isSafeInteger(masterIdNum) || masterIdNum <= 0) {
+    throw new Error(
+      `swapStandingOrderItems: stoId must be a positive integer string, got "${args.stoId}"`,
+    )
+  }
+  if (!(args.unitPriceIls > 0)) {
+    throw new Error(
+      `swapStandingOrderItems: unitPriceIls must be positive, got ${args.unitPriceIls}`,
+    )
+  }
+  const itemIdNum = masterIdNum + 1
   return postV2({
     path: '/v2/sto/update',
     body: {
       terminal_name: args.terminalName,
-      sto_id: args.stoId,
-      sto_status: 'inactive',
+      sto_id: itemIdNum,
+      items: [{ name: args.itemName, unit_price: args.unitPriceIls }],
     },
   })
+}
+
+export async function cancelStandingOrder(
+  args: CancelStandingOrderArgs,
+): Promise<TranzilaV2Response> {
+  const stoIdNum = Number(args.stoId)
+  if (!Number.isSafeInteger(stoIdNum) || stoIdNum <= 0) {
+    throw new Error(
+      `cancelStandingOrder: stoId must be a positive integer string, got "${args.stoId}"`,
+    )
+  }
+
+  const inactivate = (sto_id: number) =>
+    postV2({
+      path: '/v2/sto/update',
+      body: { terminal_name: args.terminalName, sto_id, sto_status: 'inactive' },
+    })
+
+  // 1. Master. If this fails, don't attempt the item — nothing's changed yet.
+  const masterResult = await inactivate(stoIdNum)
+  if (masterResult.errorCode !== 0 && masterResult.errorCode !== null) {
+    return masterResult
+  }
+
+  // 2. Item (master + 1).
+  const itemIdNum = stoIdNum + 1
+  const itemResult = await inactivate(itemIdNum)
+  if (itemResult.errorCode !== 0 && itemResult.errorCode !== null) {
+    // Master cancelled, item did not. Caller sees failure, retries. On
+    // retry both calls run; master's second cancel is idempotent, item's
+    // first attempt completes the operation.
+    return itemResult
+  }
+
+  return masterResult
 }

@@ -13,6 +13,7 @@ import {
   cancelStandingOrder,
   createStandingOrder,
   formatTranzilaDate,
+  swapStandingOrderItems,
 } from '@/lib/payment/tranzila-v2-client'
 import { resetPaymentEnvCache } from '@/lib/payment/env'
 
@@ -122,6 +123,18 @@ describe('createStandingOrder', () => {
     })
   })
 
+  it('never sends notification_url — Tranzila rejects it with error_code 20004 (additionalProperties)', async () => {
+    // Per-STO notify URL is NOT a createstov2 field. The My-Billing notify
+    // URL is configured at the terminal level in the Tranzila dashboard, not
+    // per-STO. Attempting to pass it in the body trips Tranzila's validator:
+    // regression test to prevent re-introducing the field.
+    await callDefaults()
+    const body = JSON.parse(String(capturedRequest.init?.body))
+    expect(body).not.toHaveProperty('notification_url')
+    expect(body).not.toHaveProperty('notify_url')
+    expect(body).not.toHaveProperty('callback_url')
+  })
+
   it('includes phone on the client object when provided', async () => {
     await createStandingOrder({
       terminalName: 'fxpaguytok',
@@ -213,7 +226,7 @@ describe('createStandingOrder', () => {
 
 describe('cancelStandingOrder', () => {
   let fetchMock: ReturnType<typeof vi.fn>
-  let capturedRequest: { url?: string; init?: RequestInit } = {}
+  let allBodies: Array<Record<string, unknown>> = []
 
   beforeEach(() => {
     process.env.TRANZILLA_TERMINAL = 'fxpaguy'
@@ -223,9 +236,9 @@ describe('cancelStandingOrder', () => {
     process.env.TRANZILLA_SANDBOX = 'true'
     resetPaymentEnvCache()
 
-    capturedRequest = {}
-    fetchMock = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
-      capturedRequest = { url: typeof url === 'string' ? url : String(url), init }
+    allBodies = []
+    fetchMock = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+      allBodies.push(JSON.parse(String(init?.body)))
       return new Response(JSON.stringify({ error_code: 0, message: 'ok' }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
@@ -239,18 +252,152 @@ describe('cancelStandingOrder', () => {
     resetPaymentEnvCache()
   })
 
-  it('POSTs to /v2/sto/update with sto_status=inactive and the four HMAC headers', async () => {
+  it('cancels BOTH master and item (master + 1), each as integer sto_id', async () => {
+    // createstov2 returns the master id. Tranzila also creates an "item"
+    // record with id = master + 1 that bills independently. Must cancel both.
     await cancelStandingOrder({ terminalName: 'fxpaguytok', stoId: '189976' })
-    expect(capturedRequest.url).toBe('https://api.tranzila.com/v2/sto/update')
-    expect(capturedRequest.init?.method).toBe('POST')
-    const body = JSON.parse(String(capturedRequest.init?.body))
-    expect(body).toEqual({
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(allBodies[0]).toEqual({
       terminal_name: 'fxpaguytok',
-      sto_id: '189976',
+      sto_id: 189976,
       sto_status: 'inactive',
     })
-    const headers = capturedRequest.init?.headers as Record<string, string>
-    expect(headers['X-tranzila-api-app-key']).toBe('pub-test-key')
-    expect(headers['X-tranzila-api-access-token']).toMatch(/^[0-9a-f]{64}$/)
+    expect(allBodies[1]).toEqual({
+      terminal_name: 'fxpaguytok',
+      sto_id: 189977, // master + 1
+      sto_status: 'inactive',
+    })
+    expect(typeof allBodies[0]?.sto_id).toBe('number')
+    expect(typeof allBodies[1]?.sto_id).toBe('number')
+  })
+
+  it('skips the item call when master cancel fails — nothing to undo', async () => {
+    fetchMock.mockReset()
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ error_code: 10001, message: 'not found' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    const result = await cancelStandingOrder({ terminalName: 'fxpaguytok', stoId: '189976' })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(result.errorCode).toBe(10001)
+  })
+
+  it('returns the item error when master OK but item fails — caller retries full op', async () => {
+    fetchMock.mockReset()
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ error_code: 0, message: 'Success' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ error_code: 10001, message: 'item not found' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    const result = await cancelStandingOrder({ terminalName: 'fxpaguytok', stoId: '189976' })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(result.errorCode).toBe(10001)
+    expect(result.message).toBe('item not found')
+  })
+
+  it('throws when stoId is not a parseable positive integer', async () => {
+    await expect(
+      cancelStandingOrder({ terminalName: 'fxpaguytok', stoId: 'not-a-number' }),
+    ).rejects.toThrow(/positive integer/)
+    await expect(cancelStandingOrder({ terminalName: 'fxpaguytok', stoId: '-5' })).rejects.toThrow(
+      /positive integer/,
+    )
+    await expect(cancelStandingOrder({ terminalName: 'fxpaguytok', stoId: '' })).rejects.toThrow(
+      /positive integer/,
+    )
+    // The webhook's CAS claim sentinel must NOT reach this function —
+    // callers are expected to short-circuit on it (see user-cancel
+    // endpoint and admin-cancel hook). Verify the throw as a backstop.
+    await expect(
+      cancelStandingOrder({
+        terminalName: 'fxpaguytok',
+        stoId: 'pending-handoff:689a1b2c3d4e5f6a7b8c9d0e',
+      }),
+    ).rejects.toThrow(/positive integer/)
+  })
+})
+
+describe('swapStandingOrderItems', () => {
+  let fetchMock: ReturnType<typeof vi.fn>
+  let capturedRequest: { url?: string; init?: RequestInit } = {}
+
+  beforeEach(() => {
+    process.env.TRANZILLA_TERMINAL = 'fxpaguy'
+    process.env.TRANZILLA_TERMINAL_TOKEN = 'fxpaguytok'
+    process.env.TRANZILLA_PUBLIC_KEY = 'pub-test-key'
+    process.env.TRANZILLA_PRIVATE_KEY = 'priv-test-key'
+    process.env.TRANZILLA_SANDBOX = 'true'
+    resetPaymentEnvCache()
+
+    capturedRequest = {}
+    fetchMock = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+      capturedRequest = { url: typeof url === 'string' ? url : String(url), init }
+      return new Response(JSON.stringify({ error_code: 0, message: 'Success' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    })
+    global.fetch = fetchMock as unknown as typeof fetch
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+    resetPaymentEnvCache()
+  })
+
+  it('POSTs to /v2/sto/update targeting the item (master + 1) with integer sto_id + minimal items shape', async () => {
+    await swapStandingOrderItems({
+      terminalName: 'fxpaguytok',
+      stoId: '488344', // master
+      itemName: 'AGuy Subscription — advanced',
+      unitPriceIls: 119,
+    })
+    expect(capturedRequest.url).toBe('https://api.tranzila.com/v2/sto/update')
+    const body = JSON.parse(String(capturedRequest.init?.body))
+    // The items schema for /v2/sto/update is minimal — ONLY name + unit_price.
+    // Any other field (quantity, currency_code, vat_percent, type) trips
+    // Tranzila's additionalProperties validator. Verified live 2026-10-19 via
+    // scripts/probe-tranzila-sto-items-swap.ts.
+    //
+    // sto_id = 488345 (master + 1) — the master row is a 0-ILS wrapper and
+    // hitting it with a price would stack on top of the item. See
+    // swapStandingOrderItems doc comment.
+    expect(body).toEqual({
+      terminal_name: 'fxpaguytok',
+      sto_id: 488345,
+      items: [{ name: 'AGuy Subscription — advanced', unit_price: 119 }],
+    })
+    expect(typeof body.sto_id).toBe('number')
+  })
+
+  it('throws when stoId is not a parseable positive integer', async () => {
+    await expect(
+      swapStandingOrderItems({
+        terminalName: 'fxpaguytok',
+        stoId: 'bad',
+        itemName: 'x',
+        unitPriceIls: 1,
+      }),
+    ).rejects.toThrow(/positive integer/)
+  })
+
+  it('throws when unitPriceIls is non-positive', async () => {
+    await expect(
+      swapStandingOrderItems({
+        terminalName: 'fxpaguytok',
+        stoId: '123',
+        itemName: 'x',
+        unitPriceIls: 0,
+      }),
+    ).rejects.toThrow(/unitPriceIls/)
   })
 })

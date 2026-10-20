@@ -111,7 +111,17 @@ export async function POST(request: NextRequest) {
     const successUrl = body.successUrl
     const cancelUrl = body.cancelUrl
 
+    // Each 400 below is logged with a stable `gate` discriminator. The
+    // response body already carries a human-readable `error`, but Web
+    // surfaces a generic message to the buyer, so when a legitimate user
+    // hits a 400 we need the server log to tell us which gate fired
+    // (2026-10-19 incident: boss hit "tenant missing" and the site showed
+    // a generic error with no clue which validation tripped).
     if (!isPaidTierSlug(tierSlug)) {
+      logger.warn(
+        { userId: user.id, gate: 'tierSlug_invalid', tierSlug: String(tierSlug) },
+        'POST /api/subscriptions/bootstrap/tranzilla: rejected 400',
+      )
       return applyCorsHeaders(
         NextResponse.json(
           { success: false, error: 'tierSlug must be one of basic|advanced|premium' },
@@ -121,6 +131,10 @@ export async function POST(request: NextRequest) {
       )
     }
     if (!isTranzillaOfferSlug(offerSlug)) {
+      logger.warn(
+        { userId: user.id, gate: 'offerSlug_invalid', offerSlug: String(offerSlug) },
+        'POST /api/subscriptions/bootstrap/tranzilla: rejected 400',
+      )
       return applyCorsHeaders(
         NextResponse.json(
           { success: false, error: 'offerSlug must be one of default|intro3mo|test' },
@@ -130,6 +144,10 @@ export async function POST(request: NextRequest) {
       )
     }
     if (!isOfferAllowedForEnvironment(offerSlug)) {
+      logger.warn(
+        { userId: user.id, gate: 'offer_env_gated', offerSlug },
+        'POST /api/subscriptions/bootstrap/tranzilla: rejected 400',
+      )
       return applyCorsHeaders(
         NextResponse.json(
           {
@@ -142,6 +160,15 @@ export async function POST(request: NextRequest) {
       )
     }
     if (typeof successUrl !== 'string' || typeof cancelUrl !== 'string') {
+      logger.warn(
+        {
+          userId: user.id,
+          gate: 'redirect_urls_missing',
+          successUrlType: typeof successUrl,
+          cancelUrlType: typeof cancelUrl,
+        },
+        'POST /api/subscriptions/bootstrap/tranzilla: rejected 400',
+      )
       return applyCorsHeaders(
         NextResponse.json(
           { success: false, error: 'successUrl and cancelUrl are required' },
@@ -155,6 +182,10 @@ export async function POST(request: NextRequest) {
     // redirect lands on a phishing page they control. Tranzilla will
     // happily redirect buyers to any URL we embed in the iframe params.
     if (!isSafeRedirectUrl(successUrl) || !isSafeRedirectUrl(cancelUrl)) {
+      logger.warn(
+        { userId: user.id, gate: 'redirect_url_disallowed', successUrl, cancelUrl },
+        'POST /api/subscriptions/bootstrap/tranzilla: rejected 400',
+      )
       return applyCorsHeaders(
         NextResponse.json(
           { success: false, error: 'successUrl and cancelUrl must target an allowlisted origin' },
@@ -196,6 +227,10 @@ export async function POST(request: NextRequest) {
       // Catalog has no entry for this (tier, offer) combination — e.g.
       // `test` is only configured for `basic`, so advanced/premium with
       // offer=test fall here.
+      logger.warn(
+        { userId: user.id, gate: 'offer_tier_catalog_gap', tierSlug, offerSlug },
+        'POST /api/subscriptions/bootstrap/tranzilla: rejected 400',
+      )
       return applyCorsHeaders(
         NextResponse.json(
           {
@@ -221,6 +256,10 @@ export async function POST(request: NextRequest) {
     const tenantId =
       typeof tenant === 'object' && tenant ? tenant.id : (tenant as string | null | undefined)
     if (!tenantId) {
+      logger.warn(
+        { userId: user.id, gate: 'user_missing_tenant', userEmail: user.email },
+        'POST /api/subscriptions/bootstrap/tranzilla: rejected 400',
+      )
       return applyCorsHeaders(
         NextResponse.json(
           { success: false, error: 'User has no tenant assigned' },
@@ -329,7 +368,7 @@ export async function POST(request: NextRequest) {
     // the webhook then passes that token to createstov2 with
     // terminal_name=fxpaguytok where My-Billing takes over for recurring
     // charges. Tokens are account-scoped, not terminal-scoped.
-    const checkout = createTranzillaCheckout({
+    const checkout = await createTranzillaCheckout({
       sum: priceIls,
       currency: 'ILS',
       description: `AGuy ${tierSlug} — ${offerSlug}`,

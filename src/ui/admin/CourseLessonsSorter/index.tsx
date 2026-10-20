@@ -27,6 +27,7 @@ interface LessonDoc {
   status: LessonStatus
   reviewStatus: ReviewStatus
   exerciseCount: number
+  hasMedia: boolean
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -74,6 +75,7 @@ function normalizeLesson(raw: RawLesson): LessonDoc {
     status: (raw.status as LessonStatus | undefined) ?? 'draft',
     reviewStatus: (raw.reviewStatus as ReviewStatus | undefined) ?? 'red',
     exerciseCount: countExercises(raw.blocks),
+    hasMedia: Array.isArray(raw.contentFiles) && raw.contentFiles.length > 0,
   }
 }
 
@@ -287,6 +289,24 @@ const exerciseCountStyle: React.CSSProperties = {
   flexShrink: 0,
   whiteSpace: 'nowrap',
 }
+
+const mediaBadgeStyle = (hasMedia: boolean): React.CSSProperties => ({
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  width: 20,
+  height: 20,
+  borderRadius: 4,
+  fontSize: 11,
+  fontWeight: 700,
+  flexShrink: 0,
+  background: hasMedia ? '#22c55e' : 'var(--theme-elevation-50)',
+  color: hasMedia ? '#ffffff' : 'var(--theme-elevation-400)',
+  border: hasMedia ? '1px solid #22c55e' : '1px solid var(--theme-elevation-200)',
+  boxShadow: hasMedia
+    ? '0 0 6px rgba(34, 197, 94, 0.75), 0 0 12px rgba(34, 197, 94, 0.45)'
+    : 'none',
+})
 
 const filterBtnStyle = (active: boolean): React.CSSProperties => ({
   display: 'inline-flex',
@@ -726,6 +746,15 @@ export const CourseLessonsSorter: React.FC = () => {
                   {/* Exercise count */}
                   <span style={exerciseCountStyle}>
                     {lesson.exerciseCount} {s.exercises}
+                  </span>
+
+                  {/* Media badge */}
+                  <span
+                    style={mediaBadgeStyle(lesson.hasMedia)}
+                    title={lesson.hasMedia ? s.mediaBadgeAttached : s.mediaBadgeMissing}
+                    aria-label={lesson.hasMedia ? s.mediaBadgeAttached : s.mediaBadgeMissing}
+                  >
+                    M
                   </span>
 
                   {/* Publication status badge */}

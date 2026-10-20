@@ -43,7 +43,7 @@ export async function GET(req: Request) {
   const useTokenTerminal = url.searchParams.get('token') === '1'
 
   try {
-    const result = createTranzillaCheckout({
+    const result = await createTranzillaCheckout({
       sum: 1,
       currency: 'ILS',
       description: 'Tranzilla sandbox smoke test',
