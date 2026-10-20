@@ -368,7 +368,7 @@ export async function POST(request: NextRequest) {
     // the webhook then passes that token to createstov2 with
     // terminal_name=fxpaguytok where My-Billing takes over for recurring
     // charges. Tokens are account-scoped, not terminal-scoped.
-    const checkout = createTranzillaCheckout({
+    const checkout = await createTranzillaCheckout({
       sum: priceIls,
       currency: 'ILS',
       description: `AGuy ${tierSlug} — ${offerSlug}`,

@@ -1,106 +1,56 @@
 /**
- * Unit tests for Tranzila Hand Shake (outgoing iframe signing).
+ * Unit tests for Tranzila Hand Shake (iframe thtk flow).
  *
  * Covers:
- *   - signCheckoutParams: deterministic HMAC-SHA256 over the pipe-joined
- *     signed-field values.
- *   - createTranzillaCheckout: Hand Shake OFF (default) → URL contains no
- *     response_hash; Hand Shake ON → URL carries a hex HMAC that matches
- *     signCheckoutParams's output for the same fields.
+ *   - createTranzillaCheckout OFF (default): URL carries no thtk, is directed
+ *     at the legacy or DirectNG endpoint based on TRANZILLA_USE_DIRECTNG.
+ *   - createTranzillaCheckout ON: calls /v2/handshake/create to get a thtk,
+ *     attaches it as the `thtk` query param, binds the handshake sum to the
+ *     iframe URL's sum.
+ *   - Failure modes: non-zero error_code, missing thtk → throws.
  *
- * The HMAC input layout (field list + delimiter) is NOT YET verified against
- * Tranzila's official spec — these tests pin the current implementation so
- * any accidental drift gets caught, but the live-wire correctness check still
- * belongs in a Tranzila smoke once Hand Shake is enabled on a test terminal.
+ * The thtk flow replaces our earlier incorrect assumption that we needed to
+ * compute an HMAC signature client-side (the `signCheckoutParams` approach).
+ * Tranzila's actual protocol issues a session token server-side (via api.tranzila.com
+ * with the four-header HMAC we already have) and we just attach it to the URL.
  */
 
-import { createHmac } from 'node:crypto'
-
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { resetPaymentEnvCache } from '@/lib/payment/env'
-import {
-  createTranzillaCheckout,
-  signCheckoutParams,
-  TRANZILLA_HAND_SHAKE_SIGNED_FIELDS,
-} from '@/lib/payment/tranzilla'
+import { createTranzillaCheckout } from '@/lib/payment/tranzilla'
 
 const TEST_PRIVATE_KEY = 'priv-test-key'
-
-function expectedHash(params: Record<string, string>): string {
-  const payload = TRANZILLA_HAND_SHAKE_SIGNED_FIELDS.map((f) => params[f] ?? '').join('|')
-  return createHmac('sha256', TEST_PRIVATE_KEY).update(payload).digest('hex')
-}
-
-describe('signCheckoutParams', () => {
-  it('HMAC-SHA256 over the signed-field values joined by |', () => {
-    const params = {
-      sum: '1.00',
-      currency: '1',
-      cred_type: '1',
-      tranmode: 'A',
-      pdesc: 'ignored by the signature',
-    }
-    const got = signCheckoutParams({ privateKey: TEST_PRIVATE_KEY, params })
-    expect(got).toBe(expectedHash(params))
-    expect(got).toMatch(/^[0-9a-f]{64}$/)
-  })
-
-  it('empty-string placeholder when a signed field is missing', () => {
-    const params = { sum: '1.00', currency: '1' } // cred_type and tranmode missing
-    const got = signCheckoutParams({ privateKey: TEST_PRIVATE_KEY, params })
-    expect(got).toBe(expectedHash(params))
-    // The missing fields produce payload "1.00|1||" — assert the result
-    // changes when they're explicitly empty-string vs. undefined, so a
-    // caller can't accidentally change the signed payload by omitting fields.
-    const explicitEmpty = signCheckoutParams({
-      privateKey: TEST_PRIVATE_KEY,
-      params: { sum: '1.00', currency: '1', cred_type: '', tranmode: '' },
-    })
-    expect(got).toBe(explicitEmpty)
-  })
-
-  it('a different sum produces a different hash — the price is covered', () => {
-    const base = { sum: '1.00', currency: '1', cred_type: '1', tranmode: 'A' }
-    const tampered = { ...base, sum: '0.01' }
-    const h1 = signCheckoutParams({ privateKey: TEST_PRIVATE_KEY, params: base })
-    const h2 = signCheckoutParams({ privateKey: TEST_PRIVATE_KEY, params: tampered })
-    expect(h1).not.toBe(h2)
-  })
-
-  it('throws when privateKey is empty', () => {
-    expect(() => signCheckoutParams({ privateKey: '', params: {} })).toThrow(/privateKey/)
-  })
-
-  it('accepts a custom signed-fields list (ordering matters)', () => {
-    const params = { sum: '1.00', currency: '1', cred_type: '1', tranmode: 'A' }
-    const h1 = signCheckoutParams({
-      privateKey: TEST_PRIVATE_KEY,
-      params,
-      signedFields: ['sum', 'currency'],
-    })
-    const h2 = signCheckoutParams({
-      privateKey: TEST_PRIVATE_KEY,
-      params,
-      signedFields: ['currency', 'sum'],
-    })
-    expect(h1).not.toBe(h2)
-    expect(h1).toBe(createHmac('sha256', TEST_PRIVATE_KEY).update('1.00|1').digest('hex'))
-  })
-})
+const FAKE_THTK = 'w5129f9cdd2ab53675bbb675c6b59dc51df3b8ce5f'
 
 describe('createTranzillaCheckout — Hand Shake wiring', () => {
+  let fetchMock: ReturnType<typeof vi.fn>
+  let lastRequest: { url?: string; init?: RequestInit } = {}
+
   beforeEach(() => {
     process.env.TRANZILLA_TERMINAL = 'fxpaguy'
     process.env.TRANZILLA_TERMINAL_TOKEN = 'fxpaguytok'
     process.env.TRANZILLA_PUBLIC_KEY = 'pub-test-key'
     process.env.TRANZILLA_PRIVATE_KEY = TEST_PRIVATE_KEY
     delete process.env.TRANZILLA_HAND_SHAKE_ENABLED
+    delete process.env.TRANZILLA_USE_DIRECTNG
     resetPaymentEnvCache()
+
+    lastRequest = {}
+    fetchMock = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+      lastRequest = { url: typeof url === 'string' ? url : String(url), init }
+      return new Response(JSON.stringify({ error_code: 0, message: 'Success', thtk: FAKE_THTK }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    })
+    global.fetch = fetchMock as unknown as typeof fetch
   })
 
   afterEach(() => {
+    vi.restoreAllMocks()
     delete process.env.TRANZILLA_HAND_SHAKE_ENABLED
+    delete process.env.TRANZILLA_USE_DIRECTNG
     resetPaymentEnvCache()
   })
 
@@ -115,81 +65,100 @@ describe('createTranzillaCheckout — Hand Shake wiring', () => {
     })
   }
 
-  it('OFF by default — URL carries no response_hash', () => {
-    const { checkoutUrl } = callDefaults()
+  it('OFF by default — URL carries no thtk and the handshake API is not called', async () => {
+    const { checkoutUrl } = await callDefaults()
     const url = new URL(checkoutUrl)
+    expect(url.searchParams.has('thtk')).toBe(false)
     expect(url.searchParams.has('response_hash')).toBe(false)
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  it('ON — URL carries a response_hash matching signCheckoutParams', () => {
+  it('ON — POSTs /v2/handshake/create with { terminal_name, sum } and attaches thtk to URL', async () => {
     process.env.TRANZILLA_HAND_SHAKE_ENABLED = 'true'
     resetPaymentEnvCache()
 
-    const { checkoutUrl } = callDefaults()
+    const { checkoutUrl } = await callDefaults()
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(lastRequest.url).toBe('https://api.tranzila.com/v2/handshake/create')
+    const body = JSON.parse(String(lastRequest.init?.body))
+    // Terminal picked by useTokenTerminal flag — default (false) uses the main
+    // iframe terminal (fxpaguy), not the token terminal.
+    expect(body).toEqual({ terminal_name: 'fxpaguy', sum: 59 })
+
     const url = new URL(checkoutUrl)
-    const hash = url.searchParams.get('response_hash')
-    expect(hash).toMatch(/^[0-9a-f]{64}$/)
-
-    const expected = signCheckoutParams({
-      privateKey: TEST_PRIVATE_KEY,
-      params: {
-        sum: '59.00',
-        currency: '1',
-        cred_type: '1',
-        tranmode: 'A',
-      },
-    })
-    expect(hash).toBe(expected)
+    expect(url.searchParams.get('thtk')).toBe(FAKE_THTK)
   })
 
-  it('ON without a private key — refuses to build an unsigned URL', () => {
+  it('ON — iframe URL sum MUST match the sum passed to handshake (binding)', async () => {
     process.env.TRANZILLA_HAND_SHAKE_ENABLED = 'true'
-    delete process.env.TRANZILLA_PRIVATE_KEY
     resetPaymentEnvCache()
 
-    expect(() => callDefaults()).toThrow(/TRANZILLA_PRIVATE_KEY/)
+    const { checkoutUrl } = await createTranzillaCheckout({
+      sum: 59,
+      currency: 'ILS',
+      description: 'd',
+      successUrl: 'https://x/ok',
+      cancelUrl: 'https://x/no',
+      notifyUrl: 'https://x/webhook',
+    })
+    const body = JSON.parse(String(lastRequest.init?.body))
+    expect(body.sum).toBe(59)
+    const url = new URL(checkoutUrl)
+    expect(url.searchParams.get('sum')).toBe('59.00')
   })
 
-  it('TRANZILLA_USE_DIRECTNG=true routes to directng.tranzila.com', () => {
+  it('ON — throws when Tranzila returns no thtk in the response', async () => {
+    process.env.TRANZILLA_HAND_SHAKE_ENABLED = 'true'
+    resetPaymentEnvCache()
+
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ error_code: 0, message: 'Success' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    await expect(callDefaults()).rejects.toThrow(/Hand Shake token creation failed/)
+  })
+
+  it('ON — throws when Tranzila returns a non-zero error_code', async () => {
+    process.env.TRANZILLA_HAND_SHAKE_ENABLED = 'true'
+    resetPaymentEnvCache()
+
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ error_code: 20004, message: 'bad params' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    await expect(callDefaults()).rejects.toThrow(/Hand Shake token creation failed/)
+  })
+
+  it('TRANZILLA_USE_DIRECTNG=true routes to directng.tranzila.com', async () => {
     process.env.TRANZILLA_USE_DIRECTNG = 'true'
     resetPaymentEnvCache()
 
-    const { checkoutUrl } = callDefaults()
+    const { checkoutUrl } = await callDefaults()
     expect(checkoutUrl).toMatch(/^https:\/\/directng\.tranzila\.com\//)
     expect(checkoutUrl).not.toMatch(/^https:\/\/direct\.tranzila\.com/)
   })
 
-  it('TRANZILLA_USE_DIRECTNG unset (default) uses the legacy direct.tranzila.com', () => {
+  it('TRANZILLA_USE_DIRECTNG unset (default) uses legacy direct.tranzila.com', async () => {
     delete process.env.TRANZILLA_USE_DIRECTNG
     resetPaymentEnvCache()
 
-    const { checkoutUrl } = callDefaults()
+    const { checkoutUrl } = await callDefaults()
     expect(checkoutUrl).toMatch(/^https:\/\/direct\.tranzila\.com\//)
     expect(checkoutUrl).not.toMatch(/directng/)
   })
 
-  it('ON — swapping the amount changes the hash (regression against unsigned-field leaks)', () => {
+  it('ON + DirectNG — handshake fires, thtk lands on the directng URL', async () => {
     process.env.TRANZILLA_HAND_SHAKE_ENABLED = 'true'
+    process.env.TRANZILLA_USE_DIRECTNG = 'true'
     resetPaymentEnvCache()
 
-    const { checkoutUrl: urlCheap } = createTranzillaCheckout({
-      sum: 1,
-      currency: 'ILS',
-      description: 'd',
-      successUrl: 'https://x/ok',
-      cancelUrl: 'https://x/no',
-      notifyUrl: 'https://x/webhook',
-    })
-    const { checkoutUrl: urlExpensive } = createTranzillaCheckout({
-      sum: 999,
-      currency: 'ILS',
-      description: 'd',
-      successUrl: 'https://x/ok',
-      cancelUrl: 'https://x/no',
-      notifyUrl: 'https://x/webhook',
-    })
-    const h1 = new URL(urlCheap).searchParams.get('response_hash')
-    const h2 = new URL(urlExpensive).searchParams.get('response_hash')
-    expect(h1).not.toBe(h2)
+    const { checkoutUrl } = await callDefaults()
+    expect(checkoutUrl).toMatch(/^https:\/\/directng\.tranzila\.com\//)
+    const url = new URL(checkoutUrl)
+    expect(url.searchParams.get('thtk')).toBe(FAKE_THTK)
   })
 })
