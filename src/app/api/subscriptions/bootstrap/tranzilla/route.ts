@@ -221,11 +221,23 @@ export async function POST(request: NextRequest) {
       overrideAccess: true,
     })
     if (existing.docs.length > 0) {
-      const existingSub = existing.docs[0] as Subscription & { createdAt?: string }
+      const existingSub = existing.docs[0] as Subscription
+      // Read createdAt via raw Mongo. Payload's find result may lag or
+      // transform createdAt in ways that miss out-of-band updates (e.g.
+      // tests that backdate via the raw driver, or any future repair script
+      // that re-stamps timestamps). The ObjectId's embedded timestamp would
+      // be a cleaner alternative but Payload doesn't let us set custom _ids
+      // on create, so we go through raw Mongo for the current createdAt.
+      const subsRawColl = payload.db.collections['subscriptions']
+      const rawSub = (await subsRawColl.findOne({
+        _id: new ObjectId(existingSub.id),
+      })) as { createdAt?: Date | string } | null
+      const createdAtRaw = rawSub?.createdAt
+      const createdAtMs = createdAtRaw ? new Date(createdAtRaw).getTime() : null
       const isStalePending =
         existingSub.status === 'pending' &&
-        existingSub.createdAt &&
-        Date.now() - new Date(existingSub.createdAt).getTime() > STALE_PENDING_THRESHOLD_MS
+        createdAtMs !== null &&
+        Date.now() - createdAtMs > STALE_PENDING_THRESHOLD_MS
 
       if (isStalePending) {
         // Mark the stale pending sub + its initial tx expired, then fall
@@ -236,8 +248,8 @@ export async function POST(request: NextRequest) {
           {
             userId: user.id,
             staleSubId: existingSub.id,
-            staleCreatedAt: existingSub.createdAt,
-            ageMs: Date.now() - new Date(existingSub.createdAt!).getTime(),
+            staleCreatedAt: createdAtRaw,
+            ageMs: Date.now() - createdAtMs!,
           },
           'POST /api/subscriptions/bootstrap/tranzilla: auto-expiring stale pending sub',
         )
