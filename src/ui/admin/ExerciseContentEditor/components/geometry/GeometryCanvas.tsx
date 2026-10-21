@@ -309,6 +309,21 @@ export const GeometryCanvas: React.FC<GeometryCanvasProps> = ({
     ;(board as unknown as { update: () => void }).update()
   }, [interactionMode])
 
+  // Nuke the browser's native HTML5 drag during moveSketch. CSS user-select +
+  // onDragStart on the wrap only catch drags that originate inside the wrap;
+  // the admin editor's parent containers (block body, row fields, selectable
+  // text / img descendants) can also become the drag source — their dragstart
+  // never bubbles into the wrap, so the browser renders a translucent ghost of
+  // whichever ancestor Chrome picked. A capture-phase document listener blocks
+  // every dragstart while the user is actively panning, and tears down the
+  // moment they leave the mode.
+  useEffect(() => {
+    if (interactionMode !== 'moveSketch') return
+    const block = (e: DragEvent) => e.preventDefault()
+    document.addEventListener('dragstart', block, { capture: true })
+    return () => document.removeEventListener('dragstart', block, { capture: true })
+  }, [interactionMode])
+
   const { canvas } = geometry
   // Respect the geometry's own boundingBox (needed for content with negative
   // coordinates) — mirror the renderer logic so editor and rendered output
