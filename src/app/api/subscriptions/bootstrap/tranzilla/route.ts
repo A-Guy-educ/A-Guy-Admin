@@ -428,6 +428,16 @@ export async function POST(request: NextRequest) {
     // the webhook then passes that token to createstov2 with
     // terminal_name=fxpaguytok where My-Billing takes over for recurring
     // charges. Tokens are account-scoped, not terminal-scoped.
+    // Pass the buyer's email + name on the iframe URL. Tranzila uses the
+    // email to send the "green invoice" (emailed tax receipt) to the buyer
+    // after a successful charge — without it, no receipt is delivered.
+    // customerName is used for the receipt header + the "contact" field
+    // on the hosted page.
+    const buyerEmail = typeof user.email === 'string' ? user.email : undefined
+    const buyerName =
+      typeof (user as { name?: unknown }).name === 'string'
+        ? (user as { name: string }).name
+        : buyerEmail
     const checkout = await createTranzillaCheckout({
       sum: priceIls,
       currency: 'ILS',
@@ -436,6 +446,8 @@ export async function POST(request: NextRequest) {
       cancelUrl,
       notifyUrl,
       lang: 'il',
+      customerEmail: buyerEmail,
+      customerName: buyerName,
       cField1: String(user.id),
       cField2: String(transaction.id),
       cField3: String(subscription.id),

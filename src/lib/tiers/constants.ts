@@ -66,6 +66,25 @@ export const TIER_LLM_TOKEN_CAP_MONTHLY: Record<TierSlug, number | null> = {
   premium: null,
 }
 
+/**
+ * Daily LLM token cap per tier — fixed ratio of 1/15 of the monthly cap.
+ * Written to `user.llmTokensDailyLimit` when a tier purchase captures
+ * (see applyTierPurchase). Mirror of A-Guy-Web/src/lib/tiers/constants.ts
+ * — keep the ratio in sync. `null` = no daily cap (same as monthly:null).
+ */
+export const DAILY_TO_MONTHLY_RATIO = 15
+
+export function dailyTokenCapFromMonthly(monthly: number | null): number | null {
+  return monthly === null ? null : Math.floor(monthly / DAILY_TO_MONTHLY_RATIO)
+}
+
+export const TIER_LLM_TOKEN_CAP_DAILY: Record<TierSlug, number | null> = {
+  free: dailyTokenCapFromMonthly(TIER_LLM_TOKEN_CAP_MONTHLY.free),
+  basic: dailyTokenCapFromMonthly(TIER_LLM_TOKEN_CAP_MONTHLY.basic),
+  advanced: dailyTokenCapFromMonthly(TIER_LLM_TOKEN_CAP_MONTHLY.advanced),
+  premium: dailyTokenCapFromMonthly(TIER_LLM_TOKEN_CAP_MONTHLY.premium),
+}
+
 export function isTierSlug(value: unknown): value is TierSlug {
   return typeof value === 'string' && (TIER_SLUGS as readonly string[]).includes(value)
 }
