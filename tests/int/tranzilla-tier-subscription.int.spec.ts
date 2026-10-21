@@ -408,9 +408,13 @@ describe('POST /api/subscriptions/bootstrap/tranzilla', () => {
     })
 
     // Backdate the stale sub to 16 min ago so the threshold kicks in.
+    // Use the NATIVE Mongo driver — payload.db.collections['x'] is the
+    // Mongoose model, which auto-manages timestamp fields and silently
+    // strips our createdAt update. Native driver bypasses that.
     const sixteenMinAgo = new Date(Date.now() - 16 * 60 * 1000)
-    const subsColl = payload.db.collections['subscriptions']
-    await subsColl.updateOne(
+    const rawDb = (payload.db as any).connection?.db
+    const subsRawColl = rawDb.collection('subscriptions')
+    await subsRawColl.updateOne(
       { _id: new ObjectId(staleSub.id) },
       { $set: { createdAt: sixteenMinAgo } },
     )

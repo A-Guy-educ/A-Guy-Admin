@@ -21,7 +21,7 @@
  * as expired (bootstrap failed; buyer never got in).
  */
 
-import { ObjectId } from 'mongodb'
+import { ObjectId, type Db, type Document } from 'mongodb'
 import { NextRequest, NextResponse } from 'next/server'
 import { getPayload } from 'payload'
 
@@ -222,14 +222,14 @@ export async function POST(request: NextRequest) {
     })
     if (existing.docs.length > 0) {
       const existingSub = existing.docs[0] as Subscription
-      // Read createdAt via raw Mongo. Payload's find result may lag or
-      // transform createdAt in ways that miss out-of-band updates (e.g.
-      // tests that backdate via the raw driver, or any future repair script
-      // that re-stamps timestamps). The ObjectId's embedded timestamp would
-      // be a cleaner alternative but Payload doesn't let us set custom _ids
-      // on create, so we go through raw Mongo for the current createdAt.
-      const subsRawColl = payload.db.collections['subscriptions']
-      const rawSub = (await subsRawColl.findOne({
+      // Read createdAt via the NATIVE MongoDB driver (not the Mongoose model
+      // at payload.db.collections['subscriptions'], which transforms /
+      // auto-manages timestamp fields and masks out-of-band updates like
+      // the test's backdating or any future repair script that re-stamps
+      // timestamps). Pattern mirrors src/lib/payment/recompute-tier.ts.
+      const rawDb = (payload.db as unknown as { connection?: { db?: Db } }).connection?.db
+      const subsRawColl = rawDb?.collection<Document>('subscriptions')
+      const rawSub = (await subsRawColl?.findOne({
         _id: new ObjectId(existingSub.id),
       })) as { createdAt?: Date | string } | null
       const createdAtRaw = rawSub?.createdAt
@@ -241,9 +241,19 @@ export async function POST(request: NextRequest) {
 
       if (isStalePending) {
         // Mark the stale pending sub + its initial tx expired, then fall
-        // through to create a fresh pair. If a late webhook for the old sub
-        // somehow arrives after this point, extendTierSubscription's
-        // status='pending' CAS will no-op and the webhook returns 200.
+        // through to create a fresh pair.
+        //
+        // Late-webhook safety: if the user actually submitted their payment
+        // on the OLD iframe before we expired the sub (e.g. two iframes
+        // open in parallel), the webhook will arrive with u73 pointing at
+        // the now-expired sub. extendTierSubscription's CAS gates on
+        // currentPeriodEnd NOT on status, so advanceSubscriptionPeriod
+        // will promote the expired sub back to active. User gets charged
+        // AND gets access — no orphan. Downside: if BOTH the old iframe
+        // and the new iframe complete charges, the user is double-billed
+        // for one month. Accepted tradeoff for retry UX; both would show
+        // up as separate Tx rows and ops can refund one if a user ever
+        // reports it.
         logger.info(
           {
             userId: user.id,
