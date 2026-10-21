@@ -101,34 +101,23 @@ export async function POST(request: NextRequest) {
   }
 
   // ─── 2. Verify signature ────────────────────────────────────────────────
-  // Policy: unsigned webhooks are rejected only in production. The signing
-  // feature on Tranzila ("Hand Shake" / response_hash) is two-way — enabling
-  // it requires us to also sign outgoing iframe URLs, which we don't do yet.
-  // Until that outgoing work lands and Shai flips Hand Shake on, dev + preview
-  // deploys MUST tolerate unsigned notify_url POSTs or no subscription smoke
-  // can complete. VERCEL_ENV='production' is the right gate because Vercel
-  // builds every target with NODE_ENV=production regardless of env.
+  // Policy: when Tranzila sends a `response_hash`, we HMAC-verify it against
+  // our private key — mismatch is a hard reject. When it's absent, we
+  // log-and-accept because the `response_hash` signing feature isn't
+  // configurable on our current Tranzila terminal (`fxpaguy`): there's no
+  // dashboard toggle to enable it. Previously prod required a signature and
+  // left preview unsigned, which caused every prod webhook to 401 and left
+  // bootstrapped subs stuck with no stoId (STO active on Tranzila's side,
+  // dangling on ours).
   //
-  // When Tranzila DOES send a response_hash (prod with Hand Shake on, OR a
-  // sandbox merchant with signing enabled), we still verify it fully — the
-  // if-hasHash branch below is unconditional.
-  //
-  // Pre-prod hardening: implement outgoing URL signing in createTranzillaCheckout,
-  // enable Hand Shake on both terminals, then this gate becomes a backstop
-  // rather than the only line of defence.
+  // Risk accepted: an attacker who discovers the notify URL could POST a
+  // crafted "approved" body and promote a user for one month of premium
+  // (STO handoff fails on fake TranzilaTK so there's no recurring charge).
+  // Bounded impact; followup mitigations (IP whitelist for Tranzila sender
+  // range, random-suffix notify URL, or a real signing scheme once Tranzila
+  // support confirms what the terminal supports) tracked separately.
   const hasHash = typeof body.response_hash === 'string' && body.response_hash.length > 0
-  const requireSignature = process.env.VERCEL_ENV === 'production'
   let authMethod: 'response_hash' | 'unsigned' = 'unsigned'
-
-  if (requireSignature && !hasHash) {
-    const sourceIp =
-      request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
-    payload.logger.warn(
-      { sourceIp, index: body.index },
-      '[tranzilla-webhook] missing response_hash in production — rejecting',
-    )
-    return NextResponse.json({ error: 'response_hash required' }, { status: 401 })
-  }
 
   if (hasHash) {
     const ok = verifyTranzillaWebhook(body)
