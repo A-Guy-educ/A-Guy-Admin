@@ -976,13 +976,37 @@ async function handleTranzillaSubscriptionBootstrap(
   // Formal invoice (חשבונית מס/קבלה). Tranzila emails the PDF to the
   // buyer when the terminal's auto-email toggle is ON. Only issued once
   // per Tx — skipped on replay if we already stored tranzilaInvoiceNumber.
+  payload.logger.info(
+    {
+      subscriptionRowId,
+      transactionRowId,
+      index,
+      alreadyIssued: Boolean(transaction.tranzilaInvoiceNumber),
+    },
+    '[tranzilla-webhook/sub-bootstrap/invoice] reached invoice block',
+  )
   if (!transaction.tranzilaInvoiceNumber) {
     const userRecord = (await payload
       .findByID({ collection: 'users', id: userId, depth: 0, overrideAccess: true })
-      .catch(() => null)) as { email?: string; name?: string } | null
+      .catch((err: unknown) => {
+        payload.logger.error(
+          { userId, err: err instanceof Error ? err.message : String(err) },
+          '[tranzilla-webhook/sub-bootstrap/invoice] findByID users threw',
+        )
+        return null
+      })) as { email?: string; name?: string } | null
     const buyerEmail = userRecord?.email
     const buyerName =
       typeof userRecord?.name === 'string' ? userRecord.name : (buyerEmail ?? 'A-Guy Customer')
+    payload.logger.info(
+      {
+        subscriptionRowId,
+        userId,
+        hasUserRecord: Boolean(userRecord),
+        hasBuyerEmail: Boolean(buyerEmail),
+      },
+      '[tranzilla-webhook/sub-bootstrap/invoice] user lookup result',
+    )
     if (buyerEmail) {
       await issueTranzilaInvoice({
         payload,
@@ -1403,6 +1427,10 @@ async function issueTranzilaInvoice(args: {
 }): Promise<void> {
   const { payload, transactionId, txnIndex, tierSlug, amountIls, buyerEmail, buyerName } = args
   const { tranzillaTerminal } = getPaymentEnv()
+  payload.logger.info(
+    { transactionId, txnIndex, tierSlug, amountIls, buyerEmail, terminal: tranzillaTerminal },
+    '[tranzilla-webhook/invoice] issueTranzilaInvoice called',
+  )
 
   const parsedTxnIndex = Number(txnIndex)
   if (!Number.isSafeInteger(parsedTxnIndex) || parsedTxnIndex <= 0) {
