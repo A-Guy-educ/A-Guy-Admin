@@ -30,6 +30,32 @@ import { TIER_LLM_TOKEN_CAP_DAILY, TIER_LLM_TOKEN_CAP_MONTHLY } from '@/lib/tier
 // that cancelStandingOrder was (or was not) called, and we never want
 // tests to hit the real api.tranzila.com endpoint. Default resolves to
 // error_code 0 (success); individual tests override per-call.
+// Mock the Tranzila Invoices API — webhook tests assert that we call
+// create_document after approved charges (bootstrap + renewal). Default
+// resolves to a happy response with a fake invoice number.
+vi.mock('@/lib/payment/tranzila-invoices-client', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/payment/tranzila-invoices-client')>(
+    '@/lib/payment/tranzila-invoices-client',
+  )
+  return {
+    ...actual,
+    createTranzilaInvoiceDocument: vi.fn().mockResolvedValue({
+      httpStatus: 200,
+      statusCode: 0,
+      statusMsg: 'הצלחה',
+      document: {
+        id: '1',
+        number: '99999',
+        totalChargeAmount: 59,
+        currency: 'ILS',
+        retrievalKey: 'test-retrieval-key',
+        createdAt: '2026-10-21 15:00:00',
+      },
+      rawText: '',
+    }),
+  }
+})
+
 vi.mock('@/lib/payment/tranzila-v2-client', async () => {
   const actual = await vi.importActual<typeof import('@/lib/payment/tranzila-v2-client')>(
     '@/lib/payment/tranzila-v2-client',
@@ -886,6 +912,53 @@ describe('Tranzila webhook — STO renewal correlation (Mission 1)', () => {
     })
     return route.POST(request)
   }
+
+  it('issues a Tranzila invoice via create_document on an approved renewal', async () => {
+    const { sub } = await createPendingSub({
+      tierSlug: 'basic',
+      offerSlug: 'default',
+      status: 'active',
+      currentPeriodEnd: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
+      cancelAtPeriodEnd: false,
+      stoId: '488777',
+    })
+
+    const invoices = await import('@/lib/payment/tranzila-invoices-client')
+    const invoiceMock = invoices.createTranzilaInvoiceDocument as unknown as ReturnType<
+      typeof vi.fn
+    >
+    invoiceMock.mockClear()
+
+    await postToWebhook({
+      index: '12345678',
+      Response: '000',
+      sum: '59.00',
+      currency: '1',
+      TranzilaTK: 'tk-renew-invoice',
+      sto_id: '488777',
+    })
+
+    expect(invoiceMock).toHaveBeenCalledTimes(1)
+    const call = invoiceMock.mock.calls[0]![0]!
+    expect(call.documentType).toBe('IR')
+    expect(call.clientEmail).toBe(userEmail)
+    expect(call.txnIndex).toBe(12345678)
+    expect(call.items[0].unitPriceIls).toBe(59)
+    expect(call.items[0].name).toContain('basic')
+    expect(call.payments[0].amountIls).toBe(59)
+
+    // Invoice number + retrieval key persisted on the renewal Tx
+    const renewalTxs = await payload.find({
+      collection: 'transactions',
+      where: {
+        and: [{ subscription: { equals: sub.id } }, { isRenewal: { equals: true } }],
+      },
+      overrideAccess: true,
+    })
+    const renewal = renewalTxs.docs[0] as any
+    expect(renewal.tranzilaInvoiceNumber).toBe('99999')
+    expect(renewal.tranzilaInvoiceRetrievalKey).toBe('test-retrieval-key')
+  })
 
   it('advances the sub and records a renewal Tx when sto_id correlates', async () => {
     const originalEnd = new Date(Date.now() + 15 * 24 * 60 * 60 * 1000)
