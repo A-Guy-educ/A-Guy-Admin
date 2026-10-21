@@ -505,9 +505,13 @@ export const Users: CollectionConfig = {
     {
       name: 'llmTokensDailyLimit',
       type: 'number',
-      // Nullable: null = no daily cap. Seeded from TIER_LLM_TOKEN_CAP_DAILY
-      // in Web on login iff never set; admin-set values are never auto-
-      // overwritten.
+      // 100k = default daily cap stamped on every user create (admin UI,
+      // Payload Local API, A-Guy-Web OAuth / email signup REST writes).
+      // Web's "seed from TIER_LLM_TOKEN_CAP_DAILY on login iff never set"
+      // path short-circuits once a value is present, so this becomes the
+      // authoritative starting cap; admins can still edit per-user, and
+      // null still means "no daily cap" if deliberately cleared.
+      defaultValue: 100_000,
       // Admin-only for both create and update: managers set per-user caps.
       // Without the create guard, `create: anyone` at the collection level
       // would let a signup POST inject an unbounded limit.
@@ -519,7 +523,7 @@ export const Users: CollectionConfig = {
       },
       admin: {
         description:
-          'Daily token cap. Null = no daily cap. Seeded from tier (TIER_LLM_TOKEN_CAP_DAILY in Web) on login iff never set; admin-set values are never auto-overwritten.',
+          'Daily token cap. Defaults to 100k on create. Null = no daily cap. Web seeds from tier (TIER_LLM_TOKEN_CAP_DAILY) on login only if never set; admin-set values are never auto-overwritten.',
       },
     },
     {
