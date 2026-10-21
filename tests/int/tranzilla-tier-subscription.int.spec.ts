@@ -24,7 +24,7 @@ import { ObjectId } from 'mongodb'
 
 import { startMongoContainer, stopMongoContainer } from '@/infra/utils/test/mongodb-container'
 import { extendTierSubscription } from '@/lib/payment/extend-tier-subscription'
-import { TIER_LLM_TOKEN_CAP_MONTHLY } from '@/lib/tiers/constants'
+import { TIER_LLM_TOKEN_CAP_DAILY, TIER_LLM_TOKEN_CAP_MONTHLY } from '@/lib/tiers/constants'
 
 // Mock the Tranzila V2 REST client — the user-cancel tests need to assert
 // that cancelStandingOrder was (or was not) called, and we never want
@@ -229,6 +229,7 @@ describe('extendTierSubscription', () => {
     })) as any
     expect(user.currentTier).toBe('basic')
     expect(user.llmTokensLimit).toBe(TIER_LLM_TOKEN_CAP_MONTHLY.basic)
+    expect(user.llmTokensDailyLimit).toBe(TIER_LLM_TOKEN_CAP_DAILY.basic)
     expect(user.llmTokensUsed).toBe(0)
     expect(user.tierGrantSource).toBe('subscription')
     expect(String(user.tierGrantSubscriptionId)).toBe(String(sub.id))
