@@ -346,6 +346,29 @@ export const Transactions: CollectionConfig = {
         readOnly: true,
       },
     },
+    // Tranzila invoice (document) issued after a successful charge via
+    // /api/documents_db/create_document. See src/lib/payment/tranzila-invoices-client.ts.
+    // Nullable for pre-feature rows and for the (rare) create_document
+    // failure path — the charge+promotion still succeed, invoice send is
+    // retriable manually. Both fields set together on success.
+    {
+      name: 'tranzilaInvoiceNumber',
+      type: 'text',
+      admin: {
+        readOnly: true,
+        description:
+          'Tranzila invoice number (e.g. 30001) returned by create_document. Null if no invoice was issued yet or if issuance failed.',
+      },
+    },
+    {
+      name: 'tranzilaInvoiceRetrievalKey',
+      type: 'text',
+      admin: {
+        readOnly: true,
+        description:
+          'Tranzila PDF retrieval key for the invoice. Fetchable at https://my.tranzila.com/api/get_financial_document/<key>. Null if no invoice issued.',
+      },
+    },
 
     createdByField,
   ],

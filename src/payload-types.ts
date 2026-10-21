@@ -1384,6 +1384,14 @@ export interface Transaction {
    */
   refundedAt?: string | null;
   /**
+   * Tranzila invoice number (e.g. 30001) returned by create_document. Null if no invoice was issued yet or if issuance failed.
+   */
+  tranzilaInvoiceNumber?: string | null;
+  /**
+   * Tranzila PDF retrieval key for the invoice. Fetchable at https://my.tranzila.com/api/get_financial_document/<key>. Null if no invoice issued.
+   */
+  tranzilaInvoiceRetrievalKey?: string | null;
+  /**
    * User who created this document
    */
   createdBy?: (string | null) | User;
@@ -5359,6 +5367,8 @@ export interface TransactionsSelect<T extends boolean = true> {
   refundedAmount?: T;
   refundedBy?: T;
   refundedAt?: T;
+  tranzilaInvoiceNumber?: T;
+  tranzilaInvoiceRetrievalKey?: T;
   createdBy?: T;
   updatedAt?: T;
   createdAt?: T;
