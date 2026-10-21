@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- chore(ci): Disable kody PR trigger (upstream 500) ([#679](https://github.com/A-Guy-educ/A-Guy-Admin/pull/679)) — @aguyshayb
 - fix(payments): Pass buyer email to tranzila iframe (green invoice) ([#680](https://github.com/A-Guy-educ/A-Guy-Admin/pull/680)) — @aguyshayb
 - fix: Default-tenant on user create and fix geometry sketch-pan drag glitch ([#678](https://github.com/A-Guy-educ/A-Guy-Admin/pull/678)) — @aguyshayb
 - feat(payments): Intro-offer pricing via STO items-swap at end of intro period ([#677](https://github.com/A-Guy-educ/A-Guy-Admin/pull/677)) — @aguyshayb
