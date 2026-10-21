@@ -2806,6 +2806,20 @@
 
 .geo-canvas-wrap--moveSketch {
   cursor: grab;
+  /* Kill the browser's native HTML5 drag — without these, pointerdown on the
+     SVG inside JSXGraph starts a ghost-image drag of the element and the
+     sketch-pan handler sees a broken event stream (user reports it "glitches,
+     tries to drag the whole thing"). touch-action: none also prevents the
+     browser from eating pan gestures as scroll on touch devices. */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-user-drag: none;
+  touch-action: none;
+}
+
+.geo-canvas-wrap--moveSketch,
+.geo-canvas-wrap--moveSketch * {
+  -webkit-user-drag: none;
 }
 
 .geo-canvas-wrap--moveSketch:active {

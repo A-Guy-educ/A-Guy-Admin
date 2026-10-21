@@ -377,6 +377,13 @@ export const GeometryCanvas: React.FC<GeometryCanvasProps> = ({
     <div
       ref={wrapRef}
       className={`geo-canvas-wrap geo-canvas-wrap--${interactionMode}`}
+      // In moveSketch mode the browser otherwise picks up pointerdown on the
+      // SVG and starts a native HTML5 drag of the element — a ghost-image
+      // floats around while the sketch-pan handler misfires. preventDefault
+      // on dragstart blocks that. Paired with user-select: none and
+      // touch-action: none in index.css.
+      onDragStart={interactionMode === 'moveSketch' ? (e) => e.preventDefault() : undefined}
+      draggable={interactionMode === 'moveSketch' ? false : undefined}
       style={{
         background: canvas.background || getAdminCanvasBackground(),
         width: '100%',

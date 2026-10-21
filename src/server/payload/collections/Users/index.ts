@@ -22,6 +22,7 @@ import { createUserSettings } from './hooks/createUserSettings-hook'
 import { ensureRoleOnSignup } from './hooks/ensureRoleOnSignup-hook'
 import { preventLastAdminDemotion } from './hooks/preventLastAdminDemotion-hook'
 import { optionalTenantField } from '../../fields/tenant'
+import { getDefaultTenantId } from '@/server/repos/tenant/get-default-tenant'
 import { ACCOUNT_ROLE_LABEL, AccountRole } from './roles'
 
 const CONTROL_CHAR_RE = /[\x00-\x1F\x7F]/
@@ -84,7 +85,13 @@ export const Users: CollectionConfig = {
         position: 'sidebar',
       },
     },
-    // Tenant
+    // Tenant — auto-assigned on create to the default tenant (DEFAULT_TENANT_SLUG,
+    // e.g. "AGuy") via the beforeValidate hook below. Covers every create path:
+    // Payload admin UI, Payload Local API, and REST writes from A-Guy-Web for
+    // Google OAuth / email signup. Field stays `required: false` at the Payload
+    // config level so callers (and tests) can omit it; the hook fills it in
+    // before validation runs.
+    //
     // Cap tenant population to ID only. Without this, every users.read at
     // depth >= 1 fires a cascading tenants.read (measured 3s+ per doc on
     // cold hits — captured on 2026-08-25 via the [op] diagnostic). No
@@ -95,7 +102,18 @@ export const Users: CollectionConfig = {
     // Cast is needed because `optionalTenantField` is typed as the wide
     // `Field` union; the underlying object is a `RelationshipField`, which
     // supports `maxDepth`.
-    { ...optionalTenantField, maxDepth: 0 } as RelationshipField,
+    {
+      ...optionalTenantField,
+      maxDepth: 0,
+      hooks: {
+        beforeValidate: [
+          async ({ value, req }) => {
+            if (value) return value
+            return getDefaultTenantId(req.payload)
+          },
+        ],
+      },
+    } as RelationshipField,
     // OAuth fields
     {
       name: 'googleSub',
