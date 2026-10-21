@@ -17,12 +17,20 @@
  * migration that empties `content.blocks` for exercises whose content
  * lives entirely in sections).
  */
+import { randomUUID } from 'node:crypto'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { getPayload, type Payload } from 'payload'
 import { startMongoContainer, stopMongoContainer } from '@/infra/utils/test/mongodb-container'
 import { AccountRole } from '@/infra/auth/roles'
 import { getDefaultTenantSlug } from '@/server/repos/tenant/get-default-tenant'
 import { markRequestAsContentPromotionImport } from '@/server/services/content-promotion/import-context'
+
+// Globally-unique suffix for seed data. `Date.now() + random<10000` only
+// gives ~10k values per millisecond, which collided on the auto-derived
+// `slug` field across parallel CI runs.
+function uniqueSuffix(): string {
+  return `${Date.now()}-${randomUUID().slice(0, 8)}`
+}
 
 interface BlockEntry {
   id: string
@@ -70,7 +78,7 @@ async function ensureDefaultTenant(payload: Payload): Promise<string> {
 }
 
 async function seedHierarchy(payload: Payload, tenantId: string, categoryId: string) {
-  const timestamp = Date.now() + Math.floor(Math.random() * 10_000)
+  const timestamp = uniqueSuffix()
   const course = await payload.create({
     collection: 'courses',
     data: {
@@ -148,7 +156,7 @@ interface SeededSection {
   blocks: { id: string; type: string; value: string }[]
 }
 
-interface SectionSeed extends Omit<SeededSection, 'id'> {}
+type SectionSeed = Omit<SeededSection, 'id'>
 
 describe('Exercises afterRead aggregator (#172)', () => {
   let payload: Payload
@@ -175,7 +183,7 @@ describe('Exercises afterRead aggregator (#172)', () => {
     const config = await import('@payload-config')
     payload = await getPayload({ config: config.default })
     tenantId = await ensureDefaultTenant(payload)
-    const timestamp = Date.now()
+    const timestamp = uniqueSuffix()
 
     const admin = await payload.create({
       collection: 'users',
@@ -270,7 +278,7 @@ describe('Exercises afterRead aggregator (#172)', () => {
     const exercise = await payload.create({
       collection: 'exercises',
       data: {
-        title: `Aggregator Exercise ${Date.now()}`,
+        title: `Aggregator Exercise ${uniqueSuffix()}`,
         lesson: hierarchy.lessonId,
         order: 1,
         tenant: tenantId,
