@@ -331,8 +331,8 @@ describe('POST /api/subscriptions/bootstrap/tranzilla', () => {
       body: JSON.stringify({
         tierSlug: 'basic',
         offerSlug: 'default',
-        successUrl: 'http://x/success',
-        cancelUrl: 'http://x/cancel',
+        successUrl: 'http://localhost:3000/success',
+        cancelUrl: 'http://localhost:3000/cancel',
       }),
       headers: { 'content-type': 'application/json' },
     })
@@ -353,8 +353,8 @@ describe('POST /api/subscriptions/bootstrap/tranzilla', () => {
           body: JSON.stringify({
             tierSlug: 'nope',
             offerSlug: 'default',
-            successUrl: 'http://x/success',
-            cancelUrl: 'http://x/cancel',
+            successUrl: 'http://localhost:3000/success',
+            cancelUrl: 'http://localhost:3000/cancel',
           }),
           headers: { 'content-type': 'application/json' },
         },
@@ -382,8 +382,8 @@ describe('POST /api/subscriptions/bootstrap/tranzilla', () => {
           body: JSON.stringify({
             tierSlug: 'basic',
             offerSlug: 'default',
-            successUrl: 'http://x/success',
-            cancelUrl: 'http://x/cancel',
+            successUrl: 'http://localhost:3000/success',
+            cancelUrl: 'http://localhost:3000/cancel',
           }),
           headers: { 'content-type': 'application/json' },
         },
@@ -425,8 +425,8 @@ describe('POST /api/subscriptions/bootstrap/tranzilla', () => {
           body: JSON.stringify({
             tierSlug: 'basic',
             offerSlug: 'default',
-            successUrl: 'http://x/success',
-            cancelUrl: 'http://x/cancel',
+            successUrl: 'http://localhost:3000/success',
+            cancelUrl: 'http://localhost:3000/cancel',
           }),
           headers: { 'content-type': 'application/json' },
         },
