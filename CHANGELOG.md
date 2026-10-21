@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- feat: Default new users to a 100k daily LLM token limit ([#683](https://github.com/A-Guy-educ/A-Guy-Admin/pull/683)) — @aguyshayb
 - fix(payments): Auto-expire stale pending tranzila subs on retry ([#675](https://github.com/A-Guy-educ/A-Guy-Admin/pull/675)) — @aguyshayb
 - fix(tests): De-flake exercises aggregator seed slug collisions ([#682](https://github.com/A-Guy-educ/A-Guy-Admin/pull/682)) — @aguyshayb
 - chore(ci): Disable kody PR trigger (upstream 500) ([#679](https://github.com/A-Guy-educ/A-Guy-Admin/pull/679)) — @aguyshayb
