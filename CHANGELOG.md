@@ -2,6 +2,39 @@
 
 ## [Unreleased]
 
+- chore: Release v0.60.0 ([#687](https://github.com/A-Guy-educ/A-Guy-Admin/pull/687)) — @aguyshayb
+## [v0.60.0] - 2026-10-21
+
+- promote: dev -> main (v0.60.0) — @aguyshayb
+- chore: Release v0.60.0 — @aguyshayb
+## v0.60.0 — 2026-10-21
+
+### Features
+
+- Payments / Tranzila: issue an IR invoice via `/api/documents_db/create_document` on every approved charge; new nullable `tranzilaInvoiceNumber` + `tranzilaInvoiceRetrievalKey` fields on Transactions ([#686](https://github.com/A-Guy-educ/A-Guy-Admin/pull/686))
+- Payments / Tranzila: intro-offer pricing via STO items-swap at the end of the intro period ([#677](https://github.com/A-Guy-educ/A-Guy-Admin/pull/677))
+- Tiers: also write the daily LLM token cap on tier purchase so paying users get the uplift immediately ([#676](https://github.com/A-Guy-educ/A-Guy-Admin/pull/676))
+- Users: default new accounts to a 100k daily LLM token limit ([#683](https://github.com/A-Guy-educ/A-Guy-Admin/pull/683))
+
+### Bug Fixes
+
+- Users: auto-fill the default tenant via a `beforeValidate` hook on every create path (admin UI, Local API, REST signup/OAuth) ([#678](https://github.com/A-Guy-educ/A-Guy-Admin/pull/678))
+- Geometry editor: block browser ghost-drag during `moveSketch` via a document-level `dragstart` capture ([#685](https://github.com/A-Guy-educ/A-Guy-Admin/pull/685))
+- Geometry editor: fix sketch-pan drag glitch (companion to #678) ([#678](https://github.com/A-Guy-educ/A-Guy-Admin/pull/678))
+- Payments / Tranzila: tighten the stale-pending subscription threshold from 15 min to 2 min and auto-expire on bootstrap retry ([#684](https://github.com/A-Guy-educ/A-Guy-Admin/pull/684), [#675](https://github.com/A-Guy-educ/A-Guy-Admin/pull/675))
+- Payments / Tranzila: read `createdAt` via the raw Mongo driver so stale-pending detection isn't thrown off by Payload's typed hooks
+- Payments / Tranzila: pass buyer email + name to the hosted iframe so Tranzila issues a green ("buyer-identified") invoice ([#680](https://github.com/A-Guy-educ/A-Guy-Admin/pull/680))
+- Payments / Tranzila: accept unsigned webhooks in prod (backport of #672) ([#673](https://github.com/A-Guy-educ/A-Guy-Admin/pull/673))
+- Tests: de-flake exercises-aggregator seed slug collisions and use allowlisted origins for bootstrap test URLs ([#682](https://github.com/A-Guy-educ/A-Guy-Admin/pull/682))
+- Docker: copy `patches/` dir into the deps stage and bump pnpm to v10 to match `packageManager` ([#671](https://github.com/A-Guy-educ/A-Guy-Admin/pull/671))
+
+### Chores & CI
+
+- CI: disable the kody PR trigger (upstream 500) ([#679](https://github.com/A-Guy-educ/A-Guy-Admin/pull/679))
+
+## [v0.59.0] - 2026-10-20
+
+- promote: dev -> main (v0.59.0) ([#670](https://github.com/A-Guy-educ/A-Guy-Admin/pull/670)) — @aguyshayb
 - chore: Release v0.59.0 ([#669](https://github.com/A-Guy-educ/A-Guy-Admin/pull/669)) — @aguyshayb
 ## v0.59.0 — 2026-10-20
 

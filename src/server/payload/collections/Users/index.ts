@@ -22,6 +22,7 @@ import { createUserSettings } from './hooks/createUserSettings-hook'
 import { ensureRoleOnSignup } from './hooks/ensureRoleOnSignup-hook'
 import { preventLastAdminDemotion } from './hooks/preventLastAdminDemotion-hook'
 import { optionalTenantField } from '../../fields/tenant'
+import { getDefaultTenantId } from '@/server/repos/tenant/get-default-tenant'
 import { ACCOUNT_ROLE_LABEL, AccountRole } from './roles'
 
 const CONTROL_CHAR_RE = /[\x00-\x1F\x7F]/
@@ -84,7 +85,13 @@ export const Users: CollectionConfig = {
         position: 'sidebar',
       },
     },
-    // Tenant
+    // Tenant — auto-assigned on create to the default tenant (DEFAULT_TENANT_SLUG,
+    // e.g. "AGuy") via the beforeValidate hook below. Covers every create path:
+    // Payload admin UI, Payload Local API, and REST writes from A-Guy-Web for
+    // Google OAuth / email signup. Field stays `required: false` at the Payload
+    // config level so callers (and tests) can omit it; the hook fills it in
+    // before validation runs.
+    //
     // Cap tenant population to ID only. Without this, every users.read at
     // depth >= 1 fires a cascading tenants.read (measured 3s+ per doc on
     // cold hits — captured on 2026-08-25 via the [op] diagnostic). No
@@ -95,7 +102,18 @@ export const Users: CollectionConfig = {
     // Cast is needed because `optionalTenantField` is typed as the wide
     // `Field` union; the underlying object is a `RelationshipField`, which
     // supports `maxDepth`.
-    { ...optionalTenantField, maxDepth: 0 } as RelationshipField,
+    {
+      ...optionalTenantField,
+      maxDepth: 0,
+      hooks: {
+        beforeValidate: [
+          async ({ value, req }) => {
+            if (value) return value
+            return getDefaultTenantId(req.payload)
+          },
+        ],
+      },
+    } as RelationshipField,
     // OAuth fields
     {
       name: 'googleSub',
@@ -487,9 +505,13 @@ export const Users: CollectionConfig = {
     {
       name: 'llmTokensDailyLimit',
       type: 'number',
-      // Nullable: null = no daily cap. Seeded from TIER_LLM_TOKEN_CAP_DAILY
-      // in Web on login iff never set; admin-set values are never auto-
-      // overwritten.
+      // 100k = default daily cap stamped on every user create (admin UI,
+      // Payload Local API, A-Guy-Web OAuth / email signup REST writes).
+      // Web's "seed from TIER_LLM_TOKEN_CAP_DAILY on login iff never set"
+      // path short-circuits once a value is present, so this becomes the
+      // authoritative starting cap; admins can still edit per-user, and
+      // null still means "no daily cap" if deliberately cleared.
+      defaultValue: 100_000,
       // Admin-only for both create and update: managers set per-user caps.
       // Without the create guard, `create: anyone` at the collection level
       // would let a signup POST inject an unbounded limit.
@@ -501,7 +523,7 @@ export const Users: CollectionConfig = {
       },
       admin: {
         description:
-          'Daily token cap. Null = no daily cap. Seeded from tier (TIER_LLM_TOKEN_CAP_DAILY in Web) on login iff never set; admin-set values are never auto-overwritten.',
+          'Daily token cap. Defaults to 100k on create. Null = no daily cap. Web seeds from tier (TIER_LLM_TOKEN_CAP_DAILY) on login only if never set; admin-set values are never auto-overwritten.',
       },
     },
     {

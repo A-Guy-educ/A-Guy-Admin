@@ -582,7 +582,7 @@ export interface User {
    */
   llmTokensUsedToday?: number | null;
   /**
-   * Daily token cap. Null = no daily cap. Seeded from tier (TIER_LLM_TOKEN_CAP_DAILY in Web) on login iff never set; admin-set values are never auto-overwritten.
+   * Daily token cap. Defaults to 100k on create. Null = no daily cap. Web seeds from tier (TIER_LLM_TOKEN_CAP_DAILY) on login only if never set; admin-set values are never auto-overwritten.
    */
   llmTokensDailyLimit?: number | null;
   /**
@@ -1383,6 +1383,14 @@ export interface Transaction {
    * When the refund was processed
    */
   refundedAt?: string | null;
+  /**
+   * Tranzila invoice number (e.g. 30001) returned by create_document. Null if no invoice was issued yet or if issuance failed.
+   */
+  tranzilaInvoiceNumber?: string | null;
+  /**
+   * Tranzila PDF retrieval key for the invoice. Fetchable at https://my.tranzila.com/api/get_financial_document/<key>. Null if no invoice issued.
+   */
+  tranzilaInvoiceRetrievalKey?: string | null;
   /**
    * User who created this document
    */
@@ -5359,6 +5367,8 @@ export interface TransactionsSelect<T extends boolean = true> {
   refundedAmount?: T;
   refundedBy?: T;
   refundedAt?: T;
+  tranzilaInvoiceNumber?: T;
+  tranzilaInvoiceRetrievalKey?: T;
   createdBy?: T;
   updatedAt?: T;
   createdAt?: T;

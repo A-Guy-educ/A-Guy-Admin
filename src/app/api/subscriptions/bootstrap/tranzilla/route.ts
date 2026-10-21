@@ -21,7 +21,7 @@
  * as expired (bootstrap failed; buyer never got in).
  */
 
-import { ObjectId } from 'mongodb'
+import { ObjectId, type Db, type Document } from 'mongodb'
 import { NextRequest, NextResponse } from 'next/server'
 import { getPayload } from 'payload'
 
@@ -199,6 +199,22 @@ export async function POST(request: NextRequest) {
     // path for the common case; the partial unique index on subscriptions.user
     // (status ∈ {pending,active,past_due}) is the real race-safe guard —
     // see the E11000 catch below on the Subscriptions.create call.
+    //
+    // Stale-pending auto-expiry: a user who clicks Pay (we create a pending
+    // sub + tx) then abandons the Tranzila iframe (closed window, decline,
+    // 3DS timeout) would otherwise be soft-locked out of retrying on the
+    // same account. We don't learn about those abandonments — Tranzila sends
+    // no webhook when the hosted charge doesn't complete. If the pending sub
+    // is older than STALE_PENDING_THRESHOLD_MS we treat it as abandoned,
+    // expire it + its pending tx, and let the retry create a fresh sub.
+    //
+    // 2-minute threshold prioritizes retry UX. The orphan-charge risk (user
+    // completes the OLD iframe after we expired the sub) is covered by
+    // extendTierSubscription — its CAS gates on currentPeriodEnd, not
+    // status, so a late webhook promotes the expired sub to active instead
+    // of silently dropping the charge. Residual risk is "both iframes
+    // complete → double billing," rare and refundable via Tranzila dashboard.
+    const STALE_PENDING_THRESHOLD_MS = 2 * 60 * 1000 // 2 minutes
     const existing = await payload.find({
       collection: 'subscriptions',
       where: {
@@ -209,17 +225,87 @@ export async function POST(request: NextRequest) {
       overrideAccess: true,
     })
     if (existing.docs.length > 0) {
-      return applyCorsHeaders(
-        NextResponse.json(
+      const existingSub = existing.docs[0] as Subscription
+      // Read createdAt via the NATIVE MongoDB driver (not the Mongoose model
+      // at payload.db.collections['subscriptions'], which transforms /
+      // auto-manages timestamp fields and masks out-of-band updates like
+      // the test's backdating or any future repair script that re-stamps
+      // timestamps). Pattern mirrors src/lib/payment/recompute-tier.ts.
+      const rawDb = (payload.db as unknown as { connection?: { db?: Db } }).connection?.db
+      const subsRawColl = rawDb?.collection<Document>('subscriptions')
+      const rawSub = (await subsRawColl?.findOne({
+        _id: new ObjectId(existingSub.id),
+      })) as { createdAt?: Date | string } | null
+      const createdAtRaw = rawSub?.createdAt
+      const createdAtMs = createdAtRaw ? new Date(createdAtRaw).getTime() : null
+      const isStalePending =
+        existingSub.status === 'pending' &&
+        createdAtMs !== null &&
+        Date.now() - createdAtMs > STALE_PENDING_THRESHOLD_MS
+
+      if (isStalePending) {
+        // Mark the stale pending sub + its initial tx expired, then fall
+        // through to create a fresh pair.
+        //
+        // Late-webhook safety: if the user actually submitted their payment
+        // on the OLD iframe before we expired the sub (e.g. two iframes
+        // open in parallel), the webhook will arrive with u73 pointing at
+        // the now-expired sub. extendTierSubscription's CAS gates on
+        // currentPeriodEnd NOT on status, so advanceSubscriptionPeriod
+        // will promote the expired sub back to active. User gets charged
+        // AND gets access — no orphan. Downside: if BOTH the old iframe
+        // and the new iframe complete charges, the user is double-billed
+        // for one month. Accepted tradeoff for retry UX; both would show
+        // up as separate Tx rows and ops can refund one if a user ever
+        // reports it.
+        logger.info(
           {
-            success: false,
-            error: 'User already has an active or pending subscription',
-            subscriptionId: (existing.docs[0] as { id: string }).id,
+            userId: user.id,
+            staleSubId: existingSub.id,
+            staleCreatedAt: createdAtRaw,
+            ageMs: Date.now() - createdAtMs!,
           },
-          { status: 409 },
-        ),
-        request,
-      )
+          'POST /api/subscriptions/bootstrap/tranzilla: auto-expiring stale pending sub',
+        )
+        await payload.update({
+          collection: 'subscriptions',
+          id: existingSub.id,
+          data: { status: 'expired' },
+          overrideAccess: true,
+        })
+        if (existingSub.initialTransaction) {
+          const txId =
+            typeof existingSub.initialTransaction === 'string'
+              ? existingSub.initialTransaction
+              : existingSub.initialTransaction.id
+          await payload
+            .update({
+              collection: 'transactions',
+              id: txId,
+              data: { status: 'failed' },
+              overrideAccess: true,
+            })
+            .catch((err: unknown) => {
+              logger.warn(
+                { txId, err: err instanceof Error ? err.message : String(err) },
+                'POST /api/subscriptions/bootstrap/tranzilla: failed to mark stale tx failed (non-fatal)',
+              )
+            })
+        }
+        // Fall through — a fresh pending sub + tx will be created below.
+      } else {
+        return applyCorsHeaders(
+          NextResponse.json(
+            {
+              success: false,
+              error: 'User already has an active or pending subscription',
+              subscriptionId: existingSub.id,
+            },
+            { status: 409 },
+          ),
+          request,
+        )
+      }
     }
 
     const offer = resolveTranzillaOffer(tierSlug, offerSlug)
@@ -368,6 +454,16 @@ export async function POST(request: NextRequest) {
     // the webhook then passes that token to createstov2 with
     // terminal_name=fxpaguytok where My-Billing takes over for recurring
     // charges. Tokens are account-scoped, not terminal-scoped.
+    // Pass the buyer's email + name on the iframe URL. Tranzila uses the
+    // email to send the "green invoice" (emailed tax receipt) to the buyer
+    // after a successful charge — without it, no receipt is delivered.
+    // customerName is used for the receipt header + the "contact" field
+    // on the hosted page.
+    const buyerEmail = typeof user.email === 'string' ? user.email : undefined
+    const buyerName =
+      typeof (user as { name?: unknown }).name === 'string'
+        ? (user as { name: string }).name
+        : buyerEmail
     const checkout = await createTranzillaCheckout({
       sum: priceIls,
       currency: 'ILS',
@@ -376,6 +472,8 @@ export async function POST(request: NextRequest) {
       cancelUrl,
       notifyUrl,
       lang: 'il',
+      customerEmail: buyerEmail,
+      customerName: buyerName,
       cField1: String(user.id),
       cField2: String(transaction.id),
       cField3: String(subscription.id),

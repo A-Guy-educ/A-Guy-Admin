@@ -41,7 +41,9 @@ import {
   cancelStandingOrder,
   createStandingOrder,
   formatTranzilaDate,
+  swapStandingOrderItems,
 } from '@/lib/payment/tranzila-v2-client'
+import { createTranzilaInvoiceDocument } from '@/lib/payment/tranzila-invoices-client'
 import { computeNextChargePriceIls } from '@/lib/payment/tier-tranzilla-pricing'
 import { verifyTranzillaWebhook } from '@/lib/payment/tranzilla'
 import { isTierSlug, type TierSlug } from '@/lib/tiers/constants'
@@ -432,6 +434,10 @@ interface TranzillaTx {
   amount: number
   currency: string
   tenant?: string | { id: string } | null
+  /** Set after a successful create_document call; used as the replay guard. */
+  tranzilaInvoiceNumber?: string | null
+  /** PDF retrieval key for the invoice; set together with tranzilaInvoiceNumber. */
+  tranzilaInvoiceRetrievalKey?: string | null
   metadata?: {
     appliedCoupon?: {
       code: string
@@ -488,7 +494,16 @@ interface HandoffArgs {
   subscriptionRowId: string
   userId: string
   tierSlug: TierSlug
-  regularPriceIls: number
+  /**
+   * Per-charge price that Tranzila will bill on each STO cycle, in ILS
+   * major units. For intro offers that still have charges left after the
+   * iframe (e.g. intro3mo on a new sub consumes charge #1 via the iframe,
+   * leaving #2 and #3 at intro) this is the intro price; the renewal
+   * handler flips the STO items to regular price via /v2/sto/update on
+   * the last intro charge. For default offers (no intro) this is the
+   * regular tier price. Computed at the call site to keep handoff dumb.
+   */
+  firstChargePriceIls: number
   newPeriodEnd: Date
   cardToken: string
   cardExpireMonth: number
@@ -558,7 +573,7 @@ async function handoffToStandingOrder(args: HandoffArgs): Promise<void> {
     subscriptionRowId,
     userId,
     tierSlug,
-    regularPriceIls,
+    firstChargePriceIls,
     newPeriodEnd,
     cardToken,
     cardExpireMonth,
@@ -572,10 +587,10 @@ async function handoffToStandingOrder(args: HandoffArgs): Promise<void> {
     )
     return
   }
-  if (!(regularPriceIls > 0)) {
+  if (!(firstChargePriceIls > 0)) {
     payload.logger.error(
-      { subscriptionRowId, regularPriceIls },
-      '[tranzilla-webhook/sto-handoff] missing regularPriceIls — cannot build STO payload',
+      { subscriptionRowId, firstChargePriceIls },
+      '[tranzilla-webhook/sto-handoff] missing firstChargePriceIls — cannot build STO payload',
     )
     return
   }
@@ -657,7 +672,7 @@ async function handoffToStandingOrder(args: HandoffArgs): Promise<void> {
       items: [
         {
           itemName: `AGuy Subscription — ${tierSlug}`,
-          unitPriceIls: regularPriceIls,
+          unitPriceIls: firstChargePriceIls,
           quantity: 1,
         },
       ],
@@ -919,12 +934,30 @@ async function handleTranzillaSubscriptionBootstrap(
         '[tranzilla-webhook/sub-bootstrap] CRITICAL — no parseable card expiry in notify_url body; cannot call createstov2',
       )
     } else {
+      // Compute the STO's per-cycle price. For intro offers, the iframe
+      // charge we just processed consumed intro slot #1 (or more, if the
+      // iframe was itself a renewal replay — guarded by isIntroCharge).
+      // If any intro slots remain for the NEXT charge (first STO cycle),
+      // start the STO at intro price. The renewal handler flips STO items
+      // to regular price via /v2/sto/update on the last intro renewal.
+      const introPriceIls = subscription.introPriceIls ?? null
+      const introChargesTotal = subscription.introChargesTotal ?? null
+      const introChargesUsedAfterIframe =
+        (subscription.introChargesUsed ?? 0) + (isIntroCharge ? 1 : 0)
+      const stoFirstChargeIsIntro =
+        introPriceIls !== null &&
+        introChargesTotal !== null &&
+        introChargesUsedAfterIframe < introChargesTotal
+      const firstChargePriceIls = stoFirstChargeIsIntro
+        ? introPriceIls
+        : (subscription.regularPriceIls ?? 0)
+
       await handoffToStandingOrder({
         payload,
         subscriptionRowId,
         userId,
         tierSlug: tierSlug as TierSlug,
-        regularPriceIls: subscription.regularPriceIls ?? 0,
+        firstChargePriceIls,
         newPeriodEnd,
         cardToken: body.TranzilaTK || '',
         cardExpireMonth: expiry.month,
@@ -940,10 +973,37 @@ async function handleTranzillaSubscriptionBootstrap(
     await flipTransactionSucceeded(payload, transaction, index, body)
   }
 
-  // Receipt. Green Invoice issues the formal tax invoice for Tranzilla
-  // flows (see purchase-receipt templates) — our email is just a
-  // payment-confirmation note. Fire-and-forget. (Idempotent via emailSentAt
-  // guard in the receipt service.)
+  // Formal invoice (חשבונית מס/קבלה). Tranzila emails the PDF to the
+  // buyer when the terminal's auto-email toggle is ON. Only issued once
+  // per Tx — skipped on replay if we already stored tranzilaInvoiceNumber.
+  if (!transaction.tranzilaInvoiceNumber) {
+    const userRecord = (await payload
+      .findByID({ collection: 'users', id: userId, depth: 0, overrideAccess: true })
+      .catch(() => null)) as { email?: string; name?: string } | null
+    const buyerEmail = userRecord?.email
+    const buyerName =
+      typeof userRecord?.name === 'string' ? userRecord.name : (buyerEmail ?? 'A-Guy Customer')
+    if (buyerEmail) {
+      await issueTranzilaInvoice({
+        payload,
+        transactionId: String(transaction.id),
+        txnIndex: index,
+        tierSlug: tierSlug as TierSlug,
+        amountIls: transaction.amount / 100,
+        buyerEmail,
+        buyerName,
+      })
+    } else {
+      payload.logger.error(
+        { subscriptionRowId, transactionRowId, userId },
+        '[tranzilla-webhook/sub-bootstrap] user missing email — skipping invoice issuance',
+      )
+    }
+  }
+
+  // Supplementary payment-confirmation email from our side. Tranzila's
+  // emailed invoice (above) is the formal tax receipt; ours is a friendly
+  // confirmation note. Fire-and-forget, idempotent via emailSentAt.
   void sendPurchaseReceipt(payload, {
     transactionId: String(transaction.id),
     userId,
@@ -1126,6 +1186,73 @@ async function handleTranzillaStoRenewal(
     order: 'renewal',
   })
 
+  // Intro → regular transition: if THIS was the last intro charge, swap the
+  // STO's items to regular price so the next cycle bills at the full tier
+  // price. The STO was created at intro price (see bootstrap handoff);
+  // Tranzila's engine will keep charging at that price until we update items.
+  //
+  // Trigger: isIntroCharge && (introChargesUsed_pre + 1 === introChargesTotal).
+  // extendTierSubscription increments introChargesUsed on isIntroCharge=true,
+  // so by the time this check runs, DB state is `pre + 1`. We check against
+  // the pre-value to avoid an off-by-one.
+  //
+  // Idempotent: swap sets unit_price to the regular tier price. A replay of
+  // the same renewal webhook would recompute isIntroCharge against the
+  // already-incremented introChargesUsed (now = total), find
+  // isIntroCharge=false, and skip this block. If the swap itself was
+  // partial (sto_id updated but we crashed before this log), the next
+  // renewal would also skip (introChargesUsed=total, isIntroCharge=false),
+  // which means STO continues at regular price going forward — correct.
+  const introChargesTotal = sub.introChargesTotal ?? null
+  const introChargesUsedPre = sub.introChargesUsed ?? 0
+  const isLastIntroCharge =
+    isIntroCharge &&
+    introChargesTotal !== null &&
+    introChargesUsedPre + 1 >= introChargesTotal &&
+    sub.stoId &&
+    (sub.regularPriceIls ?? 0) > 0
+  if (isLastIntroCharge) {
+    const { tranzillaTerminalToken, tranzillaTerminal } = getPaymentEnv()
+    const terminal = tranzillaTerminalToken || tranzillaTerminal
+    const swapResult = await swapStandingOrderItems({
+      terminalName: terminal,
+      stoId: sub.stoId!,
+      itemName: `AGuy Subscription — ${tierSlug}`,
+      unitPriceIls: sub.regularPriceIls!,
+    }).catch((err: unknown) => {
+      payload.logger.fatal(
+        {
+          subscriptionId,
+          stoId: sub.stoId,
+          err: err instanceof Error ? err.message : String(err),
+        },
+        '[tranzilla-webhook/sto-renewal] CRITICAL — swap-to-regular threw. STO will keep billing intro price; manual swap required.',
+      )
+      return null
+    })
+    if (swapResult && swapResult.errorCode !== 0 && swapResult.errorCode !== null) {
+      payload.logger.fatal(
+        {
+          subscriptionId,
+          stoId: sub.stoId,
+          errorCode: swapResult.errorCode,
+          message: swapResult.message,
+          rawText: swapResult.rawText,
+        },
+        '[tranzilla-webhook/sto-renewal] CRITICAL — swap-to-regular returned non-zero error_code. STO will keep billing intro price; manual swap required.',
+      )
+    } else if (swapResult) {
+      payload.logger.info(
+        {
+          subscriptionId,
+          stoId: sub.stoId,
+          newUnitPriceIls: sub.regularPriceIls,
+        },
+        '[tranzilla-webhook/sto-renewal] swapped STO items to regular price after last intro charge',
+      )
+    }
+  }
+
   // Create renewal Tx row. Duplicate key = Tx was already created on a
   // prior delivery (replay path) — safe to continue.
   let renewalTxId: string | null = null
@@ -1178,10 +1305,38 @@ async function handleTranzillaStoRenewal(
     }
   }
 
-  // Receipt for the renewal charge. Green Invoice issues the tax invoice;
-  // our email is just a payment-confirmation note. Fire-and-forget,
-  // idempotent via emailSentAt. Skipped on duplicate-Tx replays because
-  // renewalTxId stays null.
+  // Formal invoice (חשבונית מס/קבלה) for the renewal charge, emailed to
+  // the buyer by Tranzila. Only issued on first delivery (renewalTxId
+  // non-null means the Tx was just created, not a duplicate replay).
+  if (renewalTxId) {
+    const userRecord = (await payload
+      .findByID({ collection: 'users', id: userId, depth: 0, overrideAccess: true })
+      .catch(() => null)) as { email?: string; name?: string } | null
+    const buyerEmail = userRecord?.email
+    const buyerName =
+      typeof userRecord?.name === 'string' ? userRecord.name : (buyerEmail ?? 'A-Guy Customer')
+    if (buyerEmail) {
+      await issueTranzilaInvoice({
+        payload,
+        transactionId: renewalTxId,
+        txnIndex: index,
+        tierSlug: tierSlug as TierSlug,
+        amountIls: Number(body.sum) || priceIls,
+        buyerEmail,
+        buyerName,
+      })
+    } else {
+      payload.logger.error(
+        { subscriptionId, renewalTxId, userId },
+        '[tranzilla-webhook/sto-renewal] user missing email — skipping invoice issuance',
+      )
+    }
+  }
+
+  // Supplementary payment-confirmation email from our side. Tranzila's
+  // emailed invoice (above) is the formal tax receipt; ours is a friendly
+  // confirmation note. Fire-and-forget, idempotent via emailSentAt.
+  // Skipped on duplicate-Tx replays because renewalTxId stays null.
   if (renewalTxId) {
     void sendPurchaseReceipt(payload, {
       transactionId: renewalTxId,
@@ -1222,6 +1377,110 @@ function resolveTenantId(tenant: TranzillaSubscriptionDoc['tenant']): string | n
 function resolveProductId(product: TranzillaTx['product']): string | null {
   if (!product) return null
   return typeof product === 'string' ? product : product.id
+}
+
+/**
+ * Create a Tranzila IR document (חשבונית מס/קבלה) for a charge and store
+ * the resulting invoice number + retrieval key on the Transaction row.
+ *
+ * Called from both the bootstrap and the renewal paths after a successful
+ * charge. Fire-and-forget semantics on failure: we log fatal and continue,
+ * because the charge + tier promotion are already committed and losing an
+ * invoice is less bad than returning 500 (which would make Tranzila retry
+ * the whole webhook).
+ *
+ * Idempotency guard: callers must skip when the Tx already has
+ * `tranzilaInvoiceNumber` set.
+ */
+async function issueTranzilaInvoice(args: {
+  payload: PayloadInstance
+  transactionId: string
+  txnIndex: string
+  tierSlug: TierSlug
+  amountIls: number
+  buyerEmail: string
+  buyerName: string
+}): Promise<void> {
+  const { payload, transactionId, txnIndex, tierSlug, amountIls, buyerEmail, buyerName } = args
+  const { tranzillaTerminal } = getPaymentEnv()
+
+  const parsedTxnIndex = Number(txnIndex)
+  if (!Number.isSafeInteger(parsedTxnIndex) || parsedTxnIndex <= 0) {
+    payload.logger.error(
+      { transactionId, txnIndex },
+      '[tranzilla-webhook/invoice] txnIndex is not a positive integer — skipping invoice',
+    )
+    return
+  }
+
+  const result = await createTranzilaInvoiceDocument({
+    terminalName: tranzillaTerminal,
+    documentType: 'IR',
+    clientEmail: buyerEmail,
+    clientName: buyerName,
+    txnIndex: parsedTxnIndex,
+    items: [{ name: `AGuy Subscription — ${tierSlug}`, unitPriceIls: amountIls }],
+    payments: [{ amountIls }],
+  }).catch((err: unknown) => {
+    payload.logger.fatal(
+      {
+        transactionId,
+        txnIndex,
+        err: err instanceof Error ? err.message : String(err),
+      },
+      '[tranzilla-webhook/invoice] createTranzilaInvoiceDocument threw — buyer will not receive a receipt',
+    )
+    return null
+  })
+
+  if (!result) return
+  if (result.statusCode !== 0 || !result.document) {
+    payload.logger.fatal(
+      {
+        transactionId,
+        txnIndex,
+        httpStatus: result.httpStatus,
+        statusCode: result.statusCode,
+        statusMsg: result.statusMsg,
+        rawText: result.rawText.slice(0, 500),
+      },
+      '[tranzilla-webhook/invoice] Tranzila refused create_document — buyer will not receive a receipt',
+    )
+    return
+  }
+
+  // Record the invoice on the Tx so we can skip on replay + support
+  // "where's my receipt" requests by fetching PDF via retrieval_key.
+  try {
+    await payload.update({
+      collection: 'transactions',
+      id: transactionId,
+      data: {
+        tranzilaInvoiceNumber: result.document.number,
+        tranzilaInvoiceRetrievalKey: result.document.retrievalKey,
+      },
+      overrideAccess: true,
+    })
+  } catch (err) {
+    payload.logger.error(
+      {
+        transactionId,
+        invoiceNumber: result.document.number,
+        err: err instanceof Error ? err.message : String(err),
+      },
+      '[tranzilla-webhook/invoice] created invoice but failed to persist number on Tx — buyer still got the receipt',
+    )
+  }
+
+  payload.logger.info(
+    {
+      transactionId,
+      txnIndex,
+      invoiceNumber: result.document.number,
+      retrievalKey: result.document.retrievalKey,
+    },
+    '[tranzilla-webhook/invoice] invoice issued + emailed to buyer',
+  )
 }
 
 async function markTransactionFailed(

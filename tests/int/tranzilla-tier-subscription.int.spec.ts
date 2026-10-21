@@ -24,12 +24,38 @@ import { ObjectId } from 'mongodb'
 
 import { startMongoContainer, stopMongoContainer } from '@/infra/utils/test/mongodb-container'
 import { extendTierSubscription } from '@/lib/payment/extend-tier-subscription'
-import { TIER_LLM_TOKEN_CAP_MONTHLY } from '@/lib/tiers/constants'
+import { TIER_LLM_TOKEN_CAP_DAILY, TIER_LLM_TOKEN_CAP_MONTHLY } from '@/lib/tiers/constants'
 
 // Mock the Tranzila V2 REST client — the user-cancel tests need to assert
 // that cancelStandingOrder was (or was not) called, and we never want
 // tests to hit the real api.tranzila.com endpoint. Default resolves to
 // error_code 0 (success); individual tests override per-call.
+// Mock the Tranzila Invoices API — webhook tests assert that we call
+// create_document after approved charges (bootstrap + renewal). Default
+// resolves to a happy response with a fake invoice number.
+vi.mock('@/lib/payment/tranzila-invoices-client', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/payment/tranzila-invoices-client')>(
+    '@/lib/payment/tranzila-invoices-client',
+  )
+  return {
+    ...actual,
+    createTranzilaInvoiceDocument: vi.fn().mockResolvedValue({
+      httpStatus: 200,
+      statusCode: 0,
+      statusMsg: 'הצלחה',
+      document: {
+        id: '1',
+        number: '99999',
+        totalChargeAmount: 59,
+        currency: 'ILS',
+        retrievalKey: 'test-retrieval-key',
+        createdAt: '2026-10-21 15:00:00',
+      },
+      rawText: '',
+    }),
+  }
+})
+
 vi.mock('@/lib/payment/tranzila-v2-client', async () => {
   const actual = await vi.importActual<typeof import('@/lib/payment/tranzila-v2-client')>(
     '@/lib/payment/tranzila-v2-client',
@@ -229,6 +255,7 @@ describe('extendTierSubscription', () => {
     })) as any
     expect(user.currentTier).toBe('basic')
     expect(user.llmTokensLimit).toBe(TIER_LLM_TOKEN_CAP_MONTHLY.basic)
+    expect(user.llmTokensDailyLimit).toBe(TIER_LLM_TOKEN_CAP_DAILY.basic)
     expect(user.llmTokensUsed).toBe(0)
     expect(user.tierGrantSource).toBe('subscription')
     expect(String(user.tierGrantSubscriptionId)).toBe(String(sub.id))
@@ -331,8 +358,8 @@ describe('POST /api/subscriptions/bootstrap/tranzilla', () => {
       body: JSON.stringify({
         tierSlug: 'basic',
         offerSlug: 'default',
-        successUrl: 'http://x/success',
-        cancelUrl: 'http://x/cancel',
+        successUrl: 'http://localhost:3000/success',
+        cancelUrl: 'http://localhost:3000/cancel',
       }),
       headers: { 'content-type': 'application/json' },
     })
@@ -353,14 +380,117 @@ describe('POST /api/subscriptions/bootstrap/tranzilla', () => {
           body: JSON.stringify({
             tierSlug: 'nope',
             offerSlug: 'default',
-            successUrl: 'http://x/success',
-            cancelUrl: 'http://x/cancel',
+            successUrl: 'http://localhost:3000/success',
+            cancelUrl: 'http://localhost:3000/cancel',
           }),
           headers: { 'content-type': 'application/json' },
         },
       )
       const res = await route.POST(request)
       expect(res.status).toBe(400)
+    } finally {
+      authMock.mockRestore()
+    }
+  })
+
+  it('rejects when a recent pending sub exists (409 — user still in flow)', async () => {
+    const route = await import('@/app/api/subscriptions/bootstrap/tranzilla/route')
+    // Fresh pending sub (createdAt = now by default)
+    await createPendingSub({ tierSlug: 'basic', offerSlug: 'default', status: 'pending' })
+
+    const authMock = vi
+      .spyOn(payload as any, 'auth')
+      .mockResolvedValue({ user: { id: userId, collection: 'users', tenant: tenantId } } as any)
+    try {
+      const request = new NextRequest(
+        'http://localhost:3000/api/subscriptions/bootstrap/tranzilla',
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            tierSlug: 'basic',
+            offerSlug: 'default',
+            successUrl: 'http://localhost:3000/success',
+            cancelUrl: 'http://localhost:3000/cancel',
+          }),
+          headers: { 'content-type': 'application/json' },
+        },
+      )
+      const res = await route.POST(request)
+      expect(res.status).toBe(409)
+      const body = await res.json()
+      expect(body.success).toBe(false)
+      expect(body.error).toMatch(/already has an active or pending/i)
+    } finally {
+      authMock.mockRestore()
+    }
+  })
+
+  it('auto-expires a stale pending sub (>2 min) and lets the retry create a new one', async () => {
+    const route = await import('@/app/api/subscriptions/bootstrap/tranzilla/route')
+    const { sub: staleSub, tx: staleTx } = await createPendingSub({
+      tierSlug: 'basic',
+      offerSlug: 'default',
+      status: 'pending',
+    })
+
+    // Backdate the stale sub to 3 min ago so the threshold kicks in.
+    // Use the NATIVE Mongo driver — payload.db.collections['x'] is the
+    // Mongoose model, which auto-manages timestamp fields and silently
+    // strips our createdAt update. Native driver bypasses that.
+    const threeMinAgo = new Date(Date.now() - 3 * 60 * 1000)
+    const rawDb = (payload.db as any).connection?.db
+    const subsRawColl = rawDb.collection('subscriptions')
+    await subsRawColl.updateOne(
+      { _id: new ObjectId(staleSub.id) },
+      { $set: { createdAt: threeMinAgo } },
+    )
+
+    const authMock = vi
+      .spyOn(payload as any, 'auth')
+      .mockResolvedValue({ user: { id: userId, collection: 'users', tenant: tenantId } } as any)
+    try {
+      const request = new NextRequest(
+        'http://localhost:3000/api/subscriptions/bootstrap/tranzilla',
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            tierSlug: 'basic',
+            offerSlug: 'default',
+            successUrl: 'http://localhost:3000/success',
+            cancelUrl: 'http://localhost:3000/cancel',
+          }),
+          headers: { 'content-type': 'application/json' },
+        },
+      )
+      const res = await route.POST(request)
+      // Response is the 200 happy-path (bootstrap built a new iframe URL).
+      expect(res.status).toBe(200)
+
+      // Stale sub is now expired; stale tx is now failed.
+      const refreshedStale = (await payload.findByID({
+        collection: 'subscriptions',
+        id: staleSub.id,
+        overrideAccess: true,
+      })) as any
+      expect(refreshedStale.status).toBe('expired')
+      const refreshedStaleTx = (await payload.findByID({
+        collection: 'transactions',
+        id: staleTx.id,
+        overrideAccess: true,
+      })) as any
+      expect(refreshedStaleTx.status).toBe('failed')
+
+      // A fresh pending sub was created for the retry.
+      const subsAfter = await payload.find({
+        collection: 'subscriptions',
+        where: {
+          and: [{ user: { equals: userId } }, { status: { equals: 'pending' } }],
+        },
+        limit: 10,
+        overrideAccess: true,
+      })
+      expect(subsAfter.docs.length).toBe(1)
+      expect(subsAfter.docs[0]!.id).not.toBe(staleSub.id)
     } finally {
       authMock.mockRestore()
     }
@@ -783,6 +913,53 @@ describe('Tranzila webhook — STO renewal correlation (Mission 1)', () => {
     return route.POST(request)
   }
 
+  it('issues a Tranzila invoice via create_document on an approved renewal', async () => {
+    const { sub } = await createPendingSub({
+      tierSlug: 'basic',
+      offerSlug: 'default',
+      status: 'active',
+      currentPeriodEnd: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
+      cancelAtPeriodEnd: false,
+      stoId: '488777',
+    })
+
+    const invoices = await import('@/lib/payment/tranzila-invoices-client')
+    const invoiceMock = invoices.createTranzilaInvoiceDocument as unknown as ReturnType<
+      typeof vi.fn
+    >
+    invoiceMock.mockClear()
+
+    await postToWebhook({
+      index: '12345678',
+      Response: '000',
+      sum: '59.00',
+      currency: '1',
+      TranzilaTK: 'tk-renew-invoice',
+      sto_id: '488777',
+    })
+
+    expect(invoiceMock).toHaveBeenCalledTimes(1)
+    const call = invoiceMock.mock.calls[0]![0]!
+    expect(call.documentType).toBe('IR')
+    expect(call.clientEmail).toBe(userEmail)
+    expect(call.txnIndex).toBe(12345678)
+    expect(call.items[0].unitPriceIls).toBe(59)
+    expect(call.items[0].name).toContain('basic')
+    expect(call.payments[0].amountIls).toBe(59)
+
+    // Invoice number + retrieval key persisted on the renewal Tx
+    const renewalTxs = await payload.find({
+      collection: 'transactions',
+      where: {
+        and: [{ subscription: { equals: sub.id } }, { isRenewal: { equals: true } }],
+      },
+      overrideAccess: true,
+    })
+    const renewal = renewalTxs.docs[0] as any
+    expect(renewal.tranzilaInvoiceNumber).toBe('99999')
+    expect(renewal.tranzilaInvoiceRetrievalKey).toBe('test-retrieval-key')
+  })
+
   it('advances the sub and records a renewal Tx when sto_id correlates', async () => {
     const originalEnd = new Date(Date.now() + 15 * 24 * 60 * 60 * 1000)
     const { sub } = await createPendingSub({
@@ -960,6 +1137,96 @@ describe('Tranzila webhook — STO renewal correlation (Mission 1)', () => {
       overrideAccess: true,
     })
     expect(txs.docs.length).toBe(1)
+  })
+
+  it('triggers STO items-swap to regular price on the LAST intro renewal', async () => {
+    // intro3mo = 3 total intro charges. If iframe + first STO renewal already
+    // consumed 2, the next renewal (introChargesUsed: 2 → 3) is the LAST
+    // intro charge. After it, we must swap the STO's items from intro price
+    // (33) to regular price (59) so cycle 4+ bills at the full tier price.
+    await createPendingSub({
+      tierSlug: 'basic',
+      offerSlug: 'intro3mo',
+      status: 'active',
+      currentPeriodEnd: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
+      cancelAtPeriodEnd: false,
+      stoId: '487710',
+      introChargesUsed: 2,
+    })
+
+    const v2 = await import('@/lib/payment/tranzila-v2-client')
+    const swapMock = v2.swapStandingOrderItems as unknown as ReturnType<typeof vi.fn>
+    swapMock.mockClear()
+
+    await postToWebhook({
+      index: `tz-renewal-${new ObjectId().toHexString()}`,
+      Response: '000',
+      sum: '33.00',
+      currency: '1',
+      TranzilaTK: 'tk-intro-last',
+      sto_id: '487710',
+    })
+
+    expect(swapMock).toHaveBeenCalledTimes(1)
+    const call = swapMock.mock.calls[0]![0]!
+    expect(call.stoId).toBe('487710')
+    expect(call.unitPriceIls).toBe(59) // regular basic price
+    expect(call.itemName).toContain('basic')
+  })
+
+  it('does NOT trigger swap on intermediate intro renewals (not the last one)', async () => {
+    // intro3mo + introChargesUsed=1 (iframe only). First STO renewal is #2,
+    // not the last — no swap yet.
+    await createPendingSub({
+      tierSlug: 'basic',
+      offerSlug: 'intro3mo',
+      status: 'active',
+      currentPeriodEnd: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
+      cancelAtPeriodEnd: false,
+      stoId: '487711',
+      introChargesUsed: 1,
+    })
+
+    const v2 = await import('@/lib/payment/tranzila-v2-client')
+    const swapMock = v2.swapStandingOrderItems as unknown as ReturnType<typeof vi.fn>
+    swapMock.mockClear()
+
+    await postToWebhook({
+      index: `tz-renewal-${new ObjectId().toHexString()}`,
+      Response: '000',
+      sum: '33.00',
+      currency: '1',
+      TranzilaTK: 'tk-intro-mid',
+      sto_id: '487711',
+    })
+
+    expect(swapMock).not.toHaveBeenCalled()
+  })
+
+  it('does NOT trigger swap for default-offer subs (no intro to transition out of)', async () => {
+    await createPendingSub({
+      tierSlug: 'basic',
+      offerSlug: 'default',
+      status: 'active',
+      currentPeriodEnd: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
+      cancelAtPeriodEnd: false,
+      stoId: '487712',
+    })
+
+    const v2 = await import('@/lib/payment/tranzila-v2-client')
+    const swapMock = v2.swapStandingOrderItems as unknown as ReturnType<typeof vi.fn>
+    swapMock.mockClear()
+
+    await postToWebhook({
+      index: `tz-renewal-${new ObjectId().toHexString()}`,
+      Response: '000',
+      sum: '59.00',
+      currency: '1',
+      TranzilaTK: 'tk-default',
+      sto_id: '487712',
+    })
+
+    expect(swapMock).not.toHaveBeenCalled()
   })
 })
 

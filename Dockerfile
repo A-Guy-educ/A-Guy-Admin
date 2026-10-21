@@ -6,7 +6,7 @@ FROM node:20-alpine AS base
 # Install pnpm globally at the base layer so subsequent stages don't
 # need to re-install it. corepack was removed from Node in v25+, so
 # older Dockerfiles using `corepack enable pnpm` break on modern images.
-RUN npm install -g pnpm@9
+RUN npm install -g pnpm@10
 
 # Install dependencies only when needed
 FROM base AS deps
@@ -16,6 +16,9 @@ WORKDIR /app
 
 # Install dependencies based on the preferred package manager
 COPY package.json yarn.lock* package-lock.json* pnpm-lock.yaml* ./
+# `patchedDependencies` in package.json references files under ./patches,
+# so pnpm needs them available at install time to resolve each patch hash.
+COPY patches ./patches
 RUN \
   if [ -f yarn.lock ]; then yarn --frozen-lockfile; \
   elif [ -f package-lock.json ]; then npm ci; \
