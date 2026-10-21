@@ -582,7 +582,7 @@ export interface User {
    */
   llmTokensUsedToday?: number | null;
   /**
-   * Daily token cap. Null = no daily cap. Seeded from tier (TIER_LLM_TOKEN_CAP_DAILY in Web) on login iff never set; admin-set values are never auto-overwritten.
+   * Daily token cap. Defaults to 100k on create. Null = no daily cap. Web seeds from tier (TIER_LLM_TOKEN_CAP_DAILY) on login only if never set; admin-set values are never auto-overwritten.
    */
   llmTokensDailyLimit?: number | null;
   /**
