@@ -199,6 +199,18 @@ export async function POST(request: NextRequest) {
     // path for the common case; the partial unique index on subscriptions.user
     // (status ∈ {pending,active,past_due}) is the real race-safe guard —
     // see the E11000 catch below on the Subscriptions.create call.
+    //
+    // Stale-pending auto-expiry: a user who clicks Pay (we create a pending
+    // sub + tx) then abandons the Tranzila iframe (closed window, decline,
+    // 3DS timeout) would otherwise be soft-locked out of retrying on the
+    // same account. We don't learn about those abandonments — Tranzila sends
+    // no webhook when the hosted charge doesn't complete. If the pending sub
+    // is older than STALE_PENDING_THRESHOLD_MS we treat it as abandoned,
+    // expire it + its pending tx, and let the retry create a fresh sub.
+    // Threshold is comfortably longer than Tranzila's hosted-page session
+    // lifetime (handshake `thtk` expires in minutes) so we don't nuke an
+    // in-flight payment.
+    const STALE_PENDING_THRESHOLD_MS = 15 * 60 * 1000 // 15 minutes
     const existing = await payload.find({
       collection: 'subscriptions',
       where: {
@@ -209,17 +221,65 @@ export async function POST(request: NextRequest) {
       overrideAccess: true,
     })
     if (existing.docs.length > 0) {
-      return applyCorsHeaders(
-        NextResponse.json(
+      const existingSub = existing.docs[0] as Subscription & { createdAt?: string }
+      const isStalePending =
+        existingSub.status === 'pending' &&
+        existingSub.createdAt &&
+        Date.now() - new Date(existingSub.createdAt).getTime() > STALE_PENDING_THRESHOLD_MS
+
+      if (isStalePending) {
+        // Mark the stale pending sub + its initial tx expired, then fall
+        // through to create a fresh pair. If a late webhook for the old sub
+        // somehow arrives after this point, extendTierSubscription's
+        // status='pending' CAS will no-op and the webhook returns 200.
+        logger.info(
           {
-            success: false,
-            error: 'User already has an active or pending subscription',
-            subscriptionId: (existing.docs[0] as { id: string }).id,
+            userId: user.id,
+            staleSubId: existingSub.id,
+            staleCreatedAt: existingSub.createdAt,
+            ageMs: Date.now() - new Date(existingSub.createdAt!).getTime(),
           },
-          { status: 409 },
-        ),
-        request,
-      )
+          'POST /api/subscriptions/bootstrap/tranzilla: auto-expiring stale pending sub',
+        )
+        await payload.update({
+          collection: 'subscriptions',
+          id: existingSub.id,
+          data: { status: 'expired' },
+          overrideAccess: true,
+        })
+        if (existingSub.initialTransaction) {
+          const txId =
+            typeof existingSub.initialTransaction === 'string'
+              ? existingSub.initialTransaction
+              : existingSub.initialTransaction.id
+          await payload
+            .update({
+              collection: 'transactions',
+              id: txId,
+              data: { status: 'failed' },
+              overrideAccess: true,
+            })
+            .catch((err: unknown) => {
+              logger.warn(
+                { txId, err: err instanceof Error ? err.message : String(err) },
+                'POST /api/subscriptions/bootstrap/tranzilla: failed to mark stale tx failed (non-fatal)',
+              )
+            })
+        }
+        // Fall through — a fresh pending sub + tx will be created below.
+      } else {
+        return applyCorsHeaders(
+          NextResponse.json(
+            {
+              success: false,
+              error: 'User already has an active or pending subscription',
+              subscriptionId: existingSub.id,
+            },
+            { status: 409 },
+          ),
+          request,
+        )
+      }
     }
 
     const offer = resolveTranzillaOffer(tierSlug, offerSlug)

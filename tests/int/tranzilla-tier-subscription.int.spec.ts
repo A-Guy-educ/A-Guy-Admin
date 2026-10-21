@@ -365,6 +365,105 @@ describe('POST /api/subscriptions/bootstrap/tranzilla', () => {
       authMock.mockRestore()
     }
   })
+
+  it('rejects when a recent pending sub exists (409 — user still in flow)', async () => {
+    const route = await import('@/app/api/subscriptions/bootstrap/tranzilla/route')
+    // Fresh pending sub (createdAt = now by default)
+    await createPendingSub({ tierSlug: 'basic', offerSlug: 'default', status: 'pending' })
+
+    const authMock = vi
+      .spyOn(payload as any, 'auth')
+      .mockResolvedValue({ user: { id: userId, collection: 'users', tenant: tenantId } } as any)
+    try {
+      const request = new NextRequest(
+        'http://localhost:3000/api/subscriptions/bootstrap/tranzilla',
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            tierSlug: 'basic',
+            offerSlug: 'default',
+            successUrl: 'http://x/success',
+            cancelUrl: 'http://x/cancel',
+          }),
+          headers: { 'content-type': 'application/json' },
+        },
+      )
+      const res = await route.POST(request)
+      expect(res.status).toBe(409)
+      const body = await res.json()
+      expect(body.success).toBe(false)
+      expect(body.error).toMatch(/already has an active or pending/i)
+    } finally {
+      authMock.mockRestore()
+    }
+  })
+
+  it('auto-expires a stale pending sub (>15 min) and lets the retry create a new one', async () => {
+    const route = await import('@/app/api/subscriptions/bootstrap/tranzilla/route')
+    const { sub: staleSub, tx: staleTx } = await createPendingSub({
+      tierSlug: 'basic',
+      offerSlug: 'default',
+      status: 'pending',
+    })
+
+    // Backdate the stale sub to 16 min ago so the threshold kicks in.
+    const sixteenMinAgo = new Date(Date.now() - 16 * 60 * 1000)
+    const subsColl = payload.db.collections['subscriptions']
+    await subsColl.updateOne(
+      { _id: new ObjectId(staleSub.id) },
+      { $set: { createdAt: sixteenMinAgo } },
+    )
+
+    const authMock = vi
+      .spyOn(payload as any, 'auth')
+      .mockResolvedValue({ user: { id: userId, collection: 'users', tenant: tenantId } } as any)
+    try {
+      const request = new NextRequest(
+        'http://localhost:3000/api/subscriptions/bootstrap/tranzilla',
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            tierSlug: 'basic',
+            offerSlug: 'default',
+            successUrl: 'http://x/success',
+            cancelUrl: 'http://x/cancel',
+          }),
+          headers: { 'content-type': 'application/json' },
+        },
+      )
+      const res = await route.POST(request)
+      // Response is the 200 happy-path (bootstrap built a new iframe URL).
+      expect(res.status).toBe(200)
+
+      // Stale sub is now expired; stale tx is now failed.
+      const refreshedStale = (await payload.findByID({
+        collection: 'subscriptions',
+        id: staleSub.id,
+        overrideAccess: true,
+      })) as any
+      expect(refreshedStale.status).toBe('expired')
+      const refreshedStaleTx = (await payload.findByID({
+        collection: 'transactions',
+        id: staleTx.id,
+        overrideAccess: true,
+      })) as any
+      expect(refreshedStaleTx.status).toBe('failed')
+
+      // A fresh pending sub was created for the retry.
+      const subsAfter = await payload.find({
+        collection: 'subscriptions',
+        where: {
+          and: [{ user: { equals: userId } }, { status: { equals: 'pending' } }],
+        },
+        limit: 10,
+        overrideAccess: true,
+      })
+      expect(subsAfter.docs.length).toBe(1)
+      expect(subsAfter.docs[0]!.id).not.toBe(staleSub.id)
+    } finally {
+      authMock.mockRestore()
+    }
+  })
 })
 
 describe('PATCH /api/subscriptions/[id]/cancel', () => {
