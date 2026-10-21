@@ -207,10 +207,14 @@ export async function POST(request: NextRequest) {
     // no webhook when the hosted charge doesn't complete. If the pending sub
     // is older than STALE_PENDING_THRESHOLD_MS we treat it as abandoned,
     // expire it + its pending tx, and let the retry create a fresh sub.
-    // Threshold is comfortably longer than Tranzila's hosted-page session
-    // lifetime (handshake `thtk` expires in minutes) so we don't nuke an
-    // in-flight payment.
-    const STALE_PENDING_THRESHOLD_MS = 15 * 60 * 1000 // 15 minutes
+    //
+    // 2-minute threshold prioritizes retry UX. The orphan-charge risk (user
+    // completes the OLD iframe after we expired the sub) is covered by
+    // extendTierSubscription — its CAS gates on currentPeriodEnd, not
+    // status, so a late webhook promotes the expired sub to active instead
+    // of silently dropping the charge. Residual risk is "both iframes
+    // complete → double billing," rare and refundable via Tranzila dashboard.
+    const STALE_PENDING_THRESHOLD_MS = 2 * 60 * 1000 // 2 minutes
     const existing = await payload.find({
       collection: 'subscriptions',
       where: {

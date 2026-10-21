@@ -399,7 +399,7 @@ describe('POST /api/subscriptions/bootstrap/tranzilla', () => {
     }
   })
 
-  it('auto-expires a stale pending sub (>15 min) and lets the retry create a new one', async () => {
+  it('auto-expires a stale pending sub (>2 min) and lets the retry create a new one', async () => {
     const route = await import('@/app/api/subscriptions/bootstrap/tranzilla/route')
     const { sub: staleSub, tx: staleTx } = await createPendingSub({
       tierSlug: 'basic',
@@ -407,16 +407,16 @@ describe('POST /api/subscriptions/bootstrap/tranzilla', () => {
       status: 'pending',
     })
 
-    // Backdate the stale sub to 16 min ago so the threshold kicks in.
+    // Backdate the stale sub to 3 min ago so the threshold kicks in.
     // Use the NATIVE Mongo driver — payload.db.collections['x'] is the
     // Mongoose model, which auto-manages timestamp fields and silently
     // strips our createdAt update. Native driver bypasses that.
-    const sixteenMinAgo = new Date(Date.now() - 16 * 60 * 1000)
+    const threeMinAgo = new Date(Date.now() - 3 * 60 * 1000)
     const rawDb = (payload.db as any).connection?.db
     const subsRawColl = rawDb.collection('subscriptions')
     await subsRawColl.updateOne(
       { _id: new ObjectId(staleSub.id) },
-      { $set: { createdAt: sixteenMinAgo } },
+      { $set: { createdAt: threeMinAgo } },
     )
 
     const authMock = vi
