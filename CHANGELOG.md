@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- feat(payments): Issue tranzila invoice (IR) on every approved charge ([#686](https://github.com/A-Guy-educ/A-Guy-Admin/pull/686)) — @aguyshayb
 - fix(geometry): Block browser ghost drag during moveSketch via document capture ([#685](https://github.com/A-Guy-educ/A-Guy-Admin/pull/685)) — @aguyshayb
 - fix(payments): Tighten stale-pending threshold from 15 min to 2 min ([#684](https://github.com/A-Guy-educ/A-Guy-Admin/pull/684)) — @aguyshayb
 - feat: Default new users to a 100k daily LLM token limit ([#683](https://github.com/A-Guy-educ/A-Guy-Admin/pull/683)) — @aguyshayb
