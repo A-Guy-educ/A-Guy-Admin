@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- fix(tests): De-flake exercises aggregator seed slug collisions ([#682](https://github.com/A-Guy-educ/A-Guy-Admin/pull/682)) — @aguyshayb
 - chore(ci): Disable kody PR trigger (upstream 500) ([#679](https://github.com/A-Guy-educ/A-Guy-Admin/pull/679)) — @aguyshayb
 - fix(payments): Pass buyer email to tranzila iframe (green invoice) ([#680](https://github.com/A-Guy-educ/A-Guy-Admin/pull/680)) — @aguyshayb
 - fix: Default-tenant on user create and fix geometry sketch-pan drag glitch ([#678](https://github.com/A-Guy-educ/A-Guy-Admin/pull/678)) — @aguyshayb
