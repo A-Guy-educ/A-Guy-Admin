@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- feat(tiers): Also write daily token cap on tier purchase ([#676](https://github.com/A-Guy-educ/A-Guy-Admin/pull/676)) — @aguyshayb
 - fix(payments): Accept unsigned tranzila webhooks (backport of #672) ([#673](https://github.com/A-Guy-educ/A-Guy-Admin/pull/673)) — @aguyshayb
 - fix(payments): Accept unsigned tranzila webhooks in prod ([#672](https://github.com/A-Guy-educ/A-Guy-Admin/pull/672)) — @aguyshayb
 - fix(docker): COPY patches/ dir + bump pnpm to v10 ([#671](https://github.com/A-Guy-educ/A-Guy-Admin/pull/671)) — @aguyshayb
