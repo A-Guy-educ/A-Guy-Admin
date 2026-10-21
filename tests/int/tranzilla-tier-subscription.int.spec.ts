@@ -961,6 +961,96 @@ describe('Tranzila webhook — STO renewal correlation (Mission 1)', () => {
     })
     expect(txs.docs.length).toBe(1)
   })
+
+  it('triggers STO items-swap to regular price on the LAST intro renewal', async () => {
+    // intro3mo = 3 total intro charges. If iframe + first STO renewal already
+    // consumed 2, the next renewal (introChargesUsed: 2 → 3) is the LAST
+    // intro charge. After it, we must swap the STO's items from intro price
+    // (33) to regular price (59) so cycle 4+ bills at the full tier price.
+    await createPendingSub({
+      tierSlug: 'basic',
+      offerSlug: 'intro3mo',
+      status: 'active',
+      currentPeriodEnd: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
+      cancelAtPeriodEnd: false,
+      stoId: '487710',
+      introChargesUsed: 2,
+    })
+
+    const v2 = await import('@/lib/payment/tranzila-v2-client')
+    const swapMock = v2.swapStandingOrderItems as unknown as ReturnType<typeof vi.fn>
+    swapMock.mockClear()
+
+    await postToWebhook({
+      index: `tz-renewal-${new ObjectId().toHexString()}`,
+      Response: '000',
+      sum: '33.00',
+      currency: '1',
+      TranzilaTK: 'tk-intro-last',
+      sto_id: '487710',
+    })
+
+    expect(swapMock).toHaveBeenCalledTimes(1)
+    const call = swapMock.mock.calls[0]![0]!
+    expect(call.stoId).toBe('487710')
+    expect(call.unitPriceIls).toBe(59) // regular basic price
+    expect(call.itemName).toContain('basic')
+  })
+
+  it('does NOT trigger swap on intermediate intro renewals (not the last one)', async () => {
+    // intro3mo + introChargesUsed=1 (iframe only). First STO renewal is #2,
+    // not the last — no swap yet.
+    await createPendingSub({
+      tierSlug: 'basic',
+      offerSlug: 'intro3mo',
+      status: 'active',
+      currentPeriodEnd: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
+      cancelAtPeriodEnd: false,
+      stoId: '487711',
+      introChargesUsed: 1,
+    })
+
+    const v2 = await import('@/lib/payment/tranzila-v2-client')
+    const swapMock = v2.swapStandingOrderItems as unknown as ReturnType<typeof vi.fn>
+    swapMock.mockClear()
+
+    await postToWebhook({
+      index: `tz-renewal-${new ObjectId().toHexString()}`,
+      Response: '000',
+      sum: '33.00',
+      currency: '1',
+      TranzilaTK: 'tk-intro-mid',
+      sto_id: '487711',
+    })
+
+    expect(swapMock).not.toHaveBeenCalled()
+  })
+
+  it('does NOT trigger swap for default-offer subs (no intro to transition out of)', async () => {
+    await createPendingSub({
+      tierSlug: 'basic',
+      offerSlug: 'default',
+      status: 'active',
+      currentPeriodEnd: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
+      cancelAtPeriodEnd: false,
+      stoId: '487712',
+    })
+
+    const v2 = await import('@/lib/payment/tranzila-v2-client')
+    const swapMock = v2.swapStandingOrderItems as unknown as ReturnType<typeof vi.fn>
+    swapMock.mockClear()
+
+    await postToWebhook({
+      index: `tz-renewal-${new ObjectId().toHexString()}`,
+      Response: '000',
+      sum: '59.00',
+      currency: '1',
+      TranzilaTK: 'tk-default',
+      sto_id: '487712',
+    })
+
+    expect(swapMock).not.toHaveBeenCalled()
+  })
 })
 
 describe('PATCH /api/subscriptions/[id]/change-tier (Mission 2 — upgrade)', () => {

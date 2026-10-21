@@ -41,6 +41,7 @@ import {
   cancelStandingOrder,
   createStandingOrder,
   formatTranzilaDate,
+  swapStandingOrderItems,
 } from '@/lib/payment/tranzila-v2-client'
 import { computeNextChargePriceIls } from '@/lib/payment/tier-tranzilla-pricing'
 import { verifyTranzillaWebhook } from '@/lib/payment/tranzilla'
@@ -499,7 +500,16 @@ interface HandoffArgs {
   subscriptionRowId: string
   userId: string
   tierSlug: TierSlug
-  regularPriceIls: number
+  /**
+   * Per-charge price that Tranzila will bill on each STO cycle, in ILS
+   * major units. For intro offers that still have charges left after the
+   * iframe (e.g. intro3mo on a new sub consumes charge #1 via the iframe,
+   * leaving #2 and #3 at intro) this is the intro price; the renewal
+   * handler flips the STO items to regular price via /v2/sto/update on
+   * the last intro charge. For default offers (no intro) this is the
+   * regular tier price. Computed at the call site to keep handoff dumb.
+   */
+  firstChargePriceIls: number
   newPeriodEnd: Date
   cardToken: string
   cardExpireMonth: number
@@ -569,7 +579,7 @@ async function handoffToStandingOrder(args: HandoffArgs): Promise<void> {
     subscriptionRowId,
     userId,
     tierSlug,
-    regularPriceIls,
+    firstChargePriceIls,
     newPeriodEnd,
     cardToken,
     cardExpireMonth,
@@ -583,10 +593,10 @@ async function handoffToStandingOrder(args: HandoffArgs): Promise<void> {
     )
     return
   }
-  if (!(regularPriceIls > 0)) {
+  if (!(firstChargePriceIls > 0)) {
     payload.logger.error(
-      { subscriptionRowId, regularPriceIls },
-      '[tranzilla-webhook/sto-handoff] missing regularPriceIls — cannot build STO payload',
+      { subscriptionRowId, firstChargePriceIls },
+      '[tranzilla-webhook/sto-handoff] missing firstChargePriceIls — cannot build STO payload',
     )
     return
   }
@@ -668,7 +678,7 @@ async function handoffToStandingOrder(args: HandoffArgs): Promise<void> {
       items: [
         {
           itemName: `AGuy Subscription — ${tierSlug}`,
-          unitPriceIls: regularPriceIls,
+          unitPriceIls: firstChargePriceIls,
           quantity: 1,
         },
       ],
@@ -930,12 +940,30 @@ async function handleTranzillaSubscriptionBootstrap(
         '[tranzilla-webhook/sub-bootstrap] CRITICAL — no parseable card expiry in notify_url body; cannot call createstov2',
       )
     } else {
+      // Compute the STO's per-cycle price. For intro offers, the iframe
+      // charge we just processed consumed intro slot #1 (or more, if the
+      // iframe was itself a renewal replay — guarded by isIntroCharge).
+      // If any intro slots remain for the NEXT charge (first STO cycle),
+      // start the STO at intro price. The renewal handler flips STO items
+      // to regular price via /v2/sto/update on the last intro renewal.
+      const introPriceIls = subscription.introPriceIls ?? null
+      const introChargesTotal = subscription.introChargesTotal ?? null
+      const introChargesUsedAfterIframe =
+        (subscription.introChargesUsed ?? 0) + (isIntroCharge ? 1 : 0)
+      const stoFirstChargeIsIntro =
+        introPriceIls !== null &&
+        introChargesTotal !== null &&
+        introChargesUsedAfterIframe < introChargesTotal
+      const firstChargePriceIls = stoFirstChargeIsIntro
+        ? introPriceIls
+        : (subscription.regularPriceIls ?? 0)
+
       await handoffToStandingOrder({
         payload,
         subscriptionRowId,
         userId,
         tierSlug: tierSlug as TierSlug,
-        regularPriceIls: subscription.regularPriceIls ?? 0,
+        firstChargePriceIls,
         newPeriodEnd,
         cardToken: body.TranzilaTK || '',
         cardExpireMonth: expiry.month,
@@ -1136,6 +1164,73 @@ async function handleTranzillaStoRenewal(
     isIntroCharge,
     order: 'renewal',
   })
+
+  // Intro → regular transition: if THIS was the last intro charge, swap the
+  // STO's items to regular price so the next cycle bills at the full tier
+  // price. The STO was created at intro price (see bootstrap handoff);
+  // Tranzila's engine will keep charging at that price until we update items.
+  //
+  // Trigger: isIntroCharge && (introChargesUsed_pre + 1 === introChargesTotal).
+  // extendTierSubscription increments introChargesUsed on isIntroCharge=true,
+  // so by the time this check runs, DB state is `pre + 1`. We check against
+  // the pre-value to avoid an off-by-one.
+  //
+  // Idempotent: swap sets unit_price to the regular tier price. A replay of
+  // the same renewal webhook would recompute isIntroCharge against the
+  // already-incremented introChargesUsed (now = total), find
+  // isIntroCharge=false, and skip this block. If the swap itself was
+  // partial (sto_id updated but we crashed before this log), the next
+  // renewal would also skip (introChargesUsed=total, isIntroCharge=false),
+  // which means STO continues at regular price going forward — correct.
+  const introChargesTotal = sub.introChargesTotal ?? null
+  const introChargesUsedPre = sub.introChargesUsed ?? 0
+  const isLastIntroCharge =
+    isIntroCharge &&
+    introChargesTotal !== null &&
+    introChargesUsedPre + 1 >= introChargesTotal &&
+    sub.stoId &&
+    (sub.regularPriceIls ?? 0) > 0
+  if (isLastIntroCharge) {
+    const { tranzillaTerminalToken, tranzillaTerminal } = getPaymentEnv()
+    const terminal = tranzillaTerminalToken || tranzillaTerminal
+    const swapResult = await swapStandingOrderItems({
+      terminalName: terminal,
+      stoId: sub.stoId!,
+      itemName: `AGuy Subscription — ${tierSlug}`,
+      unitPriceIls: sub.regularPriceIls!,
+    }).catch((err: unknown) => {
+      payload.logger.fatal(
+        {
+          subscriptionId,
+          stoId: sub.stoId,
+          err: err instanceof Error ? err.message : String(err),
+        },
+        '[tranzilla-webhook/sto-renewal] CRITICAL — swap-to-regular threw. STO will keep billing intro price; manual swap required.',
+      )
+      return null
+    })
+    if (swapResult && swapResult.errorCode !== 0 && swapResult.errorCode !== null) {
+      payload.logger.fatal(
+        {
+          subscriptionId,
+          stoId: sub.stoId,
+          errorCode: swapResult.errorCode,
+          message: swapResult.message,
+          rawText: swapResult.rawText,
+        },
+        '[tranzilla-webhook/sto-renewal] CRITICAL — swap-to-regular returned non-zero error_code. STO will keep billing intro price; manual swap required.',
+      )
+    } else if (swapResult) {
+      payload.logger.info(
+        {
+          subscriptionId,
+          stoId: sub.stoId,
+          newUnitPriceIls: sub.regularPriceIls,
+        },
+        '[tranzilla-webhook/sto-renewal] swapped STO items to regular price after last intro charge',
+      )
+    }
+  }
 
   // Create renewal Tx row. Duplicate key = Tx was already created on a
   // prior delivery (replay path) — safe to continue.
