@@ -2,8 +2,10 @@
  * GET /api/lessons/:id/export
  *
  * Exports a lesson and all its ordered exercises as a plain-text file in the
- * v1 format consumed by /admin/lesson-json-import. Round-trips through
- * parseTextLesson.
+ * v2 format consumed by /admin/lesson-json-import. Round-trips through
+ * parseTextLessonV2 → convertTextExerciseV2ToSections: a lesson authored in
+ * the admin (fill-in table + geometry attachment + MCQ + matching) re-imports
+ * with its structure preserved.
  *
  * Access: admin only (401 unauthenticated, 403 non-admin).
  *
@@ -16,12 +18,12 @@
  * @fileType api-route
  * @domain lessons
  * @pattern lesson-export
- * @ai-summary Exports a lesson and its ordered exercises as v1 plain text for admin review or re-import.
+ * @ai-summary Exports a lesson and its ordered exercises as v2 plain text for admin review or re-import.
  */
 import type { PayloadRequest } from 'payload'
 
 import { buildCanonicalLessonExport } from '@/server/services/lesson-export/to-canonical-format'
-import { serializeLessonToV1Text } from '@/server/services/lesson-export/to-text-format'
+import { serializeLessonToText } from '@/server/services/lesson-export/to-text-format'
 
 type BlockEntry = {
   id: string
@@ -43,67 +45,6 @@ function parseBlocks(raw: unknown): BlockEntry[] {
     }
   }
   return []
-}
-
-/**
- * Fetch the grade/class label (courseLabel) for a lesson by traversing:
- * lesson -> chapter -> course
- */
-async function fetchClassLabel(
-  req: PayloadRequest,
-  lesson: Record<string, unknown>,
-): Promise<string> {
-  // Try to get chapter from lesson
-  const chapterRel = lesson.chapter
-  let chapterId: string | null = null
-
-  if (chapterRel) {
-    if (typeof chapterRel === 'string') {
-      chapterId = chapterRel
-    } else if (typeof chapterRel === 'object' && chapterRel !== null) {
-      chapterId = (chapterRel as { id?: string }).id || null
-    }
-  }
-
-  if (!chapterId) return ''
-
-  // Fetch chapter to get course
-  try {
-    const chapter = (await req.payload.findByID({
-      collection: 'chapters',
-      id: chapterId,
-      depth: 0,
-      select: { course: true },
-      overrideAccess: true,
-      req,
-    })) as { course?: string | { id?: string } } | null
-
-    if (!chapter?.course) return ''
-
-    let courseId: string | null = null
-    const courseRel = chapter.course
-    if (typeof courseRel === 'string') {
-      courseId = courseRel
-    } else if (typeof courseRel === 'object' && courseRel !== null) {
-      courseId = (courseRel as { id?: string }).id || null
-    }
-
-    if (!courseId) return ''
-
-    // Fetch course to get courseLabel
-    const course = (await req.payload.findByID({
-      collection: 'courses',
-      id: courseId,
-      depth: 0,
-      select: { courseLabel: true },
-      overrideAccess: true,
-      req,
-    })) as { courseLabel?: string } | null
-
-    return course?.courseLabel || ''
-  } catch {
-    return ''
-  }
 }
 
 export async function exportLessonEndpoint(req: PayloadRequest): Promise<Response> {
@@ -214,17 +155,10 @@ export async function exportLessonEndpoint(req: PayloadRequest): Promise<Respons
     }
   }
 
-  // 7) Fetch class label (courseLabel) from chapter -> course hierarchy
-  const classLabel = await fetchClassLabel(req, lesson)
-
-  // 8) Build canonical export format, then serialize to v1 plain text
-  const canonicalExport = buildCanonicalLessonExport(
-    lesson,
-    exerciseDocs,
-    classLabel,
-    sectionsByExerciseId,
-  )
-  const body = serializeLessonToV1Text(canonicalExport)
+  // 7) Build canonical export format, then serialize to v2 plain text. The
+  //    v2 format carries no course/class label, so none is fetched.
+  const canonicalExport = buildCanonicalLessonExport(lesson, exerciseDocs, '', sectionsByExerciseId)
+  const body = serializeLessonToText(canonicalExport)
 
   const slug = (lesson.slug as string) || lessonId
   const filename = `${slug}.txt`

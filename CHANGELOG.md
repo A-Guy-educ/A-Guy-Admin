@@ -2,7 +2,17 @@
 
 ## [Unreleased]
 
-- chore: Release v0.60.0 ([#687](https://github.com/A-Guy-educ/A-Guy-Admin/pull/687)) — @aguyshayb
+- chore: Release v0.60.1 ([#691](https://github.com/A-Guy-educ/A-Guy-Admin/pull/691)) — @aguyshayb
+## [v0.60.1] - 2026-10-22
+
+- promote: dev -> main (v0.60.1) — @aguyshayb
+- chore: Release v0.60.1 — @aguyshayb
+## v0.60.1 — 2026-10-22
+
+### Bug Fixes
+
+- Lesson export: export lessons as v2 text so tables and sketches round-trip on re-import ([#690](https://github.com/A-Guy-educ/A-Guy-Admin/pull/690))
+
 ## [v0.60.0] - 2026-10-21
 
 - promote: dev -> main (v0.60.0) — @aguyshayb

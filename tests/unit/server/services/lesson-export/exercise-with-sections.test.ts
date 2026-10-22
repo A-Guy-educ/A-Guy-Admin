@@ -4,8 +4,8 @@ import {
   buildCanonicalLessonExport,
   exerciseWithSectionsToCanonical,
 } from '@/server/services/lesson-export/to-canonical-format'
-import { serializeLessonToV1Text } from '@/server/services/lesson-export/to-text-format'
-import { parseTextLesson } from '@/server/services/text-lesson-import/parse-text'
+import { serializeLessonToText } from '@/server/services/lesson-export/to-text-format'
+import { parseTextLessonV2 } from '@/server/services/text-lesson-import/parse-text-v2'
 
 function richText(id: string, value: string) {
   return { id, type: 'rich_text' as const, format: 'md-math-v1' as const, value, mediaIds: [] }
@@ -92,24 +92,23 @@ describe('exerciseWithSectionsToCanonical', () => {
       'כיתה ח',
       new Map([['ex-1', sections]]),
     )
-    const text = serializeLessonToV1Text(canonical)
+    const text = serializeLessonToText(canonical)
 
-    expect(text).toContain('[תרגיל 1 - סעיף א]')
-    expect(text).toContain('[תרגיל 1 - סעיף ב]')
-    expect(text).toContain('* תוכן השאלה: מה הערך של x?')
+    expect(text).toContain('[ תרגיל 1 - סעיף א - Single Choice ]')
+    expect(text).toContain('[ תרגיל 1 - סעיף ב - Open Ended ]')
+    expect(text).toContain('* הנחיה: מה הערך של x?')
     expect(text).toContain('* פתרון מלא: התשובה היא 5 כי משוואה שקולה.')
     // Exercise-level intro appears before the first section
-    expect(text.indexOf('הקדמה לתרגיל')).toBeLessThan(text.indexOf('[תרגיל 1 - סעיף א]'))
-    // Section-level intro is prepended to the question text (bare lines
-    // inside a section would otherwise be dropped by the v1 parser).
+    expect(text.indexOf('הקדמה לתרגיל')).toBeLessThan(text.indexOf('סעיף א'))
+    // Section-level intro is prepended to the question text.
     expect(text).toContain('עכשיו שאלה פתוחה')
     expect(text).toContain('הסבירו את התשובה.')
 
-    const parsed = parseTextLesson(text)
+    const parsed = parseTextLessonV2(text)
     expect(parsed.exercises).toHaveLength(1)
     expect(parsed.exercises[0].sections).toHaveLength(2)
     expect(parsed.exercises[0].sections[0].question).toBe('מה הערך של x?')
-    expect(parsed.exercises[0].sections[0].options).toEqual(['5', '3', '7'])
+    expect(parsed.exercises[0].sections[0].options.map((o) => o.text)).toEqual(['5', '3', '7'])
     expect(parsed.exercises[0].sections[1].question).toContain('עכשיו שאלה פתוחה')
     expect(parsed.exercises[0].sections[1].question).toContain('הסבירו את התשובה.')
     expect(parsed.exercises[0].sections[1].fullSolution).toBe('התשובה היא 5 כי משוואה שקולה.')

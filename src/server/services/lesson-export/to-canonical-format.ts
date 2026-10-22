@@ -59,6 +59,24 @@ export interface CanonicalTextContent {
    * raw `svg` blocks and for geometry/axis specs that fail to serialize.
    */
   graphDsl?: string
+  /** Geometry part of graphDsl — v2 text emits it under `* שרטוט …:`. */
+  geometryDsl?: string
+  /** Function-graph part of graphDsl — v2 text emits it under `* גרף …:`. */
+  functionDsl?: string
+}
+
+export type CanonicalQuestionType =
+  | 'single_choice'
+  | 'multiple_choice'
+  | 'open_ended'
+  | 'matching'
+  | 'table'
+
+export interface CanonicalTable {
+  headers: string[]
+  rowsData: string[][]
+  /** `"rowIdx-colIdx"` → correct value for fillable cells. */
+  answers: Record<string, string>
 }
 
 export interface CanonicalSection {
@@ -70,6 +88,11 @@ export interface CanonicalSection {
   full_solution: CanonicalTextContent
   correct_option: CanonicalTextContent
   wrong_options: CanonicalTextContent[]
+  question_type?: CanonicalQuestionType
+  /** MCQ options in authored order with correctness (supports multi-correct). */
+  options?: Array<{ text: string; correct: boolean }>
+  table?: CanonicalTable
+  matching_pairs?: Array<{ left: string; right: string }>
 }
 
 export interface CanonicalExerciseContent {
@@ -290,6 +313,75 @@ function splitMcqOptions(
   return { correct: correctOptions[0], wrong: wrongOptions }
 }
 
+/**
+ * Copy the answer structure of a question block (MCQ options, table body,
+ * matching pairs) onto the canonical section, plus its question type.
+ */
+function applyQuestionStructure(section: CanonicalSection, block: ContentBlock): void {
+  switch (block.type) {
+    case 'question_select': {
+      if (block.variant !== 'mcq') {
+        section.question_type = 'open_ended'
+        return
+      }
+      const correctIds = new Set(block.answer.correctOptionIds)
+      section.question_type =
+        block.selectionMode === 'multiple' || correctIds.size > 1
+          ? 'multiple_choice'
+          : 'single_choice'
+      section.options = block.answer.options.map((o) => ({
+        text: o.content?.value ?? '',
+        correct: correctIds.has(o.id),
+      }))
+      const { correct, wrong } = splitMcqOptions(block.answer)
+      if (correct) section.correct_option = wrapTextContent(correct.content)
+      section.wrong_options = wrong.map((opt) => wrapTextContent(opt.content))
+      return
+    }
+    case 'question_table':
+      section.question_type = 'table'
+      section.table = {
+        headers: [...block.table.headers],
+        rowsData: block.table.rowsData.map((row) => [...row]),
+        answers: { ...(block.table.answers ?? {}) },
+      }
+      return
+    case 'question_matching': {
+      section.question_type = 'matching'
+      const leftById = new Map(block.leftColumn.map((o) => [o.id, o.content?.value ?? '']))
+      const rightById = new Map(block.rightColumn.map((o) => [o.id, o.content?.value ?? '']))
+      section.matching_pairs = block.correctPairs
+        .filter((p) => leftById.has(p.optionId) && rightById.has(p.matchId))
+        .map((p) => ({ left: leftById.get(p.optionId)!, right: rightById.get(p.matchId)! }))
+      return
+    }
+    default:
+      section.question_type = 'open_ended'
+  }
+}
+
+interface VisualBucket {
+  geoDsls: string[]
+  fnDsls: string[]
+  svgs: string[]
+}
+
+function newVisualBucket(): VisualBucket {
+  return { geoDsls: [], fnDsls: [], svgs: [] }
+}
+
+function visualFields(
+  visual: VisualBucket,
+): Pick<CanonicalTextContent, 'svg' | 'graphDsl' | 'geometryDsl' | 'functionDsl'> {
+  const all = [...visual.fnDsls, ...visual.geoDsls]
+  return {
+    svg: visual.svgs.filter(Boolean).join('\n'),
+    ...(all.length > 0 ? { graphDsl: all.join('\n\n') } : {}),
+    ...(visual.geoDsls.length > 0 ? { geometryDsl: visual.geoDsls.join('\n') } : {}),
+    ...(visual.fnDsls.length > 0 ? { functionDsl: visual.fnDsls.join('\n\n') } : {}),
+  }
+}
+
 // -------------------------------------------
 // Section-level block walker
 // -------------------------------------------
@@ -317,7 +409,7 @@ function serializeAxis(
   axis: unknown,
   blockIndex: number,
   blockType: string,
-  bucket: { dsls: string[]; svgs: string[] },
+  bucket: VisualBucket,
   renderFailures: Array<{ blockIndex: number; blockType: string; issues: string[] }>,
 ): number {
   if (!axis) return 0
@@ -332,7 +424,7 @@ function serializeAxis(
   }
   const dsl = axisSpecToDsl(parsed.data)
   if (dsl) {
-    bucket.dsls.push(dsl)
+    bucket.fnDsls.push(dsl)
     return 1
   }
   const svg = axisSpecToSvg(parsed.data)
@@ -348,7 +440,7 @@ function serializeGeometry(
   geometry: unknown,
   blockIndex: number,
   blockType: string,
-  bucket: { dsls: string[]; svgs: string[] },
+  bucket: VisualBucket,
   renderFailures: Array<{ blockIndex: number; blockType: string; issues: string[] }>,
 ): number {
   if (!geometry) return 0
@@ -363,7 +455,7 @@ function serializeGeometry(
   }
   const dsl = geometrySpecToDsl(parsed.data)
   if (dsl) {
-    bucket.dsls.push(dsl)
+    bucket.geoDsls.push(dsl)
     return 1
   }
   const svg = geometrySpecToSvg(parsed.data)
@@ -381,7 +473,7 @@ function serializeGeometry(
 function serializeAttachment(
   attachment: unknown,
   blockIndex: number,
-  bucket: { dsls: string[]; svgs: string[] },
+  bucket: VisualBucket,
   renderFailures: Array<{ blockIndex: number; blockType: string; issues: string[] }>,
 ): number {
   if (!attachment || typeof attachment !== 'object') return 0
@@ -422,7 +514,7 @@ function sectionDocToCanonical(
   const blocks = content?.blocks || []
 
   const introTexts: string[] = []
-  const visual = { dsls: [] as string[], svgs: [] as string[] }
+  const visual = newVisualBucket()
   let renderedSvgCount = 0
   const renderFailures: Array<{ blockIndex: number; blockType: string; issues: string[] }> = []
 
@@ -510,18 +602,7 @@ function sectionDocToCanonical(
       const maybeAttachment = (block as { attachment?: unknown }).attachment
       renderedSvgCount += serializeAttachment(maybeAttachment, blockIndex, visual, renderFailures)
 
-      if (
-        block.type === 'question_select' &&
-        block.variant === 'mcq' &&
-        qc.answer &&
-        'options' in qc.answer &&
-        'correctOptionIds' in qc.answer
-      ) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { correct, wrong } = splitMcqOptions(qc.answer as any)
-        if (correct) section.correct_option = wrapTextContent(correct.content)
-        section.wrong_options = wrong.map((opt) => wrapTextContent(opt.content))
-      }
+      applyQuestionStructure(section, block)
     }
   }
 
@@ -529,8 +610,7 @@ function sectionDocToCanonical(
     text: introTexts.filter(Boolean).join('\n'),
     table: null,
     PNG: '',
-    svg: visual.svgs.filter(Boolean).join('\n'),
-    ...(visual.dsls.length > 0 ? { graphDsl: visual.dsls.join('\n\n') } : {}),
+    ...visualFields(visual),
   }
 
   return { section, renderedSvgCount, renderFailures }
@@ -562,7 +642,7 @@ export function exerciseWithSectionsToCanonical(
   const exerciseBlocks = exerciseContent?.blocks || []
 
   const introTexts: string[] = []
-  const visual = { dsls: [] as string[], svgs: [] as string[] }
+  const visual = newVisualBucket()
   let renderedSvgCount = 0
   const renderFailures: Array<{ blockIndex: number; blockType: string; issues: string[] }> = []
 
@@ -613,8 +693,7 @@ export function exerciseWithSectionsToCanonical(
           text: introTexts.filter(Boolean).join('\n'),
           table: null,
           PNG: '',
-          svg: visual.svgs.filter(Boolean).join('\n'),
-          ...(visual.dsls.length > 0 ? { graphDsl: visual.dsls.join('\n\n') } : {}),
+          ...visualFields(visual),
         },
         sections,
       },
@@ -661,7 +740,7 @@ export function exerciseToCanonical(
     if (isQuestionGeometryBlock(block)) {
       const qc = extractQuestionContent(block)
       if (!qc?.geometrySpec) continue
-      const visual = { dsls: [] as string[], svgs: [] as string[] }
+      const visual = newVisualBucket()
       const added = serializeGeometry(
         qc.geometrySpec,
         blockIndex,
@@ -676,8 +755,7 @@ export function exerciseToCanonical(
           text: '',
           table: null,
           PNG: '',
-          svg: visual.svgs.join('\n'),
-          ...(visual.dsls.length > 0 ? { graphDsl: visual.dsls.join('\n\n') } : {}),
+          ...visualFields(visual),
         },
         question_number: toHebrewOrdinal(sectionIndex + 1),
         question: wrapTextContent(qc.prompt),
@@ -693,7 +771,7 @@ export function exerciseToCanonical(
     if (isQuestionAxisBlock(block)) {
       const qc = extractQuestionContent(block)
       if (!qc?.axisSpec) continue
-      const visual = { dsls: [] as string[], svgs: [] as string[] }
+      const visual = newVisualBucket()
       const added = serializeAxis(qc.axisSpec, blockIndex, 'question_axis', visual, renderFailures)
       if (added === 0) continue
       renderedSvgCount += added
@@ -702,8 +780,7 @@ export function exerciseToCanonical(
           text: '',
           table: null,
           PNG: '',
-          svg: visual.svgs.join('\n'),
-          ...(visual.dsls.length > 0 ? { graphDsl: visual.dsls.join('\n\n') } : {}),
+          ...visualFields(visual),
         },
         question_number: toHebrewOrdinal(sectionIndex + 1),
         question: wrapTextContent(qc.prompt),
@@ -719,7 +796,7 @@ export function exerciseToCanonical(
 
     const qc = extractQuestionContent(block)
     if (qc) {
-      const visual = { dsls: [] as string[], svgs: [] as string[] }
+      const visual = newVisualBucket()
       const maybeAttachment = (block as { attachment?: unknown }).attachment
       renderedSvgCount += serializeAttachment(maybeAttachment, blockIndex, visual, renderFailures)
 
@@ -728,8 +805,7 @@ export function exerciseToCanonical(
           text: '',
           table: null,
           PNG: '',
-          svg: visual.svgs.join('\n'),
-          ...(visual.dsls.length > 0 ? { graphDsl: visual.dsls.join('\n\n') } : {}),
+          ...visualFields(visual),
         },
         question_number: toHebrewOrdinal(sectionIndex + 1),
         question: wrapTextContent(qc.prompt),
@@ -740,18 +816,7 @@ export function exerciseToCanonical(
         wrong_options: [],
       }
 
-      if (
-        block.type === 'question_select' &&
-        block.variant === 'mcq' &&
-        qc.answer &&
-        'options' in qc.answer &&
-        'correctOptionIds' in qc.answer
-      ) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { correct, wrong } = splitMcqOptions(qc.answer as any)
-        section.correct_option = wrapTextContent(correct.content)
-        section.wrong_options = wrong.map((opt) => wrapTextContent(opt.content))
-      }
+      applyQuestionStructure(section, block)
 
       sections.push(section)
       sectionIndex++

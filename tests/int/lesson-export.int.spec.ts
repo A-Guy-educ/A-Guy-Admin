@@ -1,9 +1,9 @@
 /**
- * Integration test: lesson export endpoint (v1 plain-text format).
+ * Integration test: lesson export endpoint (v2 plain-text format).
  *
  * Verifies:
  * 1. Admin GET returns text/plain with a .txt attachment filename
- * 2. Emitted text round-trips through parseTextLesson (lesson name + exercise count match)
+ * 2. Emitted text round-trips through parseTextLessonV2 (lesson name + exercise count match)
  * 3. 401 for unauthenticated, 403 for non-admin, 404 for missing lesson
  * 4. Empty-exercise lesson emits just the lesson header (no exercise blocks)
  *
@@ -16,7 +16,7 @@ import config from '@payload-config'
 
 import { getDefaultTenantSlug } from '@/server/repos/tenant/get-default-tenant'
 import { exportLessonEndpoint } from '@/server/payload/endpoints/lessons/export'
-import { parseTextLesson } from '@/server/services/text-lesson-import/parse-text'
+import { parseTextLessonV2 } from '@/server/services/text-lesson-import/parse-text-v2'
 
 async function ensureDefaultTenant(payload: Payload): Promise<string> {
   const slug = getDefaultTenantSlug()
@@ -171,7 +171,7 @@ describe('Lesson export endpoint', () => {
     await payload.db?.destroy?.()
   })
 
-  it('exports lesson as v1 plain text that round-trips through the parser', async () => {
+  it('exports lesson as v2 plain text that round-trips through the parser', async () => {
     const mockReq = {
       user: { id: 'admin', role: 'admin' },
       payload,
@@ -186,14 +186,12 @@ describe('Lesson export endpoint', () => {
     const body = await (res as Response).text()
     expect(typeof body).toBe('string')
     expect(body.length).toBeGreaterThan(0)
-    // Lesson header + one exercise block per exercise. The v1 parser accepts
-    // `תרגיל N` headers without a `<category>:` prefix, so three empty
-    // exercises still parse as three exercises.
+    // v2 emits bracketed exercise fences: `[ תרגיל N - נתוני פתיחה ]`.
     expect(body).toContain('שם השיעור -')
-    expect(body).toContain('תרגיל 1')
-    expect(body).toContain('תרגיל 3')
+    expect(body).toContain('[ תרגיל 1 - נתוני פתיחה ]')
+    expect(body).toContain('[ תרגיל 3 - נתוני פתיחה ]')
 
-    const parsed = parseTextLesson(body)
+    const parsed = parseTextLessonV2(body)
     expect(parsed.exercises).toHaveLength(3)
     expect(parsed.lessonName).toMatch(/^Export Lesson \d+$/)
   })
@@ -264,9 +262,9 @@ describe('Lesson export endpoint', () => {
     expect(res.status).toBe(200)
     const body = await (res as Response).text()
     // No exercise fences for an empty lesson
-    expect(body).not.toContain('תרגיל 1')
+    expect(body).not.toContain('[ תרגיל 1')
     expect(body).toContain('שם השיעור -')
-    const parsed = parseTextLesson(body)
+    const parsed = parseTextLessonV2(body)
     expect(parsed.exercises).toHaveLength(0)
   })
 })
