@@ -4,8 +4,8 @@
  * LessonExportButton — admin "Export as Text" action on the lesson edit view.
  *
  * Fetches /api/lessons/:id/export and triggers a browser file download. The
- * endpoint returns a .txt file in the v1 format accepted by
- * /admin/lesson-json-import.
+ * endpoint returns a .txt file in the v2 format accepted by
+ * /admin/lesson-json-import. Round-trips through parseTextLessonV2.
  *
  * @fileType component
  * @domain lessons

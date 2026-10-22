@@ -1,75 +1,65 @@
 /**
  * Serializes a canonical lesson export (see to-canonical-format.ts) into the
- * v1 plain-text lesson format consumed by /admin/lesson-json-import (.txt).
+ * v2 plain-text lesson format consumed by /admin/lesson-json-import (.txt).
  *
- * This is the inverse of parseTextLesson in
- * src/server/services/text-lesson-import/parse-text.ts — anything emitted here
- * must round-trip through that parser.
+ * This is the inverse of parseTextLessonV2 in
+ * src/server/services/text-lesson-import/parse-text-v2.ts — anything emitted
+ * here must round-trip through that parser and convertTextExerciseV2ToSections.
  *
  * Shape produced:
  *
  *   שם השיעור - <topic>
- *   קורס - <class>              (only if class is non-empty)
  *
- *   ================================================================================
- *   תרגיל 1 – <lesson topic>
- *   ================================================================================
- *   <exercise intro text>
- *   <exercise-level svg block(s)>
+ *   =========================================
+ *   [ תרגיל 1 - נתוני פתיחה ]
+ *   =========================================
+ *   * טקסט: <exercise intro>
+ *   * שרטוט בסיס:
+ *     --- נקודות --- …
  *
- *   --------------------------------------------------------------------------------
- *   [תרגיל 1 - סעיף א]
- *   --------------------------------------------------------------------------------
- *   <section-level svg block, if any>
- *   * תוכן השאלה: <question text>
- *   * אופציות:
- *     - <option>
- *     - <option>
- *   * פתרון נכון: <correct option text>
+ *   =========================================
+ *   [ תרגיל 1 - סעיף א - Fill-in Table ]
+ *   =========================================
+ *   * סוג השאלה: Fill-in Table
+ *   * הנחיה: <question text>
+ *   * שרטוט מותאם לסעיף:
+ *     --- נקודות --- …
+ *   * מבנה טבלה (עמודות: שלב, טענה, נימוק):
+ *     * שורה 1 | שלב: 1 | טענה: … | נימוק: [ שדה ריק - להשלמה: נתון ]
+ *   * אפשרות N: <text> [תשובה נכונה]       (choice questions)
+ *   * צמד N: <left> <---> <right>          (matching questions)
  *   * רמז: <hint>
  *   * פתרון מלא: <full solution>
  */
 import type {
   CanonicalLessonExport,
+  CanonicalQuestionType,
   CanonicalSection,
+  CanonicalTable,
   CanonicalTextContent,
 } from './to-canonical-format'
 
-const EQ_RULE = '='.repeat(80)
-const DASH_RULE = '-'.repeat(80)
+const EQ_RULE = '='.repeat(41)
+
+const TYPE_LABEL: Record<CanonicalQuestionType, string> = {
+  single_choice: 'Single Choice',
+  multiple_choice: 'Multiple Choice',
+  open_ended: 'Open Ended',
+  matching: 'Matching',
+  table: 'Fill-in Table',
+}
 
 function hasText(c: CanonicalTextContent | undefined): boolean {
   return !!c && typeof c.text === 'string' && c.text.trim().length > 0
 }
 
-function hasSvg(c: CanonicalTextContent | undefined): boolean {
-  return !!c && typeof c.svg === 'string' && c.svg.trim().length > 0
-}
-
-function hasGraphDsl(c: CanonicalTextContent | undefined): boolean {
-  return !!c && typeof c.graphDsl === 'string' && c.graphDsl.trim().length > 0
+function oneLine(value: string): string {
+  return value.replace(/\s*\r?\n\s*/g, ' ').trim()
 }
 
 /**
- * Emit the visual payload for a section/exercise slot. Prefers DSL (which
- * round-trips through parse-function-dsl / parse-geometry-dsl); only falls
- * back to raw SVG when there's no DSL. When both are present, DSL wins —
- * the parser will reconstruct the visual from the structured spec.
- */
-function emitVisual(data: CanonicalTextContent | undefined, out: string[]): void {
-  if (hasGraphDsl(data)) {
-    out.push(data!.graphDsl!.trim())
-    return
-  }
-  if (hasSvg(data)) {
-    out.push(data!.svg)
-  }
-}
-
-/**
- * Emits a `* <field>: <value>` line, allowing multi-line values. The v1
- * parser treats any non-empty line after a field marker as a continuation
- * line, so additional lines flow through naturally.
+ * Emits a `* <field>: <value>` line, allowing multi-line values. The v2
+ * parser appends bare lines after a field marker to that field.
  */
 function emitField(name: string, value: string, out: string[]): void {
   const trimmed = value.replace(/\r\n/g, '\n').trim()
@@ -79,35 +69,92 @@ function emitField(name: string, value: string, out: string[]): void {
   for (let i = 1; i < lines.length; i++) out.push(lines[i])
 }
 
+/**
+ * Emit the visuals of a slot. Geometry rows start with `* `, which the parser
+ * would read as a new top-level field at column 0, so geometry/SVG bodies are
+ * indented. Function DSL (`%%%` fences) goes under its own `גרף` marker.
+ */
+function emitVisuals(
+  data: CanonicalTextContent,
+  sketchField: string,
+  graphField: string,
+  out: string[],
+): void {
+  const geometry = data.geometryDsl?.trim() || (data.functionDsl ? '' : data.svg?.trim())
+  if (geometry) {
+    out.push(`* ${sketchField}:`)
+    for (const line of geometry.split('\n')) out.push(line ? `  ${line}` : line)
+  }
+  const fn = data.functionDsl?.trim()
+  if (fn) {
+    out.push(`* ${graphField}:`)
+    out.push(...fn.split('\n'))
+  }
+}
+
+function resolveType(section: CanonicalSection): CanonicalQuestionType {
+  if (section.question_type) return section.question_type
+  return hasText(section.correct_option) ? 'single_choice' : 'open_ended'
+}
+
+function resolveOptions(section: CanonicalSection): Array<{ text: string; correct: boolean }> {
+  if (section.options && section.options.length > 0) return section.options
+  const out: Array<{ text: string; correct: boolean }> = []
+  if (hasText(section.correct_option))
+    out.push({ text: section.correct_option.text, correct: true })
+  for (const w of section.wrong_options) {
+    if (hasText(w)) out.push({ text: w.text, correct: false })
+  }
+  return out
+}
+
+/**
+ * Rows are labelled by index; every column (including the first) is emitted
+ * by name so labels with spaces don't break the parser's `שורה <token>` rule.
+ */
+function emitTable(table: CanonicalTable, out: string[]): void {
+  if (table.headers.length === 0 || table.rowsData.length === 0) return
+  out.push(`* מבנה טבלה (עמודות: ${table.headers.join(', ')}):`)
+  table.rowsData.forEach((row, r) => {
+    const cells = table.headers.map((header, c) => {
+      const answer = table.answers[`${r}-${c}`]
+      if (typeof answer === 'string' && answer.trim()) {
+        return `${header}: [ שדה ריק - להשלמה: ${oneLine(answer)} ]`
+      }
+      return `${header}: ${oneLine(row[c] ?? '')}`
+    })
+    out.push(`  * שורה ${r + 1} | ${cells.join(' | ')}`)
+  })
+}
+
 function emitSection(exerciseNumber: string, section: CanonicalSection, out: string[]): void {
+  const type = resolveType(section)
+  const label = TYPE_LABEL[type]
+
   out.push('')
-  out.push(DASH_RULE)
-  out.push(`[תרגיל ${exerciseNumber} - סעיף ${section.question_number || ''}]`.trim())
-  out.push(DASH_RULE)
+  out.push(EQ_RULE)
+  out.push(`[ תרגיל ${exerciseNumber} - סעיף ${section.question_number || '?'} - ${label} ]`)
+  out.push(EQ_RULE)
+  out.push(`* סוג השאלה: ${label}`)
 
-  emitVisual(section.section_data, out)
-
-  // The v1 parser ignores bare lines inside a section before the first
-  // `* field:` marker, so section-level intro text would be lost if emitted
-  // on its own. Prepend it to the question text (separated by a blank line)
-  // to keep the round-trip lossless.
+  // Section-level intro text has no slot of its own in v2 — prepend it to
+  // the question so nothing is lost.
   const introText = section.section_data.text?.trim() ?? ''
   const questionText = section.question.text?.trim() ?? ''
-  const combinedQuestion = introText
-    ? questionText
-      ? `${introText}\n\n${questionText}`
-      : introText
-    : questionText
-  emitField('תוכן השאלה', combinedQuestion, out)
+  emitField('הנחיה', [introText, questionText].filter(Boolean).join('\n\n'), out)
 
-  const correctText = section.correct_option.text?.trim() ?? ''
-  const wrongTexts = section.wrong_options.map((o) => o.text?.trim() ?? '').filter(Boolean)
+  emitVisuals(section.section_data, 'שרטוט מותאם לסעיף', 'גרף מותאם לסעיף', out)
 
-  if (correctText || wrongTexts.length > 0) {
-    out.push('* אופציות:')
-    if (correctText) out.push(`  - ${correctText}`)
-    for (const w of wrongTexts) out.push(`  - ${w}`)
-    if (correctText) emitField('פתרון נכון', correctText, out)
+  if (type === 'single_choice' || type === 'multiple_choice') {
+    resolveOptions(section).forEach((o, i) => {
+      out.push(`* אפשרות ${i + 1}: ${oneLine(o.text)}${o.correct ? ' [תשובה נכונה]' : ''}`)
+    })
+  } else if (type === 'matching') {
+    ;(section.matching_pairs ?? []).forEach((p, i) => {
+      out.push(`* צמד ${i + 1}: ${oneLine(p.left)} <---> ${oneLine(p.right)}`)
+    })
+  } else if (type === 'table' && section.table) {
+    emitTable(section.table, out)
   }
 
   if (hasText(section.hint)) emitField('רמז', section.hint.text, out)
@@ -115,38 +162,26 @@ function emitSection(exerciseNumber: string, section: CanonicalSection, out: str
   else if (hasText(section.solution)) emitField('פתרון מלא', section.solution.text, out)
 }
 
-export function serializeLessonToV1Text(canonical: CanonicalLessonExport): string {
+export function serializeLessonToText(canonical: CanonicalLessonExport): string {
   const out: string[] = []
 
   if (canonical.topic) out.push(`שם השיעור - ${canonical.topic}`)
-  if (canonical.class) out.push(`קורס - ${canonical.class}`)
-  if (out.length > 0) out.push('')
 
   for (const ex of canonical.exercises) {
+    out.push('')
     out.push(EQ_RULE)
-    // The v1 parser requires `תרגיל N – <subtopic>` with a dash — a bare
-    // `תרגיל N` is skipped silently. Canonical form doesn't preserve the
-    // original authoring subtopic, so fall back to the lesson topic (and
-    // ultimately the exercise number) to keep the header parseable.
-    const subtopic = canonical.topic?.trim() || `תרגיל ${ex.exercise_number}`
-    out.push(`תרגיל ${ex.exercise_number} – ${subtopic}`)
+    out.push(`[ תרגיל ${ex.exercise_number} - נתוני פתיחה ]`)
     out.push(EQ_RULE)
 
-    const introText = ex.exercise_content.data.text?.trim() ?? ''
-    if (introText) out.push(introText)
-
-    const hasIntroVisual = hasGraphDsl(ex.exercise_content.data) || hasSvg(ex.exercise_content.data)
-    if (hasIntroVisual) {
-      if (introText) out.push('')
-      emitVisual(ex.exercise_content.data, out)
-    }
+    const data = ex.exercise_content.data
+    emitField('טקסט', data.text ?? '', out)
+    emitVisuals(data, 'שרטוט בסיס', 'גרף בסיס', out)
 
     for (const section of ex.exercise_content.sections) {
       emitSection(ex.exercise_number, section, out)
     }
-
-    out.push('')
   }
 
+  out.push('')
   return out.join('\n')
 }
