@@ -97,6 +97,9 @@ export interface Config {
     'exercise-assets': ExerciseAsset;
     'enrollment-progress': EnrollmentProgress;
     enrollments: Enrollment;
+    schools: School;
+    classes: Class;
+    'question-attempts': QuestionAttempt;
     users: User;
     'user-progress': UserProgress;
     'user-stats': UserStat;
@@ -156,6 +159,9 @@ export interface Config {
     'exercise-assets': ExerciseAssetsSelect<false> | ExerciseAssetsSelect<true>;
     'enrollment-progress': EnrollmentProgressSelect<false> | EnrollmentProgressSelect<true>;
     enrollments: EnrollmentsSelect<false> | EnrollmentsSelect<true>;
+    schools: SchoolsSelect<false> | SchoolsSelect<true>;
+    classes: ClassesSelect<false> | ClassesSelect<true>;
+    'question-attempts': QuestionAttemptsSelect<false> | QuestionAttemptsSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
     'user-progress': UserProgressSelect<false> | UserProgressSelect<true>;
     'user-stats': UserStatsSelect<false> | UserStatsSelect<true>;
@@ -500,7 +506,7 @@ export interface Category {
 export interface User {
   id: string;
   name?: string | null;
-  role: 'admin' | 'advanced-content-editor' | 'student';
+  role: 'admin' | 'advanced-content-editor' | 'teacher' | 'student';
   /**
    * Tenant scope for this document (leave empty for global/legacy products)
    */
@@ -3156,6 +3162,61 @@ export interface Enrollment {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "schools".
+ */
+export interface School {
+  id: string;
+  name: string;
+  /**
+   * Tenant scope for this document
+   */
+  tenant: string | Tenant;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "classes".
+ */
+export interface Class {
+  id: string;
+  name: string;
+  school: string | School;
+  course: string | Course;
+  teachers?: (string | User)[] | null;
+  students?: (string | User)[] | null;
+  /**
+   * Tenant scope for this document
+   */
+  tenant: string | Tenant;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "question-attempts".
+ */
+export interface QuestionAttempt {
+  id: string;
+  tenant?: (string | null) | Tenant;
+  user: string | User;
+  lesson: string | Lesson;
+  exercise: string | Exercise;
+  /**
+   * Question block ID within the exercise
+   */
+  block: string;
+  solved?: boolean | null;
+  wrongCount?: number | null;
+  hintCount?: number | null;
+  explanationCount?: number | null;
+  firstAttemptAt?: string | null;
+  solvedAt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "user-progress".
  */
 export interface UserProgress {
@@ -4012,6 +4073,18 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'enrollments';
         value: string | Enrollment;
+      } | null)
+    | ({
+        relationTo: 'schools';
+        value: string | School;
+      } | null)
+    | ({
+        relationTo: 'classes';
+        value: string | Class;
+      } | null)
+    | ({
+        relationTo: 'question-attempts';
+        value: string | QuestionAttempt;
       } | null)
     | ({
         relationTo: 'users';
@@ -4969,6 +5042,49 @@ export interface EnrollmentsSelect<T extends boolean = true> {
         paymentId?: T;
         grantedBy?: T;
       };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "schools_select".
+ */
+export interface SchoolsSelect<T extends boolean = true> {
+  name?: T;
+  tenant?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "classes_select".
+ */
+export interface ClassesSelect<T extends boolean = true> {
+  name?: T;
+  school?: T;
+  course?: T;
+  teachers?: T;
+  students?: T;
+  tenant?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "question-attempts_select".
+ */
+export interface QuestionAttemptsSelect<T extends boolean = true> {
+  tenant?: T;
+  user?: T;
+  lesson?: T;
+  exercise?: T;
+  block?: T;
+  solved?: T;
+  wrongCount?: T;
+  hintCount?: T;
+  explanationCount?: T;
+  firstAttemptAt?: T;
+  solvedAt?: T;
   updatedAt?: T;
   createdAt?: T;
 }
