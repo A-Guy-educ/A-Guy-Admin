@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [v0.61.0] - 2026-10-25
+
 - promote: dev -> main (v0.61.0) ([#699](https://github.com/A-Guy-educ/A-Guy-Admin/pull/699)) — @aguyshayb
 - chore: Release v0.61.0 ([#698](https://github.com/A-Guy-educ/A-Guy-Admin/pull/698)) — @aguyshayb
 - feat: Add teacher role and classroom collections ([#696](https://github.com/A-Guy-educ/A-Guy-Admin/pull/696)) — @aguyshayb
