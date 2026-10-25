@@ -24,6 +24,9 @@ import { CourseSelections } from '@/server/payload/collections/CourseSelections'
 import { ExerciseAssets } from '@/server/payload/collections/ExerciseAssets'
 import { EnrollmentProgress } from '@/server/payload/collections/EnrollmentProgress'
 import { Enrollments } from '@/server/payload/collections/Enrollments'
+import { Classes } from '@/server/payload/collections/Classes'
+import { QuestionAttempts } from '@/server/payload/collections/QuestionAttempts'
+import { Schools } from '@/server/payload/collections/Schools'
 import { Exercises } from '@/server/payload/collections/Exercises'
 import { Sections } from '@/server/payload/collections/Sections'
 import { ExtractionLogs } from '@/server/payload/collections/ExtractionLogs'
@@ -324,6 +327,9 @@ export default buildConfig({
     ExerciseAssets,
     EnrollmentProgress,
     Enrollments,
+    Schools,
+    Classes,
+    QuestionAttempts,
     Users,
     UserProgress,
     UserStats,

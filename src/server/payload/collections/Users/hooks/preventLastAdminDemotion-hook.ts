@@ -4,7 +4,7 @@ import { ValidationError } from 'payload'
 import { AccountRole } from '../roles'
 
 /**
- * beforeChange hook that prevents demoting the last admin to student
+ * beforeChange hook that prevents demoting the last admin to any non-admin role
  * This ensures there's always at least one admin in the system
  */
 export const preventLastAdminDemotion: CollectionBeforeChangeHook = async ({
@@ -13,9 +13,9 @@ export const preventLastAdminDemotion: CollectionBeforeChangeHook = async ({
   operation,
   originalDoc,
 }) => {
-  // Only check on update operations where role is being changed to student
+  // Only check on update operations where role is being changed away from admin
   if (operation !== 'update') return data
-  if (data.role !== AccountRole.Student) return data
+  if (!data.role || data.role === AccountRole.Admin) return data
   if (originalDoc?.role !== AccountRole.Admin) return data
 
   // This admin is being demoted - check if they're the last one
