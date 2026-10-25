@@ -5,6 +5,16 @@
 - feat: Add teacher role and classroom collections ([#696](https://github.com/A-Guy-educ/A-Guy-Admin/pull/696)) — @aguyshayb
 - promote: dev -> main (v0.60.1) ([#692](https://github.com/A-Guy-educ/A-Guy-Admin/pull/692)) — @aguyshayb
 - chore: Release v0.60.1 ([#691](https://github.com/A-Guy-educ/A-Guy-Admin/pull/691)) — @aguyshayb
+## v0.61.0 — 2026-10-25
+
+### Features
+
+- Classroom: add `teacher` account role plus `Schools`, `Classes` and `QuestionAttempts` collections (teacher dashboard groundwork; QuestionAttempts is written by Web) ([#696](https://github.com/A-Guy-educ/A-Guy-Admin/pull/696))
+
+### Bug Fixes
+
+- Classes: limit the class teachers picker to users with the teacher role ([#697](https://github.com/A-Guy-educ/A-Guy-Admin/pull/697))
+
 ## [v0.60.1] - 2026-10-22
 
 - promote: dev -> main (v0.60.1) — @aguyshayb
