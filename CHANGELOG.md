@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- feat: Add teacher role and classroom collections ([#696](https://github.com/A-Guy-educ/A-Guy-Admin/pull/696)) — @aguyshayb
 - promote: dev -> main (v0.60.1) ([#692](https://github.com/A-Guy-educ/A-Guy-Admin/pull/692)) — @aguyshayb
 - chore: Release v0.60.1 ([#691](https://github.com/A-Guy-educ/A-Guy-Admin/pull/691)) — @aguyshayb
 ## [v0.60.1] - 2026-10-22
