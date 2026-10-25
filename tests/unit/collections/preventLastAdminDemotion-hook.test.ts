@@ -42,7 +42,7 @@ describe('preventLastAdminDemotion Hook', () => {
       })
 
       // Execute - expect to throw due to last admin
-      await expect(preventLastAdminDemotion(hookArgs as any)).rejects.toThrow(ValidationError)
+      await expect(preventLastAdminDemotion(hookArgs as never)).rejects.toThrow(ValidationError)
 
       // Assert: This will FAIL because current code uses overrideAccess: false
       expect(mockCount).toHaveBeenCalledWith(expect.objectContaining({ overrideAccess: true }))
@@ -61,7 +61,7 @@ describe('preventLastAdminDemotion Hook', () => {
       })
 
       // Execute & Assert
-      await expect(preventLastAdminDemotion(hookArgs as any)).rejects.toThrow(ValidationError)
+      await expect(preventLastAdminDemotion(hookArgs as never)).rejects.toThrow(ValidationError)
     })
   })
 
@@ -77,7 +77,7 @@ describe('preventLastAdminDemotion Hook', () => {
       })
 
       // Execute
-      const result = await preventLastAdminDemotion(hookArgs as any)
+      const result = await preventLastAdminDemotion(hookArgs as never)
 
       // Assert: Should return data without throwing
       expect(result).toEqual({ role: AccountRole.Student })
@@ -93,7 +93,7 @@ describe('preventLastAdminDemotion Hook', () => {
         originalDoc: undefined,
       })
 
-      await preventLastAdminDemotion(hookArgs as any)
+      await preventLastAdminDemotion(hookArgs as never)
 
       expect(mockCount).not.toHaveBeenCalled()
     })
@@ -107,7 +107,7 @@ describe('preventLastAdminDemotion Hook', () => {
         originalDoc: { role: AccountRole.Admin },
       })
 
-      await preventLastAdminDemotion(hookArgs as any)
+      await preventLastAdminDemotion(hookArgs as never)
 
       expect(mockCount).not.toHaveBeenCalled()
     })
@@ -121,9 +121,26 @@ describe('preventLastAdminDemotion Hook', () => {
         originalDoc: { role: AccountRole.Student },
       })
 
-      await preventLastAdminDemotion(hookArgs as any)
+      await preventLastAdminDemotion(hookArgs as never)
 
       expect(mockCount).not.toHaveBeenCalled()
     })
+  })
+
+  describe('Test 7: should block demoting the last admin to any non-admin role', () => {
+    it.each([AccountRole.Teacher, AccountRole.AdvancedContentEditor])(
+      'should throw when demoting the last admin to %s',
+      async (role) => {
+        mockCount.mockResolvedValue({ totalDocs: 1 })
+
+        const hookArgs = createHookArgs({
+          operation: 'update',
+          data: { role },
+          originalDoc: { role: AccountRole.Admin },
+        })
+
+        await expect(preventLastAdminDemotion(hookArgs as never)).rejects.toThrow(ValidationError)
+      },
+    )
   })
 })

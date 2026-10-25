@@ -9,12 +9,14 @@
  *
  * Values:
  * - admin: Platform administrator with full access
+ * - teacher: Classroom teacher; sees progress of the classes they teach
  * - student: Learner with standard access (default role)
  */
 
 export enum AccountRole {
   Admin = 'admin',
   AdvancedContentEditor = 'advanced-content-editor',
+  Teacher = 'teacher',
   Student = 'student',
 }
 
@@ -41,6 +43,7 @@ export const ALL_ACCOUNT_ROLES: AccountRole[] = Object.values(AccountRole)
 export const ACCOUNT_ROLE_LABEL: Record<AccountRole, string> = {
   [AccountRole.Admin]: 'Admin',
   [AccountRole.AdvancedContentEditor]: 'Advanced Content Editor',
+  [AccountRole.Teacher]: 'Teacher',
   [AccountRole.Student]: 'Student',
 }
 
