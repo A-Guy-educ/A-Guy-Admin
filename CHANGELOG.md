@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- chore: Fix admin-release skill gotchas from v0.61.0 ([#700](https://github.com/A-Guy-educ/A-Guy-Admin/pull/700)) — @aguyshayb
 ## [v0.61.0] - 2026-10-25
 
 - promote: dev -> main (v0.61.0) ([#699](https://github.com/A-Guy-educ/A-Guy-Admin/pull/699)) — @aguyshayb
