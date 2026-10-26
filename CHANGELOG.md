@@ -6,6 +6,14 @@
 - fix: Draw geometry angle markers in pixel space ([#704](https://github.com/A-Guy-educ/A-Guy-Admin/pull/704)) — @aguyshayb
 - fix: Allow admins in class teachers picker ([#703](https://github.com/A-Guy-educ/A-Guy-Admin/pull/703)) — @aguyshayb
 - chore: Fix admin-release skill gotchas from v0.61.0 ([#700](https://github.com/A-Guy-educ/A-Guy-Admin/pull/700)) — @aguyshayb
+## v0.61.1 — 2026-10-26
+
+### Bug Fixes
+
+- Geometry: keep inside angle labels on the shaded area ([#705](https://github.com/A-Guy-educ/A-Guy-Admin/pull/705))
+- Geometry: draw angle markers in pixel space ([#704](https://github.com/A-Guy-educ/A-Guy-Admin/pull/704))
+- Classes: allow admins in the class teachers picker ([#703](https://github.com/A-Guy-educ/A-Guy-Admin/pull/703))
+
 ## [v0.61.0] - 2026-10-25
 
 - promote: dev -> main (v0.61.0) ([#699](https://github.com/A-Guy-educ/A-Guy-Admin/pull/699)) — @aguyshayb
