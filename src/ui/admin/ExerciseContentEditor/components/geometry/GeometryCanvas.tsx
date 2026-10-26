@@ -16,6 +16,7 @@ import { collectEdgeAngles, pickSafeCompassPosition } from '@/infra/utils/graphi
 import {
   ANGLE_LABEL_LAYER,
   angleFillAttrs,
+  angleLabelColor,
   angleLabelCssStyle,
   angleLabelFontSize,
   angleMarkerRadiusPx,
@@ -791,8 +792,7 @@ function syncAngles(
         anchorY: 'middle',
         layer: ANGLE_LABEL_LAYER,
         cssStyle: angleLabelCssStyle(),
-        strokeColor: color,
-        color,
+        strokeColor: angleLabelColor(),
         fixed: false,
         highlight: true,
       })

@@ -3,6 +3,7 @@ import type { GeometrySpecV1 } from '@/infra/contracts'
 import {
   getAdminCanvasBackground,
   getDefaultAngleColor,
+  getDefaultCanvasElementColor,
 } from '@/infra/contracts/graphics/textColors'
 
 type AngleSpec = GeometrySpecV1['elements']['angles'][number]
@@ -41,8 +42,10 @@ const ARC_SAMPLES = 32
 // Renderer fallback stays at 30 so legacy angles saved without an explicit
 // arcRadius don't grow. Author-time default is 50 (set in AnglesPanel).
 const DEFAULT_ARC_RADIUS = 30
-const DEFAULT_LABEL_FONT_SIZE = 12
+const DEFAULT_LABEL_FONT_SIZE = 10
 const LABEL_GAP_PX = 2
+/** Furthest an `inside` label's centre may sit, as a fraction of the marker reach. */
+const INSIDE_MAX_REACH = 0.7
 // JSXGraph layers: lines sit on 7, text on 9. The marker stroke goes above the
 // lines so a side that starts at the vertex never cuts through the arc, and
 // the label goes above everything.
@@ -96,13 +99,16 @@ export function computeAngleMarker(input: AngleMarkerInput): AngleMarker | null 
     reachPx = r
   }
 
-  // Centre the label inside the shaded region when it fits between the rays
-  // and within the marker; otherwise put it just outside on the bisector.
+  // `outside`: just past the marker on the bisector. `inside` (the default):
+  // within the shaded region — at its centroid, pushed out along the bisector
+  // as far as needed to clear the rays, but never past INSIDE_MAX_REACH of the
+  // marker so the label's centre stays on the coloured area even when the
+  // label is bigger than the sector.
+  const outsidePx = reachPx + labelHalfPx + LABEL_GAP_PX
   const centroidPx = square ? reachPx / 2 : (4 * r * halfSin) / (3 * sweep)
-  const fitPx = halfSin > 0 ? labelHalfPx / halfSin : Infinity
-  const insidePx = Math.max(centroidPx, fitPx)
-  const fitsInside = input.labelPosition !== 'outside' && insidePx + labelHalfPx <= reachPx
-  const labelDistPx = fitsInside ? insidePx : reachPx + labelHalfPx + LABEL_GAP_PX
+  const clearRaysPx = halfSin > 0 ? labelHalfPx / halfSin : Infinity
+  const insidePx = Math.min(Math.max(centroidPx, clearRaysPx), reachPx * INSIDE_MAX_REACH)
+  const labelDistPx = input.labelPosition === 'outside' ? outsidePx : insidePx
 
   return {
     outline,
@@ -150,6 +156,13 @@ export function computeSpecAngleMarker(
     labelHalfPx: label ? estimateLabelHalfPx(label, angleLabelFontSize(angle)) : 0,
     labelPosition: angle.label?.position,
   })
+}
+
+/** Labels use the canvas foreground (not the marker colour) — the hardcoded
+ *  value, since the admin theme's --foreground is white in dark mode while the
+ *  board stays white. */
+export function angleLabelColor(): string {
+  return getDefaultCanvasElementColor()
 }
 
 /** Bold Times label with a canvas-coloured halo that masks any side passing
@@ -215,7 +228,7 @@ export function renderAngles(
         highlight: false,
         visible: true,
         layer: ANGLE_LABEL_LAYER,
-        strokeColor: color,
+        strokeColor: angleLabelColor(),
         cssStyle: angleLabelCssStyle(),
       })
     }
