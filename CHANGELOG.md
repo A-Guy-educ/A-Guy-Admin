@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- chore: Release v0.61.1 ([#710](https://github.com/A-Guy-educ/A-Guy-Admin/pull/710)) — @aguyshayb
 - fix: Keep inside angle labels on the shaded area ([#705](https://github.com/A-Guy-educ/A-Guy-Admin/pull/705)) — @aguyshayb
 - fix: Draw geometry angle markers in pixel space ([#704](https://github.com/A-Guy-educ/A-Guy-Admin/pull/704)) — @aguyshayb
 - fix: Allow admins in class teachers picker ([#703](https://github.com/A-Guy-educ/A-Guy-Admin/pull/703)) — @aguyshayb
