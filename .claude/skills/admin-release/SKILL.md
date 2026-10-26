@@ -43,7 +43,9 @@ git status --porcelain
 
 ```bash
 git fetch origin dev main
-LAST_RELEASE_SHA=$(git log origin/dev --grep="^chore: release v" --format="%H" -n 1)
+# -i: release commits are "chore: Release vX.Y.Z" (sentence case for commitlint);
+# a case-sensitive grep silently falls back to a much older release.
+LAST_RELEASE_SHA=$(git log origin/dev -i --grep="^chore: release v" --format="%H" -n 1)
 COMMITS=$(git log --format="%H %s" "${LAST_RELEASE_SHA}..origin/dev")
 FILES_CHANGED=$(git diff --name-only "${LAST_RELEASE_SHA}..origin/dev")
 ```
@@ -102,7 +104,7 @@ Before proposing the version bump, print a review to the user covering:
 6. **DB migration presence** — any files matching `src/migrations/**` or `**/migrations/**`. Payload/Mongo migrations don't auto-run in this project, so a migration in the release set means someone has to run it manually.
 7. **Open PRs targeting `dev` or `main`** — `gh pr list --base dev --state open` and `--base main`. A promotion PR conflicts if someone else has an open `dev → main` PR; a release PR conflicts if there's already an open one.
 8. **CI health of `dev` HEAD** — `gh run list --branch dev --limit 5 --json name,conclusion,headSha`. If the latest run is failing or in-flight, releasing on top would ship a red commit. Halt.
-9. **Version drift** — compare `package.json` version, the latest `chore: release v` commit on `dev`, and `git tag --sort=-v:refname | head -1`. If any three disagree, note it. (As of the skill's authoring, the last git tag was `v0.26.0` but `package.json` was `v0.26.9` — Kody stopped pushing tags. Stage 5 fixes this going forward.)
+9. **Version drift** — compare `package.json` version, the latest `chore: Release v` commit on `dev` (match case-insensitively), and `git tag --sort=-v:refname | head -1`. If any three disagree, note it. (As of the skill's authoring, the last git tag was `v0.26.0` but `package.json` was `v0.26.9` — Kody stopped pushing tags. Stage 5 fixes this going forward.)
 10. **Dependency changes** — `git diff LAST_RELEASE_SHA..origin/dev -- package.json pnpm-lock.yaml` — if any prod deps changed, list them. New deps can shift bundle size or introduce runtime surprises.
 
 ### 0d. Decision gate
@@ -149,16 +151,19 @@ Kody's `release-prepare` has been shipping empty `_No notable commits since the 
 ### 1d. Open the release PR
 
 ```bash
-BRANCH="release/v${NEXT}"
+# The pre-commit hook only allows feat/ fix/ chore/ docs/ refactor/ test/ security/
+# branch prefixes — `release/vX.Y.Z` is rejected.
+BRANCH="chore/release-v${NEXT//./-}"
 git checkout -b "$BRANCH"
 git add package.json CHANGELOG.md
-git commit -m "chore: release v${NEXT}" -m "Bumps package.json to ${NEXT} and updates CHANGELOG."
+# Commitlint requires a sentence-case subject: "Release", not "release".
+git commit -m "chore: Release v${NEXT}" -m "Bumps package.json to ${NEXT} and updates CHANGELOG."
 git push -u origin "$BRANCH"
 
 gh pr create \
   --base dev \
   --head "$BRANCH" \
-  --title "chore: release v${NEXT}" \
+  --title "chore: Release v${NEXT}" \
   --body "$(cat <<EOF
 Automated release PR opened by the admin-release skill.
 
@@ -173,7 +178,7 @@ EOF
 
 Capture the PR number as `RELEASE_PR`.
 
-**Note on Bash tool output capture:** git commit and push may swallow stdout on this machine — see [`../../../CLAUDE_INTERNAL.md#claude-code-bash-tool-git-commitpush-output-not-captured`](../../../CLAUDE_INTERNAL.md) and redirect to `/c/Users/kotz9/git-out.txt` if a command appears to fail silently.
+**Note on Bash tool output capture:** git commit and push may swallow stdout on this machine — see [`../../../CLAUDE_INTERNAL.md#claude-code-bash-tool-git-commitpush-output-not-captured`](../../../CLAUDE_INTERNAL.md) and redirect output to a file if a command appears to fail silently. Use a **session-specific** path (e.g. your scratchpad dir), not the shared `/c/Users/kotz9/git-out.txt` — parallel Claude sessions (e.g. one in A-Guy-Web) overwrite that file, so you can end up reading another repo's hook output. Always confirm with `git log -1` rather than trusting the exit code alone.
 
 ---
 
