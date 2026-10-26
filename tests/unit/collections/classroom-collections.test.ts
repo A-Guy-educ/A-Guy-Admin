@@ -52,9 +52,9 @@ describe('classroom collections contract', () => {
     ])
   })
 
-  it('limits class teachers to teacher-role users', () => {
+  it('limits class teachers to teacher or admin users', () => {
     expect(findField(Classes, 'teachers')?.filterOptions).toEqual({
-      role: { equals: AccountRole.Teacher },
+      role: { in: [AccountRole.Teacher, AccountRole.Admin] },
     })
   })
 

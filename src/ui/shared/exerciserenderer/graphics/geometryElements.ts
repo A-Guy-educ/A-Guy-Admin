@@ -5,8 +5,8 @@ import {
   getDefaultTextColor,
   sizeScaleToPixels,
 } from '@/infra/contracts/graphics/textColors'
-import { computeAngleLabelPos, orderRaysForMinorAngle } from '@/infra/utils/graphics/angle-label'
 import { collectEdgeAngles, pickSafeCompassPosition } from '@/infra/utils/graphics/point-label'
+import { angleMarkerRadiusPx, renderAngles } from './geometryAngleMarkers'
 
 type PointSpec = GeometrySpecV1['elements']['points'][number]
 type LineSpec = GeometrySpecV1['elements']['lines'][number]
@@ -153,73 +153,6 @@ function getBoardScale(board: JXG.Board): { unitX: number; unitY: number } {
   return { unitX: b.unitX || 1, unitY: b.unitY || 1 }
 }
 
-function renderAngles(board: JXG.Board, angles: AngleSpec[], pointMap: Map<string, any>) {
-  for (const a of angles) {
-    const center = pointMap.get(a.center)
-    const ray1 = pointMap.get(a.ray1)
-    const ray2 = pointMap.get(a.ray2)
-    if (!center || !ray1 || !ray2) continue
-
-    const color = a.color || getDefaultAngleColor()
-    const isSquare = a.style === 'square'
-    // Set both `type` and `orthoType` so `style: 'square'` renders as a square
-    // marker regardless of the measured angle. `orthoType` alone only overrides
-    // within `orthoSensitivity` (~1°) of 90°, which silently downgrades
-    // authored non-right square-style angles back to sectors.
-    const shape = isSquare ? 'square' : 'sector'
-    // Renderer fallback stays at 30 so legacy angles saved without an explicit
-    // arcRadius don't grow. Author-time default is 50 (set in the admin editor).
-    const arcRadius = a.arcRadius || 30
-    // Built-in label disabled — the editor renders a separate text element
-    // along the bisector so admins can pick inside/outside placement.
-    // Web mirrors that here so the rendered lesson matches what the editor
-    // shows.
-    // Reorder rays so JSXGraph draws the minor angle, never the reflex one.
-    const [rA, rB] = orderRaysForMinorAngle(center, ray1, ray2)
-    board.create('angle', [rA, center, rB], {
-      radius: arcRadius,
-      type: shape,
-      orthoType: shape,
-      strokeColor: color,
-      fillColor: color,
-      fillOpacity: 0.15,
-      strokeWidth: 2,
-      fixed: true,
-      // Same rationale as segments: parent points may be `visible: false` when
-      // the block wants only arcs/lines visible; without this override the
-      // angle inherits invisibility from its vertex.
-      visible: true,
-      withLabel: false,
-      name: '',
-      label: { visible: false },
-    })
-
-    if (a.label?.value) {
-      const { x, y } = computeAngleLabelPos(
-        getBoardScale(board),
-        center.X(),
-        center.Y(),
-        ray1.X(),
-        ray1.Y(),
-        ray2.X(),
-        ray2.Y(),
-        arcRadius,
-        { position: a.label.position, distance: a.label.distance },
-      )
-      board.create('text', [x, y, a.label.value], {
-        fontSize: a.label.fontSize ?? 12,
-        anchorX: 'middle',
-        anchorY: 'middle',
-        strokeColor: color,
-        color,
-        cssStyle: "font-family: 'Times New Roman', Times, serif;",
-        fixed: true,
-        visible: true,
-      })
-    }
-  }
-}
-
 function renderEqualSegments(
   board: JXG.Board,
   groups: EqualSegmentGroup[],
@@ -316,15 +249,12 @@ function renderEqualAngles(
       // Tangent to arc at bisector = perpendicular to radial direction.
       const tanX = -by
       const tanY = bx
-      const arcRadius = angle.arcRadius || 30
-      // Center of the tick cluster: on the arc along the bisector. JSXGraph's
-      // angle `radius` attribute is in user coordinates, so the arc is drawn
-      // at `arcRadius` user units from the vertex. Move the same distance in
-      // user coords here — dividing by unitX/unitY (as if arcRadius were
-      // pixels) would land the ticks well inside the arc on any board whose
-      // bounding box isn't 1:1 with pixels.
-      const clusterCxU = cxU + bx * arcRadius
-      const clusterCyU = cyU + by * arcRadius
+      // Center of the tick cluster: on the arc along the bisector. The arc is
+      // drawn in pixel space (see geometryAngleMarkers), so step the same
+      // pixel radius here and map back to user coords.
+      const radiusPx = angleMarkerRadiusPx(angle, unitX, unitY)
+      const clusterCxU = cxU + (bx * radiusPx) / unitX
+      const clusterCyU = cyU + (by * radiusPx) / unitY
       const halfLen = EQ_TICK_LENGTH_PX / 2
       for (let k = 0; k < tickCount; k++) {
         const alongPx = (k - (tickCount - 1) / 2) * EQ_TICK_SPACING_PX
