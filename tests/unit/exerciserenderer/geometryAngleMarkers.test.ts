@@ -61,10 +61,23 @@ describe('computeAngleMarker', () => {
     expect(pxDist(marker.labelAt, base)).toBeLessThan(30)
   })
 
-  it('moves the label outside the arc when it cannot fit between narrow rays', () => {
+  it('keeps an inside label on the coloured area even when narrow rays cannot clear it', () => {
+    const input = { ...base, ray2: { x: 10, y: 1 }, labelPosition: 'inside' as const }
+    const marker = computeAngleMarker(input)!
+    expect(pxDist(marker.labelAt, input)).toBeLessThanOrEqual(30 * 0.7 + 1e-9)
+  })
+
+  it('keeps an unset-position label inside too', () => {
     const input = { ...base, ray2: { x: 10, y: 1 } }
     const marker = computeAngleMarker(input)!
-    expect(pxDist(marker.labelAt, input)).toBeGreaterThan(30)
+    expect(pxDist(marker.labelAt, input)).toBeLessThanOrEqual(30 * 0.7 + 1e-9)
+  })
+
+  it('keeps an inside label inside a square marker', () => {
+    const input = { ...base, square: true, labelPosition: 'inside' as const }
+    const marker = computeAngleMarker(input)!
+    // Square reach along the bisector of a 90° marker is 30·√2.
+    expect(pxDist(marker.labelAt, input)).toBeLessThan(30 * Math.SQRT2)
   })
 
   it('honours an explicit outside position', () => {
