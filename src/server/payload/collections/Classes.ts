@@ -60,7 +60,7 @@ export const Classes: CollectionConfig = {
       hasMany: true,
       index: true,
       filterOptions: {
-        role: { equals: AccountRole.Teacher },
+        role: { in: [AccountRole.Teacher, AccountRole.Admin] },
       },
     },
     {
