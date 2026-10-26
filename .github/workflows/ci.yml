@@ -195,7 +195,7 @@ jobs:
 
   e2e-gate:
     name: E2E Gate (PR → main)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04 # Playwright 1.60 has no chromium build for ubuntu-26.04
     needs: [build]
     if: github.event_name == 'pull_request' && github.event.pull_request.base.ref != 'dev' && needs.build.result == 'success'
     timeout-minutes: 20
@@ -293,7 +293,7 @@ jobs:
 
   e2e-system-tests:
     name: E2E System Tests (${{ matrix.shard }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04 # Playwright 1.60 has no chromium build for ubuntu-26.04
     needs: [build]
     if: github.event_name == 'workflow_dispatch' && inputs.run_e2e_tests == true && needs.build.result == 'success'
     timeout-minutes: 15
