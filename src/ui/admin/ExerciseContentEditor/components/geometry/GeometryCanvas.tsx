@@ -8,13 +8,21 @@ import {
   sizeScaleToPixels,
 } from '@/infra/contracts/graphics/textColors'
 import {
-  computeAngleLabelPos,
-  orderRaysForMinorAngle,
   snapAngleLabelPosition,
   type AngleLabelPosition,
   type BoardPixelScale,
 } from '@/infra/utils/graphics/angle-label'
 import { collectEdgeAngles, pickSafeCompassPosition } from '@/infra/utils/graphics/point-label'
+import {
+  ANGLE_LABEL_LAYER,
+  angleFillAttrs,
+  angleLabelCssStyle,
+  angleLabelFontSize,
+  angleMarkerRadiusPx,
+  angleOutlineAttrs,
+  computeSpecAngleMarker,
+  type Vec,
+} from '@/ui/shared/exerciserenderer/graphics/geometryAngleMarkers'
 import type { JXGBoard, JXGElement } from 'jsxgraph'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { JSXGraphBoard } from '../shared/JSXGraphBoard'
@@ -667,6 +675,31 @@ function syncCircles(
   }
 }
 
+/** A curve whose points are recomputed on every board update, so it tracks
+ *  its parent points live (e.g. during a sketch drag). */
+function createLiveMarkerCurve(
+  board: JXGBoard,
+  points: () => Vec[],
+  attrs: Record<string, unknown>,
+): JXGElement {
+  const el = board.create('curve', [[0], [0]], {
+    fixed: true,
+    highlight: false,
+    ...attrs,
+  })
+  const curve = el as unknown as {
+    dataX: number[]
+    dataY: number[]
+    updateDataArray: () => void
+  }
+  curve.updateDataArray = () => {
+    const pts = points()
+    curve.dataX = pts.map((p) => p.x)
+    curve.dataY = pts.map((p) => p.y)
+  }
+  return el
+}
+
 function syncAngles(
   board: JXGBoard,
   geometry: GeometrySpecV1,
@@ -682,6 +715,7 @@ function syncAngles(
     const angle = geometry.elements.angles[i]
     const elemId = `angle-${angle.ray1}-${angle.center}-${angle.ray2}`
     const labelElemId = `anglelabel-${angle.ray1}-${angle.center}-${angle.ray2}`
+    const arcElemId = `anglearc-${angle.ray1}-${angle.center}-${angle.ray2}`
     newIds.add(elemId)
 
     const ray1El = elementsRef.current.get(`point-${angle.ray1}`) as unknown as
@@ -704,8 +738,7 @@ function syncAngles(
       | undefined
     if (!ray1El || !centerEl || !ray2El) continue
 
-    // Always remove and recreate — JSXGraph angle elements don't support
-    // reliable in-place label updates via setAttribute.
+    // Always remove and recreate so style/label changes take effect.
     const existing = elementsRef.current.get(elemId)
     if (existing) {
       board.removeObject(existing)
@@ -717,54 +750,49 @@ function syncAngles(
       elementsRef.current.delete(labelElemId)
     }
 
-    const isSquare = angle.style === 'square'
-    const hasLabel = !!angle.label?.value
-    // Set both `type` and `orthoType` so `style: 'square'` renders as a square
-    // marker regardless of the measured angle — matches the shared renderer.
-    const shape = isSquare ? 'square' : 'sector'
-    // Renderer fallback stays at 30 so legacy angles saved without an explicit
-    // arcRadius don't grow. New-angle authoring defaults to 50 in AnglesPanel.
-    const arcRadius = angle.arcRadius || 30
-    // Reorder rays so JSXGraph draws the minor angle, never the reflex one.
-    const [rA, rB] = orderRaysForMinorAngle(centerEl, ray1El, ray2El)
-    const el = board.create('angle', [rA, centerEl, rB], {
-      radius: arcRadius,
-      type: shape,
-      orthoType: shape,
-      strokeColor: angle.color || getDefaultAngleColor(),
-      fillColor: angle.color || getDefaultAngleColor(),
-      fillOpacity: 0.15,
-      strokeWidth: 2,
-      fixed: true,
-      // The angle's built-in label is disabled — we render our own draggable
-      // text element along the bisector so the admin can pick inside or
-      // outside placement (and drag to flip between the two).
-      withLabel: false,
-      name: '',
-      label: { visible: false } as Record<string, unknown>,
-    })
-    elementsRef.current.set(elemId, el)
+    const existingArc = elementsRef.current.get(arcElemId)
+    if (existingArc) {
+      board.removeObject(existingArc)
+      elementsRef.current.delete(arcElemId)
+    }
 
-    if (hasLabel) {
-      const scale = getBoardScale(board)
-      const { x: lx, y: ly } = computeAngleLabelPos(
-        scale,
-        centerEl.X(),
-        centerEl.Y(),
-        ray1El.X(),
-        ray1El.Y(),
-        ray2El.X(),
-        ray2El.Y(),
-        arcRadius,
-        { position: angle.label!.position, distance: angle.label!.distance },
+    const color = angle.color || getDefaultAngleColor()
+    // Marker is drawn in pixel space (shared with the renderer) so the arc
+    // stays circular when unitX ≠ unitY. Recomputed on every board update so
+    // it tracks the points live during a sketch drag.
+    const liveMarker = () => {
+      const { unitX, unitY } = getBoardScale(board)
+      return computeSpecAngleMarker(
+        angle,
+        { x: centerEl.X(), y: centerEl.Y() },
+        { x: ray1El.X(), y: ray1El.Y() },
+        { x: ray2El.X(), y: ray2El.Y() },
+        unitX,
+        unitY,
       )
-      const labelEl = board.create('text', [lx, ly, angle.label!.value!], {
-        fontSize: angle.label!.fontSize || 12,
+    }
+    elementsRef.current.set(
+      elemId,
+      createLiveMarkerCurve(board, () => liveMarker()?.fill ?? [], angleFillAttrs(color)),
+    )
+    elementsRef.current.set(
+      arcElemId,
+      createLiveMarkerCurve(board, () => liveMarker()?.outline ?? [], angleOutlineAttrs(color)),
+    )
+    newIds.add(arcElemId)
+
+    const labelAt = liveMarker()?.labelAt
+    if (angle.label?.value && labelAt) {
+      // Draggable text (not the marker's built-in label) so the admin can drag
+      // to flip between inside and outside placement.
+      const labelEl = board.create('text', [labelAt.x, labelAt.y, angle.label.value], {
+        fontSize: angleLabelFontSize(angle),
         anchorX: 'middle',
         anchorY: 'middle',
-        cssStyle: "font-family: 'Times New Roman', Times, serif;",
-        strokeColor: angle.color || getDefaultAngleColor(),
-        color: angle.color || getDefaultAngleColor(),
+        layer: ANGLE_LABEL_LAYER,
+        cssStyle: angleLabelCssStyle(),
+        strokeColor: color,
+        color,
         fixed: false,
         highlight: true,
       })
@@ -775,13 +803,14 @@ function syncAngles(
       })
       labelEl.on('up', () => {
         const t = labelEl as unknown as { X: () => number; Y: () => number }
+        const scale = getBoardScale(board)
         const snapped = snapAngleLabelPosition(
-          getBoardScale(board),
+          scale,
           centerEl.X(),
           centerEl.Y(),
           t.X(),
           t.Y(),
-          arcRadius,
+          angleMarkerRadiusPx(angle, scale.unitX, scale.unitY),
         )
         onAngleLabelMovedRef.current?.(capturedIndex, snapped)
         isDraggingRef.current = false
@@ -991,7 +1020,7 @@ function angleTickCoord(
   centerEl: XY,
   ray1El: XY,
   ray2El: XY,
-  arcRadius: number,
+  radiusPx: number,
   tickIndex: number,
   totalTicks: number,
   side: 1 | -1,
@@ -1019,12 +1048,10 @@ function angleTickCoord(
   }
   const tanX = -by
   const tanY = bx
-  // Cluster center: on the arc, at `arcRadius` user units from the vertex.
-  // JSXGraph draws the angle's arc at `radius` user coords (not pixels), so
-  // the tick anchor has to match that or ticks land well inside the arc on
-  // any board whose bounding box isn't 1:1 with pixels.
-  const clusterCxU = cxU + bx * arcRadius
-  const clusterCyU = cyU + by * arcRadius
+  // Cluster center: on the arc, which is drawn `radiusPx` screen pixels from
+  // the vertex (see geometryAngleMarkers).
+  const clusterCxU = cxU + (bx * radiusPx) / unitX
+  const clusterCyU = cyU + (by * radiusPx) / unitY
   const alongPx = (tickIndex - (totalTicks - 1) / 2) * EQ_TICK_SPACING_PX
   const halfLen = (EQ_TICK_LENGTH_PX / 2) * side
   if (axis === 'x') {
@@ -1105,7 +1132,7 @@ function syncEqualAngles(
       const ray1El = elementsRef.current.get(`point-${angle.ray1}`) as unknown as XY | undefined
       const ray2El = elementsRef.current.get(`point-${angle.ray2}`) as unknown as XY | undefined
       if (!centerEl || !ray1El || !ray2El) return
-      const arcRadius = angle.arcRadius || 30
+      const radiusPx = angleMarkerRadiusPx(angle, unitX, unitY)
       for (let k = 0; k < tickCount; k++) {
         const elemId = `eqang-${groupIndex}-${memberIndex}-${k}`
         newIds.add(elemId)
@@ -1123,7 +1150,7 @@ function syncEqualAngles(
                   centerEl,
                   ray1El,
                   ray2El,
-                  arcRadius,
+                  radiusPx,
                   k,
                   tickCount,
                   1,
@@ -1136,7 +1163,7 @@ function syncEqualAngles(
                   centerEl,
                   ray1El,
                   ray2El,
-                  arcRadius,
+                  radiusPx,
                   k,
                   tickCount,
                   1,
@@ -1151,7 +1178,7 @@ function syncEqualAngles(
                   centerEl,
                   ray1El,
                   ray2El,
-                  arcRadius,
+                  radiusPx,
                   k,
                   tickCount,
                   -1,
@@ -1164,7 +1191,7 @@ function syncEqualAngles(
                   centerEl,
                   ray1El,
                   ray2El,
-                  arcRadius,
+                  radiusPx,
                   k,
                   tickCount,
                   -1,
