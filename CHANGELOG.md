@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- fix: Draw geometry angle markers in pixel space ([#704](https://github.com/A-Guy-educ/A-Guy-Admin/pull/704)) — @aguyshayb
 - fix: Allow admins in class teachers picker ([#703](https://github.com/A-Guy-educ/A-Guy-Admin/pull/703)) — @aguyshayb
 - chore: Fix admin-release skill gotchas from v0.61.0 ([#700](https://github.com/A-Guy-educ/A-Guy-Admin/pull/700)) — @aguyshayb
 ## [v0.61.0] - 2026-10-25
