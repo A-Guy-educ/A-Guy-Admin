@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [v0.61.1] - 2026-10-26
+
 - promote: dev -> main (v0.61.1) ([#711](https://github.com/A-Guy-educ/A-Guy-Admin/pull/711)) — @aguyshayb
 - chore: Release v0.61.1 ([#710](https://github.com/A-Guy-educ/A-Guy-Admin/pull/710)) — @aguyshayb
 - fix: Keep inside angle labels on the shaded area ([#705](https://github.com/A-Guy-educ/A-Guy-Admin/pull/705)) — @aguyshayb
