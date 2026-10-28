@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- promote: dev -> main (v0.62.0) ([#726](https://github.com/A-Guy-educ/A-Guy-Admin/pull/726)) — @aguyshayb
 - chore: Release v0.62.0 ([#725](https://github.com/A-Guy-educ/A-Guy-Admin/pull/725)) — @aguyshayb
 - fix(graphics): Make interactive off actually block graph interaction ([#724](https://github.com/A-Guy-educ/A-Guy-Admin/pull/724)) — @aguyshayb
 - fix(build): Cap Next page-data workers to stop Vercel OOM ([#723](https://github.com/A-Guy-educ/A-Guy-Admin/pull/723)) — @aguyshayb
