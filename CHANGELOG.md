@@ -4,6 +4,13 @@
 
 - fix: Lesson text round-trip and axis/geometry editor polish ([#715](https://github.com/A-Guy-educ/A-Guy-Admin/pull/715)) — @aguyshayb
 - fix: Pin E2E CI jobs to ubuntu-24.04 ([#712](https://github.com/A-Guy-educ/A-Guy-Admin/pull/712)) — @aguyshayb
+## v0.61.2 — 2026-10-28
+
+### Bug Fixes
+
+- Lesson editor: fix lesson text round-trip and polish axis/geometry editors ([#715](https://github.com/A-Guy-educ/A-Guy-Admin/pull/715))
+- CI: pin E2E jobs to ubuntu-24.04 ([#712](https://github.com/A-Guy-educ/A-Guy-Admin/pull/712))
+
 ## [v0.61.1] - 2026-10-26
 
 - promote: dev -> main (v0.61.1) ([#711](https://github.com/A-Guy-educ/A-Guy-Admin/pull/711)) — @aguyshayb
