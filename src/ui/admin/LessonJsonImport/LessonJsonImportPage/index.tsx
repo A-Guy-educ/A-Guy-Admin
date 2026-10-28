@@ -10,6 +10,8 @@ import {
   successBannerStyle,
 } from '@/ui/admin/PdfConversion/styles'
 
+import { isFullLessonJson } from '@/infra/contracts/lesson-full-json/v1'
+
 import { ChapterSelector } from '../ChapterSelector'
 
 type ParseStatus = 'valid' | 'invalid'
@@ -145,6 +147,14 @@ function safeParseLesson(json: unknown): {
   error?: string
 } {
   if (typeof json !== 'object' || json === null) return { error: 'JSON root is not an object' }
+  // Lossless full-lesson export ("Export as JSON") — validated block-by-block server-side.
+  if (isFullLessonJson(json)) {
+    const full = json as { lesson?: { title?: unknown }; exercises?: unknown }
+    const count = Array.isArray(full.exercises) ? full.exercises.length : 0
+    if (count === 0) return { error: 'Missing or empty "exercises" array' }
+    const title = typeof full.lesson?.title === 'string' ? full.lesson.title : undefined
+    return { topic: title ?? 'Full lesson export', exerciseCount: count }
+  }
   const obj = json as { topic?: unknown; exercises?: unknown }
   const topic = typeof obj.topic === 'string' ? obj.topic : undefined
   const exercises = Array.isArray(obj.exercises) ? obj.exercises : null
