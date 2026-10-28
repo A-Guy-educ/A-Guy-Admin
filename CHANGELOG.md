@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [v0.61.2] - 2026-10-28
+
 - promote: dev -> main (v0.61.2) ([#717](https://github.com/A-Guy-educ/A-Guy-Admin/pull/717)) — @aguyshayb
 - chore: Release v0.61.2 ([#716](https://github.com/A-Guy-educ/A-Guy-Admin/pull/716)) — @aguyshayb
 - fix: Lesson text round-trip and axis/geometry editor polish ([#715](https://github.com/A-Guy-educ/A-Guy-Admin/pull/715)) — @aguyshayb
