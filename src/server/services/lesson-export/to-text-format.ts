@@ -14,6 +14,7 @@
  *   [ תרגיל 1 - נתוני פתיחה ]
  *   =========================================
  *   * טקסט: <exercise intro>
+ *   * טקסט שרטוט: <text written on the sketch block itself>
  *   * שרטוט בסיס:
  *     --- נקודות --- …
  *
@@ -94,6 +95,11 @@ function emitVisuals(
   }
 }
 
+/** Text written on the sketch block itself — reimported onto the same block. */
+function emitVisualText(data: CanonicalTextContent, out: string[]): void {
+  if (data.visualText) emitField('טקסט שרטוט', data.visualText, out)
+}
+
 function resolveType(section: CanonicalSection): CanonicalQuestionType {
   if (section.question_type) return section.question_type
   return hasText(section.correct_option) ? 'single_choice' : 'open_ended'
@@ -148,6 +154,7 @@ function emitSection(exerciseNumber: string, section: CanonicalSection, out: str
   // Standalone section blocks vs. the question's own attachment use separate
   // markers so reimport rebuilds the same block layout.
   emitVisuals(section.section_data, 'שרטוט עצמאי לסעיף', 'גרף עצמאי לסעיף', out)
+  emitVisualText(section.section_data, out)
   emitVisuals(section.question, 'שרטוט מותאם לסעיף', 'גרף מותאם לסעיף', out)
 
   if (type === 'single_choice' || type === 'multiple_choice') {
@@ -181,6 +188,7 @@ export function serializeLessonToText(canonical: CanonicalLessonExport): string 
     const data = ex.exercise_content.data
     emitField('טקסט', data.text ?? '', out)
     emitVisuals(data, 'שרטוט בסיס', 'גרף בסיס', out)
+    emitVisualText(data, out)
 
     for (const section of ex.exercise_content.sections) {
       emitSection(ex.exercise_number, section, out)

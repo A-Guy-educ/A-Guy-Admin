@@ -63,6 +63,12 @@ export interface CanonicalTextContent {
   geometryDsl?: string
   /** Function-graph part of graphDsl — v2 text emits it under `* גרף …:`. */
   functionDsl?: string
+  /**
+   * Text written on a standalone geometry/axis block (its `prompt`). Kept
+   * apart from `text` so reimport puts it back on the sketch instead of a
+   * separate rich_text block. v2 text emits it under `* טקסט שרטוט:`.
+   */
+  visualText?: string
 }
 
 export type CanonicalQuestionType =
@@ -534,6 +540,13 @@ function sectionDocToCanonical(
   }
 
   let seenQuestion = false
+  // A geometry/axis block with text only plays the question role when the
+  // section has no real question block; otherwise it's a sketch with text
+  // and the real question (e.g. an MCQ after it) must not be dropped.
+  const hasNonVisualQuestion = blocks.some(
+    (b) => !isQuestionGeometryBlock(b) && !isQuestionAxisBlock(b) && !!extractQuestionContent(b),
+  )
+  const visualTexts: string[] = []
 
   for (let blockIndex = 0; blockIndex < blocks.length; blockIndex++) {
     const block = blocks[blockIndex]
@@ -562,6 +575,10 @@ function sectionDocToCanonical(
       // Visual-only geometry (empty prompt) MUST NOT consume the question
       // role — the real question block comes next in the section.
       if (!hasInlineRichText(block.prompt)) continue
+      if (hasNonVisualQuestion) {
+        visualTexts.push(block.prompt.value.trim())
+        continue
+      }
       if (seenQuestion) continue
       seenQuestion = true
       const qc = extractQuestionContent(block)
@@ -582,6 +599,10 @@ function sectionDocToCanonical(
         renderFailures,
       )
       if (!hasInlineRichText(block.prompt)) continue
+      if (hasNonVisualQuestion) {
+        visualTexts.push(block.prompt.value.trim())
+        continue
+      }
       if (seenQuestion) continue
       seenQuestion = true
       const qc = extractQuestionContent(block)
@@ -619,6 +640,7 @@ function sectionDocToCanonical(
     table: null,
     PNG: '',
     ...visualFields(visual),
+    ...(visualTexts.length > 0 ? { visualText: visualTexts.join('\n\n') } : {}),
   }
 
   return { section, renderedSvgCount, renderFailures }
@@ -650,6 +672,7 @@ export function exerciseWithSectionsToCanonical(
   const exerciseBlocks = exerciseContent?.blocks || []
 
   const introTexts: string[] = []
+  const visualTexts: string[] = []
   const visual = newVisualBucket()
   let renderedSvgCount = 0
   const renderFailures: Array<{ blockIndex: number; blockType: string; issues: string[] }> = []
@@ -671,6 +694,7 @@ export function exerciseWithSectionsToCanonical(
         visual,
         renderFailures,
       )
+      if (hasInlineRichText(block.prompt)) visualTexts.push(block.prompt.value.trim())
     } else if (isQuestionGeometryBlock(block)) {
       renderedSvgCount += serializeGeometry(
         block.geometry,
@@ -679,6 +703,7 @@ export function exerciseWithSectionsToCanonical(
         visual,
         renderFailures,
       )
+      if (hasInlineRichText(block.prompt)) visualTexts.push(block.prompt.value.trim())
     }
     // Other question blocks at the exercise level are ignored — modern
     // exercises keep questions on child sections.
@@ -702,6 +727,7 @@ export function exerciseWithSectionsToCanonical(
           table: null,
           PNG: '',
           ...visualFields(visual),
+          ...(visualTexts.length > 0 ? { visualText: visualTexts.join('\n\n') } : {}),
         },
         sections,
       },
