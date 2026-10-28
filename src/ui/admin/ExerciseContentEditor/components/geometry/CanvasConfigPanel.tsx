@@ -7,9 +7,17 @@ import { getDefaultCanvasBackground } from '@/infra/contracts/graphics/textColor
 interface CanvasConfigPanelProps {
   canvas: GeometrySpecV1['canvas']
   onChange: (canvas: GeometrySpecV1['canvas']) => void
+  /** Spec-level `interactive` flag; omitted in the spec means interactive. */
+  interactive: boolean
+  onInteractiveChange: (interactive: boolean) => void
 }
 
-export const CanvasConfigPanel: React.FC<CanvasConfigPanelProps> = ({ canvas, onChange }) => {
+export const CanvasConfigPanel: React.FC<CanvasConfigPanelProps> = ({
+  canvas,
+  onChange,
+  interactive,
+  onInteractiveChange,
+}) => {
   return (
     <div className="canvas-config-panel">
       <div className="canvas-config-row">
@@ -51,6 +59,17 @@ export const CanvasConfigPanel: React.FC<CanvasConfigPanelProps> = ({ canvas, on
             onChange={(e) => onChange({ ...canvas, grid: e.target.checked })}
           />
           Grid
+        </label>
+        <label
+          className="panel-checkbox-label"
+          title="Students can hover, click and drag elements. Off = static picture."
+        >
+          <input
+            type="checkbox"
+            checked={interactive}
+            onChange={(e) => onInteractiveChange(e.target.checked)}
+          />
+          Interactive
         </label>
       </div>
     </div>

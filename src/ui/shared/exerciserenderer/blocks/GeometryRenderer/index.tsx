@@ -87,6 +87,7 @@ export function GeometryRenderer({ blockId, spec }: GeometryRendererProps) {
         showGrid={canvas.grid ?? false}
         showAxis={canvas.axis ?? false}
         onBoardReady={handleBoardReady}
+        interactive={spec.interactive !== false}
         className="border-border"
       />
     </div>
