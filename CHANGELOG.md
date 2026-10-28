@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- fix(graphics): Make interactive off actually block graph interaction ([#724](https://github.com/A-Guy-educ/A-Guy-Admin/pull/724)) — @aguyshayb
 - fix(build): Cap Next page-data workers to stop Vercel OOM ([#723](https://github.com/A-Guy-educ/A-Guy-Admin/pull/723)) — @aguyshayb
 - feat: Lossless full-lesson JSON export and import ([#722](https://github.com/A-Guy-educ/A-Guy-Admin/pull/722)) — @aguyshayb
 - fix(graphics): Honor manual axis viewport ranges as entered ([#721](https://github.com/A-Guy-educ/A-Guy-Admin/pull/721)) — @aguyshayb
