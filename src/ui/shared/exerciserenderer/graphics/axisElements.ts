@@ -1,7 +1,7 @@
 import { parse as parseMath } from 'mathjs'
 
 import type { AxisSpecV1 } from '@/infra/contracts'
-import { getDefaultTextColor } from '@/infra/contracts/graphics/textColors'
+import { getDefaultAxisPointColor } from '@/infra/contracts/graphics/textColors'
 import { parseMathExpression } from '../utils/safeMathEval'
 
 type GraphSpec = AxisSpecV1['elements']['graphs'][number]
@@ -70,12 +70,11 @@ function renderAxisPoints(board: JXG.Board, points: PointSpec[]) {
           fontFamily: 'Times New Roman',
         },
       }
-      if (p.color) {
-        attrs.strokeColor = p.color
-        attrs.fillColor = p.type === 'hole' ? '#ffffff' : p.color
-      } else {
-        attrs.fillColor = p.type === 'hole' ? '#ffffff' : getDefaultTextColor()
-      }
+      // Same default as the admin editor; stroke always matches the fill so
+      // there's no JSXGraph-default outline around uncolored points.
+      const color = p.color || getDefaultAxisPointColor()
+      attrs.strokeColor = color
+      attrs.fillColor = p.type === 'hole' ? '#ffffff' : color
       if (p.type === 'hole') {
         attrs.strokeWidth = 2
       }

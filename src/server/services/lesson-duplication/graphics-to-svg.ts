@@ -7,6 +7,7 @@
 
 import { GeometrySpecV1Schema } from '@/infra/contracts/graphics/geometry.v1'
 import { AxisSpecV1Schema } from '@/infra/contracts/graphics/axis.v1'
+import { lineLabelFontSize } from '@/infra/utils/graphics/line-label'
 import { parse } from 'mathjs'
 
 // -------------------------------------------
@@ -158,7 +159,7 @@ export function geometrySpecToSvg(spec: unknown): string {
       const midX = (x1 + x2) / 2
       const midY = (y1 + y2) / 2
       parts.push(
-        `<text x="${midX}" y="${midY - 5}" font-size="${line.label.fontSize ?? 10}" fill="${escapeXml(color)}" text-anchor="middle" font-family="Times New Roman">${escapeXml(line.label.value)}</text>`,
+        `<text x="${midX}" y="${midY - 3.5}" font-size="${lineLabelFontSize(line.label.fontSize)}" fill="${escapeXml(color)}" text-anchor="middle" font-family="Times New Roman">${escapeXml(line.label.value)}</text>`,
       )
     }
   }

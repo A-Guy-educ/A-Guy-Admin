@@ -61,6 +61,10 @@ const DEFAULT_STYLE: LineStyle = 'solid'
 const VIEWPORT_PAD_RATIO = 0.15
 
 const SECTION_SEP_RE = /^\s*%%%\s*$/
+// The lesson exporter (axis-spec-to-dsl.ts) wraps the body in
+// `<function>…</function>` tags. Without dropping them, `<function>` becomes
+// the "elements" section and every real element is misread as a setting.
+const FUNCTION_TAG_RE = /^\s*<\/?function>\s*$/i
 const KV_RE = /^\s*([A-Za-z_][A-Za-z0-9_]*)\s*:\s*(.*)$/
 const NUMBER_TOKEN = String.raw`-?\d+(?:\.\d+)?(?:\/-?\d+(?:\.\d+)?)?`
 const RANGE_RE = new RegExp(`^\\[\\s*(${NUMBER_TOKEN})\\s*,\\s*(${NUMBER_TOKEN})\\s*\\]$`)
@@ -98,6 +102,7 @@ function splitSections(input: string): string[] {
   const lines = input.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n')
   const sections: string[][] = [[]]
   for (const line of lines) {
+    if (FUNCTION_TAG_RE.test(line)) continue
     if (SECTION_SEP_RE.test(line)) {
       sections.push([])
       continue

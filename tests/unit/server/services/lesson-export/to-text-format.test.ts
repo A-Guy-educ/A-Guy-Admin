@@ -138,7 +138,7 @@ describe('serializeLessonToText', () => {
     expect(section.options).toEqual([])
   })
 
-  it('emits a section-level SVG under the section sketch marker', () => {
+  it('emits a standalone section SVG under the standalone sketch marker', () => {
     const svg = '<svg width="10" height="10" xmlns="http://www.w3.org/2000/svg"></svg>'
     const text = serializeLessonToText(
       singleSectionLesson({
@@ -146,11 +146,58 @@ describe('serializeLessonToText', () => {
         question: fromText('What shape?'),
       }),
     )
+    expect(text).toContain('* שרטוט עצמאי לסעיף:')
+    expect(text).not.toContain('* שרטוט מותאם לסעיף:')
+
+    const section = parseTextLessonV2(text).exercises[0].sections[0]
+    expect(section.standaloneSvg).toContain('<svg')
+    expect(section.svg).toBeUndefined()
+    expect(section.question).toBe('What shape?')
+  })
+
+  it('emits a question-attached SVG under the section sketch marker', () => {
+    const svg = '<svg width="10" height="10" xmlns="http://www.w3.org/2000/svg"></svg>'
+    const text = serializeLessonToText(
+      singleSectionLesson({ question: { text: 'What shape?', table: null, PNG: '', svg } }),
+    )
     expect(text).toContain('* שרטוט מותאם לסעיף:')
 
     const section = parseTextLessonV2(text).exercises[0].sections[0]
     expect(section.svg).toContain('<svg')
-    expect(section.question).toBe('What shape?')
+    expect(section.standaloneSvg).toBeUndefined()
+  })
+
+  it('round-trips a standalone svg block followed by a question without attaching it', () => {
+    const svg = '<svg width="10" height="10" xmlns="http://www.w3.org/2000/svg"></svg>'
+    const text = exportSectionBlocks([
+      { id: 's1', type: 'svg', value: svg },
+      {
+        id: 'q1',
+        type: 'question_free_response',
+        prompt: inline('Find AC'),
+        answer: { acceptedAnswers: ['5'] },
+      },
+    ])
+    const converted = convertTextExerciseV2ToSections(parseTextLessonV2(text).exercises[0])
+    const blocks = converted.sections[0].blocks as Array<{ type: string; attachment?: unknown }>
+    expect(blocks.map((b) => b.type)).toEqual(['svg', 'question_free_response'])
+    expect(blocks[1].attachment).toBeUndefined()
+  })
+
+  it('round-trips a question svg attachment as an attachment', () => {
+    const svg = '<svg width="10" height="10" xmlns="http://www.w3.org/2000/svg"></svg>'
+    const text = exportSectionBlocks([
+      {
+        id: 'q1',
+        type: 'question_free_response',
+        prompt: inline('Find AC'),
+        answer: { acceptedAnswers: ['5'] },
+        attachment: { kind: 'svg', layout: 'textRight', svg: { value: svg } },
+      },
+    ])
+    const block = reimportFirstBlock(text) as { type: string; attachment?: { kind: string } }
+    expect(block.type).toBe('question_free_response')
+    expect(block.attachment?.kind).toBe('svg')
   })
 
   it('omits empty hint, solution, and options fields entirely', () => {

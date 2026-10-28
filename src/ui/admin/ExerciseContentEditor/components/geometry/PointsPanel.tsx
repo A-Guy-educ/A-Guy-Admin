@@ -4,6 +4,7 @@ import React from 'react'
 import type { GeometrySpecV1 } from '@/infra/contracts/graphics/geometry.v1'
 import { getDefaultCanvasElementColor } from '@/infra/contracts/graphics/textColors'
 import { Plus, Trash2 } from 'lucide-react'
+import { BulkPointSizeControl } from '../shared/BulkPointSizeControl'
 import { ColorSwatchPicker } from '../shared/ColorSwatchPicker'
 import { CompassPositionPicker } from '../shared/CompassPositionPicker'
 
@@ -51,8 +52,20 @@ export const PointsPanel: React.FC<PointsPanelProps> = ({ points, onChange }) =>
     onChange(points.map((p, i) => (i === index ? { ...p, ...updates } : p)))
   }
 
+  const handleSetAllSizes = (size: number) => {
+    onChange(points.map((p) => ({ ...p, size })))
+  }
+
   return (
     <div className="points-panel">
+      {points.length > 0 && (
+        <BulkPointSizeControl
+          min={1}
+          max={5}
+          initialSize={points[0].size ?? DEFAULT_POINT_SIZE}
+          onApply={handleSetAllSizes}
+        />
+      )}
       <div className="panel-items-list">
         {points.map((point, index) => (
           <div key={index} className="panel-item-row">

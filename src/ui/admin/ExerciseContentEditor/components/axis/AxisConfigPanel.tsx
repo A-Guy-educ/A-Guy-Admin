@@ -150,16 +150,6 @@ export const AxisConfigPanel: React.FC<AxisConfigPanelProps> = ({ spec, onChange
             }}
           />
         </div>
-        <div className="panel-field">
-          <span className="panel-field-label">Ticks</span>
-          <input
-            type="number"
-            className="panel-field-input"
-            value={spec.axes.ticks}
-            min={0}
-            onChange={(e) => updateAxes({ ticks: Number(e.target.value) || 0 })}
-          />
-        </div>
         <label className="panel-checkbox-label">
           <input
             type="checkbox"

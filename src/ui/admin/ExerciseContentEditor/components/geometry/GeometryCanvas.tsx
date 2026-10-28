@@ -12,6 +12,7 @@ import {
   type AngleLabelPosition,
   type BoardPixelScale,
 } from '@/infra/utils/graphics/angle-label'
+import { LINE_LABEL_OFFSET_RATIO, lineLabelFontSize } from '@/infra/utils/graphics/line-label'
 import { collectEdgeAngles, pickSafeCompassPosition } from '@/infra/utils/graphics/point-label'
 import {
   ANGLE_LABEL_LAYER,
@@ -592,8 +593,8 @@ function syncLineLabels(
 
     const f = fromEl as unknown as { X: () => number; Y: () => number }
     const t = toEl as unknown as { X: () => number; Y: () => number }
-    // Scale offset to ~3% of canvas height so it's visible on large coordinate spaces
-    const baseOffset = geometry.canvas.height * 0.03
+    // Scale offset to canvas height so it's visible on large coordinate spaces
+    const baseOffset = geometry.canvas.height * LINE_LABEL_OFFSET_RATIO
     const userSign = line.label.position === 'b' ? -1 : 1
     // Compute offsetDist dynamically so dragging a point past a direction flip
     // keeps the label on the same screen side as the user requested, rather
@@ -620,7 +621,7 @@ function syncLineLabels(
         line.label.value,
       ],
       {
-        fontSize: line.label.fontSize || 10,
+        fontSize: lineLabelFontSize(line.label.fontSize),
         anchorX: 'middle',
         anchorY: 'middle',
         display: 'internal',
