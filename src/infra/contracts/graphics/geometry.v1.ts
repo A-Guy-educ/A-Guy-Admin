@@ -201,6 +201,13 @@ export const GeometrySpecV1Schema = z
     kind: z.literal('euclidean'),
     canvas: CanvasSchema,
     elements: GeometryElementsSchema,
+    /**
+     * Whether students can interact with the board (hover highlights,
+     * dragging non-fixed elements, shift-pan). Omitted = interactive, so
+     * content saved before this flag existed keeps its behavior; `false`
+     * renders a static picture.
+     */
+    interactive: z.boolean().optional(),
     interactionSpec: GeometryInteractionSpecSchema,
   })
   .strict()
