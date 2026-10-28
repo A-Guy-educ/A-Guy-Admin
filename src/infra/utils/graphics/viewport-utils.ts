@@ -424,65 +424,6 @@ export function checkGraphVisibility(
 }
 
 /**
- * Fraction of the manual viewport each dimension's anchor content must
- * fill to be considered "well fit". Anything less and the viewport is
- * mostly empty space on that axis — we tighten it to the anchor content
- * plus padding.
- *
- * The generator (parse-function-block-v2) tends to emit symmetric or
- * generously-wide ranges (e.g. `X Min: -6, X Max: 6, Y Min: -6, Y Max: 23`)
- * even when every point and line in the spec lives in the first quadrant.
- * Without this tightening, students see 60–80% empty space around the
- * content and the block renders as a thin strip because the pixel aspect
- * ratio follows the wasted viewport, not the content.
- */
-const WASTE_THRESHOLD = 0.5
-const TIGHTEN_PADDING_RATIO = 0.25
-
-/**
- * Tighten a manual viewport toward anchor content (points + line endpoints
- * + explicit asymptotes) when content occupies less than WASTE_THRESHOLD
- * of the viewport span in a given dimension. Each axis is tightened
- * independently; axes that are already well-fit are left untouched.
- *
- * We only tighten based on *anchor* content, not on sampled graph values,
- * so an author who sets a wide X range specifically to show a function's
- * long-term behavior isn't contradicted — their intent is read from the
- * anchors they placed.
- */
-function tightenManualViewport(spec: AxisSpecV1, manual: ViewportBounds): ViewportBounds {
-  const anchor = collectAnchorBounds(spec)
-  if (!anchor) return manual
-
-  const xViewportSpan = manual.xMax - manual.xMin
-  const yViewportSpan = manual.yMax - manual.yMin
-  if (xViewportSpan <= 0 || yViewportSpan <= 0) return manual
-
-  const xAnchorSpan = anchor.xMax - anchor.xMin
-  const yAnchorSpan = anchor.yMax - anchor.yMin
-
-  const xWasteful = xAnchorSpan / xViewportSpan < WASTE_THRESHOLD
-  const yWasteful = yAnchorSpan / yViewportSpan < WASTE_THRESHOLD
-
-  if (!xWasteful && !yWasteful) return manual
-
-  // Minimum of 1 unit of padding so a near-degenerate anchor (two points
-  // sharing an x or y) still renders with breathing room.
-  const xPad = Math.max(1, xAnchorSpan * TIGHTEN_PADDING_RATIO)
-  const yPad = Math.max(1, yAnchorSpan * TIGHTEN_PADDING_RATIO)
-
-  // When tightening, pull each edge inward toward anchor+padding — but
-  // never past the anchor (would clip content) and never outside the
-  // manual bound (don't widen beyond author's choice on the other side).
-  return {
-    xMin: xWasteful ? Math.max(manual.xMin, anchor.xMin - xPad) : manual.xMin,
-    xMax: xWasteful ? Math.min(manual.xMax, anchor.xMax + xPad) : manual.xMax,
-    yMin: yWasteful ? Math.max(manual.yMin, anchor.yMin - yPad) : manual.yMin,
-    yMax: yWasteful ? Math.min(manual.yMax, anchor.yMax + yPad) : manual.yMax,
-  }
-}
-
-/**
  * Max allowed ratio between the longer and shorter viewport dimension.
  * The pixel container in `computeBoardSize` matches the viewport aspect
  * so grid squares stay square — but when the aspect is extreme the
@@ -516,8 +457,7 @@ function hasAnyRenderableContent(spec: AxisSpecV1): boolean {
 /**
  * Expand the shorter dimension symmetrically so neither axis is more
  * than MAX_VIEWPORT_ASPECT times the other. Never shrinks — the input
- * viewport is treated as a floor, so anchor content stays visible even
- * if the aspect clamp fires after a tightening step.
+ * viewport is treated as a floor, so anchor content always stays visible.
  */
 function clampViewportAspect(viewport: ViewportBounds): ViewportBounds {
   const xSpan = viewport.xMax - viewport.xMin
@@ -567,10 +507,13 @@ export function resolveViewport(spec: AxisSpecV1): ViewportBounds {
       yMin: spec.viewport!.yMin!,
       yMax: spec.viewport!.yMax!,
     }
-    const tightened = tightenManualViewport(spec, manual)
+    // Honor the author's range as entered — no tightening toward anchor
+    // content. Import-time baking (`withFeaturePointViewport`) already
+    // fits generated viewports; tightening here silently overrode ranges
+    // admins set on purpose (e.g. extending x past the origin).
     // Skip aspect clamp when the spec is empty — the author's declared
     // viewport is the only signal we have about what they want to show.
-    return hasAnyRenderableContent(spec) ? clampViewportAspect(tightened) : tightened
+    return hasAnyRenderableContent(spec) ? clampViewportAspect(manual) : manual
   }
 
   // Auto path: clamp when there's content; otherwise `calculateAutoViewport`
