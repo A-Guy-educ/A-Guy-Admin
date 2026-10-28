@@ -46,22 +46,22 @@ function richTextBlock(value: string): RichTextBlock {
 // the schema types it optional).
 const DEFAULT_DISPLAY_SIZE = 'medium' as const
 
-function standaloneGeometryBlock(geometry: GeometrySpecV1): QuestionGeometryBlock {
+function standaloneGeometryBlock(geometry: GeometrySpecV1, text = ''): QuestionGeometryBlock {
   return {
     id: generateId(),
     type: 'question_geometry',
-    prompt: inlineRichText(''),
+    prompt: inlineRichText(text),
     layout: 'textRight',
     geometry,
     displaySize: DEFAULT_DISPLAY_SIZE,
   }
 }
 
-function standaloneAxisBlock(axis: AxisSpecV1): QuestionAxisBlock {
+function standaloneAxisBlock(axis: AxisSpecV1, text = ''): QuestionAxisBlock {
   return {
     id: generateId(),
     type: 'question_axis',
-    prompt: inlineRichText(''),
+    prompt: inlineRichText(text),
     layout: 'textRight',
     // Viewport baked at import time — see note in convert-exercise.ts
     // (JSON importer) and convert-text-exercise.ts (v1 text importer).
@@ -313,11 +313,37 @@ function buildTableBlock(section: TextSectionV2): QuestionTableBlock | null {
  * attaches to the question block.
  */
 function standaloneSectionBlocks(section: TextSectionV2): ContentBlock[] {
+  return visualBlocks(
+    section.sketchText,
+    section.standaloneSvg,
+    section.standaloneGeometry,
+    section.standaloneFunctionGraph,
+  )
+}
+
+/**
+ * Standalone visual blocks plus the text written on them (`* טקסט שרטוט:`).
+ * The text goes on the first geometry/axis block's prompt; svg blocks have
+ * no prompt, so with no such block it falls back to its own rich_text.
+ */
+function visualBlocks(
+  sketchText: string | undefined,
+  svg: string | undefined,
+  geometry: GeometrySpecV1 | undefined,
+  axis: AxisSpecV1 | undefined,
+): ContentBlock[] {
   const out: ContentBlock[] = []
-  if (section.standaloneSvg) out.push(svgBlock(section.standaloneSvg))
-  if (section.standaloneGeometry) out.push(standaloneGeometryBlock(section.standaloneGeometry))
-  if (section.standaloneFunctionGraph)
-    out.push(standaloneAxisBlock(section.standaloneFunctionGraph))
+  let text = sketchText ?? ''
+  if (svg) out.push(svgBlock(svg))
+  if (geometry) {
+    out.push(standaloneGeometryBlock(geometry, text))
+    text = ''
+  }
+  if (axis) {
+    out.push(standaloneAxisBlock(axis, text))
+    text = ''
+  }
+  if (text) out.unshift(richTextBlock(text))
   return out
 }
 
@@ -369,11 +395,19 @@ export function convertTextExerciseV2ToSections(exercise: TextExerciseV2): Conve
   // drawing in every section. Only one visual kind is expected per exercise;
   // if the author somehow supplies more than one we prefer SVG → geometry →
   // function graph (SVG is the most opaque so if it exists it's intentional).
-  if (exercise.sharedSvg) sharedBlocks.push(svgBlock(exercise.sharedSvg))
+  if (exercise.sharedSvg)
+    sharedBlocks.push(
+      ...visualBlocks(exercise.sketchText, exercise.sharedSvg, undefined, undefined),
+    )
   else if (exercise.sharedGeometry)
-    sharedBlocks.push(standaloneGeometryBlock(exercise.sharedGeometry))
+    sharedBlocks.push(
+      ...visualBlocks(exercise.sketchText, undefined, exercise.sharedGeometry, undefined),
+    )
   else if (exercise.sharedFunctionGraph)
-    sharedBlocks.push(standaloneAxisBlock(exercise.sharedFunctionGraph))
+    sharedBlocks.push(
+      ...visualBlocks(exercise.sketchText, undefined, undefined, exercise.sharedFunctionGraph),
+    )
+  else if (exercise.sketchText) sharedBlocks.push(richTextBlock(exercise.sketchText))
 
   return {
     sharedBlocks,

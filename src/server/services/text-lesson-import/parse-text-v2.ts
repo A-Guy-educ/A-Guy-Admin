@@ -110,6 +110,8 @@ export interface TextSectionV2 {
   standaloneGeometry?: GeometrySpecV1
   standaloneSvg?: string
   standaloneFunctionGraph?: AxisSpecV1
+  /** Text written on the standalone section sketch (`* טקסט שרטוט:`). */
+  sketchText?: string
   geometryWarnings: string[]
 }
 
@@ -126,6 +128,8 @@ export interface TextExerciseV2 {
   /** Parsed function graph from `גרף בסיס` at the exercise level (the boss's structured `[ גרף בסיס ]` format). */
   sharedFunctionGraph?: AxisSpecV1
   sharedGeometryWarnings: string[]
+  /** Text written on the shared sketch block itself (`* טקסט שרטוט:`), not a separate intro. */
+  sketchText?: string
   sections: TextSectionV2[]
 }
 
@@ -263,6 +267,7 @@ interface MutableSectionV2 {
   question: string
   hint?: string
   fullSolution?: string
+  sketchText?: string
   typeRaw: string
   options: TextOptionV2[]
   matchingPairs: TextMatchingPairV2[]
@@ -280,6 +285,7 @@ interface MutableExerciseV2 {
   exerciseNumber: string
   headerRest: string
   intro: string
+  sketchText?: string
   sharedGeometryLines: string[]
   sharedFunctionLines: string[]
   inBlock: BlockMode | null
@@ -320,8 +326,8 @@ function newSection(num: string, headerRest: string): MutableSectionV2 {
 // Parser
 // ---------------------------------------------------------------------------
 
-type SectionFieldSlot = 'question' | 'hint' | 'fullSolution'
-type ExerciseFieldSlot = 'intro'
+type SectionFieldSlot = 'question' | 'hint' | 'fullSolution' | 'sketchText'
+type ExerciseFieldSlot = 'intro' | 'sketchText'
 
 type ApplySectionResult =
   | { kind: 'block-start'; mode: BlockMode }
@@ -362,6 +368,10 @@ function applyExerciseField(
     ex.intro = ex.intro ? `${ex.intro}\n${value}` : value
     return { kind: 'consumed', slot: 'intro' }
   }
+  if (k === 'טקסט שרטוט') {
+    ex.sketchText = ex.sketchText ? `${ex.sketchText}\n${value}` : value
+    return { kind: 'consumed', slot: 'sketchText' }
+  }
   if (k === 'שרטוט בסיס' || k === 'שרטוט בסיסי') {
     ex.inBlock = 'geometry'
     return { kind: 'block-start', mode: 'geometry' }
@@ -386,6 +396,10 @@ function applySectionField(sec: MutableSectionV2, key: string, value: string): A
   if (k === 'רמז') {
     sec.hint = sec.hint ? `${sec.hint}\n${value}` : value
     return { kind: 'consumed', slot: 'hint' }
+  }
+  if (k === 'טקסט שרטוט') {
+    sec.sketchText = sec.sketchText ? `${sec.sketchText}\n${value}` : value
+    return { kind: 'consumed', slot: 'sketchText' }
   }
   if (k === 'פתרון מלא') {
     sec.fullSolution = sec.fullSolution ? `${sec.fullSolution}\n${value}` : value
@@ -567,6 +581,7 @@ function finalizeSection(sec: MutableSectionV2): TextSectionV2 {
     question: sec.question.trim(),
     hint: sec.hint?.trim() || undefined,
     fullSolution: sec.fullSolution?.trim() || undefined,
+    sketchText: sec.sketchText?.trim() || undefined,
     type: classifyType(sec.typeRaw),
     options: sec.options,
     matchingPairs: sec.matchingPairs,
@@ -599,6 +614,7 @@ function finalizeExercise(ex: MutableExerciseV2): TextExerciseV2 {
     exerciseNumber: ex.exerciseNumber,
     headerRest: ex.headerRest,
     intro: ex.intro.trim(),
+    sketchText: ex.sketchText?.trim() || undefined,
     sharedGeometry: geometryBody.hasContent ? geometryBody.spec : undefined,
     sharedSvg: geometryBody.hasContent ? geometryBody.svg : undefined,
     sharedFunctionGraph: functionBody.spec,
@@ -839,7 +855,18 @@ export function parseTextLessonV2(raw: string): TextLessonV2 {
 
     // Bare non-field lines. Route to the currently-open field slot so a
     // multi-line `* פתרון מלא:` block doesn't spill into `question`.
-    if (line.trim() === '') continue
+    // A blank line inside an open multi-line field is a paragraph break —
+    // keep it (values are trimmed at finalize, so trailing blanks vanish).
+    if (line.trim() === '') {
+      if (currentSec && currentField && currentField !== 'intro') {
+        appendToSlot(currentSec, currentField, '')
+      } else if (currentEx && !currentSec && currentField === 'sketchText') {
+        currentEx.sketchText = `${currentEx.sketchText ?? ''}\n`
+      } else if (currentEx && !currentSec && currentField === 'intro' && currentEx.intro) {
+        currentEx.intro += '\n'
+      }
+      continue
+    }
     if (currentSec) {
       if (currentField && currentField !== 'intro') {
         appendToSlot(currentSec, currentField, line)
@@ -847,7 +874,11 @@ export function parseTextLessonV2(raw: string): TextLessonV2 {
         currentSec.question += currentSec.question ? `\n${line}` : line
       }
     } else if (currentEx) {
-      currentEx.intro += currentEx.intro ? `\n${line}` : line
+      if (currentField === 'sketchText') {
+        currentEx.sketchText = currentEx.sketchText ? `${currentEx.sketchText}\n${line}` : line
+      } else {
+        currentEx.intro += currentEx.intro ? `\n${line}` : line
+      }
     }
   }
 
