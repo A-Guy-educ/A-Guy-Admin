@@ -133,7 +133,12 @@ export const GeometrySpecEditor: React.FC<GeometrySpecEditorProps> = ({
         />
 
         <CollapsibleSection title="Canvas" defaultExpanded={false}>
-          <CanvasConfigPanel canvas={spec.canvas} onChange={(canvas) => updateSpec({ canvas })} />
+          <CanvasConfigPanel
+            canvas={spec.canvas}
+            onChange={(canvas) => updateSpec({ canvas })}
+            interactive={spec.interactive !== false}
+            onInteractiveChange={(interactive) => updateSpec({ interactive })}
+          />
         </CollapsibleSection>
 
         <CollapsibleSection title={`Points (${spec.elements.points.length})`} defaultExpanded>

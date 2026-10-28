@@ -21,6 +21,8 @@ interface JSXGraphBoardProps {
   }
   onBoardReady: (board: JXG.Board) => void
   className?: string
+  /** `false` makes the board a static picture: no hover, drag or pan. Defaults to true. */
+  interactive?: boolean
 }
 
 export function JSXGraphBoard({
@@ -33,6 +35,7 @@ export function JSXGraphBoard({
   axisConfig,
   onBoardReady,
   className,
+  interactive = true,
 }: JSXGraphBoardProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const boardRef = useRef<JXG.Board | null>(null)
@@ -124,6 +127,10 @@ export function JSXGraphBoard({
         keepAspectRatio: false,
         pan: { needShift: true },
         zoom: { factorX: 1, factorY: 1 },
+        // JSXGraph hit-tests pointer coordinates itself, so CSS pointer-events on
+        // the container does not stop hover highlight / infobox. Not registering
+        // its event handlers at all is the only reliable "static picture".
+        ...(interactive ? {} : { registerEvents: false }),
       } as JXG.BoardAttributes)
 
       // When origin is outside viewport, create axes manually at viewport edge
@@ -184,7 +191,7 @@ export function JSXGraphBoard({
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id])
+  }, [id, interactive])
 
   return (
     <div
@@ -194,7 +201,13 @@ export function JSXGraphBoard({
       // renders blank. Kept as an attribute (rather than removed entirely)
       // so authors can still target a specific board in the DOM inspector.
       id={`jsxgraph-${id}-${reactId.replace(/[^a-zA-Z0-9_-]/g, '')}`}
-      className={cn('w-full border rounded-lg overflow-hidden bg-white', className)}
+      // Interaction itself is disabled via `registerEvents: false` above; this
+      // only lets touch-scroll pass through to the page on mobile.
+      className={cn(
+        'w-full border rounded-lg overflow-hidden bg-white',
+        !interactive && 'pointer-events-none',
+        className,
+      )}
       style={{ width, height, maxWidth: '100%' }}
     />
   )

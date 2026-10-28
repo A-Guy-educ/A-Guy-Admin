@@ -205,6 +205,13 @@ export const AxisSpecV1Schema = z
     viewportMode: ViewportModeSchema,
     viewport: ViewportSchema,
     elements: ElementsSchema,
+    /**
+     * Whether students can interact with the board (hover highlights,
+     * dragging non-fixed elements, shift-pan). Omitted = interactive, so
+     * content saved before this flag existed keeps its behavior; `false`
+     * renders a static picture.
+     */
+    interactive: z.boolean().optional(),
     interactionSpec: InteractionSpecSchema,
   })
   .strict()

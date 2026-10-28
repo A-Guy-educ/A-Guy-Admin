@@ -160,6 +160,17 @@ export const AxisConfigPanel: React.FC<AxisConfigPanelProps> = ({ spec, onChange
           />
           Grid
         </label>
+        <label
+          className="panel-checkbox-label"
+          title="Students can hover, click and drag elements. Off = static picture."
+        >
+          <input
+            type="checkbox"
+            checked={spec.interactive !== false}
+            onChange={(e) => onChange({ ...spec, interactive: e.target.checked })}
+          />
+          Interactive
+        </label>
         <label className="panel-checkbox-label">
           <input
             type="checkbox"

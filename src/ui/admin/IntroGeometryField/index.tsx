@@ -148,7 +148,12 @@ export const IntroGeometrySpecField: React.FC<{ path: string }> = ({ path }) => 
         <div className="graph-editor-layout">
           <div className="graph-editor-form">
             <CollapsibleSection title="Canvas" defaultExpanded={false}>
-              <CanvasConfigPanel canvas={geo.canvas} onChange={(canvas) => updateGeo({ canvas })} />
+              <CanvasConfigPanel
+                canvas={geo.canvas}
+                onChange={(canvas) => updateGeo({ canvas })}
+                interactive={geo.interactive !== false}
+                onInteractiveChange={(interactive) => updateGeo({ interactive })}
+              />
             </CollapsibleSection>
 
             <CollapsibleSection title={`Points (${geo.elements.points.length})`} defaultExpanded>
