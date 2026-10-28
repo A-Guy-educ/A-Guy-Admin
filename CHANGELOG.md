@@ -7,6 +7,21 @@
 - feat: Lossless full-lesson JSON export and import ([#722](https://github.com/A-Guy-educ/A-Guy-Admin/pull/722)) — @aguyshayb
 - fix(graphics): Honor manual axis viewport ranges as entered ([#721](https://github.com/A-Guy-educ/A-Guy-Admin/pull/721)) — @aguyshayb
 - feat: Add interactive on/off flag to axis and geometry specs ([#719](https://github.com/A-Guy-educ/A-Guy-Admin/pull/719)) — @aguyshayb
+
+## v0.62.0 — 2026-10-28
+
+### Features
+
+- Lesson export: lossless full-lesson JSON export and import ([#722](https://github.com/A-Guy-educ/A-Guy-Admin/pull/722))
+- Graphics: add interactive on/off flag to axis and geometry specs ([#719](https://github.com/A-Guy-educ/A-Guy-Admin/pull/719))
+
+### Bug Fixes
+
+- Graphics: interactive off now actually blocks graph interaction ([#724](https://github.com/A-Guy-educ/A-Guy-Admin/pull/724))
+- Build: cap Next page-data workers to stop Vercel OOM ([#723](https://github.com/A-Guy-educ/A-Guy-Admin/pull/723))
+- Graphics: honor manual axis viewport ranges as entered ([#721](https://github.com/A-Guy-educ/A-Guy-Admin/pull/721))
+- Lesson export: preserve text on sketch blocks through text export/import ([#720](https://github.com/A-Guy-educ/A-Guy-Admin/pull/720))
+
 ## [v0.61.2] - 2026-10-28
 
 - promote: dev -> main (v0.61.2) ([#717](https://github.com/A-Guy-educ/A-Guy-Admin/pull/717)) — @aguyshayb
