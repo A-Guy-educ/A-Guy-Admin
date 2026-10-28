@@ -5,11 +5,16 @@
  * Creates a Lesson (draft, practice type, Hebrew) plus one Exercise per item in
  * the source JSON's `exercises[]`. Each section in an exercise becomes a
  * question_select MCQ block, with optional rich_text/svg context blocks.
+ *
+ * Full-lesson exports (`format: "aguy-lesson-full"`) go to the lossless
+ * importer instead, which recreates every block exactly as written.
  */
 import type { PayloadRequest } from 'payload'
 
 import { apiError, apiSuccess } from '@/server/api/responses'
 import { withApiHandler } from '@/server/api/with-api-handler'
+import { isFullLessonJson } from '@/infra/contracts/lesson-full-json/v1'
+import { importFullLessonJson } from '@/server/services/lesson-full-json/import-full-lesson'
 import { importLessonFromJson } from '@/server/services/lesson-json-import/import-lesson'
 import { z } from 'zod'
 
@@ -50,7 +55,11 @@ export const POST = withApiHandler<ImportBody, unknown>(
       context: {},
     } as unknown as PayloadRequest
 
-    const result = await importLessonFromJson(payloadReq, body)
+    // Full-lesson exports (lossless, LLM-edited) carry a `format` marker;
+    // anything else is the curriculum team's canonical JSON.
+    const result = isFullLessonJson(body.json)
+      ? await importFullLessonJson(payloadReq, body)
+      : await importLessonFromJson(payloadReq, body)
 
     if ('kind' in result) {
       if (result.kind === 'not_found') {

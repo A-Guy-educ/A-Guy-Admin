@@ -1,11 +1,12 @@
 'use client'
 
 /**
- * LessonExportButton — admin "Export as Text" action on the lesson edit view.
+ * LessonExportButton — admin "Export as Text" / "Export as JSON" actions on
+ * the lesson edit view.
  *
- * Fetches /api/lessons/:id/export and triggers a browser file download. The
- * endpoint returns a .txt file in the v2 format accepted by
- * /admin/lesson-json-import. Round-trips through parseTextLessonV2.
+ * Fetches /api/lessons/:id/export and triggers a browser file download. Text
+ * is the v2 format accepted by /admin/lesson-json-import; JSON is the lossless
+ * full-lesson export meant for editing with an LLM and importing back.
  *
  * @fileType component
  * @domain lessons
@@ -15,6 +16,21 @@
 import React, { useState } from 'react'
 import { useDocumentInfo } from '@payloadcms/ui'
 
+type ExportFormat = 'text' | 'json'
+
+const BUTTONS: Array<{ format: ExportFormat; label: string; title: string }> = [
+  {
+    format: 'text',
+    label: 'Export as Text',
+    title: 'Export lesson and exercises as plain text (.txt)',
+  },
+  {
+    format: 'json',
+    label: 'Export as JSON',
+    title: 'Lossless export of every block (.json) — edit with ChatGPT/Gemini and import back',
+  },
+]
+
 export const LessonExportAction: React.FC = () => {
   const { id } = useDocumentInfo()
   const [isExporting, setIsExporting] = useState(false)
@@ -22,12 +38,13 @@ export const LessonExportAction: React.FC = () => {
 
   if (!id) return null
 
-  const handleExport = async () => {
+  const handleExport = async (format: ExportFormat) => {
     setIsExporting(true)
     setError(null)
 
     try {
-      const res = await fetch(`/api/lessons/${id}/export`, {
+      const query = format === 'json' ? '?format=json' : ''
+      const res = await fetch(`/api/lessons/${id}/export${query}`, {
         credentials: 'include',
       })
 
@@ -40,7 +57,7 @@ export const LessonExportAction: React.FC = () => {
       // Extract filename from Content-Disposition header
       const disposition = res.headers.get('Content-Disposition') || ''
       const match = disposition.match(/filename="?([^"\n]+)"?/)
-      const filename = match?.[1] || `${id}.txt`
+      const filename = match?.[1] || `${id}.${format === 'json' ? 'json' : 'txt'}`
 
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)
@@ -60,28 +77,31 @@ export const LessonExportAction: React.FC = () => {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={handleExport}
-        disabled={isExporting}
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 6,
-          padding: '6px 12px',
-          fontSize: 13,
-          fontWeight: 500,
-          border: '1px solid var(--theme-elevation-200)',
-          borderRadius: 4,
-          backgroundColor: 'var(--theme-elevation-0)',
-          color: 'var(--theme-elevation-1000)',
-          cursor: isExporting ? 'not-allowed' : 'pointer',
-          opacity: isExporting ? 0.6 : 1,
-        }}
-        title="Export lesson and exercises as plain text (.txt)"
-      >
-        {isExporting ? 'Exporting…' : 'Export as Text'}
-      </button>
+      {BUTTONS.map((b) => (
+        <button
+          key={b.format}
+          type="button"
+          onClick={() => handleExport(b.format)}
+          disabled={isExporting}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '6px 12px',
+            fontSize: 13,
+            fontWeight: 500,
+            border: '1px solid var(--theme-elevation-200)',
+            borderRadius: 4,
+            backgroundColor: 'var(--theme-elevation-0)',
+            color: 'var(--theme-elevation-1000)',
+            cursor: isExporting ? 'not-allowed' : 'pointer',
+            opacity: isExporting ? 0.6 : 1,
+          }}
+          title={b.title}
+        >
+          {isExporting ? 'Exporting…' : b.label}
+        </button>
+      ))}
 
       {error && (
         <span
