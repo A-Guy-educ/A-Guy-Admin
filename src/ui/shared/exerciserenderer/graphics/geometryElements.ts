@@ -5,6 +5,7 @@ import {
   getDefaultTextColor,
   sizeScaleToPixels,
 } from '@/infra/contracts/graphics/textColors'
+import { LINE_LABEL_OFFSET_RATIO, lineLabelFontSize } from '@/infra/utils/graphics/line-label'
 import { collectEdgeAngles, pickSafeCompassPosition } from '@/infra/utils/graphics/point-label'
 import { angleMarkerRadiusPx, renderAngles } from './geometryAngleMarkers'
 
@@ -102,7 +103,7 @@ function renderLines(
       const dx = to.X() - from.X()
       const dy = to.Y() - from.Y()
       const len = Math.sqrt(dx * dx + dy * dy) || 1
-      const baseOffset = canvasHeight * 0.03
+      const baseOffset = canvasHeight * LINE_LABEL_OFFSET_RATIO
       // The perpendicular normal is (-dy/len, dx/len). Its Y component is dx/len,
       // which flips sign when from→to goes right-to-left (or top-to-bottom).
       // Multiply by sign(dx) so "above/below" refers to the screen Y axis
@@ -117,7 +118,7 @@ function renderLines(
       if (deg > 90) deg -= 180
       if (deg < -90) deg += 180
       board.create('text', [midX, midY, line.label.value], {
-        fontSize: line.label.fontSize ?? 10,
+        fontSize: lineLabelFontSize(line.label.fontSize),
         anchorX: 'middle',
         anchorY: 'middle',
         display: 'internal',

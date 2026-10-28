@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import type { JXGBoard, JXGBoardOptions } from 'jsxgraph'
+import { AXIS_GRID_OPTIONS, AXIS_TICK_OPTIONS } from '@/infra/utils/graphics/axis-ticks'
 
 interface JSXGraphBoardProps {
   id: string
@@ -67,7 +68,7 @@ export const JSXGraphBoard: React.FC<JSXGraphBoardProps> = ({
               x: {
                 ticks: {
                   visible: axisConfig.showNumbers ?? true,
-                  ticksDistance: axisConfig.ticks ?? 1,
+                  ...AXIS_TICK_OPTIONS,
                   // Finite tick marks instead of JSXGraph's default -1 (infinite),
                   // which draws grid lines across the board whenever ticks are visible.
                   majorHeight: 10,
@@ -90,7 +91,7 @@ export const JSXGraphBoard: React.FC<JSXGraphBoardProps> = ({
               y: {
                 ticks: {
                   visible: axisConfig.showNumbers ?? true,
-                  ticksDistance: axisConfig.ticks ?? 1,
+                  ...AXIS_TICK_OPTIONS,
                   // Finite tick marks instead of JSXGraph's default -1 (infinite),
                   // which draws grid lines across the board whenever ticks are visible.
                   majorHeight: 10,
@@ -118,7 +119,9 @@ export const JSXGraphBoard: React.FC<JSXGraphBoardProps> = ({
 
     const options: JXGBoardOptions = {
       boundingbox: boundingBox,
-      grid: showGrid,
+      // Axis boards pin the grid to the 1-unit tick step; geometry boards (no
+      // axisConfig) keep JSXGraph's default grid.
+      grid: showGrid && axisConfig ? AXIS_GRID_OPTIONS : showGrid,
       showNavigation,
       showCopyright: false,
       keepAspectRatio: false,

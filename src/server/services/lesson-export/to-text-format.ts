@@ -22,7 +22,9 @@
  *   =========================================
  *   * סוג השאלה: Fill-in Table
  *   * הנחיה: <question text>
- *   * שרטוט מותאם לסעיף:
+ *   * שרטוט עצמאי לסעיף:                    (standalone block before the question)
+ *     <svg …> | --- נקודות --- …
+ *   * שרטוט מותאם לסעיף:                    (attached to the question block)
  *     --- נקודות --- …
  *   * מבנה טבלה (עמודות: שלב, טענה, נימוק):
  *     * שורה 1 | שלב: 1 | טענה: … | נימוק: [ שדה ריק - להשלמה: נתון ]
@@ -143,7 +145,10 @@ function emitSection(exerciseNumber: string, section: CanonicalSection, out: str
   const questionText = section.question.text?.trim() ?? ''
   emitField('הנחיה', [introText, questionText].filter(Boolean).join('\n\n'), out)
 
-  emitVisuals(section.section_data, 'שרטוט מותאם לסעיף', 'גרף מותאם לסעיף', out)
+  // Standalone section blocks vs. the question's own attachment use separate
+  // markers so reimport rebuilds the same block layout.
+  emitVisuals(section.section_data, 'שרטוט עצמאי לסעיף', 'גרף עצמאי לסעיף', out)
+  emitVisuals(section.question, 'שרטוט מותאם לסעיף', 'גרף מותאם לסעיף', out)
 
   if (type === 'single_choice' || type === 'multiple_choice') {
     resolveOptions(section).forEach((o, i) => {

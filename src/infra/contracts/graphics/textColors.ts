@@ -123,6 +123,15 @@ export function getCanvasColorPalette(): ReadonlyArray<{ label: string; hex: str
   }))
 }
 
+/**
+ * Default color for axis-graph points (design-system blue). Uses the
+ * hardcoded fallback like the canvas palette so the admin editor, the
+ * renderer and stored specs all agree regardless of the host theme.
+ */
+export function getDefaultAxisPointColor(): string {
+  return CSS_VAR_FALLBACKS['--text-highlight-5']
+}
+
 /** Default canvas background resolved from --card CSS variable */
 export function getDefaultCanvasBackground(): string {
   return cssVarToHex('--card')

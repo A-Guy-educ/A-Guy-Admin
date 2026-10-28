@@ -3,8 +3,8 @@
  * the Exercises collection's block stream. Mirrors
  * `convert-text-exercise.ts` for the legacy format but knows how to:
  *   - attach a per-section geometry sketch as `attachment.kind = 'geometry'`
- *     on the question block, or emit a standalone `question_geometry` block
- *     when the section is a visual with no accompanying question, and
+ *     on the question block, or emit standalone svg / `question_geometry` /
+ *     `question_axis` blocks for `שרטוט עצמאי` / `גרף עצמאי` section fields, and
  *   - fall back gracefully when the DSL couldn't be parsed cleanly (the
  *     block becomes a review placeholder instead of nuking the whole lesson).
  */
@@ -307,7 +307,25 @@ function buildTableBlock(section: TextSectionV2): QuestionTableBlock | null {
   return block
 }
 
+/**
+ * Standalone section visuals (`שרטוט עצמאי לסעיף` / `גרף עצמאי לסעיף`) become
+ * their own blocks ahead of the question — unlike `שרטוט מותאם לסעיף`, which
+ * attaches to the question block.
+ */
+function standaloneSectionBlocks(section: TextSectionV2): ContentBlock[] {
+  const out: ContentBlock[] = []
+  if (section.standaloneSvg) out.push(svgBlock(section.standaloneSvg))
+  if (section.standaloneGeometry) out.push(standaloneGeometryBlock(section.standaloneGeometry))
+  if (section.standaloneFunctionGraph)
+    out.push(standaloneAxisBlock(section.standaloneFunctionGraph))
+  return out
+}
+
 function convertSectionToBlocks(section: TextSectionV2): ContentBlock[] {
+  return [...standaloneSectionBlocks(section), ...convertQuestionToBlocks(section)]
+}
+
+function convertQuestionToBlocks(section: TextSectionV2): ContentBlock[] {
   if (section.type.kind === 'table') {
     const table = buildTableBlock(section)
     if (table) return [table]
