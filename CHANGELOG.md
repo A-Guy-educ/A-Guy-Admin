@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- feat: Lossless full-lesson JSON export and import ([#722](https://github.com/A-Guy-educ/A-Guy-Admin/pull/722)) — @aguyshayb
 - fix(graphics): Honor manual axis viewport ranges as entered ([#721](https://github.com/A-Guy-educ/A-Guy-Admin/pull/721)) — @aguyshayb
 - feat: Add interactive on/off flag to axis and geometry specs ([#719](https://github.com/A-Guy-educ/A-Guy-Admin/pull/719)) — @aguyshayb
 ## [v0.61.2] - 2026-10-28
