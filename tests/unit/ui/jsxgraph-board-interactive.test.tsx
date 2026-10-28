@@ -9,7 +9,9 @@ import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { render, waitFor } from '@testing-library/react'
 import React from 'react'
 
-const initBoard = vi.fn(() => ({ create: vi.fn() }))
+const initBoard = vi.fn((_container: unknown, _options: Record<string, unknown>) => ({
+  create: vi.fn(),
+}))
 
 vi.mock('jsxgraph', () => ({
   default: { JSXGraph: { initBoard, freeBoard: vi.fn() } },
