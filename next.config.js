@@ -105,6 +105,11 @@ const nextConfig = {
     ],
   },
   experimental: {
+    // Vercel build machines are 4 cores / 8 GB. Next's default page-data worker
+    // pool (cpus - 1) loads the full server bundle in each worker, each with the
+    // 6 GB heap cap inherited from NODE_OPTIONS, and the sum gets OOM-killed.
+    cpus: 1,
+    webpackMemoryOptimizations: true,
     // Tree-shake barrel exports to avoid parsing entire packages on each import
     optimizePackageImports: [
       'lucide-react',
