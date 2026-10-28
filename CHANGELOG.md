@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- fix: Pin E2E CI jobs to ubuntu-24.04 ([#712](https://github.com/A-Guy-educ/A-Guy-Admin/pull/712)) — @aguyshayb
 ## [v0.61.1] - 2026-10-26
 
 - promote: dev -> main (v0.61.1) ([#711](https://github.com/A-Guy-educ/A-Guy-Admin/pull/711)) — @aguyshayb
