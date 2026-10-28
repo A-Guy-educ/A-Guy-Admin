@@ -100,6 +100,16 @@ export interface TextSectionV2 {
   bareCircleRefs: string[]
   /** Parsed function graph from `גרף מותאם לסעיף`. Follows the same "own-only, no shared fallback" rule as `geometry`. */
   functionGraph?: AxisSpecV1
+  /**
+   * Section visuals that stand on their own (a separate block before the
+   * question) rather than hanging off the question as an attachment. Comes
+   * from `* שרטוט עצמאי לסעיף:` / `* גרף עצמאי לסעיף:` — the exporter emits
+   * these for standalone svg/geometry/axis blocks so the round-trip doesn't
+   * fold them into the question.
+   */
+  standaloneGeometry?: GeometrySpecV1
+  standaloneSvg?: string
+  standaloneFunctionGraph?: AxisSpecV1
   geometryWarnings: string[]
 }
 
@@ -245,7 +255,7 @@ function classifyType(raw: string): QuestionTypeV2 {
  * lines should be handed to parseGeometryDsl, parseFunctionDsl, or the
  * table-row parser.
  */
-type BlockMode = 'geometry' | 'function' | 'table'
+type BlockMode = 'geometry' | 'function' | 'table' | 'standalone-geometry' | 'standalone-function'
 
 interface MutableSectionV2 {
   questionNumber: string
@@ -258,6 +268,8 @@ interface MutableSectionV2 {
   matchingPairs: TextMatchingPairV2[]
   geometryLines: string[]
   functionLines: string[]
+  standaloneGeometryLines: string[]
+  standaloneFunctionLines: string[]
   tableLines: string[]
   /** Column names captured from the `(עמודות: …)` parenthetical on the `* מבנה טבלה` line. Empty when the parenthetical was missing. */
   tableHeaders: string[]
@@ -296,6 +308,8 @@ function newSection(num: string, headerRest: string): MutableSectionV2 {
     matchingPairs: [],
     geometryLines: [],
     functionLines: [],
+    standaloneGeometryLines: [],
+    standaloneFunctionLines: [],
     tableLines: [],
     tableHeaders: [],
     inBlock: null,
@@ -391,6 +405,14 @@ function applySectionField(sec: MutableSectionV2, key: string, value: string): A
     sec.inBlock = 'function'
     return { kind: 'block-start', mode: 'function' }
   }
+  if (k === 'שרטוט עצמאי' || k === 'שרטוט עצמאי לסעיף') {
+    sec.inBlock = 'standalone-geometry'
+    return { kind: 'block-start', mode: 'standalone-geometry' }
+  }
+  if (k === 'גרף עצמאי' || k === 'גרף עצמאי לסעיף') {
+    sec.inBlock = 'standalone-function'
+    return { kind: 'block-start', mode: 'standalone-function' }
+  }
   const optionMatch = k.match(OPTION_FIELD_RE)
   if (optionMatch) {
     const trimmed = value.replace(CORRECT_MARKER_RE, '').trim()
@@ -457,7 +479,11 @@ function parseFunctionBlock(rawLines: string[]): {
   const joined = rawLines.join('\n')
   if (!joined.trim()) return { warnings: [] }
   const { spec, errors } = parseFunctionDsl(joined)
-  const hasContent = spec.elements.graphs.length > 0 || spec.elements.points.length > 0
+  const hasContent =
+    spec.elements.graphs.length > 0 ||
+    spec.elements.points.length > 0 ||
+    (spec.elements.lineBetweenPoints?.length ?? 0) > 0 ||
+    (spec.elements.geometricLoci?.length ?? 0) > 0
   return hasContent ? { spec, warnings: errors } : { warnings: errors }
 }
 
@@ -533,6 +559,8 @@ function finalizeSection(sec: MutableSectionV2): TextSectionV2 {
   const geometryBody = classifyBlockBody(sec.geometryLines)
   const functionBody = parseFunctionBlock(sec.functionLines)
   const tableBody = parseTableBody(sec.tableHeaders, sec.tableLines)
+  const standaloneGeometryBody = classifyBlockBody(sec.standaloneGeometryLines)
+  const standaloneFunctionBody = parseFunctionBlock(sec.standaloneFunctionLines)
   return {
     questionNumber: sec.questionNumber,
     headerRest: sec.headerRest,
@@ -551,7 +579,16 @@ function finalizeSection(sec: MutableSectionV2): TextSectionV2 {
     svg: geometryBody.hasContent ? geometryBody.svg : undefined,
     bareCircleRefs: geometryBody.bareCircleRefs,
     functionGraph: functionBody.spec,
-    geometryWarnings: [...geometryBody.warnings, ...functionBody.warnings, ...tableBody.warnings],
+    standaloneGeometry: standaloneGeometryBody.hasContent ? standaloneGeometryBody.spec : undefined,
+    standaloneSvg: standaloneGeometryBody.hasContent ? standaloneGeometryBody.svg : undefined,
+    standaloneFunctionGraph: standaloneFunctionBody.spec,
+    geometryWarnings: [
+      ...geometryBody.warnings,
+      ...functionBody.warnings,
+      ...tableBody.warnings,
+      ...standaloneGeometryBody.warnings,
+      ...standaloneFunctionBody.warnings,
+    ],
   }
 }
 
@@ -717,6 +754,10 @@ export function parseTextLessonV2(raw: string): TextLessonV2 {
       } else {
         if (currentSec.inBlock === 'function') currentSec.functionLines.push(line)
         else if (currentSec.inBlock === 'table') currentSec.tableLines.push(line)
+        else if (currentSec.inBlock === 'standalone-geometry')
+          currentSec.standaloneGeometryLines.push(line)
+        else if (currentSec.inBlock === 'standalone-function')
+          currentSec.standaloneFunctionLines.push(line)
         else currentSec.geometryLines.push(line)
         continue
       }

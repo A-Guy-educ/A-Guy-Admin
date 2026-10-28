@@ -39,6 +39,32 @@ const REFERENCE_SAMPLE = [
 ].join('\n')
 
 describe('parseFunctionDsl', () => {
+  it('ignores the <function>…</function> wrapper emitted by the lesson exporter', () => {
+    const { spec, errors } = parseFunctionDsl(
+      [
+        '<function>',
+        '%%%',
+        'p (1,1)',
+        'label: A',
+        '',
+        'l (1,1) (5,1)',
+        'color: #dc2626',
+        '%%%',
+        'x:[-1,7]',
+        'y:[-2,6]',
+        '%%%',
+        'grid: true',
+        '%%%',
+        '</function>',
+      ].join('\n'),
+    )
+    expect(errors).toEqual([])
+    expect(spec.elements.points).toHaveLength(1)
+    expect(spec.elements.lineBetweenPoints).toHaveLength(1)
+    expect(spec.grid.enabled).toBe(true)
+    expect(spec.viewportMode).toBe('manual')
+  })
+
   it('parses the reference sample into a valid AxisSpecV1', () => {
     const { spec, errors } = parseFunctionDsl(REFERENCE_SAMPLE)
 

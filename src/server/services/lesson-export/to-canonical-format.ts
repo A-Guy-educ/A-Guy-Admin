@@ -514,7 +514,11 @@ function sectionDocToCanonical(
   const blocks = content?.blocks || []
 
   const introTexts: string[] = []
+  // Standalone visual blocks (svg / visual-only geometry or axis) go to
+  // section_data; the question block's own attachment goes to `question`.
+  // Keeping them apart lets the text exporter round-trip which is which.
   const visual = newVisualBucket()
+  const attachmentVisual = newVisualBucket()
   let renderedSvgCount = 0
   const renderFailures: Array<{ blockIndex: number; blockType: string; issues: string[] }> = []
 
@@ -597,15 +601,19 @@ function sectionDocToCanonical(
       section.solution = wrapTextContent(qc.solution)
       section.full_solution = wrapTextContent(qc.fullSolution)
 
-      // Attachment on the question block (axis / geometry / svg) joins the
-      // section's visual stack.
       const maybeAttachment = (block as { attachment?: unknown }).attachment
-      renderedSvgCount += serializeAttachment(maybeAttachment, blockIndex, visual, renderFailures)
+      renderedSvgCount += serializeAttachment(
+        maybeAttachment,
+        blockIndex,
+        attachmentVisual,
+        renderFailures,
+      )
 
       applyQuestionStructure(section, block)
     }
   }
 
+  section.question = { ...section.question, ...visualFields(attachmentVisual) }
   section.section_data = {
     text: introTexts.filter(Boolean).join('\n'),
     table: null,

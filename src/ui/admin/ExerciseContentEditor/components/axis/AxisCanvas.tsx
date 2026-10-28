@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { AxisSpecV1 } from '@/infra/contracts/graphics/axis.v1'
 import type { JXGBoard, JXGElement } from 'jsxgraph'
 import { JSXGraphBoard } from '../shared/JSXGraphBoard'
+import { getDefaultAxisPointColor } from '@/infra/contracts/graphics/textColors'
 import { resolveViewport } from '@/infra/utils/graphics/viewport-utils'
 import { createLocusOnBoard } from '@/ui/shared/exerciserenderer/graphics/axisElements'
 import { parseMathExpression } from '@/ui/shared/exerciserenderer/utils/safeMathEval'
@@ -83,6 +84,7 @@ export const AxisCanvas: React.FC<AxisCanvasProps> = ({ id, axis, onPointMoved }
         // hole back to a plain point actually resets it (previously the
         // hole's strokeWidth: 2 lingered after the type change).
         const strokeWidth = point.type === 'hole' ? 2 : 1
+        const pointColor = point.color || getDefaultAxisPointColor()
 
         if (existing && existing.moveTo && prevKey === labelKey) {
           existing.moveTo([point.x, point.y])
@@ -93,9 +95,9 @@ export const AxisCanvas: React.FC<AxisCanvasProps> = ({ id, axis, onPointMoved }
           existing.setAttribute({
             name: point.label || '',
             size: pointSize,
-            color: point.color || '#3366cc',
-            fillColor: point.type === 'hole' ? '#ffffff' : point.color || '#3366cc',
-            strokeColor: point.color || '#3366cc',
+            color: pointColor,
+            fillColor: point.type === 'hole' ? '#ffffff' : pointColor,
+            strokeColor: pointColor,
             strokeWidth,
             withLabel: !!point.label,
             visible: point.type !== 'floating_text',
@@ -109,9 +111,9 @@ export const AxisCanvas: React.FC<AxisCanvasProps> = ({ id, axis, onPointMoved }
           const attrs: Record<string, unknown> = {
             name: point.label || '',
             size: pointSize,
-            color: point.color || '#3366cc',
-            fillColor: point.type === 'hole' ? '#ffffff' : point.color || '#3366cc',
-            strokeColor: point.color || '#3366cc',
+            color: pointColor,
+            fillColor: point.type === 'hole' ? '#ffffff' : pointColor,
+            strokeColor: pointColor,
             strokeWidth,
             fixed: false,
             withLabel: !!point.label,

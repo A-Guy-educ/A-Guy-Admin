@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useEffect, useId, useRef } from 'react'
+import { AXIS_GRID_OPTIONS, AXIS_TICK_OPTIONS } from '@/infra/utils/graphics/axis-ticks'
 import { cn } from '@/infra/utils/ui'
 
 interface JSXGraphBoardProps {
@@ -66,7 +67,6 @@ export function JSXGraphBoard({
       const [bbXMin, bbYMax, bbXMax, bbYMin] = boundingBox
       const originOutside = showAxis && (ox < bbXMin || ox > bbXMax || oy < bbYMin || oy > bbYMax)
 
-      const tickDist = axisConfig?.ticks ?? 1
       const showNumbers = axisConfig?.showNumbers ?? true
       const showLabels = axisConfig?.showLabels ?? true
 
@@ -78,7 +78,7 @@ export function JSXGraphBoard({
                 x: {
                   ticks: {
                     visible: showNumbers,
-                    ticksDistance: tickDist,
+                    ...AXIS_TICK_OPTIONS,
                     // Finite tick marks instead of JSXGraph's default -1 (infinite),
                     // which draws grid lines across the board whenever ticks are visible.
                     majorHeight: 10,
@@ -95,7 +95,7 @@ export function JSXGraphBoard({
                 y: {
                   ticks: {
                     visible: showNumbers,
-                    ticksDistance: tickDist,
+                    ...AXIS_TICK_OPTIONS,
                     // Finite tick marks instead of JSXGraph's default -1 (infinite),
                     // which draws grid lines across the board whenever ticks are visible.
                     majorHeight: 10,
@@ -116,7 +116,9 @@ export function JSXGraphBoard({
       const board = JXGLib.JSXGraph.initBoard(container, {
         boundingbox: boundingBox,
         ...axisOpts,
-        grid: showGrid,
+        // Axis boards pin the grid to the 1-unit tick step; geometry boards (no
+        // axisConfig) keep JSXGraph's default grid.
+        grid: showGrid && axisConfig ? AXIS_GRID_OPTIONS : showGrid,
         showNavigation: false,
         showCopyright: false,
         keepAspectRatio: false,
@@ -130,7 +132,7 @@ export function JSXGraphBoard({
         const axOriginY = Math.max(bbYMin, Math.min(oy, bbYMax))
         const tickOpts = {
           visible: showNumbers,
-          ticksDistance: tickDist,
+          ...AXIS_TICK_OPTIONS,
           // Finite tick marks instead of JSXGraph's default -1 (infinite),
           // which draws grid lines across the board whenever ticks are visible.
           majorHeight: 10,

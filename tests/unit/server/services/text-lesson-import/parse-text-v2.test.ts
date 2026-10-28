@@ -575,3 +575,33 @@ describe('parseTextLessonV2 — basic shape', () => {
     })
   })
 })
+
+describe('parseTextLessonV2 — exported function graphs', () => {
+  const lesson = [
+    '=========================================',
+    '[ תרגיל 1 - נתוני פתיחה ]',
+    '=========================================',
+    '* גרף בסיס:',
+    '<function>',
+    '%%%',
+    'l (1,1) (1,4)',
+    'color: #dc2626',
+    '%%%',
+    'x:[-1,7]',
+    'y:[-2,6]',
+    '%%%',
+    '</function>',
+    '',
+    '=========================================',
+    '[ תרגיל 1 - סעיף א - Open Ended ]',
+    '=========================================',
+    '* סוג השאלה: Open Ended',
+    '* הנחיה: Q?',
+  ].join('\n')
+
+  it('keeps an exercise graph that has only lines-between-points', () => {
+    const ex = parseTextLessonV2(lesson).exercises[0]
+    expect(ex.sharedFunctionGraph?.elements.lineBetweenPoints).toHaveLength(1)
+    expect(ex.sharedGeometryWarnings).toEqual([])
+  })
+})

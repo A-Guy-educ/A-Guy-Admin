@@ -2,8 +2,9 @@
 
 import React from 'react'
 import type { AxisSpecV1 } from '@/infra/contracts/graphics/axis.v1'
-import { getDefaultCanvasElementColor } from '@/infra/contracts/graphics/textColors'
+import { getDefaultAxisPointColor } from '@/infra/contracts/graphics/textColors'
 import { Plus, Trash2 } from 'lucide-react'
+import { BulkPointSizeControl } from '../shared/BulkPointSizeControl'
 import { ColorSwatchPicker } from '../shared/ColorSwatchPicker'
 import { CompassPositionPicker } from '../shared/CompassPositionPicker'
 
@@ -27,6 +28,8 @@ export const AxisPointsPanel: React.FC<AxisPointsPanelProps> = ({ points, onChan
       y: 0,
       type: 'point',
       size: DEFAULT_POINT_SIZE,
+      // Stored explicitly so every renderer shows the same blue the editor does.
+      color: getDefaultAxisPointColor(),
     }
     onChange([...points, newPoint])
   }
@@ -39,8 +42,21 @@ export const AxisPointsPanel: React.FC<AxisPointsPanelProps> = ({ points, onChan
     onChange(points.map((p, i) => (i === index ? { ...p, ...updates } : p)))
   }
 
+  // Floating-text "points" have no size control, so they're left untouched.
+  const handleSetAllSizes = (size: number) => {
+    onChange(points.map((p) => (p.type === 'floating_text' ? p : { ...p, size })))
+  }
+
   return (
     <div className="axis-points-panel">
+      {points.length > 0 && (
+        <BulkPointSizeControl
+          min={1}
+          max={10}
+          initialSize={points[0].size ?? DEFAULT_POINT_SIZE}
+          onApply={handleSetAllSizes}
+        />
+      )}
       <div className="panel-items-list">
         {points.map((point, index) => (
           <div key={index} className="panel-item-row" style={{ flexWrap: 'wrap' }}>
@@ -108,7 +124,7 @@ export const AxisPointsPanel: React.FC<AxisPointsPanelProps> = ({ points, onChan
               <ColorSwatchPicker
                 value={point.color}
                 onChange={(hex) => handleUpdate(index, { color: hex })}
-                defaultHex={getDefaultCanvasElementColor()}
+                defaultHex={getDefaultAxisPointColor()}
                 label="Point color"
               />
             </div>
