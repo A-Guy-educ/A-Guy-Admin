@@ -47,6 +47,7 @@ const defaultGeometry = (): GeometrySpecV1 => ({
     toolsAllowed: [],
     evaluation: { mode: 'none' },
   },
+  interactive: false,
 })
 
 const defaultAxis = (): AxisSpecV1 => ({
@@ -62,6 +63,7 @@ const defaultAxis = (): AxisSpecV1 => ({
   },
   viewport: { xMin: -10, xMax: 10, yMin: -10, yMax: 10 },
   elements: { points: [], graphs: [] },
+  interactive: false,
 })
 
 function buildAttachment(kind: AttachmentKind, layout: GraphLayout): QuestionAttachment {

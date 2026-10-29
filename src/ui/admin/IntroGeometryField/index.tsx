@@ -36,6 +36,7 @@ const DEFAULT_SPEC: GeometrySpecV1 = {
     toolsAllowed: [],
     evaluation: { mode: 'none' },
   },
+  interactive: false,
 }
 
 export const IntroGeometrySpecField: React.FC<{ path: string }> = ({ path }) => {

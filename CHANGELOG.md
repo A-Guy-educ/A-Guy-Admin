@@ -2,12 +2,21 @@
 
 ## [Unreleased]
 
+- chore: Release v0.63.0 ([#729](https://github.com/A-Guy-educ/A-Guy-Admin/pull/729)) — @aguyshayb
+- feat(graphics): Default new axis and geometry graphs to static ([#728](https://github.com/A-Guy-educ/A-Guy-Admin/pull/728)) — @aguyshayb
+- promote: dev -> main (v0.62.0) ([#726](https://github.com/A-Guy-educ/A-Guy-Admin/pull/726)) — @aguyshayb
 - chore: Release v0.62.0 ([#725](https://github.com/A-Guy-educ/A-Guy-Admin/pull/725)) — @aguyshayb
 - fix(graphics): Make interactive off actually block graph interaction ([#724](https://github.com/A-Guy-educ/A-Guy-Admin/pull/724)) — @aguyshayb
 - fix(build): Cap Next page-data workers to stop Vercel OOM ([#723](https://github.com/A-Guy-educ/A-Guy-Admin/pull/723)) — @aguyshayb
 - feat: Lossless full-lesson JSON export and import ([#722](https://github.com/A-Guy-educ/A-Guy-Admin/pull/722)) — @aguyshayb
 - fix(graphics): Honor manual axis viewport ranges as entered ([#721](https://github.com/A-Guy-educ/A-Guy-Admin/pull/721)) — @aguyshayb
 - feat: Add interactive on/off flag to axis and geometry specs ([#719](https://github.com/A-Guy-educ/A-Guy-Admin/pull/719)) — @aguyshayb
+
+## v0.63.0 — 2026-10-29
+
+### Features
+
+- Graphics: new axis and geometry graphs default to static ([#728](https://github.com/A-Guy-educ/A-Guy-Admin/pull/728))
 
 ## v0.62.0 — 2026-10-28
 
