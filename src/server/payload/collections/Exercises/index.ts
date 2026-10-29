@@ -11,6 +11,7 @@ import { createdByField } from '../../fields/createdBy'
 import { translatedFromField } from '../../fields/translatedFrom'
 import { DEFAULT_CONTENT } from './defaults'
 import { generateSlug, validateSlugUniqueness } from './hooks'
+import { defaultNewGraphicsStatic } from './hooks/defaultNewGraphicsStatic'
 import { enforceContentStructure } from './hooks/enforceContentStructure'
 import { ContentSchema } from './schemas'
 import { addBlockToLesson, removeBlockFromLesson } from '../../hooks/lessons/syncLessonBlocks'
@@ -76,6 +77,7 @@ const isAdminOrOwner: Access = ({ req }) => {
 const exerciseHooks: CollectionConfig['hooks'] = {
   beforeChange: [
     enforceContentStructure,
+    defaultNewGraphicsStatic,
     // Auto-populate course from lesson -> chapter -> course
     async ({ data, req }) => {
       // Content-promotion imports carry `chapter` and `course` on every

@@ -16,6 +16,7 @@ import { anyone } from '../../access/anyone'
 import { authenticated } from '../../access/authenticated'
 import { createdByField } from '../../fields/createdBy'
 import { translatedFromField } from '../../fields/translatedFrom'
+import { defaultNewGraphicsStatic } from '../Exercises/hooks/defaultNewGraphicsStatic'
 import { ContentSchema } from '../Exercises/schemas'
 import { DEFAULT_CONTENT } from './defaults'
 import { generateSlug, validateSlugUniqueness } from './hooks'
@@ -339,6 +340,7 @@ const isAdminOrOwner: Access = ({ req }) => {
 const sectionHooks: CollectionConfig['hooks'] = {
   beforeChange: [
     computeSectionAdminTitle,
+    defaultNewGraphicsStatic,
     // Auto-populate lesson/chapter/course from the parent exercise chain.
     // Skipped during content-promotion imports (bundle carries the denormalized
     // fields verbatim, and the Mongo round trips here would balloon a 226-exercise
