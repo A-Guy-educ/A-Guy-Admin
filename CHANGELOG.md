@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- feat(graphics): Default new axis and geometry graphs to static ([#728](https://github.com/A-Guy-educ/A-Guy-Admin/pull/728)) — @aguyshayb
 - promote: dev -> main (v0.62.0) ([#726](https://github.com/A-Guy-educ/A-Guy-Admin/pull/726)) — @aguyshayb
 - chore: Release v0.62.0 ([#725](https://github.com/A-Guy-educ/A-Guy-Admin/pull/725)) — @aguyshayb
 - fix(graphics): Make interactive off actually block graph interaction ([#724](https://github.com/A-Guy-educ/A-Guy-Admin/pull/724)) — @aguyshayb
