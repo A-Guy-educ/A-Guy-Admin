@@ -11,6 +11,12 @@
 - fix(graphics): Honor manual axis viewport ranges as entered ([#721](https://github.com/A-Guy-educ/A-Guy-Admin/pull/721)) — @aguyshayb
 - feat: Add interactive on/off flag to axis and geometry specs ([#719](https://github.com/A-Guy-educ/A-Guy-Admin/pull/719)) — @aguyshayb
 
+## v0.63.0 — 2026-10-29
+
+### Features
+
+- Graphics: new axis and geometry graphs default to static ([#728](https://github.com/A-Guy-educ/A-Guy-Admin/pull/728))
+
 ## v0.62.0 — 2026-10-28
 
 ### Features
