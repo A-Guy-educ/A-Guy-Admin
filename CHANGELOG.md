@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [v0.63.0] - 2026-10-29
+
 - promote: dev -> main (v0.63.0) ([#730](https://github.com/A-Guy-educ/A-Guy-Admin/pull/730)) — @aguyshayb
 - chore: Release v0.63.0 ([#729](https://github.com/A-Guy-educ/A-Guy-Admin/pull/729)) — @aguyshayb
 - feat(graphics): Default new axis and geometry graphs to static ([#728](https://github.com/A-Guy-educ/A-Guy-Admin/pull/728)) — @aguyshayb
