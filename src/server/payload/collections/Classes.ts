@@ -2,8 +2,11 @@
  * Classes Collection
  *
  * A school class (e.g. "י'3 מתקדם") studying one course, with its teachers and
- * students. A-Guy-Web reads this directly from Mongo for the teacher dashboard,
- * so slug and field names are a cross-repo contract — do not rename.
+ * students. A-Guy-Web reads this directly from Mongo for the teacher dashboard
+ * and for /join self-enrollment, which lists `schools.name` + classes by `name`,
+ * `school`, `course`, and $push-es the joining user's ObjectId onto `students`.
+ * Slug and field names are a cross-repo contract — do not rename. Admin saves
+ * keep students who joined while the class was open (see preserveConcurrentStudents).
  *
  * @fileType collection-config
  * @domain classroom
@@ -15,6 +18,10 @@ import type { CollectionConfig } from 'payload'
 import { adminOnly } from '@/server/payload/access/adminOnly'
 import { AccountRole } from '@/server/payload/collections/Users/roles'
 import { tenantField } from '@/server/payload/fields/tenant'
+import {
+  loadedStudentsField,
+  preserveConcurrentStudents,
+} from '@/server/payload/hooks/classes/preserveConcurrentStudents'
 import { normalizeRelationshipIds } from '@/server/payload/hooks/normalizeRelationshipIds'
 
 export const Classes: CollectionConfig = {
@@ -31,6 +38,7 @@ export const Classes: CollectionConfig = {
     delete: adminOnly,
   },
   hooks: {
+    beforeChange: [preserveConcurrentStudents],
     afterRead: [normalizeRelationshipIds(['school', 'course', 'teachers', 'students', 'tenant'])],
   },
   fields: [
@@ -70,6 +78,7 @@ export const Classes: CollectionConfig = {
       hasMany: true,
       index: true,
     },
+    loadedStudentsField,
     tenantField,
   ],
   timestamps: true,

@@ -3185,6 +3185,15 @@ export interface Class {
   course: string | Course;
   teachers?: (string | User)[] | null;
   students?: (string | User)[] | null;
+  loadedStudents?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
   /**
    * Tenant scope for this document
    */
@@ -5065,6 +5074,7 @@ export interface ClassesSelect<T extends boolean = true> {
   course?: T;
   teachers?: T;
   students?: T;
+  loadedStudents?: T;
   tenant?: T;
   updatedAt?: T;
   createdAt?: T;

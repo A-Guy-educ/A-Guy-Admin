@@ -11,8 +11,11 @@ import { Schools } from '@/server/payload/collections/Schools'
 import { AccountRole } from '@/server/payload/collections/Users/roles'
 import { normalizeRelationshipIds } from '@/server/payload/hooks/normalizeRelationshipIds'
 
+// Virtual fields are never stored, so they aren't part of the Mongo contract.
 const fieldNames = (c: CollectionConfig) =>
-  c.fields.filter((f): f is Field & { name: string } => 'name' in f).map((f) => f.name)
+  c.fields
+    .filter((f): f is Field & { name: string } => 'name' in f && !('virtual' in f && f.virtual))
+    .map((f) => f.name)
 
 const findField = (c: CollectionConfig, name: string) =>
   c.fields.find((f) => 'name' in f && f.name === name) as Record<string, unknown> | undefined
