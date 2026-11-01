@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- feat: Import and export html blocks in v2 txt lessons ([#734](https://github.com/A-Guy-educ/A-Guy-Admin/pull/734)) — @aguyshayb
 ## [v0.63.0] - 2026-10-29
 
 - promote: dev -> main (v0.63.0) ([#730](https://github.com/A-Guy-educ/A-Guy-Admin/pull/730)) — @aguyshayb
