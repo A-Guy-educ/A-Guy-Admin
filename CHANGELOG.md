@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- fix: Keep students who joined a class while it was open in admin ([#736](https://github.com/A-Guy-educ/A-Guy-Admin/pull/736)) — @aguyshayb
 - fix(studio): Keep block editor open while a Payload drawer is in use ([#735](https://github.com/A-Guy-educ/A-Guy-Admin/pull/735)) — @aguyshayb
 - feat: Import and export html blocks in v2 txt lessons ([#734](https://github.com/A-Guy-educ/A-Guy-Admin/pull/734)) — @aguyshayb
 ## [v0.63.0] - 2026-10-29
