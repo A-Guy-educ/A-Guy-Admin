@@ -18,6 +18,17 @@
 - fix(graphics): Honor manual axis viewport ranges as entered ([#721](https://github.com/A-Guy-educ/A-Guy-Admin/pull/721)) — @aguyshayb
 - feat: Add interactive on/off flag to axis and geometry specs ([#719](https://github.com/A-Guy-educ/A-Guy-Admin/pull/719)) — @aguyshayb
 
+## v0.64.0 — 2026-11-01
+
+### Features
+
+- Import and export html blocks in v2 txt lessons ([#734](https://github.com/A-Guy-educ/A-Guy-Admin/pull/734))
+
+### Bug Fixes
+
+- Keep students who joined a class while it was open in admin ([#736](https://github.com/A-Guy-educ/A-Guy-Admin/pull/736))
+- Studio: keep block editor open while a Payload drawer is in use ([#735](https://github.com/A-Guy-educ/A-Guy-Admin/pull/735))
+
 ## v0.63.0 — 2026-10-29
 
 ### Features
