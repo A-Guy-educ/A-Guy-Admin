@@ -34,6 +34,14 @@ describe('middleware CSP', () => {
     expect(adminContentSecurityPolicy).not.toContain('kody-dashboard-aguy.vercel.app')
   })
 
+  it('lets <video>/<audio> follow /api/media/file redirects to the Blob store', () => {
+    // The media proxy 307s to `<store>.public.blob.vercel-storage.com`; without
+    // media-src the browser falls back to default-src 'self' and blocks playback.
+    for (const csp of [contentSecurityPolicy, adminContentSecurityPolicy]) {
+      expect(csp).toMatch(/media-src [^;]*\*\.blob\.vercel-storage\.com/)
+    }
+  })
+
   it('keeps the PDF viewer free to use its own response headers', () => {
     const response = middleware(createRequest('/api/pdfjs-viewer'))
 
