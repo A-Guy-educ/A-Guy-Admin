@@ -79,6 +79,14 @@ export const QuestionAttempts: CollectionConfig = {
       type: 'checkbox',
       defaultValue: false,
     },
+    {
+      name: 'selfChecked',
+      type: 'checkbox',
+      defaultValue: false,
+      admin: {
+        description: 'Student compared their answer to the solution instead of having it checked',
+      },
+    },
     counterField('wrongCount'),
     counterField('hintCount'),
     counterField('explanationCount'),
