@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [v0.64.0] - 2026-11-01
+
 - promote: dev -> main (v0.64.0) ([#740](https://github.com/A-Guy-educ/A-Guy-Admin/pull/740)) — @aguyshayb
 - chore: Release v0.64.0 ([#739](https://github.com/A-Guy-educ/A-Guy-Admin/pull/739)) — @aguyshayb
 - feat: Add selfChecked field to question-attempts ([#738](https://github.com/A-Guy-educ/A-Guy-Admin/pull/738)) — @aguyshayb
