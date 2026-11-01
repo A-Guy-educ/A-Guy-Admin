@@ -15,6 +15,9 @@ import { MultiAxisDocView } from './docViews/MultiAxisDocView'
 import { TableQuestionDocView } from './docViews/TableQuestionDocView'
 import { MatchingQuestionDocView } from './docViews/MatchingQuestionDocView'
 
+// Portal root for Payload's drawers/modals (@faceless-ui/modal, classPrefix "payload").
+const PAYLOAD_MODAL_SELECTOR = '.payload__modal-container'
+
 interface StudioDocBlockProps {
   block: ContentBlock
   onChange: (updated: ContentBlock) => void
@@ -54,6 +57,11 @@ export const StudioDocBlock: React.FC<StudioDocBlockProps> = ({ block, onChange,
       const root = rootRef.current
       if (!root) return
       if (e.target instanceof Node && root.contains(e.target)) return
+      // Payload drawers (e.g. the media picker / upload drawer opened by
+      // MediaBlockEditor) portal into the modal container, outside `rootRef`.
+      // Closing here would unmount the drawer mid-interaction, dropping the
+      // selection and leaving Payload's modal state stuck open.
+      if (e.target instanceof Element && e.target.closest(PAYLOAD_MODAL_SELECTOR)) return
       setEditing(false)
     }
     document.addEventListener('mousedown', handler)

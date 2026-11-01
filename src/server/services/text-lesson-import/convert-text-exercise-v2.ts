@@ -10,6 +10,7 @@
  */
 import type {
   ContentBlock,
+  HtmlBlock,
   InlineRichText,
   QuestionAttachment,
   QuestionAxisBlock,
@@ -27,6 +28,7 @@ import type { GeometrySpecV1 } from '@/infra/contracts/graphics/geometry.v1'
 import { withFeaturePointViewport } from '@/infra/utils/graphics/viewport-utils'
 
 import type { TextExerciseV2, TextSectionV2 } from './parse-text-v2'
+import { extractHtmlSegments, splitHtmlSegments } from './split-html-segments'
 
 const OPEN_ENDED_PLACEHOLDER = 'תשובה פתוחה — למילוי ידני'
 
@@ -36,6 +38,17 @@ function inlineRichText(value: string): InlineRichText {
 
 function richTextBlock(value: string): RichTextBlock {
   return { id: generateId(), type: 'rich_text', format: 'md-math-v1', value, mediaIds: [] }
+}
+
+function htmlBlock(html: string): HtmlBlock {
+  return { id: generateId(), type: 'html', html }
+}
+
+/** A text field as rich_text blocks with any pasted HTML as html blocks, in source order. */
+function textAndHtmlBlocks(value: string): ContentBlock[] {
+  return splitHtmlSegments(value).map((s) =>
+    s.kind === 'html' ? htmlBlock(s.value) : richTextBlock(s.value),
+  )
 }
 
 // Sketches (geometry / axis / svg) are capped at 'medium' (50%) on import.
@@ -272,7 +285,7 @@ function unparsableSectionBlock(section: TextSectionV2, reason: string): RichTex
 function buildSectionTitle(section: TextSectionV2, index: number): string {
   const questionNumber = section.questionNumber?.trim()
   if (questionNumber) return `סעיף ${questionNumber}`
-  const question = section.question?.trim()
+  const question = extractHtmlSegments(section.question ?? '').text.trim()
   if (question) return question.slice(0, 60)
   return `סעיף ${index + 1}`
 }
@@ -347,8 +360,18 @@ function visualBlocks(
   return out
 }
 
+/**
+ * HTML pasted into the question text becomes standalone html blocks ahead
+ * of the question — a question prompt is inline rich text and can't hold it.
+ */
 function convertSectionToBlocks(section: TextSectionV2): ContentBlock[] {
-  return [...standaloneSectionBlocks(section), ...convertQuestionToBlocks(section)]
+  const { text, html } = extractHtmlSegments(section.question)
+  const withoutHtml = html.length > 0 ? { ...section, question: text } : section
+  return [
+    ...html.map(htmlBlock),
+    ...standaloneSectionBlocks(withoutHtml),
+    ...convertQuestionToBlocks(withoutHtml),
+  ]
 }
 
 function convertQuestionToBlocks(section: TextSectionV2): ContentBlock[] {
@@ -389,7 +412,7 @@ export interface ConvertedExerciseV2 {
 
 export function convertTextExerciseV2ToSections(exercise: TextExerciseV2): ConvertedExerciseV2 {
   const sharedBlocks: ContentBlock[] = []
-  if (exercise.intro) sharedBlocks.push(richTextBlock(exercise.intro))
+  if (exercise.intro) sharedBlocks.push(...textAndHtmlBlocks(exercise.intro))
   // Shared visual is emitted once at the exercise level. Sections deliberately
   // don't inherit it as an attachment — that would double-render the same
   // drawing in every section. Only one visual kind is expected per exercise;

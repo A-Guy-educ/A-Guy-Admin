@@ -46,6 +46,7 @@ import { geometrySpecToDsl } from './geometry-spec-to-dsl'
 // -------------------------------------------
 
 export interface CanonicalTextContent {
+  /** Intro/question text. `html` blocks are inlined here as raw markup, in block order. */
   text: string
   table: null
   PNG: string
@@ -199,6 +200,23 @@ function isSvgBlock(
   block: ContentBlock,
 ): block is import('@/server/payload/collections/Exercises/types').SvgBlock {
   return block.type === 'svg'
+}
+
+function isHtmlBlock(
+  block: ContentBlock,
+): block is import('@/server/payload/collections/Exercises/types').HtmlBlock {
+  return block.type === 'html'
+}
+
+/**
+ * Raw markup of an html block as it goes into canonical text. The text
+ * importer only recognises markup on lines that open with a tag, so markup
+ * that starts with bare text is wrapped in a `<div>`.
+ */
+function htmlBlockText(block: { html?: string }): string {
+  const html = (block.html ?? '').trim()
+  if (!html) return ''
+  return /^<[a-z]/i.test(html) ? html : `<div>${html}</div>`
 }
 
 function isQuestionGeometryBlock(
@@ -560,6 +578,11 @@ function sectionDocToCanonical(
       if (block.latex) introTexts.push(block.latex)
       continue
     }
+    if (isHtmlBlock(block)) {
+      const html = htmlBlockText(block)
+      if (html) introTexts.push(html)
+      continue
+    }
     if (isSvgBlock(block)) {
       if (block.value) visual.svgs.push(block.value)
       continue
@@ -684,6 +707,9 @@ export function exerciseWithSectionsToCanonical(
       if (t) introTexts.push(t)
     } else if (isLatexBlock(block)) {
       if (block.latex) introTexts.push(block.latex)
+    } else if (isHtmlBlock(block)) {
+      const html = htmlBlockText(block)
+      if (html) introTexts.push(html)
     } else if (isSvgBlock(block)) {
       if (block.value) visual.svgs.push(block.value)
     } else if (isQuestionAxisBlock(block)) {
@@ -765,6 +791,10 @@ export function exerciseToCanonical(
     }
     if (isLatexBlock(block)) {
       dataParts.push({ text: block.latex, table: null, PNG: '', svg: '' })
+      continue
+    }
+    if (isHtmlBlock(block)) {
+      dataParts.push({ text: htmlBlockText(block), table: null, PNG: '', svg: '' })
       continue
     }
     if (isSvgBlock(block)) {

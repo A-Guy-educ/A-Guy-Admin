@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+- chore: Release v0.64.0 ([#739](https://github.com/A-Guy-educ/A-Guy-Admin/pull/739)) — @aguyshayb
+- feat: Add selfChecked field to question-attempts ([#738](https://github.com/A-Guy-educ/A-Guy-Admin/pull/738)) — @aguyshayb
+- fix: Keep students who joined a class while it was open in admin ([#736](https://github.com/A-Guy-educ/A-Guy-Admin/pull/736)) — @aguyshayb
+- fix(studio): Keep block editor open while a Payload drawer is in use ([#735](https://github.com/A-Guy-educ/A-Guy-Admin/pull/735)) — @aguyshayb
+- feat: Import and export html blocks in v2 txt lessons ([#734](https://github.com/A-Guy-educ/A-Guy-Admin/pull/734)) — @aguyshayb
+## [v0.63.0] - 2026-10-29
+
+- promote: dev -> main (v0.63.0) ([#730](https://github.com/A-Guy-educ/A-Guy-Admin/pull/730)) — @aguyshayb
 - chore: Release v0.63.0 ([#729](https://github.com/A-Guy-educ/A-Guy-Admin/pull/729)) — @aguyshayb
 - feat(graphics): Default new axis and geometry graphs to static ([#728](https://github.com/A-Guy-educ/A-Guy-Admin/pull/728)) — @aguyshayb
 - promote: dev -> main (v0.62.0) ([#726](https://github.com/A-Guy-educ/A-Guy-Admin/pull/726)) — @aguyshayb
@@ -11,6 +19,18 @@
 - feat: Lossless full-lesson JSON export and import ([#722](https://github.com/A-Guy-educ/A-Guy-Admin/pull/722)) — @aguyshayb
 - fix(graphics): Honor manual axis viewport ranges as entered ([#721](https://github.com/A-Guy-educ/A-Guy-Admin/pull/721)) — @aguyshayb
 - feat: Add interactive on/off flag to axis and geometry specs ([#719](https://github.com/A-Guy-educ/A-Guy-Admin/pull/719)) — @aguyshayb
+
+## v0.64.0 — 2026-11-01
+
+### Features
+
+- Question attempts: new `selfChecked` field records when a student compared their answer to the solution ([#738](https://github.com/A-Guy-educ/A-Guy-Admin/pull/738))
+- Import and export html blocks in v2 txt lessons ([#734](https://github.com/A-Guy-educ/A-Guy-Admin/pull/734))
+
+### Bug Fixes
+
+- Classes: keep students who joined a class while it was open in admin ([#736](https://github.com/A-Guy-educ/A-Guy-Admin/pull/736))
+- Studio: keep block editor open while a Payload drawer is in use ([#735](https://github.com/A-Guy-educ/A-Guy-Admin/pull/735))
 
 ## v0.63.0 — 2026-10-29
 
