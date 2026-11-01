@@ -3216,6 +3216,10 @@ export interface QuestionAttempt {
    */
   block: string;
   solved?: boolean | null;
+  /**
+   * Student compared their answer to the solution instead of having it checked
+   */
+  selfChecked?: boolean | null;
   wrongCount?: number | null;
   hintCount?: number | null;
   explanationCount?: number | null;
@@ -5090,6 +5094,7 @@ export interface QuestionAttemptsSelect<T extends boolean = true> {
   exercise?: T;
   block?: T;
   solved?: T;
+  selfChecked?: T;
   wrongCount?: T;
   hintCount?: T;
   explanationCount?: T;

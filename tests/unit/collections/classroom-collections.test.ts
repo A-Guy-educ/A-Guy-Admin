@@ -47,6 +47,7 @@ describe('classroom collections contract', () => {
       'exercise',
       'block',
       'solved',
+      'selfChecked',
       'wrongCount',
       'hintCount',
       'explanationCount',
