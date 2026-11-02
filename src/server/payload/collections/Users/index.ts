@@ -25,6 +25,7 @@ import { preventLastAdminDemotion } from './hooks/preventLastAdminDemotion-hook'
 import { optionalTenantField } from '../../fields/tenant'
 import { getDefaultTenantId } from '@/server/repos/tenant/get-default-tenant'
 import { ACCOUNT_ROLE_LABEL, AccountRole } from './roles'
+import { userJoinProfileFields } from './userJoinProfile'
 import { USER_SEGMENT_LABEL } from './userSegment'
 import { userSegmentListFilter } from './userSegmentListFilter'
 
@@ -50,7 +51,16 @@ export const Users: CollectionConfig = {
     update: adminOrSelf, // Admins can update all, users can update their own
   },
   admin: {
-    defaultColumns: ['name', 'email', 'role', 'segment', 'schools'],
+    defaultColumns: [
+      'name',
+      'firstName',
+      'lastName',
+      'email',
+      'phone',
+      'role',
+      'segment',
+      'schools',
+    ],
     useAsTitle: 'name',
     // B2B / B2C filtering: virtual fields can't be filtered natively, so the
     // SegmentFilter component sets ?segment= and this resolves it.
@@ -71,6 +81,8 @@ export const Users: CollectionConfig = {
       name: 'name',
       type: 'text',
     },
+    // firstName / lastName / phone / onboardingType — written by Web's /join.
+    ...userJoinProfileFields,
     {
       name: 'role',
       type: 'select',
