@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+- chore: Release v0.65.0 ([#747](https://github.com/A-Guy-educ/A-Guy-Admin/pull/747)) — @aguyshayb
+- feat: Add b2b tier grant source for school students ([#745](https://github.com/A-Guy-educ/A-Guy-Admin/pull/745)) — @aguyshayb
+- feat: Add join-profile fields to Users ([#744](https://github.com/A-Guy-educ/A-Guy-Admin/pull/744)) — @aguyshayb
+- feat: Add derived B2B/B2C segment and schools to Users ([#743](https://github.com/A-Guy-educ/A-Guy-Admin/pull/743)) — @aguyshayb
+- feat: Add blocks tab with content editor to lessons ([#742](https://github.com/A-Guy-educ/A-Guy-Admin/pull/742)) — @aguyshayb
+## [v0.64.0] - 2026-11-01
+
+- promote: dev -> main (v0.64.0) ([#740](https://github.com/A-Guy-educ/A-Guy-Admin/pull/740)) — @aguyshayb
 - chore: Release v0.64.0 ([#739](https://github.com/A-Guy-educ/A-Guy-Admin/pull/739)) — @aguyshayb
 - feat: Add selfChecked field to question-attempts ([#738](https://github.com/A-Guy-educ/A-Guy-Admin/pull/738)) — @aguyshayb
 - fix: Keep students who joined a class while it was open in admin ([#736](https://github.com/A-Guy-educ/A-Guy-Admin/pull/736)) — @aguyshayb
@@ -19,6 +27,15 @@
 - feat: Lossless full-lesson JSON export and import ([#722](https://github.com/A-Guy-educ/A-Guy-Admin/pull/722)) — @aguyshayb
 - fix(graphics): Honor manual axis viewport ranges as entered ([#721](https://github.com/A-Guy-educ/A-Guy-Admin/pull/721)) — @aguyshayb
 - feat: Add interactive on/off flag to axis and geometry specs ([#719](https://github.com/A-Guy-educ/A-Guy-Admin/pull/719)) — @aguyshayb
+
+## v0.65.0 — 2026-11-02
+
+### Features
+
+- Lessons: new Blocks tab with a content editor ([#742](https://github.com/A-Guy-educ/A-Guy-Admin/pull/742))
+- Users: derived B2B/B2C segment and schools, with a segment list filter ([#743](https://github.com/A-Guy-educ/A-Guy-Admin/pull/743))
+- Users: join-profile fields ([#744](https://github.com/A-Guy-educ/A-Guy-Admin/pull/744))
+- Users: `b2b` tier grant source for school students ([#745](https://github.com/A-Guy-educ/A-Guy-Admin/pull/745))
 
 ## v0.64.0 — 2026-11-01
 

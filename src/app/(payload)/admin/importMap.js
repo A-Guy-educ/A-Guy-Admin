@@ -33,6 +33,7 @@ import { LessonConversionPanel as LessonConversionPanel_057daf3b86f654d90edf003b
 import { LessonBlocksField as LessonBlocksField_c3ff48da65f411ef372b497cb7c724ee } from '@/ui/admin/LessonBlocksField'
 import { ContextExerciseViewer as ContextExerciseViewer_00433017acccf596fc613f093ab15a2d } from '@/ui/admin/context-exercise-viewer'
 import { LessonBlocksQuickField as LessonBlocksQuickField_c3ff48da65f411ef372b497cb7c724ee } from '@/ui/admin/LessonBlocksField'
+import { ExerciseContentEditor as ExerciseContentEditor_d0c5d070052b5cabcf602f1e9878afd8 } from '@/ui/admin/ExerciseContentEditor'
 import { LessonIdDisplay as LessonIdDisplay_05dba386507b0a4f994ff6eb8b0cb22c } from '@/ui/admin/LessonIdDisplay'
 import { MetaImageComponent as MetaImageComponent_a8a977ebc872c5d5ea7ee689724c0860 } from '@payloadcms/plugin-seo/client'
 import { LessonNavigation as LessonNavigation_3633cb4a281c7c581bfc453746b3dc60 } from '@/ui/admin/ContentNavigation'
@@ -46,7 +47,6 @@ import { IntroTableHeadersField as IntroTableHeadersField_7c6162afec623d7dc5ec43
 import { IntroTableRowsField as IntroTableRowsField_7c6162afec623d7dc5ec436565e36ecb } from '@/ui/admin/IntroTableField'
 import { IntroGeometrySpecField as IntroGeometrySpecField_c2c1761cbe819b0609cad9be299e1fc7 } from '@/ui/admin/IntroGeometryField'
 import { IntroGraphSpecField as IntroGraphSpecField_8d1eea97d57da5692323d9664ac06d67 } from '@/ui/admin/IntroGraphField'
-import { ExerciseContentEditor as ExerciseContentEditor_d0c5d070052b5cabcf602f1e9878afd8 } from '@/ui/admin/ExerciseContentEditor'
 import { ExerciseBlocksFullField as ExerciseBlocksFullField_a178cb45a583b7c7ac6ac3ec84dfb752 } from '@/ui/admin/ExerciseBlocksField'
 import { ExerciseBlocksField as ExerciseBlocksField_a178cb45a583b7c7ac6ac3ec84dfb752 } from '@/ui/admin/ExerciseBlocksField'
 import { ExerciseIdDisplay as ExerciseIdDisplay_644cbbe3ecc84c7d57eb8fd9f96ff348 } from '@/ui/admin/ExerciseIdDisplay'
@@ -59,6 +59,8 @@ import { ExerciseDuplicateAction as ExerciseDuplicateAction_5624d64dc38dd43f1c5b
 import { SectionIdDisplay as SectionIdDisplay_7ef67555ed09efa1ad0f6e5f11651ef5 } from '@/ui/admin/SectionIdDisplay'
 import { SectionNavigation as SectionNavigation_3633cb4a281c7c581bfc453746b3dc60 } from '@/ui/admin/ContentNavigation'
 import { SectionDuplicateAction as SectionDuplicateAction_365919545535acb3f7c60d7769f6feda } from '@/ui/admin/SectionDuplicateButton/SectionDuplicateButton'
+import { UserSchoolsCell as UserSchoolsCell_213a4fcb867d572fbacd6faf27200c68 } from '@/ui/admin/Users/SchoolsCell'
+import { UserSegmentFilter as UserSegmentFilter_f656301f9e79b5bd26f8b25a0b3360fa } from '@/ui/admin/Users/SegmentFilter'
 import { MediaPreview as MediaPreview_4b980c9a407724ef7c1755e3482d0258 } from '@/ui/admin/MediaPreview'
 import { HorizontalRuleFeatureClient as HorizontalRuleFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { BlocksFeatureClient as BlocksFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
@@ -119,6 +121,7 @@ export const importMap = {
   "@/ui/admin/LessonBlocksField#LessonBlocksField": LessonBlocksField_c3ff48da65f411ef372b497cb7c724ee,
   "@/ui/admin/context-exercise-viewer#ContextExerciseViewer": ContextExerciseViewer_00433017acccf596fc613f093ab15a2d,
   "@/ui/admin/LessonBlocksField#LessonBlocksQuickField": LessonBlocksQuickField_c3ff48da65f411ef372b497cb7c724ee,
+  "@/ui/admin/ExerciseContentEditor#ExerciseContentEditor": ExerciseContentEditor_d0c5d070052b5cabcf602f1e9878afd8,
   "@/ui/admin/LessonIdDisplay#LessonIdDisplay": LessonIdDisplay_05dba386507b0a4f994ff6eb8b0cb22c,
   "@payloadcms/plugin-seo/client#MetaImageComponent": MetaImageComponent_a8a977ebc872c5d5ea7ee689724c0860,
   "@/ui/admin/ContentNavigation#LessonNavigation": LessonNavigation_3633cb4a281c7c581bfc453746b3dc60,
@@ -132,7 +135,6 @@ export const importMap = {
   "@/ui/admin/IntroTableField#IntroTableRowsField": IntroTableRowsField_7c6162afec623d7dc5ec436565e36ecb,
   "@/ui/admin/IntroGeometryField#IntroGeometrySpecField": IntroGeometrySpecField_c2c1761cbe819b0609cad9be299e1fc7,
   "@/ui/admin/IntroGraphField#IntroGraphSpecField": IntroGraphSpecField_8d1eea97d57da5692323d9664ac06d67,
-  "@/ui/admin/ExerciseContentEditor#ExerciseContentEditor": ExerciseContentEditor_d0c5d070052b5cabcf602f1e9878afd8,
   "@/ui/admin/ExerciseBlocksField#ExerciseBlocksFullField": ExerciseBlocksFullField_a178cb45a583b7c7ac6ac3ec84dfb752,
   "@/ui/admin/ExerciseBlocksField#ExerciseBlocksField": ExerciseBlocksField_a178cb45a583b7c7ac6ac3ec84dfb752,
   "@/ui/admin/ExerciseIdDisplay#ExerciseIdDisplay": ExerciseIdDisplay_644cbbe3ecc84c7d57eb8fd9f96ff348,
@@ -145,6 +147,8 @@ export const importMap = {
   "@/ui/admin/SectionIdDisplay#SectionIdDisplay": SectionIdDisplay_7ef67555ed09efa1ad0f6e5f11651ef5,
   "@/ui/admin/ContentNavigation#SectionNavigation": SectionNavigation_3633cb4a281c7c581bfc453746b3dc60,
   "@/ui/admin/SectionDuplicateButton/SectionDuplicateButton#SectionDuplicateAction": SectionDuplicateAction_365919545535acb3f7c60d7769f6feda,
+  "@/ui/admin/Users/SchoolsCell#UserSchoolsCell": UserSchoolsCell_213a4fcb867d572fbacd6faf27200c68,
+  "@/ui/admin/Users/SegmentFilter#UserSegmentFilter": UserSegmentFilter_f656301f9e79b5bd26f8b25a0b3360fa,
   "@/ui/admin/MediaPreview#MediaPreview": MediaPreview_4b980c9a407724ef7c1755e3482d0258,
   "@payloadcms/richtext-lexical/client#HorizontalRuleFeatureClient": HorizontalRuleFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "@payloadcms/richtext-lexical/client#BlocksFeatureClient": BlocksFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,

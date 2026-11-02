@@ -506,7 +506,22 @@ export interface Category {
 export interface User {
   id: string;
   name?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  phone?: string | null;
+  /**
+   * Set to B2B when the student joined through their school (/join). Empty = regular B2C onboarding.
+   */
+  onboardingType?: ('b2b' | 'b2c') | null;
   role: 'admin' | 'advanced-content-editor' | 'teacher' | 'student';
+  /**
+   * B2B if the user is a student or teacher in any class; otherwise B2C.
+   */
+  segment?: ('b2b' | 'b2c') | null;
+  /**
+   * Schools the user belongs to through their classes.
+   */
+  schools?: string[] | null;
   /**
    * Tenant scope for this document (leave empty for global/legacy products)
    */
@@ -541,7 +556,7 @@ export interface User {
   /**
    * How the current tier was granted. Null = free user (default) or no record. Written by the subscription path and the legacy backfill migration.
    */
-  tierGrantSource?: ('subscription' | 'legacy_one_time' | 'manual') | null;
+  tierGrantSource?: ('subscription' | 'legacy_one_time' | 'manual' | 'b2b') | null;
   /**
    * Subscription that granted the current tier (null for non-sub grants). Written by extendTierSubscription; read by expireAndDowngrade.
    */
@@ -2037,6 +2052,18 @@ export interface Lesson {
    * Ordered playlist of exercises and content pages. Defines the lesson flow.
    */
   blocks?: string | null;
+  /**
+   * Ordered blocks stream for this lesson (rich_text, media, question_* blocks, etc.).
+   */
+  content?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
   /**
    * Auto-populated from chapter. Used for filtering lessons by course.
    */
@@ -4674,6 +4701,7 @@ export interface LessonsSelect<T extends boolean = true> {
   contentFiles?: T;
   lessonContextText?: T;
   blocks?: T;
+  content?: T;
   course?: T;
   status?: T;
   reviewStatus?: T;
@@ -5109,7 +5137,13 @@ export interface QuestionAttemptsSelect<T extends boolean = true> {
  */
 export interface UsersSelect<T extends boolean = true> {
   name?: T;
+  firstName?: T;
+  lastName?: T;
+  phone?: T;
+  onboardingType?: T;
   role?: T;
+  segment?: T;
+  schools?: T;
   tenant?: T;
   googleSub?: T;
   verifiedEmail?: T;
