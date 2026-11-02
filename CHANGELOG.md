@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [v0.65.0] - 2026-11-02
+
 - promote: dev -> main (v0.65.0) ([#748](https://github.com/A-Guy-educ/A-Guy-Admin/pull/748)) — @aguyshayb
 - chore: Release v0.65.0 ([#747](https://github.com/A-Guy-educ/A-Guy-Admin/pull/747)) — @aguyshayb
 - feat: Add b2b tier grant source for school students ([#745](https://github.com/A-Guy-educ/A-Guy-Admin/pull/745)) — @aguyshayb
