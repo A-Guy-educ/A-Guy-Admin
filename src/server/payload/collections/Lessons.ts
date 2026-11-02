@@ -23,6 +23,8 @@ import { createdByField } from '../fields/createdBy'
 import { formatSlug, formatSlugAsync } from '../fields/formatSlug'
 import { translatedFromField } from '../fields/translatedFrom'
 import { isContentPromotionImportRequest } from '@/server/services/content-promotion/import-context'
+import { DEFAULT_CONTENT } from './Exercises/defaults'
+import { ContentSchema } from './Exercises/schemas'
 
 // Type for visibleRenderers field data
 type VisibleRenderersData = {
@@ -676,6 +678,40 @@ export const Lessons: CollectionConfig = {
               admin: {
                 components: {
                   Field: '@/ui/admin/LessonBlocksField#LessonBlocksQuickField',
+                },
+              },
+            },
+          ],
+        },
+        {
+          label: 'Blocks',
+          fields: [
+            {
+              // Named `content` (not `blocks`) because `blocks` is already the
+              // exercise playlist above. Same block-stream shape as
+              // exercise/section `content`. Optional so pre-existing lessons
+              // without it still save.
+              name: 'content',
+              type: 'json',
+              defaultValue: DEFAULT_CONTENT,
+              validate: (value: unknown) => {
+                if (value === null || value === undefined) return true
+                const result = ContentSchema.safeParse(value)
+                if (result.success) return true
+                console.error(
+                  '[Lesson content validation]',
+                  JSON.stringify(result.error.issues, null, 2),
+                )
+                const issues = result.error.issues
+                  .map((i) => `[${i.path.join('.')}] ${i.message}`)
+                  .join('; ')
+                return `Invalid content: ${issues}`
+              },
+              admin: {
+                description:
+                  'Ordered blocks stream for this lesson (rich_text, media, question_* blocks, etc.).',
+                components: {
+                  Field: '@/ui/admin/ExerciseContentEditor#ExerciseContentEditor',
                 },
               },
             },
