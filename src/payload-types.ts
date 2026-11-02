@@ -549,7 +549,7 @@ export interface User {
   /**
    * How the current tier was granted. Null = free user (default) or no record. Written by the subscription path and the legacy backfill migration.
    */
-  tierGrantSource?: ('subscription' | 'legacy_one_time' | 'manual') | null;
+  tierGrantSource?: ('subscription' | 'legacy_one_time' | 'manual' | 'b2b') | null;
   /**
    * Subscription that granted the current tier (null for non-sub grants). Written by extendTierSubscription; read by expireAndDowngrade.
    */

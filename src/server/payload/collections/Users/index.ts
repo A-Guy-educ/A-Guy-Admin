@@ -351,6 +351,8 @@ export const Users: CollectionConfig = {
     //   - 'legacy_one_time' — one-time PayPal buyer from before recurring was
     //     wired. Grandfathered; indefinite access.
     //   - 'manual' — admin set the tier by hand (comp, trial, support case).
+    //   - 'b2b' — granted by the user's school. Written by Web's /join
+    //     sign-in (alongside onboardingType='b2b'); never by a payment.
     //
     // Backfilled on cold boot by `backfillTierGrantSource` migration for
     // existing non-free users. Written by extendTierSubscription on each
@@ -362,6 +364,7 @@ export const Users: CollectionConfig = {
         { label: 'Subscription', value: 'subscription' },
         { label: 'Legacy One-Time', value: 'legacy_one_time' },
         { label: 'Manual', value: 'manual' },
+        { label: 'School (B2B)', value: 'b2b' },
       ],
       access: {
         create: ({ req: { user } }) =>
