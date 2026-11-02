@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- test: Fix flaky slug collision in latex sections spec ([#746](https://github.com/A-Guy-educ/A-Guy-Admin/pull/746)) — @aguyshayb
 ## [v0.65.0] - 2026-11-02
 
 - promote: dev -> main (v0.65.0) ([#748](https://github.com/A-Guy-educ/A-Guy-Admin/pull/748)) — @aguyshayb
