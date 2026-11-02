@@ -506,6 +506,13 @@ export interface Category {
 export interface User {
   id: string;
   name?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  phone?: string | null;
+  /**
+   * Set to B2B when the student joined through their school (/join). Empty = regular B2C onboarding.
+   */
+  onboardingType?: ('b2b' | 'b2c') | null;
   role: 'admin' | 'advanced-content-editor' | 'teacher' | 'student';
   /**
    * B2B if the user is a student or teacher in any class; otherwise B2C.
@@ -5130,6 +5137,10 @@ export interface QuestionAttemptsSelect<T extends boolean = true> {
  */
 export interface UsersSelect<T extends boolean = true> {
   name?: T;
+  firstName?: T;
+  lastName?: T;
+  phone?: T;
+  onboardingType?: T;
   role?: T;
   segment?: T;
   schools?: T;
