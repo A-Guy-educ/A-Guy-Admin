@@ -2038,6 +2038,18 @@ export interface Lesson {
    */
   blocks?: string | null;
   /**
+   * Ordered blocks stream for this lesson (rich_text, media, question_* blocks, etc.).
+   */
+  content?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
    * Auto-populated from chapter. Used for filtering lessons by course.
    */
   course?: (string | null) | Course;
@@ -4674,6 +4686,7 @@ export interface LessonsSelect<T extends boolean = true> {
   contentFiles?: T;
   lessonContextText?: T;
   blocks?: T;
+  content?: T;
   course?: T;
   status?: T;
   reviewStatus?: T;

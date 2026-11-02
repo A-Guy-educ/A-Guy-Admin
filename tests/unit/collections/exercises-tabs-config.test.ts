@@ -101,6 +101,7 @@ describe('Exercises Collection Config — admin tabs', () => {
       'Content',
       'Exercises',
       'Exercises Quick',
+      'Blocks',
       'System',
       'SEO',
     ])
