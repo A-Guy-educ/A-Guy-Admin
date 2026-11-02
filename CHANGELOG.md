@@ -27,6 +27,15 @@
 - fix(graphics): Honor manual axis viewport ranges as entered ([#721](https://github.com/A-Guy-educ/A-Guy-Admin/pull/721)) — @aguyshayb
 - feat: Add interactive on/off flag to axis and geometry specs ([#719](https://github.com/A-Guy-educ/A-Guy-Admin/pull/719)) — @aguyshayb
 
+## v0.65.0 — 2026-11-02
+
+### Features
+
+- Lessons: new Blocks tab with a content editor ([#742](https://github.com/A-Guy-educ/A-Guy-Admin/pull/742))
+- Users: derived B2B/B2C segment and schools, with a segment list filter ([#743](https://github.com/A-Guy-educ/A-Guy-Admin/pull/743))
+- Users: join-profile fields ([#744](https://github.com/A-Guy-educ/A-Guy-Admin/pull/744))
+- Users: `b2b` tier grant source for school students ([#745](https://github.com/A-Guy-educ/A-Guy-Admin/pull/745))
+
 ## v0.64.0 — 2026-11-01
 
 ### Features
