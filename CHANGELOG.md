@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- feat: Add derived B2B/B2C segment and schools to Users ([#743](https://github.com/A-Guy-educ/A-Guy-Admin/pull/743)) — @aguyshayb
 - feat: Add blocks tab with content editor to lessons ([#742](https://github.com/A-Guy-educ/A-Guy-Admin/pull/742)) — @aguyshayb
 ## [v0.64.0] - 2026-11-01
 
