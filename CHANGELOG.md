@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- feat: Add blocks tab with content editor to lessons ([#742](https://github.com/A-Guy-educ/A-Guy-Admin/pull/742)) — @aguyshayb
 ## [v0.64.0] - 2026-11-01
 
 - promote: dev -> main (v0.64.0) ([#740](https://github.com/A-Guy-educ/A-Guy-Admin/pull/740)) — @aguyshayb
