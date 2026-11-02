@@ -68,8 +68,12 @@ async function ensureDefaultTenant(payload: Payload): Promise<string> {
   return created.id
 }
 
+// Counter keeps stamps unique within a run: Date.now() + random offsets
+// collided when two tests seeded a couple of seconds apart.
+let seedCount = 0
+
 async function seedHierarchy(payload: Payload, tenantId: string, categoryId: string) {
-  const stamp = Date.now() + Math.floor(Math.random() * 10_000)
+  const stamp = `${Date.now()}-${++seedCount}`
   const course = await payload.create({
     collection: 'courses',
     data: {
