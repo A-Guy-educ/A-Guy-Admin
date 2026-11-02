@@ -508,6 +508,14 @@ export interface User {
   name?: string | null;
   role: 'admin' | 'advanced-content-editor' | 'teacher' | 'student';
   /**
+   * B2B if the user is a student or teacher in any class; otherwise B2C.
+   */
+  segment?: ('b2b' | 'b2c') | null;
+  /**
+   * Schools the user belongs to through their classes.
+   */
+  schools?: string[] | null;
+  /**
    * Tenant scope for this document (leave empty for global/legacy products)
    */
   tenant?: (string | null) | Tenant;
@@ -5123,6 +5131,8 @@ export interface QuestionAttemptsSelect<T extends boolean = true> {
 export interface UsersSelect<T extends boolean = true> {
   name?: T;
   role?: T;
+  segment?: T;
+  schools?: T;
   tenant?: T;
   googleSub?: T;
   verifiedEmail?: T;

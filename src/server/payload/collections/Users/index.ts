@@ -17,6 +17,7 @@ import { isUsersCollectionUser } from '@/server/payload/access/isUsersCollection
 import { DEFAULT_TIER, TIER_LABEL_HE, TIER_SLUGS } from '@/lib/tiers/constants'
 import { anyone } from '../../access/anyone'
 import { attachActiveSubscription } from './hooks/attachActiveSubscription-hook'
+import { attachUserSegment } from './hooks/attachUserSegment-hook'
 import { auditRoleChange } from './hooks/auditRoleChange-hook'
 import { createUserSettings } from './hooks/createUserSettings-hook'
 import { ensureRoleOnSignup } from './hooks/ensureRoleOnSignup-hook'
@@ -24,6 +25,8 @@ import { preventLastAdminDemotion } from './hooks/preventLastAdminDemotion-hook'
 import { optionalTenantField } from '../../fields/tenant'
 import { getDefaultTenantId } from '@/server/repos/tenant/get-default-tenant'
 import { ACCOUNT_ROLE_LABEL, AccountRole } from './roles'
+import { USER_SEGMENT_LABEL } from './userSegment'
+import { userSegmentListFilter } from './userSegmentListFilter'
 
 const CONTROL_CHAR_RE = /[\x00-\x1F\x7F]/
 
@@ -47,8 +50,14 @@ export const Users: CollectionConfig = {
     update: adminOrSelf, // Admins can update all, users can update their own
   },
   admin: {
-    defaultColumns: ['name', 'email', 'role'],
+    defaultColumns: ['name', 'email', 'role', 'segment', 'schools'],
     useAsTitle: 'name',
+    // B2B / B2C filtering: virtual fields can't be filtered natively, so the
+    // SegmentFilter component sets ?segment= and this resolves it.
+    baseListFilter: userSegmentListFilter,
+    components: {
+      beforeListTable: ['@/ui/admin/Users/SegmentFilter#UserSegmentFilter'],
+    },
   },
   auth: {
     tokenExpiration: 60 * 60 * 8,
@@ -83,6 +92,44 @@ export const Users: CollectionConfig = {
       },
       admin: {
         position: 'sidebar',
+      },
+    },
+    // B2B / B2C segment and school names, derived from class membership by
+    // the attachUserSegment afterRead hook. Virtual: never written to the DB.
+    // Separate from `role` — see ./userSegment.ts for the definition.
+    {
+      name: 'segment',
+      label: { en: 'Segment', he: 'פלח' },
+      type: 'select',
+      virtual: true,
+      options: Object.entries(USER_SEGMENT_LABEL).map(([value, label]) => ({ label, value })),
+      access: {
+        create: () => false,
+        update: () => false,
+      },
+      admin: {
+        readOnly: true,
+        position: 'sidebar',
+        description: 'B2B if the user is a student or teacher in any class; otherwise B2C.',
+      },
+    },
+    {
+      name: 'schools',
+      label: { en: 'Schools', he: 'בתי ספר' },
+      type: 'text',
+      hasMany: true,
+      virtual: true,
+      access: {
+        create: () => false,
+        update: () => false,
+      },
+      admin: {
+        readOnly: true,
+        position: 'sidebar',
+        description: 'Schools the user belongs to through their classes.',
+        components: {
+          Cell: '@/ui/admin/Users/SchoolsCell#UserSchoolsCell',
+        },
       },
     },
     // Tenant — auto-assigned on create to the default tenant (DEFAULT_TENANT_SLUG,
@@ -639,9 +686,11 @@ export const Users: CollectionConfig = {
     beforeChange: [preventLastAdminDemotion],
     // Audit trail for role changes
     afterChange: [auditRoleChange, createUserSettings],
-    // Enrich /api/users/me with the caller's active subscription summary.
-    // Self-reads only — admin reads of other users short-circuit (see hook).
-    afterRead: [attachActiveSubscription],
+    // attachUserSegment (admin reads): B2B/B2C + schools. Must stay first —
+    // it batches ids across a find() page.
+    // attachActiveSubscription: enrich /api/users/me with the caller's active
+    // subscription summary. Self-reads only (see hook).
+    afterRead: [attachUserSegment, attachActiveSubscription],
   },
   timestamps: true,
 }

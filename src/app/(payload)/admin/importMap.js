@@ -59,6 +59,8 @@ import { ExerciseDuplicateAction as ExerciseDuplicateAction_5624d64dc38dd43f1c5b
 import { SectionIdDisplay as SectionIdDisplay_7ef67555ed09efa1ad0f6e5f11651ef5 } from '@/ui/admin/SectionIdDisplay'
 import { SectionNavigation as SectionNavigation_3633cb4a281c7c581bfc453746b3dc60 } from '@/ui/admin/ContentNavigation'
 import { SectionDuplicateAction as SectionDuplicateAction_365919545535acb3f7c60d7769f6feda } from '@/ui/admin/SectionDuplicateButton/SectionDuplicateButton'
+import { UserSchoolsCell as UserSchoolsCell_213a4fcb867d572fbacd6faf27200c68 } from '@/ui/admin/Users/SchoolsCell'
+import { UserSegmentFilter as UserSegmentFilter_f656301f9e79b5bd26f8b25a0b3360fa } from '@/ui/admin/Users/SegmentFilter'
 import { MediaPreview as MediaPreview_4b980c9a407724ef7c1755e3482d0258 } from '@/ui/admin/MediaPreview'
 import { HorizontalRuleFeatureClient as HorizontalRuleFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { BlocksFeatureClient as BlocksFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
@@ -145,6 +147,8 @@ export const importMap = {
   "@/ui/admin/SectionIdDisplay#SectionIdDisplay": SectionIdDisplay_7ef67555ed09efa1ad0f6e5f11651ef5,
   "@/ui/admin/ContentNavigation#SectionNavigation": SectionNavigation_3633cb4a281c7c581bfc453746b3dc60,
   "@/ui/admin/SectionDuplicateButton/SectionDuplicateButton#SectionDuplicateAction": SectionDuplicateAction_365919545535acb3f7c60d7769f6feda,
+  "@/ui/admin/Users/SchoolsCell#UserSchoolsCell": UserSchoolsCell_213a4fcb867d572fbacd6faf27200c68,
+  "@/ui/admin/Users/SegmentFilter#UserSegmentFilter": UserSegmentFilter_f656301f9e79b5bd26f8b25a0b3360fa,
   "@/ui/admin/MediaPreview#MediaPreview": MediaPreview_4b980c9a407724ef7c1755e3482d0258,
   "@payloadcms/richtext-lexical/client#HorizontalRuleFeatureClient": HorizontalRuleFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "@payloadcms/richtext-lexical/client#BlocksFeatureClient": BlocksFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
