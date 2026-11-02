@@ -116,17 +116,18 @@ describe('Lessons Collection Config', () => {
   })
 
   describe('admin edit tabs', () => {
-    it('should show Content, Exercises, Exercises Quick, System, and SEO tabs with Content first', () => {
+    it('should show Content, Exercises, Exercises Quick, Blocks, System, and SEO tabs with Content first', () => {
       const tabs = getLessonTabs()
 
       expect(tabs.map((tab) => tab.label)).toEqual([
         'Content',
         'Exercises',
         'Exercises Quick',
+        'Blocks',
         'System',
         'SEO',
       ])
-      expect(tabs[4].name).toBe('meta')
+      expect(tabs[5].name).toBe('meta')
     })
 
     it('should keep only contentNavigation in the sidebar', () => {
@@ -216,8 +217,20 @@ describe('Lessons Collection Config', () => {
       )
     })
 
+    it('should render the Blocks tab with the content block editor', () => {
+      const [, , , blocksTab] = getLessonTabs()
+
+      expect(blocksTab.label).toBe('Blocks')
+      expect(fieldNames(blocksTab.fields)).toEqual(['content'])
+      const contentField = findField(blocksTab.fields, 'content')
+      expect(contentField?.type).toBe('json')
+      expect(contentField?.admin?.components?.Field).toBe(
+        '@/ui/admin/ExerciseContentEditor#ExerciseContentEditor',
+      )
+    })
+
     it('should place read-only identity and system fields in the requested order', () => {
-      const [, , , systemTab] = getLessonTabs()
+      const [, , , , systemTab] = getLessonTabs()
 
       expect(fieldNames(systemTab.fields)).toEqual([
         'lessonIdDisplay',
@@ -260,7 +273,7 @@ describe('Lessons Collection Config', () => {
     })
 
     it('should compose the SEO tab inline with plugin fields and lesson-specific metadata', () => {
-      const [, , , , seoTab] = getLessonTabs()
+      const [, , , , , seoTab] = getLessonTabs()
 
       expect(fieldNames(seoTab.fields)).toEqual([
         'overview',
