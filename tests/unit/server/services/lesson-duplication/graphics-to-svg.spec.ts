@@ -450,6 +450,32 @@ describe('axisSpecToSvg', () => {
     expect(svg).toContain('fill="#ffffff"')
   })
 
+  it('renders point labels at their fontSize, defaulting to 12', () => {
+    const spec: AxisSpecV1 = {
+      kind: 'cartesian',
+      units: 1,
+      grid: { enabled: false },
+      axes: {
+        showNumbers: false,
+        showLabels: false,
+        ticks: 1,
+        labels: { x: 'x', y: 'y' },
+        origin: { x: 0, y: 0 },
+      },
+      viewportMode: 'auto',
+      elements: {
+        points: [
+          { x: 1, y: 1, label: 'A', type: 'point', fontSize: 22 },
+          { x: 2, y: 2, label: 'B', type: 'point' },
+        ],
+        graphs: [],
+      },
+    }
+    const svg = axisSpecToSvg(spec)
+    expect(svg).toMatch(/font-size="22"[^>]*>A</)
+    expect(svg).toMatch(/font-size="12"[^>]*>B</)
+  })
+
   it('renders dashed graphs correctly', () => {
     const spec: AxisSpecV1 = {
       kind: 'cartesian',

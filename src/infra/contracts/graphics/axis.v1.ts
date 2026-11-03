@@ -59,6 +59,8 @@ const PointSchema = z.object({
   color: ColorStringSchema.optional(),
   labelPosition: PositionEnumSchema.optional(),
   size: z.number().int().min(1).max(10).optional(),
+  /** Label font size in px. Defaults to 12. */
+  fontSize: z.number().positive().optional(),
 })
 
 /** Integral/area paint range */

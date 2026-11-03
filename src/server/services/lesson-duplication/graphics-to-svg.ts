@@ -729,7 +729,7 @@ export function axisSpecToSvg(spec: unknown): string {
         const labelPos = point.labelPosition || 't'
         const dy = labelPos === 'b' ? 15 : -15
         parts.push(
-          `<text x="${cx}" y="${cy + dy}" font-size="12" fill="${escapeXml(color)}" text-anchor="middle" font-family="Times New Roman">${escapeXml(point.label)}</text>`,
+          `<text x="${cx}" y="${cy + dy}" font-size="${point.fontSize ?? 12}" fill="${escapeXml(color)}" text-anchor="middle" font-family="Times New Roman">${escapeXml(point.label)}</text>`,
         )
       }
     }
