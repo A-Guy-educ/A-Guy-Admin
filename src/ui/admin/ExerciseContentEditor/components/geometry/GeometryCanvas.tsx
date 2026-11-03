@@ -463,10 +463,11 @@ function syncPoints(
     )
     const labelOffset = mapLabelOffset(safePosition)
     const labelVisible = point.labelVisible !== false
-    // Include labelVisible in the change key so toggling it forces a full
-    // recreation. JSXGraph's `withLabel` can't be flipped reliably via
-    // setAttribute after the point exists.
-    const labelKey = `${labelOffset.join(',')}|${labelVisible ? '1' : '0'}`
+    const labelFontSize = point.fontSize || 15
+    // Include labelVisible and font size in the change key so editing them
+    // forces a full recreation. JSXGraph's `withLabel` can't be flipped (nor
+    // the label sub-element restyled) reliably via setAttribute.
+    const labelKey = `${labelOffset.join(',')}|${labelVisible ? '1' : '0'}|${labelFontSize}`
 
     // Check if label position changed — JSXGraph doesn't reliably update
     // label offset via setAttribute, so we force recreation.
@@ -496,7 +497,7 @@ function syncPoints(
         withLabel: labelVisible,
         label: {
           offset: labelOffset,
-          fontSize: point.fontSize || 15,
+          fontSize: labelFontSize,
           cssStyle: "font-family: 'Times New Roman', Times, serif;",
           visible: labelVisible,
         } as Record<string, unknown>,

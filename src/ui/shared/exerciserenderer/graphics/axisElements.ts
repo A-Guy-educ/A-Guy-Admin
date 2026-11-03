@@ -66,7 +66,7 @@ function renderAxisPoints(board: JXG.Board, points: PointSpec[]) {
         withLabel: !!p.label,
         label: {
           offset: mapLabelOffset(p.labelPosition),
-          fontSize: 12,
+          fontSize: p.fontSize ?? 12,
           fontFamily: 'Times New Roman',
         },
       }

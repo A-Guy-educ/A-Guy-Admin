@@ -7,6 +7,7 @@ import { Plus, Trash2 } from 'lucide-react'
 import { BulkPointSizeControl } from '../shared/BulkPointSizeControl'
 import { ColorSwatchPicker } from '../shared/ColorSwatchPicker'
 import { CompassPositionPicker } from '../shared/CompassPositionPicker'
+import { LabelSizeInput, MAX_LABEL_SIZE, MIN_LABEL_SIZE } from '../shared/LabelSizeInput'
 
 type GeoPoint = GeometrySpecV1['elements']['points'][number]
 
@@ -20,6 +21,8 @@ interface PointsPanelProps {
 const DEFAULT_POINT_SIZE = 2
 const NEW_POINT_SIZE = 2
 const DEFAULT_POINT_POSITION = 'r' as const
+/** Label font size (px) — mirrored in GeometryCanvas.tsx and geometryElements.ts. */
+const DEFAULT_LABEL_SIZE = 15
 
 const nextPointName = (points: GeoPoint[]): string => {
   const names = new Set(points.map((p) => p.name))
@@ -56,6 +59,10 @@ export const PointsPanel: React.FC<PointsPanelProps> = ({ points, onChange }) =>
     onChange(points.map((p) => ({ ...p, size })))
   }
 
+  const handleSetAllLabelSizes = (fontSize: number) => {
+    onChange(points.map((p) => ({ ...p, fontSize })))
+  }
+
   return (
     <div className="points-panel">
       {points.length > 0 && (
@@ -64,6 +71,16 @@ export const PointsPanel: React.FC<PointsPanelProps> = ({ points, onChange }) =>
           max={5}
           initialSize={points[0].size ?? DEFAULT_POINT_SIZE}
           onApply={handleSetAllSizes}
+        />
+      )}
+      {points.length > 0 && (
+        <BulkPointSizeControl
+          min={MIN_LABEL_SIZE}
+          max={MAX_LABEL_SIZE}
+          initialSize={points[0].fontSize ?? DEFAULT_LABEL_SIZE}
+          onApply={handleSetAllLabelSizes}
+          fieldLabel="All label sizes"
+          applyLabel="Apply to all labels"
         />
       )}
       <div className="panel-items-list">
@@ -135,6 +152,11 @@ export const PointsPanel: React.FC<PointsPanelProps> = ({ points, onChange }) =>
                 onChange={(pos) => handleUpdate(index, { position: pos })}
               />
             </div>
+            <LabelSizeInput
+              value={point.fontSize}
+              defaultSize={DEFAULT_LABEL_SIZE}
+              onChange={(fontSize) => handleUpdate(index, { fontSize })}
+            />
             <label className="panel-checkbox-label" style={{ fontSize: '0.75rem' }}>
               <input
                 type="checkbox"
