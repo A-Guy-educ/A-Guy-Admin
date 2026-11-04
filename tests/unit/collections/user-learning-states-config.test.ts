@@ -35,6 +35,7 @@ describe('UserLearningStates collection', () => {
     expect((findField('kind')?.options as { value: string }[]).map((o) => o.value)).toEqual([
       'exercise',
       'lesson-chat',
+      'exam-dates',
     ])
     expect(findField('key')).toMatchObject({ type: 'text', required: true })
     expect(findField('tenant')).toMatchObject({ type: 'relationship', relationTo: 'tenants' })
