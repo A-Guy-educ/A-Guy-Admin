@@ -1,7 +1,7 @@
 /**
  * UserLearningStates Collection
  *
- * Per-student exercise / lesson-chat progress kept server-side so it follows
+ * Per-student exercise / lesson-chat progress and exam dates kept server-side so it follows
  * the student across shared school computers. A-Guy-Web reads and writes this
  * collection directly in Mongo (same as `user-progresses`) and upserts on
  * { user, kind, key }; Admin only owns the schema, indexes and CMS view.
@@ -9,7 +9,7 @@
  * @fileType collection-config
  * @domain progress-tracking
  * @pattern user-owned, cross-repo-contract
- * @ai-summary Opaque per-user exercise and lesson-chat state, written by Web
+ * @ai-summary Opaque per-user exercise, lesson-chat and exam-date state, written by Web
  */
 
 import type { CollectionConfig } from 'payload'
@@ -58,6 +58,8 @@ export const UserLearningStates: CollectionConfig = {
       options: [
         { label: 'Exercise', value: 'exercise' },
         { label: 'Lesson chat', value: 'lesson-chat' },
+        // state: { exams: [{ id, date: 'YYYY-MM-DD', label? }] }
+        { label: 'Exam dates', value: 'exam-dates' },
       ],
     },
     {
@@ -65,7 +67,8 @@ export const UserLearningStates: CollectionConfig = {
       type: 'text',
       required: true,
       admin: {
-        description: 'Exercise id, `review-<exerciseId>`, or lesson id',
+        description:
+          'Exercise id, `review-<exerciseId>`, lesson id, or (exam-dates) course id / `default-course`',
       },
     },
     {
