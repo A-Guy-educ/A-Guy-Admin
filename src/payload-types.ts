@@ -102,6 +102,7 @@ export interface Config {
     'question-attempts': QuestionAttempt;
     users: User;
     'user-progress': UserProgress;
+    'user-learning-states': UserLearningState;
     'user-stats': UserStat;
     media: Media;
     'chat-assets': ChatAsset;
@@ -164,6 +165,7 @@ export interface Config {
     'question-attempts': QuestionAttemptsSelect<false> | QuestionAttemptsSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
     'user-progress': UserProgressSelect<false> | UserProgressSelect<true>;
+    'user-learning-states': UserLearningStatesSelect<false> | UserLearningStatesSelect<true>;
     'user-stats': UserStatsSelect<false> | UserStatsSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
     'chat-assets': ChatAssetsSelect<false> | ChatAssetsSelect<true>;
@@ -3354,6 +3356,37 @@ export interface UserProgress {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "user-learning-states".
+ */
+export interface UserLearningState {
+  id: string;
+  /**
+   * Tenant scope for this document
+   */
+  tenant: string | Tenant;
+  /**
+   * The student this state belongs to
+   */
+  user: string | User;
+  kind: 'exercise' | 'lesson-chat';
+  /**
+   * Exercise id, `review-<exerciseId>`, or lesson id
+   */
+  key: string;
+  state?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "user-stats".
  */
 export interface UserStat {
@@ -4133,6 +4166,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'user-progress';
         value: string | UserProgress;
+      } | null)
+    | ({
+        relationTo: 'user-learning-states';
+        value: string | UserLearningState;
       } | null)
     | ({
         relationTo: 'user-stats';
@@ -5263,6 +5300,19 @@ export interface UserProgressSelect<T extends boolean = true> {
             };
         id?: T;
       };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "user-learning-states_select".
+ */
+export interface UserLearningStatesSelect<T extends boolean = true> {
+  tenant?: T;
+  user?: T;
+  kind?: T;
+  key?: T;
+  state?: T;
   updatedAt?: T;
   createdAt?: T;
 }
