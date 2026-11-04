@@ -41,6 +41,18 @@
 - fix(graphics): Honor manual axis viewport ranges as entered ([#721](https://github.com/A-Guy-educ/A-Guy-Admin/pull/721)) — @aguyshayb
 - feat: Add interactive on/off flag to axis and geometry specs ([#719](https://github.com/A-Guy-educ/A-Guy-Admin/pull/719)) — @aguyshayb
 
+## v0.67.0 — 2026-11-04
+
+### Features
+
+- Graphics: point labels now match their dot color in geometry and axis graphs ([#757](https://github.com/A-Guy-educ/A-Guy-Admin/pull/757))
+- Progress: new `user-learning-states` collection for per-student exercise and lesson-chat state ([#755](https://github.com/A-Guy-educ/A-Guy-Admin/pull/755))
+- Progress: `exam-dates` kind for user-learning-states ([#756](https://github.com/A-Guy-educ/A-Guy-Admin/pull/756))
+
+### Bug Fixes
+
+- Users: course-state endpoint accepts a null `currentCourse` ([#754](https://github.com/A-Guy-educ/A-Guy-Admin/pull/754))
+
 ## v0.66.0 — 2026-11-04
 
 ### Features
