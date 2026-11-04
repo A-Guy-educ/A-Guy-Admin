@@ -33,6 +33,12 @@
 - fix(graphics): Honor manual axis viewport ranges as entered ([#721](https://github.com/A-Guy-educ/A-Guy-Admin/pull/721)) — @aguyshayb
 - feat: Add interactive on/off flag to axis and geometry specs ([#719](https://github.com/A-Guy-educ/A-Guy-Admin/pull/719)) — @aguyshayb
 
+## v0.66.0 — 2026-11-04
+
+### Features
+
+- Graphics: label size control for points in the geometry and axis editors ([#750](https://github.com/A-Guy-educ/A-Guy-Admin/pull/750))
+
 ## v0.65.0 — 2026-11-02
 
 ### Features
