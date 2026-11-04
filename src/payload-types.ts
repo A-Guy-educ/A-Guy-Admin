@@ -3368,9 +3368,9 @@ export interface UserLearningState {
    * The student this state belongs to
    */
   user: string | User;
-  kind: 'exercise' | 'lesson-chat';
+  kind: 'exercise' | 'lesson-chat' | 'exam-dates';
   /**
-   * Exercise id, `review-<exerciseId>`, or lesson id
+   * Exercise id, `review-<exerciseId>`, lesson id, or (exam-dates) course id / `default-course`
    */
   key: string;
   state?:
