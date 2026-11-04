@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [v0.67.0] - 2026-11-04
+
 - promote: dev -> main (v0.67.0) ([#759](https://github.com/A-Guy-educ/A-Guy-Admin/pull/759)) — @aguyshayb
 - chore: Release v0.67.0 ([#758](https://github.com/A-Guy-educ/A-Guy-Admin/pull/758)) — @aguyshayb
 - feat: Match point label color to dot color ([#757](https://github.com/A-Guy-educ/A-Guy-Admin/pull/757)) — @aguyshayb
