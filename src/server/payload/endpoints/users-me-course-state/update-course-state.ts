@@ -17,7 +17,11 @@
  * @pattern self-write, dual-auth, server-side-only-fields
  *
  * Body (zod-validated, all fields optional — empty body = pure heartbeat):
- *   - currentCourse  string  — courses id; verified to exist before writing
+ *   - currentCourse  string | null
+ *                     string  — courses id; verified to exist before writing
+ *                     null    — clears the selection (no course lookup);
+ *                               response `data.currentCourse` is null
+ *                     omitted — left untouched (heartbeat only)
  *   - userId         string  — target user id; required with service token,
  *                              forbidden with cookie auth
  *
@@ -37,7 +41,7 @@ import { resolveCourseStateAuth } from './resolve-auth'
 
 const requestSchema = z.object({
   userId: z.string().min(1).optional(),
-  currentCourse: z.string().min(1).optional(),
+  currentCourse: z.string().min(1).nullable().optional(),
 })
 
 export async function updateCourseState(req: PayloadRequest & { json?: () => Promise<unknown> }) {
@@ -68,7 +72,8 @@ export async function updateCourseState(req: PayloadRequest & { json?: () => Pro
     return Response.json({ success: false, error: auth.error }, { status: auth.status })
   }
 
-  if (currentCourse) {
+  // null clears the selection, so there is no course to verify.
+  if (typeof currentCourse === 'string') {
     try {
       const course = await req.payload.findByID({
         collection: 'courses',
