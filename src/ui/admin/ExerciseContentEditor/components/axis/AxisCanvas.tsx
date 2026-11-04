@@ -73,7 +73,8 @@ export const AxisCanvas: React.FC<AxisCanvasProps> = ({ id, axis, onPointMoved }
         const labelOffset = mapLabelOffset(point.labelPosition)
         const hasLabel = !!point.label
         const labelFontSize = point.fontSize ?? 12
-        const labelKey = `${labelOffset.join(',')}|${hasLabel ? '1' : '0'}|${labelFontSize}`
+        const pointColor = point.color || getDefaultAxisPointColor()
+        const labelKey = `${labelOffset.join(',')}|${hasLabel ? '1' : '0'}|${labelFontSize}|${pointColor}`
         const pointSize = point.size ?? (point.type === 'hole' ? 4 : 3)
 
         const prevKey = existing
@@ -85,7 +86,6 @@ export const AxisCanvas: React.FC<AxisCanvasProps> = ({ id, axis, onPointMoved }
         // hole back to a plain point actually resets it (previously the
         // hole's strokeWidth: 2 lingered after the type change).
         const strokeWidth = point.type === 'hole' ? 2 : 1
-        const pointColor = point.color || getDefaultAxisPointColor()
 
         if (existing && existing.moveTo && prevKey === labelKey) {
           existing.moveTo([point.x, point.y])
@@ -122,6 +122,8 @@ export const AxisCanvas: React.FC<AxisCanvasProps> = ({ id, axis, onPointMoved }
             label: {
               offset: labelOffset,
               fontSize: labelFontSize,
+              // Label text matches the dot so the pair reads as one element.
+              strokeColor: pointColor,
               fontFamily: 'Times New Roman',
             },
           }
