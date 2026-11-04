@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- fix(users): Accept null currentCourse in course-state endpoint ([#754](https://github.com/A-Guy-educ/A-Guy-Admin/pull/754)) — @aguyshayb
 ## [v0.66.0] - 2026-11-04
 
 - promote: dev -> main (v0.66.0) ([#753](https://github.com/A-Guy-educ/A-Guy-Admin/pull/753)) — @aguyshayb
