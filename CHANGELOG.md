@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- feat(progress): Add exam-dates kind to user-learning-states ([#756](https://github.com/A-Guy-educ/A-Guy-Admin/pull/756)) — @aguyshayb
 - feat(progress): Add user-learning-states collection ([#755](https://github.com/A-Guy-educ/A-Guy-Admin/pull/755)) — @aguyshayb
 - fix(users): Accept null currentCourse in course-state endpoint ([#754](https://github.com/A-Guy-educ/A-Guy-Admin/pull/754)) — @aguyshayb
 ## [v0.66.0] - 2026-11-04
