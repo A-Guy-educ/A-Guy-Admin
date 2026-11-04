@@ -72,7 +72,8 @@ export const AxisCanvas: React.FC<AxisCanvasProps> = ({ id, axis, onPointMoved }
         const existing = elementsRef.current.get(elemId)
         const labelOffset = mapLabelOffset(point.labelPosition)
         const hasLabel = !!point.label
-        const labelKey = `${labelOffset.join(',')}|${hasLabel ? '1' : '0'}`
+        const labelFontSize = point.fontSize ?? 12
+        const labelKey = `${labelOffset.join(',')}|${hasLabel ? '1' : '0'}|${labelFontSize}`
         const pointSize = point.size ?? (point.type === 'hole' ? 4 : 3)
 
         const prevKey = existing
@@ -120,7 +121,7 @@ export const AxisCanvas: React.FC<AxisCanvasProps> = ({ id, axis, onPointMoved }
             visible: point.type !== 'floating_text',
             label: {
               offset: labelOffset,
-              fontSize: 12,
+              fontSize: labelFontSize,
               fontFamily: 'Times New Roman',
             },
           }

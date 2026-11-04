@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+- chore: Release v0.66.0 ([#752](https://github.com/A-Guy-educ/A-Guy-Admin/pull/752)) — @aguyshayb
+- feat: Point label size control for geometry and axis graphs ([#750](https://github.com/A-Guy-educ/A-Guy-Admin/pull/750)) — @aguyshayb
+- test: Fix flaky slug collision in latex sections spec ([#746](https://github.com/A-Guy-educ/A-Guy-Admin/pull/746)) — @aguyshayb
+## [v0.65.0] - 2026-11-02
+
+- promote: dev -> main (v0.65.0) ([#748](https://github.com/A-Guy-educ/A-Guy-Admin/pull/748)) — @aguyshayb
 - chore: Release v0.65.0 ([#747](https://github.com/A-Guy-educ/A-Guy-Admin/pull/747)) — @aguyshayb
 - feat: Add b2b tier grant source for school students ([#745](https://github.com/A-Guy-educ/A-Guy-Admin/pull/745)) — @aguyshayb
 - feat: Add join-profile fields to Users ([#744](https://github.com/A-Guy-educ/A-Guy-Admin/pull/744)) — @aguyshayb
@@ -27,6 +33,12 @@
 - feat: Lossless full-lesson JSON export and import ([#722](https://github.com/A-Guy-educ/A-Guy-Admin/pull/722)) — @aguyshayb
 - fix(graphics): Honor manual axis viewport ranges as entered ([#721](https://github.com/A-Guy-educ/A-Guy-Admin/pull/721)) — @aguyshayb
 - feat: Add interactive on/off flag to axis and geometry specs ([#719](https://github.com/A-Guy-educ/A-Guy-Admin/pull/719)) — @aguyshayb
+
+## v0.66.0 — 2026-11-04
+
+### Features
+
+- Graphics: label size control for points in the geometry and axis editors ([#750](https://github.com/A-Guy-educ/A-Guy-Admin/pull/750))
 
 ## v0.65.0 — 2026-11-02
 

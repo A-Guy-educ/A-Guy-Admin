@@ -7,6 +7,7 @@ import { Plus, Trash2 } from 'lucide-react'
 import { BulkPointSizeControl } from '../shared/BulkPointSizeControl'
 import { ColorSwatchPicker } from '../shared/ColorSwatchPicker'
 import { CompassPositionPicker } from '../shared/CompassPositionPicker'
+import { LabelSizeInput, MAX_LABEL_SIZE, MIN_LABEL_SIZE } from '../shared/LabelSizeInput'
 
 type AxisPoint = AxisSpecV1['elements']['points'][number]
 
@@ -17,6 +18,8 @@ interface AxisPointsPanelProps {
 
 const DEFAULT_POINT_SIZE = 4
 const DEFAULT_LABEL_POSITION = 'tr' as const
+/** Label font size (px) — mirrored in AxisCanvas.tsx and axisElements.ts. */
+const DEFAULT_LABEL_SIZE = 12
 
 export const AxisPointsPanel: React.FC<AxisPointsPanelProps> = ({ points, onChange }) => {
   const handleAdd = () => {
@@ -47,6 +50,11 @@ export const AxisPointsPanel: React.FC<AxisPointsPanelProps> = ({ points, onChan
     onChange(points.map((p) => (p.type === 'floating_text' ? p : { ...p, size })))
   }
 
+  // Floating text has its own renderer styling, so only point/hole labels change.
+  const handleSetAllLabelSizes = (fontSize: number) => {
+    onChange(points.map((p) => (p.type === 'floating_text' ? p : { ...p, fontSize })))
+  }
+
   return (
     <div className="axis-points-panel">
       {points.length > 0 && (
@@ -55,6 +63,16 @@ export const AxisPointsPanel: React.FC<AxisPointsPanelProps> = ({ points, onChan
           max={10}
           initialSize={points[0].size ?? DEFAULT_POINT_SIZE}
           onApply={handleSetAllSizes}
+        />
+      )}
+      {points.length > 0 && (
+        <BulkPointSizeControl
+          min={MIN_LABEL_SIZE}
+          max={MAX_LABEL_SIZE}
+          initialSize={points[0].fontSize ?? DEFAULT_LABEL_SIZE}
+          onApply={handleSetAllLabelSizes}
+          fieldLabel="All label sizes"
+          applyLabel="Apply to all labels"
         />
       )}
       <div className="panel-items-list">
@@ -143,6 +161,13 @@ export const AxisPointsPanel: React.FC<AxisPointsPanelProps> = ({ points, onChan
                   onChange={(pos) => handleUpdate(index, { labelPosition: pos })}
                 />
               </div>
+            )}
+            {point.label && point.type !== 'floating_text' && (
+              <LabelSizeInput
+                value={point.fontSize}
+                defaultSize={DEFAULT_LABEL_SIZE}
+                onChange={(fontSize) => handleUpdate(index, { fontSize })}
+              />
             )}
             <button type="button" className="panel-remove-btn" onClick={() => handleRemove(index)}>
               <Trash2 size={14} />
