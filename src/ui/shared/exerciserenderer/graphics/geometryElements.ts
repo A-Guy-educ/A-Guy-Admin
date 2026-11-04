@@ -64,6 +64,8 @@ function renderPoints(
       label: {
         offset: mapLabelOffset(safePosition),
         fontSize: p.fontSize ?? 15,
+        // Label text matches the dot so the pair reads as one element.
+        strokeColor: pointColor,
         cssStyle: "font-family: 'Times New Roman', Times, serif;",
         visible: labelVisible,
       },

@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+- chore: Release v0.67.0 ([#758](https://github.com/A-Guy-educ/A-Guy-Admin/pull/758)) — @aguyshayb
+- feat: Match point label color to dot color ([#757](https://github.com/A-Guy-educ/A-Guy-Admin/pull/757)) — @aguyshayb
+- feat(progress): Add exam-dates kind to user-learning-states ([#756](https://github.com/A-Guy-educ/A-Guy-Admin/pull/756)) — @aguyshayb
+- feat(progress): Add user-learning-states collection ([#755](https://github.com/A-Guy-educ/A-Guy-Admin/pull/755)) — @aguyshayb
+- fix(users): Accept null currentCourse in course-state endpoint ([#754](https://github.com/A-Guy-educ/A-Guy-Admin/pull/754)) — @aguyshayb
+## [v0.66.0] - 2026-11-04
+
+- promote: dev -> main (v0.66.0) ([#753](https://github.com/A-Guy-educ/A-Guy-Admin/pull/753)) — @aguyshayb
 - chore: Release v0.66.0 ([#752](https://github.com/A-Guy-educ/A-Guy-Admin/pull/752)) — @aguyshayb
 - feat: Point label size control for geometry and axis graphs ([#750](https://github.com/A-Guy-educ/A-Guy-Admin/pull/750)) — @aguyshayb
 - test: Fix flaky slug collision in latex sections spec ([#746](https://github.com/A-Guy-educ/A-Guy-Admin/pull/746)) — @aguyshayb
@@ -33,6 +41,18 @@
 - feat: Lossless full-lesson JSON export and import ([#722](https://github.com/A-Guy-educ/A-Guy-Admin/pull/722)) — @aguyshayb
 - fix(graphics): Honor manual axis viewport ranges as entered ([#721](https://github.com/A-Guy-educ/A-Guy-Admin/pull/721)) — @aguyshayb
 - feat: Add interactive on/off flag to axis and geometry specs ([#719](https://github.com/A-Guy-educ/A-Guy-Admin/pull/719)) — @aguyshayb
+
+## v0.67.0 — 2026-11-04
+
+### Features
+
+- Graphics: point labels now match their dot color in geometry and axis graphs ([#757](https://github.com/A-Guy-educ/A-Guy-Admin/pull/757))
+- Progress: new `user-learning-states` collection for per-student exercise and lesson-chat state ([#755](https://github.com/A-Guy-educ/A-Guy-Admin/pull/755))
+- Progress: `exam-dates` kind for user-learning-states ([#756](https://github.com/A-Guy-educ/A-Guy-Admin/pull/756))
+
+### Bug Fixes
+
+- Users: course-state endpoint accepts a null `currentCourse` ([#754](https://github.com/A-Guy-educ/A-Guy-Admin/pull/754))
 
 ## v0.66.0 — 2026-11-04
 

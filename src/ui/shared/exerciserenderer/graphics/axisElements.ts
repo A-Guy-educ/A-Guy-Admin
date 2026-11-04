@@ -59,6 +59,9 @@ function renderAxisPoints(board: JXG.Board, points: PointSpec[]) {
         fontFamily: 'Times New Roman',
       })
     } else {
+      // Same default as the admin editor; stroke always matches the fill so
+      // there's no JSXGraph-default outline around uncolored points.
+      const color = p.color || getDefaultAxisPointColor()
       const attrs: Record<string, unknown> = {
         name: p.label || '',
         fixed: true,
@@ -68,11 +71,10 @@ function renderAxisPoints(board: JXG.Board, points: PointSpec[]) {
           offset: mapLabelOffset(p.labelPosition),
           fontSize: p.fontSize ?? 12,
           fontFamily: 'Times New Roman',
+          // Label text matches the dot so the pair reads as one element.
+          strokeColor: color,
         },
       }
-      // Same default as the admin editor; stroke always matches the fill so
-      // there's no JSXGraph-default outline around uncolored points.
-      const color = p.color || getDefaultAxisPointColor()
       attrs.strokeColor = color
       attrs.fillColor = p.type === 'hole' ? '#ffffff' : color
       if (p.type === 'hole') {

@@ -52,6 +52,7 @@ import { Transactions } from '@/server/payload/collections/Transactions'
 import { PaymentStats } from '@/server/payload/collections/PaymentStats'
 import { WebhookEvents } from '@/server/payload/collections/WebhookEvents'
 import { UploadSessions } from '@/server/payload/collections/UploadSessions'
+import { UserLearningStates } from '@/server/payload/collections/UserLearningStates'
 import { UserProgress } from '@/server/payload/collections/UserProgress'
 import { Users } from '@/server/payload/collections/Users'
 import { UserSettings } from '@/server/payload/collections/UserSettings'
@@ -332,6 +333,7 @@ export default buildConfig({
     QuestionAttempts,
     Users,
     UserProgress,
+    UserLearningStates,
     UserStats,
     Media,
     ChatAssets,
