@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- promote: dev -> main (v0.66.0) ([#753](https://github.com/A-Guy-educ/A-Guy-Admin/pull/753)) — @aguyshayb
 - chore: Release v0.66.0 ([#752](https://github.com/A-Guy-educ/A-Guy-Admin/pull/752)) — @aguyshayb
 - feat: Point label size control for geometry and axis graphs ([#750](https://github.com/A-Guy-educ/A-Guy-Admin/pull/750)) — @aguyshayb
 - test: Fix flaky slug collision in latex sections spec ([#746](https://github.com/A-Guy-educ/A-Guy-Admin/pull/746)) — @aguyshayb
