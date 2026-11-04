@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- chore: Release v0.67.0 ([#758](https://github.com/A-Guy-educ/A-Guy-Admin/pull/758)) — @aguyshayb
 - feat: Match point label color to dot color ([#757](https://github.com/A-Guy-educ/A-Guy-Admin/pull/757)) — @aguyshayb
 - feat(progress): Add exam-dates kind to user-learning-states ([#756](https://github.com/A-Guy-educ/A-Guy-Admin/pull/756)) — @aguyshayb
 - feat(progress): Add user-learning-states collection ([#755](https://github.com/A-Guy-educ/A-Guy-Admin/pull/755)) — @aguyshayb
