@@ -22,6 +22,7 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 
 import { serializePaymentError } from '@/lib/payment/error-log'
+import { TX_FAILURE_CODES } from '@/lib/payment/failure-codes'
 import { grantProductEntitlements } from '@/lib/payment/grant-entitlements'
 import { verifyStripeWebhook } from '@/lib/payment/stripe'
 import { sendPurchaseReceipt } from '@/server/email/services/purchase-receipt-service'
@@ -499,7 +500,7 @@ async function handleEvent(
       await payload.update({
         collection: 'transactions',
         id: transactions.docs[0].id,
-        data: { status: 'failed' },
+        data: { status: 'failed', failureCode: TX_FAILURE_CODES.asyncPaymentFailed },
         overrideAccess: true,
       })
       break
@@ -529,7 +530,7 @@ async function handleEvent(
       await payload.update({
         collection: 'transactions',
         id: transactions.docs[0].id,
-        data: { status: 'failed' },
+        data: { status: 'failed', failureCode: TX_FAILURE_CODES.sessionExpired },
         overrideAccess: true,
       })
       break

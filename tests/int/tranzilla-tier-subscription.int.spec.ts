@@ -227,6 +227,16 @@ async function createPendingSub(args: {
   return { tx, sub }
 }
 
+async function postToWebhook(body: Record<string, string>) {
+  const route = await import('@/app/api/webhooks/tranzilla/route')
+  const request = new NextRequest('http://localhost:3000/api/webhooks/tranzilla', {
+    method: 'POST',
+    body: JSON.stringify(body),
+    headers: { 'content-type': 'application/json' },
+  })
+  return route.POST(request)
+}
+
 describe('extendTierSubscription', () => {
   it('promotes the user, resets tokens, and rolls the Sub forward', async () => {
     const { sub } = await createPendingSub({ tierSlug: 'basic', offerSlug: 'intro3mo' })
@@ -479,6 +489,7 @@ describe('POST /api/subscriptions/bootstrap/tranzilla', () => {
         overrideAccess: true,
       })) as any
       expect(refreshedStaleTx.status).toBe('failed')
+      expect(refreshedStaleTx.failureCode).toBe('checkout_abandoned')
 
       // A fresh pending sub was created for the retry.
       const subsAfter = await payload.find({
@@ -903,16 +914,6 @@ describe('Subscriptions beforeChange — admin-driven cancel (Mission 4)', () =>
 })
 
 describe('Tranzila webhook — STO renewal correlation (Mission 1)', () => {
-  async function postToWebhook(body: Record<string, string>) {
-    const route = await import('@/app/api/webhooks/tranzilla/route')
-    const request = new NextRequest('http://localhost:3000/api/webhooks/tranzilla', {
-      method: 'POST',
-      body: JSON.stringify(body),
-      headers: { 'content-type': 'application/json' },
-    })
-    return route.POST(request)
-  }
-
   it('issues a Tranzila invoice via create_document on an approved renewal', async () => {
     const { sub } = await createPendingSub({
       tierSlug: 'basic',
@@ -1069,6 +1070,8 @@ describe('Tranzila webhook — STO renewal correlation (Mission 1)', () => {
     })
     expect(txs.docs.length).toBe(1)
     expect((txs.docs[0] as any).status).toBe('failed')
+    expect((txs.docs[0] as any).failureCode).toBe('051')
+    expect((txs.docs[0] as any).metadata.tranzilla.responseCode).toBe('051')
   })
 
   it('acks and logs unassociated when sto_id matches no Subscriptions row', async () => {
@@ -1227,6 +1230,95 @@ describe('Tranzila webhook — STO renewal correlation (Mission 1)', () => {
     })
 
     expect(swapMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('Tranzila webhook — failureCode on first-charge declines', () => {
+  async function getTx(id: string) {
+    return (await payload.findByID({
+      collection: 'transactions',
+      id,
+      depth: 0,
+      overrideAccess: true,
+    })) as any
+  }
+
+  it('records the response code on a declined one-time charge (u72 only)', async () => {
+    const { tx } = await createPendingSub({ tierSlug: 'basic', offerSlug: 'default' })
+    const index = `tz-oneoff-${new ObjectId().toHexString()}`
+
+    const res = await postToWebhook({ index, Response: '033', sum: '59.00', u72: tx.id })
+    expect(res.status).toBe(200)
+
+    const updated = await getTx(tx.id)
+    expect(updated.status).toBe('failed')
+    expect(updated.failureCode).toBe('033')
+    expect(updated.errorMessage).toBe('Tranzilla declined — response code 033')
+    expect(updated.providerTransactionId).toBe(index)
+  })
+
+  it("falls back to 'unknown' when the decline carries no response code", async () => {
+    const { tx } = await createPendingSub({ tierSlug: 'basic', offerSlug: 'default' })
+
+    const res = await postToWebhook({
+      index: `tz-oneoff-${new ObjectId().toHexString()}`,
+      Response: '',
+      sum: '59.00',
+      u72: tx.id,
+    })
+    expect(res.status).toBe(200)
+
+    const updated = await getTx(tx.id)
+    expect(updated.status).toBe('failed')
+    expect(updated.failureCode).toBe('unknown')
+    expect(updated.errorMessage).toBe('Tranzilla declined — response code unknown')
+  })
+
+  it('records the response code on a declined subscription bootstrap (u72 + u73)', async () => {
+    const { tx, sub } = await createPendingSub({ tierSlug: 'basic', offerSlug: 'default' })
+
+    const res = await postToWebhook({
+      index: `tz-boot-${new ObjectId().toHexString()}`,
+      Response: '051',
+      sum: '59.00',
+      u72: tx.id,
+      u73: sub.id,
+    })
+    expect(res.status).toBe(200)
+
+    const updated = await getTx(tx.id)
+    expect(updated.status).toBe('failed')
+    expect(updated.failureCode).toBe('051')
+  })
+
+  it('sets failureCode on the duplicate-key fallback update', async () => {
+    const { tx } = await createPendingSub({ tierSlug: 'basic', offerSlug: 'default' })
+    const index = `tz-dup-${new ObjectId().toHexString()}`
+    // Another Tx already owns this providerTransactionId, so the first
+    // update collides and markTransactionFailed retries without it.
+    const other = await payload.create({
+      collection: 'transactions',
+      data: {
+        tenant: tenantId,
+        user: userId,
+        tierSlug: 'basic',
+        provider: 'tranzilla',
+        providerTransactionId: index,
+        status: 'pending',
+        amount: 5900,
+        currency: 'ILS',
+      } as any,
+      overrideAccess: true,
+    })
+
+    const res = await postToWebhook({ index, Response: '004', sum: '59.00', u72: tx.id })
+    expect(res.status).toBe(200)
+
+    const updated = await getTx(tx.id)
+    expect(updated.status).toBe('failed')
+    expect(updated.failureCode).toBe('004')
+    expect(updated.providerTransactionId).not.toBe(index)
+    expect((await getTx(other.id)).status).toBe('pending')
   })
 })
 
