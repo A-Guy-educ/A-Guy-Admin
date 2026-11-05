@@ -33,6 +33,13 @@ interface SectionDoc {
   content?: { blocks?: ContentBlock[] | null } | null
 }
 
+interface LessonDoc {
+  id: string
+  title?: string | null
+  blocks?: unknown
+  content?: { blocks?: ContentBlock[] | null } | null
+}
+
 interface ExerciseDoc {
   id: string
   title?: string | null
@@ -61,7 +68,11 @@ export interface StudioTreeExercise {
 }
 
 export interface StudioTreeResponse {
-  lesson: { id: string; title: string | null }
+  /**
+   * `blocks` is the lesson's own `content.blocks` (rendered above the
+   * exercises). Empty for lessons created before the field existed.
+   */
+  lesson: { id: string; title: string | null; blocks: ContentBlock[] }
   exercises: StudioTreeExercise[]
 }
 
@@ -137,14 +148,14 @@ export async function lessonTreeEndpoint(req: PayloadRequest): Promise<Response>
   // and sections: read=anyone). Leaving access enforcement on means any
   // future tenant scoping applied to admins will keep working here instead
   // of silently leaking cross-tenant docs.
-  let lesson: { id: string; title?: string | null; blocks?: unknown }
+  let lesson: LessonDoc
   try {
     lesson = (await req.payload.findByID({
       collection: 'lessons',
       id: lessonId,
       depth: 0,
       req,
-    })) as { id: string; title?: string | null; blocks?: unknown }
+    })) as LessonDoc
   } catch {
     return Response.json({ error: 'Lesson not found' }, { status: 404 })
   }
@@ -243,7 +254,11 @@ export async function lessonTreeEndpoint(req: PayloadRequest): Promise<Response>
   })
 
   const response: StudioTreeResponse = {
-    lesson: { id: lesson.id, title: lesson.title ?? null },
+    lesson: {
+      id: lesson.id,
+      title: lesson.title ?? null,
+      blocks: Array.isArray(lesson.content?.blocks) ? lesson.content.blocks : [],
+    },
     exercises: treeExercises,
   }
   return Response.json(response)

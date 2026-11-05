@@ -5,7 +5,7 @@ import type { ContentBlock } from '@/server/payload/collections/Exercises/types'
 
 const SAVE_CONCURRENCY = 2
 
-export type DirtyKind = 'section' | 'exercise'
+export type DirtyKind = 'section' | 'exercise' | 'lesson'
 
 export interface DirtyEntry {
   kind: DirtyKind
@@ -42,11 +42,12 @@ interface UseStudioSaveResult {
 
 function endpointFor(kind: DirtyKind, id: string): string {
   if (kind === 'exercise') return `/api/exercises/${id}`
+  if (kind === 'lesson') return `/api/lessons/${id}`
   return `/api/sections/${id}`
 }
 
 function bodyFor(kind: DirtyKind, blocks: ContentBlock[]): string {
-  // Sections and exercises both store content under `content.blocks`.
+  // Sections, exercises and lessons all store content under `content.blocks`.
   return JSON.stringify({ content: { blocks } })
 }
 
