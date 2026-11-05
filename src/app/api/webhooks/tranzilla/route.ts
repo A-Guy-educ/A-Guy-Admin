@@ -35,6 +35,7 @@ import config from '@payload-config'
 import { applyTierPurchase } from '@/lib/payment/apply-tier-purchase'
 import { serializePaymentError } from '@/lib/payment/error-log'
 import { extendTierSubscription } from '@/lib/payment/extend-tier-subscription'
+import { tranzillaFailureCode } from '@/lib/payment/failure-codes'
 import { addCalendarMonths, grantProductEntitlements } from '@/lib/payment/grant-entitlements'
 import { getPaymentEnv } from '@/lib/payment/env'
 import {
@@ -1137,6 +1138,7 @@ async function handleTranzillaStoRenewal(
           currency: 'ILS',
           isRenewal: true,
           subscription: subscriptionId,
+          failureCode: tranzillaFailureCode(responseCode),
           metadata: {
             tranzilla: { responseCode, authMethod },
           },
@@ -1489,7 +1491,8 @@ async function markTransactionFailed(
   index: string,
   responseCode: string,
 ): Promise<void> {
-  const errorMessage = `Tranzilla declined — response code ${responseCode || 'unknown'}`
+  const failureCode = tranzillaFailureCode(responseCode)
+  const errorMessage = `Tranzilla declined — response code ${failureCode}`
   try {
     await payload.update({
       collection: 'transactions',
@@ -1498,6 +1501,7 @@ async function markTransactionFailed(
         status: 'failed',
         providerTransactionId: index,
         errorMessage,
+        failureCode,
       },
       overrideAccess: true,
     })
@@ -1509,7 +1513,7 @@ async function markTransactionFailed(
       await payload.update({
         collection: 'transactions',
         id: transactionId,
-        data: { status: 'failed', errorMessage },
+        data: { status: 'failed', errorMessage, failureCode },
         overrideAccess: true,
       })
       return
