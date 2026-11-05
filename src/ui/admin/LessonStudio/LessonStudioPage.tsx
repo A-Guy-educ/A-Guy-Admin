@@ -5,6 +5,7 @@ import type { ContentBlock } from '@/server/payload/collections/Exercises/types'
 
 import { AddChildButton } from './AddChildButton'
 import { StudioExerciseCard, type RowOp } from './StudioExerciseCard'
+import { StudioLessonBlocks } from './StudioLessonBlocks'
 import { StudioToolbar } from './StudioToolbar'
 import {
   createExerciseUnderLesson,
@@ -14,6 +15,7 @@ import {
   duplicateExercise,
   duplicateSection,
 } from './studioCreateApi'
+import { useLessonBlocks } from './useLessonBlocks'
 import { useStudioSave, type DirtyEntry } from './useStudioSave'
 import { useStudioTree } from './useStudioTree'
 import { readStoredViewMode, writeStoredViewMode, type StudioViewMode } from './viewMode'
@@ -41,6 +43,8 @@ export const LessonStudioPage: React.FC<LessonStudioPageProps> = ({ lessonId }) 
   const { tree, loading, error, refetchError, refetch } = useStudioTree(lessonId)
   const { saving, errors, saveAll } = useStudioSave()
   const [viewMode, setViewMode] = useState<StudioViewMode>('document')
+  const lessonBlocks = useLessonBlocks(tree?.lesson.blocks)
+  const markLessonSaved = lessonBlocks.markSaved
 
   // Rehydrate the admin's last-used view mode after mount. Kept out of the
   // useState initializer so this works under SSR/Next-client-boundary rules
@@ -482,10 +486,22 @@ export const LessonStudioPage: React.FC<LessonStudioPageProps> = ({ lessonId }) 
     for (const id of dirtyExerciseIds) {
       list.push({ kind: 'exercise', id, blocks: exerciseBlocks[id] ?? [] })
     }
+    if (lessonBlocks.dirty) {
+      list.push({ kind: 'lesson', id: lessonId, blocks: lessonBlocks.blocks })
+    }
     return list
-  }, [dirtySectionIds, dirtyExerciseIds, sectionBlocks, exerciseBlocks])
+  }, [
+    dirtySectionIds,
+    dirtyExerciseIds,
+    sectionBlocks,
+    exerciseBlocks,
+    lessonId,
+    lessonBlocks.dirty,
+    lessonBlocks.blocks,
+  ])
 
-  const totalDirtyCount = dirtySectionIds.size + dirtyExerciseIds.size
+  const totalDirtyCount =
+    dirtySectionIds.size + dirtyExerciseIds.size + (lessonBlocks.dirty ? 1 : 0)
 
   const handleSaveAll = useCallback(async () => {
     if (dirtyEntries.length === 0) return
@@ -515,7 +531,9 @@ export const LessonStudioPage: React.FC<LessonStudioPageProps> = ({ lessonId }) 
       }
       return next
     })
-  }, [dirtyEntries, saveAll])
+    const savedLesson = succeeded.find((entry) => entry.kind === 'lesson')
+    if (savedLesson) markLessonSaved(savedLesson.savedBlocks)
+  }, [dirtyEntries, saveAll, markLessonSaved])
 
   // Warn before nav-away if there are unsaved changes.
   useEffect(() => {
@@ -568,6 +586,15 @@ export const LessonStudioPage: React.FC<LessonStudioPageProps> = ({ lessonId }) 
         )}
 
         <main className="studio-content">
+          <StudioLessonBlocks
+            blocks={lessonBlocks.blocks}
+            dirty={lessonBlocks.dirty}
+            onBlockChange={lessonBlocks.onBlockChange}
+            onAddBlock={lessonBlocks.onAddBlock}
+            onDeleteBlock={lessonBlocks.onDeleteBlock}
+            onReplaceBlocks={lessonBlocks.onReplaceBlocks}
+            viewMode={viewMode}
+          />
           {tree.exercises.length === 0 ? (
             <div className="studio-empty studio-empty-big">This lesson has no exercises yet.</div>
           ) : (
