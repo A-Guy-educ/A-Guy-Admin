@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- feat(studio): Show lesson content blocks above exercises ([#761](https://github.com/A-Guy-educ/A-Guy-Admin/pull/761)) — @aguyshayb
 ## [v0.67.0] - 2026-11-04
 
 - promote: dev -> main (v0.67.0) ([#759](https://github.com/A-Guy-educ/A-Guy-Admin/pull/759)) — @aguyshayb
