@@ -22,6 +22,7 @@ import config from '@payload-config'
 
 import { applyTierPurchase } from '@/lib/payment/apply-tier-purchase'
 import { serializePaymentError } from '@/lib/payment/error-log'
+import { TX_FAILURE_CODES } from '@/lib/payment/failure-codes'
 import {
   addCalendarMonths,
   extendProductEntitlements,
@@ -700,6 +701,7 @@ async function handleSubscriptionActivated(
             data: {
               status: 'failed',
               errorMessage: `Subscription ${paypalSubscriptionId} was in terminal state (${subscription.status}) when ACTIVATED arrived — activation abandoned.`,
+              failureCode: TX_FAILURE_CODES.activationAbandoned,
             },
             overrideAccess: true,
           })

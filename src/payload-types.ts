@@ -1383,6 +1383,10 @@ export interface Transaction {
    */
   errorMessage?: string | null;
   /**
+   * Structured failure reason: Tranzila response code (e.g. 051) or a slug (e.g. activation_abandoned)
+   */
+  failureCode?: string | null;
+  /**
    * Timestamp when product entitlements were granted to the user
    */
   entitlementsGrantedAt?: string | null;
@@ -5576,6 +5580,7 @@ export interface TransactionsSelect<T extends boolean = true> {
   successUrl?: T;
   cancelUrl?: T;
   errorMessage?: T;
+  failureCode?: T;
   entitlementsGrantedAt?: T;
   couponConsumedAt?: T;
   emailSentAt?: T;
