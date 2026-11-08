@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- chore: Release v0.68.0 ([#768](https://github.com/A-Guy-educ/A-Guy-Admin/pull/768)) — @aguyshayb
 - feat(courses): Add course sign-ups collection and endpoints ([#767](https://github.com/A-Guy-educ/A-Guy-Admin/pull/767)) — @aguyshayb
 - feat(exercises): Add step-by-step equation question block ([#766](https://github.com/A-Guy-educ/A-Guy-Admin/pull/766)) — @aguyshayb
 - feat(payments): Record structured failureCode on failed transactions ([#762](https://github.com/A-Guy-educ/A-Guy-Admin/pull/762)) — @aguyshayb
