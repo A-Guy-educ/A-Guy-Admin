@@ -20,6 +20,7 @@ import type {
   QuestionFreeResponseBlock,
   QuestionTableBlock,
   QuestionMatchingBlock,
+  QuestionEquationBlock,
   SvgBlock,
   MediaBlock,
   UserAnswer,
@@ -44,12 +45,14 @@ import { McqQuestion } from '../questions/McqQuestion'
 import { FreeResponseQuestion } from '../questions/FreeResponseQuestion'
 import { TableQuestion } from '../questions/TableQuestion'
 import { MatchingQuestion } from '../questions/MatchingQuestion'
+import { EquationQuestion } from '../questions/EquationQuestion'
 import { QuestionCard } from '../components/QuestionCard'
 import { HelpSystem } from '../components/HelpSystem'
 import { useHelpSystem } from '../hooks/useHelpSystem'
 import {
   checkQuestionAnswer,
   getInitialAnswer,
+  isAutoGradedAnswer,
   checkSvgAnswer,
   getInitialSvgAnswer,
   type AnswerErrorMessages,
@@ -160,7 +163,8 @@ export function ExerciseRenderer({
       block.type === 'question_select' ||
       block.type === 'question_free_response' ||
       block.type === 'question_table' ||
-      block.type === 'question_matching',
+      block.type === 'question_matching' ||
+      block.type === 'question_equation',
   ) as QuestionBlock[]
 
   // Help system state (hint/guiding/solution per question)
@@ -269,13 +273,9 @@ export function ExerciseRenderer({
       return updated
     })
 
-    // For true/false questions, check immediately on selection
+    // True/false questions and solved equations are checked immediately
     const question = questionBlocks.find((q) => q.id === questionId)
-    if (
-      question?.type === 'question_select' &&
-      answer.type === 'true_false' &&
-      answer.value !== null
-    ) {
+    if (question && isAutoGradedAnswer(question, answer)) {
       const result = await checkQuestionAnswer(question, answer, errorMessages)
       setCheckResults((prev) => ({ ...prev, [questionId]: result }))
       setHasChecked((prev) => ({ ...prev, [questionId]: true }))
@@ -662,7 +662,8 @@ export function ExerciseRenderer({
                 block.type === 'question_select' ||
                 block.type === 'question_free_response' ||
                 block.type === 'question_table' ||
-                block.type === 'question_matching'
+                block.type === 'question_matching' ||
+                block.type === 'question_equation'
               ) {
                 questionIndex++
               }
@@ -680,11 +681,12 @@ export function ExerciseRenderer({
               const checked = hasChecked[question.id] || false
               const disabled = checked && checkResult?.isCorrect
 
-              // True/False and Table questions don't use the generic check button
+              // True/False, Table and Equation questions don't use the generic check button
               const showCheckButton =
                 showCheckAnswer &&
                 !(question.type === 'question_select' && question.variant === 'true_false') &&
-                question.type !== 'question_table'
+                question.type !== 'question_table' &&
+                question.type !== 'question_equation'
 
               // Help system for this question (always shown — AI fallback when no backend content)
               const helpSystemNode = (
@@ -773,6 +775,14 @@ export function ExerciseRenderer({
                       onChange={(ans) => handleAnswerChange(question.id, ans)}
                       disabled={!!disabled}
                       checkResult={checkResult}
+                      t={t}
+                    />
+                  )}
+                  {question.type === 'question_equation' && (
+                    <EquationQuestion
+                      question={question as QuestionEquationBlock}
+                      answer={answer}
+                      onChange={(ans) => handleAnswerChange(question.id, ans)}
                       t={t}
                     />
                   )}

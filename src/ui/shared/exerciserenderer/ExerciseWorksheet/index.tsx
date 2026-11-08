@@ -18,6 +18,7 @@
  *   - question_free_response     -> Hebrew label + prompt (no answer lines — per issue #1396)
  *   - question_table             -> Hebrew label + prompt + empty table grid
  *   - question_matching          -> Hebrew label + prompt + two columns of items
+ *   - question_equation          -> Hebrew label + prompt + starting equation
  *
  * Side-by-side diagrams flip based on locale direction: text starts on the
  * reading side (left in LTR, right in RTL) and the diagram sits opposite.
@@ -50,6 +51,7 @@ import type {
   QuestionGeometryBlock,
   QuestionFreeResponseBlock,
   QuestionMatchingBlock,
+  QuestionEquationBlock,
   QuestionMultiAxisBlock,
   QuestionSelectMcqBlock,
   QuestionSelectTrueFalseBlock,
@@ -122,6 +124,7 @@ const LABELLED_QUESTION_TYPES = new Set([
   'question_free_response',
   'question_table',
   'question_matching',
+  'question_equation',
   'question_geometry',
   'question_axis',
 ])
@@ -304,6 +307,10 @@ function renderBlockContent({
     return <WorksheetMatching block={block as QuestionMatchingBlock} />
   }
 
+  if (block.type === 'question_equation') {
+    return <WorksheetEquation block={block as QuestionEquationBlock} />
+  }
+
   return null
 }
 
@@ -451,6 +458,18 @@ function WorksheetFreeResponse({ block }: { block: QuestionFreeResponseBlock }) 
     <div className="flex flex-col gap-3">
       <PromptText prompt={block.prompt} />
       {/* Answer lines removed per issue #1396 — solutions appear in a collected section at the end of the document */}
+    </div>
+  )
+}
+
+function WorksheetEquation({ block }: { block: QuestionEquationBlock }) {
+  const { left, right } = block.equation
+  return (
+    <div className="flex flex-col gap-3">
+      <PromptText prompt={block.prompt} />
+      <LatexBlockRenderer
+        block={{ id: block.id, type: 'latex', latex: `${left} = ${right}`, renderMode: 'block' }}
+      />
     </div>
   )
 }

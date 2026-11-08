@@ -28,6 +28,7 @@ export const QUESTION_TYPES = new Set([
   'question_free_response',
   'question_table',
   'question_matching',
+  'question_equation',
 ] as const)
 
 export type QuestionType =
@@ -35,6 +36,7 @@ export type QuestionType =
   | 'question_free_response'
   | 'question_table'
   | 'question_matching'
+  | 'question_equation'
 
 /** Type guard: true when `block` is one of the partition-anchor question types. */
 export function isQuestion(block: {

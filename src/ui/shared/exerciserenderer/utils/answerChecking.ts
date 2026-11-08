@@ -89,7 +89,29 @@ export async function checkQuestionAnswer(
       }
       return validateMatchingAnswer(question as QuestionMatchingBlock, answer.connections)
     }
+
+    case 'question_equation': {
+      if (answer.type !== 'equation') {
+        return { isCorrect: false, message: messages.invalidAnswerType }
+      }
+      if (answer.completedSteps === 0) {
+        return { isCorrect: false, message: messages.selectAnAnswer }
+      }
+      return { isCorrect: answer.completedSteps >= question.steps.length }
+    }
   }
+}
+
+/**
+ * True when an answer change is graded on the spot, without a Check button
+ */
+export function isAutoGradedAnswer(question: QuestionBlock, answer: UserAnswer): boolean {
+  if (question.type === 'question_equation') {
+    return answer.type === 'equation' && answer.completedSteps >= question.steps.length
+  }
+  return (
+    question.type === 'question_select' && answer.type === 'true_false' && answer.value !== null
+  )
 }
 
 /**
@@ -212,5 +234,7 @@ export function getInitialAnswer(question: QuestionBlock): UserAnswer {
       return { type: 'table', cellValues: {} }
     case 'question_matching':
       return { type: 'matching', connections: [] }
+    case 'question_equation':
+      return { type: 'equation', completedSteps: 0 }
   }
 }

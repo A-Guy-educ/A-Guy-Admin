@@ -26,6 +26,8 @@
  *   - Hardcoded literal ids in the factory defaults (TF `true`/`false`,
  *     legacy `o1`/`o2`, matching `l1`/`l2`/`r1`/`r2`, hotspot literals) —
  *     these were never per-doc-unique in prod to begin with.
+ *   - `question_equation` step and option ids. They are only referenced from
+ *     within the same step, so cross-block collision is impossible.
  *   - Admin-added `question_axis.axis.elements.graphs[].id` nested inside
  *     spec objects. Nested graph ids are only referenced from within the
  *     same block, so cross-block collision is impossible.

@@ -9,6 +9,7 @@ const QUESTION_BLOCK_TYPES = [
   'question_free_response',
   'question_table',
   'question_matching',
+  'question_equation',
   'question_geometry',
   'question_axis',
   'svg',

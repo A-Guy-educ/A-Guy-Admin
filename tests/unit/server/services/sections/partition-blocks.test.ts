@@ -51,9 +51,15 @@ function questionFreeResponse(promptValue: string): ContentBlock {
 }
 
 describe('QUESTION_TYPES', () => {
-  it('includes the four anchor question types only', () => {
+  it('includes the five anchor question types only', () => {
     expect([...QUESTION_TYPES].sort()).toEqual(
-      ['question_free_response', 'question_matching', 'question_select', 'question_table'].sort(),
+      [
+        'question_equation',
+        'question_free_response',
+        'question_matching',
+        'question_select',
+        'question_table',
+      ].sort(),
     )
   })
 })

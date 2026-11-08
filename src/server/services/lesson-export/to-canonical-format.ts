@@ -285,6 +285,14 @@ function extractQuestionContent(block: ContentBlock): QuestionContent | null {
         fullSolution: block.fullSolution,
         answer: undefined,
       }
+    case 'question_equation':
+      return {
+        prompt: block.prompt,
+        hint: block.hint,
+        solution: block.solution,
+        fullSolution: block.fullSolution,
+        answer: undefined,
+      }
     case 'question_geometry':
       return {
         prompt: block.prompt,

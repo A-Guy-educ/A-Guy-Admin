@@ -126,6 +126,7 @@ export function fillMissingFieldsWithPlaceholders(blocks: ContentBlock[]): Conte
     'question_free_response',
     'question_table',
     'question_matching',
+    'question_equation',
     'question_geometry',
     'question_axis',
   ])
@@ -235,6 +236,7 @@ function validateBlock(
     block.type === 'question_free_response' ||
     block.type === 'question_table' ||
     block.type === 'question_matching' ||
+    block.type === 'question_equation' ||
     block.type === 'question_geometry' ||
     block.type === 'question_axis'
   ) {

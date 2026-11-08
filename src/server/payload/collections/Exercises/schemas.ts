@@ -322,6 +322,69 @@ export const QuestionMatchingBlockSchema = z
   })
 
 // ---------------------------------
+// Zod: Question Equation Block Schema
+// ---------------------------------
+const EquationMathSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .refine((value) => !value.includes('$'), 'Write LaTeX without $ delimiters')
+
+const EquationSidesSchema = z
+  .object({
+    left: EquationMathSchema,
+    right: EquationMathSchema,
+  })
+  .strict()
+
+const EquationOptionSchema = z
+  .object({
+    id: z.string().min(1),
+    label: EquationMathSchema,
+  })
+  .strict()
+
+const EquationStepSchema = z
+  .object({
+    id: z.string().min(1),
+    options: z.array(EquationOptionSchema).min(2),
+    correctOptionId: z.string().min(1),
+    result: EquationSidesSchema,
+  })
+  .strict()
+  .superRefine((step, ctx) => {
+    const optionIds = new Set(step.options.map((o) => o.id))
+    if (optionIds.size !== step.options.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Option IDs must be unique within a step',
+        path: ['options'],
+      })
+    }
+    if (!optionIds.has(step.correctOptionId)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `correctOptionId references unknown option: ${step.correctOptionId}`,
+        path: ['correctOptionId'],
+      })
+    }
+  })
+
+export const QuestionEquationBlockSchema = z
+  .object({
+    id: z.string().min(1),
+    type: z.literal('question_equation'),
+    prompt: InlineRichTextSchema,
+    equation: EquationSidesSchema,
+    steps: z.array(EquationStepSchema).min(1),
+    hint: InlineRichTextSchema.optional(),
+    solution: InlineRichTextSchema.optional(),
+    fullSolution: InlineRichTextSchema.optional(),
+    showNotebook: z.boolean().optional(),
+  })
+  .strict()
+
+// ---------------------------------
 // Zod: SVG Hotspot Schema
 // ---------------------------------
 const SvgHotspotSchema = z
@@ -679,6 +742,7 @@ export const ContentBlockSchema = z.discriminatedUnion('type', [
   LatexBlockSchema,
   QuestionTableBlockSchema,
   QuestionMatchingBlockSchema,
+  QuestionEquationBlockSchema,
   SvgBlockSchema,
   QuestionGeometryBlockSchema,
   QuestionAxisBlockSchema,

@@ -14,6 +14,7 @@ import { GeometryDocView } from './docViews/GeometryDocView'
 import { MultiAxisDocView } from './docViews/MultiAxisDocView'
 import { TableQuestionDocView } from './docViews/TableQuestionDocView'
 import { MatchingQuestionDocView } from './docViews/MatchingQuestionDocView'
+import { EquationQuestionDocView } from './docViews/EquationQuestionDocView'
 
 // Portal root for Payload's drawers/modals (@faceless-ui/modal, classPrefix "payload").
 const PAYLOAD_MODAL_SELECTOR = '.payload__modal-container'
@@ -186,6 +187,9 @@ function DocView({ block }: { block: ContentBlock }) {
   }
   if (block.type === 'question_matching') {
     return <MatchingQuestionDocView block={block} />
+  }
+  if (block.type === 'question_equation') {
+    return <EquationQuestionDocView block={block} />
   }
   return <UnsupportedDocView block={block} />
 }
