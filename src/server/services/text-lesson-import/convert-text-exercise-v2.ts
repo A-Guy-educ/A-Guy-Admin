@@ -28,6 +28,7 @@ import type { GeometrySpecV1 } from '@/infra/contracts/graphics/geometry.v1'
 import { withFeaturePointViewport } from '@/infra/utils/graphics/viewport-utils'
 
 import type { TextExerciseV2, TextSectionV2 } from './parse-text-v2'
+import { convertPipeTablesToHtml } from './pipe-table-to-html'
 import { extractHtmlSegments, splitHtmlSegments } from './split-html-segments'
 
 const OPEN_ENDED_PLACEHOLDER = 'תשובה פתוחה — למילוי ידני'
@@ -412,7 +413,9 @@ export interface ConvertedExerciseV2 {
 
 export function convertTextExerciseV2ToSections(exercise: TextExerciseV2): ConvertedExerciseV2 {
   const sharedBlocks: ContentBlock[] = []
-  if (exercise.intro) sharedBlocks.push(...textAndHtmlBlocks(exercise.intro))
+  if (exercise.intro) {
+    sharedBlocks.push(...textAndHtmlBlocks(convertPipeTablesToHtml(exercise.intro)))
+  }
   // Shared visual is emitted once at the exercise level. Sections deliberately
   // don't inherit it as an attachment — that would double-render the same
   // drawing in every section. Only one visual kind is expected per exercise;
