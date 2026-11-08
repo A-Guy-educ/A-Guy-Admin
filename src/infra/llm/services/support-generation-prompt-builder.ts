@@ -89,6 +89,16 @@ function extractAnswerText(block: ContentBlock): string {
     return `Matching pairs: ${pairs}`
   }
 
+  if (block.type === 'question_equation') {
+    const steps = block.steps
+      .map((step) => {
+        const correct = step.options.find((o) => o.id === step.correctOptionId)
+        return `${correct?.label ?? step.correctOptionId} => ${step.result.left} = ${step.result.right}`
+      })
+      .join('; ')
+    return `Equation: ${block.equation.left} = ${block.equation.right}. Steps: ${steps}`
+  }
+
   return '(answer not extractable for this block type)'
 }
 

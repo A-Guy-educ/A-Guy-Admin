@@ -120,10 +120,12 @@ const QUESTION_BLOCK_TYPES = new Set([
 
 /**
  * Returns true if `block` is a structural disqualifier for purely-algebraic detection.
- * SVG and table blocks cannot be safely varied by number-swapping alone.
+ * SVG, table and equation blocks cannot be safely varied by number-swapping alone.
  */
 function isStructuralDisqualifier(block: ContentBlock): boolean {
-  return block.type === 'svg' || block.type === 'question_table'
+  return (
+    block.type === 'svg' || block.type === 'question_table' || block.type === 'question_equation'
+  )
 }
 
 /**

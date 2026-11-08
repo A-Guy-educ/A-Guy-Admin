@@ -10,6 +10,7 @@
 import type {
   LatexBlock,
   QuestionAxisBlock,
+  QuestionEquationBlock,
   QuestionFreeResponseBlock,
   QuestionGeometryBlock,
   QuestionMatchingBlock,
@@ -117,6 +118,9 @@ function formatBlock(
     case 'question_matching':
       return formatMatchingBlock(block as unknown as QuestionMatchingBlock, index)
 
+    case 'question_equation':
+      return formatEquationBlock(block as unknown as QuestionEquationBlock, index)
+
     case 'svg':
       return formatSvgBlock(block as unknown as SvgBlock, index)
 
@@ -178,6 +182,13 @@ function formatMatchingBlock(block: QuestionMatchingBlock, index: number): strin
   const pairs = block.correctPairs.length
   const hint = block.hint ? ` | Hint: ${truncateText(block.hint.value, 50)}` : ''
   return `${index}. [Question: Matching] ${prompt} | ${leftCount} items → ${rightCount} targets | ${pairs} pairs${hint}`
+}
+
+function formatEquationBlock(block: QuestionEquationBlock, index: number): string {
+  const prompt = truncateText(block.prompt.value, 80)
+  const equation = `${block.equation.left} = ${block.equation.right}`
+  const hint = block.hint ? ` | Hint: ${truncateText(block.hint.value, 50)}` : ''
+  return `${index}. [Question: Equation] ${prompt} | ${equation} | ${block.steps.length} steps${hint}`
 }
 
 function formatSvgBlock(block: SvgBlock, index: number): string {

@@ -288,6 +288,16 @@ function formatExerciseContent(content: unknown): string {
           ? (qBlock.prompt as { value?: string }).value
           : undefined
       if (prompt) parts.push(`[Matching Question]: ${prompt}`)
+    } else if (b.type === 'question_equation') {
+      const qBlock = b as {
+        type: 'question_equation'
+        prompt?: { value?: string }
+        equation: { left: string; right: string }
+      }
+      const equation = `${qBlock.equation.left} = ${qBlock.equation.right}`
+      parts.push(
+        `[Equation Question]: ${[qBlock.prompt?.value, equation].filter(Boolean).join(' ')}`,
+      )
     } else if (b.type === 'html') {
       const htmlBlock = b as { type: 'html'; html?: string }
       if (htmlBlock.html) {
