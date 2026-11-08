@@ -21,6 +21,7 @@ import { ContextExtractions } from '@/server/payload/collections/ContextExtracti
 import { Conversations } from '@/server/payload/collections/Conversations'
 import { Courses } from '@/server/payload/collections/Courses'
 import { CourseSelections } from '@/server/payload/collections/CourseSelections'
+import { CourseSignups } from '@/server/payload/collections/CourseSignups'
 import { ExerciseAssets } from '@/server/payload/collections/ExerciseAssets'
 import { EnrollmentProgress } from '@/server/payload/collections/EnrollmentProgress'
 import { Enrollments } from '@/server/payload/collections/Enrollments'
@@ -312,6 +313,7 @@ export default buildConfig({
     Tenants,
     Courses,
     CourseSelections,
+    CourseSignups,
     Chapters,
     Lessons,
     LessonDuplications,

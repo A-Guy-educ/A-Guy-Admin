@@ -81,6 +81,7 @@ export interface Config {
     tenants: Tenant;
     courses: Course;
     'course-selections': CourseSelection;
+    'course-signups': CourseSignup;
     chapters: Chapter;
     lessons: Lesson;
     'lesson-duplications': LessonDuplication;
@@ -144,6 +145,7 @@ export interface Config {
     tenants: TenantsSelect<false> | TenantsSelect<true>;
     courses: CoursesSelect<false> | CoursesSelect<true>;
     'course-selections': CourseSelectionsSelect<false> | CourseSelectionsSelect<true>;
+    'course-signups': CourseSignupsSelect<false> | CourseSignupsSelect<true>;
     chapters: ChaptersSelect<false> | ChaptersSelect<true>;
     lessons: LessonsSelect<false> | LessonsSelect<true>;
     'lesson-duplications': LessonDuplicationsSelect<false> | LessonDuplicationsSelect<true>;
@@ -2562,6 +2564,23 @@ export interface CourseSelection {
   createdAt: string;
 }
 /**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "course-signups".
+ */
+export interface CourseSignup {
+  id: string;
+  /**
+   * The student who signed up
+   */
+  user: string | User;
+  /**
+   * The course the student signed up for
+   */
+  course: string | Course;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * Job records for the lesson-duplication pipeline. Use the review screen at /admin/lesson-duplications/<id> to skip / regenerate / keep individual exercise failures.
  *
  * This interface was referenced by `Config`'s JSON-Schema
@@ -4088,6 +4107,10 @@ export interface PayloadLockedDocument {
         value: string | CourseSelection;
       } | null)
     | ({
+        relationTo: 'course-signups';
+        value: string | CourseSignup;
+      } | null)
+    | ({
         relationTo: 'chapters';
         value: string | Chapter;
       } | null)
@@ -4691,6 +4714,16 @@ export interface CourseSelectionsSelect<T extends boolean = true> {
   source?: T;
   userAgentHash?: T;
   ipHash?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "course-signups_select".
+ */
+export interface CourseSignupsSelect<T extends boolean = true> {
+  user?: T;
+  course?: T;
   updatedAt?: T;
   createdAt?: T;
 }
