@@ -35,6 +35,7 @@ import {
   isTranzillaOfferSlug,
   resolveTranzillaOffer,
 } from '@/lib/payment/tier-tranzilla-pricing'
+import { TX_FAILURE_CODES } from '@/lib/payment/failure-codes'
 import { createTranzillaCheckout } from '@/lib/payment/tranzilla'
 import { logger } from '@/infra/utils/logger'
 
@@ -282,7 +283,7 @@ export async function POST(request: NextRequest) {
             .update({
               collection: 'transactions',
               id: txId,
-              data: { status: 'failed' },
+              data: { status: 'failed', failureCode: TX_FAILURE_CODES.checkoutAbandoned },
               overrideAccess: true,
             })
             .catch((err: unknown) => {

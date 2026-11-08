@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+- chore: Release v0.68.0 ([#768](https://github.com/A-Guy-educ/A-Guy-Admin/pull/768)) — @aguyshayb
+- feat(courses): Add course sign-ups collection and endpoints ([#767](https://github.com/A-Guy-educ/A-Guy-Admin/pull/767)) — @aguyshayb
+- feat(exercises): Add step-by-step equation question block ([#766](https://github.com/A-Guy-educ/A-Guy-Admin/pull/766)) — @aguyshayb
+- feat(payments): Record structured failureCode on failed transactions ([#762](https://github.com/A-Guy-educ/A-Guy-Admin/pull/762)) — @aguyshayb
+- feat(studio): Show lesson content blocks above exercises ([#761](https://github.com/A-Guy-educ/A-Guy-Admin/pull/761)) — @aguyshayb
+## [v0.67.0] - 2026-11-04
+
+- promote: dev -> main (v0.67.0) ([#759](https://github.com/A-Guy-educ/A-Guy-Admin/pull/759)) — @aguyshayb
 - chore: Release v0.67.0 ([#758](https://github.com/A-Guy-educ/A-Guy-Admin/pull/758)) — @aguyshayb
 - feat: Match point label color to dot color ([#757](https://github.com/A-Guy-educ/A-Guy-Admin/pull/757)) — @aguyshayb
 - feat(progress): Add exam-dates kind to user-learning-states ([#756](https://github.com/A-Guy-educ/A-Guy-Admin/pull/756)) — @aguyshayb

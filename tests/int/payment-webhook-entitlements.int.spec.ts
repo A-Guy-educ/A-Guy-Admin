@@ -46,7 +46,6 @@ let tenantId: string
 let userId: string
 let chapterId: string
 let courseId: string
-let lessonId: string
 let testFeatureId: string
 let productId: string
 let _stripeTransactionId: string
@@ -118,7 +117,7 @@ beforeAll(async () => {
   })
   chapterId = chapter.id
 
-  const lesson = await payload.create({
+  await payload.create({
     collection: 'lessons',
     data: {
       title: 'Webhook Test Lesson',
@@ -130,7 +129,6 @@ beforeAll(async () => {
     } as any,
     overrideAccess: true,
   })
-  lessonId = lesson.id
 
   // Create (or fetch) the Feature row used by featureBlock — the seed runs on
   // payload init but tests can race ahead of it, so be defensive.
@@ -1024,6 +1022,7 @@ describe('Stripe webhook handler', () => {
       overrideAccess: true,
     })
     expect(updated.status).toBe('failed')
+    expect(updated.failureCode).toBe('session_expired')
 
     await payload
       .delete({ collection: 'transactions', id: tx.id, overrideAccess: true })
@@ -1558,6 +1557,7 @@ describe('Stripe webhook handler', () => {
       overrideAccess: true,
     })
     expect(updated.status).toBe('failed')
+    expect(updated.failureCode).toBe('async_payment_failed')
 
     await payload
       .delete({ collection: 'transactions', id: tx.id, overrideAccess: true })

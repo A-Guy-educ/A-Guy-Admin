@@ -282,6 +282,18 @@ export const Transactions: CollectionConfig = {
       },
     },
 
+    // Structured decline reason for grouping (Dash revenue tab). Raw response
+    // code for Tranzila, a slug from src/lib/payment/failure-codes.ts otherwise.
+    {
+      name: 'failureCode',
+      type: 'text',
+      admin: {
+        readOnly: true,
+        description:
+          'Structured failure reason: Tranzila response code (e.g. 051) or a slug (e.g. activation_abandoned)',
+      },
+    },
+
     // Timestamp when entitlements were granted (set by webhook handlers on successful grant).
     // Used for observability and idempotency — replayed webhooks skip re-grant if set.
     {

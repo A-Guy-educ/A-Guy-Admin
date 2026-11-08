@@ -5,6 +5,7 @@ import {
   CheckSquare,
   Code,
   Edit3,
+  Equal,
   FileText,
   Image as ImageIcon,
   LayoutGrid,
@@ -84,6 +85,12 @@ export const BlockTypeSelector: React.FC<BlockTypeSelectorProps> = ({
       label: 'Matching',
       description: 'Match items between two columns',
       icon: <ArrowRightLeft size={20} />,
+    },
+    {
+      type: 'question_equation',
+      label: 'Equation',
+      description: 'Solve an equation step by step, choosing an operation for both sides',
+      icon: <Equal size={20} />,
     },
     {
       type: 'svg',

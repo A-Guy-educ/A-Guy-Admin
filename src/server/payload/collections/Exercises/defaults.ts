@@ -12,6 +12,7 @@ import type {
   LatexBlock,
   MediaBlock,
   QuestionAxisBlock,
+  QuestionEquationBlock,
   QuestionMultiAxisBlock,
   QuestionFreeResponseBlock,
   QuestionGeometryBlock,
@@ -290,6 +291,38 @@ export const ExerciseBlockDefaults = {
       { optionId: 'l2', matchId: 'r2' },
     ],
     shuffleRightColumn: true,
+    hint: DEFAULT_HINT_SOLUTION(),
+    solution: DEFAULT_HINT_SOLUTION(),
+    fullSolution: DEFAULT_HINT_SOLUTION(),
+  }),
+
+  question_equation: (): QuestionEquationBlock => ({
+    id: generateId(),
+    type: 'question_equation',
+    prompt: DEFAULT_HINT_SOLUTION(),
+    equation: { left: '2x + 3', right: 'x + 8' },
+    steps: [
+      {
+        id: generateId(),
+        options: [
+          { id: 'o1', label: '-3' },
+          { id: 'o2', label: '+4' },
+          { id: 'o3', label: '-x' },
+        ],
+        correctOptionId: 'o3',
+        result: { left: 'x + 3', right: '8' },
+      },
+      {
+        id: generateId(),
+        options: [
+          { id: 'o1', label: '+3' },
+          { id: 'o2', label: '-3' },
+          { id: 'o3', label: '-8' },
+        ],
+        correctOptionId: 'o2',
+        result: { left: 'x', right: '5' },
+      },
+    ],
     hint: DEFAULT_HINT_SOLUTION(),
     solution: DEFAULT_HINT_SOLUTION(),
     fullSolution: DEFAULT_HINT_SOLUTION(),

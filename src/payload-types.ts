@@ -81,6 +81,7 @@ export interface Config {
     tenants: Tenant;
     courses: Course;
     'course-selections': CourseSelection;
+    'course-signups': CourseSignup;
     chapters: Chapter;
     lessons: Lesson;
     'lesson-duplications': LessonDuplication;
@@ -144,6 +145,7 @@ export interface Config {
     tenants: TenantsSelect<false> | TenantsSelect<true>;
     courses: CoursesSelect<false> | CoursesSelect<true>;
     'course-selections': CourseSelectionsSelect<false> | CourseSelectionsSelect<true>;
+    'course-signups': CourseSignupsSelect<false> | CourseSignupsSelect<true>;
     chapters: ChaptersSelect<false> | ChaptersSelect<true>;
     lessons: LessonsSelect<false> | LessonsSelect<true>;
     'lesson-duplications': LessonDuplicationsSelect<false> | LessonDuplicationsSelect<true>;
@@ -1383,6 +1385,10 @@ export interface Transaction {
    */
   errorMessage?: string | null;
   /**
+   * Structured failure reason: Tranzila response code (e.g. 051) or a slug (e.g. activation_abandoned)
+   */
+  failureCode?: string | null;
+  /**
    * Timestamp when product entitlements were granted to the user
    */
   entitlementsGrantedAt?: string | null;
@@ -2554,6 +2560,23 @@ export interface CourseSelection {
    * SHA-256 (truncated) of the request IP — computed server-side
    */
   ipHash?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "course-signups".
+ */
+export interface CourseSignup {
+  id: string;
+  /**
+   * The student who signed up
+   */
+  user: string | User;
+  /**
+   * The course the student signed up for
+   */
+  course: string | Course;
   updatedAt: string;
   createdAt: string;
 }
@@ -4084,6 +4107,10 @@ export interface PayloadLockedDocument {
         value: string | CourseSelection;
       } | null)
     | ({
+        relationTo: 'course-signups';
+        value: string | CourseSignup;
+      } | null)
+    | ({
         relationTo: 'chapters';
         value: string | Chapter;
       } | null)
@@ -4687,6 +4714,16 @@ export interface CourseSelectionsSelect<T extends boolean = true> {
   source?: T;
   userAgentHash?: T;
   ipHash?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "course-signups_select".
+ */
+export interface CourseSignupsSelect<T extends boolean = true> {
+  user?: T;
+  course?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -5576,6 +5613,7 @@ export interface TransactionsSelect<T extends boolean = true> {
   successUrl?: T;
   cancelUrl?: T;
   errorMessage?: T;
+  failureCode?: T;
   entitlementsGrantedAt?: T;
   couponConsumedAt?: T;
   emailSentAt?: T;

@@ -1124,6 +1124,7 @@ describe('PayPal subscription webhooks', () => {
     })
     expect((txAfter as any).status).toBe('failed')
     expect((txAfter as any).errorMessage).toMatch(/terminal state/)
+    expect((txAfter as any).failureCode).toBe('activation_abandoned')
   })
 
   it('PAYMENT.SALE.COMPLETED with malformed amount.total returns 500 instead of persisting a $0 renewal', async () => {
