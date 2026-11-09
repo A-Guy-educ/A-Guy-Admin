@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- fix(text-lesson-import): Import opening-data pipe tables as table blocks ([#771](https://github.com/A-Guy-educ/A-Guy-Admin/pull/771)) — @aguyshayb
 - promote: dev -> main (v0.68.0) ([#769](https://github.com/A-Guy-educ/A-Guy-Admin/pull/769)) — @aguyshayb
 - chore: Release v0.68.0 ([#768](https://github.com/A-Guy-educ/A-Guy-Admin/pull/768)) — @aguyshayb
 - feat(courses): Add course sign-ups collection and endpoints ([#767](https://github.com/A-Guy-educ/A-Guy-Admin/pull/767)) — @aguyshayb
