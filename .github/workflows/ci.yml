@@ -85,10 +85,14 @@ jobs:
         continue-on-error: true
 
   integration-tests:
-    name: Integration Tests
+    name: Integration Tests (${{ matrix.shard }})
     runs-on: ubuntu-latest
     needs: [fast-gate]
-    timeout-minutes: 15
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1/3, 2/3, 3/3]
     env:
       DATABASE_URL: mongodb://localhost:27017/test
       PAYLOAD_SECRET: ${{ secrets.PAYLOAD_SECRET || 'test-secret-for-ci' }}
@@ -128,9 +132,56 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Run integration tests
-        run: pnpm test:int:coverage
+        run: pnpm test:int:coverage --shard=${{ matrix.shard }} --reporter=default --reporter=blob
         env:
           USE_MONGO_SERVICE: 'true'
+          VITEST_COVERAGE_SHARD: 'true'
+
+      - name: Upload blob report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: blob-report-int-${{ strategy.job-index }}
+          path: .vitest-reports/*
+          include-hidden-files: true
+          retention-days: 1
+
+  integration-coverage:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: [integration-tests]
+    if: ${{ !cancelled() }}
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: '10.33.0'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Download blob reports
+        uses: actions/download-artifact@v8
+        with:
+          path: .vitest-reports
+          pattern: blob-report-int-*
+          merge-multiple: true
+
+      - name: Merge reports and enforce coverage thresholds
+        run: pnpm exec vitest run --config ./vitest.config.mts --merge-reports --coverage
 
       - name: Upload integration coverage report
         uses: actions/upload-artifact@v7

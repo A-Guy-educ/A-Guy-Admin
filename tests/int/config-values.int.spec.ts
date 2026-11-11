@@ -300,6 +300,30 @@ describe('ConfigValues (Domain-Scoped Config)', () => {
       expect(result2.tenant.id).toBe(tenant2.id)
     })
 
+    test('should allow updating an existing config without uniqueness conflict', async () => {
+      await cleanupTestConfig(tenant1.id, ConfigDomain.Chat)
+
+      const created = await payload.create({
+        collection: 'config_values',
+        draft: false,
+        data: {
+          domain: ConfigDomain.Chat,
+          tenant: tenant1.id,
+          config: { value: 1 },
+        },
+        req: { user: adminUser } as any,
+      })
+
+      const updated = await payload.update({
+        collection: 'config_values',
+        id: created.id,
+        data: { config: { value: 2 } },
+        req: { user: adminUser } as any,
+      })
+
+      expect(updated.config).toEqual({ value: 2 })
+    })
+
     // CV-8: Secret detection
     test('should log warning when config contains secret-like keys', async () => {
       const warnSpy = vi.spyOn(payload.logger || console, 'warn').mockImplementation(() => {})

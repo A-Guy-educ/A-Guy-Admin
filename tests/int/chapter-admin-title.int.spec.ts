@@ -210,9 +210,67 @@ describe('Chapter adminTitle', () => {
     expect(chapter.adminTitle).toContain('Advanced Math')
   })
 
+  it('cascades course title change to every chapter of that course', async () => {
+    const course = await payload.create({
+      collection: 'courses',
+      data: {
+        courseLabel: `ATC3-${timestamp}`,
+        title: `Physics ${timestamp}`,
+        locale: 'he',
+        categories: [categoryId],
+        order: 2,
+        status: 'published',
+        isActive: true,
+        tenant: tenantId,
+        accessType: 'free',
+        contentStatus: 'none',
+        contentStatusVisible: true,
+      },
+      draft: false,
+    })
+    createdIds.push(course.id)
+
+    const chapters = await Promise.all(
+      ['Mechanics', 'Optics'].map((title, order) =>
+        payload.create({
+          collection: 'chapters',
+          data: {
+            title,
+            slug: `${title.toLowerCase()}-${timestamp}`,
+            chapterLabel: String(order + 1),
+            course: course.id,
+            order,
+            status: 'published',
+            isActive: true,
+            tenant: tenantId,
+            locale: 'he',
+          },
+        }),
+      ),
+    )
+    createdIds.push(...chapters.map((ch) => ch.id))
+
+    await payload.update({
+      collection: 'courses',
+      id: course.id,
+      data: { title: `Advanced Physics ${timestamp}` },
+      overrideAccess: true,
+    })
+
+    const reloaded = await Promise.all(
+      chapters.map((ch) =>
+        payload.findByID({ collection: 'chapters', id: ch.id, depth: 0, overrideAccess: true }),
+      ),
+    )
+    expect(reloaded.map((ch) => ch.adminTitle)).toEqual([
+      `Mechanics — Advanced Physics ${timestamp}`,
+      `Optics — Advanced Physics ${timestamp}`,
+    ])
+  })
+
   it('does not cascade when course title is unchanged', async () => {
-    // This is a basic test to verify the hook doesn't cause errors
-    // when updating non-title fields
+    const before = await payload.findByID({ collection: 'chapters', id: chapter2Id, depth: 0 })
+
     const course = await payload.update({
       collection: 'courses',
       id: course2Id,
@@ -221,7 +279,9 @@ describe('Chapter adminTitle', () => {
       },
     })
 
+    const after = await payload.findByID({ collection: 'chapters', id: chapter2Id, depth: 0 })
     expect(course.description).toBe('Updated description')
+    expect(after.adminTitle).toBe(before.adminTitle)
   })
 
   it('chapter update recomputes adminTitle when title changes', async () => {
