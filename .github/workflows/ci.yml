@@ -152,6 +152,10 @@ jobs:
     needs: [integration-tests]
     if: ${{ !cancelled() }}
     timeout-minutes: 10
+    env:
+      DATABASE_URL: mongodb://localhost:27017/test
+      PAYLOAD_SECRET: ${{ secrets.PAYLOAD_SECRET || 'test-secret-for-ci' }}
+      DEFAULT_TENANT_SLUG: default
 
     steps:
       - name: Checkout code
