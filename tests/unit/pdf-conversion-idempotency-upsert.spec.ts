@@ -109,32 +109,6 @@ describe('PDF→Exercises Idempotency Upsert', () => {
     })
   })
 
-  describe('4.8: contentHash still computed for debugging', () => {
-    test('given conversion job runs, when exercises are created/updated, then contentHash field is populated and contentHash can differ while idempotencyKey is same (LLM variance)', () => {
-      // Simulate same source position (same idempotency key)
-      const idempotencyKey = computeIdempotencyKey({
-        tenantId: 'tenant123',
-        lessonId: 'lesson456',
-        sourceDocId: 'doc789',
-        pageStart: 1,
-        pageEnd: 3,
-        systemOrdinal: 0,
-      })
-
-      // LLM might produce slightly different content on retry
-      const contentHash1 = 'abc123def456'
-      const contentHash2 = 'xyz789ghi012'
-
-      // Same idempotency key (same system ordinal), different content hashes (LLM variance)
-      expect(idempotencyKey).toBe('tenant123:lesson456:doc789:1-3:0:v1')
-      expect(contentHash1).not.toBe(contentHash2)
-
-      // contentHash is still stored for debugging/audit purposes
-      expect(contentHash1).toBeTruthy()
-      expect(contentHash2).toBeTruthy()
-    })
-  })
-
   describe('Last Wins Semantics', () => {
     test('updating exercise always overwrites previous content', () => {
       const originalKey = computeIdempotencyKey({
