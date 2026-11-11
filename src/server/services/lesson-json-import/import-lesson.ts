@@ -6,6 +6,7 @@ import { getDefaultTenantId } from '@/server/repos/tenant/get-default-tenant'
 
 import { buildExerciseTitle, convertExerciseToSections } from './convert-exercise'
 import { LessonJsonSchema, parseLessonOrderFromFilename } from './json-schema'
+import { lessonPageFieldsFromJson } from './lesson-page-fields'
 
 export type LessonType = 'learning' | 'practice' | 'exam'
 
@@ -188,6 +189,7 @@ export async function importLessonFromJson(
       chapter: chapterId,
       type: input.lessonType ?? 'learning',
       title: lessonJson.topic,
+      ...lessonPageFieldsFromJson(lessonJson),
       order,
       status: 'draft',
       isActive: true,

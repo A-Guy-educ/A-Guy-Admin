@@ -2005,6 +2005,14 @@ export interface Lesson {
    */
   intro?: string | null;
   /**
+   * Short explanation shown on the public lesson page, before the student starts. Markdown + $math$.
+   */
+  publicExplanation?: string | null;
+  /**
+   * Roughly how long the lesson takes, shown on the public lesson page.
+   */
+  estimatedMinutes?: number | null;
+  /**
    * Detailed description of the lesson
    */
   description?: string | null;
@@ -4761,6 +4769,8 @@ export interface LessonsSelect<T extends boolean = true> {
   adminTitle?: T;
   lessonObjective?: T;
   intro?: T;
+  publicExplanation?: T;
+  estimatedMinutes?: T;
   description?: T;
   formulas?: T;
   formulaSheet?: T;

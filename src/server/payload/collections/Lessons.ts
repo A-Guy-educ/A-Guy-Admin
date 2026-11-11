@@ -512,6 +512,22 @@ export const Lessons: CollectionConfig = {
               },
             },
             {
+              name: 'publicExplanation',
+              type: 'textarea',
+              admin: {
+                description:
+                  'Short explanation shown on the public lesson page, before the student starts. Markdown + $math$.',
+              },
+            },
+            {
+              name: 'estimatedMinutes',
+              type: 'number',
+              min: 1,
+              admin: {
+                description: 'Roughly how long the lesson takes, shown on the public lesson page.',
+              },
+            },
+            {
               name: 'description',
               type: 'textarea',
               admin: {
