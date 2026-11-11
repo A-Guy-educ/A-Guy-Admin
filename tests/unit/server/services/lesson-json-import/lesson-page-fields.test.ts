@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
 import { LessonJsonSchema } from '@/server/services/lesson-json-import/json-schema'
-import { lessonPageFieldsFromJson } from '@/server/services/lesson-json-import/lesson-page-fields'
+import {
+  LessonPageJsonSchema,
+  lessonPageFieldsFromJson,
+} from '@/server/services/lesson-json-import/lesson-page-fields'
 
 describe('lessonPageFieldsFromJson', () => {
   it('maps every lesson-page key onto its lesson field', () => {
@@ -34,6 +37,36 @@ describe('lessonPageFieldsFromJson', () => {
 
   it('leaves out missing and blank keys', () => {
     expect(lessonPageFieldsFromJson({ intro: '  ', keywords: ' , ' })).toEqual({})
+  })
+
+  it('treats null and blank values in the lesson JSON as missing', () => {
+    const parsed = LessonJsonSchema.parse({
+      topic: 't',
+      estimated_minutes: ' ',
+      seo_title: null,
+      keywords: null,
+      exercises: [
+        {
+          exercise_number: 1,
+          exercise_content: {
+            sections: [
+              {
+                question: { text: 'q' },
+                correct_option: { text: 'a' },
+                wrong_options: [{ text: 'b' }],
+              },
+            ],
+          },
+        },
+      ],
+    })
+
+    expect(lessonPageFieldsFromJson(parsed)).toEqual({})
+  })
+
+  it('rejects a non-positive estimated_minutes', () => {
+    expect(LessonPageJsonSchema.safeParse({ estimated_minutes: 0 }).success).toBe(false)
+    expect(LessonPageJsonSchema.safeParse({ estimated_minutes: '2.5' }).success).toBe(false)
   })
 
   it('is read from the lesson JSON alongside the exercises', () => {
