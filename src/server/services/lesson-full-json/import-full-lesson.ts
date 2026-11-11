@@ -21,6 +21,8 @@ import {
 
 import { FullLessonFileSchema, type FullLessonFile } from '@/infra/contracts/lesson-full-json/v1'
 
+import { expandBlock } from './compact-blocks'
+
 export interface ImportFullLessonInput {
   chapterId?: string
   targetLessonId?: string
@@ -39,12 +41,13 @@ function formatZodIssues(location: string, error: z.ZodError): Issue[] {
 }
 
 /**
- * Validate a block list and give every block a fresh id — the file may carry
- * ids from another lesson (or none, for blocks the LLM added). Blocks are kept
- * exactly as written otherwise; zod defaults are not baked in.
+ * Expand compact blocks, validate them and give every block a fresh id — the
+ * file may carry ids from another lesson (or none). Blocks are kept exactly as
+ * written otherwise; zod defaults are not baked in.
  */
 function prepareBlocks(raw: unknown[], location: string, issues: Issue[]): ContentBlock[] {
-  return raw.map((block, idx) => {
+  return raw.map((rawBlock, idx) => {
+    const block = expandBlock(rawBlock)
     const withId =
       typeof block === 'object' && block !== null ? { ...block, id: generateId() } : block
     const blockType = (block as { type?: unknown } | null)?.type

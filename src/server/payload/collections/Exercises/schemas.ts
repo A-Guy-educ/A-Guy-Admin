@@ -13,7 +13,7 @@ import { GuidedExplanationV1Schema } from '@/infra/contracts/guided-explanation/
 // ---------------------------------
 // Zod: Inline Rich Text (NO id)
 // ---------------------------------
-const InlineRichTextSchema = z
+export const InlineRichTextSchema = z
   .object({
     type: z.literal('rich_text'),
     format: z.literal('md-math-v1'),

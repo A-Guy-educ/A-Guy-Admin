@@ -5,19 +5,23 @@
  * imported back. The block shapes are the Exercises `ContentBlockSchema`;
  * this file only defines the wrapper. Zod-only so the import page's client
  * preview can use it too.
+ *
+ * Version 2 writes blocks in compact form (see compact-blocks.ts: no block ids,
+ * rich text as plain strings). Version 1 files (full blocks) still import.
  */
 import { z } from 'zod'
 
 export const FULL_LESSON_FORMAT = 'aguy-lesson-full'
-export const FULL_LESSON_VERSION = 1
+export const FULL_LESSON_VERSION = 2
 
 /** Read by the LLM editing the file — keep it short and rule-focused. */
 export const FULL_LESSON_INSTRUCTIONS = [
   'Complete A-Guy lesson export. Edit it, then import the whole file back.',
   'Keep "format" and "version" unchanged.',
   'Each exercise has "blocks" (shown above its sections) and "sections"; every section needs at least one block.',
-  'Keep every block\'s "type" and required fields; do not invent block types or field names. New blocks may omit "id".',
-  'Text values are Markdown with LaTeX math ($...$ inline, $$...$$ display).',
+  'Keep every block\'s "type" and required fields; do not invent block types or field names. Blocks have no "id".',
+  'Text values are plain Markdown strings with LaTeX math ($...$ inline, $$...$$ display); a text-only block is just a string inside "blocks".',
+  'Text with attached media stays a {"type":"rich_text",...,"mediaIds":[...]} object — keep that shape.',
   'question_select (mcq): every id in answer.correctOptionIds must match an option id; single-select has exactly one.',
   'media blocks and "mediaIds" point at uploaded files — never invent those ids.',
 ].join(' ')
@@ -43,7 +47,7 @@ const ExerciseSchema = z.object({
 
 export const FullLessonFileSchema = z.object({
   format: z.literal(FULL_LESSON_FORMAT),
-  version: z.literal(FULL_LESSON_VERSION),
+  version: z.union([z.literal(1), z.literal(FULL_LESSON_VERSION)]),
   instructions: z.string().optional(),
   lesson: z.object({
     title: z.string().min(1),
