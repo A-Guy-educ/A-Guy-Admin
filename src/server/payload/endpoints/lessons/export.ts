@@ -23,6 +23,7 @@ import type { PayloadRequest } from 'payload'
 import { loadLessonForExport } from '@/server/services/lesson-export/load-lesson-for-export'
 import { buildCanonicalLessonExport } from '@/server/services/lesson-export/to-canonical-format'
 import { serializeLessonToText } from '@/server/services/lesson-export/to-text-format'
+import { stringifyLessonFile } from '@/server/services/lesson-full-json/stringify-lesson-file'
 import { buildFullLessonExport } from '@/server/services/lesson-full-json/build-full-lesson-export'
 
 export async function exportLessonEndpoint(req: PayloadRequest): Promise<Response> {
@@ -49,7 +50,7 @@ export async function exportLessonEndpoint(req: PayloadRequest): Promise<Respons
 
   if (url.searchParams.get('format') === 'json') {
     const full = buildFullLessonExport(docs.lesson, docs.exerciseDocs, docs.sectionsByExerciseId)
-    return new Response(JSON.stringify(full, null, 2), {
+    return new Response(stringifyLessonFile(full), {
       headers: {
         'Content-Type': 'application/json; charset=utf-8',
         'Content-Disposition': `attachment; filename="${slug}.json"`,

@@ -1,7 +1,8 @@
 /**
  * Build the lossless "full lesson JSON" export from already-fetched docs.
- * Blocks are copied verbatim; only the wrapper fields an author/LLM can
- * meaningfully edit are kept (no ids, tenant, slugs, timestamps).
+ * Blocks are written in lossless compact form (see compact-blocks.ts); only the
+ * wrapper fields an author/LLM can meaningfully edit are kept (no ids, tenant,
+ * slugs, timestamps).
  */
 import {
   FULL_LESSON_FORMAT,
@@ -12,11 +13,13 @@ import {
   type FullLessonSection,
 } from '@/infra/contracts/lesson-full-json/v1'
 
+import { compactBlock } from './compact-blocks'
+
 type Doc = Record<string, unknown>
 
 function contentBlocks(doc: Doc): unknown[] {
   const content = doc.content as { blocks?: unknown[] } | undefined
-  return Array.isArray(content?.blocks) ? content.blocks : []
+  return Array.isArray(content?.blocks) ? content.blocks.map(compactBlock) : []
 }
 
 /** Copy only keys whose value is set — keeps the file small for the LLM. */
