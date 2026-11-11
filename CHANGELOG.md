@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- chore(ci): Shard integration tests across three jobs ([#777](https://github.com/A-Guy-educ/A-Guy-Admin/pull/777)) — @aguyshayb
 - feat(lesson-full-json): Write the lesson JSON export in compact form ([#776](https://github.com/A-Guy-educ/A-Guy-Admin/pull/776)) — @aguyshayb
 - fix(text-lesson-import): Import opening-data pipe tables as table blocks ([#771](https://github.com/A-Guy-educ/A-Guy-Admin/pull/771)) — @aguyshayb
 - promote: dev -> main (v0.68.0) ([#769](https://github.com/A-Guy-educ/A-Guy-Admin/pull/769)) — @aguyshayb
