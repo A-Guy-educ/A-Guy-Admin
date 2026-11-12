@@ -182,6 +182,36 @@ describe('full lesson JSON export → import', () => {
     expect(blocks.blocks.every((b) => typeof b.id === 'string' && b.id !== 'media-1')).toBe(true)
   })
 
+  it('writes blocks in compact form (no ids, rich text as strings)', () => {
+    const file = buildFullLessonExport(lesson, exerciseDocs, sections)
+    const [tf] = file.exercises[0].sections[0].blocks as Array<Record<string, unknown>>
+    expect(tf).not.toHaveProperty('id')
+    expect(tf.prompt).toBe('2+2=4?')
+    expect(JSON.stringify(file.exercises)).not.toContain('"rich_text"')
+  })
+
+  it('still imports a version 1 file with full blocks', async () => {
+    const file = {
+      format: 'aguy-lesson-full',
+      version: 1,
+      lesson: { title: 'פיתגורס' },
+      exercises: [
+        {
+          title: 'תרגיל 1',
+          sections: [{ title: 'סעיף א', blocks: [trueFalse, freeResponse] }],
+        },
+      ],
+    }
+    const { req, createMock } = mockReq()
+
+    const result = await importFullLessonJson(req, { chapterId: 'chapter-1', json: file })
+
+    expect(result).toMatchObject({ success: true })
+    const [s1] = createdData(createMock, 'sections')
+    const s1Blocks = (s1.content as { blocks: Array<Record<string, unknown>> }).blocks
+    expect(withoutIds(s1Blocks)).toEqual(withoutIds([trueFalse, freeResponse]))
+  })
+
   it('rejects a broken block with a readable location and writes nothing', async () => {
     const file = JSON.parse(JSON.stringify(buildFullLessonExport(lesson, exerciseDocs, sections)))
     file.exercises[0].sections[0].blocks[1].answer.acceptedAnswers = []

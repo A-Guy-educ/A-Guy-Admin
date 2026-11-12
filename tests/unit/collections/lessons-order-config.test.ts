@@ -144,6 +144,8 @@ describe('Lessons Collection Config', () => {
         'type',
         'lessonObjective',
         'intro',
+        'publicExplanation',
+        'estimatedMinutes',
         'description',
         'formulas',
         'formulaSheet',

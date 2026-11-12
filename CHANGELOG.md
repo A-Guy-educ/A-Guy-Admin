@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+- chore: Release v0.69.0 ([#784](https://github.com/A-Guy-educ/A-Guy-Admin/pull/784)) — @aguyshayb
+- fix(text-lesson-import): Import opening-data tables as table blocks ([#783](https://github.com/A-Guy-educ/A-Guy-Admin/pull/783)) — @aguyshayb
+- fix(ci): Fail the integration merge job when any shard fails ([#782](https://github.com/A-Guy-educ/A-Guy-Admin/pull/782)) — @aguyshayb
+- fix(ci): Skip the integration coverage merge when shards were skipped ([#781](https://github.com/A-Guy-educ/A-Guy-Admin/pull/781)) — @aguyshayb
+- feat: Add public lesson page fields and import them from lesson JSON ([#779](https://github.com/A-Guy-educ/A-Guy-Admin/pull/779)) — @aguyshayb
+- chore(ci): Shard integration tests across three jobs ([#777](https://github.com/A-Guy-educ/A-Guy-Admin/pull/777)) — @aguyshayb
+- feat(lesson-full-json): Write the lesson JSON export in compact form ([#776](https://github.com/A-Guy-educ/A-Guy-Admin/pull/776)) — @aguyshayb
+- fix(text-lesson-import): Import opening-data pipe tables as table blocks ([#771](https://github.com/A-Guy-educ/A-Guy-Admin/pull/771)) — @aguyshayb
+- promote: dev -> main (v0.68.0) ([#769](https://github.com/A-Guy-educ/A-Guy-Admin/pull/769)) — @aguyshayb
 - chore: Release v0.68.0 ([#768](https://github.com/A-Guy-educ/A-Guy-Admin/pull/768)) — @aguyshayb
 - feat(courses): Add course sign-ups collection and endpoints ([#767](https://github.com/A-Guy-educ/A-Guy-Admin/pull/767)) — @aguyshayb
 - feat(exercises): Add step-by-step equation question block ([#766](https://github.com/A-Guy-educ/A-Guy-Admin/pull/766)) — @aguyshayb

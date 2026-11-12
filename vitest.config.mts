@@ -78,13 +78,20 @@ export default defineConfig({
        * (50/45) were above reality and turned CI red for every branch. Raise
        * these numbers incrementally as real coverage grows — treat each bump
        * as a ratchet, not a leap.
+       *
+       * CI runs the suite in shards (`--shard=N/3`); a single shard only sees
+       * a fraction of the coverage, so shards set VITEST_COVERAGE_SHARD=true to
+       * skip the gate, and the merge job (`--merge-reports`) enforces it.
        */
-      thresholds: {
-        statements: 28,
-        branches: 22,
-        functions: 30,
-        autoUpdate: false,
-      },
+      thresholds:
+        process.env.VITEST_COVERAGE_SHARD === 'true'
+          ? undefined
+          : {
+              statements: 28,
+              branches: 22,
+              functions: 30,
+              autoUpdate: false,
+            },
     },
   },
 })

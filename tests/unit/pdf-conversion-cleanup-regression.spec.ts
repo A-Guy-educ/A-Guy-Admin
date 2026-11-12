@@ -111,35 +111,4 @@ describe('PDF→Exercises Cleanup Regression', () => {
       expect(result.exercises[1].title).toBe('Ex1 Duplicate')
     })
   })
-
-  describe('Content hash is still computed but not used for identity', () => {
-    test('contentHash can still be computed for debugging', () => {
-      // Simulate content hash computation
-      const computeMockHash = (content: string): string => {
-        // Simple mock hash
-        let hash = 0
-        for (let i = 0; i < content.length; i++) {
-          const char = content.charCodeAt(i)
-          hash = (hash << 5) - hash + char
-          hash = hash & hash
-        }
-        return Math.abs(hash).toString(16)
-      }
-
-      const content1 = '{"blocks":[]}'
-      const content2 = '{"blocks":[{"type":"rich_text"}]}'
-
-      const hash1 = computeMockHash(content1)
-      const hash2 = computeMockHash(content2)
-
-      // Different content produces different hashes
-      expect(hash1).not.toBe(hash2)
-      expect(hash1).toBeTruthy()
-      expect(hash2).toBeTruthy()
-
-      // But identity is based on idempotency key, not content hash
-      const idempotencyKey = 't1:l1:d1:1-3:1:v1'
-      expect(idempotencyKey).toBeTruthy()
-    })
-  })
 })
