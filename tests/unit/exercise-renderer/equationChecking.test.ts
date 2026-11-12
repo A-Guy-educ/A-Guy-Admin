@@ -7,6 +7,7 @@ import {
 import { ExerciseBlockDefaults } from '@/server/payload/collections/Exercises/defaults'
 import { ContentBlockSchema } from '@/server/payload/collections/Exercises/schemas'
 import type { QuestionEquationBlock } from '@/server/payload/collections/Exercises/types'
+import type { EquationOperation } from '@/server/payload/collections/Exercises/linearEquation'
 
 const MESSAGES = {
   invalidAnswerType: 'Invalid answer type',
@@ -94,5 +95,49 @@ describe('QuestionEquationBlockSchema', () => {
     expect(
       ContentBlockSchema.safeParse({ ...block, equation: { left: '  ', right: '5' } }).success,
     ).toBe(false)
+  })
+})
+
+describe('dynamic mode', () => {
+  const dynamic: QuestionEquationBlock = {
+    ...block,
+    mode: 'dynamic',
+    steps: [],
+    linear: { a: 2, b: 3, c: 1, d: 8 },
+  }
+  const answerWith = (operations: EquationOperation[]) => ({
+    type: 'equation' as const,
+    completedSteps: operations.length,
+    operations,
+  })
+  const minusX: EquationOperation = { kind: 'add_x', value: { n: -1, d: 1 } }
+  const minus3: EquationOperation = { kind: 'add_number', value: { n: -3, d: 1 } }
+  const plus4: EquationOperation = { kind: 'add_number', value: { n: 4, d: 1 } }
+
+  it('is correct once the chosen operations isolate x, detours included', async () => {
+    const solved = await checkQuestionAnswer(
+      dynamic,
+      answerWith([plus4, minusX, minus3, { kind: 'add_number', value: { n: -4, d: 1 } }]),
+      MESSAGES,
+    )
+    const partial = await checkQuestionAnswer(dynamic, answerWith([minusX]), MESSAGES)
+    expect(solved.isCorrect).toBe(true)
+    expect(partial.isCorrect).toBe(false)
+    expect(isAutoGradedAnswer(dynamic, answerWith([minusX, minus3]))).toBe(true)
+    expect(isAutoGradedAnswer(dynamic, answerWith([minusX]))).toBe(false)
+  })
+
+  it('validates the dynamic block', () => {
+    expect(ContentBlockSchema.safeParse(dynamic).success).toBe(true)
+    const noLinear = { ...dynamic, linear: undefined }
+    const noSolution = { ...dynamic, linear: { a: 2, b: 3, c: 2, d: 8 } }
+    const fractional = { ...dynamic, linear: { a: 1.5, b: 3, c: 1, d: 8 } }
+    expect(ContentBlockSchema.safeParse(noLinear).success).toBe(false)
+    expect(ContentBlockSchema.safeParse(noSolution).success).toBe(false)
+    expect(ContentBlockSchema.safeParse(fractional).success).toBe(false)
+  })
+
+  it('still requires steps in steps mode', () => {
+    expect(ContentBlockSchema.safeParse({ ...block, mode: 'steps', steps: [] }).success).toBe(false)
   })
 })

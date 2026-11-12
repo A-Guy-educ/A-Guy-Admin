@@ -3,6 +3,7 @@
  * Extracts block context into a structured user prompt
  */
 import type { ContentBlock } from '@/server/payload/collections/Exercises/types'
+import { fractionLatex, solveLinear } from '@/server/payload/collections/Exercises/linearEquation'
 
 export interface SupportPromptInput {
   block: ContentBlock
@@ -90,6 +91,10 @@ function extractAnswerText(block: ContentBlock): string {
   }
 
   if (block.type === 'question_equation') {
+    if (block.mode === 'dynamic' && block.linear) {
+      const x = fractionLatex(solveLinear(block.linear))
+      return `Equation: ${block.equation.left} = ${block.equation.right}. Solution: x = ${x}`
+    }
     const steps = block.steps
       .map((step) => {
         const correct = step.options.find((o) => o.id === step.correctOptionId)

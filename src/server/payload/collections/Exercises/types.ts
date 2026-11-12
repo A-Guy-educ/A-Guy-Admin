@@ -238,12 +238,29 @@ export interface EquationStep {
   result: EquationSides // The equation after the correct option
 }
 
+/** Integer coefficients of `a·x + b = c·x + d`. */
+export interface LinearEquation {
+  a: number
+  b: number
+  c: number
+  d: number
+}
+
+/**
+ * `steps` (default): the author writes every step's options and result.
+ * `dynamic`: options are generated from `linear` after every choice until x is
+ * isolated; `equation` mirrors `linear` and `steps` is unused.
+ */
+export type EquationMode = 'steps' | 'dynamic'
+
 export interface QuestionEquationBlock {
   id: string
   type: 'question_equation'
   prompt: InlineRichText
+  mode?: EquationMode
   equation: EquationSides
   steps: EquationStep[]
+  linear?: LinearEquation
   hint?: InlineRichText
   solution?: InlineRichText
   fullSolution?: InlineRichText
