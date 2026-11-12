@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+import { LessonPageJsonSchema } from './lesson-page-fields'
+
 const ContentBlockSchema = z
   .object({
     text: z.string(),
@@ -52,6 +54,7 @@ export const LessonJsonSchema = z
     topic: z.string().min(1, 'Top-level "topic" is required'),
     exercises: z.array(ExerciseSchema).min(1, 'Lesson must contain at least one exercise'),
   })
+  .extend(LessonPageJsonSchema.shape)
   .passthrough()
 
 export type LessonJson = z.infer<typeof LessonJsonSchema>
