@@ -150,7 +150,9 @@ jobs:
     name: Integration Tests
     runs-on: ubuntu-latest
     needs: [integration-tests]
-    if: ${{ !cancelled() }}
+    # Still merge when a shard fails (so its failures surface here), but skip when the
+    # shards never ran — e.g. Fast Gate failed — since there are no reports to merge.
+    if: ${{ !cancelled() && needs.integration-tests.result != 'skipped' }}
     timeout-minutes: 10
     env:
       DATABASE_URL: mongodb://localhost:27017/test
