@@ -28,8 +28,8 @@ import type { GeometrySpecV1 } from '@/infra/contracts/graphics/geometry.v1'
 import { withFeaturePointViewport } from '@/infra/utils/graphics/viewport-utils'
 
 import type { TextExerciseV2, TextSectionV2 } from './parse-text-v2'
-import { convertPipeTablesToHtml } from './pipe-table-to-html'
 import { extractHtmlSegments, splitHtmlSegments } from './split-html-segments'
+import { splitPipeTables } from './split-pipe-tables'
 
 const OPEN_ENDED_PLACEHOLDER = 'תשובה פתוחה — למילוי ידני'
 
@@ -49,6 +49,30 @@ function htmlBlock(html: string): HtmlBlock {
 function textAndHtmlBlocks(value: string): ContentBlock[] {
   return splitHtmlSegments(value).map((s) =>
     s.kind === 'html' ? htmlBlock(s.value) : richTextBlock(s.value),
+  )
+}
+
+/** Display table (no fill-in cells) for a pipe table in the opening data. */
+function displayTableBlock(headers: string[], rowsData: string[][]): QuestionTableBlock {
+  return {
+    id: generateId(),
+    type: 'question_table',
+    prompt: inlineRichText(''),
+    table: {
+      solutionFill: false,
+      headers,
+      rowsData,
+      answers: {},
+      showBorders: true,
+      showHeader: true,
+    },
+  }
+}
+
+/** The intro as text / html blocks, with each pipe table as its own table block, in source order. */
+function introBlocks(intro: string): ContentBlock[] {
+  return splitPipeTables(intro).flatMap((s) =>
+    s.kind === 'table' ? [displayTableBlock(s.headers, s.rowsData)] : textAndHtmlBlocks(s.value),
   )
 }
 
@@ -413,9 +437,7 @@ export interface ConvertedExerciseV2 {
 
 export function convertTextExerciseV2ToSections(exercise: TextExerciseV2): ConvertedExerciseV2 {
   const sharedBlocks: ContentBlock[] = []
-  if (exercise.intro) {
-    sharedBlocks.push(...textAndHtmlBlocks(convertPipeTablesToHtml(exercise.intro)))
-  }
+  if (exercise.intro) sharedBlocks.push(...introBlocks(exercise.intro))
   // Shared visual is emitted once at the exercise level. Sections deliberately
   // don't inherit it as an attachment — that would double-render the same
   // drawing in every section. Only one visual kind is expected per exercise;

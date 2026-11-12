@@ -370,7 +370,7 @@ function applyExerciseField(
   }
   // `* טבלה:` in the opening data is followed by a markdown pipe table. The
   // label is dropped; the rows flow into the intro, where the converter turns
-  // them into a table block.
+  // them into a question_table block.
   if (k === 'טבלה') {
     if (value) ex.intro = ex.intro ? `${ex.intro}\n${value}` : value
     return { kind: 'consumed', slot: 'intro' }

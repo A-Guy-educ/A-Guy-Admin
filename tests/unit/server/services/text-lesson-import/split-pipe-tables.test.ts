@@ -1,85 +1,78 @@
 import { describe, expect, it } from 'vitest'
 
+import type { QuestionTableBlock } from '@/server/payload/collections/Exercises/types'
+import { ContentSchema } from '@/server/payload/collections/Exercises/schemas'
 import { convertTextExerciseV2ToSections } from '@/server/services/text-lesson-import/convert-text-exercise-v2'
 import { parseTextLessonV2 } from '@/server/services/text-lesson-import/parse-text-v2'
-import { convertPipeTablesToHtml } from '@/server/services/text-lesson-import/pipe-table-to-html'
+import { splitPipeTables } from '@/server/services/text-lesson-import/split-pipe-tables'
 
 const SEP = '='.repeat(41)
 
-describe('convertPipeTablesToHtml', () => {
-  it('rewrites a pipe table as a single line of table markup', () => {
-    const source = ['| a | b |', '|---|---|', '| 1 | 2 |'].join('\n')
+describe('splitPipeTables', () => {
+  it('splits text, table, text in source order', () => {
+    const source = ['before', '| a | b |', '|---|---|', '| 1 | 2 |', 'after'].join('\n')
 
-    expect(convertPipeTablesToHtml(source)).toBe(
-      '<table dir="rtl"><thead><tr><th>a</th><th>b</th></tr></thead>' +
-        '<tbody><tr><td>1</td><td>2</td></tr></tbody></table>',
-    )
-  })
-
-  it('leaves the text around the table on its own lines', () => {
-    const source = ['before', '| a |', '|---|', '| 1 |', 'after'].join('\n')
-
-    const lines = convertPipeTablesToHtml(source).split('\n')
-
-    expect(lines).toHaveLength(3)
-    expect(lines[0]).toBe('before')
-    expect(lines[1]).toMatch(/^<table/)
-    expect(lines[2]).toBe('after')
+    expect(splitPipeTables(source)).toEqual([
+      { kind: 'text', value: 'before' },
+      { kind: 'table', headers: ['a', 'b'], rowsData: [['1', '2']] },
+      { kind: 'text', value: 'after' },
+    ])
   })
 
   it('does not treat pipe-only lines without a delimiter row as a table', () => {
     const source = ['| a | b |', '| 1 | 2 |'].join('\n')
 
-    expect(convertPipeTablesToHtml(source)).toBe(source)
+    expect(splitPipeTables(source)).toEqual([{ kind: 'text', value: source }])
+  })
+
+  it('keeps a header with no data rows as text', () => {
+    const source = ['| a | b |', '|---|---|'].join('\n')
+
+    expect(splitPipeTables(source)).toEqual([{ kind: 'text', value: source }])
   })
 
   it('accepts alignment colons in the delimiter row', () => {
     const source = ['| a | b |', '|:--|:-:|', '| 1 | 2 |'].join('\n')
 
-    expect(convertPipeTablesToHtml(source)).toContain('<td>2</td>')
-  })
-
-  it('escapes markup in cells so a cell cannot inject tags', () => {
-    const source = ['| a |', '|---|', '| <b>x</b> & y |'].join('\n')
-
-    expect(convertPipeTablesToHtml(source)).toContain('<td>&lt;b&gt;x&lt;/b&gt; &amp; y</td>')
+    expect(splitPipeTables(source)[0]).toMatchObject({ kind: 'table', rowsData: [['1', '2']] })
   })
 
   it('does not split a cell on pipes inside math or escaped pipes', () => {
     const source = ['| a | b |', '|---|---|', '| $$|x|$$ | c \\| d |'].join('\n')
 
-    const html = convertPipeTablesToHtml(source)
-
-    expect(html).toContain('<td>$$|x|$$</td>')
-    expect(html).toContain('<td>c | d</td>')
+    expect(splitPipeTables(source)[0]).toMatchObject({ rowsData: [['$$|x|$$', 'c | d']] })
   })
 
   it('pads short rows and trims long rows to the header width', () => {
     const source = ['| a | b |', '|---|---|', '| 1 |', '| 2 | 3 | 4 |'].join('\n')
 
-    const html = convertPipeTablesToHtml(source)
-
-    expect(html).toContain('<tr><td>1</td><td></td></tr>')
-    expect(html).toContain('<tr><td>2</td><td>3</td></tr>')
+    expect(splitPipeTables(source)[0]).toMatchObject({
+      rowsData: [
+        ['1', ''],
+        ['2', '3'],
+      ],
+    })
   })
 
-  it('returns text with no table unchanged', () => {
-    expect(convertPipeTablesToHtml('just text\nwith | a pipe')).toBe('just text\nwith | a pipe')
+  it('returns text with no table as one text segment', () => {
+    expect(splitPipeTables('just text\nwith | a pipe')).toEqual([
+      { kind: 'text', value: 'just text\nwith | a pipe' },
+    ])
   })
 })
 
-describe('v2 importer — pipe table in the opening data', () => {
+describe('v2 importer — `* טבלה:` in the opening data', () => {
   const source = [
     SEP,
     '[ תרגיל 9 - נתוני פתיחה ]',
     SEP,
-    '* טקסט: בעיה מילולית',
-    'מחיר ליטר דלק הוא $$6$$ ש״ח.',
+    '* טקסט: בעיה מילולית: מחיר נסיעה',
+    'מחיר ליטר דלק בתרגיל הוא $$6$$ ש״ח.',
     '* טבלה:',
-    '| כביש | אורך הדרך |',
-    '|---|---|',
-    '| 1 | 30 ק״מ |',
-    '| 2 | 40 ק״מ |',
+    '| כביש | אורך הדרך | אגרה לכל ק״מ |',
+    '|---|---|---|',
+    '| 1 | 30 ק״מ | 0.7 ש״ח |',
+    '| 2 | 40 ק״מ | ללא תשלום |',
     'מביאים בחשבון רק דלק ואגרה.',
     '',
     SEP,
@@ -93,18 +86,26 @@ describe('v2 importer — pipe table in the opening data', () => {
 
   const convert = () => convertTextExerciseV2ToSections(parseTextLessonV2(source).exercises[0])
 
-  it('emits text, table, text as separate blocks in source order', () => {
+  it('emits text, table block, text in source order', () => {
     const { sharedBlocks } = convert()
 
-    expect(sharedBlocks.map((b) => b.type)).toEqual(['rich_text', 'html', 'rich_text'])
+    expect(sharedBlocks.map((b) => b.type)).toEqual(['rich_text', 'question_table', 'rich_text'])
   })
 
-  it('puts every data row in the table and none of the following text', () => {
-    const table = convert().sharedBlocks[1] as { html: string }
+  it('fills the table block from the pipe rows', () => {
+    const table = convert().sharedBlocks[1] as QuestionTableBlock
 
-    expect(table.html.match(/<tr>/g)).toHaveLength(3)
-    expect(table.html).toContain('<td>40 ק״מ</td>')
-    expect(table.html).not.toContain('מביאים')
+    expect(table.table).toEqual({
+      solutionFill: false,
+      headers: ['כביש', 'אורך הדרך', 'אגרה לכל ק״מ'],
+      rowsData: [
+        ['1', '30 ק״מ', '0.7 ש״ח'],
+        ['2', '40 ק״מ', 'ללא תשלום'],
+      ],
+      answers: {},
+      showBorders: true,
+      showHeader: true,
+    })
   })
 
   it('drops the `טבלה:` label and keeps the following sentence as text', () => {
@@ -114,10 +115,13 @@ describe('v2 importer — pipe table in the opening data', () => {
     expect(after.value).toBe('מביאים בחשבון רק דלק ואגרה.')
   })
 
-  it('keeps the table in the exercise so sections are unaffected', () => {
+  it('produces blocks that pass the content schema', () => {
+    expect(ContentSchema.safeParse({ blocks: convert().sharedBlocks }).success).toBe(true)
+  })
+
+  it('leaves the sections unaffected', () => {
     const { sections } = convert()
 
-    expect(sections).toHaveLength(1)
     expect(sections[0].blocks.map((b) => b.type)).toEqual(['question_select'])
   })
 })
