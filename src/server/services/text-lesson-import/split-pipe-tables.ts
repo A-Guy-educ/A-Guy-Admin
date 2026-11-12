@@ -1,16 +1,16 @@
 /**
- * Rewrites markdown pipe tables in a v2 `* טקסט:` field as one-line `<table>`
- * markup, so splitHtmlSegments turns each into its own html block between the
- * surrounding text:
+ * Splits a v2 `* טקסט:` field into text and markdown pipe tables, in source
+ * order, so the converter can emit each table as a `question_table` block
+ * between the surrounding text blocks:
  *
  *   | כביש | אורך הדרך |
  *   |---|---|
  *   | 1 | 30 ק״מ |
- *
- * A `question_table` can't carry this: Web counts every question_table as
- * answer-required (section letter, walker step), even with no fillable cells,
- * and the exporter skips question blocks at the exercise level.
  */
+
+export type PipeTableSegment =
+  | { kind: 'text'; value: string }
+  | { kind: 'table'; headers: string[]; rowsData: string[][] }
 
 const DELIMITER_ROW_RE = /^\s*\|\s*:?-+:?\s*(?:\|\s*:?-+:?\s*)*\|?\s*$/
 const TABLE_ROW_RE = /^\s*\|.*\|\s*$/
@@ -39,34 +39,32 @@ function splitRow(line: string): string[] {
   return [...cells, cell.trim()]
 }
 
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-}
-
-function renderRow(cells: string[], width: number, tag: 'th' | 'td'): string {
-  const fitted = Array.from({ length: width }, (_, i) => cells[i] ?? '')
-  return `<tr>${fitted.map((c) => `<${tag}>${escapeHtml(c)}</${tag}>`).join('')}</tr>`
-}
-
-function renderTable(rows: string[]): string {
+/** Rows are padded / trimmed to the header width — the table schema requires equal widths. */
+function parseTable(rows: string[]): PipeTableSegment {
   const [headerLine, ...bodyLines] = rows
   const headers = splitRow(headerLine)
-  const body = bodyLines.map((line) => renderRow(splitRow(line), headers.length, 'td')).join('')
-  return `<table dir="rtl"><thead>${renderRow(headers, headers.length, 'th')}</thead><tbody>${body}</tbody></table>`
+  const rowsData = bodyLines.map((line) => {
+    const cells = splitRow(line)
+    return headers.map((_, i) => cells[i] ?? '')
+  })
+  return { kind: 'table', headers, rowsData }
 }
 
-export function convertPipeTablesToHtml(text: string): string {
+export function splitPipeTables(text: string): PipeTableSegment[] {
   const lines = text.split('\n')
-  const out: string[] = []
+  const segments: PipeTableSegment[] = []
+  let textLines: string[] = []
+
+  const flushText = () => {
+    const value = textLines.join('\n').trim()
+    if (value) segments.push({ kind: 'text', value })
+    textLines = []
+  }
 
   for (let i = 0; i < lines.length; i++) {
     const isTableStart = TABLE_ROW_RE.test(lines[i]) && DELIMITER_ROW_RE.test(lines[i + 1] ?? '')
     if (!isTableStart) {
-      out.push(lines[i])
+      textLines.push(lines[i])
       continue
     }
     const rows = [lines[i]]
@@ -75,8 +73,16 @@ export function convertPipeTablesToHtml(text: string): string {
       rows.push(lines[next])
       next++
     }
-    out.push(renderTable(rows))
+    // A table needs at least one data row — a bare header stays text.
+    if (rows.length < 2) {
+      textLines.push(lines[i], lines[i + 1])
+      i++
+      continue
+    }
+    flushText()
+    segments.push(parseTable(rows))
     i = next - 1
   }
-  return out.join('\n')
+  flushText()
+  return segments
 }
