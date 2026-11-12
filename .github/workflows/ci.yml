@@ -194,6 +194,14 @@ jobs:
           path: coverage/
           retention-days: 3
 
+      # A shard that crashes or times out uploads no blob report, so the merge
+      # above can pass on the remaining shards. Fail explicitly in that case.
+      - name: Require every shard to succeed
+        if: ${{ !cancelled() && needs.integration-tests.result != 'success' }}
+        run: |
+          echo "One or more integration shards did not succeed (result: ${{ needs.integration-tests.result }})"
+          exit 1
+
   build:
     name: Build
     runs-on: ubuntu-latest
