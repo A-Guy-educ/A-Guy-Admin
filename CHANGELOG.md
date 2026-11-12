@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- fix(text-lesson-import): Import opening-data tables as table blocks ([#783](https://github.com/A-Guy-educ/A-Guy-Admin/pull/783)) — @aguyshayb
 - fix(ci): Fail the integration merge job when any shard fails ([#782](https://github.com/A-Guy-educ/A-Guy-Admin/pull/782)) — @aguyshayb
 - fix(ci): Skip the integration coverage merge when shards were skipped ([#781](https://github.com/A-Guy-educ/A-Guy-Admin/pull/781)) — @aguyshayb
 - feat: Add public lesson page fields and import them from lesson JSON ([#779](https://github.com/A-Guy-educ/A-Guy-Admin/pull/779)) — @aguyshayb
