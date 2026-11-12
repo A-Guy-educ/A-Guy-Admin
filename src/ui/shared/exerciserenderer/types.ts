@@ -15,6 +15,7 @@ import type {
   SvgHotspot,
   MediaBlock,
 } from '@/server/payload/collections/Exercises/types'
+import type { EquationOperation } from '@/server/payload/collections/Exercises/linearEquation'
 
 export type {
   EquationStep,
@@ -36,7 +37,8 @@ export type UserAnswer =
   | { type: 'free_response'; value: string }
   | { type: 'table'; cellValues: Record<string, string> }
   | { type: 'matching'; connections: Array<{ leftId: string; rightId: string }> }
-  | { type: 'equation'; completedSteps: number }
+  // Dynamic mode records each chosen operation; completedSteps counts them.
+  | { type: 'equation'; completedSteps: number; operations?: EquationOperation[] }
   | { type: 'svg'; selectedHotspotIds: string[] }
 
 export interface TableCellResult {

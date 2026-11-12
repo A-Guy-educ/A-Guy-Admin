@@ -6,11 +6,13 @@
 import type {
   QuestionBlock,
   QuestionFreeResponseBlock,
+  QuestionEquationBlock,
   QuestionMatchingBlock,
   SvgBlock,
   UserAnswer,
   CheckResult,
 } from '../types'
+import { applyOperations, getSolution } from '@/server/payload/collections/Exercises/linearEquation'
 
 export interface AnswerErrorMessages {
   invalidAnswerType: string
@@ -97,9 +99,22 @@ export async function checkQuestionAnswer(
       if (answer.completedSteps === 0) {
         return { isCorrect: false, message: messages.selectAnAnswer }
       }
-      return { isCorrect: answer.completedSteps >= question.steps.length }
+      return { isCorrect: isEquationSolved(question, answer) }
     }
   }
+}
+
+/**
+ * Steps mode: every authored step is done. Dynamic mode: the chosen
+ * operations leave x alone on one side.
+ */
+function isEquationSolved(
+  question: QuestionEquationBlock,
+  answer: Extract<UserAnswer, { type: 'equation' }>,
+): boolean {
+  if (question.mode !== 'dynamic') return answer.completedSteps >= question.steps.length
+  if (!question.linear) return false
+  return getSolution(applyOperations(question.linear, answer.operations ?? [])) !== null
 }
 
 /**
@@ -107,7 +122,7 @@ export async function checkQuestionAnswer(
  */
 export function isAutoGradedAnswer(question: QuestionBlock, answer: UserAnswer): boolean {
   if (question.type === 'question_equation') {
-    return answer.type === 'equation' && answer.completedSteps >= question.steps.length
+    return answer.type === 'equation' && isEquationSolved(question, answer)
   }
   return (
     question.type === 'question_select' && answer.type === 'true_false' && answer.value !== null
