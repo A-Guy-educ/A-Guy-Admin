@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- fix(ci): Skip the integration coverage merge when shards were skipped ([#781](https://github.com/A-Guy-educ/A-Guy-Admin/pull/781)) — @aguyshayb
 - feat: Add public lesson page fields and import them from lesson JSON ([#779](https://github.com/A-Guy-educ/A-Guy-Admin/pull/779)) — @aguyshayb
 - chore(ci): Shard integration tests across three jobs ([#777](https://github.com/A-Guy-educ/A-Guy-Admin/pull/777)) — @aguyshayb
 - feat(lesson-full-json): Write the lesson JSON export in compact form ([#776](https://github.com/A-Guy-educ/A-Guy-Admin/pull/776)) — @aguyshayb
