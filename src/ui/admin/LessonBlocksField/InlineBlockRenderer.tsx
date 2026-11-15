@@ -9,6 +9,7 @@ import { FreeResponseEditor } from '../ExerciseContentEditor/editors/FreeRespons
 import { TableEditor } from '../ExerciseContentEditor/editors/TableEditor'
 import { MatchingEditor } from '../ExerciseContentEditor/editors/MatchingEditor'
 import { EquationEditor } from '../ExerciseContentEditor/editors/EquationEditor'
+import { ProofEditor } from '../ExerciseContentEditor/editors/ProofEditor'
 import { SvgEditor } from '../ExerciseContentEditor/editors/SvgEditor'
 import { HtmlBlockEditor } from '../ExerciseContentEditor/editors/HtmlBlockEditor'
 import { MediaBlockEditor } from '../ExerciseContentEditor/editors/MediaBlockEditor'
@@ -22,6 +23,7 @@ function getBlockTypeLabel(block: ContentBlock): string {
   if (block.type === 'html') return 'HTML Block'
   if (block.type === 'question_matching') return 'Matching'
   if (block.type === 'question_equation') return 'Equation'
+  if (block.type === 'question_proof') return 'Proof'
   if (block.type === 'svg') return 'SVG Image'
   if (block.type === 'media') return 'Media'
   if (block.type === 'latex') return 'LaTeX'
@@ -150,6 +152,14 @@ export const InlineBlockRenderer: React.FC<{
     return (
       <div className="question-block-wrapper">
         <EquationEditor block={b} onChange={(updated) => onChange(updated)} />
+      </div>
+    )
+  }
+
+  if (block.type === 'question_proof') {
+    return (
+      <div className="question-block-wrapper">
+        <ProofEditor block={b} onChange={(updated) => onChange(updated)} />
       </div>
     )
   }

@@ -286,6 +286,7 @@ function extractQuestionContent(block: ContentBlock): QuestionContent | null {
         answer: undefined,
       }
     case 'question_equation':
+    case 'question_proof':
       return {
         prompt: block.prompt,
         hint: block.hint,
@@ -376,6 +377,14 @@ function applyQuestionStructure(section: CanonicalSection, block: ContentBlock):
         headers: [...block.table.headers],
         rowsData: block.table.rowsData.map((row) => [...row]),
         answers: { ...(block.table.answers ?? {}) },
+      }
+      return
+    case 'question_proof':
+      section.question_type = 'table'
+      section.table = {
+        headers: [...block.table.headers],
+        rowsData: block.table.rowsData.map((row) => [...row]),
+        answers: { ...block.table.answers },
       }
       return
     case 'question_matching': {
