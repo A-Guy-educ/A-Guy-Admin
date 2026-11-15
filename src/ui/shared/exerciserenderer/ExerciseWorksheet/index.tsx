@@ -19,6 +19,7 @@
  *   - question_table             -> Hebrew label + prompt + empty table grid
  *   - question_matching          -> Hebrew label + prompt + two columns of items
  *   - question_equation          -> Hebrew label + prompt + starting equation
+ *   - question_proof             -> Hebrew label + prompt + given + claim/reason table
  *
  * Side-by-side diagrams flip based on locale direction: text starts on the
  * reading side (left in LTR, right in RTL) and the diagram sits opposite.
@@ -53,6 +54,7 @@ import type {
   QuestionMatchingBlock,
   QuestionEquationBlock,
   QuestionMultiAxisBlock,
+  QuestionProofBlock,
   QuestionSelectMcqBlock,
   QuestionSelectTrueFalseBlock,
   QuestionTableBlock,
@@ -125,6 +127,7 @@ const LABELLED_QUESTION_TYPES = new Set([
   'question_table',
   'question_matching',
   'question_equation',
+  'question_proof',
   'question_geometry',
   'question_axis',
 ])
@@ -311,6 +314,10 @@ function renderBlockContent({
     return <WorksheetEquation block={block as QuestionEquationBlock} />
   }
 
+  if (block.type === 'question_proof') {
+    return <WorksheetProof block={block as QuestionProofBlock} />
+  }
+
   return null
 }
 
@@ -470,6 +477,52 @@ function WorksheetEquation({ block }: { block: QuestionEquationBlock }) {
       <LatexBlockRenderer
         block={{ id: block.id, type: 'latex', latex: `${left} = ${right}`, renderMode: 'block' }}
       />
+    </div>
+  )
+}
+
+// Blank cells print their options so the student can circle one
+function WorksheetProof({ block }: { block: QuestionProofBlock }) {
+  const { headers, rowsData, options } = block.table
+  const cellText = (value: string): InlineRichText => ({
+    type: 'rich_text',
+    format: 'md-math-v1',
+    value,
+    mediaIds: [],
+  })
+  return (
+    <div className="flex flex-col gap-3">
+      <PromptText prompt={block.prompt} />
+      <PromptText prompt={block.given} />
+      <table className="w-full table-fixed border-collapse text-body-sm">
+        <thead>
+          <tr>
+            {headers.map((h, i) => (
+              <th
+                key={i}
+                className="border border-foreground/40 px-3 py-2 bg-muted font-semibold text-start"
+              >
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rowsData.map((row, ri) => (
+            <tr key={ri}>
+              {row.map((cell, ci) => {
+                const cellOptions = options[`${ri}-${ci}`]
+                const value = cell === '' && cellOptions ? cellOptions.join(' / ') : cell
+                return (
+                  <td key={ci} className="border border-foreground/40 px-3 py-2 text-start">
+                    <PromptText prompt={cellText(value)} />
+                  </td>
+                )
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   )
 }

@@ -21,6 +21,7 @@ import type {
   QuestionTableBlock,
   QuestionMatchingBlock,
   QuestionEquationBlock,
+  QuestionProofBlock,
   SvgBlock,
   MediaBlock,
   UserAnswer,
@@ -46,6 +47,7 @@ import { FreeResponseQuestion } from '../questions/FreeResponseQuestion'
 import { TableQuestion } from '../questions/TableQuestion'
 import { MatchingQuestion } from '../questions/MatchingQuestion'
 import { EquationQuestion } from '../questions/EquationQuestion'
+import { ProofQuestion } from '../questions/ProofQuestion'
 import { QuestionCard } from '../components/QuestionCard'
 import { HelpSystem } from '../components/HelpSystem'
 import { useHelpSystem } from '../hooks/useHelpSystem'
@@ -164,7 +166,8 @@ export function ExerciseRenderer({
       block.type === 'question_free_response' ||
       block.type === 'question_table' ||
       block.type === 'question_matching' ||
-      block.type === 'question_equation',
+      block.type === 'question_equation' ||
+      block.type === 'question_proof',
   ) as QuestionBlock[]
 
   // Help system state (hint/guiding/solution per question)
@@ -663,7 +666,8 @@ export function ExerciseRenderer({
                 block.type === 'question_free_response' ||
                 block.type === 'question_table' ||
                 block.type === 'question_matching' ||
-                block.type === 'question_equation'
+                block.type === 'question_equation' ||
+                block.type === 'question_proof'
               ) {
                 questionIndex++
               }
@@ -681,12 +685,13 @@ export function ExerciseRenderer({
               const checked = hasChecked[question.id] || false
               const disabled = checked && checkResult?.isCorrect
 
-              // True/False, Table and Equation questions don't use the generic check button
+              // True/False, Table, Equation and Proof questions don't use the generic check button
               const showCheckButton =
                 showCheckAnswer &&
                 !(question.type === 'question_select' && question.variant === 'true_false') &&
                 question.type !== 'question_table' &&
-                question.type !== 'question_equation'
+                question.type !== 'question_equation' &&
+                question.type !== 'question_proof'
 
               // Help system for this question (always shown — AI fallback when no backend content)
               const helpSystemNode = (
@@ -775,6 +780,17 @@ export function ExerciseRenderer({
                       onChange={(ans) => handleAnswerChange(question.id, ans)}
                       disabled={!!disabled}
                       checkResult={checkResult}
+                      t={t}
+                    />
+                  )}
+                  {question.type === 'question_proof' && (
+                    <ProofQuestion
+                      question={question as QuestionProofBlock}
+                      answer={answer}
+                      onChange={(ans) => handleAnswerChange(question.id, ans)}
+                      checked={checked}
+                      allCorrect={!!disabled}
+                      onCheckResult={(correct) => handleTableCheckResult(question.id, correct)}
                       t={t}
                     />
                   )}

@@ -238,16 +238,58 @@ export interface EquationStep {
   result: EquationSides // The equation after the correct option
 }
 
+/** Integer coefficients of `a·x + b = c·x + d`. */
+export interface LinearEquation {
+  a: number
+  b: number
+  c: number
+  d: number
+}
+
+/**
+ * `steps` (default): the author writes every step's options and result.
+ * `dynamic`: options are generated from `linear` after every choice until x is
+ * isolated; `equation` mirrors `linear` and `steps` is unused.
+ */
+export type EquationMode = 'steps' | 'dynamic'
+
 export interface QuestionEquationBlock {
   id: string
   type: 'question_equation'
   prompt: InlineRichText
+  mode?: EquationMode
   equation: EquationSides
   steps: EquationStep[]
+  linear?: LinearEquation
   hint?: InlineRichText
   solution?: InlineRichText
   fullSolution?: InlineRichText
   showNotebook?: boolean
+}
+
+// ---------------------------------
+// Question Proof Block
+// ---------------------------------
+// Keys are "rowIdx-colIdx". A blank cell ('') with an options entry is a
+// dropdown; its answer is the text of the correct option.
+export interface ProofTable {
+  headers: string[] // [claim, reason]
+  rowsData: string[][] // [claim, reason] per row
+  answers: Record<string, string>
+  options: Record<string, string[]> // 2–3 choices per blank
+}
+
+export interface QuestionProofBlock {
+  id: string
+  type: 'question_proof'
+  prompt: InlineRichText
+  given?: InlineRichText
+  table: ProofTable
+  hint?: InlineRichText
+  solution?: InlineRichText
+  fullSolution?: InlineRichText
+  showNotebook?: boolean
+  attachment?: QuestionAttachment
 }
 
 // ---------------------------------
@@ -373,6 +415,7 @@ export type ContentBlock =
   | LatexBlock
   | QuestionMatchingBlock
   | QuestionEquationBlock
+  | QuestionProofBlock
   | SvgBlock
   | QuestionGeometryBlock
   | QuestionAxisBlock

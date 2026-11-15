@@ -6,6 +6,7 @@ import {
   Code,
   Edit3,
   Equal,
+  ListChecks,
   FileText,
   Image as ImageIcon,
   LayoutGrid,
@@ -91,6 +92,12 @@ export const BlockTypeSelector: React.FC<BlockTypeSelectorProps> = ({
       label: 'Equation',
       description: 'Solve an equation step by step, choosing an operation for both sides',
       icon: <Equal size={20} />,
+    },
+    {
+      type: 'question_proof',
+      label: 'Proof',
+      description: 'Claim/reason proof table where the student picks the missing cells',
+      icon: <ListChecks size={20} />,
     },
     {
       type: 'svg',

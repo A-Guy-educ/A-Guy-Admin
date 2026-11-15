@@ -124,6 +124,7 @@ const QUESTION_TYPES = new Set([
   'question_table',
   'question_matching',
   'question_equation',
+  'question_proof',
   'question_geometry',
   'question_axis',
   'question_multi_axis',

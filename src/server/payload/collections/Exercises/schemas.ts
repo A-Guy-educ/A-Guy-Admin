@@ -9,6 +9,7 @@ export type ContentData = import('./types').ContentData
 import { AxisSpecV1Schema } from '@/infra/contracts/graphics/axis.v1'
 import { GeometrySpecV1Schema } from '@/infra/contracts/graphics/geometry.v1'
 import { GuidedExplanationV1Schema } from '@/infra/contracts/guided-explanation/v1'
+import { isSolvableLinear } from './linearEquation'
 
 // ---------------------------------
 // Zod: Inline Rich Text (NO id)
@@ -370,17 +371,118 @@ const EquationStepSchema = z
     }
   })
 
+const EquationCoefficientSchema = z.number().int().min(-999).max(999)
+
+const LinearEquationSchema = z
+  .object({
+    a: EquationCoefficientSchema,
+    b: EquationCoefficientSchema,
+    c: EquationCoefficientSchema,
+    d: EquationCoefficientSchema,
+  })
+  .strict()
+
 export const QuestionEquationBlockSchema = z
   .object({
     id: z.string().min(1),
     type: z.literal('question_equation'),
     prompt: InlineRichTextSchema,
+    mode: z.enum(['steps', 'dynamic']).optional(),
     equation: EquationSidesSchema,
-    steps: z.array(EquationStepSchema).min(1),
+    steps: z.array(EquationStepSchema),
+    linear: LinearEquationSchema.optional(),
     hint: InlineRichTextSchema.optional(),
     solution: InlineRichTextSchema.optional(),
     fullSolution: InlineRichTextSchema.optional(),
     showNotebook: z.boolean().optional(),
+  })
+  .strict()
+  .superRefine((block, ctx) => {
+    if (block.mode !== 'dynamic') {
+      if (block.steps.length === 0) {
+        ctx.addIssue({ code: 'custom', message: 'Add at least one step', path: ['steps'] })
+      }
+      return
+    }
+    if (!block.linear || !isSolvableLinear(block.linear)) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Dynamic equations need a ≠ c and must not already be solved',
+        path: ['linear'],
+      })
+    }
+  })
+
+// ---------------------------------
+// Zod: Question Proof Block Schema
+// ---------------------------------
+// Two-column claim/reason table. A blank cell ('') with an options entry is a
+// dropdown; its answer is the text of the correct option.
+const PROOF_MAX_OPTIONS = 3
+
+const ProofTableSchema = z
+  .object({
+    headers: z.array(z.string()).length(2),
+    rowsData: z.array(z.array(z.string()).length(2)).min(1),
+    answers: TableAnswerSchema.unwrap(),
+    options: z.record(z.string(), z.array(z.string().trim().min(1)).min(2).max(PROOF_MAX_OPTIONS)),
+  })
+  .strict()
+  .superRefine((table, ctx) => {
+    for (const [key, options] of Object.entries(table.options)) {
+      const [rowIdx, colIdx] = key.split('-').map(Number)
+      if (table.rowsData[rowIdx]?.[colIdx] !== '') {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Options key "${key}" must reference an empty cell`,
+          path: ['options', key],
+        })
+      }
+      if (new Set(options).size !== options.length) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Options for "${key}" must be unique`,
+          path: ['options', key],
+        })
+      }
+      if (!options.includes(table.answers[key] ?? '')) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Answer for "${key}" must be one of its options`,
+          path: ['answers', key],
+        })
+      }
+    }
+    for (const key of Object.keys(table.answers)) {
+      if (!(key in table.options)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Answer key "${key}" has no options`,
+          path: ['answers', key],
+        })
+      }
+    }
+    if (Object.keys(table.options).length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'A proof needs at least one blank cell',
+        path: ['options'],
+      })
+    }
+  })
+
+export const QuestionProofBlockSchema = z
+  .object({
+    id: z.string().min(1),
+    type: z.literal('question_proof'),
+    prompt: InlineRichTextSchema,
+    given: InlineRichTextSchema.optional(),
+    table: ProofTableSchema,
+    hint: InlineRichTextSchema.optional(),
+    solution: InlineRichTextSchema.optional(),
+    fullSolution: InlineRichTextSchema.optional(),
+    showNotebook: z.boolean().optional(),
+    attachment: AttachmentLazySchema.optional(),
   })
   .strict()
 
@@ -743,6 +845,7 @@ export const ContentBlockSchema = z.discriminatedUnion('type', [
   QuestionTableBlockSchema,
   QuestionMatchingBlockSchema,
   QuestionEquationBlockSchema,
+  QuestionProofBlockSchema,
   SvgBlockSchema,
   QuestionGeometryBlockSchema,
   QuestionAxisBlockSchema,

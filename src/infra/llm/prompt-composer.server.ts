@@ -298,6 +298,18 @@ function formatExerciseContent(content: unknown): string {
       parts.push(
         `[Equation Question]: ${[qBlock.prompt?.value, equation].filter(Boolean).join(' ')}`,
       )
+    } else if (b.type === 'question_proof') {
+      const qBlock = b as {
+        type: 'question_proof'
+        prompt?: { value?: string }
+        given?: { value?: string }
+        table: { rowsData: string[][] }
+      }
+      const rows = qBlock.table.rowsData.map(([claim, reason]) => `${claim} | ${reason || '___'}`)
+      const given = qBlock.given?.value ? `Given: ${qBlock.given.value}` : ''
+      parts.push(
+        `[Proof Question]: ${[qBlock.prompt?.value, given].filter(Boolean).join(' ')}\n${rows.join('\n')}`,
+      )
     } else if (b.type === 'html') {
       const htmlBlock = b as { type: 'html'; html?: string }
       if (htmlBlock.html) {
