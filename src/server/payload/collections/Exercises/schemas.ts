@@ -9,6 +9,7 @@ export type ContentData = import('./types').ContentData
 import { AxisSpecV1Schema } from '@/infra/contracts/graphics/axis.v1'
 import { GeometrySpecV1Schema } from '@/infra/contracts/graphics/geometry.v1'
 import { GuidedExplanationV1Schema } from '@/infra/contracts/guided-explanation/v1'
+import { isSolvableLinear } from './linearEquation'
 
 // ---------------------------------
 // Zod: Inline Rich Text (NO id)
@@ -370,19 +371,47 @@ const EquationStepSchema = z
     }
   })
 
+const EquationCoefficientSchema = z.number().int().min(-999).max(999)
+
+const LinearEquationSchema = z
+  .object({
+    a: EquationCoefficientSchema,
+    b: EquationCoefficientSchema,
+    c: EquationCoefficientSchema,
+    d: EquationCoefficientSchema,
+  })
+  .strict()
+
 export const QuestionEquationBlockSchema = z
   .object({
     id: z.string().min(1),
     type: z.literal('question_equation'),
     prompt: InlineRichTextSchema,
+    mode: z.enum(['steps', 'dynamic']).optional(),
     equation: EquationSidesSchema,
-    steps: z.array(EquationStepSchema).min(1),
+    steps: z.array(EquationStepSchema),
+    linear: LinearEquationSchema.optional(),
     hint: InlineRichTextSchema.optional(),
     solution: InlineRichTextSchema.optional(),
     fullSolution: InlineRichTextSchema.optional(),
     showNotebook: z.boolean().optional(),
   })
   .strict()
+  .superRefine((block, ctx) => {
+    if (block.mode !== 'dynamic') {
+      if (block.steps.length === 0) {
+        ctx.addIssue({ code: 'custom', message: 'Add at least one step', path: ['steps'] })
+      }
+      return
+    }
+    if (!block.linear || !isSolvableLinear(block.linear)) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Dynamic equations need a ≠ c and must not already be solved',
+        path: ['linear'],
+      })
+    }
+  })
 
 // ---------------------------------
 // Zod: SVG Hotspot Schema

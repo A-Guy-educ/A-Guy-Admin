@@ -188,7 +188,8 @@ function formatEquationBlock(block: QuestionEquationBlock, index: number): strin
   const prompt = truncateText(block.prompt.value, 80)
   const equation = `${block.equation.left} = ${block.equation.right}`
   const hint = block.hint ? ` | Hint: ${truncateText(block.hint.value, 50)}` : ''
-  return `${index}. [Question: Equation] ${prompt} | ${equation} | ${block.steps.length} steps${hint}`
+  const steps = block.mode === 'dynamic' ? 'dynamic steps' : `${block.steps.length} steps`
+  return `${index}. [Question: Equation] ${prompt} | ${equation} | ${steps}${hint}`
 }
 
 function formatSvgBlock(block: SvgBlock, index: number): string {
