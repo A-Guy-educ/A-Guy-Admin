@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- feat(exercises): Add dynamic mode to the equation question block ([#786](https://github.com/A-Guy-educ/A-Guy-Admin/pull/786)) — @aguyshayb
 - promote: dev -> main (v0.69.0) ([#785](https://github.com/A-Guy-educ/A-Guy-Admin/pull/785)) — @aguyshayb
 - chore: Release v0.69.0 ([#784](https://github.com/A-Guy-educ/A-Guy-Admin/pull/784)) — @aguyshayb
 - fix(text-lesson-import): Import opening-data tables as table blocks ([#783](https://github.com/A-Guy-educ/A-Guy-Admin/pull/783)) — @aguyshayb
