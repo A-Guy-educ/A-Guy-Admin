@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- feat(exercises): Add geometry proof question block ([#790](https://github.com/A-Guy-educ/A-Guy-Admin/pull/790)) — @aguyshayb
 - feat(exercises): Add dynamic mode to the equation question block ([#786](https://github.com/A-Guy-educ/A-Guy-Admin/pull/786)) — @aguyshayb
 - promote: dev -> main (v0.69.0) ([#785](https://github.com/A-Guy-educ/A-Guy-Admin/pull/785)) — @aguyshayb
 - chore: Release v0.69.0 ([#784](https://github.com/A-Guy-educ/A-Guy-Admin/pull/784)) — @aguyshayb
