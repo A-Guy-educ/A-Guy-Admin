@@ -21,6 +21,7 @@ const STUDIO_BLOCK_MENU: ReadonlyArray<{ key: keyof typeof ExerciseBlockDefaults
     { key: 'question_table', label: 'Table' },
     { key: 'question_matching', label: 'Matching' },
     { key: 'question_equation', label: 'Equation' },
+    { key: 'question_proof', label: 'Proof' },
     { key: 'question_axis', label: 'Axis graph' },
     { key: 'question_multi_axis', label: 'Multi-axis graph' },
     { key: 'question_geometry', label: 'Geometry' },

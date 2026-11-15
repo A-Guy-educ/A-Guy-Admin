@@ -14,6 +14,7 @@ import type {
   QuestionFreeResponseBlock,
   QuestionGeometryBlock,
   QuestionMatchingBlock,
+  QuestionProofBlock,
   QuestionSelectMcqBlock,
   QuestionSelectTrueFalseBlock,
   QuestionTableBlock,
@@ -121,6 +122,9 @@ function formatBlock(
     case 'question_equation':
       return formatEquationBlock(block as unknown as QuestionEquationBlock, index)
 
+    case 'question_proof':
+      return formatProofBlock(block as unknown as QuestionProofBlock, index)
+
     case 'svg':
       return formatSvgBlock(block as unknown as SvgBlock, index)
 
@@ -189,6 +193,14 @@ function formatEquationBlock(block: QuestionEquationBlock, index: number): strin
   const equation = `${block.equation.left} = ${block.equation.right}`
   const hint = block.hint ? ` | Hint: ${truncateText(block.hint.value, 50)}` : ''
   return `${index}. [Question: Equation] ${prompt} | ${equation} | ${block.steps.length} steps${hint}`
+}
+
+function formatProofBlock(block: QuestionProofBlock, index: number): string {
+  const prompt = truncateText(block.prompt.value, 80)
+  const rows = block.table.rowsData.length
+  const blanks = Object.keys(block.table.options).length
+  const hint = block.hint ? ` | Hint: ${truncateText(block.hint.value, 50)}` : ''
+  return `${index}. [Question: Proof] ${prompt} | ${rows} rows, ${blanks} blanks${hint}`
 }
 
 function formatSvgBlock(block: SvgBlock, index: number): string {

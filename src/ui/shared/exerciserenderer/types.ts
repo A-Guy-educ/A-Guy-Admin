@@ -8,6 +8,7 @@ import type {
   EquationStep,
   LatexBlock,
   QuestionEquationBlock,
+  QuestionProofBlock,
   QuestionMatchingBlock,
   SvgBlock,
   MatchingOption,
@@ -20,6 +21,7 @@ export type {
   EquationStep,
   LatexBlock,
   QuestionEquationBlock,
+  QuestionProofBlock,
   QuestionMatchingBlock,
   SvgBlock,
   MatchingOption,
@@ -172,6 +174,7 @@ export type QuestionBlock =
   | QuestionTableBlock
   | QuestionMatchingBlock
   | QuestionEquationBlock
+  | QuestionProofBlock
 
 export interface HtmlBlock {
   id: string

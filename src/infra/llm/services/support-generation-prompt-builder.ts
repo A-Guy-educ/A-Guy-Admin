@@ -99,6 +99,15 @@ function extractAnswerText(block: ContentBlock): string {
     return `Equation: ${block.equation.left} = ${block.equation.right}. Steps: ${steps}`
   }
 
+  if (block.type === 'question_proof') {
+    const rows = block.table.rowsData
+      .map((row, rowIdx) =>
+        row.map((cell, colIdx) => block.table.answers[`${rowIdx}-${colIdx}`] ?? cell).join(' | '),
+      )
+      .join('; ')
+    return `Proof (claim | reason): ${rows}`
+  }
+
   return '(answer not extractable for this block type)'
 }
 

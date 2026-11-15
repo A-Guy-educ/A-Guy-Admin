@@ -251,6 +251,31 @@ export interface QuestionEquationBlock {
 }
 
 // ---------------------------------
+// Question Proof Block
+// ---------------------------------
+// Keys are "rowIdx-colIdx". A blank cell ('') with an options entry is a
+// dropdown; its answer is the text of the correct option.
+export interface ProofTable {
+  headers: string[] // [claim, reason]
+  rowsData: string[][] // [claim, reason] per row
+  answers: Record<string, string>
+  options: Record<string, string[]> // 2–3 choices per blank
+}
+
+export interface QuestionProofBlock {
+  id: string
+  type: 'question_proof'
+  prompt: InlineRichText
+  given?: InlineRichText
+  table: ProofTable
+  hint?: InlineRichText
+  solution?: InlineRichText
+  fullSolution?: InlineRichText
+  showNotebook?: boolean
+  attachment?: QuestionAttachment
+}
+
+// ---------------------------------
 // SVG Hotspot (clickable region within an SVG)
 // ---------------------------------
 export interface SvgHotspot {
@@ -373,6 +398,7 @@ export type ContentBlock =
   | LatexBlock
   | QuestionMatchingBlock
   | QuestionEquationBlock
+  | QuestionProofBlock
   | SvgBlock
   | QuestionGeometryBlock
   | QuestionAxisBlock

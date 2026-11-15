@@ -41,6 +41,10 @@ const EquationEditor = dynamic(
   () => import('./editors/EquationEditor').then((m) => m.EquationEditor),
   { ssr: false, loading: () => loading('equation') },
 )
+const ProofEditor = dynamic(() => import('./editors/ProofEditor').then((m) => m.ProofEditor), {
+  ssr: false,
+  loading: () => loading('proof'),
+})
 const McqEditor = dynamic(() => import('./editors/McqEditor').then((m) => m.McqEditor), {
   ssr: false,
   loading: () => loading('multiple choice'),
@@ -607,6 +611,7 @@ function getBlockTypeLabel(block: ContentBlock): string {
   if (block.type === 'html') return 'HTML Block'
   if (block.type === 'question_matching') return 'Matching'
   if (block.type === 'question_equation') return 'Equation'
+  if (block.type === 'question_proof') return 'Proof'
   if (block.type === 'svg') return 'SVG Image'
   if (block.type === 'media') return 'Media'
   if (block.type === 'latex') return 'LaTeX'
@@ -759,6 +764,27 @@ function renderQuestionEditor(
           block={
             block as import('@/server/payload/collections/Exercises/types').QuestionEquationBlock
           }
+          onChange={onChange}
+        />
+      </QuestionBlockWrapper>
+    )
+  }
+  if (block.type === 'question_proof') {
+    return (
+      <QuestionBlockWrapper
+        blockType={getBlockTypeLabel(block)}
+        block={block}
+        onBlockChange={onChange}
+        onMoveUp={onMoveUp}
+        onMoveDown={onMoveDown}
+        onDuplicate={onDuplicate}
+        onDelete={onDelete}
+        canMoveUp={canMoveUp}
+        canMoveDown={canMoveDown}
+        canDelete={blockCount > 1}
+      >
+        <ProofEditor
+          block={block as import('@/server/payload/collections/Exercises/types').QuestionProofBlock}
           onChange={onChange}
         />
       </QuestionBlockWrapper>

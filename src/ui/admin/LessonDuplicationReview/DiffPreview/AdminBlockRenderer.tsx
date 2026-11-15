@@ -156,7 +156,8 @@ function BlockItem({ block }: { block: ContentBlock }) {
     block.type === 'question_free_response' ||
     block.type === 'question_table' ||
     block.type === 'question_matching' ||
-    block.type === 'question_equation'
+    block.type === 'question_equation' ||
+    block.type === 'question_proof'
   ) {
     const questionBlock = block as {
       prompt?: InlineRichText

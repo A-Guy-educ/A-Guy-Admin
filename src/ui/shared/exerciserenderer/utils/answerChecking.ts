@@ -77,7 +77,8 @@ export async function checkQuestionAnswer(
     }
 
     case 'question_table':
-      // Table validation is handled client-side in TableQuestion component
+    case 'question_proof':
+      // Table and proof validation is handled client-side in their components
       return { isCorrect: false, message: messages.invalidAnswerType }
 
     case 'question_matching': {
@@ -231,6 +232,7 @@ export function getInitialAnswer(question: QuestionBlock): UserAnswer {
     case 'question_free_response':
       return { type: 'free_response', value: '' }
     case 'question_table':
+    case 'question_proof':
       return { type: 'table', cellValues: {} }
     case 'question_matching':
       return { type: 'matching', connections: [] }
