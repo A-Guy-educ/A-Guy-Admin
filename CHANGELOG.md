@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- chore: Release v0.70.0 ([#791](https://github.com/A-Guy-educ/A-Guy-Admin/pull/791)) — @aguyshayb
 ## [v0.70.0] - 2026-11-15
 
 - feat(exercises): Add geometry proof question block ([#790](https://github.com/A-Guy-educ/A-Guy-Admin/pull/790)) — @aguyshayb
