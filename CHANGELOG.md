@@ -2,8 +2,12 @@
 
 ## [Unreleased]
 
+## [v0.70.0] - 2026-11-15
+
 - feat(exercises): Add geometry proof question block ([#790](https://github.com/A-Guy-educ/A-Guy-Admin/pull/790)) — @aguyshayb
 - feat(exercises): Add dynamic mode to the equation question block ([#786](https://github.com/A-Guy-educ/A-Guy-Admin/pull/786)) — @aguyshayb
+## [v0.69.0] - 2026-11-12
+
 - promote: dev -> main (v0.69.0) ([#785](https://github.com/A-Guy-educ/A-Guy-Admin/pull/785)) — @aguyshayb
 - chore: Release v0.69.0 ([#784](https://github.com/A-Guy-educ/A-Guy-Admin/pull/784)) — @aguyshayb
 - fix(text-lesson-import): Import opening-data tables as table blocks ([#783](https://github.com/A-Guy-educ/A-Guy-Admin/pull/783)) — @aguyshayb
@@ -13,6 +17,8 @@
 - chore(ci): Shard integration tests across three jobs ([#777](https://github.com/A-Guy-educ/A-Guy-Admin/pull/777)) — @aguyshayb
 - feat(lesson-full-json): Write the lesson JSON export in compact form ([#776](https://github.com/A-Guy-educ/A-Guy-Admin/pull/776)) — @aguyshayb
 - fix(text-lesson-import): Import opening-data pipe tables as table blocks ([#771](https://github.com/A-Guy-educ/A-Guy-Admin/pull/771)) — @aguyshayb
+## [v0.68.0] - 2026-11-08
+
 - promote: dev -> main (v0.68.0) ([#769](https://github.com/A-Guy-educ/A-Guy-Admin/pull/769)) — @aguyshayb
 - chore: Release v0.68.0 ([#768](https://github.com/A-Guy-educ/A-Guy-Admin/pull/768)) — @aguyshayb
 - feat(courses): Add course sign-ups collection and endpoints ([#767](https://github.com/A-Guy-educ/A-Guy-Admin/pull/767)) — @aguyshayb
