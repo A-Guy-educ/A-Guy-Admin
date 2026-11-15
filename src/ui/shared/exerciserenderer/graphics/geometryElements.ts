@@ -116,7 +116,10 @@ function renderLines(
       const offsetDist = sign * baseOffset
       const midX = (from.X() + to.X()) / 2 + (-dy / len) * offsetDist
       const midY = (from.Y() + to.Y()) / 2 + (dx / len) * offsetDist
-      let deg = (Math.atan2(dy, dx) * 180) / Math.PI
+      // Rotate in pixel space: the board is not always 1:1 (board-sizing
+      // clamps width), so a user-space angle drifts off the drawn segment.
+      const { unitX, unitY } = getBoardScale(board)
+      let deg = (Math.atan2(dy * unitY, dx * unitX) * 180) / Math.PI
       if (deg > 90) deg -= 180
       if (deg < -90) deg += 180
       board.create('text', [midX, midY, line.label.value], {

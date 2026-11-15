@@ -630,8 +630,11 @@ function syncLineLabels(
         display: 'internal',
         cssStyle: "font-family: 'Times New Roman', Times, serif;",
         rotate: () => {
-          const dx = t.X() - f.X()
-          const dy = t.Y() - f.Y()
+          // Pixel-space angle so the label follows the drawn segment even
+          // when the board's x/y units aren't 1:1.
+          const { unitX = 1, unitY = 1 } = board as unknown as { unitX?: number; unitY?: number }
+          const dx = (t.X() - f.X()) * unitX
+          const dy = (t.Y() - f.Y()) * unitY
           let deg = (Math.atan2(dy, dx) * 180) / Math.PI
           if (deg > 90) deg -= 180
           if (deg < -90) deg += 180

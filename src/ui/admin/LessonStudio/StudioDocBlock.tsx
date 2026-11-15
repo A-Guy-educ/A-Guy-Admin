@@ -16,6 +16,7 @@ import { TableQuestionDocView } from './docViews/TableQuestionDocView'
 import { MatchingQuestionDocView } from './docViews/MatchingQuestionDocView'
 import { EquationQuestionDocView } from './docViews/EquationQuestionDocView'
 import { ProofQuestionDocView } from './docViews/ProofQuestionDocView'
+import { HtmlDocView } from './docViews/HtmlDocView'
 
 // Portal root for Payload's drawers/modals (@faceless-ui/modal, classPrefix "payload").
 const PAYLOAD_MODAL_SELECTOR = '.payload__modal-container'
@@ -195,6 +196,9 @@ function DocView({ block }: { block: ContentBlock }) {
   if (block.type === 'question_proof') {
     return <ProofQuestionDocView block={block} />
   }
+  if (block.type === 'html') {
+    return <HtmlDocView block={block} />
+  }
   return <UnsupportedDocView block={block} />
 }
 
@@ -216,8 +220,6 @@ function describeBlock(block: ContentBlock): string {
       return 'Matching question'
     case 'question_proof':
       return 'Proof question'
-    case 'html':
-      return 'HTML block'
     case 'media':
       return 'Media'
     default:
