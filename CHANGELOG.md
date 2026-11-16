@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- chore: Release v0.70.1 ([#796](https://github.com/A-Guy-educ/A-Guy-Admin/pull/796)) — @aguyshayb
 ## [v0.70.1] - 2026-11-16
 
 - fix: Center point labels on their compass direction ([#795](https://github.com/A-Guy-educ/A-Guy-Admin/pull/795)) — @aguyshayb
