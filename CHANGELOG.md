@@ -2,9 +2,15 @@
 
 ## [Unreleased]
 
-- chore: Release v0.70.0 ([#791](https://github.com/A-Guy-educ/A-Guy-Admin/pull/791)) — @aguyshayb
+- chore: Release v0.70.1 ([#796](https://github.com/A-Guy-educ/A-Guy-Admin/pull/796)) — @aguyshayb
+## [v0.70.1] - 2026-11-16
+
+- fix: Center point labels on their compass direction ([#795](https://github.com/A-Guy-educ/A-Guy-Admin/pull/795)) — @aguyshayb
+- fix: Render HTML blocks in studio and align line labels to slope ([#793](https://github.com/A-Guy-educ/A-Guy-Admin/pull/793)) — @aguyshayb
 ## [v0.70.0] - 2026-11-15
 
+- promote: dev -> main (v0.70.0) ([#792](https://github.com/A-Guy-educ/A-Guy-Admin/pull/792)) — @aguyshayb
+- chore: Release v0.70.0 ([#791](https://github.com/A-Guy-educ/A-Guy-Admin/pull/791)) — @aguyshayb
 - feat(exercises): Add geometry proof question block ([#790](https://github.com/A-Guy-educ/A-Guy-Admin/pull/790)) — @aguyshayb
 - feat(exercises): Add dynamic mode to the equation question block ([#786](https://github.com/A-Guy-educ/A-Guy-Admin/pull/786)) — @aguyshayb
 ## [v0.69.0] - 2026-11-12

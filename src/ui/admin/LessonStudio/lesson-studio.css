@@ -578,6 +578,20 @@
   height: auto;
 }
 
+.studio-doc-html {
+  padding: 4px 0;
+  max-width: 100%;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* Full-document HTML renders in a 90vh iframe at runtime — too tall for a
+   document preview. */
+.studio-doc-html iframe {
+  min-height: 0;
+  height: 400px;
+}
+
 .studio-doc-latex {
   padding: 4px 0;
 }

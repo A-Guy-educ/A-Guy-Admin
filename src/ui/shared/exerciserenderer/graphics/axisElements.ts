@@ -2,29 +2,15 @@ import { parse as parseMath } from 'mathjs'
 
 import type { AxisSpecV1 } from '@/infra/contracts'
 import { getDefaultAxisPointColor } from '@/infra/contracts/graphics/textColors'
+import { pointLabelPlacement } from '@/infra/utils/graphics/point-label-placement'
 import { parseMathExpression } from '../utils/safeMathEval'
 
 type GraphSpec = AxisSpecV1['elements']['graphs'][number]
 type PointSpec = AxisSpecV1['elements']['points'][number]
 type LocusSpec = NonNullable<AxisSpecV1['elements']['geometricLoci']>[number]
 
-/** Map a compass label position to a JSXGraph pixel offset. */
-function mapLabelOffset(pos?: string): [number, number] {
-  const d = 14
-  const map: Record<string, [number, number]> = {
-    tl: [-d, d],
-    t: [0, d],
-    tr: [d, d],
-    l: [-d, 0],
-    r: [d, 0],
-    bl: [-d, -d],
-    b: [0, -d],
-    br: [d, -d],
-    m: [0, 0],
-    middle: [0, 0],
-  }
-  return map[pos || 'tr'] || [d, d]
-}
+/** Axis labels sit a bit further out than geometry ones and default to 'tr'. */
+const AXIS_LABEL_PLACEMENT = { gapPx: 14, fallback: 'tr' }
 
 function renderGraphs(
   board: JXG.Board,
@@ -68,7 +54,7 @@ function renderAxisPoints(board: JXG.Board, points: PointSpec[]) {
         size: p.size ?? 4,
         withLabel: !!p.label,
         label: {
-          offset: mapLabelOffset(p.labelPosition),
+          ...pointLabelPlacement(p.labelPosition, AXIS_LABEL_PLACEMENT),
           fontSize: p.fontSize ?? 12,
           fontFamily: 'Times New Roman',
           // Label text matches the dot so the pair reads as one element.
