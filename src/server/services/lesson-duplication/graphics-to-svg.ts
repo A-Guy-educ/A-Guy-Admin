@@ -8,6 +8,10 @@
 import { GeometrySpecV1Schema } from '@/infra/contracts/graphics/geometry.v1'
 import { AxisSpecV1Schema } from '@/infra/contracts/graphics/axis.v1'
 import { lineLabelFontSize } from '@/infra/utils/graphics/line-label'
+import {
+  pointLabelPlacement,
+  svgPointLabelAttrs,
+} from '@/infra/utils/graphics/point-label-placement'
 import { parse } from 'mathjs'
 
 // -------------------------------------------
@@ -66,22 +70,17 @@ function safeMathEval(expr: string, x: number): number | null {
   }
 }
 
-/**
- * Label position → pixel offset [dx, dy].
- */
-function labelOffset(pos?: string): [number, number] {
-  const d = 15
-  const map: Record<string, [number, number]> = {
-    tl: [-d, d],
-    t: [0, d],
-    tr: [d, d],
-    l: [-d, 0],
-    r: [d, 0],
-    bl: [-d, -d],
-    b: [0, -d],
-    br: [d, -d],
-  }
-  return map[pos || 'r'] || [d, 0]
+/** Point-label `<text>` positioned at a compass direction around (cx, cy). */
+function pointLabelSvg(
+  cx: number,
+  cy: number,
+  label: string,
+  pos: string | undefined,
+  style: { fontSize: number; color: string; gapPx?: number; fallback?: string },
+): string {
+  const placement = pointLabelPlacement(pos, { gapPx: style.gapPx, fallback: style.fallback })
+  const { dx, dy, textAnchor, dominantBaseline } = svgPointLabelAttrs(placement)
+  return `<text x="${cx + dx}" y="${cy + dy}" font-size="${style.fontSize}" fill="${escapeXml(style.color)}" text-anchor="${textAnchor}" dominant-baseline="${dominantBaseline}" font-family="Times New Roman">${escapeXml(label)}</text>`
 }
 
 /**
@@ -133,9 +132,11 @@ export function geometrySpecToSvg(spec: unknown): string {
       `<circle cx="${cx}" cy="${cy}" r="${size}" fill="${escapeXml(color)}" stroke="${escapeXml(color)}"/>`,
     )
     if (point.name) {
-      const [dx, dy] = labelOffset(point.position)
       parts.push(
-        `<text x="${cx + dx}" y="${cy + dy}" font-size="${point.fontSize ?? 12}" fill="${escapeXml(color)}" font-family="Times New Roman">${escapeXml(point.name)}</text>`,
+        pointLabelSvg(cx, cy, point.name, point.position, {
+          fontSize: point.fontSize ?? 12,
+          color,
+        }),
       )
     }
   }
@@ -715,21 +716,22 @@ export function axisSpecToSvg(spec: unknown): string {
     const color = point.color || DEFAULT_STROKE
 
     if (point.type === 'floating_text') {
-      const labelPos = point.labelPosition || 't'
-      const dy = labelPos === 'b' ? 15 : -15
-      parts.push(
-        `<text x="${cx}" y="${cy + dy}" font-size="14" fill="${escapeXml(color)}" text-anchor="middle" font-family="Times New Roman">${escapeXml(point.label || '')}</text>`,
-      )
+      // Centred on the point, matching the JSXGraph renderer.
+      parts.push(pointLabelSvg(cx, cy, point.label || '', 'm', { fontSize: 14, color }))
     } else {
       const fillColor = point.type === 'hole' ? '#ffffff' : color
       parts.push(
         `<circle cx="${cx}" cy="${cy}" r="4" fill="${escapeXml(fillColor)}" stroke="${escapeXml(color)}" stroke-width="2"/>`,
       )
       if (point.label) {
-        const labelPos = point.labelPosition || 't'
-        const dy = labelPos === 'b' ? 15 : -15
+        // Same placement as the JSXGraph renderer (14px gap, 'tr' default).
         parts.push(
-          `<text x="${cx}" y="${cy + dy}" font-size="${point.fontSize ?? 12}" fill="${escapeXml(color)}" text-anchor="middle" font-family="Times New Roman">${escapeXml(point.label)}</text>`,
+          pointLabelSvg(cx, cy, point.label, point.labelPosition, {
+            fontSize: point.fontSize ?? 12,
+            color,
+            gapPx: 14,
+            fallback: 'tr',
+          }),
         )
       }
     }
