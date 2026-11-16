@@ -8,24 +8,10 @@ import { getDefaultAxisPointColor } from '@/infra/contracts/graphics/textColors'
 import { resolveViewport } from '@/infra/utils/graphics/viewport-utils'
 import { createLocusOnBoard } from '@/ui/shared/exerciserenderer/graphics/axisElements'
 import { parseMathExpression } from '@/ui/shared/exerciserenderer/utils/safeMathEval'
+import { pointLabelPlacement } from '@/infra/utils/graphics/point-label-placement'
 
-/** Map a compass label position to a JSXGraph pixel offset. */
-function mapLabelOffset(pos?: string): [number, number] {
-  const d = 14
-  const map: Record<string, [number, number]> = {
-    tl: [-d, d],
-    t: [0, d],
-    tr: [d, d],
-    l: [-d, 0],
-    r: [d, 0],
-    bl: [-d, -d],
-    b: [0, -d],
-    br: [d, -d],
-    m: [0, 0],
-    middle: [0, 0],
-  }
-  return map[pos || 'tr'] || [d, d]
-}
+/** Axis labels sit a bit further out than geometry ones and default to 'tr'. */
+const AXIS_LABEL_PLACEMENT = { gapPx: 14, fallback: 'tr' }
 
 interface AxisCanvasProps {
   id: string
@@ -70,11 +56,11 @@ export const AxisCanvas: React.FC<AxisCanvasProps> = ({ id, axis, onPointMoved }
         const elemId = `point-${index}`
         newIds.add(elemId)
         const existing = elementsRef.current.get(elemId)
-        const labelOffset = mapLabelOffset(point.labelPosition)
+        const labelPlacement = pointLabelPlacement(point.labelPosition, AXIS_LABEL_PLACEMENT)
         const hasLabel = !!point.label
         const labelFontSize = point.fontSize ?? 12
         const pointColor = point.color || getDefaultAxisPointColor()
-        const labelKey = `${labelOffset.join(',')}|${hasLabel ? '1' : '0'}|${labelFontSize}|${pointColor}`
+        const labelKey = `${labelPlacement.offset.join(',')}|${hasLabel ? '1' : '0'}|${labelFontSize}|${pointColor}`
         const pointSize = point.size ?? (point.type === 'hole' ? 4 : 3)
 
         const prevKey = existing
@@ -120,7 +106,7 @@ export const AxisCanvas: React.FC<AxisCanvasProps> = ({ id, axis, onPointMoved }
             withLabel: !!point.label,
             visible: point.type !== 'floating_text',
             label: {
-              offset: labelOffset,
+              ...labelPlacement,
               fontSize: labelFontSize,
               // Label text matches the dot so the pair reads as one element.
               strokeColor: pointColor,

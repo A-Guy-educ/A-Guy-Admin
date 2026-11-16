@@ -7,6 +7,7 @@ import {
 } from '@/infra/contracts/graphics/textColors'
 import { LINE_LABEL_OFFSET_RATIO, lineLabelFontSize } from '@/infra/utils/graphics/line-label'
 import { collectEdgeAngles, pickSafeCompassPosition } from '@/infra/utils/graphics/point-label'
+import { pointLabelPlacement } from '@/infra/utils/graphics/point-label-placement'
 import { angleMarkerRadiusPx, renderAngles } from './geometryAngleMarkers'
 
 type PointSpec = GeometrySpecV1['elements']['points'][number]
@@ -20,24 +21,6 @@ type EqualAngleGroup = NonNullable<GeometrySpecV1['elements']['equalAngles']>[nu
  *  across boards with different user-unit scales. */
 const EQ_TICK_LENGTH_PX = 10.4
 const EQ_TICK_SPACING_PX = 5
-
-/** Map compass direction to a pixel [x, y] offset for JSXGraph labels. The
- *  base distance was reduced from 15px → 11px (~27% closer) so labels sit
- *  snugly next to the dot instead of floating well off the sketch. */
-function mapLabelOffset(pos?: string): [number, number] {
-  const d = 11
-  const map: Record<string, [number, number]> = {
-    tl: [-d, d],
-    t: [0, d],
-    tr: [d, d],
-    l: [-d, 0],
-    r: [d, 0],
-    bl: [-d, -d],
-    b: [0, -d],
-    br: [d, -d],
-  }
-  return map[pos || 'r'] || [d, 0]
-}
 
 function renderPoints(
   board: JXG.Board,
@@ -62,7 +45,7 @@ function renderPoints(
       size: p.size ?? 2,
       withLabel: labelVisible,
       label: {
-        offset: mapLabelOffset(safePosition),
+        ...pointLabelPlacement(safePosition),
         fontSize: p.fontSize ?? 15,
         // Label text matches the dot so the pair reads as one element.
         strokeColor: pointColor,
