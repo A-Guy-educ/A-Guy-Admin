@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- feat: Add read-only hiddenLessons field to classes ([#799](https://github.com/A-Guy-educ/A-Guy-Admin/pull/799)) — @aguyshayb
 - promote: dev -> main (v0.70.1) ([#797](https://github.com/A-Guy-educ/A-Guy-Admin/pull/797)) — @aguyshayb
 - chore: Release v0.70.1 ([#796](https://github.com/A-Guy-educ/A-Guy-Admin/pull/796)) — @aguyshayb
 ## [v0.70.1] - 2026-11-16
