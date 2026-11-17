@@ -5,8 +5,11 @@
  * students. A-Guy-Web reads this directly from Mongo for the teacher dashboard
  * and for /join self-enrollment, which lists `schools.name` + classes by `name`,
  * `school`, `course`, and $push-es the joining user's ObjectId onto `students`.
+ * `hiddenLessons` is also part of the Web contract: Web owns its writes ($addToSet /
+ * $pull of lesson ObjectIds when a teacher hides lessons from the class's students).
  * Slug and field names are a cross-repo contract — do not rename. Admin saves
- * keep students who joined while the class was open (see preserveConcurrentStudents).
+ * keep students who joined while the class was open (see preserveConcurrentStudents)
+ * and never overwrite hiddenLessons (see preserveHiddenLessons).
  *
  * @fileType collection-config
  * @domain classroom
@@ -22,6 +25,7 @@ import {
   loadedStudentsField,
   preserveConcurrentStudents,
 } from '@/server/payload/hooks/classes/preserveConcurrentStudents'
+import { preserveHiddenLessons } from '@/server/payload/hooks/classes/preserveHiddenLessons'
 import { normalizeRelationshipIds } from '@/server/payload/hooks/normalizeRelationshipIds'
 
 export const Classes: CollectionConfig = {
@@ -38,8 +42,17 @@ export const Classes: CollectionConfig = {
     delete: adminOnly,
   },
   hooks: {
-    beforeChange: [preserveConcurrentStudents],
-    afterRead: [normalizeRelationshipIds(['school', 'course', 'teachers', 'students', 'tenant'])],
+    beforeChange: [preserveConcurrentStudents, preserveHiddenLessons],
+    afterRead: [
+      normalizeRelationshipIds([
+        'school',
+        'course',
+        'teachers',
+        'students',
+        'hiddenLessons',
+        'tenant',
+      ]),
+    ],
   },
   fields: [
     {
@@ -77,6 +90,17 @@ export const Classes: CollectionConfig = {
       relationTo: 'users',
       hasMany: true,
       index: true,
+    },
+    {
+      name: 'hiddenLessons',
+      type: 'relationship',
+      relationTo: 'lessons',
+      hasMany: true,
+      admin: {
+        readOnly: true,
+        description:
+          "Set by the class teachers in the teacher app. Lessons hidden from this class's students.",
+      },
     },
     loadedStudentsField,
     tenantField,
