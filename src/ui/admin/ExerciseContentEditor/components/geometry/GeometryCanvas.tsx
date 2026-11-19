@@ -12,6 +12,7 @@ import {
   type AngleLabelPosition,
   type BoardPixelScale,
 } from '@/infra/utils/graphics/angle-label'
+import { fitBoundingBoxToBoard } from '@/infra/utils/graphics/bounding-box-fit'
 import { LINE_LABEL_OFFSET_RATIO, lineLabelFontSize } from '@/infra/utils/graphics/line-label'
 import { collectEdgeAngles, pickSafeCompassPosition } from '@/infra/utils/graphics/point-label'
 import { pointLabelPlacement } from '@/infra/utils/graphics/point-label-placement'
@@ -381,6 +382,13 @@ export const GeometryCanvas: React.FC<GeometryCanvasProps> = ({
     return { width: Math.min(w, containerWidth), height: h }
   }, [bbox, containerWidth])
 
+  // The final container clamp (and the MIN floors) can leave the board a
+  // different shape than the box; pad the box so x/y units stay equal.
+  const fittedBbox = useMemo(
+    () => fitBoundingBoxToBoard(bbox, boardWidth, boardHeight),
+    [bbox, boardWidth, boardHeight],
+  )
+
   return (
     <div
       ref={wrapRef}
@@ -401,7 +409,7 @@ export const GeometryCanvas: React.FC<GeometryCanvasProps> = ({
         id={id}
         width={boardWidth}
         height={boardHeight}
-        boundingBox={bbox}
+        boundingBox={fittedBbox}
         showGrid={canvas.grid ?? false}
         onBoardReady={handleBoardReady}
       />

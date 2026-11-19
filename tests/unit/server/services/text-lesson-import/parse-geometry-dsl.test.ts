@@ -126,8 +126,37 @@ describe('parseGeometryDsl', () => {
 
     const { spec } = parseGeometryDsl(raw)
 
-    expect(spec.canvas).toMatchObject({ width: 400, height: 300, grid: true })
+    // Height is always 330; an explicit DSL width is honored as the ratio.
+    expect(spec.canvas).toMatchObject({ width: 400, height: 330, grid: true })
     expect(spec.elements.points).toHaveLength(1)
+  })
+
+  it('stores height 330 and a width derived from the fitted box', () => {
+    const raw = [
+      '  --- נקודות ---',
+      '  * נקודה A | X=0, Y=0',
+      '  * נקודה B | X=200, Y=0',
+      '  * נקודה C | X=100, Y=100',
+    ].join('\n')
+    const { spec } = parseGeometryDsl(raw)
+    // Box [-20, 110, 220, -10] → 240 × 120 → 2:1 → 330 × 2.
+    expect(spec.canvas.boundingBox).toEqual([-20, 110, 220, -10])
+    expect(spec.canvas).toMatchObject({ width: 660, height: 330 })
+  })
+
+  it('grows the fitted box to an explicit DSL width without cropping', () => {
+    const raw = [
+      '  --- קנבס ורשת ---',
+      '  * רוחב קנבס: 330',
+      '  --- נקודות ---',
+      '  * נקודה A | X=0, Y=0',
+      '  * נקודה B | X=200, Y=0',
+      '  * נקודה C | X=100, Y=100',
+    ].join('\n')
+    const { spec } = parseGeometryDsl(raw)
+    // Square target: x stays [-20, 220], y grows to 240 around its center (50).
+    expect(spec.canvas.boundingBox).toEqual([-20, 170, 220, -70])
+    expect(spec.canvas).toMatchObject({ width: 330, height: 330 })
   })
 
   it('resolves right-angle markers to single-letter point names', () => {

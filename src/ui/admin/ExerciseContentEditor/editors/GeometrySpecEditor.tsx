@@ -2,9 +2,11 @@
 
 import React, { useCallback } from 'react'
 import type { GeometrySpecV1 } from '@/infra/contracts/graphics/geometry.v1'
+import { normalizeGeometryCanvas } from '@/infra/utils/graphics/geometry-canvas-size'
 import { CollapsibleSection } from '@/ui/admin/shared/CollapsibleSection'
 import { AnglesPanel } from '../components/geometry/AnglesPanel'
 import { CanvasConfigPanel } from '../components/geometry/CanvasConfigPanel'
+import { CanvasContentWarning } from '../components/geometry/CanvasContentWarning'
 import { CirclesPanel } from '../components/geometry/CirclesPanel'
 import { EqualitiesPanel } from '../components/geometry/EqualitiesPanel'
 import { GeometryCanvasWithToolbar } from '../components/geometry/GeometryCanvasWithToolbar'
@@ -31,9 +33,13 @@ export const GeometrySpecEditor: React.FC<GeometrySpecEditorProps> = ({
   spec,
   onChange,
 }) => {
+  // Every edit also stores the size the sketch really renders at (height
+  // 330, width from the box) so the saved data stops disagreeing with Web.
+  // Opening a block doesn't write anything; only an actual edit does.
   const updateSpec = useCallback(
     (updates: Partial<GeometrySpecV1>) => {
-      onChange({ ...spec, ...updates })
+      const next = { ...spec, ...updates }
+      onChange({ ...next, canvas: normalizeGeometryCanvas(next.canvas) })
     },
     [spec, onChange],
   )
@@ -132,9 +138,16 @@ export const GeometrySpecEditor: React.FC<GeometrySpecEditorProps> = ({
           onImport={onChange}
         />
 
+        <CanvasContentWarning
+          canvas={spec.canvas}
+          elements={spec.elements}
+          onChange={(canvas) => updateSpec({ canvas })}
+        />
+
         <CollapsibleSection title="Canvas" defaultExpanded={false}>
           <CanvasConfigPanel
             canvas={spec.canvas}
+            elements={spec.elements}
             onChange={(canvas) => updateSpec({ canvas })}
             interactive={spec.interactive !== false}
             onInteractiveChange={(interactive) => updateSpec({ interactive })}
