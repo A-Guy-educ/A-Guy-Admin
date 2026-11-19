@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic'
 import type { GeometrySpecV1 } from '@/infra/contracts'
 import { renderGeometrySpec } from '../../graphics/geometryElements'
 import { computeBoardSize } from '@/infra/utils/graphics/board-sizing'
+import { fitBoundingBoxToBoard } from '@/infra/utils/graphics/bounding-box-fit'
 import type { DisplaySize } from '../AxisRenderer'
 
 const JSXGraphBoard = dynamic(
@@ -67,6 +68,7 @@ export function GeometryRenderer({ blockId, spec }: GeometryRendererProps) {
         xRange,
         yRange,
         availableWidth: container.clientWidth,
+        lockAspect: true,
       })
       setDimensions(size)
     }
@@ -76,6 +78,14 @@ export function GeometryRenderer({ blockId, spec }: GeometryRendererProps) {
     return () => observer.disconnect()
   }, [xRange, yRange])
 
+  // The width clamps (min width, 75% cap, narrow screens) can still leave the
+  // board a different shape than the bounding box; pad the box to match so
+  // JSXGraph never scales x and y differently. Mirrors Web's renderer.
+  const fittedBoundingBox = useMemo(
+    () => fitBoundingBoxToBoard(boundingBox, dimensions.width, dimensions.height),
+    [boundingBox, dimensions.width, dimensions.height],
+  )
+
   return (
     <div className="my-4 flex justify-center w-full" ref={containerRef}>
       <JSXGraphBoard
@@ -83,7 +93,7 @@ export function GeometryRenderer({ blockId, spec }: GeometryRendererProps) {
         id={blockId}
         width={dimensions.width}
         height={dimensions.height}
-        boundingBox={boundingBox}
+        boundingBox={fittedBoundingBox}
         showGrid={canvas.grid ?? false}
         showAxis={canvas.axis ?? false}
         onBoardReady={handleBoardReady}

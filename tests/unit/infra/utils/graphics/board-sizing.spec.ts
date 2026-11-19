@@ -80,3 +80,47 @@ describe('computeBoardSize (existing sketch spec)', () => {
     expect(r.height).toBe(400)
   })
 })
+
+describe('computeBoardSize (maxHeight cap)', () => {
+  it('caps the height and derives the width from the aspect ratio', () => {
+    const r = computeBoardSize({ xRange: 10, yRange: 10, availableWidth: 1000, maxHeight: 275 })
+    expect(r.height).toBe(275)
+    expect(r.width).toBe(275)
+  })
+
+  it('lets a tall board go below the 280px min width to keep its ratio', () => {
+    const r = computeBoardSize({ xRange: 5, yRange: 10, availableWidth: 1000, maxHeight: 275 })
+    expect(r.height).toBe(275)
+    expect(r.width).toBe(137.5)
+  })
+
+  it('shrinks both sides together when the width overflows the container', () => {
+    const r = computeBoardSize({ xRange: 20, yRange: 10, availableWidth: 300, maxHeight: 275 })
+    expect(r.width).toBe(300)
+    expect(r.height).toBe(150)
+  })
+
+  it('never raises the height above the uncapped spec', () => {
+    const r = computeBoardSize({ xRange: 10, yRange: 10, availableWidth: 1000, maxHeight: 500 })
+    expect(r.height).toBe(330)
+  })
+})
+
+describe('computeBoardSize (lockAspect, geometry)', () => {
+  it('shrinks the height with the width when the 75% cap clamps a wide board', () => {
+    // natural 3300 × 330 → capped to 750 wide, height follows: 750 / 10 = 75
+    const r = computeBoardSize({ xRange: 100, yRange: 10, availableWidth: 1000, lockAspect: true })
+    expect(r.width).toBe(750)
+    expect(r.height).toBeCloseTo(75, 5)
+  })
+
+  it('keeps the ratio on a container narrower than the min width', () => {
+    const r = computeBoardSize({ xRange: 10, yRange: 10, availableWidth: 240, lockAspect: true })
+    expect(r).toEqual({ width: 240, height: 240 })
+  })
+
+  it('leaves the height alone when the min width widens a tall board', () => {
+    const r = computeBoardSize({ xRange: 10, yRange: 100, availableWidth: 1000, lockAspect: true })
+    expect(r).toEqual({ width: SKETCH_MIN_WIDTH_PX, height: SKETCH_HEIGHT_PX })
+  })
+})
