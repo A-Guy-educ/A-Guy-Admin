@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- feat: Export and import lesson fields and lesson blocks ([#806](https://github.com/A-Guy-educ/A-Guy-Admin/pull/806)) — @aguyshayb
 - feat: Match geometry canvas settings to how sketches render on Web ([#802](https://github.com/A-Guy-educ/A-Guy-Admin/pull/802)) — @aguyshayb
 - feat: Add read-only hiddenLessons field to classes ([#799](https://github.com/A-Guy-educ/A-Guy-Admin/pull/799)) — @aguyshayb
 - promote: dev -> main (v0.70.1) ([#797](https://github.com/A-Guy-educ/A-Guy-Admin/pull/797)) — @aguyshayb
