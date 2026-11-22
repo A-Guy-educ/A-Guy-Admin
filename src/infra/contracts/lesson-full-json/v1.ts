@@ -18,6 +18,7 @@ export const FULL_LESSON_VERSION = 2
 export const FULL_LESSON_INSTRUCTIONS = [
   'Complete A-Guy lesson export. Edit it, then import the whole file back.',
   'Keep "format" and "version" unchanged.',
+  '"lesson" holds the lesson-page fields (formulas, commonMistakes, …) and the lesson\'s own "blocks" (same block rules).',
   'Each exercise has "blocks" (shown above its sections) and "sections"; every section needs at least one block.',
   'Keep every block\'s "type" and required fields; do not invent block types or field names. Blocks have no "id".',
   'Text values are plain Markdown strings with LaTeX math ($...$ inline, $$...$$ display); a text-only block is just a string inside "blocks".',
@@ -45,14 +46,31 @@ const ExerciseSchema = z.object({
   sections: z.array(SectionSchema).default([]),
 })
 
+const optionalText = z.string().nullable().optional()
+
+const LessonSchema = z.object({
+  title: z.string().min(1),
+  type: z.enum(['learning', 'practice', 'exam']).optional(),
+  topic: optionalText,
+  lessonObjective: optionalText,
+  intro: optionalText,
+  publicExplanation: optionalText,
+  estimatedMinutes: z.number().int().positive().nullable().optional(),
+  description: optionalText,
+  formulas: optionalText,
+  examples: optionalText,
+  commonMistakes: optionalText,
+  additionalNotes: optionalText,
+  lessonContextText: optionalText,
+  // The lesson's own block stream (Lesson › Blocks tab), validated per block.
+  blocks: z.array(z.unknown()).default([]),
+})
+
 export const FullLessonFileSchema = z.object({
   format: z.literal(FULL_LESSON_FORMAT),
   version: z.union([z.literal(1), z.literal(FULL_LESSON_VERSION)]),
   instructions: z.string().optional(),
-  lesson: z.object({
-    title: z.string().min(1),
-    type: z.enum(['learning', 'practice', 'exam']).optional(),
-  }),
+  lesson: LessonSchema,
   exercises: z.array(ExerciseSchema).min(1, 'the file has no exercises'),
 })
 

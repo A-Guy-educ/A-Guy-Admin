@@ -126,7 +126,7 @@ describe('full lesson JSON export → import', () => {
   it('exports a self-describing file without internal ids', () => {
     const file = buildFullLessonExport(lesson, exerciseDocs, sections)
     expect(isFullLessonJson(file)).toBe(true)
-    expect(file.lesson).toEqual({ title: 'פיתגורס', type: 'practice' })
+    expect(file.lesson).toEqual({ title: 'פיתגורס', type: 'practice', blocks: [] })
     expect(file.exercises[0]).not.toHaveProperty('id')
     expect(file.exercises[0].sections[0]).toMatchObject({
       title: 'סעיף א',
@@ -236,5 +236,94 @@ describe('full lesson JSON export → import', () => {
 
     expect(result).toMatchObject({ kind: 'validation' })
     expect(createMock).not.toHaveBeenCalled()
+  })
+
+  describe('lesson fields and lesson blocks', () => {
+    const lessonWithDetails = {
+      ...lesson,
+      formulas: '$a^2+b^2=c^2$',
+      commonMistakes: 'שוכחים לשרש\nמחברים צלעות',
+      estimatedMinutes: 25,
+      intro: '   ',
+      content: { blocks: [inline('הקדמה לשיעור'), html].map((b, i) => ({ id: `lb-${i}`, ...b })) },
+    }
+
+    it('exports set lesson fields and the lesson blocks, skipping blanks', () => {
+      const file = buildFullLessonExport(lessonWithDetails, exerciseDocs, sections)
+      expect(file.lesson).toMatchObject({
+        formulas: '$a^2+b^2=c^2$',
+        commonMistakes: 'שוכחים לשרש\nמחברים צלעות',
+        estimatedMinutes: 25,
+        blocks: ['הקדמה לשיעור', { type: 'html', html: html.html }],
+      })
+      expect(file.lesson).not.toHaveProperty('intro')
+    })
+
+    it('skips the empty placeholder block a new lesson starts with', () => {
+      const placeholder = { ...lesson, content: { blocks: [{ id: 'x', ...inline('') }] } }
+      expect(buildFullLessonExport(placeholder, exerciseDocs, sections).lesson.blocks).toEqual([])
+    })
+
+    it('writes lesson fields and blocks onto a new lesson', async () => {
+      const file = JSON.parse(
+        JSON.stringify(buildFullLessonExport(lessonWithDetails, exerciseDocs, sections)),
+      )
+      const { req, createMock } = mockReq()
+
+      const result = await importFullLessonJson(req, { chapterId: 'chapter-1', json: file })
+
+      expect(result).toMatchObject({ success: true })
+      const [lessonData] = createdData(createMock, 'lessons')
+      expect(lessonData).toMatchObject({
+        formulas: '$a^2+b^2=c^2$',
+        commonMistakes: 'שוכחים לשרש\nמחברים צלעות',
+        estimatedMinutes: 25,
+      })
+      const blocks = (lessonData.content as { blocks: Array<Record<string, unknown>> }).blocks
+      expect(withoutIds(blocks)).toEqual(withoutIds(lessonWithDetails.content.blocks))
+    })
+
+    it('on append, only fills blank fields and appends blocks after existing ones', async () => {
+      const file = JSON.parse(
+        JSON.stringify(buildFullLessonExport(lessonWithDetails, exerciseDocs, sections)),
+      )
+      const existing = {
+        id: 'L-existing',
+        title: 'קיים',
+        formulas: 'נוסחה קיימת',
+        content: { blocks: [{ id: 'old', ...inline('בלוק קיים') }] },
+      }
+      const { req } = mockReq()
+      vi.mocked(req.payload.findByID).mockResolvedValue(existing as never)
+
+      const result = await importFullLessonJson(req, { targetLessonId: 'L-existing', json: file })
+
+      expect(result).toMatchObject({ success: true })
+      const lessonUpdates = vi
+        .mocked(req.payload.update)
+        .mock.calls.map(([call]) => call as { collection: string; data: Record<string, unknown> })
+        .filter((call) => call.collection === 'lessons')
+        .map((call) => call.data)
+      const merge = lessonUpdates.find((data) => 'content' in data)!
+      expect(merge).not.toHaveProperty('formulas')
+      expect(merge).toMatchObject({ commonMistakes: 'שוכחים לשרש\nמחברים צלעות' })
+      const blocks = (merge.content as { blocks: Array<Record<string, unknown>> }).blocks
+      expect(blocks.map((b) => b.value ?? b.type)).toEqual(['בלוק קיים', 'הקדמה לשיעור', 'html'])
+    })
+
+    it('rejects a broken lesson block and writes nothing', async () => {
+      const file = JSON.parse(
+        JSON.stringify(buildFullLessonExport(lessonWithDetails, exerciseDocs, sections)),
+      )
+      file.lesson.blocks.push({ type: 'not_a_block' })
+      const { req, createMock } = mockReq()
+
+      const result = await importFullLessonJson(req, { chapterId: 'chapter-1', json: file })
+
+      expect(result).toMatchObject({ kind: 'validation' })
+      const issues = (result as { issues: Array<{ path: string }> }).issues
+      expect(issues[0].path).toContain('lesson › block 3')
+      expect(createMock).not.toHaveBeenCalled()
+    })
   })
 })

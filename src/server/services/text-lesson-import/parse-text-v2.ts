@@ -32,6 +32,12 @@
 import type { AxisSpecV1 } from '@/infra/contracts/graphics/axis.v1'
 import type { GeometrySpecV1 } from '@/infra/contracts/graphics/geometry.v1'
 import { parseFunctionDsl } from '@/server/services/lesson-json-import/parse-function-dsl'
+import {
+  createLessonSectionsReader,
+  LESSON_BLOCKS_HEADER_RE,
+  LESSON_DETAILS_HEADER_RE,
+  type LessonSectionsText,
+} from '@/server/services/lesson-details-transfer/lesson-sections-text'
 
 import { parseGeometryDsl } from './parse-geometry-dsl'
 
@@ -136,6 +142,8 @@ export interface TextExerciseV2 {
 export interface TextLessonV2 {
   lessonName?: string
   exercises: TextExerciseV2[]
+  /** `[ פרטי השיעור ]` / `[ בלוקים של השיעור ]` sections (lesson fields + blocks). */
+  lessonSections: LessonSectionsText
 }
 
 // ---------------------------------------------------------------------------
@@ -645,6 +653,20 @@ function isTopLevelFieldStart(line: string): boolean {
  * their own section; "N ויחיד" ("N and only") is a single section. Falsy or
  * empty labels return an empty array so the caller can decide the fallback.
  */
+/** A column-0 bracket header the parser acts on — ends a lesson section. */
+function isStructuralHeader(line: string): boolean {
+  if (!/^\[.+\]\s*$/.test(line)) return false
+  const t = line.trim()
+  return (
+    SECTION_HEADER_RE.test(t) ||
+    EXERCISE_HEADER_RE.test(t) ||
+    BARE_INTRO_HEADER_RE.test(t) ||
+    INTERMEZZO_HEADER_RE.test(t) ||
+    LESSON_DETAILS_HEADER_RE.test(t) ||
+    LESSON_BLOCKS_HEADER_RE.test(t)
+  )
+}
+
 function splitSectionLabels(raw: string): string[] {
   const trimmed = raw.trim()
   if (!trimmed) return []
@@ -659,7 +681,8 @@ export function parseTextLessonV2(raw: string): TextLessonV2 {
   const text = raw.replace(/^﻿/, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n')
   const lines = text.split('\n')
 
-  const lesson: TextLessonV2 = { exercises: [] }
+  const lesson: TextLessonV2 = { exercises: [], lessonSections: { detailsByLabel: {} } }
+  const lessonReader = createLessonSectionsReader()
   let currentEx: MutableExerciseV2 | null = null
   let currentSec: MutableSectionV2 | null = null
   // Tracks which section/exercise slot the LAST recognised `* field:` opened,
@@ -685,6 +708,26 @@ export function parseTextLessonV2(raw: string): TextLessonV2 {
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]
+
+    // Lesson fields / blocks run until the next header the parser knows.
+    if (lessonReader.mode) {
+      if (!isStructuralHeader(line)) {
+        lessonReader.consume(line)
+        continue
+      }
+      lessonReader.stop()
+    }
+    const lessonSectionHeader = line.trim()
+    if (LESSON_DETAILS_HEADER_RE.test(lessonSectionHeader)) {
+      flushExercise()
+      lessonReader.start('details')
+      continue
+    }
+    if (LESSON_BLOCKS_HEADER_RE.test(lessonSectionHeader)) {
+      flushExercise()
+      lessonReader.start('blocks')
+      continue
+    }
 
     // Separator lines carry no data.
     if (isSeparator(line)) continue
@@ -890,5 +933,5 @@ export function parseTextLessonV2(raw: string): TextLessonV2 {
   }
 
   flushExercise()
-  return lesson
+  return { ...lesson, lessonSections: lessonReader.result() }
 }

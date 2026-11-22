@@ -12,6 +12,10 @@ import {
   type FullLessonFile,
   type FullLessonSection,
 } from '@/infra/contracts/lesson-full-json/v1'
+import {
+  meaningfulLessonBlocks,
+  pickLessonDetails,
+} from '@/server/services/lesson-details-transfer/lesson-details-fields'
 
 import { compactBlock } from './compact-blocks'
 
@@ -62,7 +66,12 @@ export function buildFullLessonExport(
     format: FULL_LESSON_FORMAT,
     version: FULL_LESSON_VERSION,
     instructions: FULL_LESSON_INSTRUCTIONS,
-    lesson: { title: (lesson.title as string) || 'שיעור', ...(type ? { type } : {}) },
+    lesson: {
+      title: (lesson.title as string) || 'שיעור',
+      ...(type ? { type } : {}),
+      ...pickLessonDetails(lesson),
+      blocks: meaningfulLessonBlocks(lesson).map(compactBlock),
+    },
     exercises: exerciseDocs.map((ex, i) =>
       toExercise(ex, sectionsByExerciseId.get(ex.id as string) ?? [], i),
     ),
