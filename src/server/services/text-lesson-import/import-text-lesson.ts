@@ -15,6 +15,16 @@ import {
   type LessonType,
   type PreparedExercise,
 } from '@/server/services/lesson-import-persist/persist-imported-exercises'
+import type { ContentBlock } from '@/server/payload/collections/Exercises/types'
+import {
+  lessonDetailsFromLabels,
+  type LessonDetails,
+} from '@/server/services/lesson-details-transfer/lesson-details-fields'
+import type { LessonSectionsText } from '@/server/services/lesson-details-transfer/lesson-sections-text'
+import {
+  prepareImportedBlocks,
+  type ImportIssue,
+} from '@/server/services/lesson-full-json/prepare-imported-blocks'
 
 import {
   buildTextExerciseTitle,
@@ -44,23 +54,56 @@ export interface ImportTextLessonInput {
   lessonType?: LessonType
 }
 
+interface PreparedTextLesson {
+  exercises: PreparedExercise[]
+  lessonDetails: LessonDetails
+  lessonBlocks: ContentBlock[]
+  issues: ImportIssue[]
+}
+
+/** The `[ בלוקים של השיעור ]` JSON → validated blocks (problems go onto `issues`). */
+function prepareLessonBlocks(sections: LessonSectionsText, issues: ImportIssue[]): ContentBlock[] {
+  if (!sections.blocksJson) return []
+  let raw: unknown
+  try {
+    raw = JSON.parse(sections.blocksJson)
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : 'invalid JSON'
+    issues.push({ path: 'בלוקים של השיעור', message: `Not valid JSON: ${reason}` })
+    return []
+  }
+  if (!Array.isArray(raw)) {
+    issues.push({ path: 'בלוקים של השיעור', message: 'Expected a JSON array of blocks' })
+    return []
+  }
+  return prepareImportedBlocks(raw, 'בלוקים של השיעור', issues)
+}
+
 /**
  * Route between the legacy `תרגיל N – מנחה: subtopic` format and the v2
  * bracketed / geometry-aware format based on a signature check. Both paths
- * converge on the same prepared-exercise shape.
+ * converge on the same prepared-exercise shape; only v2 carries lesson
+ * fields/blocks.
  */
-function prepareExercises(text: string): PreparedExercise[] {
+function prepareLesson(text: string): PreparedTextLesson {
   if (isV2Format(text)) {
-    return parseTextLessonV2(text).exercises.map((ex) => {
-      const converted = convertTextExerciseV2ToSections(ex)
-      return {
-        exerciseNumber: ex.exerciseNumber,
-        title: buildV2ExerciseTitle(ex),
-        ...converted,
-      }
-    })
+    const parsed = parseTextLessonV2(text)
+    const issues: ImportIssue[] = []
+    return {
+      exercises: parsed.exercises.map((ex) => {
+        const converted = convertTextExerciseV2ToSections(ex)
+        return {
+          exerciseNumber: ex.exerciseNumber,
+          title: buildV2ExerciseTitle(ex),
+          ...converted,
+        }
+      }),
+      lessonDetails: lessonDetailsFromLabels(parsed.lessonSections.detailsByLabel),
+      lessonBlocks: prepareLessonBlocks(parsed.lessonSections, issues),
+      issues,
+    }
   }
-  return parseTextLesson(text).exercises.map((ex) => {
+  const exercises = parseTextLesson(text).exercises.map((ex) => {
     const converted = convertTextExerciseToSections(ex)
     return {
       exerciseNumber: ex.exerciseNumber,
@@ -68,6 +111,7 @@ function prepareExercises(text: string): PreparedExercise[] {
       ...converted,
     }
   })
+  return { exercises, lessonDetails: {}, lessonBlocks: [], issues: [] }
 }
 
 export async function importTextLessonFromFile(
@@ -90,7 +134,8 @@ export async function importTextLessonFromFile(
     }
   }
 
-  const prepared = prepareExercises(input.text)
+  const { exercises: prepared, lessonDetails, lessonBlocks, issues } = prepareLesson(input.text)
+  if (issues.length > 0) return { kind: 'validation', issues }
   if (prepared.length === 0) {
     return {
       kind: 'validation',
@@ -105,6 +150,8 @@ export async function importTextLessonFromFile(
       targetLessonId: input.targetLessonId,
       lessonTitle: deriveLessonTitle({ filename: input.filename }),
       lessonType: input.lessonType,
+      lessonDetails,
+      lessonBlocks,
     },
     prepared,
   )
