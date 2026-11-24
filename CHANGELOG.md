@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- chore: Release v0.71.0 ([#809](https://github.com/A-Guy-educ/A-Guy-Admin/pull/809)) — @aguyshayb
 ## [v0.71.0] - 2026-11-24
 
 - feat: Export and import lesson fields and lesson blocks ([#806](https://github.com/A-Guy-educ/A-Guy-Admin/pull/806)) — @aguyshayb
