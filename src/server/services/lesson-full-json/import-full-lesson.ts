@@ -6,11 +6,7 @@
  * admin can paste them straight back to the LLM that edited the file.
  */
 import type { PayloadRequest } from 'payload'
-import type { z } from 'zod'
 
-import { ContentBlockSchema } from '@/server/payload/collections/Exercises/schemas'
-import type { ContentBlock } from '@/server/payload/collections/Exercises/types'
-import { generateId } from '@/server/payload/collections/Exercises/types'
 import {
   persistImportedExercises,
   type ImportLessonError,
@@ -18,10 +14,15 @@ import {
   type LessonType,
   type PreparedExercise,
 } from '@/server/services/lesson-import-persist/persist-imported-exercises'
+import { pickLessonDetails } from '@/server/services/lesson-details-transfer/lesson-details-fields'
 
 import { FullLessonFileSchema, type FullLessonFile } from '@/infra/contracts/lesson-full-json/v1'
 
-import { expandBlock } from './compact-blocks'
+import {
+  formatZodIssues,
+  prepareImportedBlocks as prepareBlocks,
+  type ImportIssue as Issue,
+} from './prepare-imported-blocks'
 
 export interface ImportFullLessonInput {
   chapterId?: string
@@ -29,33 +30,6 @@ export interface ImportFullLessonInput {
   json: unknown
   /** Overrides the file's lesson.type for a newly-created lesson. */
   lessonType?: LessonType
-}
-
-type Issue = { path: string; message: string }
-
-function formatZodIssues(location: string, error: z.ZodError): Issue[] {
-  return error.issues.map((iss) => ({
-    path: [location, ...iss.path.map(String)].filter(Boolean).join(' › '),
-    message: iss.message,
-  }))
-}
-
-/**
- * Expand compact blocks, validate them and give every block a fresh id — the
- * file may carry ids from another lesson (or none). Blocks are kept exactly as
- * written otherwise; zod defaults are not baked in.
- */
-function prepareBlocks(raw: unknown[], location: string, issues: Issue[]): ContentBlock[] {
-  return raw.map((rawBlock, idx) => {
-    const block = expandBlock(rawBlock)
-    const withId =
-      typeof block === 'object' && block !== null ? { ...block, id: generateId() } : block
-    const blockType = (block as { type?: unknown } | null)?.type
-    const label = `${location} › block ${idx + 1}${typeof blockType === 'string' ? ` (${blockType})` : ''}`
-    const check = ContentBlockSchema.safeParse(withId)
-    if (!check.success) issues.push(...formatZodIssues(label, check.error))
-    return withId as ContentBlock
-  })
 }
 
 function prepareExercises(file: FullLessonFile, issues: Issue[]): PreparedExercise[] {
@@ -97,6 +71,7 @@ export async function importFullLessonJson(
   }
 
   const issues: Issue[] = []
+  const lessonBlocks = prepareBlocks(parsed.data.lesson.blocks, 'lesson', issues)
   const prepared = prepareExercises(parsed.data, issues)
   if (issues.length > 0) return { kind: 'validation', issues }
 
@@ -107,6 +82,8 @@ export async function importFullLessonJson(
       targetLessonId: input.targetLessonId,
       lessonTitle: parsed.data.lesson.title,
       lessonType: input.lessonType ?? parsed.data.lesson.type,
+      lessonDetails: pickLessonDetails(parsed.data.lesson),
+      lessonBlocks,
     },
     prepared,
   )

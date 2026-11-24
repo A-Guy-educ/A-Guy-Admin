@@ -3,9 +3,11 @@
 import React, { useCallback, useMemo } from 'react'
 import { useField } from '@payloadcms/ui'
 import type { GeometrySpecV1 } from '@/infra/contracts/graphics/geometry.v1'
+import { normalizeGeometryCanvas } from '@/infra/utils/graphics/geometry-canvas-size'
 import { CollapsibleSection } from '@/ui/admin/shared/CollapsibleSection'
 import { AnglesPanel } from '@/ui/admin/ExerciseContentEditor/components/geometry/AnglesPanel'
 import { CanvasConfigPanel } from '@/ui/admin/ExerciseContentEditor/components/geometry/CanvasConfigPanel'
+import { CanvasContentWarning } from '@/ui/admin/ExerciseContentEditor/components/geometry/CanvasContentWarning'
 import { CirclesPanel } from '@/ui/admin/ExerciseContentEditor/components/geometry/CirclesPanel'
 import { GeometryCanvasWithToolbar } from '@/ui/admin/ExerciseContentEditor/components/geometry/GeometryCanvasWithToolbar'
 import { LinesPanel } from '@/ui/admin/ExerciseContentEditor/components/geometry/LinesPanel'
@@ -52,9 +54,12 @@ export const IntroGeometrySpecField: React.FC<{ path: string }> = ({ path }) => 
     }
   }, [value])
 
+  // Every edit also stores the size the sketch really renders at (height
+  // 330, width from the box) so the saved data matches Web.
   const persist = useCallback(
     (spec: GeometrySpecV1) => {
-      setValue(JSON.stringify(spec, null, 2))
+      const normalized = { ...spec, canvas: normalizeGeometryCanvas(spec.canvas) }
+      setValue(JSON.stringify(normalized, null, 2))
     },
     [setValue],
   )
@@ -148,9 +153,16 @@ export const IntroGeometrySpecField: React.FC<{ path: string }> = ({ path }) => 
       <div className="question-editor-section">
         <div className="graph-editor-layout">
           <div className="graph-editor-form">
+            <CanvasContentWarning
+              canvas={geo.canvas}
+              elements={geo.elements}
+              onChange={(canvas) => updateGeo({ canvas })}
+            />
+
             <CollapsibleSection title="Canvas" defaultExpanded={false}>
               <CanvasConfigPanel
                 canvas={geo.canvas}
+                elements={geo.elements}
                 onChange={(canvas) => updateGeo({ canvas })}
                 interactive={geo.interactive !== false}
                 onInteractiveChange={(interactive) => updateGeo({ interactive })}

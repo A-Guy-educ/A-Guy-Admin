@@ -3245,6 +3245,10 @@ export interface Class {
   course: string | Course;
   teachers?: (string | User)[] | null;
   students?: (string | User)[] | null;
+  /**
+   * Set by the class teachers in the teacher app. Lessons hidden from this class's students.
+   */
+  hiddenLessons?: (string | Lesson)[] | null;
   loadedStudents?:
     | {
         [k: string]: unknown;
@@ -5190,6 +5194,7 @@ export interface ClassesSelect<T extends boolean = true> {
   course?: T;
   teachers?: T;
   students?: T;
+  hiddenLessons?: T;
   loadedStudents?: T;
   tenant?: T;
   updatedAt?: T;

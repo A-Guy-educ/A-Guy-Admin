@@ -49,6 +49,20 @@ export interface BoardSizeInput {
    */
   widthOverride?: number
   heightOverride?: number
+  /**
+   * Hard cap on the rendered height (e.g. the chat view's mobile 275px).
+   * When set on an existing block, the board keeps its true aspect ratio:
+   * width = capped height × aspect, and if that overflows the container the
+   * height shrinks with it. The min-width floor and 75% cap are skipped —
+   * they belong to the uncapped 330px spec and would distort the ratio.
+   */
+  maxHeight?: number
+  /**
+   * Geometry only: when the width is clamped below the aspect-driven width,
+   * shrink the height with it so the board keeps the viewport's shape
+   * instead of squeezing x-units relative to y-units.
+   */
+  lockAspect?: boolean
 }
 
 export interface BoardSize {
@@ -73,9 +87,20 @@ export interface BoardSize {
  * only clamped so they never overflow the container width.
  */
 export function computeBoardSize(input: BoardSizeInput): BoardSize {
-  const { xRange, yRange, availableWidth, proportion = 1, widthOverride, heightOverride } = input
+  const {
+    xRange,
+    yRange,
+    availableWidth,
+    proportion = 1,
+    widthOverride,
+    heightOverride,
+    maxHeight,
+    lockAspect = false,
+  } = input
 
-  const height = heightOverride ?? SKETCH_HEIGHT_PX
+  const hasMaxHeight = maxHeight !== undefined && Number.isFinite(maxHeight) && maxHeight > 0
+  const baseHeight = heightOverride ?? SKETCH_HEIGHT_PX
+  const height = hasMaxHeight ? Math.min(baseHeight, maxHeight) : baseHeight
   const container = Number.isFinite(availableWidth) && availableWidth > 0 ? availableWidth : 0
 
   // New-schema path: author picked width/height. Still clamp width to the
@@ -92,10 +117,19 @@ export function computeBoardSize(input: BoardSizeInput): BoardSize {
   const p = proportion > 0 && Number.isFinite(proportion) ? proportion : 1
   const naturalWidth = degenerate ? SKETCH_MIN_WIDTH_PX : height * ((xRange * p) / yRange)
 
+  // Height-capped path: keep the aspect ratio exact, shrinking both sides
+  // together when the natural width doesn't fit the container.
+  if (hasMaxHeight && !degenerate) {
+    if (container > 0 && naturalWidth > container) {
+      return { width: container, height: (container * yRange) / (xRange * p) }
+    }
+    return { width: naturalWidth, height }
+  }
+
   // Narrow-screen fallback #2: container narrower than the min width, just
   // use the container (no horizontal scroll). Spec says height stays 330.
   if (container > 0 && container < SKETCH_MIN_WIDTH_PX) {
-    return { width: container, height }
+    return withLockedAspect({ width: container, height }, naturalWidth, lockAspect && !degenerate)
   }
 
   // Normal path. If no container size was provided (SSR, zero-width render)
@@ -107,5 +141,11 @@ export function computeBoardSize(input: BoardSizeInput): BoardSize {
       : Infinity
   const width = Math.max(SKETCH_MIN_WIDTH_PX, Math.min(naturalWidth, effectiveMax))
 
-  return { width, height }
+  return withLockedAspect({ width, height }, naturalWidth, lockAspect && !degenerate)
+}
+
+/** Shrink the height by the same factor the width was clamped below its natural size. */
+function withLockedAspect(size: BoardSize, naturalWidth: number, lock: boolean): BoardSize {
+  if (!lock || size.width >= naturalWidth) return size
+  return { width: size.width, height: (size.height * size.width) / naturalWidth }
 }

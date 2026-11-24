@@ -10,6 +10,7 @@
  */
 
 import type { GeometrySpecV1 } from '@/infra/contracts/graphics/geometry.v1'
+import { applyCanvasBox } from '@/infra/utils/graphics/geometry-canvas-size'
 import type { QuestionGeometryBlock } from '@/server/payload/collections/Exercises/types'
 import { makeGeometryBlock } from '@/lib/latex-parser/block-generators'
 import { cleanNodeLabel } from '@/lib/latex-parser/tikz-axis-parser'
@@ -211,7 +212,7 @@ function parseRightAngles(
   return angles
 }
 
-/** Canvas display dimensions (pixels) */
+/** Fallback canvas size; only kept if the bounding box is degenerate. */
 const CANVAS_WIDTH = 500
 const CANVAS_HEIGHT = 400
 
@@ -322,12 +323,11 @@ export function parseTikzGeometry(tikzContent: string): QuestionGeometryBlock | 
 
   const geometry: GeometrySpecV1 = {
     kind: 'euclidean',
-    canvas: {
-      width: CANVAS_WIDTH,
-      height: CANVAS_HEIGHT,
-      axis: false,
+    // Height 330, width = 330 × the box's ratio — the size it really renders at.
+    canvas: applyCanvasBox(
+      { width: CANVAS_WIDTH, height: CANVAS_HEIGHT, axis: false, boundingBox },
       boundingBox,
-    },
+    ),
     elements: {
       points: coordinates.map((p) => {
         const pos = labelPositions.get(p.name)

@@ -1,7 +1,7 @@
 /**
  * GET /api/lessons/:id/export[?format=json]
  *
- * Default: the lesson and its ordered exercises as a plain-text file in the
+ * Default: the lesson (fields + its own blocks) and its ordered exercises as a plain-text file in the
  * v2 format consumed by /admin/lesson-json-import (round-trips through
  * parseTextLessonV2 → convertTextExerciseV2ToSections).
  *
@@ -25,6 +25,11 @@ import { buildCanonicalLessonExport } from '@/server/services/lesson-export/to-c
 import { serializeLessonToText } from '@/server/services/lesson-export/to-text-format'
 import { stringifyLessonFile } from '@/server/services/lesson-full-json/stringify-lesson-file'
 import { buildFullLessonExport } from '@/server/services/lesson-full-json/build-full-lesson-export'
+import { compactBlock } from '@/server/services/lesson-full-json/compact-blocks'
+import {
+  meaningfulLessonBlocks,
+  pickLessonDetails,
+} from '@/server/services/lesson-details-transfer/lesson-details-fields'
 
 export async function exportLessonEndpoint(req: PayloadRequest): Promise<Response> {
   const user = req.user
@@ -65,7 +70,11 @@ export async function exportLessonEndpoint(req: PayloadRequest): Promise<Respons
     '',
     docs.sectionsByExerciseId,
   )
-  return new Response(serializeLessonToText(canonical), {
+  const text = serializeLessonToText(canonical, {
+    details: pickLessonDetails(docs.lesson),
+    blocks: meaningfulLessonBlocks(docs.lesson).map(compactBlock),
+  })
+  return new Response(text, {
     headers: {
       'Content-Type': 'text/plain; charset=utf-8',
       'Content-Disposition': `attachment; filename="${slug}.txt"`,

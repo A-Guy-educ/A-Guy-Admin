@@ -12,6 +12,8 @@
  */
 import type { GeometrySpecV1 } from '@/infra/contracts/graphics/geometry.v1'
 import type { PositionEnum } from '@/infra/contracts/primitives'
+import { applyCanvasBox, applyCanvasWidth } from '@/infra/utils/graphics/geometry-canvas-size'
+import { computeContentBoundingBox } from '@/infra/utils/graphics/geometry-content-bounds'
 
 export interface ParseGeometryDslResult {
   spec: GeometrySpecV1
@@ -526,6 +528,34 @@ function parseCanvasRow(
 }
 
 /**
+ * Fit the JSXGraph viewport to the actual content (points + circles, 10%
+ * padding) so a small shape in a corner doesn't render as a tiny fragment,
+ * then store the size the sketch really renders at: height 330 and width =
+ * 330 × the box's ratio. An explicit DSL width is honored as the author's
+ * target ratio (the box grows to match; nothing is cropped).
+ *
+ * Circles referencing an inherited center that isn't in this block's points
+ * are skipped. With no points there's no box, so the DSL / default size is
+ * kept and the renderer falls back to `[0, height, width, 0]`.
+ */
+function buildCanvas(
+  points: MutablePoint[],
+  circles: MutableCircle[],
+  dsl: { width?: number; height?: number; grid?: boolean },
+): GeometrySpecV1['canvas'] {
+  const base: GeometrySpecV1['canvas'] = {
+    width: dsl.width ?? DEFAULT_CANVAS_WIDTH,
+    height: dsl.height ?? DEFAULT_CANVAS_HEIGHT,
+    ...(dsl.grid ? { grid: true } : {}),
+  }
+  const contentBox = computeContentBoundingBox(points, circles)
+  if (!contentBox) return base
+  return dsl.width
+    ? applyCanvasWidth({ ...base, boundingBox: contentBox }, dsl.width)
+    : applyCanvasBox(base, contentBox)
+}
+
+/**
  * Parse a geometry DSL block. `raw` is the text between the header line
  * ("* שרטוט בסיס …:") and the next non-geometry section. Leading/trailing
  * blank lines are ignored.
@@ -771,64 +801,11 @@ export function parseGeometryDsl(raw: string): ParseGeometryDslResult {
 
   const spec: GeometrySpecV1 = {
     kind: 'euclidean',
-    canvas: {
-      width: canvasWidth ?? DEFAULT_CANVAS_WIDTH,
-      height: canvasHeight ?? DEFAULT_CANVAS_HEIGHT,
-      ...(canvasGrid ? { grid: true } : {}),
-      ...(() => {
-        // Fit the JSXGraph viewport to the actual content so a small shape
-        // in the top-left doesn't render as a tiny fragment against a full
-        // 400×400 canvas. GeometryRenderer defaults `boundingBox` to
-        // [0, height, width, 0] when unset; we override with the point +
-        // circle extents plus ~10% padding. Skipped when there are no
-        // points (SVG-only blocks bypass this path anyway) or when only
-        // one axis has spread (still add flat padding so range isn't zero).
-        //
-        // Circles are included so a ring drawn around the last point
-        // doesn't get clipped: for each circle whose center resolves to a
-        // parsed point, we grow the box by the radius (numeric `רדיוס גרפי`
-        // or the distance from center to the `עובר דרך` point). Circles
-        // referencing an inherited center that isn't in this block's
-        // points are skipped — the converter will re-fit at that layer.
-        const usable = points.filter((p) => p.name && Number.isFinite(p.x) && Number.isFinite(p.y))
-        if (usable.length === 0) return {}
-        const pointByName = new Map(usable.map((p) => [p.name, p]))
-        let xMin = Math.min(...usable.map((p) => p.x))
-        let xMax = Math.max(...usable.map((p) => p.x))
-        let yMin = Math.min(...usable.map((p) => p.y))
-        let yMax = Math.max(...usable.map((p) => p.y))
-        for (const c of circles) {
-          const center = pointByName.get(c.center)
-          if (!center) continue
-          let r: number | undefined
-          if (typeof c.radius === 'number' && c.radius > 0) {
-            r = c.radius
-          } else if (c.through) {
-            const t = pointByName.get(c.through)
-            if (t) r = Math.hypot(t.x - center.x, t.y - center.y)
-          }
-          if (!r || !Number.isFinite(r) || r <= 0) continue
-          xMin = Math.min(xMin, center.x - r)
-          xMax = Math.max(xMax, center.x + r)
-          yMin = Math.min(yMin, center.y - r)
-          yMax = Math.max(yMax, center.y + r)
-        }
-        const xRange = xMax - xMin
-        const yRange = yMax - yMin
-        const padX = xRange > 0 ? xRange * 0.1 : 20
-        const padY = yRange > 0 ? yRange * 0.1 : 20
-        // JSXGraph boundingBox convention: [xMin, yMax, xMax, yMin] —
-        // top-left to bottom-right.
-        return {
-          boundingBox: [xMin - padX, yMax + padY, xMax + padX, yMin - padY] as [
-            number,
-            number,
-            number,
-            number,
-          ],
-        }
-      })(),
-    },
+    canvas: buildCanvas(points, circles, {
+      width: canvasWidth,
+      height: canvasHeight,
+      grid: canvasGrid,
+    }),
     elements: {
       points: points
         .filter((p) => p.name && Number.isFinite(p.x) && Number.isFinite(p.y))

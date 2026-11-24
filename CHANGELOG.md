@@ -2,9 +2,16 @@
 
 ## [Unreleased]
 
-- chore: Release v0.70.1 ([#796](https://github.com/A-Guy-educ/A-Guy-Admin/pull/796)) — @aguyshayb
+- chore: Release v0.71.0 ([#809](https://github.com/A-Guy-educ/A-Guy-Admin/pull/809)) — @aguyshayb
+## [v0.71.0] - 2026-11-24
+
+- feat: Export and import lesson fields and lesson blocks ([#806](https://github.com/A-Guy-educ/A-Guy-Admin/pull/806)) — @aguyshayb
+- feat: Match geometry canvas settings to how sketches render on Web ([#802](https://github.com/A-Guy-educ/A-Guy-Admin/pull/802)) — @aguyshayb
+- feat: Add read-only hiddenLessons field to classes ([#799](https://github.com/A-Guy-educ/A-Guy-Admin/pull/799)) — @aguyshayb
 ## [v0.70.1] - 2026-11-16
 
+- promote: dev -> main (v0.70.1) ([#797](https://github.com/A-Guy-educ/A-Guy-Admin/pull/797)) — @aguyshayb
+- chore: Release v0.70.1 ([#796](https://github.com/A-Guy-educ/A-Guy-Admin/pull/796)) — @aguyshayb
 - fix: Center point labels on their compass direction ([#795](https://github.com/A-Guy-educ/A-Guy-Admin/pull/795)) — @aguyshayb
 - fix: Render HTML blocks in studio and align line labels to slope ([#793](https://github.com/A-Guy-educ/A-Guy-Admin/pull/793)) — @aguyshayb
 ## [v0.70.0] - 2026-11-15

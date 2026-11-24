@@ -10,6 +10,10 @@ import { ContentSchema } from '@/server/payload/collections/Exercises/schemas'
 import type { ContentBlock } from '@/server/payload/collections/Exercises/types'
 import { generateId } from '@/server/payload/collections/Exercises/types'
 import { getDefaultTenantId } from '@/server/repos/tenant/get-default-tenant'
+import {
+  lessonUpdateForAppend,
+  type LessonDetails,
+} from '@/server/services/lesson-details-transfer/lesson-details-fields'
 
 export type LessonType = 'learning' | 'practice' | 'exam'
 
@@ -38,6 +42,10 @@ export interface PersistTarget {
   lessonTitle: string
   /** Lesson.type for a newly-created lesson (defaults to `learning`). */
   lessonType?: LessonType
+  /** Lesson-page fields from the file. On append they only fill blank fields. */
+  lessonDetails?: LessonDetails
+  /** The lesson's own blocks from the file. On append they go after the existing ones. */
+  lessonBlocks?: ContentBlock[]
 }
 
 export interface ImportedExerciseResult {
@@ -154,6 +162,8 @@ async function resolveLesson(
       chapter: chapterId,
       type: target.lessonType ?? 'learning',
       title: target.lessonTitle,
+      ...target.lessonDetails,
+      ...(target.lessonBlocks?.length ? { content: { blocks: target.lessonBlocks } } : {}),
       order,
       status: 'draft',
       isActive: true,
@@ -274,33 +284,62 @@ async function rollback(
   }
 }
 
+/** Append-mode only: fill blank lesson fields / append lesson blocks from the file. */
+async function mergeLessonDetails(
+  req: PayloadRequest,
+  lessonId: string,
+  update: Record<string, unknown>,
+): Promise<void> {
+  if (Object.keys(update).length === 0) return
+  try {
+    await req.payload.update({
+      collection: 'lessons',
+      id: lessonId,
+      data: update,
+      req,
+      overrideAccess: true,
+      context: { _skipBlockSync: true },
+    })
+  } catch (err) {
+    console.error('[lesson-import] failed to merge lesson details/blocks', err)
+  }
+}
+
 /**
  * Append exerciseRefs to lesson.blocks in one write. In append-mode, re-read
- * lesson.blocks first so anything written during our multi-second create loop
- * still lands in the final playlist.
+ * the lesson first so anything written during our multi-second create loop
+ * still lands in the final playlist, then merge the file's lesson
+ * details/blocks in a separate write so a bad merge can't lose the playlist.
  */
 async function writeLessonPlaylist(
   req: PayloadRequest,
   lesson: ResolvedLesson,
-  appendMode: boolean,
+  target: PersistTarget,
   exerciseIds: string[],
 ): Promise<void> {
+  const appendMode = Boolean(target.targetLessonId)
   const newBlocks = exerciseIds.map((exerciseId) => ({
     id: Math.random().toString(36).slice(2, 14),
     blockType: 'exerciseRef' as const,
     exercise: exerciseId,
   }))
   let baseBlocks = lesson.existingBlocks
+  let lessonUpdate: Record<string, unknown> = {}
   if (appendMode) {
     try {
-      const fresh = await req.payload.findByID({
+      const fresh = (await req.payload.findByID({
         collection: 'lessons',
         id: lesson.id,
         depth: 0,
         req,
         overrideAccess: true,
-      })
-      baseBlocks = parseExistingBlocks((fresh as { blocks?: unknown }).blocks)
+      })) as unknown as Record<string, unknown>
+      baseBlocks = parseExistingBlocks(fresh.blocks)
+      lessonUpdate = lessonUpdateForAppend(
+        fresh,
+        target.lessonDetails ?? {},
+        target.lessonBlocks ?? [],
+      )
     } catch (err) {
       console.error('[lesson-import] failed to re-read lesson.blocks; using snapshot', err)
     }
@@ -317,6 +356,7 @@ async function writeLessonPlaylist(
   } catch (err) {
     console.error('[lesson-import] failed to write lesson.blocks playlist', err)
   }
+  await mergeLessonDetails(req, lesson.id, lessonUpdate)
 }
 
 export async function persistImportedExercises(
@@ -324,6 +364,13 @@ export async function persistImportedExercises(
   target: PersistTarget,
   prepared: PreparedExercise[],
 ): Promise<ImportLessonResult | ImportLessonError> {
+  const lessonBlocksError = target.lessonBlocks?.length
+    ? formatIssues('Lesson blocks', target.lessonBlocks)
+    : undefined
+  if (lessonBlocksError) {
+    return { kind: 'validation', issues: [{ path: 'lesson.blocks', message: lessonBlocksError }] }
+  }
+
   const tenantId = await getDefaultTenantId(req.payload)
   const lesson = await resolveLesson(req, target)
   if ('kind' in lesson) return lesson
@@ -367,7 +414,7 @@ export async function persistImportedExercises(
     }
   }
 
-  await writeLessonPlaylist(req, lesson, appendMode, created.exercises)
+  await writeLessonPlaylist(req, lesson, target, created.exercises)
 
   return {
     success: true,

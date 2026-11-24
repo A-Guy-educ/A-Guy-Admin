@@ -10,6 +10,9 @@
  *
  *   שם השיעור - <topic>
  *
+ *   [ פרטי השיעור ] / [ בלוקים של השיעור ]  (lesson fields + blocks — see
+ *                                          lesson-sections-text.ts)
+ *
  *   =========================================
  *   [ תרגיל 1 - נתוני פתיחה ]
  *   =========================================
@@ -41,6 +44,8 @@ import type {
   CanonicalTable,
   CanonicalTextContent,
 } from './to-canonical-format'
+import type { LessonDetails } from '@/server/services/lesson-details-transfer/lesson-details-fields'
+import { emitLessonSections } from '@/server/services/lesson-details-transfer/lesson-sections-text'
 
 const EQ_RULE = '='.repeat(41)
 
@@ -174,10 +179,20 @@ function emitSection(exerciseNumber: string, section: CanonicalSection, out: str
   else if (hasText(section.solution)) emitField('פתרון מלא', section.solution.text, out)
 }
 
-export function serializeLessonToText(canonical: CanonicalLessonExport): string {
+/** Lesson-level fields and the lesson's own blocks (already compacted). */
+export interface LessonTextExtras {
+  details: LessonDetails
+  blocks: unknown[]
+}
+
+export function serializeLessonToText(
+  canonical: CanonicalLessonExport,
+  extras?: LessonTextExtras,
+): string {
   const out: string[] = []
 
   if (canonical.topic) out.push(`שם השיעור - ${canonical.topic}`)
+  if (extras) emitLessonSections(extras.details, extras.blocks, out)
 
   for (const ex of canonical.exercises) {
     out.push('')

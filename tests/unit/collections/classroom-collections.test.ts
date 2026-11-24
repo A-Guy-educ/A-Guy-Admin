@@ -38,6 +38,7 @@ describe('classroom collections contract', () => {
       'course',
       'teachers',
       'students',
+      'hiddenLessons',
       'tenant',
     ])
     expect(fieldNames(QuestionAttempts)).toEqual([
