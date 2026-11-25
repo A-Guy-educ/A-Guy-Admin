@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- docs: Update admin-release skill for the current release flow ([#811](https://github.com/A-Guy-educ/A-Guy-Admin/pull/811)) — @aguyshayb
 - promote: dev -> main (v0.71.0) ([#810](https://github.com/A-Guy-educ/A-Guy-Admin/pull/810)) — @aguyshayb
 - chore: Release v0.71.0 ([#809](https://github.com/A-Guy-educ/A-Guy-Admin/pull/809)) — @aguyshayb
 ## [v0.71.0] - 2026-11-24
