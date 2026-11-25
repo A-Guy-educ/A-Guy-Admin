@@ -532,7 +532,11 @@ export interface User {
   tenant?: (string | null) | Tenant;
   googleSub?: string | null;
   verifiedEmail?: string | null;
-  registrationMethod?: ('google' | 'email') | null;
+  /**
+   * Digits-only E.164, e.g. 972501234567.
+   */
+  verifiedPhone?: string | null;
+  registrationMethod?: ('google' | 'email' | 'whatsapp') | null;
   signupSource?: ('google' | 'guykoren' | 'direct' | 'other') | null;
   utmSource?: string | null;
   utmMedium?: string | null;
@@ -5236,6 +5240,7 @@ export interface UsersSelect<T extends boolean = true> {
   tenant?: T;
   googleSub?: T;
   verifiedEmail?: T;
+  verifiedPhone?: T;
   registrationMethod?: T;
   signupSource?: T;
   utmSource?: T;
