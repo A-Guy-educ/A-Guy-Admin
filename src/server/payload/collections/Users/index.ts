@@ -191,12 +191,31 @@ export const Users: CollectionConfig = {
         readOnly: true,
       },
     },
+    // Written by A-Guy-Web via the raw MongoDB driver once the user verifies
+    // their number over WhatsApp. No format validation here so existing
+    // values never fail an admin save; access guards stop signup POSTs and
+    // self-PATCHes (`update: adminOrSelf`) from claiming someone's number.
+    {
+      name: 'verifiedPhone',
+      label: 'Verified phone (WhatsApp)',
+      type: 'text',
+      access: {
+        create: () => false,
+        update: () => false,
+      },
+      admin: {
+        readOnly: true,
+        position: 'sidebar',
+        description: 'Digits-only E.164, e.g. 972501234567.',
+      },
+    },
     {
       name: 'registrationMethod',
       type: 'select',
       options: [
         { label: 'Google', value: 'google' },
         { label: 'Email', value: 'email' },
+        { label: 'WhatsApp', value: 'whatsapp' },
       ],
       admin: {
         readOnly: true,
