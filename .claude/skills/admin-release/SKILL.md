@@ -1,6 +1,6 @@
 ---
 name: admin-release
-description: Cut and ship an Admin release end-to-end, mirroring the daily release loop. Prepares a release PR into dev (version bump + CHANGELOG), promotes dev → main, deploys to Vercel production, pushes a fresh Docker image to GHCR for Render, and verifies the new version is live at a-guy-admin.vercel.app. Use when the user says "release admin", "cut an admin release", "ship an admin version", or asks to promote admin dev to prod.
+description: Cut and ship an Admin release end-to-end, mirroring the daily release loop. Prepares a release PR into dev (version bump + CHANGELOG), promotes dev → main, deploys to Vercel production, pushes a fresh Docker image to GHCR for Render, and verifies the new version is live at admin.aguy.co.il. Use when the user says "release admin", "cut an admin release", "ship an admin version", or asks to promote admin dev to prod.
 allowed-tools: Read, Write, Edit, Bash, Grep, Glob
 ---
 
@@ -8,9 +8,11 @@ allowed-tools: Read, Write, Edit, Bash, Grep, Glob
 
 Sibling of the `web-release` skill in [A-Guy-Web](../../../../A-Guy-Web/.agents/skills/web-release/SKILL.md). Same pipeline shape, different targets.
 
-**Finish line:** a new semver tag lands on `main`, `vercel --prod` completes, a fresh Docker image lands on GHCR, and [a-guy-admin.vercel.app/admin](https://a-guy-admin.vercel.app/admin) responds with the new version. Vercel and Render currently co-exist as prod — both must be updated per release; the user manually re-deploys Render from the pushed image at the end.
+**Finish line:** a new semver tag lands on `main`, `vercel --prod` completes, both custom prod domains are aliased to the new deploy, a fresh Docker image lands on GHCR, and [admin.aguy.co.il/admin](https://admin.aguy.co.il/admin) responds with the new version. Vercel and Render currently co-exist as prod — both must be updated per release; the user manually re-deploys Render from the pushed image at the end.
 
-**Cross-repo context lives in [`../../../../CLAUDE_SHARED.md`](../../../../CLAUDE_SHARED.md).** Read it before running for the first time — Vercel auto-deploy is OFF and the alias/scope gotchas will bite you.
+**Prod domains:** `admin.aguy.co.il` + `www.admin.aguy.co.il` are what the team calls production. `a-guy-admin.vercel.app` is a legacy, redundant alias that still resolves.
+
+**Cross-repo context lives in [`../../../../CLAUDE_SHARED.md`](../../../../CLAUDE_SHARED.md).** Read it before running for the first time — Vercel auto-deploy is OFF and the alias/scope gotchas will bite you. (It still lists `a-guy-admin.vercel.app` as Admin prod; the domains above are current.)
 
 ---
 
@@ -87,7 +89,7 @@ Before proposing the version bump, print a review to the user covering:
 2. **Unknown-classification commits** — subjects that didn't match any prefix at all (Kody's `Merge pull request #NNN from ...` merges usually fall here; that's fine, but flag anything else so it doesn't get silently dropped from the CHANGELOG).
 3. **Breaking-change candidates** — any `feat!:`, `fix!:`, or `BREAKING CHANGE:` mention. Kody has never shipped a major bump; surface these hard so the user can confirm the semver intent.
 4. **Sensitive-path touches** — grep `FILES_CHANGED` for any of:
-   - `src/collections/**` (Payload schema)
+   - `src/server/payload/collections/**` (Payload schema — several collections are a cross-repo contract with Web, e.g. `Classes.ts`)
    - `src/app/api/webhooks/**` (Stripe/PayPal — remember the deferred 30s webhook bug in [`../../../CLAUDE_INTERNAL.md#stripe-webhook-handler`](../../../CLAUDE_INTERNAL.md))
    - `src/lib/payment/**`
    - `src/lib/auth/**`
@@ -101,9 +103,9 @@ Before proposing the version bump, print a review to the user covering:
    For each match, name the file + the PR/commit. The user decides whether the change needs a special deploy note or a smoke check beyond the default.
 
 5. **Env-var deltas** — grep for new `process.env.<VAR>` reads that don't appear on `main`. Vercel snapshots env vars at deploy-creation, so new variables must be added to the Vercel project dashboard **before** Stage 4, otherwise the production build silently reads `undefined`.
-6. **DB migration presence** — any files matching `src/migrations/**` or `**/migrations/**`. Payload/Mongo migrations don't auto-run in this project, so a migration in the release set means someone has to run it manually.
+6. **DB migration presence** — any files matching `src/server/payload/migrations/**` or `**/migrations/**`. Migrations that export a `runXxxOnInit(payload)` wrapper and are called from `src/payload.config.ts` via `timedInit(...)` auto-run on first prod boot (idempotent, non-fatal) — don't list those as manual actions; only flag ones whose precondition can refuse (e.g. a unique index that existing duplicates would violate). Migrations with no onInit wrapper still need someone to run them manually.
 7. **Open PRs targeting `dev` or `main`** — `gh pr list --base dev --state open` and `--base main`. A promotion PR conflicts if someone else has an open `dev → main` PR; a release PR conflicts if there's already an open one.
-8. **CI health of `dev` HEAD** — `gh run list --branch dev --limit 5 --json name,conclusion,headSha`. If the latest run is failing or in-flight, releasing on top would ship a red commit. Halt.
+8. **CI health** — CI (Fast Gate, Build, Integration Tests) runs on PRs, not on pushes to `dev`, so `gh run list --branch dev` mostly shows scheduled jobs. Check the PRs merged in this release set instead: `gh pr view <n> --json statusCheckRollup`. If any is red, halt. Scheduled jobs on `dev` (AI Docs Refresh, Exercise Conversion Runner, Media Expiry Cleanup, Doc Link Fixer, ...) are not release gates — check their history with `gh run list --workflow "<name>" --limit 8` and only raise them if a failure is new.
 9. **Version drift** — compare `package.json` version, the latest `chore: Release v` commit on `dev` (match case-insensitively), and `git tag --sort=-v:refname | head -1`. If any three disagree, note it. (As of the skill's authoring, the last git tag was `v0.26.0` but `package.json` was `v0.26.9` — Kody stopped pushing tags. Stage 5 fixes this going forward.)
 10. **Dependency changes** — `git diff LAST_RELEASE_SHA..origin/dev -- package.json pnpm-lock.yaml` — if any prod deps changed, list them. New deps can shift bundle size or introduce runtime surprises.
 
@@ -138,15 +140,29 @@ NEXT=<computed>
 node -e "const fs=require('fs');const p=require('./package.json');p.version='$NEXT';fs.writeFileSync('./package.json', JSON.stringify(p,null,2)+'\n');"
 ```
 
-### 1c. Regenerate the CHANGELOG entry
+### 1c. Cut the CHANGELOG section
 
-Kody's `release-prepare` has been shipping empty `_No notable commits since the last release._` entries across recent releases in both repos (root cause was the compound-prefix classifier — see Stage 0b). Do better here:
+[CHANGELOG.md](../../../CHANGELOG.md) is maintained by a bot: after every merge to `dev` it appends a line under `## [Unreleased]` (the `chore(changelog): add #NNN` commits). The release PR turns that into a versioned section — do not regenerate the entries from `git log`. Follow the shape used by #796 (v0.70.1) and #809 (v0.71.0):
 
-1. Prepend a new section to [CHANGELOG.md](../../../CHANGELOG.md) — insert directly after the top-level `# Changelog` line.
-2. Header format: `## vX.Y.Z — YYYY-MM-DD` (em-dash, ISO date).
-3. Under it, group commits under `### Features`, `### Bug Fixes`, `### Performance`, `### Refactor`, `### Docs`. Skip empty sections.
-4. Strip the conventional-commit prefix from each subject; keep the human-readable part.
-5. If there truly are only `chore:`/`ci:`/`test:` commits, write `_Maintenance-only release._` — do NOT reuse Kody's placeholder.
+1. Keep `## [Unreleased]` at the top, now empty.
+2. Add `## [vX.Y.Z] - YYYY-MM-DD` directly below it (square brackets, hyphen, ISO date) and move the Unreleased feature/fix lines under it, unchanged.
+3. The bot will also have added the **previous** release's own `promote: dev -> main (vPREV)` and `chore: Release vPREV` lines to Unreleased. Move those **down** into the existing `## [vPREV]` section, not into the new one.
+4. Cross-check the moved lines against the Stage 0b classification — if a merged PR is missing a line (bot didn't run), add it in the same `- <subject> ([#NNN](<pr-url>)) — @<author>` format.
+5. If there are no feat/fix lines at all, write `_Maintenance-only release._` under the new header.
+
+```markdown
+## [Unreleased]
+
+## [v0.71.0] - 2026-11-24
+
+- feat: Export and import lesson fields and lesson blocks ([#806](https://github.com/A-Guy-educ/A-Guy-Admin/pull/806)) — @aguyshayb
+
+## [v0.70.1] - 2026-11-16
+
+- promote: dev -> main (v0.70.1) ([#797](...)) — @aguyshayb
+- chore: Release v0.70.1 ([#796](...)) — @aguyshayb
+- fix: Center point labels on their compass direction ([#795](...)) — @aguyshayb
+```
 
 ### 1d. Open the release PR
 
@@ -157,7 +173,7 @@ BRANCH="chore/release-v${NEXT//./-}"
 git checkout -b "$BRANCH"
 git add package.json CHANGELOG.md
 # Commitlint requires a sentence-case subject: "Release", not "release".
-git commit -m "chore: Release v${NEXT}" -m "Bumps package.json to ${NEXT} and updates CHANGELOG."
+git commit -m "chore: Release v${NEXT}" -m "Bumps package.json to ${NEXT} and moves the Unreleased CHANGELOG entries into a v${NEXT} section."
 git push -u origin "$BRANCH"
 
 gh pr create \
@@ -190,6 +206,8 @@ Wait for CI on the release PR and merge it into `dev`.
 gh pr checks "$RELEASE_PR" --watch --interval 15
 gh pr merge "$RELEASE_PR" --squash --delete-branch
 ```
+
+Right after `gh pr create`, `gh pr checks --watch` can exit immediately with `no checks reported` because the workflows haven't registered yet. Poll `gh pr checks` until it lists at least one check, then start the watch.
 
 If CI fails, invoke `@kody fix-ci` on the PR and re-watch — do not merge with red checks.
 
@@ -228,20 +246,16 @@ EOF
 )"
 ```
 
-Capture as `PROMOTE_PR`. Wait for checks and merge with a **merge commit** (not squash — this preserves the promotion trail):
+Capture as `PROMOTE_PR`. Wait for checks and merge with a **merge commit** (not squash — this preserves the promotion trail). `main` requires a review, so the merge is blocked (`REVIEW_REQUIRED`) even with green checks — the established pattern is an admin merge once every CI gate has passed:
 
 ```bash
 gh pr checks "$PROMOTE_PR" --watch --interval 15
-gh pr merge "$PROMOTE_PR" --merge
+gh pr merge "$PROMOTE_PR" --merge --admin
 ```
 
-At this point [`.github/workflows/vercel-deploy.yml`](../../../.github/workflows/vercel-deploy.yml) will fire on push to `main`, but per [`../../../../CLAUDE_SHARED.md`](../../../../CLAUDE_SHARED.md) Vercel git-integration is off and this workflow is what actually runs `vercel deploy --prod`. Verify the workflow run started:
+The PR's check list also picks up push-triggered jobs from `dev` that are not CI gates — e.g. `deploy` from "Deploy Wiki to GitHub Pages", which fails intermittently on a missing Pages artifact. A failure there doesn't block the release; Fast Gate, Build, Integration Tests and E2E Gate (PR → main) are the gates.
 
-```bash
-gh run list --workflow=vercel-deploy.yml --limit 1
-```
-
-If the workflow doesn't fire or fails, fall back to the manual deploy in Stage 4.
+Nothing deploys on merge: Vercel git-integration is off and [`.github/workflows/vercel-deploy.yml`](../../../.github/workflows/vercel-deploy.yml) is `workflow_dispatch`-only. Stage 4 is the deploy.
 
 ---
 
@@ -256,20 +270,32 @@ git checkout main
 git pull origin main
 ```
 
-### 4b. Run `vercel --prod` (background — build is 3–5 min)
+The pre-push verify (Stage 1d) regenerates `src/payload-types.ts` and can leave it modified with a line-ending-only diff, which blocks `git checkout main`. If `git diff --ignore-all-space --ignore-cr-at-eol src/payload-types.ts` is empty, discard it with `git checkout -- src/payload-types.ts`; if it has real content, stop and investigate.
+
+### 4b. Run `vercel --prod` (background — build is 4–5 min)
 
 Run in background per the deploy ritual in [`../../../../CLAUDE_SHARED.md`](../../../../CLAUDE_SHARED.md):
 
 ```bash
-vercel --prod --yes
+vercel --prod --yes --scope aguy
 ```
 
-`vercel --prod --yes` builds AND aliases in one step. **Do NOT** run `vercel alias` after this — that's only for the dev flow. And **NEVER** alias a preview build to `a-guy-admin.vercel.app` (that's the prod alias).
+This builds and auto-aliases **only** the legacy `a-guy-admin.vercel.app`. The real prod domains are not touched — without the next step they keep serving the previous release.
 
-Wait for the deploy URL to appear, then confirm the alias landed:
+### 4c. Alias the prod domains
+
+Take the `Production: https://a-guy-admin-<id>-aguy.vercel.app` URL from the deploy output and point both domains at it (pre-approved — no need to ask):
 
 ```bash
-vercel inspect <deploy-url> --scope aguy   # should show a-guy-admin.vercel.app in the aliases list
+DEPLOY=a-guy-admin-<id>-aguy.vercel.app
+vercel alias set "$DEPLOY" admin.aguy.co.il --scope aguy
+vercel alias set "$DEPLOY" www.admin.aguy.co.il --scope aguy
+```
+
+Verify with the alias list — `vercel inspect` only shows the vercel.app alias, not the custom domains:
+
+```bash
+vercel alias ls --scope aguy | grep -E "admin\.aguy\.co\.il"   # both rows should show $DEPLOY
 ```
 
 ---
@@ -282,10 +308,16 @@ Render's build memory caps at 8GB on any plan (Performance Builds is a separate 
 
 ### 4.5a. Build and push the image
 
+`storage-vercel-blob` bakes the store ID into `.next/standalone`, so the build needs the **prod** blob token (`.env` `BLOB_READ_WRITE_TOKEN`) or Render serves "Store ID not found" for non-streamed media. Never echo the token.
+
+The Vercel build in Stage 4b runs remotely, so this local build can run in parallel with it from the same `main` checkout.
+
 ```bash
 git checkout main
 git pull origin main
+BLOB_TOKEN=$(grep -E '^BLOB_READ_WRITE_TOKEN=' .env | sed -E 's/^BLOB_READ_WRITE_TOKEN=["\x27]?([^"\x27]+)["\x27]?$/\1/')
 docker build \
+  --build-arg "BLOB_READ_WRITE_TOKEN=$BLOB_TOKEN" \
   -t "ghcr.io/aguyshayb/a-guy-admin:$(git rev-parse --short HEAD)" \
   -t ghcr.io/aguyshayb/a-guy-admin:latest \
   .
@@ -310,11 +342,11 @@ If either fails, stop and surface it to the user — don't skip this stage silen
 > Go to Render dashboard → `a-guy-admin` service → **Manual Deploy** → **"Deploy latest reference"**.
 > Render will pull `:latest` and swap the container. Expect ~1 min swap, then ~15-30s onInit boot.
 
-Do NOT proceed to Stage 5 until the user confirms they've triggered the Render deploy (or explicitly says to skip it). This is where the release actually reaches Render users; forgetting it leaves prod-on-Render running the previous image.
+Do **not** pause for confirmation — the user clicks Manual Deploy asynchronously. Print the reminder and continue straight to Stage 5. Repeat it at the top of the final release summary as the one outstanding manual step; forgetting it leaves prod-on-Render running the previous image.
 
 ### 4.5c. Verify Render is live on the new image (optional but recommended)
 
-Once the user confirms they've triggered the Render redeploy, wait for it to finish and hit the Render URL:
+If the user reports they've triggered the Render redeploy, wait for it to finish and hit the Render URL:
 
 ```bash
 # Should return 200 and, if you added a version endpoint, the new version
@@ -327,7 +359,25 @@ If the response is slow (>30s) that's the onInit boot — normal after a redeplo
 
 ## Stage 5 — Tag & GitHub release
 
-Kody's config points at semantic-release (see [`docs/releases.md`](../../../docs/releases.md)) but the tags stopped at `v0.26.0` while package.json advanced to `v0.26.9` — semantic-release isn't running. Create the tag ourselves:
+Kody's config points at semantic-release (see [`docs/releases.md`](../../../docs/releases.md)) but the tags stopped at `v0.26.0` while package.json advanced to `v0.26.9` — semantic-release isn't running. Create the tag ourselves. This stage doesn't depend on the Docker image, so it can run while 4.5 is still building.
+
+GitHub release notes use grouped headings with the prefix and link stripped (match the previous release: `gh release view v<PREV> --json body --jq .body`). Pull the lines from the new CHANGELOG section and write them to a notes file in the scratchpad:
+
+```bash
+sed -n "/^## \[v${NEXT}\] /,/^## /p" CHANGELOG.md | sed '1d;$d'   # raw lines to regroup
+```
+
+```markdown
+### Features
+
+- Export and import lesson fields and lesson blocks (#806)
+
+### Bug Fixes
+
+- Center point labels on their compass direction (#795)
+```
+
+The tag push triggers the full pre-push verify (~5 min) — run it in the background.
 
 ```bash
 git tag -a "v${NEXT}" -m "Release v${NEXT}"
@@ -335,9 +385,11 @@ git push origin "v${NEXT}"
 
 gh release create "v${NEXT}" \
   --title "v${NEXT}" \
-  --notes "$(sed -n "/^## v${NEXT} /,/^## /p" CHANGELOG.md | sed '$d')" \
+  --notes-file "$NOTES_FILE" \
   --target main
 ```
+
+The verify run leaves the same line-ending-only `src/payload-types.ts` diff as Stage 4a — clear it the same way before switching branches.
 
 ---
 
@@ -347,19 +399,15 @@ Two verification commands from [kody.config.json](../../../kody.config.json) `re
 
 ### 6a. Smoke
 
-The Admin repo doesn't have a dedicated `smoke-web-api.ts` equivalent (only [scripts/release-e2e-gate.ts](../../../scripts/release-e2e-gate.ts) and paypal-key/smoke-test helpers). Fall back to targeted HTTP probes until a proper smoke script exists:
+The Admin repo doesn't have a dedicated `smoke-web-api.ts` equivalent (only [scripts/release-e2e-gate.ts](../../../scripts/release-e2e-gate.ts) and paypal-key/smoke-test helpers). Fall back to targeted HTTP probes until a proper smoke script exists. Probe the real prod domain:
 
 ```bash
-# /admin should serve the Payload admin login page (200)
-curl -sI https://a-guy-admin.vercel.app/admin | head -3
-
-# The Payload REST base health — /api/access returns a JSON policy summary
-curl -sf https://a-guy-admin.vercel.app/api/access -o /dev/null && echo "access endpoint ok" || echo "access endpoint FAILED"
-
-# Any known collection list — pick one that requires no auth to enumerate meta,
-# e.g. products or courses (adjust to a public-list collection if these are restricted):
-curl -sf "https://a-guy-admin.vercel.app/api/products?limit=1" -o /dev/null && echo "products list ok" || echo "products list FAILED"
+for p in /admin /admin/login /api/access "/api/products?limit=1" "/api/courses?limit=1"; do
+  printf "%-24s %s\n" "$p" "$(curl -s -o /dev/null -w '%{http_code} %{time_total}s' "https://admin.aguy.co.il$p")"
+done
 ```
+
+The first API hits after a deploy can take ~30s each (cold Payload boot / onInit). That's not a failure — re-run the loop; warm responses should be under ~1s. Only a non-200 or a still-slow second pass is a smoke failure.
 
 **Follow-up (nice to have):** port `A-Guy-Web/scripts/smoke-web-api.ts` here with Admin-shaped assertions — the Web equivalent hits chat, media, PDF viewer. The Admin version should hit login, a Payload collection list, and the admin dashboard load.
 
@@ -369,7 +417,7 @@ curl -sf "https://a-guy-admin.vercel.app/api/products?limit=1" -o /dev/null && e
 # The prod deployment should serve the new package.json version somewhere.
 # Sanity-check by hitting a health/version endpoint if one exists, otherwise
 # curl the homepage and grep for a build ID that matches the new deploy.
-curl -sSI https://a-guy-admin.vercel.app/admin | grep -i "x-vercel-id"
+curl -sSI https://admin.aguy.co.il/admin | grep -i "x-vercel-id"
 ```
 
 ### 6c. E2E gate (optional — 30 min, needs Docker)
@@ -390,7 +438,7 @@ If a Kody goal issue is open (`gh issue list --search 'admin-release in:body' --
 GOAL_ISSUE=$(gh issue list --search "admin-release-$(date +%Y-%m-%d) in:body" --state open --json number --jq '.[0].number')
 
 if [ -n "$GOAL_ISSUE" ]; then
-  gh issue comment "$GOAL_ISSUE" --body "✅ v${NEXT} shipped: promotion PR #${PROMOTE_PR} merged, \`vercel --prod\` succeeded, smoke passed against a-guy-admin.vercel.app."
+  gh issue comment "$GOAL_ISSUE" --body "✅ v${NEXT} shipped: promotion PR #${PROMOTE_PR} merged, \`vercel --prod\` succeeded, smoke passed against admin.aguy.co.il."
   gh issue close "$GOAL_ISSUE" --reason completed
 fi
 ```
@@ -399,23 +447,24 @@ fi
 
 ## Failure handling
 
-| Stage fails at                      | Action                                                                                                                                                                                                                                                                                                     |
-| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Preconditions                       | Surface the exact command that failed, do not proceed                                                                                                                                                                                                                                                      |
-| Stage 1 CI                          | Comment `@kody fix-ci` on the PR, re-watch, then merge                                                                                                                                                                                                                                                     |
-| Stage 3 CI                          | Same — `@kody fix-ci`, then merge                                                                                                                                                                                                                                                                          |
-| Stage 4 `vercel --prod` build error | Read the build log, fix on `dev`, re-promote, re-deploy — do NOT alias a broken build                                                                                                                                                                                                                      |
-| Stage 4.5 `docker build` error      | Read the build log, fix on `dev`, re-promote, retry — Render stays on the previous image so prod-on-Render is not broken, only stale                                                                                                                                                                       |
-| Stage 4.5 `docker push` error       | Usually GHCR auth expired. Re-run `gh auth switch --user aguyshayb` + `gh auth token \| docker login ghcr.io -u aguyshayb --password-stdin`, retry.                                                                                                                                                        |
-| Stage 6 smoke fails                 | Deployment is live but broken. Roll back via `vercel rollback` (identify prior prod deploy via `vercel ls --prod --scope aguy`) and open a bug issue. For Render, manually re-deploy the previous SHA-pinned image tag from GHCR (Render dashboard → Manual Deploy → change image URL to prior `:sha` tag) |
+| Stage fails at                      | Action                                                                                                                                                                                                                                                                                                                                                                                                        |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Preconditions                       | Surface the exact command that failed, do not proceed                                                                                                                                                                                                                                                                                                                                                         |
+| Stage 1 CI                          | Comment `@kody fix-ci` on the PR, re-watch, then merge                                                                                                                                                                                                                                                                                                                                                        |
+| Stage 3 CI                          | Same — `@kody fix-ci`, then merge                                                                                                                                                                                                                                                                                                                                                                             |
+| Stage 4 `vercel --prod` build error | Read the build log, fix on `dev`, re-promote, re-deploy — do NOT alias a broken build                                                                                                                                                                                                                                                                                                                         |
+| Stage 4.5 `docker build` error      | Read the build log, fix on `dev`, re-promote, retry — Render stays on the previous image so prod-on-Render is not broken, only stale                                                                                                                                                                                                                                                                          |
+| Stage 4.5 `docker push` error       | Usually GHCR auth expired. Re-run `gh auth switch --user aguyshayb` + `gh auth token \| docker login ghcr.io -u aguyshayb --password-stdin`, retry.                                                                                                                                                                                                                                                           |
+| Stage 6 smoke fails                 | Deployment is live but broken. Roll back via `vercel rollback` (identify prior prod deploy via `vercel ls --prod --scope aguy`), re-point `admin.aguy.co.il` + `www.admin.aguy.co.il` at the prior deploy with `vercel alias set`, and open a bug issue. For Render, manually re-deploy the previous SHA-pinned image tag from GHCR (Render dashboard → Manual Deploy → change image URL to prior `:sha` tag) |
 
 ---
 
 ## Non-negotiables
 
-- **Never alias a preview build to `a-guy-admin.vercel.app`.** That's the prod alias. The rest of the alias/scope story is in [`../../../../CLAUDE_SHARED.md`](../../../../CLAUDE_SHARED.md).
+- **Never alias a preview build to `admin.aguy.co.il`, `www.admin.aguy.co.il`, or `a-guy-admin.vercel.app`.** Those are prod. The rest of the alias/scope story is in [`../../../../CLAUDE_SHARED.md`](../../../../CLAUDE_SHARED.md).
+- **Never finish Stage 4 without aliasing both custom domains.** `vercel --prod` alone leaves `admin.aguy.co.il` on the previous release.
 - **Never skip Stage 6.** "Merged to main" is not "shipped." The whole reason this skill exists is that Kody's pipeline stops at Stage 3.
-- **Never skip Stage 4.5.** Vercel and Render both serve prod right now; Vercel-only deploy leaves Render running the previous image. Push the Docker image every release, and remind the user to click Manual Deploy on Render — do not silently move on to Stage 5.
+- **Never skip Stage 4.5.** Vercel and Render both serve prod right now; Vercel-only deploy leaves Render running the previous image. Push the Docker image every release, and remind the user to click Manual Deploy on Render — in Stage 4.5b and again in the final summary.
 - **Never squash-merge the promotion PR.** Merge commit preserves the promotion boundary — future release-prepare stages walk `git log` back to the previous release commit.
 - **Never bump `package.json` on `dev` without opening a release PR.** All version changes go through Stage 1.
 
@@ -426,7 +475,7 @@ fi
 This skill was forked from [`A-Guy-Web/.agents/skills/web-release/SKILL.md`](../../../../A-Guy-Web/.agents/skills/web-release/SKILL.md). The pipeline logic (Stages 0–7) is meant to stay identical across the two repos. Only these things should differ:
 
 - **Preconditions repo check** — `Not in A-Guy-Admin root` + `"name": "a-guy"` package.json probe (Web probes for its own markers)
-- **Prod URL** — `https://a-guy-admin.vercel.app/admin` here vs `https://www.aguy.co.il` in Web
+- **Prod URL** — `https://admin.aguy.co.il/admin` here (plus the Stage 4c custom-domain aliasing) vs `https://www.aguy.co.il` in Web
 - **Smoke command (Stage 6a)** — Web has `scripts/smoke-web-api.ts`; Admin currently uses `curl` probes and needs a dedicated smoke script written (see the follow-up note in Stage 6a)
 - **Goal-issue identifier (Stage 7)** — `admin-release-<date>` here vs `web-release-<date>` in Web
 
