@@ -1,16 +1,16 @@
 # Doc Link Fixer - Failure Report
 
-Generated: 2026-10-06T08:49:05.095Z
+Generated: 2026-11-28T10:03:25.253Z
 
 ## Summary
 
-- **Broken Doc Links**: 109 (these will cause failure in strict mode)
+- **Broken Doc Links**: 112 (these will cause failure in strict mode)
 - **Missing Code References**: 155 (warning only)
 - **Local Path Links**: 2 (warning only)
 
 ## By Source File
 
-### .tasks/\_archive/exercise-conversion/plan.md (16 broken links)
+### .tasks/_archive/exercise-conversion/plan.md (16 broken links)
 
 - `tests/unit/env-parsing.test.ts:1` → `.tasks/_archive/exercise-conversion/tests/unit/env-parsing.test.ts:1`
 - `tests/unit/pdf-validation.test.ts:1` → `.tasks/_archive/exercise-conversion/tests/unit/pdf-validation.test.ts:1`
@@ -29,19 +29,22 @@ Generated: 2026-10-06T08:49:05.095Z
 - `tests/integration/exercise-conversion.test.ts:1` → `.tasks/_archive/exercise-conversion/tests/integration/exercise-conversion.test.ts:1`
 - `.github/workflows/exercise-conversion-runner.yml:1` → `.github/workflows/exercise-conversion-runner.yml:1`
 
+### .claude/skills/admin-release/SKILL.md (12 broken links)
+
+- `../../../../A-Guy-Web/.agents/skills/web-release/SKILL.md` → `../A-Guy-Web/.agents/skills/web-release/SKILL.md`
+- `../../../../CLAUDE_SHARED.md` → `../CLAUDE_SHARED.md`
+- `../../../CLAUDE_INTERNAL.md` → `CLAUDE_INTERNAL.md`
+- `pr-url` → `.claude/skills/admin-release/pr-url`
+- `...` → `.claude/skills/admin-release/...`
+- `...` → `.claude/skills/admin-release/...`
+- `...` → `.claude/skills/admin-release/...`
+- `../../../CLAUDE_INTERNAL.md` → `CLAUDE_INTERNAL.md`
+- `../../../../CLAUDE_SHARED.md` → `../CLAUDE_SHARED.md`
+- `../../../CLAUDE_INTERNAL.md` → `CLAUDE_INTERNAL.md`
+- `../../../../CLAUDE_SHARED.md` → `../CLAUDE_SHARED.md`
+- `../../../../A-Guy-Web/.agents/skills/web-release/SKILL.md` → `../A-Guy-Web/.agents/skills/web-release/SKILL.md`
+
 ### .agents/skills/admin-release/SKILL.md (9 broken links)
-
-- `../../../../A-Guy-Web/.agents/skills/web-release/SKILL.md` → `../A-Guy-Web/.agents/skills/web-release/SKILL.md`
-- `../../../../CLAUDE_SHARED.md` → `../CLAUDE_SHARED.md`
-- `../../../CLAUDE_INTERNAL.md` → `CLAUDE_INTERNAL.md`
-- `../../../CLAUDE_INTERNAL.md` → `CLAUDE_INTERNAL.md`
-- `../../../../CLAUDE_SHARED.md` → `../CLAUDE_SHARED.md`
-- `../../../../CLAUDE_SHARED.md` → `../CLAUDE_SHARED.md`
-- `../../../CLAUDE_INTERNAL.md` → `CLAUDE_INTERNAL.md`
-- `../../../../CLAUDE_SHARED.md` → `../CLAUDE_SHARED.md`
-- `../../../../A-Guy-Web/.agents/skills/web-release/SKILL.md` → `../A-Guy-Web/.agents/skills/web-release/SKILL.md`
-
-### .claude/skills/admin-release/SKILL.md (9 broken links)
 
 - `../../../../A-Guy-Web/.agents/skills/web-release/SKILL.md` → `../A-Guy-Web/.agents/skills/web-release/SKILL.md`
 - `../../../../CLAUDE_SHARED.md` → `../CLAUDE_SHARED.md`
@@ -64,7 +67,7 @@ Generated: 2026-10-06T08:49:05.095Z
 - `${href1}` → `docs/plans/${href1}`
 - `scripts/doc-link-fixer.ts:156` → `docs/plans/scripts/doc-link-fixer.ts:156`
 
-### docs/\_sidebar.md (7 broken links)
+### docs/_sidebar.md (7 broken links)
 
 - `architecture/` → `docs/architecture`
 - `qa/` → `docs/qa`
